@@ -5,7 +5,7 @@ import keyword
 import re
 
 from .errors import EngSyntaxError
-from .models import ParsedHeading, ParsedStatement
+from .models import ParsedHeading, ParsedNumericAssignment, ParsedStatement
 
 _ALLOWED_NODES = (
     ast.Expression, ast.BinOp, ast.UnaryOp, ast.Call, ast.Name,
@@ -13,7 +13,7 @@ _ALLOWED_NODES = (
     ast.UAdd, ast.USub, ast.Load,
 )
 _ALLOWED_CALLS = {
-    "integral", "diff", "solve", "simplify", "expand", "factor", "subs", "eq", "sum"
+    "integral", "diff", "solve", "simplify", "expand", "factor", "subs", "eq", "sum", "numeric"
 }
 _RESERVED = _ALLOWED_CALLS | {"True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
@@ -26,8 +26,8 @@ def normalize_expression(text: str) -> str:
     return _rewrite_solve_equality(text)
 
 
-def parse_cell(cell: str) -> list[ParsedStatement | ParsedHeading]:
-    statements: list[ParsedStatement | ParsedHeading] = []
+def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | ParsedHeading]:
+    statements: list[ParsedStatement | ParsedNumericAssignment | ParsedHeading] = []
     pending_blank = False
 
     for line_no, raw_line in enumerate(cell.splitlines(), start=1):
@@ -50,6 +50,31 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedHeading]:
         if source.startswith("#"):
             continue
         try:
+            numeric_assignment = _split_top_level_numeric_assignment(source)
+            if numeric_assignment is not None:
+                numeric_lhs, numeric_rhs = numeric_assignment
+                target = numeric_lhs.strip()
+                if not _IDENTIFIER.fullmatch(target):
+                    raise EngSyntaxError(
+                        f"line {line_no}: invalid numeric assignment target '{target}'"
+                    )
+                _validate_target(target, line_no)
+                normalized = normalize_expression(numeric_rhs.strip())
+                try:
+                    expression = ast.parse(normalized, mode="eval")
+                except SyntaxError as exc:
+                    raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
+                _validate_ast(expression, line_no)
+                statements.append(ParsedNumericAssignment(
+                    line_no=line_no,
+                    source=source,
+                    target=target,
+                    expression=expression,
+                    blank_before=pending_blank,
+                ))
+                pending_blank = False
+                continue
+
             lhs, rhs = _split_top_level_assignment(source)
             target: str | None = None
             parameter: str | None = None
@@ -119,6 +144,37 @@ def _validate_ast(tree: ast.AST, line_no: int) -> None:
                 )
             if node.keywords:
                 raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")
+
+
+def _split_top_level_numeric_assignment(text: str) -> tuple[str, str] | None:
+    depth = 0
+    positions: list[int] = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+            if depth < 0:
+                raise EngSyntaxError("unbalanced parentheses")
+        elif char == ":" and index + 1 < len(text) and text[index + 1] == "=" and depth == 0:
+            positions.append(index)
+            index += 1
+        index += 1
+
+    if depth != 0:
+        raise EngSyntaxError("unbalanced parentheses")
+    if not positions:
+        return None
+    if len(positions) > 1:
+        raise EngSyntaxError("multiple top-level ':=' operators are unsupported")
+
+    pos = positions[0]
+    lhs, rhs = text[:pos].strip(), text[pos + 2:].strip()
+    if not lhs or not rhs:
+        raise EngSyntaxError("malformed numeric assignment")
+    return lhs, rhs
 
 
 def _split_top_level_assignment(text: str) -> tuple[str | None, str]:
