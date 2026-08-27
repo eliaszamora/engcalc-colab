@@ -25,7 +25,11 @@ def render_result(result: EvaluationResult) -> str:
 def _render_lhs(target: str | None, parameter: str | None) -> str | None:
     if target is None:
         return None
-    target_latex = sp.latex(sp.Symbol(target))
+    if target.startswith("Sigma_") and len(target) > len("Sigma_"):
+        quantity = target[len("Sigma_"):]
+        target_latex = rf"\Sigma {sp.latex(sp.Symbol(quantity))}"
+    else:
+        target_latex = sp.latex(sp.Symbol(target))
     if parameter is None:
         return target_latex
     parameter_latex = sp.latex(sp.Symbol(parameter))
