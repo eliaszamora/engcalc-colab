@@ -24,7 +24,7 @@ def test_blank_line_inside_equation_group_becomes_compact_row_spacing(monkeypatc
     displayed = _capture("### Reacciones\nA = 1\n\nB = 2", monkeypatch)
 
     assert [type(item) for item in displayed] == [HTML, Math]
-    assert r"\\[6pt]" in displayed[1].data
+    assert r"\\[4pt]" in displayed[1].data
 
 
 def test_level_two_heading_has_stronger_visual_hierarchy(monkeypatch):
@@ -33,3 +33,18 @@ def test_level_two_heading_has_stronger_visual_hierarchy(monkeypatch):
     assert [type(item) for item in displayed] == [HTML, HTML, Math]
     assert "border-bottom" in displayed[0].data
     assert "border-bottom" not in displayed[1].data
+
+
+def test_regular_equation_rows_use_tighter_spacing(monkeypatch):
+    displayed = _capture("### Reacciones\nA = 1\nB = 2", monkeypatch)
+
+    assert r"\\[2pt]" in displayed[1].data
+    assert r"\\[3pt]" not in displayed[1].data
+
+
+def test_heading_margins_and_divider_are_subtle(monkeypatch):
+    displayed = _capture("## Estado 0\n### Reacciones\nA = 1", monkeypatch)
+
+    assert "rgba(127,127,127,0.18)" in displayed[0].data
+    assert "margin:0.50rem 0 0.24rem 0" in displayed[0].data
+    assert "margin:0.28rem 0 0.12rem 0" in displayed[1].data
