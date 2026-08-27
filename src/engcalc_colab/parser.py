@@ -5,7 +5,7 @@ import keyword
 import re
 
 from .errors import EngSyntaxError
-from .models import ParsedStatement
+from .models import ParsedHeading, ParsedStatement
 
 _ALLOWED_NODES = (
     ast.Expression, ast.BinOp, ast.UnaryOp, ast.Call, ast.Name,
@@ -18,6 +18,7 @@ _ALLOWED_CALLS = {
 _RESERVED = _ALLOWED_CALLS | {"True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _FUNCTION_TARGET = re.compile(r"^([A-Za-z_]\w*)\s*\(\s*([A-Za-z_]\w*)\s*\)$")
+_HEADING = re.compile(r"^(#{2,3})\s+(.+)$")
 
 
 def normalize_expression(text: str) -> str:
@@ -25,15 +26,26 @@ def normalize_expression(text: str) -> str:
     return _rewrite_solve_equality(text)
 
 
-def parse_cell(cell: str) -> list[ParsedStatement]:
-    statements: list[ParsedStatement] = []
+def parse_cell(cell: str) -> list[ParsedStatement | ParsedHeading]:
+    statements: list[ParsedStatement | ParsedHeading] = []
     pending_blank = False
 
     for line_no, raw_line in enumerate(cell.splitlines(), start=1):
         source = raw_line.strip()
         if not source:
-            if statements:
+            if statements and not isinstance(statements[-1], ParsedHeading):
                 pending_blank = True
+            continue
+        heading_match = _HEADING.fullmatch(source)
+        if heading_match:
+            marks, text = heading_match.groups()
+            statements.append(ParsedHeading(
+                line_no=line_no,
+                text=text.strip(),
+                level=len(marks),
+                blank_before=pending_blank,
+            ))
+            pending_blank = False
             continue
         if source.startswith("#"):
             continue

@@ -16,6 +16,14 @@ class ParsedStatement:
 
 
 @dataclass(frozen=True)
+class ParsedHeading:
+    line_no: int
+    text: str
+    level: int
+    blank_before: bool = False
+
+
+@dataclass(frozen=True)
 class UserFunction:
     parameter: str
     expression: Any

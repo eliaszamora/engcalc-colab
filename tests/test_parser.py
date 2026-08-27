@@ -9,7 +9,7 @@ from engcalc_colab.parser import parse_cell
 
 def test_package_version_and_statement_model():
     stmt = ParsedStatement(3, "A = q*L", "A", None, ast.parse("q*L", mode="eval"))
-    assert __version__ == "0.1.4"
+    assert __version__ == "0.1.5"
     assert stmt.line_no == 3
     assert stmt.target == "A"
     assert stmt.blank_before is False
