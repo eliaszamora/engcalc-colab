@@ -85,7 +85,7 @@ Definitions persist between `%%eng` cells. Reset only the engcalc symbolic state
 
 ## Complete command reference
 
-EngCalc v0.1.7 accepts the following cell and line magics, syntax, operators, and symbolic operations.
+EngCalc v0.1.8 accepts the following cell and line magics, syntax, operators, and symbolic operations.
 
 ### Notebook magics
 
@@ -159,7 +159,7 @@ Heading text is displayed as text, not interpreted as executable code. Level-2 h
 
 ## Compact aligned equation blocks
 
-Consecutive equations between headings are rendered as one aligned mathematical block. Equal signs share one vertical alignment column, routine rows use a compact 2 pt separation, and a blank line in the source becomes a 4 pt internal row gap instead of a separate notebook output block. The source syntax does not change:
+Consecutive equations between headings are rendered as one three-column mathematical block: the left-hand expressions are left-aligned, the assignment equal signs share a centered vertical column, and the right-hand expressions are left-aligned. Routine rows use a compact 2 pt separation, and a blank line in the source becomes a 4 pt internal row gap instead of a separate notebook output block. The source syntax does not change:
 
 ```text
 %%eng
@@ -179,7 +179,7 @@ V_0(x) = R_A0 - q*x
 M_0(x) = -M_A0 + R_A0*x - q*x^2/2
 ```
 
-The output is composed as one compact `aligned` block per subsection, rather than one independent Jupyter/Colab display object per equation.
+The output is composed as one compact three-column `array` block per subsection, rather than one independent Jupyter/Colab display object per equation.
 
 ## Engineering factor order
 
@@ -253,4 +253,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.7`.
+Version: `0.1.8`.
