@@ -1,3 +1,4 @@
+from IPython.display import HTML, Math
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 
 
@@ -52,7 +53,7 @@ def test_magic_prints_concise_user_errors_without_traceback(capsys):
     shell = _fresh_shell()
     shell.extension_manager.load_extension("engcalc_colab")
     for source in [
-        'A = __import__("os")',
+        '__import__("os")',
         "A = obj.attr",
         "R = solve(x^2 = 1, x)",
         "A = integral(x, x, 0)",
@@ -72,3 +73,18 @@ def test_eng_magic_returns_none_so_jupyter_does_not_echo_internal_results():
     shell.extension_manager.load_extension("engcalc_colab")
     result = shell.run_cell_magic("eng", "", "A = x^2")
     assert result is None
+
+
+def test_magic_renders_one_vertical_gap_for_one_or_more_blank_lines(monkeypatch):
+    import engcalc_colab.magic as magic_module
+
+    displayed = []
+    monkeypatch.setattr(magic_module, "display", displayed.append)
+
+    magics = magic_module.EngMagics(shell=None)
+    magics.eng("", "A = 1\n\n\nB = 2")
+
+    html_items = [item for item in displayed if isinstance(item, HTML)]
+    math_items = [item for item in displayed if isinstance(item, Math)]
+    assert len(html_items) == 1
+    assert len(math_items) == 2
