@@ -19,3 +19,18 @@ def test_function_assignment_renders_function_left_hand_side():
     result = engine.evaluate(parse_cell("V(x) = R_A - q*x")[0])
     latex = render_result(result)
     assert "V" in latex and "x" in latex and "R" in latex
+
+
+def test_sigma_equilibrium_target_renders_sigma_as_operator_not_subscript():
+    engine = EngineeringEngine()
+    result = engine.evaluate(parse_cell("Sigma_F_y = R_Ay + R_By - P_y")[0])
+    latex = render_result(result)
+    assert latex.startswith(r"\Sigma F_{y} =")
+    assert r"\Sigma_{" not in latex
+
+
+def test_indexed_sum_renders_lower_and_upper_limits():
+    engine = EngineeringEngine()
+    result = engine.evaluate(parse_cell("S = sum(F_i, i, 0, n)")[0])
+    latex = render_result(result)
+    assert r"\sum_{i=0}^{n} F_{i}" in latex
