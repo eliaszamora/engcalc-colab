@@ -25,7 +25,7 @@ class EngMagics(Magics):
                 display(Math(render_result(result)))
         except EngCalcError as exc:
             print(f"engcalc: {exc}")
-        return results
+        return None
 
     @line_magic
     def eng_reset(self, line: str):
