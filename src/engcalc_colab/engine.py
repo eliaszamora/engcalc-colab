@@ -19,14 +19,15 @@ class EngineeringEngine:
         self.functions.clear()
         self.symbols.clear()
 
+    def resolve_symbol(self, name: str) -> sp.Symbol:
+        if name not in self.symbols:
+            self.symbols[name] = sp.Symbol(name)
+        return self.symbols[name]
+
     def resolve_name(self, name: str):
         if name in self.namespace:
             return self.namespace[name]
-        if name in self.symbols:
-            return self.symbols[name]
-        symbol = sp.Symbol(name)
-        self.symbols[name] = symbol
-        return symbol
+        return self.resolve_symbol(name)
 
     def evaluate(self, statement: ParsedStatement) -> EvaluationResult:
         evaluator = _Evaluator(self)
@@ -71,6 +72,7 @@ class _Evaluator(ast.NodeVisitor):
     def __init__(self, engine: EngineeringEngine) -> None:
         self.engine = engine
         self.display_input = None
+        self.symbol_overrides: dict[str, sp.Symbol] = {}
 
     def generic_visit(self, node):
         raise EngEvaluationError(f"unsupported syntax '{type(node).__name__}'")
@@ -85,6 +87,8 @@ class _Evaluator(ast.NodeVisitor):
         raise EngEvaluationError("only numeric constants are supported")
 
     def visit_Name(self, node: ast.Name):
+        if node.id in self.symbol_overrides:
+            return self.symbol_overrides[node.id]
         return self.engine.resolve_name(node.id)
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
@@ -109,6 +113,35 @@ class _Evaluator(ast.NodeVisitor):
         if not isinstance(node.func, ast.Name):
             raise EngSyntaxError(f"unsupported syntax '{type(node.func).__name__}'")
         name = node.func.id
+
+        if name == "solve":
+            self._require_arity(name, node.args, 2, "equation, unknown")
+            unknown_node = node.args[1]
+            if not isinstance(unknown_node, ast.Name):
+                raise EngEvaluationError("solve unknown must be a symbolic identifier")
+            unknown_name = unknown_node.id
+            unknown = self.engine.resolve_symbol(unknown_name)
+            previous = self.symbol_overrides.get(unknown_name)
+            self.symbol_overrides[unknown_name] = unknown
+            try:
+                equation = self.visit(node.args[0])
+            finally:
+                if previous is None:
+                    self.symbol_overrides.pop(unknown_name, None)
+                else:
+                    self.symbol_overrides[unknown_name] = previous
+            if not isinstance(equation, sp.Equality):
+                equation = sp.Eq(equation, 0, evaluate=False)
+            self.display_input = equation
+            solutions = sp.solve(equation, unknown)
+            if len(solutions) == 0:
+                raise EngEvaluationError(f"solve found no solution for {unknown}")
+            if len(solutions) > 1:
+                raise AmbiguousSolveError(
+                    f"solve returned {len(solutions)} solutions for {unknown}; v0.1 requires one"
+                )
+            return solutions[0]
+
         args = [self.visit(arg) for arg in node.args]
 
         if name in self.engine.functions:
@@ -137,21 +170,6 @@ class _Evaluator(ast.NodeVisitor):
         if name == "eq":
             self._require_arity(name, args, 2, "left, right")
             return sp.Eq(args[0], args[1], evaluate=False)
-
-        if name == "solve":
-            self._require_arity(name, args, 2, "equation, unknown")
-            equation, unknown = args
-            if not isinstance(equation, sp.Equality):
-                equation = sp.Eq(equation, 0, evaluate=False)
-            self.display_input = equation
-            solutions = sp.solve(equation, unknown)
-            if len(solutions) == 0:
-                raise EngEvaluationError(f"solve found no solution for {unknown}")
-            if len(solutions) > 1:
-                raise AmbiguousSolveError(
-                    f"solve returned {len(solutions)} solutions for {unknown}; v0.1 requires one"
-                )
-            return solutions[0]
 
         if name in {"simplify", "expand", "factor"}:
             self._require_arity(name, args, 1, "expression")
