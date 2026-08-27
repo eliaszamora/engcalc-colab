@@ -3,7 +3,13 @@ from __future__ import annotations
 import sympy as sp
 from sympy.printing.latex import LatexPrinter
 
-from .models import EvaluationResult
+from .models import (
+    EvaluationResult,
+    NumericAssignmentResult,
+    NumericEvaluationResult,
+)
+
+CalculationResult = EvaluationResult | NumericAssignmentResult | NumericEvaluationResult
 
 
 class _EngineeringLatexPrinter(LatexPrinter):
@@ -46,6 +52,18 @@ class _EngineeringLatexPrinter(LatexPrinter):
         return separator.join(rendered)
 
 
+class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
+    def __init__(self, substitutions: dict[str, object]):
+        super().__init__()
+        self.substitutions = substitutions
+
+    def _print_Symbol(self, expr):
+        quantity = self.substitutions.get(expr.name)
+        if quantity is None:
+            return super()._print_Symbol(expr)
+        return rf"\left({_quantity_latex(quantity)}\right)"
+
+
 def _engineering_factor_key(term):
     if term.is_Number:
         return (0, sp.default_sort_key(term))
@@ -68,7 +86,21 @@ def _latex(expr) -> str:
     return _EngineeringLatexPrinter().doprint(expr)
 
 
-def render_aligned_results(results: list[EvaluationResult]) -> str:
+def _substitution_latex(expr, substitutions: dict[str, object]) -> str:
+    return _NumericSubstitutionLatexPrinter(substitutions).doprint(expr)
+
+
+def _quantity_latex(quantity, precision: int = 2) -> str:
+    magnitude = float(quantity.magnitude)
+    magnitude_latex = f"{magnitude:.{precision}f}"
+    if getattr(quantity, "dimensionless", False):
+        return magnitude_latex
+
+    unit_latex = format(quantity.units, "~L")
+    return rf"{magnitude_latex}\,{unit_latex}"
+
+
+def render_aligned_results(results: list[CalculationResult]) -> str:
     """Render consecutive results as a three-column engineering calculation block."""
     if not results:
         return ""
@@ -91,7 +123,23 @@ def render_aligned_results(results: list[EvaluationResult]) -> str:
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
 
 
-def render_result(result: EvaluationResult) -> str:
+def render_result(result: CalculationResult) -> str:
+    if isinstance(result, NumericAssignmentResult):
+        lhs = _render_lhs(result.statement.target, None)
+        return rf"{lhs} = {_quantity_latex(result.quantity)}"
+
+    if isinstance(result, NumericEvaluationResult):
+        formula_latex = _latex(result.symbolic_expression)
+        substituted_latex = _substitution_latex(
+            result.symbolic_expression,
+            result.substitutions,
+        )
+        final_latex = _quantity_latex(result.quantity)
+        if result.display_name is not None:
+            lhs = _render_lhs(result.display_name, None)
+            return rf"{lhs} = {formula_latex} = {substituted_latex} = {final_latex}"
+        return rf"{formula_latex} = {substituted_latex} = {final_latex}"
+
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameter)
     value_latex = _latex(result.value)
@@ -112,7 +160,7 @@ def _render_lhs(target: str | None, parameter: str | None) -> str | None:
     if target is None:
         return None
     if target.startswith("Sigma_") and len(target) > len("Sigma_"):
-        quantity = target[len("Sigma_"):]
+        quantity = target[len("Sigma_\"):]
         target_latex = rf"\Sigma {_latex(sp.Symbol(quantity))}"
     else:
         target_latex = _latex(sp.Symbol(target))
