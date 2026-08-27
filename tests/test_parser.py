@@ -45,7 +45,7 @@ def test_parser_rejects_reserved_target():
 
 def test_parser_rejects_dunder_call_with_concise_line_error():
     with pytest.raises(EngSyntaxError, match=r"line 1: unsupported function '__import__'"):
-        parse_cell('__import__("os")')
+        parse_cell('A = __import__("os")')
 
 
 def test_parser_reports_line_for_unbalanced_parentheses():
