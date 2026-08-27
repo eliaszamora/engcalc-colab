@@ -25,7 +25,7 @@ def test_blank_line_inside_equation_group_becomes_compact_row_spacing(monkeypatc
     displayed = _capture("### Reacciones\nA = 1\n\nB = 2", monkeypatch)
 
     assert [type(item) for item in displayed] == [HTML, Math]
-    assert r"\\[4pt]" in displayed[1].data
+    assert r"\\[8pt]" in displayed[1].data
 
 
 def test_level_two_heading_has_stronger_visual_hierarchy(monkeypatch):
@@ -39,8 +39,8 @@ def test_level_two_heading_has_stronger_visual_hierarchy(monkeypatch):
 def test_regular_equation_rows_use_tighter_spacing(monkeypatch):
     displayed = _capture("### Reacciones\nA = 1\nB = 2", monkeypatch)
 
-    assert r"\\[2pt]" in displayed[1].data
-    assert r"\\[3pt]" not in displayed[1].data
+    assert r"\\[4pt]" in displayed[1].data
+    assert r"\\[2pt]" not in displayed[1].data
 
 
 def test_heading_margins_and_divider_are_subtle(monkeypatch):
