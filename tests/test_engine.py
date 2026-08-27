@@ -112,3 +112,17 @@ R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
     q, L = sp.symbols("q L")
     assert sp.simplify(first - 3*q*L/8) == 0
     assert sp.simplify(second - first) == 0
+
+
+def test_sum_builds_unevaluated_symbolic_sum():
+    engine = EngineeringEngine()
+    result = eval_cell(engine, "S = sum(F_i, i, 0, n)")[-1]
+    F_i, i, n = sp.symbols("F_i i n")
+    assert result.value == sp.Sum(F_i, (i, 0, n))
+
+
+def test_sum_requires_symbolic_index_identifier():
+    engine = EngineeringEngine()
+    with pytest_raises(EngEvaluationError) as captured:
+        eval_cell(engine, "S = sum(F_i, i + 1, 0, n)")
+    assert str(captured.value) == "line 1: sum index must be a symbolic identifier"

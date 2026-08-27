@@ -114,6 +114,28 @@ class _Evaluator(ast.NodeVisitor):
             raise EngSyntaxError(f"unsupported syntax '{type(node.func).__name__}'")
         name = node.func.id
 
+        if name == "sum":
+            self._require_arity(name, node.args, 4, "expression, index, lower, upper")
+            index_node = node.args[1]
+            if not isinstance(index_node, ast.Name):
+                raise EngEvaluationError("sum index must be a symbolic identifier")
+            index_name = index_node.id
+            index = self.engine.resolve_symbol(index_name)
+            previous = self.symbol_overrides.get(index_name)
+            self.symbol_overrides[index_name] = index
+            try:
+                expr = self.visit(node.args[0])
+            finally:
+                if previous is None:
+                    self.symbol_overrides.pop(index_name, None)
+                else:
+                    self.symbol_overrides[index_name] = previous
+            lower = self.visit(node.args[2])
+            upper = self.visit(node.args[3])
+            symbolic_sum = sp.Sum(expr, (index, lower, upper))
+            self.display_input = symbolic_sum
+            return symbolic_sum
+
         if name == "solve":
             self._require_arity(name, node.args, 2, "equation, unknown")
             unknown_node = node.args[1]

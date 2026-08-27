@@ -13,7 +13,7 @@ _ALLOWED_NODES = (
     ast.UAdd, ast.USub, ast.Load,
 )
 _ALLOWED_CALLS = {
-    "integral", "diff", "solve", "simplify", "expand", "factor", "subs", "eq"
+    "integral", "diff", "solve", "simplify", "expand", "factor", "subs", "eq", "sum"
 }
 _RESERVED = _ALLOWED_CALLS | {"True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")

@@ -70,6 +70,7 @@ You do not write `symbols()`, `Eq()`, `sp.integrate()`, `sp.solve()[0]`, `displa
 - `integral(expr, var, lower, upper)`
 - `diff(expr, var)` and `diff(expr, var, order)`
 - `solve(lhs = rhs, unknown)`
+- `sum(expr, index, lower, upper)`
 - `simplify(expr)`
 - `expand(expr)`
 - `factor(expr)`
@@ -80,6 +81,36 @@ Definitions persist between `%%eng` cells. Reset only the engcalc symbolic state
 ```text
 %eng_reset
 ```
+
+## Equilibrium notation and indexed sums
+
+For engineering equilibrium equations, use a target beginning with `Sigma_`. The prefix is rendered as an uppercase Greek sigma followed by the engineering quantity, rather than as a subscript on sigma:
+
+```text
+%%eng
+
+Sigma_F_x = R_Ax - P_x
+Sigma_F_y = R_Ay + R_By - P_y
+Sigma_M_A = R_By*L - P_y*a
+```
+
+These targets render as `\Sigma F_x`, `\Sigma F_y`, and `\Sigma M_A`.
+
+For an indexed mathematical summation, use:
+
+```text
+%%eng
+
+S = sum(F_i, i, 0, n)
+```
+
+which renders as
+
+\[
+S=\sum_{i=0}^{n}F_i.
+\]
+
+`sum(...)` is intentionally kept as a symbolic `Sum` instead of being automatically collapsed. This preserves indexed engineering notation such as `F_i` without incorrectly treating it as a constant with respect to `i`.
 
 ## Example — internal forces and critical point
 
@@ -110,4 +141,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.2`.
+Version: `0.1.3`.
