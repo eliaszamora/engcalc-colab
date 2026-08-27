@@ -9,7 +9,7 @@ from engcalc_colab.parser import parse_cell
 
 def test_package_version_and_statement_model():
     stmt = ParsedStatement(3, "A = q*L", "A", None, ast.parse("q*L", mode="eval"))
-    assert __version__ == "0.1.2"
+    assert __version__ == "0.1.3"
     assert stmt.line_no == 3
     assert stmt.target == "A"
 
@@ -50,3 +50,8 @@ def test_parser_rejects_dunder_call_with_concise_line_error():
 def test_parser_reports_line_for_unbalanced_parentheses():
     with pytest.raises(EngSyntaxError, match=r"line 2: unbalanced parentheses"):
         parse_cell("# heading\nA = (q*L")
+
+
+def test_parser_reserves_sum_as_builtin_operation():
+    with pytest.raises(EngSyntaxError, match="reserved"):
+        parse_cell("sum = 3")
