@@ -83,6 +83,60 @@ Definitions persist between `%%eng` cells. Reset only the engcalc symbolic state
 %eng_reset
 ```
 
+## Complete command reference
+
+EngCalc v0.1.7 accepts the following cell and line magics, syntax, operators, and symbolic operations.
+
+### Notebook magics
+
+- `%%eng` — evaluate a whole cell with the EngCalc symbolic language.
+- `%eng_reset` — clear only EngCalc symbolic state (stored scalars, functions, and symbols).
+
+`%load_ext engcalc_colab` and `%reload_ext engcalc_colab` are IPython extension-management magics used to load/reload the package; they are not part of the EngCalc expression language itself.
+
+### Definitions and expressions
+
+- `A = expression` — scalar/symbolic assignment.
+- `M(x) = expression` — single-argument symbolic function definition.
+- `M(x)` — call a previously defined EngCalc function.
+- A standalone expression or supported operation may be written without assigning it.
+- Identifiers are created symbolically on first use; no `symbols()` declaration is required.
+
+### Arithmetic syntax
+
+- Addition: `a + b`
+- Subtraction: `a - b`
+- Multiplication: `a*b`
+- Division: `a/b`
+- Powers: `a^2` (recommended) or `a**2`
+- Unary signs: `+a`, `-a`
+- Parentheses: `( ... )`
+- Integer and decimal numeric constants are supported.
+
+### Symbolic operations
+
+- `integral(expr, var, lower, upper)` — definite integral.
+- `diff(expr, var)` — first derivative.
+- `diff(expr, var, order)` — derivative of arbitrary integer order.
+- `solve(lhs = rhs, unknown)` — solve one equation for one unknown; v0.1 requires a unique solution.
+- `solve(expr, unknown)` — interpreted as `expr = 0`.
+- `sum(expr, index, lower, upper)` — unevaluated indexed symbolic sum.
+- `simplify(expr)` — SymPy simplification.
+- `expand(expr)` — algebraic expansion.
+- `factor(expr)` — algebraic factorization.
+- `subs(expr, variable, value)` — symbolic substitution.
+- `eq(lhs, rhs)` — explicit symbolic equality; mainly useful internally or when an equality object is needed as an argument.
+
+### Engineering presentation syntax
+
+- `Sigma_F_y = ...` — renders the `Sigma_` prefix as engineering equilibrium notation, e.g. `\Sigma F_y`.
+- `# text` — invisible comment.
+- `## text` — visible section heading.
+- `### text` — visible subsection heading.
+- Blank line — adds a compact visual separation inside the current equation group.
+
+The restricted language does **not** currently support arbitrary Python, attributes, lists/dicts, keyword arguments, arbitrary library functions such as `sin()`/`cos()`, matrices as a dedicated syntax, or physical units inside `%%eng`.
+
 ## Visible calculation headings
 
 Inside `%%eng`, a single `#` remains an invisible comment. Use `##` for a visible calculation title and `###` for a smaller visible subtitle:
@@ -105,7 +159,7 @@ Heading text is displayed as text, not interpreted as executable code. Level-2 h
 
 ## Compact aligned equation blocks
 
-Consecutive equations between headings are rendered as one aligned mathematical block. Equal signs share one vertical alignment column, routine rows use compact spacing, and a blank line in the source becomes a slightly larger internal row gap instead of a separate notebook output block. The source syntax does not change:
+Consecutive equations between headings are rendered as one aligned mathematical block. Equal signs share one vertical alignment column, routine rows use a compact 2 pt separation, and a blank line in the source becomes a 4 pt internal row gap instead of a separate notebook output block. The source syntax does not change:
 
 ```text
 %%eng
@@ -199,4 +253,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.6`.
+Version: `0.1.7`.
