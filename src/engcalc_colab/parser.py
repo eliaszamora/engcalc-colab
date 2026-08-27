@@ -106,7 +106,7 @@ def _validate_ast(tree: ast.AST, line_no: int) -> None:
     for node in ast.walk(tree):
         if not isinstance(node, _ALLOWED_NODES):
             raise EngSyntaxError(
-                f"line {line_no}: unsupported syntax '{type(node).__name__@'"
+                f"line {line_no}: unsupported syntax '{type(node).__name__}'"
             )
         if isinstance(node, ast.Call):
             if not isinstance(node.func, ast.Name):
