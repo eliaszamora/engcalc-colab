@@ -86,3 +86,31 @@ def test_magic_renders_blank_lines_inside_one_math_group(monkeypatch):
 
     assert [type(item) for item in displayed] == [Math]
     assert r"\\[8pt]" in displayed[0].data
+
+
+def test_eng_reset_reports_general_state_clear(capsys):
+    shell = _fresh_shell()
+    shell.extension_manager.load_extension("engcalc_colab")
+
+    shell.run_line_magic("eng_reset", "")
+
+    assert capsys.readouterr().out.strip() == "engcalc state cleared"
+
+
+def test_magic_renders_symbolic_numeric_assignments_and_numeric_results_together(monkeypatch):
+    import engcalc_colab.magic as magic_module
+
+    displayed = []
+    monkeypatch.setattr(magic_module, "display", displayed.append)
+
+    magics = magic_module.EngMagics(shell=None)
+    magics.eng(
+        "",
+        "V_B = 3*q*L/8\nq := 2.8*tonf/m\nL := 4*m\nnumeric(V_B)",
+    )
+
+    assert [type(item) for item in displayed] == [Math]
+    latex = displayed[0].data
+    assert r"\begin{array}{lcl}" in latex
+    assert "4.20" in latex
+    assert r"\mathrm{tonf}" in latex
