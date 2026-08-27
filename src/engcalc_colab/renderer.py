@@ -68,6 +68,28 @@ def _latex(expr) -> str:
     return _EngineeringLatexPrinter().doprint(expr)
 
 
+def render_aligned_results(results: list[EvaluationResult]) -> str:
+    """Render consecutive calculation results as one aligned LaTeX block."""
+    if not results:
+        return ""
+
+    rows: list[str] = []
+    for index, result in enumerate(results):
+        row = render_result(result)
+        if " = " in row:
+            row = row.replace(" = ", " &= ", 1)
+        else:
+            row = rf"& {row}"
+
+        if index:
+            spacing = "6pt" if result.statement.blank_before else "3pt"
+            rows.append(rf"\\[{spacing}]")
+        rows.append(row)
+
+    body = " ".join(rows)
+    return rf"\hspace{{0.35em}}\begin{{aligned}} {body} \end{{aligned}}"
+
+
 def render_result(result: EvaluationResult) -> str:
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameter)
