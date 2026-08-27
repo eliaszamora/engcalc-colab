@@ -65,3 +65,10 @@ def test_magic_prints_concise_user_errors_without_traceback(capsys):
     assert "unsupported syntax 'Attribute'" in output
     assert "solve returned 2 solutions for x; v0.1 requires one" in output
     assert "integral expects 4 arguments: expression, variable, lower, upper" in output
+
+
+def test_eng_magic_returns_none_so_jupyter_does_not_echo_internal_results():
+    shell = _fresh_shell()
+    shell.extension_manager.load_extension("engcalc_colab")
+    result = shell.run_cell_magic("eng", "", "A = x^2")
+    assert result is None
