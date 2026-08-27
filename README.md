@@ -4,11 +4,15 @@
 
 ## Install in Google Colab
 
-After this project is published to GitHub:
+```python
+%pip install -q --upgrade --no-cache-dir git+https://github.com/eliaszamora/engcalc-colab.git
+%load_ext engcalc_colab
+```
+
+If the extension is already loaded after an update, use:
 
 ```python
-%pip install -q git+https://github.com/eliaszamora/engcalc-colab.git
-%load_ext engcalc_colab
+%reload_ext engcalc_colab
 ```
 
 For a folder uploaded directly to Colab:
@@ -18,10 +22,22 @@ For a folder uploaded directly to Colab:
 %load_ext engcalc_colab
 ```
 
+## Google Colab side-by-side layout
+
+Google Colab can place the code on the left and the output on the right for an individual cell. Put this Colab directive immediately below `%%eng`:
+
+```text
+%%eng
+#@title { vertical-output: true }
+```
+
+The directive is cell-specific. Add it to each cell where you want the side-by-side layout, or duplicate a cell that already contains it. `engcalc-colab` ignores the line because it is a comment.
+
 ## Example — propped cantilever by the force method
 
 ```text
 %%eng
+#@title { vertical-output: true }
 
 M_0 = -q/2*(L-x)^2
 m_B = L-x
@@ -39,6 +55,8 @@ Expected symbolic results:
 f_{BB}=\frac{L^3}{3EI},\qquad
 R_B=\frac{3qL}{8}.
 \]
+
+The same `%%eng` cell can be executed repeatedly. Variables used as the unknown in `solve(...)` remain symbolic during the solve even if that name already has a previous result in the notebook state.
 
 You do not write `symbols()`, `Eq()`, `sp.integrate()`, `sp.solve()[0]`, `display()`, or SymPy printer boilerplate.
 
@@ -67,6 +85,7 @@ Definitions persist between `%%eng` cells. Reset only the engcalc symbolic state
 
 ```text
 %%eng
+#@title { vertical-output: true }
 
 V(x) = R_A - q*x
 x_crit = solve(V(x) = 0, x)
@@ -91,4 +110,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.1`.
+Version: `0.1.2`.
