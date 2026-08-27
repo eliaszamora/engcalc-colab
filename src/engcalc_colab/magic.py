@@ -7,7 +7,12 @@ from IPython.display import HTML, Math, display
 
 from .engine import EngineeringEngine
 from .errors import EngCalcError
-from .models import EvaluationResult, ParsedHeading
+from .models import (
+    EvaluationResult,
+    NumericAssignmentResult,
+    NumericEvaluationResult,
+    ParsedHeading,
+)
 from .parser import parse_cell
 from .renderer import render_aligned_results
 
@@ -26,7 +31,10 @@ def _render_heading(heading: ParsedHeading) -> HTML:
     return HTML(f'<div style="{style}">{escape(heading.text)}</div>')
 
 
-def _display_equation_group(results: list[EvaluationResult]) -> None:
+CalculationResult = EvaluationResult | NumericAssignmentResult | NumericEvaluationResult
+
+
+def _display_equation_group(results: list[CalculationResult]) -> None:
     if results:
         display(Math(render_aligned_results(results)))
 
@@ -39,7 +47,7 @@ class EngMagics(Magics):
 
     @cell_magic
     def eng(self, line: str, cell: str):
-        pending_results: list[EvaluationResult] = []
+        pending_results: list[CalculationResult] = []
         try:
             for item in parse_cell(cell):
                 if isinstance(item, ParsedHeading):
@@ -59,4 +67,4 @@ class EngMagics(Magics):
     @line_magic
     def eng_reset(self, line: str):
         self.engine.reset()
-        print("engcalc symbolic state cleared")
+        print("engcalc state cleared")
