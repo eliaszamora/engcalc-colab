@@ -15,9 +15,10 @@ def test_consecutive_equations_render_as_one_aligned_math_block(monkeypatch):
     displayed = _capture("### Reacciones\nA = 1\nB = 2", monkeypatch)
 
     assert [type(item) for item in displayed] == [HTML, Math]
-    assert r"\hspace{0.35em}\begin{aligned}" in displayed[1].data
-    assert "A &=" in displayed[1].data
-    assert "B &=" in displayed[1].data
+    assert r"\hspace{0.2em}\begin{array}{lcl}" in displayed[1].data
+    assert r"\displaystyle A & = & \displaystyle 1" in displayed[1].data
+    assert r"\displaystyle B & = & \displaystyle 2" in displayed[1].data
+    assert r"\begin{aligned}" not in displayed[1].data
 
 
 def test_blank_line_inside_equation_group_becomes_compact_row_spacing(monkeypatch):
@@ -48,3 +49,26 @@ def test_heading_margins_and_divider_are_subtle(monkeypatch):
     assert "rgba(127,127,127,0.18)" in displayed[0].data
     assert "margin:0.50rem 0 0.24rem 0" in displayed[0].data
     assert "margin:0.28rem 0 0.12rem 0" in displayed[1].data
+
+
+def test_three_column_layout_keeps_extra_equals_on_right_side(monkeypatch):
+    displayed = _capture(
+        "### Compatibilidad\nA = integral(x, x, 0, L)",
+        monkeypatch,
+    )
+
+    math = displayed[1].data
+    assert r"\begin{array}{lcl}" in math
+    assert r"\displaystyle A & = & \displaystyle" in math
+    assert r"\int" in math
+    # render_result may include a second equality for the evaluated integral;
+    # only the assignment equality becomes the dedicated center column.
+    assert math.count(" & = & ") == 1
+
+
+def test_standalone_expression_uses_left_column_without_fake_equals(monkeypatch):
+    displayed = _capture("### Resultado\nx^2 + 1", monkeypatch)
+
+    math = displayed[1].data
+    assert r"\displaystyle x^{2} + 1 & &" in math
+    assert " & = & " not in math
