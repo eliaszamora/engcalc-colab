@@ -96,3 +96,19 @@ class pytest_raises:
             return False
         self.value = exc
         return True
+
+
+def test_solve_unknown_stays_symbolic_when_cell_is_reexecuted():
+    engine = EngineeringEngine()
+    cell = """
+M_0 = -q/2*(L-x)^2
+m_B = L-x
+Delta_B = integral(M_0*m_B/(E*I), x, 0, L)
+f_BB = integral(m_B^2/(E*I), x, 0, L)
+R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
+"""
+    first = eval_cell(engine, cell)[-1].value
+    second = eval_cell(engine, cell)[-1].value
+    q, L = sp.symbols("q L")
+    assert sp.simplify(first - 3*q*L/8) == 0
+    assert sp.simplify(second - first) == 0
