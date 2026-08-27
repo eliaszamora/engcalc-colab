@@ -266,4 +266,5 @@ class _Evaluator(ast.NodeVisitor):
     @staticmethod
     def _require_arity(name: str, args: list, count: int, signature: str) -> None:
         if len(args) != count:
-            raise EngEvaluationError(f"{name} expects {count} arguments: {signature}")
+            noun = "argument" if count == 1 else "arguments"
+            raise EngEvaluationError(f"{name} expects {count} {noun}: {signature}")
