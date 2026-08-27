@@ -4,9 +4,9 @@ Date: 2026-08-27
 
 ## Goal
 
-Extend EngCalc from a symbolic-only notebook language into a unified engineering-calculation interface that can preserve symbolic derivations while also evaluating them numerically with physical units.
+Extend EngCalc from a symbolic-only notebook language into a unified engineering-calculation interface that preserves symbolic derivations while evaluating them numerically with physical units.
 
-The key requirement is that numerical data must never overwrite or destroy the symbolic model. A symbol such as `q` must remain symbolic in formulas even after a numerical value is associated with it.
+The non-negotiable rule is that numerical data never overwrites the symbolic model. A symbol such as `q` remains symbolic in formulas even after a numerical value is associated with it.
 
 ## Scope of 0.2.0
 
@@ -14,26 +14,27 @@ Included:
 
 1. Numeric assignment syntax with `:=`.
 2. A numeric context independent from the symbolic namespace.
-3. Pint-backed physical quantities and unit propagation.
-4. `numeric(expr)` for evaluating symbolic expressions using the numeric context.
-5. Calculation-memory rendering in the form formula -> substituted values -> final quantity.
-6. Reset behavior that clears both symbolic and numeric EngCalc state.
-7. Documentation and regression tests.
+3. Pint-backed quantities and dimensional propagation.
+4. `numeric(expr)` for evaluating symbolic expressions from the numeric context.
+5. Memory-style rendering: symbolic formula -> substituted values -> final quantity.
+6. Numeric RHS expressions may reference previously defined numeric values.
+7. Final `numeric(...)` quantities display with two decimal places by default.
+8. `%eng_reset` clears symbolic and numeric EngCalc state.
+9. Documentation and regression tests.
 
-Deferred to a later milestone:
+Deferred:
 
-- explicit target-unit conversion syntax such as `numeric(M_A, kN*m)`;
-- precision/configuration commands;
+- explicit target-unit conversion, e.g. `numeric(M_A, kN*m)`;
+- configurable precision;
 - keyword arguments;
-- automatic dimensional expectations for named engineering quantities;
-- numerical arrays/tables;
-- vectorized evaluation of `V(x)` / `M(x)` over arrays;
+- automatic expected dimensions from engineering variable names;
+- arrays/tables and vectorized evaluation;
 - arbitrary Python functions;
 - multi-solution `solve` improvements.
 
 ## User-facing syntax
 
-### Symbolic calculation remains unchanged
+### Symbolic layer remains unchanged
 
 ```text
 %%eng
@@ -43,13 +44,7 @@ V_A = 5*q*L/8
 M_A = q*L^2/8
 ```
 
-The symbolic namespace stores:
-
-```text
-V_B -> 3*q*L/8
-V_A -> 5*q*L/8
-M_A -> q*L^2/8
-```
+The symbolic namespace continues to contain SymPy expressions such as `M_A -> q*L^2/8`.
 
 ### Numeric assignments
 
@@ -62,16 +57,25 @@ q := 2.8*tonf/m
 L := 4*m
 ```
 
-`:=` means "associate this numerical quantity with this symbolic identifier". It does not perform a symbolic assignment and does not replace `q` or `L` in existing formulas.
+`:=` means: associate a numerical quantity with this symbolic identifier. It does not perform symbolic substitution and does not replace existing formulas.
 
-The numeric context stores Pint quantities:
+A later assignment:
 
 ```text
-q -> 2.8 tonf / meter
-L -> 4 meter
+q := 3.5*tonf/m
 ```
 
-A later `q := 3.5*tonf/m` updates only the numeric context. Existing symbolic formulas remain unchanged.
+updates only the numeric context.
+
+Numeric assignments may reference numeric values already defined:
+
+```text
+q := 2.8*tonf/m
+L := 4*m
+P := q*L
+```
+
+Here `P` receives a numeric quantity in the numeric context; any symbolic `P` remains a SymPy symbol/expression in the symbolic layer.
 
 ### Numerical evaluation
 
@@ -85,87 +89,89 @@ numeric(V_A)
 numeric(M_A)
 ```
 
-For an expression with a symbolic definition, EngCalc should conceptually render:
+For a named symbolic result, EngCalc renders conceptually:
 
 ```text
-V_B = 3*q*L/8 = 3*(2.8 tonf/m)*(4 m)/8 = 4.20 tonf
+V_B = 3*q*L/8 = 3*(2.80 tonf/m)*(4.00 m)/8 = 4.20 tonf
 ```
 
-The symbolic formula is retained as the source of truth. Numeric evaluation substitutes every required symbol from the numeric context, evaluates with Pint, simplifies units naturally, and displays the quantity.
-
-`numeric(expr)` may also evaluate a direct symbolic expression, for example:
+`numeric(expr)` also accepts a direct expression:
 
 ```text
 numeric(q*L^2/8)
 ```
 
-## Architectural decision
+The symbolic expression remains the source of truth.
 
-### Recommended approach: parallel NumericContext backed by Pint
+## Architecture
 
-Keep the current SymPy engine intact and add a second state container:
+### Chosen approach: parallel NumericContext backed by Pint
+
+The current symbolic engine remains responsible only for symbolic mathematics:
 
 ```text
 EngineeringEngine
-├── namespace       # symbolic scalar expressions
+├── namespace       # SymPy scalar expressions
 ├── functions       # symbolic single-argument functions
 ├── symbols         # SymPy symbols
-└── numeric_context # Pint quantities keyed by symbolic identifier
+└── numeric_context # Pint-backed values keyed by identifier
 ```
 
-A dedicated module (proposed: `numeric.py`) owns:
+A new focused module, proposed as `numeric.py`, owns:
 
-- the internal Pint `UnitRegistry`;
-- engineering-specific unit definitions such as `tonf`;
-- the dictionary of numeric values;
-- restricted evaluation of numeric RHS expressions;
-- symbolic-expression substitution/evaluation with Pint quantities;
-- unit-format helpers.
+- an internal Pint `UnitRegistry`;
+- engineering unit aliases and the `tonf` definition;
+- numeric values;
+- restricted numeric RHS evaluation;
+- evaluation of SymPy expressions using Pint quantities;
+- quantity/unit formatting.
 
-This keeps SymPy and Pint responsibilities isolated and testable.
+This preserves the current parser/engine/renderer separation instead of mixing Pint arithmetic into the symbolic evaluator.
 
-### Alternatives rejected
+### Rejected alternatives
 
-1. **Overwrite symbolic values after numeric assignment.** Simpler, but destroys symbolic formulas and makes data changes require re-derivation.
-2. **Use SymPy units instead of Pint.** Tighter integration with SymPy, but weaker ergonomics for engineering quantities/conversions and less aligned with the existing notebook setup.
+1. **Overwrite symbolic values after numeric assignment:** simpler but destroys formulas and requires re-derivation when data changes.
+2. **Use SymPy units instead of Pint:** tighter SymPy coupling but worse engineering-unit ergonomics and conversion behavior for this project.
 
-## Parser changes
+## Parser contract
 
-### New parsed item
+Introduce a dedicated parsed item such as `ParsedNumericAssignment` with:
 
-Introduce a dedicated model such as:
+- `line_no`
+- `source`
+- `target`
+- `expression`
+- `blank_before`
 
-```text
-ParsedNumericAssignment
-- line_no
-- source
-- target
-- expression
-- blank_before
-```
+The parser detects a top-level `:=` before ordinary `=` processing.
 
-The parser must detect top-level `:=` before ordinary `=` handling.
-
-Valid examples:
+Valid:
 
 ```text
 q := 2.8*tonf/m
 L := 4*m
 E := 200*GPa
 I := 850000000*mm^4
+P := q*L
 ```
 
-Numeric assignment targets must be simple identifiers. Function targets such as `M(x) := ...` are rejected in 0.2.0.
+Invalid in 0.2.0:
 
-The numeric RHS uses the existing restricted AST philosophy: numeric constants, names, parentheses, unary signs, and `+ - * / ^` only. No attributes, arbitrary calls, lists, dictionaries, imports, or Python execution.
+```text
+M(x) := 2*kN*m
+```
+
+Numeric targets must be simple identifiers.
+
+Numeric RHS syntax remains restricted to numeric constants, names, parentheses, unary signs, and `+ - * / ^`. It does not allow attribute access, arbitrary calls, collections, imports, or Python execution.
 
 `numeric` becomes a reserved EngCalc operation.
 
 ## Unit system
 
-EngCalc owns an internal Pint `UnitRegistry` so the user does not need to expose or manage a registry inside `%%eng`.
+EngCalc owns an internal Pint registry. Users do not manage this registry inside `%%eng`.
 
-Initial engineering aliases available in numeric assignments:
+Initial aliases:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -180,33 +186,30 @@ Initial engineering aliases available in numeric assignments:
 1 tonf = 9.80665 kN
 ```
 
-Pint handles dimensional propagation. Incompatible arithmetic must raise a concise EngCalc error rather than a raw traceback.
+Unit aliases are interpreted as units only while evaluating numeric-context expressions. They do not become reserved symbolic identifiers globally. Therefore `m` may still be used as an ordinary symbolic variable outside `:=` and `numeric(...)`.
+
+Pint handles dimensional propagation and incompatible arithmetic. EngCalc converts expected Pint failures into concise line-aware errors.
 
 ## Numeric evaluation semantics
-
-### Resolving a symbolic expression
 
 For `numeric(V_B)`:
 
 1. Resolve `V_B` through the symbolic namespace.
-2. Obtain the SymPy expression `3*q*L/8`.
-3. Determine required free symbols (`q`, `L`).
-4. Require a numeric-context value for every free symbol.
-5. Evaluate the expression recursively using Pint quantities, not by unrestricted `eval`.
-6. Return a structured numeric result containing:
-   - original symbolic expression;
-   - mapping of substituted symbols to quantities;
-   - evaluated Pint quantity.
+2. Obtain its SymPy expression, e.g. `3*q*L/8`.
+3. Determine free symbols.
+4. Require a numeric-context value for every required symbol.
+5. Recursively evaluate the SymPy tree with Pint quantities; never use unrestricted `eval`.
+6. Return a structured result containing the symbolic expression, substitutions, and final quantity.
 
-If a required symbol has no numeric value, raise a concise error such as:
+If values are missing:
 
 ```text
 engcalc: line 4: numeric evaluation requires values for: L, q
 ```
 
-### Defined symbolic functions
+### Symbolic functions
 
-0.2.0 should support numerical evaluation of a function call when all arguments and remaining symbols can be resolved, for example:
+0.2.0 supports numerical evaluation of an existing symbolic function call when its arguments and remaining symbols can be resolved:
 
 ```text
 V(x) = 5*q*L/8 - q*x
@@ -216,11 +219,11 @@ L := 4*m
 numeric(V(x))
 ```
 
-This uses the existing symbolic function expansion first, then the numeric context.
+The existing symbolic function expansion occurs first, then numeric evaluation.
 
 ## Result models
 
-Do not overload ordinary symbolic results with ad-hoc Pint fields. Introduce explicit result types, for example:
+Use explicit result types instead of adding optional Pint fields to ordinary symbolic results. The implementation should introduce equivalents of:
 
 ```text
 NumericAssignmentResult
@@ -235,7 +238,7 @@ NumericEvaluationResult
 - display_name (optional)
 ```
 
-`magic.py` can group symbolic and numeric rows together through a common rendering interface or flush groups when result types require different rendering. The exact class names may vary, but result semantics must remain explicit.
+Exact class names may vary, but symbolic and numeric result semantics remain explicit and separately testable.
 
 ## Rendering
 
@@ -245,31 +248,31 @@ NumericEvaluationResult
 q := 2.8*tonf/m
 ```
 
-renders as a normal three-column EngCalc row:
+uses the existing three-column layout:
 
 ```text
-q | = | 2.8 tonf/m
+q | = | 2.80 tonf/m
 ```
 
-### numeric(expr)
+### `numeric(expr)`
 
-The desired memory-style output is:
+Named result:
 
 ```text
-symbolic formula | = | substituted expression = final quantity
+V_B | = | 3*q*L/8 = 3*(2.80 tonf/m)*(4.00 m)/8 = 4.20 tonf
 ```
 
-For example:
+Direct expression:
 
 ```text
-V_B | = | 3*q*L/8 = 3*(2.8 tonf/m)*(4 m)/8 = 4.20 tonf
+q*L^2/8 | = | (2.80 tonf/m)*(4.00 m)^2/8 = 5.60 tonf*m
 ```
 
-The existing left / equals / right three-column layout is preserved.
+Only the first equality uses the dedicated center column; later equalities remain in the right-hand column, consistent with existing integral/solve rendering.
 
-Units should be rendered upright (`\mathrm{}`-style) rather than as italic mathematical variables.
+Units render upright, not as italic mathematical variables. Existing 4 pt regular / 8 pt blank-line spacing remains unchanged.
 
-0.2.0 may use Pint's compact engineering unit names for the final result. Automatic target-unit selection beyond Pint's natural simplified units is deferred.
+The final quantity uses two decimal places by default in 0.2.0. Precision configuration is deliberately deferred.
 
 ## State and reset
 
@@ -280,80 +283,77 @@ Units should be rendered upright (`\mathrm{}`-style) rather than as italic mathe
 - cached symbols;
 - numeric context.
 
-The output message should be updated from "symbolic state cleared" to a more general wording such as:
+The message becomes:
 
 ```text
 engcalc state cleared
 ```
 
-## Error handling
+## Errors
 
-All user-facing failures remain concise and line-aware.
+All expected user errors remain concise and line-aware. Required coverage:
 
-Required cases:
-
-- malformed `:=` assignment;
-- numeric assignment to invalid target;
-- unknown/unsupported unit name;
-- unsupported syntax in numeric RHS;
-- missing numeric values for `numeric(...)`;
-- incompatible units during arithmetic;
-- `numeric(...)` wrong arity;
+- malformed `:=`;
+- invalid numeric target;
+- unknown/unsupported unit or numeric name;
+- unsupported numeric RHS syntax;
+- missing values for `numeric(...)`;
+- incompatible dimensions;
+- wrong `numeric(...)` arity;
 - use of `numeric` as an assignment target.
 
-No Pint or Python traceback should be printed through `%%eng` for expected user errors.
+No expected Pint/Python traceback is printed by `%%eng`.
 
-## Dependency and versioning
+## Dependency and version
 
-Add Pint as a runtime dependency in `pyproject.toml`.
+Add `pint` as a runtime dependency in `pyproject.toml`.
 
-This is a public language/architecture expansion, so version moves from 0.1.9 to 0.2.0.
+This public language and architecture expansion changes the package version from 0.1.9 to 0.2.0.
 
 ## Testing strategy
 
-Implementation follows TDD.
+Implementation is TDD-first.
 
-### Parser tests
+### Parser
 
 - parse `q := 2.8*tonf/m` as numeric assignment;
-- ordinary `=` remains unchanged;
+- preserve ordinary `=` behavior;
 - reject function numeric assignment;
 - reserve `numeric`;
 - preserve blank-line metadata.
 
-### Numeric-context tests
+### Numeric context
 
-- store and update Pint quantities;
-- `tonf` definition;
-- references between numeric values if supported by the implementation;
-- reject unknown units and unsafe syntax;
+- store/update Pint quantities;
+- verify `tonf`;
+- allow numeric references such as `P := q*L`;
+- reject unknown names and unsafe syntax;
 - reset clears numeric data.
 
-### Numeric evaluation tests
+### Numeric evaluation
 
-- `V_B = 3*q*L/8` + `q := 2.8*tonf/m` + `L := 4*m` -> `4.2 tonf`;
-- `M_A = q*L^2/8` -> `5.6 tonf*m`;
-- symbolic expression remains unchanged after numeric assignment;
+- `V_B = 3*q*L/8`, `q := 2.8*tonf/m`, `L := 4*m` -> `4.20 tonf`;
+- `M_A = q*L^2/8` -> `5.60 tonf*m`;
+- symbolic formulas remain unchanged after numeric assignment;
 - changing `q` changes `numeric(M_A)` without changing `M_A`;
 - missing values produce concise errors;
-- incompatible dimensional arithmetic produces concise errors;
-- numerical function evaluation works.
+- dimensional incompatibility produces concise errors;
+- numerical symbolic-function evaluation works.
 
-### Renderer/magic tests
+### Renderer and magic
 
-- numeric assignments participate in the three-column layout;
-- formula -> substitution -> quantity appears in one row;
-- units render upright;
-- existing 4 pt / 8 pt row spacing remains unchanged;
-- headings and symbolic rendering regressions remain green.
+- numeric assignments use the three-column layout;
+- formula -> substitution -> quantity stays in one row;
+- units are upright;
+- two-decimal default is stable;
+- existing 4/8 pt spacing remains stable;
+- headings and all symbolic regressions remain green.
 
-### Full regression
+### Regression
 
-All existing 0.1.9 tests must remain green.
+All 0.1.9 tests must remain green.
 
 ## Acceptance example
-
-The following notebook flow is the acceptance target for 0.2.0:
 
 ```text
 %%eng
@@ -376,7 +376,7 @@ numeric(V_A)
 numeric(M_A)
 ```
 
-Expected final numerical quantities:
+Expected final quantities:
 
 ```text
 V_B = 4.20 tonf
@@ -384,11 +384,11 @@ V_A = 7.00 tonf
 M_A = 5.60 tonf*m
 ```
 
-Re-running only:
+Then:
 
 ```text
 q := 3.5*tonf/m
 numeric(M_A)
 ```
 
-must update the numerical result while leaving the symbolic definition `M_A = q*L^2/8` intact.
+updates the numeric result to `7.00 tonf*m` while the symbolic definition `M_A = q*L^2/8` remains unchanged.
