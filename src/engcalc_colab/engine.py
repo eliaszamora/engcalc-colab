@@ -1,0 +1,174 @@
+from __future__ import annotations
+
+import ast
+
+import sympy as sp
+
+from .errors import AmbiguousSolveError, EngCalcError, EngEvaluationError, EngSyntaxError
+from .models import EvaluationResult, ParsedStatement, UserFunction
+
+
+class EngineeringEngine:
+    def __init__(self) -> None:
+        self.namespace: dict[str, sp.Expr] = {}
+        self.functions: dict[str, UserFunction] = {}
+        self.symbols: dict[str, sp.Symbol] = {}
+
+    def reset(self) -> None:
+        self.namespace.clear()
+        self.functions.clear()
+        self.symbols.clear()
+
+    def resolve_name(self, name: str):
+        if name in self.namespace:
+            return self.namespace[name]
+        if name in self.symbols:
+            return self.symbols[name]
+        symbol = sp.Symbol(name)
+        self.symbols[name] = symbol
+        return symbol
+
+    def evaluate(self, statement: ParsedStatement) -> EvaluationResult:
+        evaluator = _Evaluator(self)
+        try:
+            if statement.target is not None:
+                if statement.parameter is None and statement.target in self.functions:
+                    raise EngEvaluationError(
+                        f"redefinition conflict: '{statement.target}' is already a function"
+                    )
+                if statement.parameter is not None and statement.target in self.namespace:
+                    raise EngEvaluationError(
+                        f"redefinition conflict: '{statement.target}' is already a scalar"
+                    )
+
+            value = evaluator.visit(statement.expression.body)
+            if statement.target is not None:
+                if statement.parameter is not None:
+                    self.resolve_name(statement.parameter)
+                    self.functions[statement.target] = UserFunction(
+                        parameter=statement.parameter,
+                        expression=value,
+                    )
+                else:
+                    self.namespace[statement.target] = value
+            return EvaluationResult(
+                statement=statement,
+                display_input=evaluator.display_input,
+                value=value,
+            )
+        except EngCalcError as exc:
+            message = str(exc)
+            if message.startswith("line "):
+                raise
+            raise type(exc)(f"line {statement.line_no}: {message}") from None
+        except Exception as exc:
+            raise EngEvaluationError(
+                f"line {statement.line_no}: symbolic evaluation failed: {exc}"
+            ) from None
+
+
+class _Evaluator(ast.NodeVisitor):
+    def __init__(self, engine: EngineeringEngine) -> None:
+        self.engine = engine
+        self.display_input = None
+
+    def generic_visit(self, node):
+        raise EngEvaluationError(f"unsupported syntax '{type(node).__name__}'")
+
+    def visit_Constant(self, node: ast.Constant):
+        if isinstance(node.value, bool) or node.value is None:
+            raise EngEvaluationError("only numeric constants are supported")
+        if isinstance(node.value, int):
+            return sp.Integer(node.value)
+        if isinstance(node.value, float):
+            return sp.Float(str(node.value))
+        raise EngEvaluationError("only numeric constants are supported")
+
+    def visit_Name(self, node: ast.Name):
+        return self.engine.resolve_name(node.id)
+
+    def visit_UnaryOp(self, node: ast.UnaryOp):
+        value = self.visit(node.operand)
+        if isinstance(node.op, ast.UAdd):
+            return value
+        if isinstance(node.op, ast.USub):
+            return -value
+        raise EngEvaluationError("unsupported unary operator")
+
+    def visit_BinOp(self, node: ast.BinOp):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        if isinstance(node.op, ast.Add): return left + right
+        if isinstance(node.op, ast.Sub): return left - right
+        if isinstance(node.op, ast.Mult): return left * right
+        if isinstance(node.op, ast.Div): return left / right
+        if isinstance(node.op, ast.Pow): return left ** right
+        raise EngEvaluationError("unsupported operator")
+
+    def visit_Call(self, node: ast.Call):
+        if not isinstance(node.func, ast.Name):
+            raise EngSyntaxError(f"unsupported syntax '{type(node.func).__name__}'")
+        name = node.func.id
+        args = [self.visit(arg) for arg in node.args]
+
+        if name in self.engine.functions:
+            if len(args) != 1:
+                raise EngEvaluationError(f"function '{name}' expects 1 argument")
+            function = self.engine.functions[name]
+            parameter = self.engine.resolve_name(function.parameter)
+            return sp.sympify(function.expression).subs(parameter, args[0])
+
+        if name == "integral":
+            self._require_arity(name, args, 4, "expression, variable, lower, upper")
+            expr, var, lower, upper = args
+            self.display_input = sp.Integral(expr, (var, lower, upper))
+            return sp.integrate(expr, (var, lower, upper))
+
+        if name == "diff":
+            if len(args) not in (2, 3):
+                raise EngEvaluationError(
+                    "diff expects 2 or 3 arguments: expression, variable[, order]"
+                )
+            expr, var = args[:2]
+            order = int(args[2]) if len(args) == 3 else 1
+            self.display_input = sp.Derivative(expr, (var, order))
+            return sp.diff(expr, var, order)
+
+        if name == "eq":
+            self._require_arity(name, args, 2, "left, right")
+            return sp.Eq(args[0], args[1], evaluate=False)
+
+        if name == "solve":
+            self._require_arity(name, args, 2, "equation, unknown")
+            equation, unknown = args
+            if not isinstance(equation, sp.Equality):
+                equation = sp.Eq(equation, 0, evaluate=False)
+            self.display_input = equation
+            solutions = sp.solve(equation, unknown)
+            if len(solutions) == 0:
+                raise EngEvaluationError(f"solve found no solution for {unknown}")
+            if len(solutions) > 1:
+                raise AmbiguousSolveError(
+                    f"solve returned {len(solutions)} solutions for {unknown}; v0.1 requires one"
+                )
+            return solutions[0]
+
+        if name in {"simplify", "expand", "factor"}:
+            self._require_arity(name, args, 1, "expression")
+            operation = {
+                "simplify": sp.simplify,
+                "expand": sp.expand,
+                "factor": sp.factor,
+            }[name]
+            return operation(args[0])
+
+        if name == "subs":
+            self._require_arity(name, args, 3, "expression, variable, value")
+            return sp.sympify(args[0]).subs(args[1], args[2])
+
+        raise EngSyntaxError(f"unsupported function '{name}'")
+
+    @staticmethod
+    def _require_arity(name: str, args: list, count: int, signature: str) -> None:
+        if len(args) != count:
+            raise EngEvaluationError(f"{name} expects {count} arguments: {signature}")
