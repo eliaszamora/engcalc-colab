@@ -53,7 +53,7 @@ def test_magic_prints_concise_user_errors_without_traceback(capsys):
     shell = _fresh_shell()
     shell.extension_manager.load_extension("engcalc_colab")
     for source in [
-        '__import__("os")',
+        'A = __import__("os")',
         "A = obj.attr",
         "R = solve(x^2 = 1, x)",
         "A = integral(x, x, 0)",
