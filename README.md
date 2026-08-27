@@ -85,7 +85,7 @@ Definitions persist between `%%eng` cells. Reset only the engcalc symbolic state
 
 ## Complete command reference
 
-EngCalc v0.1.8 accepts the following cell and line magics, syntax, operators, and symbolic operations.
+EngCalc v0.1.9 accepts the following cell and line magics, syntax, operators, and symbolic operations.
 
 ### Notebook magics
 
@@ -159,7 +159,7 @@ Heading text is displayed as text, not interpreted as executable code. Level-2 h
 
 ## Compact aligned equation blocks
 
-Consecutive equations between headings are rendered as one three-column mathematical block: the left-hand expressions are left-aligned, the assignment equal signs share a centered vertical column, and the right-hand expressions are left-aligned. Routine rows use a compact 2 pt separation, and a blank line in the source becomes a 4 pt internal row gap instead of a separate notebook output block. The source syntax does not change:
+Consecutive equations between headings are rendered as one three-column mathematical block: the left-hand expressions are left-aligned, the assignment equal signs share a centered vertical column, and the right-hand expressions are left-aligned. Routine rows use a comfortable 4 pt separation, and a blank line in the source becomes an 8 pt internal row gap instead of a separate notebook output block. The source syntax does not change:
 
 ```text
 %%eng
@@ -253,4 +253,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.8`.
+Version: `0.1.9`.
