@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "engcalc-colab"
-version = "0.1.0"
+version = "0.1.1"
 description = "Compact symbolic engineering calculations for Google Colab and Jupyter"
 requires-python = ">=3.10"
-dependencies = ["sympy>=1.13", "ipython>=8"]
+dependencies = ["sympy>=1.13"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
