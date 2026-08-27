@@ -101,11 +101,33 @@ Sigma_M_A = 0
 M_A = q*L^2/2
 ```
 
-Heading text is displayed as text, not interpreted as executable code. Blank lines immediately after a heading do not add a second gap, while blank lines between calculation blocks retain the normal group spacing.
+Heading text is displayed as text, not interpreted as executable code. Level-2 headings (`##`) have stronger visual separation than level-3 headings (`###`) so calculation states and subsections remain easy to scan.
 
-## Output grouping and engineering factor order
+## Compact aligned equation blocks
 
-Blank lines inside a `%%eng` cell are preserved as visual group separators in the rendered output. One or more consecutive blank lines produce one standard vertical gap, so related calculation blocks can be separated naturally without a special command.
+Consecutive equations between headings are rendered as one aligned mathematical block. Equal signs share one vertical alignment column, routine rows use compact spacing, and a blank line in the source becomes a slightly larger internal row gap instead of a separate notebook output block. The source syntax does not change:
+
+```text
+%%eng
+
+## Estado 0: cargas reales
+### Reacciones de la estructura base
+
+Sigma_F_y_0 = 0
+R_A0 = q*L
+
+Sigma_M_A_0 = 0
+M_A0 = q*L^2/2
+
+### Fuerzas internas
+
+V_0(x) = R_A0 - q*x
+M_0(x) = -M_A0 + R_A0*x - q*x^2/2
+```
+
+The output is composed as one compact `aligned` block per subsection, rather than one independent Jupyter/Colab display object per equation.
+
+## Engineering factor order
 
 For commutative products, the renderer uses an engineering-oriented display order without changing the symbolic mathematics. Numeric coefficients come first, then factors whose symbol names begin with lowercase letters, then factors whose symbol names begin with uppercase letters. For example:
 
@@ -177,4 +199,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.5`.
+Version: `0.1.6`.
