@@ -83,7 +83,7 @@ def render_aligned_results(results: list[EvaluationResult]) -> str:
             row = rf"\displaystyle {rendered} & &"
 
         if index:
-            spacing = "4pt" if result.statement.blank_before else "2pt"
+            spacing = "8pt" if result.statement.blank_before else "4pt"
             rows.append(rf"\\[{spacing}]")
         rows.append(row)
 
