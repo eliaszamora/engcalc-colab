@@ -69,17 +69,18 @@ def _latex(expr) -> str:
 
 
 def render_aligned_results(results: list[EvaluationResult]) -> str:
-    """Render consecutive calculation results as one aligned LaTeX block."""
+    """Render consecutive results as a three-column engineering calculation block."""
     if not results:
         return ""
 
     rows: list[str] = []
     for index, result in enumerate(results):
-        row = render_result(result)
-        if " = " in row:
-            row = row.replace(" = ", " &= ", 1)
+        rendered = render_result(result)
+        if " = " in rendered:
+            left, right = rendered.split(" = ", 1)
+            row = rf"\displaystyle {left} & = & \displaystyle {right}"
         else:
-            row = rf"& {row}"
+            row = rf"\displaystyle {rendered} & &"
 
         if index:
             spacing = "4pt" if result.statement.blank_before else "2pt"
@@ -87,7 +88,7 @@ def render_aligned_results(results: list[EvaluationResult]) -> str:
         rows.append(row)
 
     body = " ".join(rows)
-    return rf"\hspace{{0.35em}}\begin{{aligned}} {body} \end{{aligned}}"
+    return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
 
 
 def render_result(result: EvaluationResult) -> str:
