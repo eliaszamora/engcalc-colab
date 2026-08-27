@@ -85,4 +85,4 @@ def test_magic_renders_blank_lines_inside_one_math_group(monkeypatch):
     magics.eng("", "A = 1\n\n\nB = 2")
 
     assert [type(item) for item in displayed] == [Math]
-    assert r"\\[6pt]" in displayed[0].data
+    assert r"\\[4pt]" in displayed[0].data
