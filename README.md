@@ -31,7 +31,7 @@ Google Colab can place the code on the left and the output on the right for an i
 #@title { vertical-output: true }
 ```
 
-The directive is cell-specific. Add it to each cell where you want the side-by-side layout, or duplicate a cell that already contains it. `engcalc-colab` ignores the line because it is a comment.
+The directive is cell-specific. Add it to each cell where you want the side-by-side layout, or duplicate a cell that already contains it. `engcalc-colab` ignores the line because it is a single-`#` comment.
 
 ## Example — propped cantilever by the force method
 
@@ -66,7 +66,8 @@ You do not write `symbols()`, `Eq()`, `sp.integrate()`, `sp.solve()[0]`, `displa
 - `M(x) = expression`
 - powers with `^`
 - automatic symbolic identifiers
-- comments beginning with `#`
+- invisible comments beginning with a single `#`
+- visible headings with `##` and `###`
 - `integral(expr, var, lower, upper)`
 - `diff(expr, var)` and `diff(expr, var, order)`
 - `solve(lhs = rhs, unknown)`
@@ -82,19 +83,29 @@ Definitions persist between `%%eng` cells. Reset only the engcalc symbolic state
 %eng_reset
 ```
 
-## Output grouping and engineering factor order
+## Visible calculation headings
 
-Blank lines inside a `%%eng` cell are preserved as visual group separators in the rendered output. One or more consecutive blank lines produce one standard vertical gap, so related calculation blocks can be separated naturally without a special command:
+Inside `%%eng`, a single `#` remains an invisible comment. Use `##` for a visible calculation title and `###` for a smaller visible subtitle:
 
 ```text
 %%eng
 
+# This comment is not rendered
+## Cálculo de reacciones
+
 Sigma_F_y = 0
 V_A = q*L
 
+### Equilibrio de momentos
 Sigma_M_A = 0
 M_A = q*L^2/2
 ```
+
+Heading text is displayed as text, not interpreted as executable code. Blank lines immediately after a heading do not add a second gap, while blank lines between calculation blocks retain the normal group spacing.
+
+## Output grouping and engineering factor order
+
+Blank lines inside a `%%eng` cell are preserved as visual group separators in the rendered output. One or more consecutive blank lines produce one standard vertical gap, so related calculation blocks can be separated naturally without a special command.
 
 For commutative products, the renderer uses an engineering-oriented display order without changing the symbolic mathematics. Numeric coefficients come first, then factors whose symbol names begin with lowercase letters, then factors whose symbol names begin with uppercase letters. For example:
 
@@ -142,6 +153,7 @@ S=\sum_{i=0}^{n}F_i.
 %%eng
 #@title { vertical-output: true }
 
+## Fuerzas internas
 V(x) = R_A - q*x
 x_crit = solve(V(x) = 0, x)
 
@@ -156,7 +168,7 @@ The symbolic v0.1 engine intentionally has no physical-unit propagation. Use Pin
 
 ## Safety
 
-`%%eng` uses a restricted AST evaluator. Raw cell text is never forwarded to unrestricted Python `eval` or `exec`. Attribute access and arbitrary Python calls are rejected.
+`%%eng` uses a restricted AST evaluator. Raw cell text is never forwarded to unrestricted Python `eval` or `exec`. Attribute access and arbitrary Python calls are rejected. Visible heading text is HTML-escaped before display.
 
 ## Development
 
@@ -165,4 +177,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.4`.
+Version: `0.1.5`.

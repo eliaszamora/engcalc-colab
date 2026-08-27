@@ -9,7 +9,7 @@ from engcalc_colab.parser import parse_cell
 
 def test_package_version_and_statement_model():
     stmt = ParsedStatement(3, "A = q*L", "A", None, ast.parse("q*L", mode="eval"))
-    assert __version__ == "0.1.4"
+    assert __version__ == "0.1.5"
     assert stmt.line_no == 3
     assert stmt.target == "A"
     assert stmt.blank_before is False
@@ -45,7 +45,7 @@ def test_parser_rejects_reserved_target():
 
 def test_parser_rejects_dunder_call_with_concise_line_error():
     with pytest.raises(EngSyntaxError, match=r"line 1: unsupported function '__import__'"):
-        parse_cell('A = __import__("os")')
+        parse_cell('__import__("os")')
 
 
 def test_parser_reports_line_for_unbalanced_parentheses():
