@@ -27,9 +27,15 @@ def normalize_expression(text: str) -> str:
 
 def parse_cell(cell: str) -> list[ParsedStatement]:
     statements: list[ParsedStatement] = []
+    pending_blank = False
+
     for line_no, raw_line in enumerate(cell.splitlines(), start=1):
         source = raw_line.strip()
-        if not source or source.startswith("#"):
+        if not source:
+            if statements:
+                pending_blank = True
+            continue
+        if source.startswith("#"):
             continue
         try:
             lhs, rhs = _split_top_level_assignment(source)
@@ -66,7 +72,9 @@ def parse_cell(cell: str) -> list[ParsedStatement]:
                 target=target,
                 parameter=parameter,
                 expression=expression,
+                blank_before=pending_blank,
             ))
+            pending_blank = False
         except EngSyntaxError as exc:
             message = str(exc)
             if message.startswith("line "):
