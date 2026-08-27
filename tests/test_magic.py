@@ -75,7 +75,7 @@ def test_eng_magic_returns_none_so_jupyter_does_not_echo_internal_results():
     assert result is None
 
 
-def test_magic_renders_one_vertical_gap_for_one_or_more_blank_lines(monkeypatch):
+def test_magic_renders_blank_lines_inside_one_math_group(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
@@ -84,7 +84,5 @@ def test_magic_renders_one_vertical_gap_for_one_or_more_blank_lines(monkeypatch)
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "A = 1\n\n\nB = 2")
 
-    html_items = [item for item in displayed if isinstance(item, HTML)]
-    math_items = [item for item in displayed if isinstance(item, Math)]
-    assert len(html_items) == 1
-    assert len(math_items) == 2
+    assert [type(item) for item in displayed] == [Math]
+    assert r"\\[6pt]" in displayed[0].data
