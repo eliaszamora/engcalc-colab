@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from IPython.core.magic import Magics, cell_magic, line_magic, magics_class
-from IPython.display import Math, display
+from IPython.display import HTML, Math, display
 
 from .engine import EngineeringEngine
 from .errors import EngCalcError
 from .parser import parse_cell
 from .renderer import render_result
+
+_OUTPUT_GROUP_GAP = '<div aria-hidden="true" style="height: 0.75rem;"></div>'
 
 
 @magics_class
@@ -20,6 +22,8 @@ class EngMagics(Magics):
         results = []
         try:
             for statement in parse_cell(cell):
+                if statement.blank_before:
+                    display(HTML(_OUTPUT_GROUP_GAP))
                 result = self.engine.evaluate(statement)
                 results.append(result)
                 display(Math(render_result(result)))

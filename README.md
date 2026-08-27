@@ -82,6 +82,30 @@ Definitions persist between `%%eng` cells. Reset only the engcalc symbolic state
 %eng_reset
 ```
 
+## Output grouping and engineering factor order
+
+Blank lines inside a `%%eng` cell are preserved as visual group separators in the rendered output. One or more consecutive blank lines produce one standard vertical gap, so related calculation blocks can be separated naturally without a special command:
+
+```text
+%%eng
+
+Sigma_F_y = 0
+V_A = q*L
+
+Sigma_M_A = 0
+M_A = q*L^2/2
+```
+
+For commutative products, the renderer uses an engineering-oriented display order without changing the symbolic mathematics. Numeric coefficients come first, then factors whose symbol names begin with lowercase letters, then factors whose symbol names begin with uppercase letters. For example:
+
+\[
+M_A=\frac{qL^2}{2},\qquad
+R_B=\frac{3qL}{8},\qquad
+D=\frac{qL^4}{8EI}.
+\]
+
+This factor ordering is only a presentation rule for products. It does not reorder additive expressions such as `x^2 + 2*x + 1`.
+
 ## Equilibrium notation and indexed sums
 
 For engineering equilibrium equations, use a target beginning with `Sigma_`. The prefix is rendered as an uppercase Greek sigma followed by the engineering quantity, rather than as a subscript on sigma:
@@ -141,4 +165,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.3`.
+Version: `0.1.4`.

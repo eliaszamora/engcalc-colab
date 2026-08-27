@@ -13,5 +13,5 @@ def test_runtime_dependencies_do_not_manage_ipython_in_notebook_hosts():
     assert "ipython" not in names
 
 
-def test_pyproject_version_is_0_1_3():
-    assert _project_metadata()["version"] == "0.1.3"
+def test_pyproject_version_is_0_1_4():
+    assert _project_metadata()["version"] == "0.1.4"

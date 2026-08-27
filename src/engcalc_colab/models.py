@@ -12,6 +12,7 @@ class ParsedStatement:
     target: str | None
     parameter: str | None
     expression: ast.Expression
+    blank_before: bool = False
 
 
 @dataclass(frozen=True)
