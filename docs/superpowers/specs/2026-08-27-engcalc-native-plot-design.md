@@ -1,7 +1,7 @@
 # EngCalc 0.3.0 — Native `plot()` Design
 
 Date: 2026-08-27
-Status: Proposed for implementation after user review
+Status: Ready for user review
 
 ## Purpose
 
@@ -40,6 +40,8 @@ plot(M(x), x, 0, L)
 
 Each `plot(...)` produces one Matplotlib figure in the output sequence at the location of the statement. The symbolic and numerical EngCalc state already defined in the cell, or persisted from earlier `%%eng` cells, is reused directly.
 
+`plot(...)` is an output-producing statement. It does not add a separate MathJax equation row containing the text `plot(...)`; the figure itself is its output.
+
 ### Exact v0.3.0 syntax
 
 ```text
@@ -72,6 +74,8 @@ Default figure contents:
 - 201 sample points including both endpoints;
 - `tight_layout()` before display.
 
+For a defined one-argument function call, the display label is the call written by the user, such as `M(x)`. For another supported symbolic expression, the label is a concise EngCalc rendering of that expression.
+
 EngCalc does not invert structural signs automatically. The plotted ordinate uses exactly the sign convention of the symbolic expression.
 
 ### Unit selection
@@ -81,7 +85,8 @@ The x-axis uses the natural unit resolved from the bounds:
 1. If both bounds are dimensional and compatible, the start unit is used.
 2. If one bound is an exact dimensionless zero and the other is dimensional, the zero is promoted to the dimensional bound's unit. This supports the common form `plot(M(x), x, 0, L)` when `L := 4*m`.
 3. If both bounds are dimensionless, the x-axis is dimensionless.
-4. Incompatible bound dimensions are rejected.
+4. A nonzero dimensionless bound paired with a dimensional bound is rejected.
+5. Incompatible bound dimensions are rejected.
 
 All sampled x values are generated in the chosen x-axis unit.
 
@@ -151,7 +156,7 @@ def render_plot(result: PlotResult):
 
 The adapter converts Pint quantities to plain magnitudes only after the engine has normalized their units.
 
-Matplotlib is imported lazily inside this plotting boundary so importing `engcalc_colab` itself does not initialize plotting state.
+Matplotlib is imported lazily inside this plotting boundary so importing `engcalc_colab` itself does not initialize plotting state. When `pyplot` is used to construct the figure, the adapter closes that figure from pyplot's active registry before returning it. The notebook magic then displays the returned figure explicitly. This prevents a single `plot(...)` from appearing twice in Jupyter/Colab.
 
 ### 5. Notebook magic sequencing
 
@@ -161,7 +166,7 @@ When a `PlotResult` is encountered:
 
 1. flush all pending equation results through the existing MathJax renderer;
 2. call `render_plot(plot_result)`;
-3. display the returned Matplotlib figure;
+3. display the returned Matplotlib figure exactly once;
 4. continue parsing/evaluating the remaining `%%eng` statements.
 
 This preserves source order. For example:
@@ -218,8 +223,8 @@ Implementation begins with failing tests covering at least:
 7. missing `q` produces a concise error naming `q`;
 8. incompatible bound units fail clearly;
 9. reversed/equal bounds fail clearly;
-10. plot adapter labels x/y axes with normalized units and creates a horizontal zero line;
-11. `%%eng` flushes equations before a plot and resumes equations afterward in source order;
+10. plot adapter labels x/y axes with normalized units, creates a horizontal zero line, and returns a figure that is no longer registered as active in pyplot;
+11. `%%eng` flushes equations before a plot, displays the figure once, and resumes equations afterward in source order;
 12. existing symbolic/numeric/render tests remain green;
 13. release wheel declares/installs Matplotlib and reports version 0.3.0.
 
