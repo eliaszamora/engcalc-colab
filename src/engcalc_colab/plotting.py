@@ -14,8 +14,6 @@ _ANNOTATION_CANDIDATES = (
     (-16, 24),
     (16, -24),
     (-16, -24),
-    (26, 0),
-    (-26, 0),
     (0, 28),
     (0, -28),
 )
@@ -100,33 +98,27 @@ def _annotation_candidate_score(
     label_y = y_fraction + dy / 320.0
     score = 0.0
 
-    # Keep annotation boxes inside the axes with a conservative margin.
     if label_x < 0.05 or label_x > 0.95:
         score += 200.0
     if label_y < 0.06 or label_y > 0.94:
         score += 200.0
 
-    # Endpoint labels should point inward.
     if x_fraction <= 0.10 and dx <= 0:
         score += 80.0
     if x_fraction >= 0.90 and dx >= 0:
         score += 80.0
 
-    # Preserve the established visual convention: labels move away from lobes.
     if role in {"max", "min"}:
         mathematical_maximum = role == "max"
         visually_above = (mathematical_maximum and not inverted) or (not mathematical_maximum and inverted)
-        preferred_positive_dy = visually_above
-        if preferred_positive_dy and dy < 0:
+        if visually_above and dy < 0:
             score += 18.0
-        if not preferred_positive_dy and dy > 0:
+        if not visually_above and dy > 0:
             score += 18.0
 
-    # Avoid the fixed upper-right legend region.
     if legend_corner == "upper right" and label_x > 0.70 and label_y > 0.72:
         score += 120.0
 
-    # Avoid previously placed annotation anchors.
     for occupied_x, occupied_y in occupied:
         distance = math.hypot(label_x - occupied_x, label_y - occupied_y)
         if distance < 0.12:
@@ -134,7 +126,6 @@ def _annotation_candidate_score(
         elif distance < 0.20:
             score += 35.0
 
-    # Small displacement preference keeps leader lines compact.
     score += 0.02 * math.hypot(dx, dy)
     return score
 
@@ -194,10 +185,7 @@ def _annotate_characteristic(
         legend_corner=legend_corner,
     )
     occupied.append(anchor)
-    text = (
-        f"x = {_quantity_label(x_quantity)}\n"
-        f"{response_label} = {_quantity_label(y_quantity, moment=inverted)}"
-    )
+    text = f"x = {_quantity_label(x_quantity)}\n{response_label} = {_quantity_label(y_quantity, moment=inverted)}"
     axis.annotate(
         text,
         xy=(x, y),
@@ -269,37 +257,10 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
     maximum_value = y_values[maximum_index]
     minimum_value = y_values[minimum_index]
     if math.isclose(maximum_value, minimum_value, rel_tol=1e-12, abs_tol=1e-12):
-        _annotate_characteristic(
-            axis,
-            result.x_values[maximum_index],
-            series.y_values[maximum_index],
-            response_label,
-            role="max",
-            inverted=inverted,
-            line_color=line_color,
-            occupied=occupied,
-        )
+        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=inverted, line_color=line_color, occupied=occupied)
     else:
-        _annotate_characteristic(
-            axis,
-            result.x_values[maximum_index],
-            series.y_values[maximum_index],
-            response_label,
-            role="max",
-            inverted=inverted,
-            line_color=line_color,
-            occupied=occupied,
-        )
-        _annotate_characteristic(
-            axis,
-            result.x_values[minimum_index],
-            series.y_values[minimum_index],
-            response_label,
-            role="min",
-            inverted=inverted,
-            line_color=line_color,
-            occupied=occupied,
-        )
+        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=inverted, line_color=line_color, occupied=occupied)
+        _annotate_characteristic(axis, result.x_values[minimum_index], series.y_values[minimum_index], response_label, role="min", inverted=inverted, line_color=line_color, occupied=occupied)
     figure.tight_layout()
 
 
@@ -313,13 +274,7 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
         line_color = line.get_color()
         maximum_index, minimum_index = _extreme_indices(y_values)
         marker_indices = sorted({maximum_index, minimum_index})
-        axis.scatter(
-            [x_values[index] for index in marker_indices],
-            [y_values[index] for index in marker_indices],
-            s=26,
-            color=line_color,
-            zorder=4,
-        )
+        axis.scatter([x_values[index] for index in marker_indices], [y_values[index] for index in marker_indices], s=26, color=line_color, zorder=4)
         characteristics.append((series, line_color, maximum_index, minimum_index, y_values))
 
     axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, zorder=2)
@@ -336,34 +291,9 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
     occupied: list[tuple[float, float]] = []
     for series, line_color, maximum_index, minimum_index, y_values in characteristics:
         response_label = _series_response_symbol(result, series)
-        _annotate_characteristic(
-            axis,
-            result.x_values[maximum_index],
-            series.y_values[maximum_index],
-            response_label,
-            role="max",
-            inverted=moment,
-            line_color=line_color,
-            occupied=occupied,
-            legend_corner="upper right",
-        )
-        if not math.isclose(
-            y_values[maximum_index],
-            y_values[minimum_index],
-            rel_tol=1e-12,
-            abs_tol=1e-12,
-        ):
-            _annotate_characteristic(
-                axis,
-                result.x_values[minimum_index],
-                series.y_values[minimum_index],
-                response_label,
-                role="min",
-                inverted=moment,
-                line_color=line_color,
-                occupied=occupied,
-                legend_corner="upper right",
-            )
+        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=line_color, occupied=occupied, legend_corner="upper right")
+        if not math.isclose(y_values[maximum_index], y_values[minimum_index], rel_tol=1e-12, abs_tol=1e-12):
+            _annotate_characteristic(axis, result.x_values[minimum_index], series.y_values[minimum_index], response_label, role="min", inverted=moment, line_color=line_color, occupied=occupied, legend_corner="upper right")
     figure.tight_layout()
 
 
@@ -388,13 +318,7 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
 
     maximum_index = max(range(len(maximum_y)), key=maximum_y.__getitem__)
     minimum_index = min(range(len(minimum_y)), key=minimum_y.__getitem__)
-    axis.scatter(
-        [x_values[maximum_index], x_values[minimum_index]],
-        [maximum_y[maximum_index], minimum_y[minimum_index]],
-        s=[30, 30],
-        color=[maximum_line.get_color(), minimum_line.get_color()],
-        zorder=5,
-    )
+    axis.scatter([x_values[maximum_index], x_values[minimum_index]], [maximum_y[maximum_index], minimum_y[minimum_index]], s=[30, 30], color=[maximum_line.get_color(), minimum_line.get_color()], zorder=5)
 
     moment = maximum_series.is_moment
     if moment:
@@ -407,28 +331,8 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
 
     occupied: list[tuple[float, float]] = []
     response_label = _response_symbol(result.display_label)
-    _annotate_characteristic(
-        axis,
-        result.x_values[maximum_index],
-        maximum_series.y_values[maximum_index],
-        response_label,
-        role="max",
-        inverted=moment,
-        line_color=maximum_line.get_color(),
-        occupied=occupied,
-        legend_corner="upper right",
-    )
-    _annotate_characteristic(
-        axis,
-        result.x_values[minimum_index],
-        minimum_series.y_values[minimum_index],
-        response_label,
-        role="min",
-        inverted=moment,
-        line_color=minimum_line.get_color(),
-        occupied=occupied,
-        legend_corner="upper right",
-    )
+    _annotate_characteristic(axis, result.x_values[maximum_index], maximum_series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=maximum_line.get_color(), occupied=occupied, legend_corner="upper right")
+    _annotate_characteristic(axis, result.x_values[minimum_index], minimum_series.y_values[minimum_index], response_label, role="min", inverted=moment, line_color=minimum_line.get_color(), occupied=occupied, legend_corner="upper right")
     figure.tight_layout()
 
 
@@ -444,13 +348,7 @@ def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
     axis.legend(handles=[magnitude_line], loc="upper right")
 
     maximum_index = max(range(len(magnitude_y)), key=magnitude_y.__getitem__)
-    axis.scatter(
-        [x_values[maximum_index]],
-        [magnitude_y[maximum_index]],
-        s=30,
-        color=magnitude_line.get_color(),
-        zorder=5,
-    )
+    axis.scatter([x_values[maximum_index]], [magnitude_y[maximum_index]], s=30, color=magnitude_line.get_color(), zorder=5)
 
     moment = magnitude_series.is_moment
     if moment:
@@ -462,17 +360,7 @@ def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
     axis.margins(x=0.02, y=0.20)
 
     response_label = f"|{_response_symbol(result.display_label)}|"
-    _annotate_characteristic(
-        axis,
-        result.x_values[maximum_index],
-        magnitude_series.y_values[maximum_index],
-        response_label,
-        role="max",
-        inverted=moment,
-        line_color=magnitude_line.get_color(),
-        occupied=[],
-        legend_corner="upper right",
-    )
+    _annotate_characteristic(axis, result.x_values[maximum_index], magnitude_series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=magnitude_line.get_color(), occupied=[], legend_corner="upper right")
     figure.tight_layout()
 
 
