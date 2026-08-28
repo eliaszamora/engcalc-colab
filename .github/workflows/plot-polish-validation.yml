@@ -1,4 +1,4 @@
-name: Plot polish development validation
+name: Plot polish release validation
 
 on:
   pull_request:
@@ -14,10 +14,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install development dependencies
+      - name: Install validation tools
         run: |
           python -m pip install --upgrade pip
-          python -m pip install 'pytest>=8' 'ipython>=8'
-          python -m pip install -e .
+          python -m pip install 'pytest>=8' 'build>=1' 'ipython>=8'
+      - name: Build and install release wheel
+        run: |
+          python -m build --wheel
+          python -m pip install --force-reinstall dist/engcalc_colab-0.3.1-py3-none-any.whl
+          python -c "import engcalc_colab; assert engcalc_colab.__version__ == '0.3.1'"
+      - name: Smoke test installed plot renderer
+        run: |
+          cd /tmp
+          python - <<'PY'
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.plotting import render_plot
+
+          engine = EngineeringEngine()
+          for statement in parse_cell('M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2'):
+              engine.evaluate(statement)
+          for statement in parse_cell('q := 2.8*tonf/m\nL := 4*m'):
+              engine.evaluate(statement)
+          result = engine.evaluate(parse_cell('plot(M(x), x, 0, L)')[0])
+          axis = render_plot(result).axes[0]
+          assert axis.yaxis_inverted()
+          labels = [text.get_text() for text in axis.texts]
+          assert any(label.startswith('max = 3.15') for label in labels)
+          assert any(label.startswith('min = -5.60') for label in labels)
+          PY
       - name: Run tests
         run: pytest -q
