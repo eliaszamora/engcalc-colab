@@ -29,7 +29,9 @@ def test_short_four_term_substitution_stays_on_one_mathjax_row():
     latex = render_aligned_results([evaluate(engine, "numeric(S)")])
 
     # formula -> substitution -> final result, with no continuation row
-    assert latex.count(r"\\[2pt]") == 2
+    assert latex.count(r"\\[8pt]") == 2
+    assert r"\\[4pt]" not in latex
+    assert r"\\[2pt]" not in latex
     assert latex.count(" & = & ") == 3
 
 
@@ -61,7 +63,8 @@ def test_final_numeric_result_is_always_a_separate_row():
     latex = render_aligned_results([evaluate(engine, "numeric(V)")])
 
     assert latex.count(" & = & ") == 3
-    assert latex.count(r"\\[2pt]") == 2
+    assert latex.count(r"\\[8pt]") == 2
+    assert r"\\[2pt]" not in latex
     assert "11.20" in latex
 
 
