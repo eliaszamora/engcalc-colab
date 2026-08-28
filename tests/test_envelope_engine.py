@@ -146,6 +146,16 @@ def test_envelope_sweep_does_not_mutate_existing_parameter_or_x_value():
     assert engine.numeric_context.get("x").to("m").magnitude == pytest.approx(1.5)
 
 
+def test_envelope_rejects_sweep_of_plotting_variable():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M(x) = x^2\nL := 2*m")
+    with pytest.raises(
+        EngEvaluationError,
+        match="envelope sweep parameter 'x' cannot be the plotting variable",
+    ):
+        eval_cell(engine, "envelope(M(x), x, 0, L, x=[0.5*m, 1.0*m])")
+
+
 def test_envelope_rejects_sweep_that_expands_to_one_source_series():
     engine = EngineeringEngine()
     eval_cell(engine, "M(x) = q*x\nL := 2*m")
