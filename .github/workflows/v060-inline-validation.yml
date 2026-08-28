@@ -19,64 +19,17 @@ jobs:
       - name: Apply v0.6.0 README patch
         run: |
           python - <<'PY'
+          import base64
           from pathlib import Path
-
           readme = Path('README.md')
           text = readme.read_text()
           marker = '## v0.5.0 sampled engineering envelopes\n'
           heading = '## v0.6.0 absolute-value envelopes and in-plot panels\n'
+          payload = 'IyMgdjAuNi4wIGFic29sdXRlLXZhbHVlIGVudmVsb3BlcyBhbmQgaW4tcGxvdCBwYW5lbHMKCnYwLjYuMCBhZGRzIHRoZSBzYWZlLCBjb21wb3NhYmxlIGBhYnMoLi4uKWAgb3BlcmF0aW9uIGFuZCBleHRlbmRzIHRoZSBleGlzdGluZyBgZW52ZWxvcGUoLi4uKWAgc3RhdGVtZW50IHdpdGggYSBtYWduaXR1ZGUtZGVtYW5kIG1vZGUuIFRoZSBzaWduZWQtZW52ZWxvcGUgc3ludGF4IGFuZCBhbGdlYnJhaWMgbWF4L21pbiBiZWhhdmlvciBpbnRyb2R1Y2VkIGluIHYwLjUuMCByZW1haW4gdW5jaGFuZ2VkLgoKYGFicyguLi4pYCB3b3JrcyBpbiBzeW1ib2xpYyBleHByZXNzaW9ucywgbnVtZXJpY2FsL1BpbnQgZXZhbHVhdGlvbiBhbmQgbmF0aXZlIHBsb3R0aW5nLiBBIG1hZ25pdHVkZSBlbnZlbG9wZSBpcyByZXF1ZXN0ZWQgYnkgYXBwbHlpbmcgYGFicyguLi4pYCB0byBldmVyeSBzb3VyY2UgcmVzcG9uc2U6CgpgYGB0ZXh0CiUlZW5nCgpWX2NvbnN0cih4KSA9IFJfY29uc3RyIC0gcV9jb25zdHIqeApWX3Vzbyh4KSA9IFJfdXNvICsgcV91c28qeAoKUl9jb25zdHIgOj0gNiprTgpxX2NvbnN0ciA6PSA0KmtOL20KUl91c28gOj0gLTkqa04KcV91c28gOj0gMSprTi9tCkwgOj0gMiptCgplbnZlbG9wZShhYnMoVl9jb25zdHIoeCkpLCBhYnMoVl91c28oeCkpLCB4LCAwLCBMKQpgYGAKCkF0IGVhY2ggb2YgdGhlIHNoYXJlZCAyMDEgc2FtcGxlIHBvc2l0aW9ucywgRW5nQ2FsYyBjb21wYXJlcyB0aGUgYWJzb2x1dGUgbWFnbml0dWRlcyBhbmQga2VlcHMgb25lIG5vbm5lZ2F0aXZlIG1heGltdW0tbWFnbml0dWRlIGRlbWFuZCBicmFuY2guIFRoZSBvcmlnaW5hbCBzaWduZWQgc291cmNlIGN1cnZlcyBhcmUgcmV0YWluZWQgaW50ZXJuYWxseSBhbmQgc2hvd24gYXMgZmFpbnQgY29udGV4dCwgc28gYSBuZWdhdGl2ZSByZXNwb25zZSBtYXkgZ292ZXJuIHRoZSBhYnNvbHV0ZSBkZW1hbmQgd2l0aG91dCBsb3NpbmcgaXRzIHNpZ24uIFRoZSByZXN1bHQgYWxzbyByZXRhaW5zIHRoZSBnb3Zlcm5pbmcgc291cmNlIGluZGV4IGFuZCBzaWduZWQgZ292ZXJuaW5nIHZhbHVlLgoKVGhlIHNhbWUgbW9kZSB3b3JrcyB3aXRoIHRoZSBleGlzdGluZyByZXN0cmljdGVkIG9uZS1wYXJhbWV0ZXIgc3dlZXA6CgpgYGB0ZXh0CiUlZW5nCgpWKHgpID0gcSooTC8yLXgpCkwgOj0gNCptCgplbnZlbG9wZSgKICAgIGFicyhWKHgpKSwKICAgIHgsCiAgICAwLAogICAgTCwKICAgIHE9WzIqdG9uZi9tLCAzKnRvbmYvbSwgNCp0b25mL21dCikKYGBgCgpFdmVyeSBzb3VyY2Ugb2Ygb25lIGVudmVsb3BlIG11c3QgdXNlIHRoZSBzYW1lIGNvbXBhcmlzb24gbW9kZS4gTWl4aW5nIHNpZ25lZCBhbmQgYWJzb2x1dGUgcmVzcG9uc2VzIGluIG9uZSBjYWxsLCBmb3IgZXhhbXBsZSBgZW52ZWxvcGUoYWJzKFZfQSh4KSksIFZfQih4KSwgLi4uKWAsIGlzIHJlamVjdGVkLiBUaGVyZSBpcyBpbnRlbnRpb25hbGx5IG5vIHNlcGFyYXRlIGBhYnNfZW52ZWxvcGUoLi4uKWAgYWxpYXM6IGFic29sdXRlLXZhbHVlIGRlbWFuZCBpcyBjb21wb3NlZCB3aXRoIHRoZSBvcmRpbmFyeSBgZW52ZWxvcGUoLi4uKWAgQVBJLgoKTWFnbml0dWRlLWVudmVsb3BlIGZpZ3VyZXMgZW1waGFzaXplIG9uZSBgfHJlc3BvbnNlfF9tYXhgIGJvdW5kYXJ5LCBmaWxsIGZyb20gemVybyB0byB0aGF0IGJvdW5kYXJ5LCBhbmQga2VlcCB0aGUgc2lnbmVkIHNvdXJjZSByZXNwb25zZXMgYXMgZmFpbnQgY29udGV4dC4gVGhlaXIgY2hhcmFjdGVyaXN0aWMgcGFuZWwgcmVwb3J0cyB0aGUgbWF4aW11bSBtYWduaXR1ZGUsIGl0cyB4IGxvY2F0aW9uLCB0aGUgc2lnbmVkIGdvdmVybmluZyB2YWx1ZSBhbmQgdGhlIGdvdmVybmluZyBzb3VyY2UvY2FzZS4KCnYwLjYuMCBhbHNvIG1vdmVzIGNoYXJhY3RlcmlzdGljLXZhbHVlIHBhbmVscyBmb3IgbXVsdGktc2VyaWVzIHBsb3RzLCBzaWduZWQgZW52ZWxvcGVzIGFuZCBtYWduaXR1ZGUgZW52ZWxvcGVzICoqaW5zaWRlIHRoZSBncmFwaCBheGVzKiouIEVuZ0NhbGMgYXV0b21hdGljYWxseSBjaG9vc2VzIGFtb25nIHRoZSBmb3VyIHBsb3QgY29ybmVycyB1c2luZyBkYXRhIG9jY3VwYW5jeSBhbmQgcGVuYWxpemVzIHRoZSBsZWdlbmQgY29ybmVyLCB3aGlsZSBrZWVwaW5nIHRoZSBjb21wbGV0ZSBwYW5lbCBib3VuZGluZyBib3ggaW5zaWRlIHRoZSBheGVzLiBTaW5nbGUtc2VyaWVzIG1heGltdW0vbWluaW11bSBjYWxsb3V0cyByZW1haW4gdW5jaGFuZ2VkLgoKU3RydWN0dXJhbCBtb21lbnQgZGlhZ3JhbXMgY29udGludWUgdG8gdXNlIHRoZSBFbmdDYWxjIGNvbnZlbnRpb24gb2YgKipwb3NpdGl2ZSBtb21lbnQgZG93bndhcmQqKiwgaW5jbHVkaW5nIGBwbG90KGFicyhNKHgpKSlgIGFuZCBtYWduaXR1ZGUgbW9tZW50IGVudmVsb3Blcy4KCg=='
           if heading not in text:
               if marker not in text:
                   raise SystemExit('README v0.5 marker not found')
-              section = '''## v0.6.0 absolute-value envelopes and in-plot panels
-
-v0.6.0 adds the safe, composable `abs(...)` operation and extends the existing `envelope(...)` statement with a magnitude-demand mode. The signed-envelope syntax and algebraic max/min behavior introduced in v0.5.0 remain unchanged.
-
-`abs(...)` works in symbolic expressions, numerical/Pint evaluation and native plotting. A magnitude envelope is requested by applying `abs(...)` to every source response:
-
-```text
-%%eng
-
-V_constr(x) = R_constr - q_constr*x
-V_uso(x) = R_uso + q_uso*x
-
-R_constr := 6*kN
-q_constr := 4*kN/m
-R_uso := -9*kN
-q_uso := 1*kN/m
-L := 2*m
-
-envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
-```
-
-At each of the shared 201 sample positions, EngCalc compares the absolute magnitudes and keeps one nonnegative maximum-magnitude demand branch. The original signed source curves are retained internally and shown as faint context, so a negative response may govern the absolute demand without losing its sign. The result also retains the governing source index and signed governing value.
-
-The same mode works with the existing restricted one-parameter sweep:
-
-```text
-%%eng
-
-V(x) = q*(L/2-x)
-L := 4*m
-
-envelope(
-    abs(V(x)),
-    x,
-    0,
-    L,
-    q=[2*tonf/m, 3*tonf/m, 4*tonf/m]
-)
-```
-
-Every source of one envelope must use the same comparison mode. Mixing signed and absolute responses in one call, for example `envelope(abs(V_A(x)), V_B(x), ...)`, is rejected. There is intentionally no separate `abs_envelope(...)` alias: absolute-value demand is composed with the ordinary `envelope(...)` API.
-
-Magnitude-envelope figures emphasize one `|response|_max` boundary, fill from zero to that boundary, and keep the signed source responses as faint context. Their characteristic panel reports the maximum magnitude, its x location, the signed governing value and the governing source/case.
-
-v0.6.0 also moves characteristic-value panels for multi-series plots, signed envelopes and magnitude envelopes **inside the graph axes**. EngCalc automatically chooses among the four plot corners using data occupancy and penalizes the legend corner, while keeping the complete panel bounding box inside the axes. Single-series maximum/minimum callouts remain unchanged.
-
-Structural moment diagrams continue to use the EngCalc convention of **positive moment downward**, including `plot(abs(M(x)))` and magnitude moment envelopes.
-
-'''
+              section = base64.b64decode(payload).decode()
               readme.write_text(text.replace(marker, section + marker, 1))
           PY
       - name: Install project
