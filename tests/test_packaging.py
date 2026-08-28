@@ -7,17 +7,22 @@ def _project_metadata():
     return tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]
 
 
-def test_runtime_dependencies_do_not_manage_ipython_in_notebook_hosts():
+def _dependency_names():
     dependencies = _project_metadata()["dependencies"]
-    names = {dependency.split("[")[0].split(">=")[0].split("==")[0].strip().lower() for dependency in dependencies}
-    assert "ipython" not in names
+    return {dependency.split("[")[0].split(">=")[0].split("==")[0].strip().lower() for dependency in dependencies}
 
 
-def test_pyproject_version_is_0_2_6():
-    assert _project_metadata()["version"] == "0.2.6"
+def test_runtime_dependencies_do_not_manage_ipython_in_notebook_hosts():
+    assert "ipython" not in _dependency_names()
+
+
+def test_pyproject_version_is_0_2_7():
+    assert _project_metadata()["version"] == "0.2.7"
 
 
 def test_pint_is_a_runtime_dependency():
-    dependencies = _project_metadata()["dependencies"]
-    names = {dependency.split("[")[0].split(">=")[0].split("==")[0].strip().lower() for dependency in dependencies}
-    assert "pint" in names
+    assert "pint" in _dependency_names()
+
+
+def test_latex2mathml_is_a_runtime_dependency():
+    assert "latex2mathml" in _dependency_names()
