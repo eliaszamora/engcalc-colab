@@ -5,9 +5,6 @@ on:
     branches:
       - feature/v0.6.0-abs-envelope-panel
 
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,18 +13,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Apply Task 3 source patch
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          engine = Path('src/engcalc_colab/engine.py')
-          text = engine.read_text()
-          start = text.index('    def _evaluate_envelope(self, node: ast.Call):\n')
-          end = text.index('    def _resolve_response_expression(\n', start)
-          replacement = '''    def _evaluate_envelope(self, node: ast.Call):\n        resolved = self._resolve_response_series(node, call_name="envelope")\n        comparison_series = resolved.series\n        if len(comparison_series) < 2:\n            raise EngEvaluationError("envelope requires at least two response series")\n        if resolved.envelope_mode is None:\n            raise EngEvaluationError(\n                "envelope cannot mix absolute and signed response series"\n            )\n\n        if resolved.envelope_mode == "magnitude":\n            maximum_values = []\n            governing_maximum = []\n            governing_signed = []\n\n            for sample_index in range(len(resolved.x_values)):\n                magnitudes = [\n                    float(item.y_values[sample_index].magnitude)\n                    for item in comparison_series\n                ]\n                maximum_index = max(\n                    range(len(magnitudes)),\n                    key=magnitudes.__getitem__,\n                )\n                governing_maximum.append(maximum_index)\n                maximum_values.append(\n                    comparison_series[maximum_index].y_values[sample_index]\n                )\n                governing_signed.append(\n                    resolved.source_series[maximum_index].y_values[sample_index]\n                )\n\n            suffix = f"({resolved.variable})"\n            if (\n                resolved.display_label != "Comparison"\n                and resolved.display_label.endswith(suffix)\n            ):\n                family = resolved.display_label[: -len(suffix)]\n                magnitude_label = f"|{family}|_max({resolved.variable})"\n            else:\n                magnitude_label = "|max|"\n\n            envelope_series = (\n                PlotSeries(\n                    display_label=magnitude_label,\n                    y_values=tuple(maximum_values),\n                    is_moment=comparison_series[0].is_moment,\n                ),\n            )\n\n            self.plot_evaluation = _PlotEvaluation(\n                display_label=resolved.display_label,\n                variable=resolved.variable,\n                x_values=resolved.x_values,\n                series=envelope_series,\n                kind="envelope",\n                source_series=resolved.source_series,\n                source_labels=resolved.source_labels,\n                governing_max=tuple(governing_maximum),\n                governing_min=None,\n                envelope_mode="magnitude",\n                governing_signed=tuple(governing_signed),\n            )\n            return resolved.first_symbolic_expression\n\n        maximum_values = []\n        minimum_values = []\n        governing_maximum = []\n        governing_minimum = []\n\n        for sample_index in range(len(resolved.x_values)):\n            magnitudes = [\n                float(item.y_values[sample_index].magnitude)\n                for item in comparison_series\n            ]\n            maximum_index = max(range(len(magnitudes)), key=magnitudes.__getitem__)\n            minimum_index = min(range(len(magnitudes)), key=magnitudes.__getitem__)\n            governing_maximum.append(maximum_index)\n            governing_minimum.append(minimum_index)\n            maximum_values.append(\n                comparison_series[maximum_index].y_values[sample_index]\n            )\n            minimum_values.append(\n                comparison_series[minimum_index].y_values[sample_index]\n            )\n\n        maximum_label, minimum_label = self._envelope_series_labels(\n            resolved.display_label,\n            resolved.variable,\n        )\n        is_moment = comparison_series[0].is_moment\n        envelope_series = (\n            PlotSeries(\n                display_label=maximum_label,\n                y_values=tuple(maximum_values),\n                is_moment=is_moment,\n            ),\n            PlotSeries(\n                display_label=minimum_label,\n                y_values=tuple(minimum_values),\n                is_moment=is_moment,\n            ),\n        )\n\n        self.plot_evaluation = _PlotEvaluation(\n            display_label=resolved.display_label,\n            variable=resolved.variable,\n            x_values=resolved.x_values,\n            series=envelope_series,\n            kind="envelope",\n            source_series=resolved.source_series,\n            source_labels=resolved.source_labels,\n            governing_max=tuple(governing_maximum),\n            governing_min=tuple(governing_minimum),\n            envelope_mode="signed",\n        )\n        return resolved.first_symbolic_expression\n\n'''
-          engine.write_text(text[:start] + replacement + text[end:])
-          PY
       - name: Install project
         run: |
           python -m pip install --upgrade pip
@@ -35,12 +20,3 @@ jobs:
           python -m pip install pytest ipython
       - name: Run test suite
         run: pytest -q
-      - name: Commit Task 3 source patch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/engcalc_colab/engine.py
-          if ! git diff --cached --quiet; then
-            git commit -m "feat: add magnitude envelope reduction"
-            git push
-          fi
