@@ -9,8 +9,8 @@ from .models import PlotResult
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 _FORCE_UNITS = {"N", "kN", "MN", "GN", "kgf", "tonf"}
 _LENGTH_UNITS = {"mm", "cm", "m", "km"}
-_HORIZONTAL_ANNOTATION_OFFSETS = (18, 72, 126, -18, -72, -126, 0)
-_VERTICAL_ANNOTATION_OFFSETS = (24, 72, 120, -24, -72, -120)
+_HORIZONTAL_ANNOTATION_OFFSETS = (18, 72, 126, 180, -18, -72, -126, -180, 0)
+_VERTICAL_ANNOTATION_OFFSETS = (24, 72, 120, 168, -24, -72, -120, -168)
 _ANNOTATION_CANDIDATES = tuple(
     (dx, dy)
     for dy in _VERTICAL_ANNOTATION_OFFSETS
@@ -106,6 +106,11 @@ def _create_annotation(axis, text: str, x: float, y: float, offset: tuple[int, i
     )
 
 
+def _annotation_box(annotation, renderer):
+    annotation.get_window_extent(renderer)
+    return annotation.get_bbox_patch().get_window_extent(renderer)
+
+
 def _bbox_overlap_area(left, right) -> float:
     width = max(0.0, min(left.x1, right.x1) - max(left.x0, right.x0))
     height = max(0.0, min(left.y1, right.y1) - max(left.y0, right.y0))
@@ -191,17 +196,15 @@ def _annotation_candidate_score(
     return score
 
 
-def _choose_annotation_offset(
+def _place_annotation(
+    annotation,
     axis,
-    text: str,
     x: float,
-    y: float,
     *,
     role: str,
     inverted: bool,
-    line_color,
     occupied_boxes: list,
-) -> tuple[int, int, str, str, object]:
+) -> None:
     figure = axis.figure
     figure.canvas.draw()
     renderer = figure.canvas.get_renderer()
@@ -212,11 +215,11 @@ def _choose_annotation_offset(
 
     candidates = []
     for order, offset in enumerate(_ANNOTATION_CANDIDATES):
-        temporary = _create_annotation(axis, text, x, y, offset, line_color)
-        temporary.get_window_extent(renderer)
-        patch = temporary.get_bbox_patch()
-        candidate_box = patch.get_window_extent(renderer).expanded(1.04, 1.08)
-        temporary.remove()
+        ha, va = _annotation_alignment(offset)
+        annotation.set_position(offset)
+        annotation.set_ha(ha)
+        annotation.set_va(va)
+        candidate_box = _annotation_box(annotation, renderer).expanded(1.04, 1.08)
         score = _annotation_candidate_score(
             axis,
             candidate_box,
@@ -231,9 +234,12 @@ def _choose_annotation_offset(
         )
         candidates.append((score, order, offset))
 
-    _, _, offset = min(candidates)
-    ha, va = _annotation_alignment(offset)
-    return offset[0], offset[1], ha, va, renderer
+    _, _, best_offset = min(candidates)
+    ha, va = _annotation_alignment(best_offset)
+    annotation.set_position(best_offset)
+    annotation.set_ha(ha)
+    annotation.set_va(va)
+    occupied_boxes.append(_annotation_box(annotation, renderer).expanded(1.04, 1.08))
 
 
 def _annotate_characteristic(
@@ -250,19 +256,15 @@ def _annotate_characteristic(
     x = float(x_quantity.magnitude)
     y = float(y_quantity.magnitude)
     text = f"x = {_quantity_label(x_quantity)}\n{response_label} = {_quantity_label(y_quantity, moment=inverted)}"
-    dx, dy, _, _, renderer = _choose_annotation_offset(
+    annotation = _create_annotation(axis, text, x, y, _ANNOTATION_CANDIDATES[0], line_color)
+    _place_annotation(
+        annotation,
         axis,
-        text,
         x,
-        y,
         role=role,
         inverted=inverted,
-        line_color=line_color,
         occupied_boxes=occupied_boxes,
     )
-    annotation = _create_annotation(axis, text, x, y, (dx, dy), line_color)
-    annotation.get_window_extent(renderer)
-    occupied_boxes.append(annotation.get_bbox_patch().get_window_extent(renderer).expanded(1.04, 1.08))
 
 
 def _style_axes(axis) -> None:
