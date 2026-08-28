@@ -100,6 +100,53 @@ class NumericContext:
         except PintError as exc:
             raise EngEvaluationError(f"target unit conversion failed: {exc}") from exc
 
+    def normalize_plot_bounds(self, start, end):
+        start = self._as_quantity(start)
+        end = self._as_quantity(end)
+
+        if start.dimensionless and not end.dimensionless:
+            if float(start.magnitude) != 0.0:
+                raise EngEvaluationError("plot bounds have incompatible units")
+            start = self.ureg.Quantity(0, end.units)
+        elif end.dimensionless and not start.dimensionless:
+            if float(end.magnitude) != 0.0:
+                raise EngEvaluationError("plot bounds have incompatible units")
+            end = self.ureg.Quantity(0, start.units)
+
+        try:
+            end = end.to(start.units)
+        except DimensionalityError as exc:
+            raise EngEvaluationError("plot bounds have incompatible units") from exc
+
+        if float(end.magnitude) <= float(start.magnitude):
+            raise EngEvaluationError("plot end must be greater than start")
+        return start, end
+
+    def sample_symbolic(self, expression, variable, start, end, count=201):
+        if count < 2:
+            raise EngEvaluationError("plot sampling requires at least 2 points")
+
+        start, end = self.normalize_plot_bounds(start, end)
+        delta = end - start
+        xs = tuple(start + delta * (index / (count - 1)) for index in range(count))
+
+        ys = []
+        y_unit = None
+        for x_value in xs:
+            _, y_value = self.evaluate_symbolic(
+                expression,
+                overrides={variable: x_value},
+            )
+            if y_unit is None:
+                y_unit = y_value.units
+            try:
+                y_value = y_value.to(y_unit)
+            except DimensionalityError as exc:
+                raise EngEvaluationError("plot samples have incompatible result units") from exc
+            ys.append(y_value)
+
+        return xs, tuple(ys)
+
     def partial_substitutions(
         self,
         expression: sp.Expr,

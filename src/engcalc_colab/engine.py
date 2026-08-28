@@ -12,6 +12,7 @@ from .models import (
     ParsedNumericAssignment,
     ParsedStatement,
     PartialNumericEvaluationResult,
+    PlotResult,
     UserFunction,
 )
 from .numeric import NumericContext
@@ -48,6 +49,7 @@ class EngineeringEngine:
         | NumericAssignmentResult
         | NumericEvaluationResult
         | PartialNumericEvaluationResult
+        | PlotResult
     ):
         evaluator = _Evaluator(self)
         try:
@@ -72,6 +74,19 @@ class EngineeringEngine:
                     )
 
             value = evaluator.visit(statement.expression.body)
+
+            if evaluator.plot_evaluation is not None:
+                if statement.target is not None:
+                    raise EngEvaluationError("plot must be a standalone statement")
+                display_label, variable, x_values, y_values = evaluator.plot_evaluation
+                return PlotResult(
+                    statement=statement,
+                    display_label=display_label,
+                    variable=variable,
+                    x_values=x_values,
+                    y_values=y_values,
+                )
+
             if evaluator.partial_numeric_evaluation is not None:
                 (
                     symbolic_expression,
@@ -139,6 +154,7 @@ class _Evaluator(ast.NodeVisitor):
         self.display_input = None
         self.numeric_evaluation = None
         self.partial_numeric_evaluation = None
+        self.plot_evaluation = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
 
     def generic_visit(self, node):
@@ -202,6 +218,44 @@ class _Evaluator(ast.NodeVisitor):
             symbolic_sum = sp.Sum(expr, (index, lower, upper))
             self.display_input = symbolic_sum
             return symbolic_sum
+
+        if name == "plot":
+            self._require_arity(name, node.args, 4, "expression, variable, start, end")
+            variable_node = node.args[1]
+            if not isinstance(variable_node, ast.Name):
+                raise EngEvaluationError("plot variable must be a symbolic identifier")
+            variable = variable_node.id
+
+            expression_node = node.args[0]
+            symbolic_expression = self.visit(expression_node)
+            start_expression = self.visit(node.args[2])
+            end_expression = self.visit(node.args[3])
+
+            _, start_quantity = self.engine.numeric_context.evaluate_symbolic(start_expression)
+            _, end_quantity = self.engine.numeric_context.evaluate_symbolic(end_expression)
+            start_quantity, end_quantity = self.engine.numeric_context.normalize_plot_bounds(
+                start_quantity,
+                end_quantity,
+            )
+            x_values, y_values = self.engine.numeric_context.sample_symbolic(
+                symbolic_expression,
+                variable,
+                start_quantity,
+                end_quantity,
+                count=201,
+            )
+
+            if (
+                isinstance(expression_node, ast.Call)
+                and isinstance(expression_node.func, ast.Name)
+                and expression_node.func.id in self.engine.functions
+            ):
+                display_label = f"{expression_node.func.id}({variable})"
+            else:
+                display_label = str(symbolic_expression)
+
+            self.plot_evaluation = (display_label, variable, x_values, y_values)
+            return symbolic_expression
 
         if name == "numeric":
             if len(node.args) not in (1, 2):

@@ -16,12 +16,16 @@ def test_runtime_dependencies_do_not_manage_ipython_in_notebook_hosts():
     assert "ipython" not in _dependency_names()
 
 
-def test_pyproject_version_is_0_2_9():
-    assert _project_metadata()["version"] == "0.2.9"
+def test_pyproject_version_is_0_3_0():
+    assert _project_metadata()["version"] == "0.3.0"
 
 
 def test_pint_is_a_runtime_dependency():
     assert "pint" in _dependency_names()
+
+
+def test_matplotlib_is_a_runtime_dependency():
+    assert "matplotlib" in _dependency_names()
 
 
 def test_latex2mathml_is_not_a_runtime_dependency():

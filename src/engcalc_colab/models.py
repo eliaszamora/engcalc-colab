@@ -70,3 +70,12 @@ class PartialNumericEvaluationResult:
     evaluated_terms: tuple[tuple[int, Any], ...] | None = None
     display_name: str | None = None
     display_argument: Any | None = None
+
+
+@dataclass(frozen=True)
+class PlotResult:
+    statement: ParsedStatement
+    display_label: str
+    variable: str
+    x_values: tuple[Any, ...]
+    y_values: tuple[Any, ...]

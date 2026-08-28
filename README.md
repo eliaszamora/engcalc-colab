@@ -1,6 +1,6 @@
 # engcalc-colab
 
-`engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas and evaluate them later with physical units.
+`engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and now plot unit-aware functions without redefining the problem in Python.
 
 ## Install in Google Colab
 
@@ -52,7 +52,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.9:
+Supported unit aliases in v0.3.0:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -67,7 +67,64 @@ EngCalc defines:
 
 Units are interpreted only inside the numerical context. A name such as `m` remains available as a normal symbolic identifier in symbolic expressions.
 
-Numerical quantities render with two decimal places by default. v0.2.9 adds global presentation settings so the notebook can change that policy without altering stored values or symbolic formulas.
+Numerical quantities render with two decimal places by default. Global presentation settings can change that policy without altering stored values or symbolic formulas.
+
+## v0.3.0 native plotting inside `%%eng`
+
+v0.3.0 adds a restricted, unit-aware plotting command:
+
+```text
+plot(expression, variable, start, end)
+```
+
+The primary workflow is to define the engineering functions and numerical data once and plot them in the same EngCalc cell:
+
+```text
+%%eng
+
+V(x) = 5*q*L/8 - q*x
+M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2
+
+q := 2.8*tonf/m
+L := 4*m
+
+numeric(V(x))
+numeric(M(x))
+
+plot(V(x), x, 0, L)
+plot(M(x), x, 0, L)
+```
+
+`plot(...)` reuses the symbolic and numerical EngCalc state directly. No duplicate Python definitions of `q`, `L`, `V(x)` or `M(x)` are required.
+
+Each call produces one Matplotlib figure and samples exactly 201 points, including both endpoints. The plotting variable is locally overridden during sampling, so an earlier value such as:
+
+```text
+x := 2.5*m
+```
+
+does not collapse `plot(M(x), x, 0, L)` to one point and is not modified by plotting.
+
+Plot bounds are unit-aware. The common structural form:
+
+```text
+plot(M(x), x, 0, L)
+```
+
+works when `L := 4*m`: the exact dimensionless zero is promoted to the compatible dimensional unit of `L`. Incompatible bounds are rejected instead of silently converted.
+
+The first evaluated ordinate establishes the y-axis unit and every later sample is converted to that same compatible unit. The default figure therefore labels axes automatically, for example:
+
+```text
+x [m]
+M(x) [tonf·m]
+```
+
+Each figure contains the requested curve, a horizontal `y = 0` reference, automatic axis labels, the expression/function name as title, and `tight_layout()`. EngCalc deliberately does not impose a separate plot color/theme: the figure inherits the active Matplotlib `rcParams`.
+
+`plot(...)` is a standalone output statement. It does not create an extra MathJax equation row. When a plot occurs between calculations, EngCalc preserves source order by flushing the preceding equation group, displaying the figure, and then continuing with subsequent equations.
+
+The initial v0.3.0 plotting contract intentionally does **not** include multiple curves, keyword/style arguments, custom plot-unit conversion, fills, legends, extrema/root annotations, discontinuity handling, `piecewise`, image export, or arbitrary Matplotlib access. Those can be added later without changing the four-argument base syntax.
 
 ## v0.2.9 global numerical presentation settings
 
@@ -98,13 +155,13 @@ For example:
 
 can render a tiny numerical residue as `0.0000` while keeping the underlying value intact.
 
-`%eng_reset` clears symbolic and numerical calculation state but does not change the active render configuration. Configure the display explicitly when a different memory needs another precision policy.
+`%eng_reset` clears symbolic and numerical calculation state but does not change the active render configuration.
 
-Scientific-notation policy is intentionally not part of v0.2.9; it remains a separate presentation milestone.
+Scientific-notation policy is intentionally separate from this formatting feature.
 
 ## v0.2.8 adaptive MathJax wrapping for split view
 
-v0.2.8 restores **MathJax as the single mathematical renderer** for symbolic and numerical calculations. This keeps the same font metrics, fraction sizing, subscripts and equation scale throughout one engineering memory.
+v0.2.8 restored **MathJax as the single mathematical renderer** for symbolic and numerical calculations. This keeps the same font metrics, fraction sizing, subscripts and equation scale throughout one engineering memory.
 
 Numerical evaluations keep the calculation stages separate:
 
@@ -114,7 +171,7 @@ formula
 = final result
 ```
 
-The formula and substitution stages use **adaptive top-level term packing**. EngCalc estimates the visual complexity of each complete `+` / `-` term and keeps adding whole terms to the current row while the row stays within a conservative visual budget. If the next term would exceed the budget, that term starts a continuation row.
+The formula and substitution stages use adaptive top-level term packing. EngCalc estimates the visual complexity of each complete `+` / `-` term and keeps adding whole terms to the current row while the row stays within a conservative visual budget. If the next term would exceed the budget, that term starts a continuation row.
 
 A short expression such as:
 
@@ -122,22 +179,20 @@ A short expression such as:
 A + B - C + D
 ```
 
-remains on a single row when its estimated width fits. A longer engineering substitution can instead be arranged as:
+remains on one row when its estimated width fits. A longer engineering substitution can instead be arranged as:
 
 ```text
 [ long term 1 ] + [ long term 2 ]
 - [ long term 3 ]
 ```
 
-The algorithm never intentionally splits the inside of a top-level additive term. The **final numerical result is always rendered on its own row**, even when it would technically fit at the end of the substitution row, because that preserves the formula → substitution → result hierarchy.
+The final numerical result always starts its own row to preserve the formula → substitution → result hierarchy.
 
-The visual budget is a deterministic heuristic, not a browser-pixel measurement. Python does not receive the live width of Google Colab's output pane when an `IPython.display.Math` object is built. The heuristic is therefore tuned for a typical side-by-side Colab layout and can be refined as real engineering examples expose expressions that wrap too early or too late.
-
-v0.2.8 intentionally removes the v0.2.6/v0.2.7 HTML/MathML responsive path and the `latex2mathml` runtime dependency. The browser-width-aware experiment solved one class of horizontal-overflow problem but introduced inconsistent mathematical typography. The MathJax-only approach favors typographic consistency and predictable engineering layout.
+The visual budget is a deterministic heuristic, not a browser-pixel measurement. The MathJax-only approach favors typographic consistency and predictable engineering layout.
 
 ## v0.2.4 target-unit conversion
 
-v0.2.4 added an optional target unit to fully numerical evaluations:
+A fully numerical evaluation may request a compatible target unit:
 
 ```text
 numeric(expression, target_unit)
@@ -152,7 +207,7 @@ numeric(Delta_B0, mm)
 numeric(f_11, mm/kN)
 ```
 
-Target-unit expressions use the same engineering aliases and may contain products, divisions and powers, for example:
+Target-unit expressions use the same engineering aliases and may contain products, divisions and powers:
 
 ```text
 kN*m
@@ -161,47 +216,15 @@ mm^4
 mm/kN
 ```
 
-The conversion applies to the **final result**. The formula and numerical-substitution stages preserve the units in which the input data were defined. For example:
+The conversion applies to the final result. The formula and numerical-substitution stages preserve the units in which the input data were defined.
 
-```text
-M_A = q*L^2/8
-q := 2.8*tonf/m
-L := 4*m
-numeric(M_A, kN*m)
-```
+Pint checks dimensional compatibility. An incompatible target produces a concise EngCalc error rather than silently changing dimensions.
 
-renders the symbolic formula, substitutes `q` and `L` in their original `tonf/m` and `m` units, and finishes with approximately:
-
-\[
-M_A=54.92\,\mathrm{kN\,m}.
-\]
-
-The same syntax works for a user-defined function once its argument is numerically known:
-
-```text
-V(x) = 5*q*L/8 - q*x
-q := 2.8*tonf/m
-L := 4*m
-x := 2*m
-
-numeric(V(x), kN)
-```
-
-Pint checks dimensional compatibility. Asking for an incompatible target, such as converting a moment directly to `kN`, produces a concise EngCalc error instead of silently changing dimensions.
-
-Target-unit conversion intentionally requires a **fully numerical result**. A partial function such as:
-
-```text
-numeric(V(x), kN)
-```
-
-with `x` still free is rejected. Use `numeric(V(x))` to keep the symbolic independent variable, or assign/evaluate the coordinate first and then request a target unit.
-
-The original one-argument form `numeric(expr)` is unchanged.
+Target-unit conversion currently requires a fully numerical result. A partial function with a free independent variable should use `numeric(V(x))` without a target unit.
 
 ## v0.2.3 evaluated partial numerical functions
 
-When a user-defined function keeps its independent variable free, EngCalc evaluates every known polynomial coefficient with Pint instead of stopping after textual substitution.
+When a user-defined function keeps its independent variable free, EngCalc evaluates known polynomial coefficients with Pint instead of stopping after textual substitution.
 
 ```text
 V(x) = 5*q*L/8 - q*x
@@ -234,9 +257,7 @@ M(x)=
 -1.40\,\frac{\mathrm{tonf}}{\mathrm m}x^2.
 \]
 
-The symbolic definition remains unchanged. Partial coefficient evaluation is limited to functions polynomial in their free argument; non-polynomial partial functions retain the substitution-only representation rather than being approximated.
-
-Direct expressions remain strict: `numeric(q*x)` does not guess that `x` is an independent variable.
+The symbolic definition remains unchanged. Direct expressions remain strict: `numeric(q*x)` does not guess that `x` is an independent variable.
 
 ## Function evaluation and dimensional zeros
 
@@ -319,9 +340,14 @@ numeric(M_A, kN*m)
 
 numeric(V(x))
 numeric(M(x))
+
+## Diagramas
+
+plot(V(x), x, 0, L)
+plot(M(x), x, 0, L)
 ```
 
-The last two calls keep `x` symbolic unless a numerical value has been assigned to `x`, while evaluating the known polynomial coefficients numerically.
+The last four calls reuse the same symbolic functions and numerical data: `numeric(...)` presents the functions and `plot(...)` samples them across the span without a second Python definition.
 
 ## Complete command reference
 
@@ -349,8 +375,16 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 - `numeric(V_B)` — evaluate a named symbolic result with natural resulting units.
 - `numeric(M_A, kN*m)` — evaluate a fully numerical result and convert its final quantity to the requested compatible unit.
 - `numeric(q*L^2/8)` — evaluate a direct symbolic expression; every free symbol must have a numerical value.
-- `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free, including evaluation of known polynomial coefficients; fully evaluate it if the argument has a numerical value.
+- `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free; fully evaluate it if the argument has a numerical value.
 - `numeric(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
+
+### Plotting
+
+- `plot(expression, variable, start, end)` — create one unit-aware Matplotlib figure using 201 samples including both endpoints.
+- `plot(V(x), x, 0, L)` — plot a defined EngCalc function over a known span without redefining data in Python.
+- the plotting variable is locally overridden for sampling and any stored numeric value for that name is preserved.
+- plotting is a standalone statement; assigning `A = plot(...)` is rejected.
+- keyword/style arguments are not supported in v0.3.0.
 
 ### Arithmetic syntax
 
@@ -387,7 +421,7 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 - `### text` — visible subsection heading.
 - blank line — adds a larger visual separation inside the current equation group.
 
-All calculation rows use the compact three-column MathJax block. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Complete and partial numerical evaluations use the adaptive MathJax row packing described above.
+All calculation rows use the compact three-column MathJax block. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Complete and partial numerical evaluations use adaptive MathJax row packing.
 
 For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics.
 
@@ -400,28 +434,33 @@ Put this Colab directive immediately below `%%eng` when desired:
 #@title { vertical-output: true }
 ```
 
-EngCalc ignores the directive because it begins with a single `#`. In v0.2.9, `numeric(...)` continues to use the same MathJax renderer as symbolic equations. Long top-level additive formulas/substitutions are grouped by an estimated visual-width budget rather than by a fixed number of terms, while the final result always starts a new row.
+EngCalc ignores the directive because it begins with a single `#`. Numerical equations continue to use the same MathJax renderer as symbolic equations, and native plots appear in source order between equation groups.
 
 ## Safety
 
-`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. Raw cell text is never passed to unrestricted Python `eval` or `exec`. Attribute access, arbitrary Python calls, keyword arguments and unsupported syntax are rejected.
+`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. `plot(...)` is also a restricted EngCalc operation: it does not expose arbitrary Matplotlib functions, callbacks, filenames, Python objects, or keyword arguments. Raw cell text is never passed to unrestricted Python `eval` or `exec`.
 
 ## Current limitations
 
-v0.2.9 intentionally does not yet provide:
+v0.3.0 intentionally does not yet provide:
 
-- automatic scientific-notation policy for very large/small displayed values
-- target-unit conversion of partially evaluated functions with a free independent variable
-- automatic compact coefficient evaluation for non-polynomial partial functions
-- exact browser-pixel-aware line wrapping; EngCalc uses a deterministic visual-complexity heuristic
-- wrapping inside a single indivisible top-level mathematical term that is itself wider than the target budget
-- keyword arguments
-- arrays/tables or dedicated matrix syntax
-- arbitrary Python execution or arbitrary library functions
-- multi-solution `solve(...)`
-- full LaTeX parsing
+- multiple curves in one native plot or subplots;
+- plot styling/options from EngCalc syntax;
+- explicit plot x/y target-unit conversion;
+- automatic maxima, minima, roots or engineering annotations;
+- `piecewise`/discontinuous-function plotting and jump markers;
+- automatic scientific-notation policy for very large/small displayed values;
+- target-unit conversion of partially evaluated functions with a free independent variable;
+- automatic compact coefficient evaluation for non-polynomial partial functions;
+- exact browser-pixel-aware MathJax line wrapping;
+- wrapping inside a single indivisible top-level mathematical term wider than the target budget;
+- keyword arguments;
+- arrays/tables or dedicated matrix syntax;
+- arbitrary Python execution or arbitrary library functions;
+- multi-solution `solve(...)`;
+- full LaTeX parsing.
 
-These are separate future milestones rather than hidden behavior in v0.2.9.
+These are separate future milestones rather than hidden behavior in v0.3.0.
 
 ## Development
 
@@ -430,4 +469,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.9`.
+Version: `0.3.0`.
