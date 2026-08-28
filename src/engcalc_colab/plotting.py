@@ -52,6 +52,16 @@ def _quantity_label(quantity, *, moment: bool = False) -> str:
     return value if not unit else f"{value} {unit}"
 
 
+def _compact_number(value: float) -> str:
+    if math.isclose(value, 0.0, rel_tol=0.0, abs_tol=5e-13):
+        value = 0.0
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
+def _coordinate_label(x: float, y: float) -> str:
+    return f"({_compact_number(x)}, {_compact_number(y)})"
+
+
 def _extreme_indices(values: list[float]) -> tuple[int, int]:
     maximum = max(range(len(values)), key=values.__getitem__)
     minimum = min(range(len(values)), key=values.__getitem__)
@@ -102,29 +112,15 @@ def _create_annotation(axis, text: str, x: float, y: float, offset: tuple[int, i
         ha=ha,
         va=va,
         fontsize=8.5,
+        color=line_color,
         zorder=7,
-        bbox={
-            "boxstyle": "round,pad=0.30",
-            "facecolor": axis.get_facecolor(),
-            "edgecolor": line_color,
-            "linewidth": 0.8,
-            "alpha": 0.94,
-        },
-        arrowprops={
-            "arrowstyle": "-",
-            "linewidth": 0.8,
-            "color": line_color,
-            "alpha": 0.72,
-            "shrinkA": 4,
-            "shrinkB": 4,
-        },
         annotation_clip=False,
     )
 
 
 def _annotation_box(annotation, renderer):
     annotation.update_bbox_position_size(renderer)
-    return annotation.get_bbox_patch().get_window_extent(renderer)
+    return annotation.get_window_extent(renderer)
 
 
 def _bbox_overlap_area(left, right) -> float:
@@ -158,11 +154,30 @@ def _curve_display_points(axis) -> list[tuple[float, float]]:
     return points
 
 
-def _candidate_constraints(candidate_box, occupied_boxes: list, axes_box, legend_box) -> tuple[float, float, float]:
+def _curve_overlap_count(candidate_box, curve_points, anchor_display) -> int:
+    anchor_x, anchor_y = anchor_display
+    hits = 0
+    for point_x, point_y in curve_points:
+        if abs(point_x - anchor_x) < 1e-6 and abs(point_y - anchor_y) < 1e-6:
+            continue
+        if candidate_box.x0 <= point_x <= candidate_box.x1 and candidate_box.y0 <= point_y <= candidate_box.y1:
+            hits += 1
+    return hits
+
+
+def _candidate_constraints(
+    candidate_box,
+    occupied_boxes: list,
+    axes_box,
+    legend_box,
+    curve_points,
+    anchor_display,
+) -> tuple[float, float, float, int]:
     outside = _bbox_outside_amount(candidate_box, axes_box)
     occupied_overlap = sum(_bbox_overlap_area(candidate_box, occupied) for occupied in occupied_boxes)
     legend_overlap = 0.0 if legend_box is None else _bbox_overlap_area(candidate_box, legend_box)
-    return outside, occupied_overlap, legend_overlap
+    curve_overlap = _curve_overlap_count(candidate_box, curve_points, anchor_display)
+    return outside, occupied_overlap, legend_overlap, curve_overlap
 
 
 def _annotation_rank_score(
@@ -176,13 +191,7 @@ def _annotation_rank_score(
     curve_points: list[tuple[float, float]],
 ) -> float:
     dx, dy = offset
-    padded_box = candidate_box.expanded(1.08, 1.16)
-    curve_hits = sum(
-        1
-        for point_x, point_y in curve_points
-        if padded_box.x0 <= point_x <= padded_box.x1 and padded_box.y0 <= point_y <= padded_box.y1
-    )
-    score = 24.0 * curve_hits
+    score = 0.0
 
     x0, x1 = axis.get_xlim()
     span = x1 - x0
@@ -205,6 +214,7 @@ def _annotation_fallback_score(
     outside: float,
     occupied_overlap: float,
     legend_overlap: float,
+    curve_overlap: int,
 ) -> float:
     score = rank_score
     if outside > 0:
@@ -213,6 +223,8 @@ def _annotation_fallback_score(
         score += 500_000.0 + 100.0 * occupied_overlap
     if legend_overlap > 0:
         score += 400_000.0 + 100.0 * legend_overlap
+    if curve_overlap > 0:
+        score += 600_000.0 + 10_000.0 * curve_overlap
     return score
 
 
@@ -232,6 +244,7 @@ def _place_annotation(
     legend = axis.get_legend()
     legend_box = None if legend is None else legend.get_window_extent(renderer).expanded(1.03, 1.08)
     curve_points = _curve_display_points(axis)
+    anchor_display = tuple(float(value) for value in axis.transData.transform(annotation.xy))
 
     valid_candidates = []
     fallback_candidates = []
@@ -244,11 +257,13 @@ def _place_annotation(
             _CALLOUT_CLEARANCE_X,
             _CALLOUT_CLEARANCE_Y,
         )
-        outside, occupied_overlap, legend_overlap = _candidate_constraints(
+        outside, occupied_overlap, legend_overlap, curve_overlap = _candidate_constraints(
             candidate_box,
             occupied_boxes,
             axes_box,
             legend_box,
+            curve_points,
+            anchor_display,
         )
         rank_score = _annotation_rank_score(
             axis,
@@ -264,9 +279,10 @@ def _place_annotation(
             outside,
             occupied_overlap,
             legend_overlap,
+            curve_overlap,
         )
         fallback_candidates.append((fallback_score, order, offset))
-        if outside <= 0 and occupied_overlap <= 0 and legend_overlap <= 0:
+        if outside <= 0 and occupied_overlap <= 0 and legend_overlap <= 0 and curve_overlap == 0:
             valid_candidates.append((rank_score, order, offset))
 
     _, _, best_offset = min(valid_candidates or fallback_candidates)
@@ -295,7 +311,7 @@ def _annotate_characteristic(
 ) -> None:
     x = float(x_quantity.magnitude)
     y = float(y_quantity.magnitude)
-    text = f"x = {_quantity_label(x_quantity)}\n{response_label} = {_quantity_label(y_quantity, moment=inverted)}"
+    text = _coordinate_label(x, y)
     annotation = _create_annotation(axis, text, x, y, _ANNOTATION_CANDIDATES[0], line_color)
     _place_annotation(
         annotation,
