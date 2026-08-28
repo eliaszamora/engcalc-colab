@@ -128,5 +128,5 @@ envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
     assert len(figure.texts) == 0
     assert axis.get_title() == "|V(x)| envelope"
     labels = [text.get_text() for text in axis.texts]
-    assert "x = 0.00 m\n|V| = 9.00 kN" in labels
+    assert "(0, 9)" in labels
     assert not any("Magnitude envelope" in label for label in labels)
