@@ -304,11 +304,109 @@ def _characteristic_panel_text(result: PlotResult) -> str:
     return "\n".join(lines).rstrip()
 
 
+_PANEL_CORNERS = ("upper right", "upper left", "lower right", "lower left")
+
+
+def _panel_footprint(text: str) -> tuple[float, float]:
+    lines = text.splitlines() or [""]
+    max_chars = max(len(line) for line in lines)
+    width = min(0.46, max(0.22, 0.14 + 0.006 * max_chars))
+    height = min(0.72, max(0.16, 0.08 + 0.043 * len(lines)))
+    return width, height
+
+
+def _data_to_axes_fraction(axis, x: float, y: float) -> tuple[float, float]:
+    x0, x1 = axis.get_xlim()
+    y0, y1 = axis.get_ylim()
+    return (
+        0.5 if x1 == x0 else (x - x0) / (x1 - x0),
+        0.5 if y1 == y0 else (y - y0) / (y1 - y0),
+    )
+
+
+def _panel_rectangle(corner: str, width: float, height: float):
+    padding = 0.02
+    if corner == "upper right":
+        return (1.0 - padding - width, 1.0 - padding - height, 1.0 - padding, 1.0 - padding)
+    if corner == "upper left":
+        return (padding, 1.0 - padding - height, padding + width, 1.0 - padding)
+    if corner == "lower right":
+        return (1.0 - padding - width, padding, 1.0 - padding, padding + height)
+    return (padding, padding, padding + width, padding + height)
+
+
+def _choose_panel_corner(
+    axis,
+    data_xy: list[tuple[float, float]],
+    text: str,
+    legend_corner: str | None,
+) -> str:
+    width, height = _panel_footprint(text)
+    axes_points = [
+        _data_to_axes_fraction(axis, x, y)
+        for x, y in data_xy
+    ]
+
+    scored = []
+    for order, corner in enumerate(_PANEL_CORNERS):
+        left, bottom, right, top = _panel_rectangle(corner, width, height)
+        expanded = (left - 0.04, bottom - 0.04, right + 0.04, top + 0.04)
+        score = 1000 if corner == legend_corner else 0
+        for x, y in axes_points:
+            if left <= x <= right and bottom <= y <= top:
+                score += 3
+            if expanded[0] <= x <= expanded[2] and expanded[1] <= y <= expanded[3]:
+                score += 1
+        scored.append((score, order, corner))
+
+    return min(scored)[2]
+
+
+def _add_characteristic_panel(
+    axis,
+    text: str,
+    data_xy: list[tuple[float, float]],
+    legend_corner: str | None = None,
+):
+    corner = _choose_panel_corner(
+        axis,
+        data_xy,
+        text,
+        legend_corner=legend_corner,
+    )
+    anchors = {
+        "upper right": (0.98, 0.98, "right", "top"),
+        "upper left": (0.02, 0.98, "left", "top"),
+        "lower right": (0.98, 0.02, "right", "bottom"),
+        "lower left": (0.02, 0.02, "left", "bottom"),
+    }
+    x, y, ha, va = anchors[corner]
+    return axis.text(
+        x,
+        y,
+        text,
+        transform=axis.transAxes,
+        ha=ha,
+        va=va,
+        fontsize=8.5,
+        zorder=8,
+        bbox={
+            "boxstyle": "round,pad=0.45",
+            "facecolor": axis.get_facecolor(),
+            "edgecolor": axis.spines["bottom"].get_edgecolor(),
+            "linewidth": 0.8,
+            "alpha": 0.94,
+        },
+    )
+
+
 def _render_multi_series(figure, axis, result: PlotResult) -> None:
     x_values = [float(value.magnitude) for value in result.x_values]
+    panel_data: list[tuple[float, float]] = []
 
     for series in result.series:
         y_values = [float(value.magnitude) for value in series.y_values]
+        panel_data.extend(zip(x_values, y_values))
         line = axis.plot(
             x_values,
             y_values,
@@ -335,7 +433,7 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
         alpha=0.75,
         zorder=2,
     )
-    axis.legend()
+    axis.legend(loc="upper right")
 
     moment = all(series.is_moment for series in result.series)
     if moment:
@@ -353,22 +451,13 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
     _style_axes(axis)
     axis.margins(x=0.02, y=0.12)
 
-    figure.text(
-        0.76,
-        0.50,
+    _add_characteristic_panel(
+        axis,
         _characteristic_panel_text(result),
-        ha="left",
-        va="center",
-        fontsize=8.5,
-        bbox={
-            "boxstyle": "round,pad=0.5",
-            "facecolor": axis.get_facecolor(),
-            "edgecolor": axis.spines["bottom"].get_edgecolor(),
-            "linewidth": 0.8,
-            "alpha": 0.96,
-        },
+        panel_data,
+        legend_corner="upper right",
     )
-    figure.tight_layout(rect=(0.0, 0.0, 0.73, 1.0))
+    figure.tight_layout()
 
 
 def _envelope_characteristic_panel_text(result: PlotResult) -> str:
@@ -398,9 +487,11 @@ def _envelope_characteristic_panel_text(result: PlotResult) -> str:
 
 def _render_envelope(figure, axis, result: PlotResult) -> None:
     x_values = [float(value.magnitude) for value in result.x_values]
+    panel_data: list[tuple[float, float]] = []
 
     for source_series in result.source_series:
         source_y = [float(value.magnitude) for value in source_series.y_values]
+        panel_data.extend(zip(x_values, source_y))
         axis.plot(
             x_values,
             source_y,
@@ -413,6 +504,8 @@ def _render_envelope(figure, axis, result: PlotResult) -> None:
     maximum_series, minimum_series = result.series
     maximum_y = [float(value.magnitude) for value in maximum_series.y_values]
     minimum_y = [float(value.magnitude) for value in minimum_series.y_values]
+    panel_data.extend(zip(x_values, maximum_y))
+    panel_data.extend(zip(x_values, minimum_y))
 
     maximum_line = axis.plot(
         x_values,
@@ -447,7 +540,7 @@ def _render_envelope(figure, axis, result: PlotResult) -> None:
         label="_zero",
         zorder=3,
     )
-    axis.legend(handles=[maximum_line, minimum_line])
+    axis.legend(handles=[maximum_line, minimum_line], loc="upper right")
 
     moment = maximum_series.is_moment
     if moment:
@@ -469,22 +562,13 @@ def _render_envelope(figure, axis, result: PlotResult) -> None:
     _style_axes(axis)
     axis.margins(x=0.02, y=0.12)
 
-    figure.text(
-        0.76,
-        0.50,
+    _add_characteristic_panel(
+        axis,
         _envelope_characteristic_panel_text(result),
-        ha="left",
-        va="center",
-        fontsize=8.5,
-        bbox={
-            "boxstyle": "round,pad=0.5",
-            "facecolor": axis.get_facecolor(),
-            "edgecolor": axis.spines["bottom"].get_edgecolor(),
-            "linewidth": 0.8,
-            "alpha": 0.96,
-        },
+        panel_data,
+        legend_corner="upper right",
     )
-    figure.tight_layout(rect=(0.0, 0.0, 0.73, 1.0))
+    figure.tight_layout()
 
 
 def render_plot(result: PlotResult):
