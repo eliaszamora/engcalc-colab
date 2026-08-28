@@ -371,12 +371,130 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
     figure.tight_layout(rect=(0.0, 0.0, 0.73, 1.0))
 
 
+def _envelope_characteristic_panel_text(result: PlotResult) -> str:
+    maximum_series, minimum_series = result.series
+    maximum_values = [float(value.magnitude) for value in maximum_series.y_values]
+    minimum_values = [float(value.magnitude) for value in minimum_series.y_values]
+    maximum_index = max(range(len(maximum_values)), key=maximum_values.__getitem__)
+    minimum_index = min(range(len(minimum_values)), key=minimum_values.__getitem__)
+    moment = maximum_series.is_moment
+
+    return "\n".join([
+        "Envelope characteristic values",
+        (
+            "max = "
+            f"{_quantity_label(maximum_series.y_values[maximum_index], moment=moment)}"
+            "    x = "
+            f"{_quantity_label(result.x_values[maximum_index])}"
+        ),
+        (
+            "min = "
+            f"{_quantity_label(minimum_series.y_values[minimum_index], moment=moment)}"
+            "    x = "
+            f"{_quantity_label(result.x_values[minimum_index])}"
+        ),
+    ])
+
+
+def _render_envelope(figure, axis, result: PlotResult) -> None:
+    x_values = [float(value.magnitude) for value in result.x_values]
+
+    for source_series in result.source_series:
+        source_y = [float(value.magnitude) for value in source_series.y_values]
+        axis.plot(
+            x_values,
+            source_y,
+            linewidth=1.0,
+            alpha=0.22,
+            label="_nolegend_",
+            zorder=1,
+        )
+
+    maximum_series, minimum_series = result.series
+    maximum_y = [float(value.magnitude) for value in maximum_series.y_values]
+    minimum_y = [float(value.magnitude) for value in minimum_series.y_values]
+
+    maximum_line = axis.plot(
+        x_values,
+        maximum_y,
+        linewidth=2.5,
+        alpha=1.0,
+        label=maximum_series.display_label,
+        zorder=4,
+    )[0]
+    minimum_line = axis.plot(
+        x_values,
+        minimum_y,
+        linewidth=2.5,
+        alpha=1.0,
+        label=minimum_series.display_label,
+        zorder=4,
+    )[0]
+
+    axis.fill_between(
+        x_values,
+        minimum_y,
+        maximum_y,
+        color=maximum_line.get_color(),
+        alpha=0.10,
+        zorder=2,
+    )
+    axis.axhline(
+        0.0,
+        linewidth=1.0,
+        color=axis.spines["bottom"].get_edgecolor(),
+        alpha=0.75,
+        label="_zero",
+        zorder=3,
+    )
+    axis.legend(handles=[maximum_line, minimum_line])
+
+    moment = maximum_series.is_moment
+    if moment:
+        axis.invert_yaxis()
+
+    axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
+    axis.set_ylabel(
+        _axis_label(
+            result.display_label,
+            maximum_series.y_values[0],
+            moment=moment,
+        )
+    )
+    axis.set_title(
+        f"{result.display_label} envelope",
+        pad=10,
+        fontweight="semibold",
+    )
+    _style_axes(axis)
+    axis.margins(x=0.02, y=0.12)
+
+    figure.text(
+        0.76,
+        0.50,
+        _envelope_characteristic_panel_text(result),
+        ha="left",
+        va="center",
+        fontsize=8.5,
+        bbox={
+            "boxstyle": "round,pad=0.5",
+            "facecolor": axis.get_facecolor(),
+            "edgecolor": axis.spines["bottom"].get_edgecolor(),
+            "linewidth": 0.8,
+            "alpha": 0.96,
+        },
+    )
+    figure.tight_layout(rect=(0.0, 0.0, 0.73, 1.0))
+
+
 def render_plot(result: PlotResult):
     """Create one closed Matplotlib figure from normalized EngCalc plot data."""
     import matplotlib.pyplot as plt
 
     figure, axis = plt.subplots()
-    if len(result.series) == 1:
+    if result.kind == "envelope":
+        _render_envelope(figure, axis, result)
+    elif len(result.series) == 1:
         _render_single_series(figure, axis, result)
     else:
         _render_multi_series(figure, axis, result)
