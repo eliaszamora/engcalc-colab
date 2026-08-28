@@ -37,7 +37,7 @@ jobs:
           python -m pip install -e '.[dev]'
           python -m pip install 'ipython>=8'
       - name: Run parser and plot grammar regressions
-        run: pytest -q tests/test_plot_parser.py tests/test_parser.py
+        run: pytest -q tests/test_plot_parser.py tests/test_parser.py tests/test_packaging.py
 
   numeric:
     runs-on: ubuntu-latest
@@ -99,4 +99,62 @@ jobs:
           python -m pip install -e '.[dev]'
           python -m pip install 'ipython>=8'
       - name: Run current full test suite
+        run: pytest -q
+
+  release-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install source-tree test dependencies
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pip install 'ipython>=8'
+      - name: Verify source tree before build
+        run: pytest -q
+      - name: Build the real EngCalc 0.4.0 wheel
+        run: |
+          rm -rf dist
+          python -m pip wheel . --no-deps -w dist
+          test -f dist/engcalc_colab-0.4.0-py3-none-any.whl
+      - name: Install wheel in a fresh environment
+        run: |
+          python -m venv /tmp/engcalc-v040-wheel
+          /tmp/engcalc-v040-wheel/bin/python -m pip install --upgrade pip
+          /tmp/engcalc-v040-wheel/bin/python -m pip install dist/engcalc_colab-0.4.0-py3-none-any.whl
+      - name: Smoke-test installed wheel
+        run: |
+          cd /tmp
+          /tmp/engcalc-v040-wheel/bin/python - <<'PY'
+          from engcalc_colab import __version__
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.plotting import render_plot
+
+          assert __version__ == "0.4.0"
+
+          engine = EngineeringEngine()
+          cell = """
+          M(x) = q*x*(L-x)/2
+          L := 6*m
+          plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m, 15*kN/m])
+          """
+          result = [engine.evaluate(stmt) for stmt in parse_cell(cell)][-1]
+          assert len(result.series) == 3
+          assert abs(result.series[-1].y_values[100].to("kN*m").magnitude - 67.5) < 1e-12
+
+          figure = render_plot(result)
+          axis = figure.axes[0]
+          assert axis.yaxis_inverted()
+          assert axis.get_legend() is not None
+          assert len(axis.get_legend().get_texts()) == 3
+          assert "Characteristic values" in "\n".join(
+              text.get_text() for text in figure.texts
+          )
+
+          print("EngCalc 0.4.0 wheel smoke PASS")
+          PY
+      - name: Re-run source suite after wheel verification
         run: pytest -q
