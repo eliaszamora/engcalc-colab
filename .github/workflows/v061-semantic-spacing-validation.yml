@@ -13,37 +13,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply semantic spacing implementation once
+      - name: Restore renderer baseline and apply semantic spacing
         run: |
+          git fetch origin 312fbcb5381cb282930a363481e05ad16cfdbaef --depth=1
+          git show 312fbcb5381cb282930a363481e05ad16cfdbaef:src/engcalc_colab/renderer.py > src/engcalc_colab/renderer.py
+
           python - <<'PY'
           from pathlib import Path
+          from textwrap import dedent
 
           path = Path("src/engcalc_colab/renderer.py")
           text = path.read_text()
-          old = '''def render_aligned_results(results: list[CalculationResult], *, settings: RenderSettings | None = None) -> str:
-              """Render all calculation groups with one consistent MathJax array layout."""
-              if not results:
-                  return ""
+          start = text.index("def render_aligned_results(")
+          end = text.index("\n\ndef render_result(", start)
 
-              active_settings = settings or _DEFAULT_RENDER_SETTINGS
-              rows: list[str] = []
-              for result_index, result in enumerate(results):
-                  result_rows = _display_rows(result, active_settings)
-
-                  if result_index:
-                      spacing = "16pt" if result.statement.blank_before else "8pt"
-                      rows.append(rf"\\\\[{spacing}]")
-                  rows.append(result_rows[0])
-
-                  for continuation_row in result_rows[1:]:
-                      rows.append(r"\\\\[2pt]")
-                      rows.append(continuation_row)
-
-              body = " ".join(rows)
-              return rf"\\hspace{{0.2em}}\\begin{{array}}{{lcl}} {body} \\end{{array}}"
-          '''.replace("              ", "")
-
-          new = '''def _stage_spacing_sequence(stage_lengths: list[int]) -> list[str]:
+          new_block = dedent(r'''
+          def _stage_spacing_sequence(stage_lengths: list[int]) -> list[str]:
               """Return semantic gaps: 4 pt within one stage and 8 pt between stages."""
               spacings: list[str] = []
               row_seen = False
@@ -138,9 +123,9 @@ jobs:
                   else:
                       input_latex = _latex(display_input)
                       input_candidate = (
-                          rf"\\displaystyle {lhs} & = & \\displaystyle {input_latex}"
+                          rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"
                           if lhs is not None
-                          else rf" & & \\displaystyle {input_latex}"
+                          else rf" & & \displaystyle {input_latex}"
                       )
                       input_stage_length = 1
                       if _latex_visual_width(input_candidate) > _COMPLETE_ROW_VISUAL_BUDGET:
@@ -172,7 +157,7 @@ jobs:
 
                   if result_index:
                       spacing = "16pt" if result.statement.blank_before else "8pt"
-                      rows.append(rf"\\\\[{spacing}]")
+                      rows.append(rf"\\[{spacing}]")
                   rows.append(result_rows[0])
 
                   internal_spacings = _internal_row_spacings(
@@ -184,26 +169,21 @@ jobs:
                       internal_spacings,
                       result_rows[1:],
                   ):
-                      rows.append(rf"\\\\[{spacing}]")
+                      rows.append(rf"\\[{spacing}]")
                       rows.append(continuation_row)
 
               body = " ".join(rows)
-              return rf"\\hspace{{0.2em}}\\begin{{array}}{{lcl}} {body} \\end{{array}}"
-          '''.replace("          ", "")
+              return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
+          ''').lstrip("\n")
 
-          if old in text:
-              path.write_text(text.replace(old, new))
-          elif "def _internal_row_spacings(" not in text:
-              raise SystemExit("expected render_aligned_results block not found")
+          path.write_text(text[:start] + new_block + text[end:])
           PY
 
-          if ! git diff --quiet -- src/engcalc_colab/renderer.py; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src/engcalc_colab/renderer.py
-            git commit -m "fix: distinguish stage and continuation spacing"
-            git push
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/engcalc_colab/renderer.py
+          git commit -m "fix: repair semantic spacing implementation"
+          git push
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
