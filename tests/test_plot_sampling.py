@@ -1,3 +1,6 @@
+import ast
+
+import pytest
 import sympy as sp
 
 from engcalc_colab.errors import EngEvaluationError
@@ -31,6 +34,41 @@ def test_sampling_contains_201_points_and_both_endpoints():
     assert xs[0].to("m").magnitude == 0
     assert xs[-1].to("m").magnitude == 4
     assert ys[0].to("tonf").magnitude == 7.0
+
+
+def test_sampling_merges_fixed_parameter_override_without_mutating_context():
+    context = NumericContext()
+    context.assign("q", ast.parse("2.8*tonf/m", mode="eval"))
+    q, x = sp.symbols("q x")
+    override = 5 * context.ureg.kN / context.ureg.m
+
+    xs, ys = context.sample_symbolic(
+        q*x,
+        "x",
+        0 * context.ureg.m,
+        2 * context.ureg.m,
+        count=201,
+        overrides={"q": override},
+    )
+
+    assert ys[-1].to("kN").magnitude == pytest.approx(10.0)
+    assert context.get("q").to("tonf/m").magnitude == pytest.approx(2.8)
+
+
+def test_plot_variable_sample_wins_over_same_name_in_fixed_overrides():
+    context = NumericContext()
+    x = sp.Symbol("x")
+
+    xs, ys = context.sample_symbolic(
+        x,
+        "x",
+        0 * context.ureg.m,
+        2 * context.ureg.m,
+        count=3,
+        overrides={"x": 99 * context.ureg.m},
+    )
+
+    assert [value.to("m").magnitude for value in ys] == pytest.approx([0, 1, 2])
 
 
 def test_existing_plot_variable_value_is_not_mutated_by_sampling():
