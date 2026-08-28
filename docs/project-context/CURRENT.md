@@ -1,12 +1,14 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-28 after completing the EngCalc 0.6.1 visual-polish release gate on `feature/v0.6.1-visual-polish-2`; PR to `main` is the next step and must not be merged without explicit user approval after Colab visual QA._
+_Last updated: 2026-08-28 after opening PR #25 for EngCalc 0.6.1 visual polish. The implementation/release plan is complete; the PR must not be merged without explicit user approval after Colab visual QA._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Default branch `main` still contains EngCalc **0.6.0**. `main`'s `pyproject.toml` reports `version = "0.6.0"`.
 - Release candidate branch: `feature/v0.6.1-visual-polish-2`.
+- Open PR: **#25 — `release: EngCalc 0.6.1 visual polish`**, targeting `main`.
+- PR was opened from head `0dab8dcadc22ade1dfb43e7d2ab3961abcc0f9ae`; it is intentionally **not merged**.
 - Release candidate version: **0.6.1** in both `pyproject.toml` and `src/engcalc_colab/__init__.py`.
 - Final product/release-gate head: `18a51c78edf231639a42a39fa92716179e862af8`.
 - Final callout geometry correction: `da4524469108af25c9de7828abe99e50b74251b9`.
@@ -15,6 +17,7 @@ _Last updated: 2026-08-28 after completing the EngCalc 0.6.1 visual-polish relea
 - Legacy version assertions aligned to 0.6.1: `d1438bbb6083be4acb95879cd34b817480c18b5e`.
 - Temporary release workflow removed in `9ff5d7a2ef5200e3709fd24ac885c53a6a580c4e`.
 - Temporary visual-validation workflow removed in `6ecae51f8459aa17ba69442083d6536c3d7f5b8a`.
+- Final diff review after workflow cleanup: branch was **36 commits ahead, 0 behind `main`**, with only expected product, docs/spec/plan and test changes remaining.
 
 ## 0.6.1 approved behavior
 
@@ -121,18 +124,17 @@ Do not infer that a later roadmap milestone has started merely because 0.6.1 vis
 
 ## Exact next step
 
-1. Review the final branch diff against `main` after temporary workflow cleanup.
-2. Open PR `feature/v0.6.1-visual-polish-2` -> `main` with the exact validation evidence above.
-3. Do **not** merge the PR yet.
-4. In a fresh/restarted Colab runtime, install the feature branch and rerun the complete propped-cantilever exercise.
-5. Visually QA the long MathJax derivations, multi-series stage plots, signed/magnitude envelopes, point callouts and positive-down moment convention.
-6. Merge only after the user gives explicit approval.
-7. Treat automatic removal of Colab's per-cell output scrollbar as a separate host-integration follow-up unless the user explicitly asks to include it before merge.
+1. In a fresh/restarted Colab runtime, install `feature/v0.6.1-visual-polish-2` and verify `engcalc_colab.__version__ == "0.6.1"`.
+2. Rerun the complete propped-cantilever exercise used for the 0.6.1 visual gate.
+3. Visually QA the long MathJax derivations, multi-series stage plots, signed/magnitude envelopes, point callouts and positive-down moment convention.
+4. Inspect PR #25 if desired; **do not merge yet**.
+5. Merge PR #25 only after the user gives explicit approval of the Colab visual QA.
+6. Treat automatic removal of Colab's per-cell output scrollbar as a separate host-integration follow-up unless the user explicitly asks to reopen 0.6.1 scope before merge.
 
 ## How to resume in a new conversation
 
 Tell the new agent:
 
-> Continue EngCalc from `docs/project-context/CURRENT.md`. Read root `AGENTS.md`, verify GitHub state, inspect the open 0.6.1 PR and continue the exact next step. Do not merge without explicit approval.
+> Continue EngCalc from `docs/project-context/CURRENT.md`. Read root `AGENTS.md`, verify GitHub state, inspect PR #25 and continue the exact visual-QA step. Do not merge without explicit approval.
 
 The repository context file and Git history are authoritative for project continuity.
