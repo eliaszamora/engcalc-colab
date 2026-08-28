@@ -26,12 +26,24 @@ _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 
 
 @dataclass(frozen=True)
+class _ResolvedExpression:
+    source_label: str
+    display_label: str
+    signed_expression: object
+    comparison_expression: object
+    is_absolute: bool
+
+
+@dataclass(frozen=True)
 class _ResolvedResponseSeries:
     display_label: str
     variable: str
     x_values: tuple
     series: tuple[PlotSeries, ...]
+    source_series: tuple[PlotSeries, ...]
+    source_labels: tuple[str, ...]
     first_symbolic_expression: object
+    envelope_mode: str | None = None
 
 
 @dataclass(frozen=True)
@@ -45,6 +57,8 @@ class _PlotEvaluation:
     source_labels: tuple[str, ...] = ()
     governing_max: tuple[int, ...] | None = None
     governing_min: tuple[int, ...] | None = None
+    envelope_mode: str | None = None
+    governing_signed: tuple | None = None
 
 
 class EngineeringEngine:
@@ -121,6 +135,8 @@ class EngineeringEngine:
                     source_labels=plot_evaluation.source_labels,
                     governing_max=plot_evaluation.governing_max,
                     governing_min=plot_evaluation.governing_min,
+                    envelope_mode=plot_evaluation.envelope_mode,
+                    governing_signed=plot_evaluation.governing_signed,
                 )
 
             if evaluator.partial_numeric_evaluation is not None:
@@ -497,6 +513,45 @@ class _Evaluator(ast.NodeVisitor):
         )
         return resolved.first_symbolic_expression
 
+    def _resolve_response_expression(
+        self,
+        node: ast.AST,
+        variable: str,
+    ) -> _ResolvedExpression:
+        is_absolute = (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "abs"
+        )
+        if is_absolute:
+            self._require_arity("abs", node.args, 1, "expression")
+            signed_node = node.args[0]
+            signed_expression = self.visit(signed_node)
+            comparison_expression = sp.Abs(signed_expression)
+            source_label = self._plot_expression_label(
+                signed_node,
+                variable,
+                signed_expression,
+            )
+            display_label = f"|{source_label}|"
+        else:
+            signed_expression = self.visit(node)
+            comparison_expression = signed_expression
+            source_label = self._plot_expression_label(
+                node,
+                variable,
+                signed_expression,
+            )
+            display_label = source_label
+
+        return _ResolvedExpression(
+            source_label=source_label,
+            display_label=display_label,
+            signed_expression=signed_expression,
+            comparison_expression=comparison_expression,
+            is_absolute=is_absolute,
+        )
+
     def _resolve_response_series(
         self,
         node: ast.Call,
@@ -535,29 +590,43 @@ class _Evaluator(ast.NodeVisitor):
             end_quantity,
         )
 
-        symbolic_expressions = [self.visit(item) for item in expression_nodes]
-        source_labels = [
-            self._plot_expression_label(item, variable, symbolic_expression)
-            for item, symbolic_expression in zip(expression_nodes, symbolic_expressions)
+        resolved_expressions = [
+            self._resolve_response_expression(item, variable)
+            for item in expression_nodes
         ]
+        source_labels = [item.source_label for item in resolved_expressions]
 
         if node.keywords:
+            expression = resolved_expressions[0]
             raw_series, x_values = self._evaluate_response_sweep(
-                symbolic_expressions[0],
-                source_labels[0],
+                expression.comparison_expression,
+                expression.source_label,
                 variable,
                 start_quantity,
                 end_quantity,
                 node.keywords[0],
                 call_name=call_name,
             )
-            display_label = source_labels[0]
+            raw_source_series = raw_series
+            display_label = (
+                expression.display_label
+                if call_name == "plot"
+                else expression.source_label
+            )
         else:
             raw_series = []
+            raw_source_series = []
             x_values = None
-            for symbolic_expression, label in zip(symbolic_expressions, source_labels):
+            for expression in resolved_expressions:
                 series_x, y_values = self.engine.numeric_context.sample_symbolic(
-                    symbolic_expression,
+                    expression.comparison_expression,
+                    variable,
+                    start_quantity,
+                    end_quantity,
+                    count=201,
+                )
+                source_x, source_y_values = self.engine.numeric_context.sample_symbolic(
+                    expression.signed_expression,
                     variable,
                     start_quantity,
                     end_quantity,
@@ -567,15 +636,29 @@ class _Evaluator(ast.NodeVisitor):
                     x_values = series_x
                 raw_series.append(
                     PlotSeries(
-                        display_label=label,
+                        display_label=expression.display_label,
                         y_values=y_values,
-                        is_moment=self._is_moment_label(label),
+                        is_moment=self._is_moment_label(expression.source_label),
                     )
                 )
-            display_label = self._common_plot_label(source_labels, variable)
+                raw_source_series.append(
+                    PlotSeries(
+                        display_label=expression.source_label,
+                        y_values=source_y_values,
+                        is_moment=self._is_moment_label(expression.source_label),
+                    )
+                )
+            if call_name == "plot" and len(resolved_expressions) == 1:
+                display_label = resolved_expressions[0].display_label
+            else:
+                display_label = self._common_plot_label(source_labels, variable)
 
         series = self._normalize_response_series(
             tuple(raw_series),
+            call_name=call_name,
+        )
+        source_series = self._normalize_response_series(
+            tuple(raw_source_series),
             call_name=call_name,
         )
         if len(series) > 1:
@@ -585,12 +668,23 @@ class _Evaluator(ast.NodeVisitor):
                     f"{call_name} cannot mix moment and non-moment series on one axis"
                 )
 
+        envelope_mode = None
+        if call_name == "envelope":
+            absolute_flags = {item.is_absolute for item in resolved_expressions}
+            if absolute_flags == {True}:
+                envelope_mode = "magnitude"
+            elif absolute_flags == {False}:
+                envelope_mode = "signed"
+
         return _ResolvedResponseSeries(
             display_label=display_label,
             variable=variable,
             x_values=x_values,
             series=series,
-            first_symbolic_expression=symbolic_expressions[0],
+            source_series=source_series,
+            source_labels=tuple(source_labels),
+            first_symbolic_expression=resolved_expressions[0].comparison_expression,
+            envelope_mode=envelope_mode,
         )
 
     def _evaluate_response_sweep(
