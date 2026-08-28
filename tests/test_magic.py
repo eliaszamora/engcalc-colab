@@ -76,6 +76,20 @@ def test_eng_magic_returns_none_so_jupyter_does_not_echo_internal_results():
     assert result is None
 
 
+def test_magic_renders_consecutive_results_with_eight_point_spacing(monkeypatch):
+    import engcalc_colab.magic as magic_module
+
+    displayed = []
+    monkeypatch.setattr(magic_module, "display", displayed.append)
+
+    magics = magic_module.EngMagics(shell=None)
+    magics.eng("", "A = 1\nB = 2")
+
+    assert [type(item) for item in displayed] == [Math]
+    assert r"\\[8pt]" in displayed[0].data
+    assert r"\\[4pt]" not in displayed[0].data
+
+
 def test_magic_renders_blank_lines_inside_one_math_group(monkeypatch):
     import engcalc_colab.magic as magic_module
 
@@ -86,7 +100,8 @@ def test_magic_renders_blank_lines_inside_one_math_group(monkeypatch):
     magics.eng("", "A = 1\n\n\nB = 2")
 
     assert [type(item) for item in displayed] == [Math]
-    assert r"\\[8pt]" in displayed[0].data
+    assert r"\\[16pt]" in displayed[0].data
+    assert r"\\[8pt]" not in displayed[0].data
 
 
 def test_eng_reset_reports_general_state_clear(capsys):
