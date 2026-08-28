@@ -1,6 +1,6 @@
 # engcalc-colab
 
-`engcalc-colab` is a compact symbolic-calculation layer for Google Colab and Jupyter. You write engineering mathematics with `%%eng`; SymPy remains hidden behind the interface.
+`engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas and evaluate them later with physical units.
 
 ## Install in Google Colab
 
@@ -22,147 +22,96 @@ For a folder uploaded directly to Colab:
 %load_ext engcalc_colab
 ```
 
-## Google Colab side-by-side layout
+## Symbolic + numerical workflow
 
-Google Colab can place the code on the left and the output on the right for an individual cell. Put this Colab directive immediately below `%%eng`:
+Symbolic definitions use `=`. Numerical data use `:=`. The two contexts are intentionally separate: assigning a numerical value never overwrites the symbolic formula.
 
 ```text
 %%eng
-#@title { vertical-output: true }
+
+## Reacciones simbólicas
+
+V_B = 3*q*L/8
+V_A = 5*q*L/8
+M_A = q*L^2/8
+
+## Datos numéricos
+
+q := 2.8*tonf/m
+L := 4*m
+
+## Resultados numéricos
+
+numeric(V_B)
+numeric(V_A)
+numeric(M_A)
 ```
 
-The directive is cell-specific. Add it to each cell where you want the side-by-side layout, or duplicate a cell that already contains it. `engcalc-colab` ignores the line because it is a single-`#` comment.
+The symbolic namespace still contains:
+
+\[
+V_B=\frac{3qL}{8},\qquad
+V_A=\frac{5qL}{8},\qquad
+M_A=\frac{qL^2}{8}.
+\]
+
+The numerical context contains the independent data `q = 2.8 tonf/m` and `L = 4 m`. `numeric(...)` evaluates the existing symbolic expressions and renders the calculation as formula → numerical substitution → final quantity. For the example above:
+
+\[
+V_B=4.20\,\mathrm{tonf},\qquad
+V_A=7.00\,\mathrm{tonf},\qquad
+M_A=5.60\,\mathrm{tonf\,m}.
+\]
+
+Because the contexts are separate, this is valid:
+
+```text
+q := 3.5*tonf/m
+numeric(M_A)
+```
+
+The value changes while the symbolic definition `M_A = q*L^2/8` remains unchanged.
+
+## Numerical context and units
+
+Numeric assignments use:
+
+```text
+name := numeric_expression
+```
+
+A numeric expression may reference previously assigned numerical values and the supported unit aliases. Example:
+
+```text
+q := 2.8*tonf/m
+L := 4*m
+P := q*L
+```
+
+Supported unit aliases in v0.2.0:
+
+- length: `mm`, `cm`, `m`
+- force: `N`, `kN`, `kgf`, `tonf`
+- pressure/stress: `Pa`, `kPa`, `MPa`, `GPa`
+- other: `kg`, `s`, `rad`, `deg`
+
+EngCalc defines:
+
+\[
+1\,\mathrm{tonf}=9.80665\,\mathrm{kN}.
+\]
+
+Units are interpreted only inside the numerical context. A name such as `m` remains available as a normal symbolic identifier in symbolic expressions.
+
+`numeric(expr)` requires numerical values for every free symbol in the evaluated expression. Missing values produce a concise EngCalc error instead of a raw Pint traceback.
+
+Final numerical quantities are rendered with two decimal places in v0.2.0.
 
 ## Example — propped cantilever by the force method
 
 ```text
 %%eng
 #@title { vertical-output: true }
-
-M_0 = -q/2*(L-x)^2
-m_B = L-x
-
-Delta_B = integral(M_0*m_B/(E*I), x, 0, L)
-f_BB = integral(m_B^2/(E*I), x, 0, L)
-
-R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
-```
-
-Expected symbolic results:
-
-\[
-\Delta_B=-\frac{qL^4}{8EI},\qquad
-f_{BB}=\frac{L^3}{3EI},\qquad
-R_B=\frac{3qL}{8}.
-\]
-
-The same `%%eng` cell can be executed repeatedly. Variables used as the unknown in `solve(...)` remain symbolic during the solve even if that name already has a previous result in the notebook state.
-
-You do not write `symbols()`, `Eq()`, `sp.integrate()`, `sp.solve()[0]`, `display()`, or SymPy printer boilerplate.
-
-## v0.1 operations
-
-- `A = expression`
-- `M(x) = expression`
-- powers with `^`
-- automatic symbolic identifiers
-- invisible comments beginning with a single `#`
-- visible headings with `##` and `###`
-- `integral(expr, var, lower, upper)`
-- `diff(expr, var)` and `diff(expr, var, order)`
-- `solve(lhs = rhs, unknown)`
-- `sum(expr, index, lower, upper)`
-- `simplify(expr)`
-- `expand(expr)`
-- `factor(expr)`
-- `subs(expr, variable, value)`
-
-Definitions persist between `%%eng` cells. Reset only the engcalc symbolic state with:
-
-```text
-%eng_reset
-```
-
-## Complete command reference
-
-EngCalc v0.1.9 accepts the following cell and line magics, syntax, operators, and symbolic operations.
-
-### Notebook magics
-
-- `%%eng` — evaluate a whole cell with the EngCalc symbolic language.
-- `%eng_reset` — clear only EngCalc symbolic state (stored scalars, functions, and symbols).
-
-`%load_ext engcalc_colab` and `%reload_ext engcalc_colab` are IPython extension-management magics used to load/reload the package; they are not part of the EngCalc expression language itself.
-
-### Definitions and expressions
-
-- `A = expression` — scalar/symbolic assignment.
-- `M(x) = expression` — single-argument symbolic function definition.
-- `M(x)` — call a previously defined EngCalc function.
-- A standalone expression or supported operation may be written without assigning it.
-- Identifiers are created symbolically on first use; no `symbols()` declaration is required.
-
-### Arithmetic syntax
-
-- Addition: `a + b`
-- Subtraction: `a - b`
-- Multiplication: `a*b`
-- Division: `a/b`
-- Powers: `a^2` (recommended) or `a**2`
-- Unary signs: `+a`, `-a`
-- Parentheses: `( ... )`
-- Integer and decimal numeric constants are supported.
-
-### Symbolic operations
-
-- `integral(expr, var, lower, upper)` — definite integral.
-- `diff(expr, var)` — first derivative.
-- `diff(expr, var, order)` — derivative of arbitrary integer order.
-- `solve(lhs = rhs, unknown)` — solve one equation for one unknown; v0.1 requires a unique solution.
-- `solve(expr, unknown)` — interpreted as `expr = 0`.
-- `sum(expr, index, lower, upper)` — unevaluated indexed symbolic sum.
-- `simplify(expr)` — SymPy simplification.
-- `expand(expr)` — algebraic expansion.
-- `factor(expr)` — algebraic factorization.
-- `subs(expr, variable, value)` — symbolic substitution.
-- `eq(lhs, rhs)` — explicit symbolic equality; mainly useful internally or when an equality object is needed as an argument.
-
-### Engineering presentation syntax
-
-- `Sigma_F_y = ...` — renders the `Sigma_` prefix as engineering equilibrium notation, e.g. `\Sigma F_y`.
-- `# text` — invisible comment.
-- `## text` — visible section heading.
-- `### text` — visible subsection heading.
-- Blank line — adds a compact visual separation inside the current equation group.
-
-The restricted language does **not** currently support arbitrary Python, attributes, lists/dicts, keyword arguments, arbitrary library functions such as `sin()`/`cos()`, matrices as a dedicated syntax, or physical units inside `%%eng`.
-
-## Visible calculation headings
-
-Inside `%%eng`, a single `#` remains an invisible comment. Use `##` for a visible calculation title and `###` for a smaller visible subtitle:
-
-```text
-%%eng
-
-# This comment is not rendered
-## Cálculo de reacciones
-
-Sigma_F_y = 0
-V_A = q*L
-
-### Equilibrio de momentos
-Sigma_M_A = 0
-M_A = q*L^2/2
-```
-
-Heading text is displayed as text, not interpreted as executable code. Level-2 headings (`##`) have stronger visual separation than level-3 headings (`###`) so calculation states and subsections remain easy to scan.
-
-## Compact aligned equation blocks
-
-Consecutive equations between headings are rendered as one three-column mathematical block: the left-hand expressions are left-aligned, the assignment equal signs share a centered vertical column, and the right-hand expressions are left-aligned. Routine rows use a comfortable 4 pt separation, and a blank line in the source becomes an 8 pt internal row gap instead of a separate notebook output block. The source syntax does not change:
-
-```text
-%%eng
 
 ## Estado 0: cargas reales
 ### Reacciones de la estructura base
@@ -177,13 +126,105 @@ M_A0 = q*L^2/2
 
 V_0(x) = R_A0 - q*x
 M_0(x) = -M_A0 + R_A0*x - q*x^2/2
+
+## Estado 1: carga unitaria en B
+### Reacciones de la estructura base
+
+Sigma_F_y_1 = 0
+R_A1 = -1
+
+Sigma_M_A_1 = 0
+M_A1 = -L
+
+### Fuerzas internas
+
+V_1(x) = R_A1
+M_1(x) = -M_A1 + R_A1*x
+
+## Compatibilidad
+
+Delta_B0 = integral(M_0(x)*M_1(x), x, 0, L)
+f_11 = integral(M_1(x)^2, x, 0, L)
+V_B = -Delta_B0/f_11
+
+V_A = q*L - V_B
+M_A = q*L^2/2 - V_B*L
+
+## Datos numéricos
+
+q := 2.8*tonf/m
+L := 4*m
+
+## Resultados
+
+numeric(V_B)
+numeric(V_A)
+numeric(M_A)
 ```
 
-The output is composed as one compact three-column `array` block per subsection, rather than one independent Jupyter/Colab display object per equation.
+## Complete command reference
 
-## Engineering factor order
+### Notebook magics
 
-For commutative products, the renderer uses an engineering-oriented display order without changing the symbolic mathematics. Numeric coefficients come first, then factors whose symbol names begin with lowercase letters, then factors whose symbol names begin with uppercase letters. For example:
+- `%%eng` — evaluate a whole EngCalc cell.
+- `%eng_reset` — clear both the symbolic and numerical EngCalc state.
+
+`%load_ext engcalc_colab` and `%reload_ext engcalc_colab` are IPython extension-management magics, not EngCalc expression commands.
+
+### Symbolic definitions and expressions
+
+- `A = expression` — scalar/symbolic assignment.
+- `M(x) = expression` — single-argument symbolic function definition.
+- `M(x)` — call a previously defined EngCalc function.
+- standalone expressions are supported.
+- identifiers are created symbolically on first use; no `symbols()` declaration is required.
+
+### Numerical definitions and evaluation
+
+- `q := 2.8*tonf/m` — associate a unit-aware numerical value with `q` without changing symbolic `q`.
+- `P := q*L` — numerical values may reference earlier numerical values.
+- `numeric(V_B)` — evaluate a named symbolic result with the current numerical context.
+- `numeric(q*L^2/8)` — evaluate a direct symbolic expression.
+- `numeric(V(x))` — evaluate a user-defined symbolic function when the required numerical symbols, including `x`, have values.
+
+### Arithmetic syntax
+
+- addition: `a + b`
+- subtraction: `a - b`
+- multiplication: `a*b`
+- division: `a/b`
+- powers: `a^2` or `a**2`
+- unary signs: `+a`, `-a`
+- parentheses: `( ... )`
+- integer and decimal constants
+
+### Symbolic operations
+
+- `integral(expr, var, lower, upper)` — definite integral.
+- `diff(expr, var)` — first derivative.
+- `diff(expr, var, order)` — higher derivative.
+- `solve(lhs = rhs, unknown)` — solve one equation for one unknown.
+- `solve(expr, unknown)` — interpreted as `expr = 0`.
+- `sum(expr, index, lower, upper)` — unevaluated indexed symbolic sum.
+- `simplify(expr)` — simplify.
+- `expand(expr)` — expand.
+- `factor(expr)` — factor.
+- `subs(expr, variable, value)` — symbolic substitution.
+- `eq(lhs, rhs)` — explicit symbolic equality, mainly for advanced/internal use.
+
+`solve(...)` currently requires exactly one solution; zero or multiple solutions produce a concise EngCalc error.
+
+## Engineering presentation syntax
+
+- `Sigma_F_y = ...` — renders the `Sigma_` prefix as engineering equilibrium notation such as `\Sigma F_y`.
+- `# text` — invisible comment.
+- `## text` — visible section heading.
+- `### text` — visible subsection heading.
+- blank line — adds a larger visual separation inside the current equation group.
+
+Consecutive calculation rows are rendered in a three-column mathematical block: left expressions are left-aligned, equal signs share one centered vertical column, and right expressions are left-aligned. Consecutive rows use 4 pt spacing; a source blank line uses 8 pt.
+
+For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics: numeric coefficient first, then lowercase-leading symbols, then uppercase-leading symbols. Examples include:
 
 \[
 M_A=\frac{qL^2}{2},\qquad
@@ -191,60 +232,34 @@ R_B=\frac{3qL}{8},\qquad
 D=\frac{qL^4}{8EI}.
 \]
 
-This factor ordering is only a presentation rule for products. It does not reorder additive expressions such as `x^2 + 2*x + 1`.
+## Google Colab side-by-side layout
 
-## Equilibrium notation and indexed sums
-
-For engineering equilibrium equations, use a target beginning with `Sigma_`. The prefix is rendered as an uppercase Greek sigma followed by the engineering quantity, rather than as a subscript on sigma:
-
-```text
-%%eng
-
-Sigma_F_x = R_Ax - P_x
-Sigma_F_y = R_Ay + R_By - P_y
-Sigma_M_A = R_By*L - P_y*a
-```
-
-These targets render as `\Sigma F_x`, `\Sigma F_y`, and `\Sigma M_A`.
-
-For an indexed mathematical summation, use:
-
-```text
-%%eng
-
-S = sum(F_i, i, 0, n)
-```
-
-which renders as
-
-\[
-S=\sum_{i=0}^{n}F_i.
-\]
-
-`sum(...)` is intentionally kept as a symbolic `Sum` instead of being automatically collapsed. This preserves indexed engineering notation such as `F_i` without incorrectly treating it as a constant with respect to `i`.
-
-## Example — internal forces and critical point
+Google Colab can place code on the left and output on the right for an individual cell. Put this Colab directive immediately below `%%eng`:
 
 ```text
 %%eng
 #@title { vertical-output: true }
-
-## Fuerzas internas
-V(x) = R_A - q*x
-x_crit = solve(V(x) = 0, x)
-
-M(x) = M_A + R_A*x - q*x^2/2
-M_crit = subs(M(x), x, x_crit)
-dM = diff(M(x), x)
 ```
 
-## Units
-
-The symbolic v0.1 engine intentionally has no physical-unit propagation. Use Pint + Handcalcs for numerical substitution with units, and anaStruct/anaStruct Plus for structural-analysis verification.
+EngCalc ignores the directive because it begins with a single `#`.
 
 ## Safety
 
-`%%eng` uses a restricted AST evaluator. Raw cell text is never forwarded to unrestricted Python `eval` or `exec`. Attribute access and arbitrary Python calls are rejected. Visible heading text is HTML-escaped before display.
+`%%eng` uses restricted AST evaluators for both symbolic and numerical expressions. Raw cell text is never passed to unrestricted Python `eval` or `exec`. Attribute access, arbitrary Python calls, keyword arguments and unsupported syntax are rejected. Visible heading text is HTML-escaped before display.
+
+## Current limitations
+
+v0.2.0 intentionally does not yet provide:
+
+- target-unit conversion in `numeric(...)`
+- configurable numerical precision
+- keyword arguments
+- arrays/tables or dedicated matrix syntax
+- arbitrary Python execution or arbitrary library functions
+- multi-solution `solve(...)`
+- full LaTeX parsing
+
+These are separate future milestones rather than hidden behavior in 0.2.0.
 
 ## Development
 
@@ -253,4 +268,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.1.9`.
+Version: `0.2.0`.

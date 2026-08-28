@@ -5,7 +5,15 @@ import ast
 import sympy as sp
 
 from .errors import AmbiguousSolveError, EngCalcError, EngEvaluationError, EngSyntaxError
-from .models import EvaluationResult, ParsedStatement, UserFunction
+from .models import (
+    EvaluationResult,
+    NumericAssignmentResult,
+    NumericEvaluationResult,
+    ParsedNumericAssignment,
+    ParsedStatement,
+    UserFunction,
+)
+from .numeric import NumericContext
 
 
 class EngineeringEngine:
@@ -13,11 +21,13 @@ class EngineeringEngine:
         self.namespace: dict[str, sp.Expr] = {}
         self.functions: dict[str, UserFunction] = {}
         self.symbols: dict[str, sp.Symbol] = {}
+        self.numeric_context = NumericContext()
 
     def reset(self) -> None:
         self.namespace.clear()
         self.functions.clear()
         self.symbols.clear()
+        self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
         if name not in self.symbols:
@@ -29,9 +39,22 @@ class EngineeringEngine:
             return self.namespace[name]
         return self.resolve_symbol(name)
 
-    def evaluate(self, statement: ParsedStatement) -> EvaluationResult:
+    def evaluate(
+        self,
+        statement: ParsedStatement | ParsedNumericAssignment,
+    ) -> EvaluationResult | NumericAssignmentResult | NumericEvaluationResult:
         evaluator = _Evaluator(self)
         try:
+            if isinstance(statement, ParsedNumericAssignment):
+                quantity = self.numeric_context.assign(
+                    statement.target,
+                    statement.expression,
+                )
+                return NumericAssignmentResult(
+                    statement=statement,
+                    quantity=quantity,
+                )
+
             if statement.target is not None:
                 if statement.parameter is None and statement.target in self.functions:
                     raise EngEvaluationError(
@@ -43,6 +66,21 @@ class EngineeringEngine:
                     )
 
             value = evaluator.visit(statement.expression.body)
+            if evaluator.numeric_evaluation is not None:
+                (
+                    symbolic_expression,
+                    substitutions,
+                    quantity,
+                    display_name,
+                ) = evaluator.numeric_evaluation
+                return NumericEvaluationResult(
+                    statement=statement,
+                    symbolic_expression=symbolic_expression,
+                    substitutions=substitutions,
+                    quantity=quantity,
+                    display_name=display_name,
+                )
+
             if statement.target is not None:
                 if statement.parameter is not None:
                     self.resolve_name(statement.parameter)
@@ -72,6 +110,7 @@ class _Evaluator(ast.NodeVisitor):
     def __init__(self, engine: EngineeringEngine) -> None:
         self.engine = engine
         self.display_input = None
+        self.numeric_evaluation = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
 
     def generic_visit(self, node):
@@ -135,6 +174,22 @@ class _Evaluator(ast.NodeVisitor):
             symbolic_sum = sp.Sum(expr, (index, lower, upper))
             self.display_input = symbolic_sum
             return symbolic_sum
+
+        if name == "numeric":
+            self._require_arity(name, node.args, 1, "expression")
+            argument = node.args[0]
+            display_name = argument.id if isinstance(argument, ast.Name) else None
+            symbolic_expression = self.visit(argument)
+            substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
+                symbolic_expression
+            )
+            self.numeric_evaluation = (
+                symbolic_expression,
+                substitutions,
+                quantity,
+                display_name,
+            )
+            return symbolic_expression
 
         if name == "solve":
             self._require_arity(name, node.args, 2, "equation, unknown")
@@ -211,4 +266,5 @@ class _Evaluator(ast.NodeVisitor):
     @staticmethod
     def _require_arity(name: str, args: list, count: int, signature: str) -> None:
         if len(args) != count:
-            raise EngEvaluationError(f"{name} expects {count} arguments: {signature}")
+            noun = "argument" if count == 1 else "arguments"
+            raise EngEvaluationError(f"{name} expects {count} {noun}: {signature}")
