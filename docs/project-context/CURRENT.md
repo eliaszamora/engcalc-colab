@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-28 during EngCalc 0.6.0 release-candidate validation._
+_Last updated: 2026-08-28 after the EngCalc 0.6.0 symbolic-wrapping correction and final release gate._
 
 ## Current baseline
 
@@ -8,8 +8,9 @@ _Last updated: 2026-08-28 during EngCalc 0.6.0 release-candidate validation._
 - Default branch `main` is still EngCalc **0.5.0**.
 - Release-candidate branch: `feature/v0.6.0-abs-envelope-panel`.
 - Open PR: **#24**, `release: EngCalc 0.6.0 magnitude envelopes and in-plot panels`.
-- 0.6.0 was previously release-gated at 226 tests, but a newly reported symbolic MathJax wrapping regression is being corrected before merge. Do not reuse the old release-gate claim as final evidence after product code changes; rerun the gate.
-- Temporary validation workflow currently used for the wrapping correction: `.github/workflows/v060-symbolic-wrap-validation.yml`. Remove before release closure.
+- Runtime product correction for long symbolic MathJax output is commit `138e35cafa7d4427ac9831bbf57f894dd8fb3080`.
+- Final 0.6.0 release gate passed on commit `17da5c949885bf6c875c1c76a3e6a7c5644d8102`; commits after that gate only remove the temporary workflow and update project-context documentation.
+- Temporary validation workflow has been removed in cleanup commit `9872bf1dc6dbd253b073419bac8082edb960e3e9`.
 
 ## Approved behavior
 
@@ -28,73 +29,96 @@ _Last updated: 2026-08-28 during EngCalc 0.6.0 release-candidate validation._
 - 0.6.0 adds safe `abs(...)` and magnitude envelopes such as `envelope(abs(V1(x)), abs(V2(x)), x, 0, L)`.
 - Magnitude envelopes show one nonnegative governing magnitude curve while preserving signed source responses and the signed governing value internally.
 - Mixed absolute/signed sources in one envelope are rejected.
-- In 0.6.0 characteristic-value panels belong **inside the axes** and choose a low-occupancy corner while avoiding the legend corner. No right-side figure margin should be reserved for those panels.
+- Characteristic-value panels belong **inside the axes** and choose a low-occupancy corner while avoiding the legend corner. No right-side figure margin is reserved.
+
+### MathJax wrapping
+
+- Existing adaptive wrapping for numeric/partial results remains.
+- Long ordinary symbolic `EvaluationResult` expressions now use adaptive rows too.
+- Long direct expressions split on additive terms where possible.
+- Long staged operations such as `integral(...) -> evaluated result` separate the operation and result when they do not fit.
+- Long solve equalities can split their additive equation across rows and place the solved assignment on its own row.
+- Short symbolic expressions remain one row.
 
 ## Open issues / user feedback
 
-### 1. User Colab is currently running 0.5.0, not 0.6.0
+### 1. User Colab currently installs 0.5.0 from `main`
 
-The normal bootstrap installs the default branch:
+The normal bootstrap:
 
 ```python
 %pip install -q --upgrade git+https://github.com/eliaszamora/engcalc-colab.git
 ```
 
-Because `main` is still 0.5.0, this explains both observed symptoms:
+still installs 0.5.0 until PR #24 is merged. This explains the user's screenshots showing:
 
-- `engcalc: ... unsupported function 'abs'`;
-- characteristic-value panels still appearing outside the plot.
+- `unsupported function 'abs'`;
+- characteristic-value panels outside the plot.
 
-Do not diagnose these as failures of the validated 0.6.0 branch unless reproduced after installing the feature branch or after merging 0.6.0.
+For pre-merge visual QA use:
 
-### 2. Symbolic long-expression wrapping gap
+```python
+%pip install -q --upgrade "git+https://github.com/eliaszamora/engcalc-colab.git@feature/v0.6.0-abs-envelope-panel"
+```
 
-User screenshot shows long symbolic outputs for the propped-cantilever derivation overflowing horizontally. Root cause: adaptive additive MathJax wrapping currently applies to `NumericEvaluationResult` and `PartialNumericEvaluationResult`, but ordinary symbolic `EvaluationResult` goes through `_standard_result_row()` as one row.
+Restart the Colab runtime after changing installed EngCalc code, then `%load_ext engcalc_colab` and verify `engcalc_colab.__version__ == "0.6.0"`.
 
-Required correction before 0.6.0 merge:
+### 2. User visual QA still required for symbolic wrapping
 
-- extend adaptive row splitting to long symbolic assignments/functions;
-- break long multi-stage `display_input -> evaluated value` chains across rows when necessary;
-- preserve alignment and existing short-expression output.
+Automated tests prove row splitting structurally, but the user should rerun the propped-cantilever example in Colab from the feature branch and confirm the long `delta_B` / `R_B(q)` output is visually satisfactory at their notebook width.
 
-### 3. Excel chart comparison was initially framed incorrectly
+### 3. Excel chart comparison must be like-for-like
 
 The professor workbook contains different chart families:
 
-- moment stage chart uses **unfactored components**: construction dead (`Mpp construction`), use dead (`Mpp use`), use live (`Msc use`);
-- shear stage chart analogously uses `Vpp construction`, `Vpp use`, `Vsc use`;
-- design moment envelope uses `Mu max` / `Mu min`;
-- design shear envelope is based on `|Vu| max`.
+- stage moment chart: unfactored construction dead `M_C`, use dead `M_D`, use live `M_L`;
+- stage shear chart: unfactored construction dead `V_C`, use dead `V_D`, use live `V_L`;
+- design moment envelope: ultimate `M_UC` versus `M_UU` -> algebraic max/min;
+- design shear envelope: ultimate `V_UC` versus `V_UU` -> maximum absolute magnitude.
 
-The previous EngCalc demonstration `plot(M_UC(x), M_UU(x), ...)` and `plot(V_UC(x), V_UU(x), ...)` compared **factored ultimate combinations**, so those plots were not intended to reproduce the Excel's stage-component charts even though the envelope values matched the Excel numerically.
+The earlier EngCalc plots `plot(M_UC, M_UU)` / `plot(V_UC, V_UU)` were ultimate-combination comparison plots, not replicas of the Excel stage-component charts. For like-for-like stage plotting use:
 
-For a like-for-like validation, generate stage plots from construction dead + use dead + use live separately, then generate design envelopes from ultimate combinations.
+```text
+plot(M_C(x), M_D(x), M_L(x), x, 0, L)
+plot(V_C(x), V_D(x), V_L(x), x, 0, L)
+```
+
+and for design envelopes use:
+
+```text
+envelope(M_UC(x), M_UU(x), x, 0, L)
+envelope(abs(V_UC(x)), abs(V_UU(x)), x, 0, L)
+```
 
 ## Validation evidence
 
-### 0.6.0 before current wrapping correction
+### Symbolic-wrapping TDD
 
-Prior validated feature branch evidence:
+RED: new wrapping tests produced **2 failed, 227 passed** because long ordinary symbolic results remained one row.
 
-- source suite: 226 passed;
-- wheel: `engcalc_colab-0.6.0-py3-none-any.whl` built;
-- clean installed-wheel smoke from `/tmp`: PASS;
-- full suite against installed wheel: 226 passed with only a cache-permission warning;
-- repeated source suite: 226 passed.
+GREEN after commit `138e35c...`:
 
-This evidence predates the new symbolic-wrapping product correction and must be rerun after that correction.
+- focused wrapping suite: **7 passed**;
+- full source suite: **229 passed**.
+
+### Final 0.6.0 release gate
+
+GitHub Actions run `33191115724`, gate commit `17da5c949885bf6c875c1c76a3e6a7c5644d8102`:
+
+- source version: `0.6.0` PASS;
+- source full suite: **229 passed in 38.44 s**;
+- wheel built: `engcalc_colab-0.6.0-py3-none-any.whl`;
+- clean venv install: PASS;
+- installed-wheel smoke from `/tmp`: PASS, including magnitude envelope, in-axes panel and symbolic wrapping;
+- full suite against installed wheel: **229 passed in 37.94 s**;
+- repeated source suite: **229 passed in 38.50 s**;
+- temporary validation workflow cleanup: PASS.
+
+Only a nonfunctional Matplotlib font fallback message appeared during smoke (`semibold` -> weight 700).
 
 ### Professor Excel numerical validation
 
-A from-scratch EngCalc solution derived the propped-cantilever reactions through equilibrium/compatibility and matched all 21 Excel stations for:
-
-- `Mu max`;
-- `Mu min`;
-- `|Vu| max`;
-
-at numerical tolerance `1e-9`.
-
-The reference source used only problem data for solving; the Excel envelope columns were used only as final validation data.
+A from-scratch EngCalc solution derived the propped-cantilever reactions through equilibrium/compatibility and matched all 21 Excel stations for `Mu max`, `Mu min`, and `|Vu| max` at numerical tolerance `1e-9`. The Excel envelope columns were used only for final validation, not to construct the solution.
 
 ## Roadmap / active plan
 
@@ -109,13 +133,11 @@ Planned progression after closing 0.6.0:
 
 ## Exact next step
 
-1. Establish green baseline with the temporary wrapping workflow on `feature/v0.6.0-abs-envelope-panel`.
-2. Add failing tests reproducing long symbolic wrapping for the propped-cantilever expressions (`delta_B`, `R_B(q)` or equivalent).
-3. Implement minimal symbolic adaptive wrapping in `renderer.py`.
-4. Run focused tests + full source suite.
-5. Reproduce the structural example and visually/structurally verify the generated MathJax rows.
-6. Rerun the complete 0.6.0 release gate, remove temporary workflow, update this file with final SHAs/counts.
-7. Only then merge PR #24 when explicitly authorized.
+1. User installs the feature branch in a restarted Colab runtime and confirms version 0.6.0.
+2. User reruns the structural example to visually QA: in-axes characteristic panels, `abs` magnitude envelope and long symbolic wrapping.
+3. Use the corrected like-for-like stage plots (`M_C/M_D/M_L`, `V_C/V_D/V_L`) when comparing with the professor Excel.
+4. If visual QA passes, update PR #24 evidence/body as needed and merge 0.6.0 to `main` when authorized.
+5. Then begin roadmap Task 1 / EngCalc 0.6.1 from merged `main`.
 
 ## How to resume in a new conversation
 
