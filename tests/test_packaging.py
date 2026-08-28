@@ -13,8 +13,8 @@ def test_runtime_dependencies_do_not_manage_ipython_in_notebook_hosts():
     assert "ipython" not in names
 
 
-def test_pyproject_version_is_0_2_5():
-    assert _project_metadata()["version"] == "0.2.5"
+def test_pyproject_version_is_0_2_6():
+    assert _project_metadata()["version"] == "0.2.6"
 
 
 def test_pint_is_a_runtime_dependency():
