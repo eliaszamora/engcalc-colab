@@ -393,6 +393,10 @@ class _Evaluator(ast.NodeVisitor):
             parameter = self.engine.resolve_name(function.parameter)
             return sp.sympify(function.expression).subs(parameter, args[0])
 
+        if name == "abs":
+            self._require_arity(name, args, 1, "expression")
+            return sp.Abs(args[0])
+
         if name == "integral":
             self._require_arity(name, args, 4, "expression, variable, lower, upper")
             expr, var, lower, upper = args

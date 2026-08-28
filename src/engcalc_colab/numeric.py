@@ -277,6 +277,9 @@ class NumericContext:
                 exponent = exponent.to_base_units().magnitude
             return base ** exponent
 
+        if expr.func == sp.Abs and len(expr.args) == 1:
+            return abs(self._evaluate_sympy(expr.args[0], substitutions))
+
         raise EngEvaluationError(
             f"numeric evaluation does not support symbolic type '{type(expr).__name__}'"
         )
@@ -307,6 +310,16 @@ class _NumericAstEvaluator(ast.NodeVisitor):
 
     def visit_Name(self, node: ast.Name):
         return self.context.resolve_numeric_name(node.id)
+
+    def visit_Call(self, node: ast.Call):
+        if (
+            not isinstance(node.func, ast.Name)
+            or node.func.id != "abs"
+            or len(node.args) != 1
+            or node.keywords
+        ):
+            raise EngEvaluationError("unsupported numeric function")
+        return abs(self.visit(node.args[0]))
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
         value = self.visit(node.operand)
