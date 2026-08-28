@@ -1,4 +1,4 @@
-from IPython.display import HTML, Math
+from IPython.display import Math
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 
 
@@ -97,7 +97,7 @@ def test_eng_reset_reports_general_state_clear(capsys):
     assert capsys.readouterr().out.strip() == "engcalc state cleared"
 
 
-def test_magic_uses_responsive_html_when_group_contains_numeric_evaluation(monkeypatch):
+def test_magic_uses_mathjax_when_group_contains_numeric_evaluation(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
@@ -109,10 +109,7 @@ def test_magic_uses_responsive_html_when_group_contains_numeric_evaluation(monke
         "V_B = 3*q*L/8\nq := 2.8*tonf/m\nL := 4*m\nnumeric(V_B)",
     )
 
-    assert [type(item) for item in displayed] == [HTML]
-    html = displayed[0].data
-    assert "engcalc-responsive" in html
-    assert "flex-wrap:wrap" in html
-    assert "4.20" in html
-    assert "<math" in html
-    assert "$" not in html
+    assert [type(item) for item in displayed] == [Math]
+    latex = displayed[0].data
+    assert r"\begin{array}{lcl}" in latex
+    assert "4.20" in latex
