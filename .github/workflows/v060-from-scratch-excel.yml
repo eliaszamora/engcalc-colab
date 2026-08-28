@@ -1,0 +1,296 @@
+name: EngCalc 0.6.0 From-Scratch Excel
+
+on:
+  push:
+    branches:
+      - feature/v0.6.0-abs-envelope-panel
+
+jobs:
+  from-scratch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install EngCalc branch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . ipython
+      - name: Solve example from raw data with EngCalc
+        run: |
+          mkdir -p evidence_from_scratch
+          python - <<'PY'
+          from pathlib import Path
+          from math import isclose
+          import sympy as sp
+          import matplotlib.pyplot as plt
+          from matplotlib.figure import Figure
+          from IPython.display import Math
+
+          import engcalc_colab.magic as magic_module
+          from engcalc_colab import __version__
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.magic import EngMagics
+          from engcalc_colab.models import ParsedHeading, PlotResult
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.plotting import render_plot
+
+          assert __version__ == "0.6.0"
+
+          # Only raw problem data and load factors are entered here.
+          cell = r'''
+          ## Datos del problema
+          L := 4*m
+          qC := 2*tonf/m
+          qD := 4*tonf/m
+          qL := 3*tonf/m
+          gC := 1.4
+          gD := 1.2
+          gL := 1.6
+
+          ## Etapa de construcción — voladizo
+          R_Ac = solve(eq(R_Ac - qC*L, 0), R_Ac)
+          M_Ac = solve(eq(M_Ac + qC*L^2/2, 0), M_Ac)
+          V_c = R_Ac - integral(qC, s, 0, x)
+          M_c = M_Ac + integral(subs(V_c, x, s), s, 0, x)
+          V_C(x) = V_c
+          M_C(x) = M_c
+          numeric(R_Ac)
+          numeric(M_Ac)
+
+          ## Etapa de uso — viga empotrada / apuntalada
+          delta_B = integral((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)
+          R_B(q) = solve(eq(delta_B, 0), R_B_aux)
+          R_A(q) = solve(eq(R_A_aux + R_B(q) - q*L, 0), R_A_aux)
+          M_A(q) = solve(eq(M_A_aux + q*L^2/2 - R_B(q)*L, 0), M_A_aux)
+          V_prop = R_A(q) - integral(q, s, 0, x)
+          M_prop = M_A(q) + integral(subs(V_prop, x, s), s, 0, x)
+          x_peak = solve(eq(diff(M_prop, x), 0), x)
+
+          V_D(x) = subs(V_prop, q, qD)
+          M_D(x) = subs(M_prop, q, qD)
+          V_L(x) = subs(V_prop, q, qL)
+          M_L(x) = subs(M_prop, q, qL)
+
+          numeric(R_B(qD))
+          numeric(R_A(qD))
+          numeric(M_A(qD))
+          numeric(R_B(qL))
+          numeric(R_A(qL))
+          numeric(M_A(qL))
+          numeric(x_peak)
+          numeric(M_D(x_peak))
+          numeric(M_L(x_peak))
+
+          ## Combinaciones últimas
+          V_UC(x) = gC*V_C(x)
+          M_UC(x) = gC*M_C(x)
+          V_UU(x) = gD*V_D(x) + gL*V_L(x)
+          M_UU(x) = gD*M_D(x) + gL*M_L(x)
+          numeric(M_UC(0*m))
+          numeric(M_UU(0*m))
+          numeric(M_UU(x_peak))
+          numeric(V_UC(0*m))
+          numeric(V_UU(0*m))
+          numeric(V_UU(L))
+
+          ## Comparación de estados últimos
+          plot(M_UC(x), M_UU(x), x, 0, L)
+          envelope(M_UC(x), M_UU(x), x, 0, L)
+          plot(V_UC(x), V_UU(x), x, 0, L)
+          envelope(abs(V_UC(x)), abs(V_UU(x)), x, 0, L)
+          '''
+
+          out = Path("evidence_from_scratch")
+          out.joinpath("engcalc_from_scratch.eng").write_text(cell.strip() + "\n", encoding="utf-8")
+
+          # Execute the real %%eng path and capture its native figures + MathJax payloads.
+          captured = []
+          original_display = magic_module.display
+          magic_module.display = lambda obj: captured.append(obj)
+          try:
+              EngMagics(shell=None).eng("", cell)
+          finally:
+              magic_module.display = original_display
+
+          figures = [obj for obj in captured if isinstance(obj, Figure)]
+          maths = [obj.data for obj in captured if isinstance(obj, Math)]
+          assert len(figures) == 4, len(figures)
+          plot_names = [
+              "01_momentos_ultimos_etapas.png",
+              "02_envolvente_momentos.png",
+              "03_cortes_ultimos_etapas.png",
+              "04_envolvente_corte_absoluta.png",
+          ]
+          for fig, name in zip(figures, plot_names):
+              fig.savefig(out / name, dpi=170, bbox_inches="tight")
+          out.joinpath("engcalc_math_output.tex").write_text("\n\n".join(maths), encoding="utf-8")
+
+          # Independent programmatic inspection of the same EngCalc derivation.
+          engine = EngineeringEngine()
+          for item in parse_cell(cell):
+              if isinstance(item, ParsedHeading):
+                  continue
+              result = engine.evaluate(item)
+
+          q, L, x = map(sp.Symbol, ("q", "L", "x"))
+          RB_expr = sp.simplify(engine.functions["R_B"].expression)
+          RA_expr = sp.simplify(engine.functions["R_A"].expression)
+          MA_expr = sp.simplify(engine.functions["M_A"].expression)
+          V_expr = sp.simplify(engine.namespace["V_prop"])
+          M_expr = sp.simplify(engine.namespace["M_prop"])
+          x_peak_expr = sp.simplify(engine.namespace["x_peak"])
+
+          assert sp.simplify(RB_expr - 3*q*L/8) == 0
+          assert sp.simplify(RA_expr - 5*q*L/8) == 0
+          assert sp.simplify(MA_expr + q*L**2/8) == 0
+          assert sp.simplify(V_expr - (5*q*L/8 - q*x)) == 0
+          assert sp.simplify(M_expr - (-q*L**2/8 + 5*q*L*x/8 - q*x**2/2)) == 0
+          assert sp.simplify(x_peak_expr - 5*L/8) == 0
+
+          def eval_one(source):
+              return engine.evaluate(parse_cell(source)[0])
+
+          def qval(source, unit):
+              return eval_one(source).quantity.to(unit).magnitude
+
+          values = {
+              "RAc": qval("numeric(R_Ac)", "tonf"),
+              "MAc": qval("numeric(M_Ac)", "tonf*m"),
+              "RB_D": qval("numeric(R_B(qD))", "tonf"),
+              "RA_D": qval("numeric(R_A(qD))", "tonf"),
+              "MA_D": qval("numeric(M_A(qD))", "tonf*m"),
+              "RB_L": qval("numeric(R_B(qL))", "tonf"),
+              "RA_L": qval("numeric(R_A(qL))", "tonf"),
+              "MA_L": qval("numeric(M_A(qL))", "tonf*m"),
+              "x_peak": qval("numeric(x_peak)", "m"),
+              "MD_peak": qval("numeric(M_D(x_peak))", "tonf*m"),
+              "ML_peak": qval("numeric(M_L(x_peak))", "tonf*m"),
+              "MUC_A": qval("numeric(M_UC(0*m))", "tonf*m"),
+              "MUU_A": qval("numeric(M_UU(0*m))", "tonf*m"),
+              "MUU_peak": qval("numeric(M_UU(x_peak))", "tonf*m"),
+              "VUC_A": qval("numeric(V_UC(0*m))", "tonf"),
+              "VUU_A": qval("numeric(V_UU(0*m))", "tonf"),
+              "VUU_B": qval("numeric(V_UU(L))", "tonf"),
+          }
+
+          expected = {
+              "RAc": 8.0, "MAc": -16.0,
+              "RB_D": 6.0, "RA_D": 10.0, "MA_D": -8.0,
+              "RB_L": 4.5, "RA_L": 7.5, "MA_L": -6.0,
+              "x_peak": 2.5, "MD_peak": 4.5, "ML_peak": 3.375,
+              "MUC_A": -22.4, "MUU_A": -19.2, "MUU_peak": 10.8,
+              "VUC_A": 11.2, "VUU_A": 24.0, "VUU_B": -14.4,
+          }
+          for key, exp in expected.items():
+              assert isclose(values[key], exp, rel_tol=0.0, abs_tol=1e-9), (key, values[key], exp)
+
+          # Evaluate final EngCalc envelopes for pointwise comparison with Excel columns O/P/Q.
+          m_env = eval_one("envelope(M_UC(x), M_UU(x), x, 0, L)")
+          v_env = eval_one("envelope(abs(V_UC(x)), abs(V_UU(x)), x, 0, L)")
+          assert isinstance(m_env, PlotResult) and m_env.envelope_mode == "signed"
+          assert isinstance(v_env, PlotResult) and v_env.envelope_mode == "magnitude"
+
+          excel = [
+              (0.0, -19.2, -22.4, 24.0),
+              (0.2, -14.592, -20.216, 22.08),
+              (0.4, -10.368, -18.144, 20.16),
+              (0.6, -6.528, -16.184, 18.24),
+              (0.8, -3.072, -14.336, 16.32),
+              (1.0, 0.0, -12.6, 14.4),
+              (1.2, 2.688, -10.976, 12.48),
+              (1.4, 4.992, -9.464, 10.56),
+              (1.6, 6.912, -8.064, 8.64),
+              (1.8, 8.448, -6.776, 6.72),
+              (2.0, 9.6, -5.6, 5.6),
+              (2.2, 10.368, -4.536, 5.04),
+              (2.4, 10.752, -3.584, 4.48),
+              (2.5, 10.8, -3.15, 4.2),
+              (2.8, 10.368, -2.016, 3.36),
+              (3.0, 9.6, -1.4, 4.8),
+              (3.2, 8.448, -0.896, 6.72),
+              (3.4, 6.912, -0.504, 8.64),
+              (3.6, 4.992, -0.224, 10.56),
+              (3.8, 2.688, -0.056, 12.48),
+              (4.0, 0.0, 0.0, 14.4),
+          ]
+
+          lines = [
+              "EngCalc 0.6.0 — resolución DESDE CERO del Ej 01 del profesor",
+              "Inputs only: L=4 m; qC=2 tonf/m; qD=4 tonf/m; qL=3 tonf/m; factors 1.4 / 1.2 / 1.6",
+              "No M(x), V(x), reactions or envelope ordinates were supplied as inputs.",
+              "",
+              f"Derived RB(q) = {sp.sstr(RB_expr)}",
+              f"Derived RA(q) = {sp.sstr(RA_expr)}",
+              f"Derived MA(q) = {sp.sstr(MA_expr)}",
+              f"Derived V(x,q) = {sp.sstr(V_expr)}",
+              f"Derived M(x,q) = {sp.sstr(M_expr)}",
+              f"Derived x_peak = {sp.sstr(x_peak_expr)} = {values['x_peak']:.3f} m",
+              "",
+              "Numeric reactions / characteristic values:",
+              f"Construction: RA={values['RAc']:.3f} tonf, MA={values['MAc']:.3f} tonf*m",
+              f"Use dead: RB={values['RB_D']:.3f}, RA={values['RA_D']:.3f} tonf, MA={values['MA_D']:.3f} tonf*m, M+={values['MD_peak']:.3f} tonf*m",
+              f"Use live: RB={values['RB_L']:.3f}, RA={values['RA_L']:.3f} tonf, MA={values['MA_L']:.3f} tonf*m, M+={values['ML_peak']:.3f} tonf*m",
+              f"ULS: M_constr(A)={values['MUC_A']:.3f}, M_use(A)={values['MUU_A']:.3f}, M_use,max={values['MUU_peak']:.3f} tonf*m",
+              f"ULS shear: V_constr(A)={values['VUC_A']:.3f}, V_use(A)={values['VUU_A']:.3f}, V_use(B-)={values['VUU_B']:.3f} tonf",
+              "",
+              "Excel check: x | Mmax Excel/EngCalc | Mmin Excel/EngCalc | |V|max Excel/EngCalc",
+          ]
+          for xx, exp_max, exp_min, exp_v in excel:
+              idx = round(xx / 0.02)
+              got_max = m_env.series[0].y_values[idx].to("tonf*m").magnitude
+              got_min = m_env.series[1].y_values[idx].to("tonf*m").magnitude
+              got_v = v_env.series[0].y_values[idx].to("tonf").magnitude
+              assert isclose(got_max, exp_max, rel_tol=0, abs_tol=1e-9)
+              assert isclose(got_min, exp_min, rel_tol=0, abs_tol=1e-9)
+              assert isclose(got_v, exp_v, rel_tol=0, abs_tol=1e-9)
+              lines.append(f"{xx:3.1f} | {exp_max:8.3f}/{got_max:8.3f} | {exp_min:8.3f}/{got_min:8.3f} | {exp_v:7.3f}/{got_v:7.3f}")
+          lines += ["", "RESULT: PASS — equations derived by EngCalc and all 21 Excel stations match."]
+          out.joinpath("validation_from_scratch.txt").write_text("\n".join(lines), encoding="utf-8")
+
+          # Visual derivation summary generated from EngCalc's actual symbolic/numeric results.
+          summary = [
+              "ENGCALC 0.6.0 — EJ 01 RESUELTO DESDE CERO",
+              "",
+              "ENTRADAS (únicos valores entregados)",
+              "L = 4 m; construcción qC = 2 tonf/m; uso qD = 4 tonf/m; qL = 3 tonf/m",
+              "ULS: 1.4D (construcción), 1.2D + 1.6L (uso)",
+              "",
+              "1) CONSTRUCCIÓN — equilibrio + integración",
+              f"RAc = {values['RAc']:.2f} tonf; MAc = {values['MAc']:.2f} tonf·m",
+              "V_C(x) se obtiene integrando qC; M_C(x) se obtiene integrando V_C(x)",
+              "",
+              "2) USO — compatibilidad del puntal por trabajo virtual",
+              "0 = ∫[M0(s) + RB·mB(s)]·mB(s) ds    (EI constante cancela)",
+              f"EngCalc solve → RB(q) = {sp.sstr(RB_expr)}",
+              f"equilibrio → RA(q) = {sp.sstr(RA_expr)}",
+              f"momento en A → MA(q) = {sp.sstr(MA_expr)}",
+              f"integración → V(x,q) = {sp.sstr(V_expr)}",
+              f"integración → M(x,q) = {sp.sstr(M_expr)}",
+              f"diff + solve → x(M+) = {sp.sstr(x_peak_expr)} = {values['x_peak']:.2f} m",
+              "",
+              "3) RESULTADOS DE SERVICIO DERIVADOS",
+              f"D uso: RA={values['RA_D']:.2f}, RB={values['RB_D']:.2f} tonf; MA={values['MA_D']:.2f}; M+={values['MD_peak']:.3f} tonf·m",
+              f"L uso: RA={values['RA_L']:.2f}, RB={values['RB_L']:.2f} tonf; MA={values['MA_L']:.2f}; M+={values['ML_peak']:.3f} tonf·m",
+              "",
+              "4) ULS + ENVOLVENTES",
+              f"Momento: Mmax global = {values['MUU_peak']:.2f} tonf·m; Mmin global = {values['MUC_A']:.2f} tonf·m",
+              f"Corte: |V|max global = {values['VUU_A']:.2f} tonf (V_use(B−) = {values['VUU_B']:.2f} tonf conserva el signo internamente)",
+              "",
+              "VALIDACIÓN FINAL: 21/21 estaciones del Excel coinciden para Mmax, Mmin y |V|max.",
+          ]
+          fig = plt.figure(figsize=(12, 8.2), dpi=170)
+          fig.text(0.035, 0.965, "\n".join(summary), va="top", ha="left", family="monospace", fontsize=10.2, linespacing=1.34)
+          plt.axis("off")
+          fig.savefig(out / "00_resolucion_desde_cero.png", bbox_inches="tight")
+          plt.close(fig)
+
+          print("PASS: EngCalc derived the structural solution from raw data and matched all 21 Excel stations.")
+          PY
+      - name: Upload from-scratch evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-v060-from-scratch-excel
+          path: evidence_from_scratch/
+          if-no-files-found: error
