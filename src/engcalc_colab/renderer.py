@@ -322,8 +322,8 @@ def _responsive_stage(
     rhs_html: str,
     stage: str,
 ) -> str:
-    lhs = _responsive_single(lhs_latex) if lhs_latex else '<span class="engcalc-lhs"></span>'
-    eq = _responsive_single("=") if equals else '<span class="engcalc-eq"></span>'
+    lhs = _responsive_single(lhs_latex) if lhs_latex else ""
+    eq = _responsive_single("=") if equals else ""
     return (
         f'<div class="engcalc-stage" data-stage="{stage}">'
         f'<span class="engcalc-lhs">{lhs}</span>'
@@ -495,7 +495,7 @@ def _render_lhs(target: str | None, parameter: str | None) -> str | None:
     if target is None:
         return None
     if target.startswith("Sigma_") and len(target) > len("Sigma_"):
-        quantity = target[len("Sigma_\"):]
+        quantity = target[len("Sigma_"):]
         target_latex = rf"\Sigma {_latex(sp.Symbol(quantity))}"
     else:
         target_latex = _latex(sp.Symbol(target))
