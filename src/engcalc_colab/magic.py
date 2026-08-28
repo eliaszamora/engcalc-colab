@@ -14,8 +14,9 @@ from .models import (
     ParsedHeading,
     PartialNumericEvaluationResult,
 )
+from .native_math import render_responsive_native_results
 from .parser import parse_cell
-from .renderer import render_aligned_results, render_responsive_results
+from .renderer import render_aligned_results
 
 _HEADING_STYLE = {
     2: (
@@ -51,7 +52,7 @@ def _display_equation_group(results: list[CalculationResult]) -> None:
     if not results:
         return
     if _uses_responsive_numeric_layout(results):
-        display(HTML(render_responsive_results(results)))
+        display(HTML(render_responsive_native_results(results)))
     else:
         display(Math(render_aligned_results(results)))
 
