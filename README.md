@@ -24,7 +24,7 @@ v0.6.1 is a presentation-focused release. It does not change the structural math
 The release refines two parts of the notebook output:
 
 - **MathJax calculations** remain the single mathematical renderer. Formula, numerical-substitution and final-result stages are kept semantically separate and may wrap over several rows when required by the visual-width budget. Long additive expressions wrap at complete top-level terms rather than splitting mathematical fragments. Engineering identifiers such as `Sigma_F_y` retain their intended `\Sigma` rendering.
-- **Characteristic plot values** are attached directly to the sampled points they describe. Multi-series plots, signed envelopes and magnitude envelopes no longer use a separate characteristic-value panel. Callouts show the x coordinate and response ordinate, preserve the legend, and are placed with axes-, legend-, curve- and callout-aware collision avoidance.
+- **Characteristic plot values** are attached to the sampled points they describe using compact coordinate labels such as `(2.5, 3.15)`. Multi-series plots, signed envelopes and magnitude envelopes no longer use a separate characteristic-value panel. Labels contain no duplicated units, boxes or leader lines; their color follows the corresponding series, while placement avoids axes boundaries, the legend, sampled curves and other labels.
 
 For example:
 
@@ -299,9 +299,9 @@ Sweep values are local overrides and do not mutate stored numerical state. All s
 
 Presentation in v0.6.1:
 
-- a single series uses a line, translucent fill, endpoint/extrema markers and maximum/minimum point callouts;
-- multiple series use clean lines without overlapping area fills, an automatic legend, restrained extrema markers and point-attached maximum/minimum callouts for each curve;
-- each callout reports both x and ordinate, and the placement engine avoids the axes boundary, legend and already occupied callout regions before optimizing curve clearance.
+- a single series uses a line, translucent fill, endpoint/extrema markers and compact `(x, y)` labels at its maximum/minimum characteristic points;
+- multiple series use clean lines without overlapping area fills, an automatic legend, restrained extrema markers and compact `(x, y)` labels for each curve;
+- coordinate labels have no boxes, leader lines or repeated units; label color follows the corresponding series, and the placement engine avoids axes boundaries, the legend, other labels and sampled curve points.
 
 One `plot(...)` statement creates exactly one Matplotlib figure in source order between surrounding MathJax calculation groups.
 
@@ -353,7 +353,7 @@ The envelope figure:
 - emphasizes the upper and lower envelope boundaries;
 - lightly fills the region between signed envelope boundaries;
 - keeps the `y = 0` reference visible;
-- places the global maximum and minimum directly at their governing sampled points with x/ordinate callouts;
+- places compact `(x, y)` labels at the global maximum and minimum governing sampled points without boxes, units or leader lines;
 - keeps positive moment downward for moment envelopes.
 
 ## Absolute-value / magnitude envelopes
@@ -396,7 +396,7 @@ envelope(
 
 Every source in one envelope must use the same comparison mode. Mixing `abs(V_A(x))` with signed `V_B(x)` in the same envelope is rejected. There is no separate `abs_envelope(...)` alias.
 
-Magnitude-envelope figures emphasize one `|response|_max` boundary, fill from zero to that boundary, retain signed source curves as faint context and attach one callout to the global maximum-magnitude point.
+Magnitude-envelope figures emphasize one `|response|_max` boundary, fill from zero to that boundary, retain signed source curves as faint context and place one compact `(x, y)` label at the global maximum-magnitude point.
 
 ## Example — propped cantilever by the force method
 
@@ -596,7 +596,7 @@ v0.6.1 intentionally does not yet provide:
 
 ## Version notes
 
-- **0.6.1** — adaptive MathJax semantic-stage polish; point-attached, collision-aware characteristic callouts for multi-series plots and envelopes; no numerical-method changes.
+- **0.6.1** — adaptive MathJax semantic-stage polish; compact collision-aware `(x, y)` characteristic labels for plots and envelopes, without boxes, units or leader lines; no numerical-method changes.
 - **0.6.0** — `abs(...)` and magnitude envelopes.
 - **0.5.0** — sampled signed engineering envelopes.
 - **0.4.0** — multi-series plotting and restricted one-parameter sweeps.
