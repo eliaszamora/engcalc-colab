@@ -27,6 +27,20 @@ def moment_envelope_result():
     )[-1]
 
 
+def shear_magnitude_envelope_result():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "V_constr(x) = 6*kN - 4*kN/m*x\n"
+        "V_uso(x) = -9*kN + 1*kN/m*x\n"
+        "L := 2*m",
+    )
+    return eval_cell(
+        engine,
+        "envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)",
+    )[-1]
+
+
 def test_envelope_renders_original_source_curves_as_faint_background_context():
     axis = render_plot(moment_envelope_result()).axes[0]
     faint_lines = [
@@ -115,6 +129,51 @@ def test_envelope_keeps_zero_reference_line():
     axis = render_plot(moment_envelope_result()).axes[0]
     zero_lines = [line for line in axis.lines if line.get_label() == "_zero"]
     assert len(zero_lines) == 1
+
+
+def test_magnitude_envelope_shows_signed_sources_and_one_nonnegative_boundary():
+    axis = render_plot(shear_magnitude_envelope_result()).axes[0]
+    faint = [line for line in axis.lines if line.get_label() == "_nolegend_"]
+    boundaries = [line for line in axis.lines if line.get_label() == "|V|_max(x)"]
+
+    assert len(faint) == 2
+    assert any(min(line.get_ydata()) < 0 for line in faint)
+    assert len(boundaries) == 1
+    assert min(boundaries[0].get_ydata()) >= 0.0
+    assert axis.get_ylabel() == "V(x) [kN]"
+    assert axis.get_title() == "|V(x)| envelope"
+    assert not axis.yaxis_inverted()
+
+
+def test_magnitude_envelope_fill_and_legend():
+    axis = render_plot(shear_magnitude_envelope_result()).axes[0]
+    fills = [
+        collection for collection in axis.collections
+        if isinstance(collection, PolyCollection)
+    ]
+
+    assert len(fills) == 1
+    assert [text.get_text() for text in axis.get_legend().get_texts()] == [
+        "|V|_max(x)",
+    ]
+
+
+def test_magnitude_panel_reports_signed_governing_case_inside_axes():
+    figure = render_plot(shear_magnitude_envelope_result())
+    axis = figure.axes[0]
+    panels = [
+        text for text in axis.texts
+        if "Magnitude envelope" in text.get_text()
+    ]
+
+    assert len(figure.texts) == 0
+    assert len(panels) == 1
+    panel_text = panels[0].get_text()
+    assert "|max| = 9.00 kN" in panel_text
+    assert "x = 0.00 m" in panel_text
+    assert "signed = -9.00 kN" in panel_text
+    assert "governing = V_uso(x)" in panel_text
+    assert panels[0].get_transform() == axis.transAxes
 
 
 def test_envelope_render_returns_closed_figure():
