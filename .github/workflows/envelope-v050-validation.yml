@@ -1,0 +1,71 @@
+name: envelope-v050-validation
+
+on:
+  push:
+    branches:
+      - feature/envelope-v0.5.0
+  workflow_dispatch:
+
+env:
+  MPLBACKEND: Agg
+
+jobs:
+  full-suite-and-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install editable test environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest ipython build
+      - name: Run source full suite
+        run: pytest -q
+      - name: Build 0.5.0 wheel
+        run: |
+          rm -rf build dist
+          python -m build --wheel
+          test -f dist/engcalc_colab-0.5.0-py3-none-any.whl
+      - name: Install wheel in clean environment
+        run: |
+          python -m venv /tmp/engcalc-wheel-venv
+          /tmp/engcalc-wheel-venv/bin/python -m pip install --upgrade pip
+          /tmp/engcalc-wheel-venv/bin/python -m pip install dist/engcalc_colab-0.5.0-py3-none-any.whl pytest ipython
+      - name: Smoke test installed envelope wheel
+        run: |
+          cd /tmp
+          /tmp/engcalc-wheel-venv/bin/python - <<'PY'
+          import engcalc_colab
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.plotting import render_plot
+          assert engcalc_colab.__version__ == "0.5.0"
+          engine = EngineeringEngine()
+          cell = """
+          M(x) = q*x*(L-x)/2
+          L := 6*m
+          envelope(M(x), x, 0, L, q=[-10*kN/m, 5*kN/m, 15*kN/m])
+          """
+          result = [engine.evaluate(stmt) for stmt in parse_cell(cell)][-1]
+          assert result.kind == "envelope"
+          assert len(result.x_values) == 201
+          assert len(result.source_series) == 3
+          assert len(result.series) == 2
+          assert all(series.is_moment for series in result.series)
+          figure = render_plot(result)
+          axis = figure.axes[0]
+          assert axis.yaxis_inverted()
+          assert axis.get_title() == "M(x) envelope"
+          legend = axis.get_legend()
+          assert legend is not None
+          assert [text.get_text() for text in legend.get_texts()] == ["M_max(x)", "M_min(x)"]
+          panel = "\n".join(text.get_text() for text in figure.texts)
+          assert "Envelope characteristic values" in panel
+          print("installed-wheel envelope smoke: PASS")
+          PY
+      - name: Run full suite against installed wheel
+        run: |
+          cd /tmp
+          PYTHONPATH= /tmp/engcalc-wheel-venv/bin/python -m pytest -q -c /dev/null "$GITHUB_WORKSPACE/tests"
