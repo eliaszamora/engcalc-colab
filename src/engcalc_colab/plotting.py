@@ -9,6 +9,16 @@ from .models import PlotResult
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 _FORCE_UNITS = {"N", "kN", "MN", "GN", "kgf", "tonf"}
 _LENGTH_UNITS = {"mm", "cm", "m", "km"}
+_ANNOTATION_CANDIDATES = (
+    (16, 24),
+    (-16, 24),
+    (16, -24),
+    (-16, -24),
+    (26, 0),
+    (-26, 0),
+    (0, 28),
+    (0, -28),
+)
 
 
 def _is_moment_plot(label: str) -> bool:
@@ -18,11 +28,7 @@ def _is_moment_plot(label: str) -> bool:
 def _force_length_unit_order(unit: str) -> str:
     """Prefer the structural convention force·length for simple moments."""
     parts = unit.split("·")
-    if (
-        len(parts) == 2
-        and parts[0] in _LENGTH_UNITS
-        and parts[1] in _FORCE_UNITS
-    ):
+    if len(parts) == 2 and parts[0] in _LENGTH_UNITS and parts[1] in _FORCE_UNITS:
         return f"{parts[1]}·{parts[0]}"
     return unit
 
@@ -52,107 +58,157 @@ def _extreme_indices(values: list[float]) -> tuple[int, int]:
     return maximum, minimum
 
 
-def _horizontal_annotation_placement(
-    x: float,
-    x_min: float,
-    x_max: float,
-) -> tuple[int, str]:
-    span = x_max - x_min
-    if span <= 0:
-        return 16, "left"
-
-    fraction = (x - x_min) / span
-    if fraction >= 0.85:
-        return -16, "right"
-    return 16 if fraction <= 0.15 else 14, "left"
+def _response_symbol(label: str) -> str:
+    label = label.strip()
+    if label.startswith("|") and "|" in label[1:]:
+        return label
+    if " = " in label:
+        return label
+    return re.sub(r"\([^()]*\)$", "", label)
 
 
-def _vertical_annotation_placement(
-    label: str,
-    *,
-    inverted: bool,
-) -> tuple[int, str]:
-    """Move extrema callouts visually away from the diagram lobe."""
-    if label == "max = min":
-        return 26, "bottom"
+def _series_response_symbol(result: PlotResult, series) -> str:
+    label = series.display_label
+    if " = " in label:
+        return _response_symbol(result.display_label)
+    return _response_symbol(label)
 
-    mathematical_maximum = label == "max"
-    visually_above = (
-        mathematical_maximum and not inverted
-    ) or (
-        not mathematical_maximum and inverted
+
+def _data_to_axes_fraction(axis, x: float, y: float) -> tuple[float, float]:
+    x0, x1 = axis.get_xlim()
+    y0, y1 = axis.get_ylim()
+    return (
+        0.5 if x1 == x0 else (x - x0) / (x1 - x0),
+        0.5 if y1 == y0 else (y - y0) / (y1 - y0),
     )
 
-    if visually_above:
-        return 26, "bottom"
-    return -26, "top"
 
-
-def _extrema_are_close(
-    x_a: float,
-    y_a: float,
-    x_b: float,
-    y_b: float,
+def _annotation_candidate_score(
+    axis,
+    x: float,
+    y: float,
+    offset: tuple[int, int],
     *,
-    x_min: float,
-    x_max: float,
-    y_min: float,
-    y_max: float,
-) -> bool:
-    x_span = x_max - x_min
-    y_span = y_max - y_min
-    if x_span <= 0 or y_span <= 0:
-        return True
+    role: str,
+    inverted: bool,
+    occupied: list[tuple[float, float]],
+    legend_corner: str | None,
+) -> float:
+    x_fraction, y_fraction = _data_to_axes_fraction(axis, x, y)
+    dx, dy = offset
+    label_x = x_fraction + dx / 430.0
+    label_y = y_fraction + dy / 320.0
+    score = 0.0
 
-    relative_x = abs(x_a - x_b) / x_span
-    relative_y = abs(y_a - y_b) / y_span
-    return relative_x < 0.16 and relative_y < 0.18
+    # Keep annotation boxes inside the axes with a conservative margin.
+    if label_x < 0.05 or label_x > 0.95:
+        score += 200.0
+    if label_y < 0.06 or label_y > 0.94:
+        score += 200.0
+
+    # Endpoint labels should point inward.
+    if x_fraction <= 0.10 and dx <= 0:
+        score += 80.0
+    if x_fraction >= 0.90 and dx >= 0:
+        score += 80.0
+
+    # Preserve the established visual convention: labels move away from lobes.
+    if role in {"max", "min"}:
+        mathematical_maximum = role == "max"
+        visually_above = (mathematical_maximum and not inverted) or (not mathematical_maximum and inverted)
+        preferred_positive_dy = visually_above
+        if preferred_positive_dy and dy < 0:
+            score += 18.0
+        if not preferred_positive_dy and dy > 0:
+            score += 18.0
+
+    # Avoid the fixed upper-right legend region.
+    if legend_corner == "upper right" and label_x > 0.70 and label_y > 0.72:
+        score += 120.0
+
+    # Avoid previously placed annotation anchors.
+    for occupied_x, occupied_y in occupied:
+        distance = math.hypot(label_x - occupied_x, label_y - occupied_y)
+        if distance < 0.12:
+            score += 140.0
+        elif distance < 0.20:
+            score += 35.0
+
+    # Small displacement preference keeps leader lines compact.
+    score += 0.02 * math.hypot(dx, dy)
+    return score
 
 
-def _annotate_extreme(
+def _choose_annotation_offset(
+    axis,
+    x: float,
+    y: float,
+    *,
+    role: str,
+    inverted: bool,
+    occupied: list[tuple[float, float]],
+    legend_corner: str | None,
+) -> tuple[int, int, str, str, tuple[float, float]]:
+    candidates = []
+    for order, offset in enumerate(_ANNOTATION_CANDIDATES):
+        score = _annotation_candidate_score(
+            axis,
+            x,
+            y,
+            offset,
+            role=role,
+            inverted=inverted,
+            occupied=occupied,
+            legend_corner=legend_corner,
+        )
+        candidates.append((score, order, offset))
+    _, _, (dx, dy) = min(candidates)
+    x_fraction, y_fraction = _data_to_axes_fraction(axis, x, y)
+    anchor = (x_fraction + dx / 430.0, y_fraction + dy / 320.0)
+    ha = "left" if dx >= 0 else "right"
+    va = "bottom" if dy >= 0 else "top"
+    return dx, dy, ha, va, anchor
+
+
+def _annotate_characteristic(
     axis,
     x_quantity,
     y_quantity,
-    label: str,
+    response_label: str,
     *,
+    role: str,
     inverted: bool,
     line_color,
-    x_min: float,
-    x_max: float,
-    stagger: int = 0,
+    occupied: list[tuple[float, float]],
+    legend_corner: str | None = None,
 ) -> None:
     x = float(x_quantity.magnitude)
     y = float(y_quantity.magnitude)
-    offset_x, horizontal_alignment = _horizontal_annotation_placement(
+    dx, dy, ha, va, anchor = _choose_annotation_offset(
+        axis,
         x,
-        x_min,
-        x_max,
-    )
-    offset_y, vertical_alignment = _vertical_annotation_placement(
-        label,
+        y,
+        role=role,
         inverted=inverted,
+        occupied=occupied,
+        legend_corner=legend_corner,
     )
-
-    if stagger:
-        offset_x += stagger if offset_x >= 0 else -stagger
-        offset_y += 6 if offset_y >= 0 else -6
-
+    occupied.append(anchor)
     text = (
-        f"{label} = {_quantity_label(y_quantity, moment=inverted)}\n"
-        f"x = {_quantity_label(x_quantity)}"
+        f"x = {_quantity_label(x_quantity)}\n"
+        f"{response_label} = {_quantity_label(y_quantity, moment=inverted)}"
     )
-
     axis.annotate(
         text,
         xy=(x, y),
-        xytext=(offset_x, offset_y),
+        xytext=(dx, dy),
         textcoords="offset points",
-        ha=horizontal_alignment,
-        va=vertical_alignment,
-        fontsize=9,
-        zorder=6,
+        ha=ha,
+        va=va,
+        fontsize=8.5,
+        zorder=7,
         bbox={
-            "boxstyle": "round,pad=0.35",
+            "boxstyle": "round,pad=0.30",
             "facecolor": axis.get_facecolor(),
             "edgecolor": line_color,
             "linewidth": 0.8,
@@ -162,8 +218,8 @@ def _annotate_extreme(
             "arrowstyle": "-",
             "linewidth": 0.8,
             "color": line_color,
-            "alpha": 0.75,
-            "shrinkA": 5,
+            "alpha": 0.72,
+            "shrinkA": 4,
             "shrinkB": 4,
         },
         annotation_clip=False,
@@ -184,22 +240,8 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
 
     line = axis.plot(x_values, y_values, linewidth=2.2, zorder=3)[0]
     line_color = line.get_color()
-
-    axis.fill_between(
-        x_values,
-        y_values,
-        0.0,
-        color=line_color,
-        alpha=0.12,
-        zorder=1,
-    )
-    axis.axhline(
-        0.0,
-        linewidth=1.0,
-        color=axis.spines["bottom"].get_edgecolor(),
-        alpha=0.75,
-        zorder=2,
-    )
+    axis.fill_between(x_values, y_values, 0.0, color=line_color, alpha=0.12, zorder=1)
+    axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, zorder=2)
 
     maximum_index, minimum_index = _extreme_indices(y_values)
     extreme_indices = {maximum_index, minimum_index}
@@ -216,206 +258,59 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
     inverted = series.is_moment
     if inverted:
         axis.invert_yaxis()
+    axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
+    axis.set_ylabel(_axis_label(result.display_label, series.y_values[0], moment=series.is_moment))
+    axis.set_title(result.display_label, pad=10, fontweight="semibold")
+    _style_axes(axis)
+    axis.margins(x=0.02, y=0.18)
 
-    x_min = min(x_values)
-    x_max = max(x_values)
-    y_min = min(y_values)
-    y_max = max(y_values)
+    response_label = _series_response_symbol(result, series)
+    occupied: list[tuple[float, float]] = []
     maximum_value = y_values[maximum_index]
     minimum_value = y_values[minimum_index]
-
-    annotation_kwargs = {
-        "inverted": inverted,
-        "line_color": line_color,
-        "x_min": x_min,
-        "x_max": x_max,
-    }
-
     if math.isclose(maximum_value, minimum_value, rel_tol=1e-12, abs_tol=1e-12):
-        _annotate_extreme(
+        _annotate_characteristic(
             axis,
             result.x_values[maximum_index],
             series.y_values[maximum_index],
-            "max = min",
-            **annotation_kwargs,
+            response_label,
+            role="max",
+            inverted=inverted,
+            line_color=line_color,
+            occupied=occupied,
         )
     else:
-        close_extrema = _extrema_are_close(
-            x_values[maximum_index],
-            y_values[maximum_index],
-            x_values[minimum_index],
-            y_values[minimum_index],
-            x_min=x_min,
-            x_max=x_max,
-            y_min=y_min,
-            y_max=y_max,
-        )
-        _annotate_extreme(
+        _annotate_characteristic(
             axis,
             result.x_values[maximum_index],
             series.y_values[maximum_index],
-            "max",
-            **annotation_kwargs,
+            response_label,
+            role="max",
+            inverted=inverted,
+            line_color=line_color,
+            occupied=occupied,
         )
-        _annotate_extreme(
+        _annotate_characteristic(
             axis,
             result.x_values[minimum_index],
             series.y_values[minimum_index],
-            "min",
-            stagger=10 if close_extrema else 0,
-            **annotation_kwargs,
+            response_label,
+            role="min",
+            inverted=inverted,
+            line_color=line_color,
+            occupied=occupied,
         )
-
-    axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(
-        _axis_label(
-            result.display_label,
-            series.y_values[0],
-            moment=series.is_moment,
-        )
-    )
-    axis.set_title(result.display_label, pad=10, fontweight="semibold")
-    _style_axes(axis)
-    axis.margins(x=0.02, y=0.16)
     figure.tight_layout()
-
-
-def _characteristic_panel_text(result: PlotResult) -> str:
-    lines = ["Characteristic values"]
-    for series in result.series:
-        values = [float(value.magnitude) for value in series.y_values]
-        maximum_index, minimum_index = _extreme_indices(values)
-        lines.extend([
-            series.display_label,
-            (
-                "max = "
-                f"{_quantity_label(series.y_values[maximum_index], moment=series.is_moment)}"
-                "    x = "
-                f"{_quantity_label(result.x_values[maximum_index])}"
-            ),
-            (
-                "min = "
-                f"{_quantity_label(series.y_values[minimum_index], moment=series.is_moment)}"
-                "    x = "
-                f"{_quantity_label(result.x_values[minimum_index])}"
-            ),
-            "",
-        ])
-    return "\n".join(lines).rstrip()
-
-
-_PANEL_CORNERS = ("upper right", "upper left", "lower right", "lower left")
-
-
-def _panel_footprint(text: str) -> tuple[float, float]:
-    lines = text.splitlines() or [""]
-    max_chars = max(len(line) for line in lines)
-    width = min(0.46, max(0.22, 0.14 + 0.006 * max_chars))
-    height = min(0.72, max(0.16, 0.08 + 0.043 * len(lines)))
-    return width, height
-
-
-def _data_to_axes_fraction(axis, x: float, y: float) -> tuple[float, float]:
-    x0, x1 = axis.get_xlim()
-    y0, y1 = axis.get_ylim()
-    return (
-        0.5 if x1 == x0 else (x - x0) / (x1 - x0),
-        0.5 if y1 == y0 else (y - y0) / (y1 - y0),
-    )
-
-
-def _panel_rectangle(corner: str, width: float, height: float):
-    padding = 0.02
-    if corner == "upper right":
-        return (1.0 - padding - width, 1.0 - padding - height, 1.0 - padding, 1.0 - padding)
-    if corner == "upper left":
-        return (padding, 1.0 - padding - height, padding + width, 1.0 - padding)
-    if corner == "lower right":
-        return (1.0 - padding - width, padding, 1.0 - padding, padding + height)
-    return (padding, padding, padding + width, padding + height)
-
-
-def _choose_panel_corner(
-    axis,
-    data_xy: list[tuple[float, float]],
-    text: str,
-    legend_corner: str | None,
-) -> str:
-    width, height = _panel_footprint(text)
-    axes_points = [
-        _data_to_axes_fraction(axis, x, y)
-        for x, y in data_xy
-    ]
-
-    scored = []
-    for order, corner in enumerate(_PANEL_CORNERS):
-        left, bottom, right, top = _panel_rectangle(corner, width, height)
-        expanded = (left - 0.04, bottom - 0.04, right + 0.04, top + 0.04)
-        score = 1000 if corner == legend_corner else 0
-        for x, y in axes_points:
-            if left <= x <= right and bottom <= y <= top:
-                score += 3
-            if expanded[0] <= x <= expanded[2] and expanded[1] <= y <= expanded[3]:
-                score += 1
-        scored.append((score, order, corner))
-
-    return min(scored)[2]
-
-
-def _add_characteristic_panel(
-    axis,
-    text: str,
-    data_xy: list[tuple[float, float]],
-    legend_corner: str | None = None,
-):
-    corner = _choose_panel_corner(
-        axis,
-        data_xy,
-        text,
-        legend_corner=legend_corner,
-    )
-    anchors = {
-        "upper right": (0.98, 0.98, "right", "top"),
-        "upper left": (0.02, 0.98, "left", "top"),
-        "lower right": (0.98, 0.02, "right", "bottom"),
-        "lower left": (0.02, 0.02, "left", "bottom"),
-    }
-    x, y, ha, va = anchors[corner]
-    return axis.text(
-        x,
-        y,
-        text,
-        transform=axis.transAxes,
-        ha=ha,
-        va=va,
-        fontsize=8.5,
-        zorder=8,
-        bbox={
-            "boxstyle": "round,pad=0.45",
-            "facecolor": axis.get_facecolor(),
-            "edgecolor": axis.spines["bottom"].get_edgecolor(),
-            "linewidth": 0.8,
-            "alpha": 0.94,
-        },
-    )
 
 
 def _render_multi_series(figure, axis, result: PlotResult) -> None:
     x_values = [float(value.magnitude) for value in result.x_values]
-    panel_data: list[tuple[float, float]] = []
+    characteristics = []
 
     for series in result.series:
         y_values = [float(value.magnitude) for value in series.y_values]
-        panel_data.extend(zip(x_values, y_values))
-        line = axis.plot(
-            x_values,
-            y_values,
-            linewidth=2.0,
-            label=series.display_label,
-            zorder=3,
-        )[0]
+        line = axis.plot(x_values, y_values, linewidth=2.0, label=series.display_label, zorder=3)[0]
         line_color = line.get_color()
-
         maximum_index, minimum_index = _extreme_indices(y_values)
         marker_indices = sorted({maximum_index, minimum_index})
         axis.scatter(
@@ -425,177 +320,113 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
             color=line_color,
             zorder=4,
         )
+        characteristics.append((series, line_color, maximum_index, minimum_index, y_values))
 
-    axis.axhline(
-        0.0,
-        linewidth=1.0,
-        color=axis.spines["bottom"].get_edgecolor(),
-        alpha=0.75,
-        zorder=2,
-    )
+    axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, zorder=2)
     axis.legend(loc="upper right")
-
     moment = all(series.is_moment for series in result.series)
     if moment:
         axis.invert_yaxis()
-
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(
-        _axis_label(
-            result.display_label,
-            result.series[0].y_values[0],
-            moment=moment,
-        )
-    )
+    axis.set_ylabel(_axis_label(result.display_label, result.series[0].y_values[0], moment=moment))
     axis.set_title(result.display_label, pad=10, fontweight="semibold")
     _style_axes(axis)
-    axis.margins(x=0.02, y=0.12)
+    axis.margins(x=0.02, y=0.20)
 
-    _add_characteristic_panel(
-        axis,
-        _characteristic_panel_text(result),
-        panel_data,
-        legend_corner="upper right",
-    )
+    occupied: list[tuple[float, float]] = []
+    for series, line_color, maximum_index, minimum_index, y_values in characteristics:
+        response_label = _series_response_symbol(result, series)
+        _annotate_characteristic(
+            axis,
+            result.x_values[maximum_index],
+            series.y_values[maximum_index],
+            response_label,
+            role="max",
+            inverted=moment,
+            line_color=line_color,
+            occupied=occupied,
+            legend_corner="upper right",
+        )
+        if not math.isclose(
+            y_values[maximum_index],
+            y_values[minimum_index],
+            rel_tol=1e-12,
+            abs_tol=1e-12,
+        ):
+            _annotate_characteristic(
+                axis,
+                result.x_values[minimum_index],
+                series.y_values[minimum_index],
+                response_label,
+                role="min",
+                inverted=moment,
+                line_color=line_color,
+                occupied=occupied,
+                legend_corner="upper right",
+            )
     figure.tight_layout()
 
 
-def _envelope_characteristic_panel_text(result: PlotResult) -> str:
-    maximum_series, minimum_series = result.series
-    maximum_values = [float(value.magnitude) for value in maximum_series.y_values]
-    minimum_values = [float(value.magnitude) for value in minimum_series.y_values]
-    maximum_index = max(range(len(maximum_values)), key=maximum_values.__getitem__)
-    minimum_index = min(range(len(minimum_values)), key=minimum_values.__getitem__)
-    moment = maximum_series.is_moment
-
-    return "\n".join([
-        "Envelope characteristic values",
-        (
-            "max = "
-            f"{_quantity_label(maximum_series.y_values[maximum_index], moment=moment)}"
-            "    x = "
-            f"{_quantity_label(result.x_values[maximum_index])}"
-        ),
-        (
-            "min = "
-            f"{_quantity_label(minimum_series.y_values[minimum_index], moment=moment)}"
-            "    x = "
-            f"{_quantity_label(result.x_values[minimum_index])}"
-        ),
-    ])
-
-
-def _magnitude_envelope_characteristic_panel_text(result: PlotResult) -> str:
-    magnitude_series = result.series[0]
-    magnitude_values = [
-        float(value.magnitude) for value in magnitude_series.y_values
-    ]
-    maximum_index = max(
-        range(len(magnitude_values)),
-        key=magnitude_values.__getitem__,
-    )
-    governing_index = result.governing_max[maximum_index]
-    governing_signed = result.governing_signed[maximum_index]
-    moment = magnitude_series.is_moment
-
-    return "\n".join([
-        "Magnitude envelope",
-        (
-            "|max| = "
-            f"{_quantity_label(magnitude_series.y_values[maximum_index], moment=moment)}"
-            "    x = "
-            f"{_quantity_label(result.x_values[maximum_index])}"
-        ),
-        f"signed = {_quantity_label(governing_signed, moment=moment)}",
-        f"governing = {result.source_labels[governing_index]}",
-    ])
-
-
 def _render_envelope_sources(axis, result: PlotResult, x_values):
-    panel_data: list[tuple[float, float]] = []
     for source_series in result.source_series:
         source_y = [float(value.magnitude) for value in source_series.y_values]
-        panel_data.extend(zip(x_values, source_y))
-        axis.plot(
-            x_values,
-            source_y,
-            linewidth=1.0,
-            alpha=0.22,
-            label="_nolegend_",
-            zorder=1,
-        )
-    return panel_data
+        axis.plot(x_values, source_y, linewidth=1.0, alpha=0.22, label="_nolegend_", zorder=1)
 
 
 def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
     x_values = [float(value.magnitude) for value in result.x_values]
-    panel_data = _render_envelope_sources(axis, result, x_values)
-
+    _render_envelope_sources(axis, result, x_values)
     maximum_series, minimum_series = result.series
     maximum_y = [float(value.magnitude) for value in maximum_series.y_values]
     minimum_y = [float(value.magnitude) for value in minimum_series.y_values]
-    panel_data.extend(zip(x_values, maximum_y))
-    panel_data.extend(zip(x_values, minimum_y))
 
-    maximum_line = axis.plot(
-        x_values,
-        maximum_y,
-        linewidth=2.5,
-        alpha=1.0,
-        label=maximum_series.display_label,
-        zorder=4,
-    )[0]
-    minimum_line = axis.plot(
-        x_values,
-        minimum_y,
-        linewidth=2.5,
-        alpha=1.0,
-        label=minimum_series.display_label,
-        zorder=4,
-    )[0]
-
-    axis.fill_between(
-        x_values,
-        minimum_y,
-        maximum_y,
-        color=maximum_line.get_color(),
-        alpha=0.10,
-        zorder=2,
-    )
-    axis.axhline(
-        0.0,
-        linewidth=1.0,
-        color=axis.spines["bottom"].get_edgecolor(),
-        alpha=0.75,
-        label="_zero",
-        zorder=3,
-    )
+    maximum_line = axis.plot(x_values, maximum_y, linewidth=2.5, alpha=1.0, label=maximum_series.display_label, zorder=4)[0]
+    minimum_line = axis.plot(x_values, minimum_y, linewidth=2.5, alpha=1.0, label=minimum_series.display_label, zorder=4)[0]
+    axis.fill_between(x_values, minimum_y, maximum_y, color=maximum_line.get_color(), alpha=0.10, zorder=2)
+    axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, label="_zero", zorder=3)
     axis.legend(handles=[maximum_line, minimum_line], loc="upper right")
+
+    maximum_index = max(range(len(maximum_y)), key=maximum_y.__getitem__)
+    minimum_index = min(range(len(minimum_y)), key=minimum_y.__getitem__)
+    axis.scatter(
+        [x_values[maximum_index], x_values[minimum_index]],
+        [maximum_y[maximum_index], minimum_y[minimum_index]],
+        s=[30, 30],
+        color=[maximum_line.get_color(), minimum_line.get_color()],
+        zorder=5,
+    )
 
     moment = maximum_series.is_moment
     if moment:
         axis.invert_yaxis()
-
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(
-        _axis_label(
-            result.display_label,
-            maximum_series.y_values[0],
-            moment=moment,
-        )
-    )
-    axis.set_title(
-        f"{result.display_label} envelope",
-        pad=10,
-        fontweight="semibold",
-    )
+    axis.set_ylabel(_axis_label(result.display_label, maximum_series.y_values[0], moment=moment))
+    axis.set_title(f"{result.display_label} envelope", pad=10, fontweight="semibold")
     _style_axes(axis)
-    axis.margins(x=0.02, y=0.12)
+    axis.margins(x=0.02, y=0.20)
 
-    _add_characteristic_panel(
+    occupied: list[tuple[float, float]] = []
+    response_label = _response_symbol(result.display_label)
+    _annotate_characteristic(
         axis,
-        _envelope_characteristic_panel_text(result),
-        panel_data,
+        result.x_values[maximum_index],
+        maximum_series.y_values[maximum_index],
+        response_label,
+        role="max",
+        inverted=moment,
+        line_color=maximum_line.get_color(),
+        occupied=occupied,
+        legend_corner="upper right",
+    )
+    _annotate_characteristic(
+        axis,
+        result.x_values[minimum_index],
+        minimum_series.y_values[minimum_index],
+        response_label,
+        role="min",
+        inverted=moment,
+        line_color=minimum_line.get_color(),
+        occupied=occupied,
         legend_corner="upper right",
     )
     figure.tight_layout()
@@ -603,62 +434,43 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
 
 def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
     x_values = [float(value.magnitude) for value in result.x_values]
-    panel_data = _render_envelope_sources(axis, result, x_values)
-
+    _render_envelope_sources(axis, result, x_values)
     magnitude_series = result.series[0]
     magnitude_y = [float(value.magnitude) for value in magnitude_series.y_values]
-    panel_data.extend(zip(x_values, magnitude_y))
 
-    magnitude_line = axis.plot(
-        x_values,
-        magnitude_y,
-        linewidth=2.5,
-        alpha=1.0,
-        label=magnitude_series.display_label,
-        zorder=4,
-    )[0]
-    axis.fill_between(
-        x_values,
-        0.0,
-        magnitude_y,
-        color=magnitude_line.get_color(),
-        alpha=0.10,
-        zorder=2,
-    )
-    axis.axhline(
-        0.0,
-        linewidth=1.0,
-        color=axis.spines["bottom"].get_edgecolor(),
-        alpha=0.75,
-        label="_zero",
-        zorder=3,
-    )
+    magnitude_line = axis.plot(x_values, magnitude_y, linewidth=2.5, alpha=1.0, label=magnitude_series.display_label, zorder=4)[0]
+    axis.fill_between(x_values, 0.0, magnitude_y, color=magnitude_line.get_color(), alpha=0.10, zorder=2)
+    axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, label="_zero", zorder=3)
     axis.legend(handles=[magnitude_line], loc="upper right")
+
+    maximum_index = max(range(len(magnitude_y)), key=magnitude_y.__getitem__)
+    axis.scatter(
+        [x_values[maximum_index]],
+        [magnitude_y[maximum_index]],
+        s=30,
+        color=magnitude_line.get_color(),
+        zorder=5,
+    )
 
     moment = magnitude_series.is_moment
     if moment:
         axis.invert_yaxis()
-
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(
-        _axis_label(
-            result.display_label,
-            magnitude_series.y_values[0],
-            moment=moment,
-        )
-    )
-    axis.set_title(
-        f"|{result.display_label}| envelope",
-        pad=10,
-        fontweight="semibold",
-    )
+    axis.set_ylabel(_axis_label(result.display_label, magnitude_series.y_values[0], moment=moment))
+    axis.set_title(f"|{result.display_label}| envelope", pad=10, fontweight="semibold")
     _style_axes(axis)
-    axis.margins(x=0.02, y=0.12)
+    axis.margins(x=0.02, y=0.20)
 
-    _add_characteristic_panel(
+    response_label = f"|{_response_symbol(result.display_label)}|"
+    _annotate_characteristic(
         axis,
-        _magnitude_envelope_characteristic_panel_text(result),
-        panel_data,
+        result.x_values[maximum_index],
+        magnitude_series.y_values[maximum_index],
+        response_label,
+        role="max",
+        inverted=moment,
+        line_color=magnitude_line.get_color(),
+        occupied=[],
         legend_corner="upper right",
     )
     figure.tight_layout()
@@ -683,7 +495,5 @@ def render_plot(result: PlotResult):
     else:
         _render_multi_series(figure, axis, result)
 
-    # IPython displays the returned figure explicitly. Closing it here prevents
-    # pyplot/Jupyter from also auto-rendering the same figure a second time.
     plt.close(figure)
     return figure
