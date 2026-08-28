@@ -2,35 +2,36 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a native `plot(expression, variable, start, end)` command to `%%eng` that reuses EngCalc's symbolic formulas and Pint-backed numerical state to create one unit-aware Matplotlib figure without redefining data in Python.
+**Goal:** Add native `plot(expression, variable, start, end)` support to `%%eng`, reusing EngCalc's symbolic formulas and Pint-backed numerical state to produce one unit-aware Matplotlib figure without redefining data in Python.
 
-**Architecture:** Keep plotting side effects outside the symbolic engine. The parser accepts `plot` as a restricted EngCalc builtin; the engine returns an immutable `PlotResult` containing normalized Pint samples and display metadata; `src/engcalc_colab/plotting.py` converts that result into a closed Matplotlib `Figure`; `EngMagics.eng()` flushes pending MathJax equations before displaying the figure and then resumes source-order processing.
+**Architecture:** Keep plotting side effects outside the symbolic engine. The parser accepts `plot` as a restricted builtin; the engine returns an immutable `PlotResult` containing normalized Pint samples and metadata; `src/engcalc_colab/plotting.py` converts that result into a closed Matplotlib `Figure`; `EngMagics.eng()` flushes pending MathJax equations before displaying the figure and then resumes source-order processing.
 
-**Tech Stack:** Python 3.10+, SymPy >=1.13, Pint >=0.24, Matplotlib, IPython, pytest >=8.
+**Tech Stack:** Python 3.10+, SymPy >=1.13, Pint >=0.24, Matplotlib >=3.8, IPython, pytest >=8.
 
 **Spec:** `docs/superpowers/specs/2026-08-27-engcalc-native-plot-design.md`
 
 ## Global Constraints
 
 - Public syntax is exactly `plot(expression, variable, start, end)` with four positional arguments.
+- `plot(...)` is an output statement, not a value-producing symbolic assignment.
 - Keyword arguments remain unsupported.
-- One curve and one Matplotlib figure are produced per `plot(...)` statement.
+- One curve and one figure are produced per `plot(...)`.
 - Sampling count is exactly 201 points including both endpoints.
-- Existing EngCalc symbolic and numerical state is reused; no Python-variable redefinition is required.
-- A numeric value already stored for the plotting variable is overridden locally during sampling and must not be mutated.
+- Existing symbolic/numerical EngCalc state is reused directly.
+- A stored numerical value for the plotting variable is overridden locally during sampling and is never mutated.
 - An exact dimensionless zero bound may be promoted to the compatible dimensional unit of the other bound.
-- Bounds with incompatible dimensions and `end <= start` are rejected with concise line-aware EngCalc errors.
-- The y-axis unit is fixed from the first sample; all later samples must convert compatibly to it.
-- Matplotlib inherits the user's active `rcParams`; EngCalc adds no custom theme or hard-coded color.
-- `plot(...)` itself produces no MathJax equation row; its output is only the figure.
-- Existing notebooks without `plot(...)` must render identically to EngCalc 0.2.9.
-- Matplotlib is a direct runtime dependency in 0.3.0.
-- Target release version is exactly `0.3.0`.
-- Multiple curves, style kwargs, target plot units, extrema/root annotations, `piecewise`, discontinuities, fills, legends, image export and arbitrary Matplotlib access are out of scope.
+- Incompatible bound dimensions and `end <= start` are concise EngCalc errors.
+- The y-axis unit is fixed from the first sample; later samples convert to that unit or fail.
+- Matplotlib inherits active user `rcParams`; EngCalc sets no theme and no curve color.
+- `plot(...)` creates no MathJax equation row; only the figure appears at that source position.
+- Existing notebooks without `plot(...)` render identically to 0.2.9.
+- Matplotlib is a direct runtime dependency.
+- Target version is exactly `0.3.0`.
+- Multiple curves, kwargs/styles, plot-unit overrides, extrema/root annotations, fills, legends, `piecewise`, discontinuities and file export are out of scope.
 
 ---
 
-### Task 1: Reserve `plot` and introduce the transport model
+### Task 1: Reserve `plot` and add the transport model
 
 **Files:**
 - Modify: `src/engcalc_colab/parser.py`
@@ -38,17 +39,17 @@
 - Create: `tests/test_plot_parser.py`
 
 **Interfaces:**
-- Consumes: existing `parse_cell()` restricted AST and `ParsedStatement`.
-- Produces: `PlotResult(statement, display_label, variable, x_values, y_values)` and parser recognition of `plot` as a reserved builtin name.
+- Consumes: `parse_cell()` and `ParsedStatement`.
+- Produces: immutable `PlotResult(statement, display_label, variable, x_values, y_values)` and a reserved `plot` builtin name.
 
-- [ ] **Step 1: Write failing parser/model tests**
+- [ ] **Step 1: Write failing tests**
 
 Create `tests/test_plot_parser.py`:
 
 ```python
+from engcalc_colab.errors import EngSyntaxError
 from engcalc_colab.models import PlotResult
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.errors import EngSyntaxError
 
 
 def test_plot_call_is_accepted_by_restricted_parser():
@@ -69,30 +70,22 @@ def test_plot_name_is_reserved_as_assignment_target():
 
 def test_plot_result_is_immutable_transport_data():
     statement = parse_cell("plot(M(x), x, 0, L)")[0]
-    result = PlotResult(
-        statement=statement,
-        display_label="M(x)",
-        variable="x",
-        x_values=(1,),
-        y_values=(2,),
-    )
+    result = PlotResult(statement, "M(x)", "x", (1,), (2,))
     assert result.display_label == "M(x)"
     assert result.variable == "x"
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
-
-Run:
+- [ ] **Step 2: Verify RED**
 
 ```bash
 pytest -q tests/test_plot_parser.py
 ```
 
-Expected: collection/import failure because `PlotResult` does not exist, and/or parser rejection because `plot` is not reserved/implemented.
+Expected: import/collection failure because `PlotResult` does not exist and/or parser behavior is incomplete.
 
-- [ ] **Step 3: Add the minimal parser and model changes**
+- [ ] **Step 3: Implement the parser/model minimum**
 
-In `src/engcalc_colab/parser.py`, extend the builtin call set:
+In `src/engcalc_colab/parser.py`:
 
 ```python
 _ALLOWED_CALLS = {
@@ -101,7 +94,7 @@ _ALLOWED_CALLS = {
 }
 ```
 
-In `src/engcalc_colab/models.py`, add:
+In `src/engcalc_colab/models.py`:
 
 ```python
 @dataclass(frozen=True)
@@ -113,9 +106,7 @@ class PlotResult:
     y_values: tuple[Any, ...]
 ```
 
-- [ ] **Step 4: Re-run the focused tests and verify GREEN**
-
-Run:
+- [ ] **Step 4: Verify GREEN and parser regression**
 
 ```bash
 pytest -q tests/test_plot_parser.py tests/test_parser.py
@@ -123,7 +114,7 @@ pytest -q tests/test_plot_parser.py tests/test_parser.py
 
 Expected: all selected tests pass.
 
-- [ ] **Step 5: Commit the parser/model slice**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add src/engcalc_colab/parser.py src/engcalc_colab/models.py tests/test_plot_parser.py
@@ -132,7 +123,7 @@ git commit -m "feat: add plot command model"
 
 ---
 
-### Task 2: Add deterministic unit-aware plot sampling primitives
+### Task 2: Add deterministic unit-aware sampling
 
 **Files:**
 - Modify: `src/engcalc_colab/numeric.py`
@@ -141,8 +132,8 @@ git commit -m "feat: add plot command model"
 **Interfaces:**
 - Consumes: `NumericContext.evaluate_symbolic(expression, overrides=...)` and Pint quantities.
 - Produces:
-  - `NumericContext.normalize_plot_bounds(start, end) -> tuple[Any, Any]`
-  - `NumericContext.sample_symbolic(expression, variable, start, end, count=201) -> tuple[tuple[Any, ...], tuple[Any, ...]]`
+  - `normalize_plot_bounds(start, end) -> tuple[Quantity, Quantity]`
+  - `sample_symbolic(expression, variable, start, end, count=201) -> tuple[tuple[Quantity, ...], tuple[Quantity, ...]]`
 
 - [ ] **Step 1: Write failing sampling tests**
 
@@ -151,47 +142,48 @@ Create `tests/test_plot_sampling.py`:
 ```python
 import sympy as sp
 
-from engcalc_colab.numeric import NumericContext
 from engcalc_colab.errors import EngEvaluationError
+from engcalc_colab.numeric import NumericContext
 
 
 def test_dimensionless_zero_is_promoted_to_dimensional_end_unit():
     context = NumericContext()
-    zero = context.ureg.Quantity(0)
-    end = 4 * context.ureg.m
-
-    start_n, end_n = context.normalize_plot_bounds(zero, end)
-
-    assert start_n.to("m").magnitude == 0
-    assert end_n.to("m").magnitude == 4
-    assert start_n.units == end_n.units
+    start, end = context.normalize_plot_bounds(
+        context.ureg.Quantity(0),
+        4 * context.ureg.m,
+    )
+    assert start.to("m").magnitude == 0
+    assert end.to("m").magnitude == 4
+    assert start.units == end.units
 
 
 def test_sampling_contains_201_points_and_both_endpoints():
     context = NumericContext()
-    q = 2.8 * context.ureg.tonf / context.ureg.m
-    context.values["q"] = q
-    x = sp.Symbol("x")
-    expression = 7 * context.ureg.Quantity(1).magnitude * sp.Symbol("q") - sp.Symbol("q") * x
-    start = 0 * context.ureg.m
-    end = 4 * context.ureg.m
+    context.values["q"] = 2.8 * context.ureg.tonf / context.ureg.m
+    context.values["L"] = 4 * context.ureg.m
+    q, L, x = sp.symbols("q L x")
+    expression = 5*q*L/8 - q*x
 
-    xs, ys = context.sample_symbolic(expression, "x", start, end, count=201)
+    xs, ys = context.sample_symbolic(
+        expression, "x", 0 * context.ureg.m, 4 * context.ureg.m, count=201
+    )
 
     assert len(xs) == 201
     assert len(ys) == 201
     assert xs[0].to("m").magnitude == 0
     assert xs[-1].to("m").magnitude == 4
+    assert ys[0].to("tonf").magnitude == 7.0
 
 
 def test_existing_plot_variable_value_is_not_mutated_by_sampling():
     context = NumericContext()
     context.values["x"] = 2.5 * context.ureg.m
     context.values["q"] = 2.8 * context.ureg.tonf / context.ureg.m
-    expression = 5 * sp.Symbol("q") * 4 / 8 - sp.Symbol("q") * sp.Symbol("x")
+    context.values["L"] = 4 * context.ureg.m
+    q, L, x = sp.symbols("q L x")
 
     context.sample_symbolic(
-        expression,
+        5*q*L/8 - q*x,
         "x",
         0 * context.ureg.m,
         4 * context.ureg.m,
@@ -221,19 +213,17 @@ def test_plot_end_must_be_greater_than_start():
         raise AssertionError("expected EngEvaluationError")
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
-
-Run:
+- [ ] **Step 2: Verify RED**
 
 ```bash
 pytest -q tests/test_plot_sampling.py
 ```
 
-Expected: failures because `normalize_plot_bounds` and `sample_symbolic` are undefined.
+Expected: missing-method failures.
 
-- [ ] **Step 3: Implement bound normalization without mutating stored values**
+- [ ] **Step 3: Implement bound normalization**
 
-Add to `NumericContext` in `src/engcalc_colab/numeric.py`:
+Add to `NumericContext`:
 
 ```python
 def normalize_plot_bounds(self, start, end):
@@ -259,7 +249,7 @@ def normalize_plot_bounds(self, start, end):
     return start, end
 ```
 
-- [ ] **Step 4: Implement scalar interpolation and y-unit normalization**
+- [ ] **Step 4: Implement sampling with local overrides**
 
 Add to `NumericContext`:
 
@@ -290,17 +280,15 @@ def sample_symbolic(self, expression, variable, start, end, count=201):
     return xs, tuple(ys)
 ```
 
-- [ ] **Step 5: Re-run sampling plus existing numeric tests**
-
-Run:
+- [ ] **Step 5: Verify GREEN and numeric regression**
 
 ```bash
 pytest -q tests/test_plot_sampling.py tests/test_numeric_context.py tests/test_numeric_engine.py
 ```
 
-Expected: all selected tests pass and the stored `x` value remains unchanged.
+Expected: all selected tests pass; `context.values["x"]` remains unchanged.
 
-- [ ] **Step 6: Commit the numerical sampling slice**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/engcalc_colab/numeric.py tests/test_plot_sampling.py
@@ -309,18 +297,17 @@ git commit -m "feat: add unit-aware plot sampling"
 
 ---
 
-### Task 3: Implement `plot()` evaluation in the symbolic engine
+### Task 3: Evaluate `plot()` in the EngCalc engine
 
 **Files:**
 - Modify: `src/engcalc_colab/engine.py`
-- Modify: `src/engcalc_colab/models.py` only if needed for typing union imports
 - Create: `tests/test_plot_engine.py`
 
 **Interfaces:**
-- Consumes: `PlotResult`, `NumericContext.normalize_plot_bounds`, `NumericContext.sample_symbolic`.
-- Produces: `EngineeringEngine.evaluate(...) -> PlotResult` when the source statement is `plot(...)`.
+- Consumes: `PlotResult`, `normalize_plot_bounds`, `sample_symbolic`.
+- Produces: `EngineeringEngine.evaluate(statement) -> PlotResult` for a standalone `plot(...)` statement.
 
-- [ ] **Step 1: Write failing engine tests using the real structural example**
+- [ ] **Step 1: Write failing engine tests**
 
 Create `tests/test_plot_engine.py`:
 
@@ -339,7 +326,6 @@ def test_plot_reuses_function_and_numeric_state():
     engine = EngineeringEngine()
     eval_cell(engine, "V(x) = 5*q*L/8 - q*x")
     eval_cell(engine, "q := 2.8*tonf/m\nL := 4*m")
-
     result = eval_cell(engine, "plot(V(x), x, 0, L)")[-1]
 
     assert isinstance(result, PlotResult)
@@ -352,7 +338,6 @@ def test_plot_moment_preserves_dimensional_zero_at_right_boundary():
     engine = EngineeringEngine()
     eval_cell(engine, "M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2")
     eval_cell(engine, "q := 2.8*tonf/m\nL := 4*m")
-
     result = eval_cell(engine, "plot(M(x), x, 0, L)")[-1]
 
     assert result.y_values[0].to("tonf*m").magnitude == -5.6
@@ -364,7 +349,6 @@ def test_plot_locally_overrides_preexisting_numeric_x():
     engine = EngineeringEngine()
     eval_cell(engine, "V(x) = 5*q*L/8 - q*x")
     eval_cell(engine, "q := 2.8*tonf/m\nL := 4*m\nx := 2.5*m")
-
     result = eval_cell(engine, "plot(V(x), x, 0, L)")[-1]
 
     assert len(result.x_values) == 201
@@ -377,43 +361,58 @@ def test_plot_reports_missing_non_plot_symbol():
     try:
         eval_cell(engine, "plot(V(x), x, 0, L)")
     except EngEvaluationError as exc:
-        assert "numeric evaluation requires values for: q" in str(exc)
         assert str(exc).startswith("line 1:")
+        assert "numeric evaluation requires values for: q" in str(exc)
     else:
         raise AssertionError("expected EngEvaluationError")
 
 
 def test_plot_requires_identifier_variable_and_four_arguments():
     engine = EngineeringEngine()
-    for source, expected in [
+    cases = [
         ("plot(x, x, 0)", "plot expects 4 arguments: expression, variable, start, end"),
         ("plot(x, x + 1, 0, 4)", "plot variable must be a symbolic identifier"),
-    ]:
+    ]
+    for source, expected in cases:
         try:
             eval_cell(engine, source)
         except EngEvaluationError as exc:
             assert expected in str(exc)
         else:
             raise AssertionError("expected EngEvaluationError")
+
+
+def test_plot_cannot_be_assigned_to_symbol():
+    engine = EngineeringEngine()
+    try:
+        eval_cell(engine, "A = plot(x, x, 0, 4)")
+    except EngEvaluationError as exc:
+        assert "plot must be a standalone statement" in str(exc)
+    else:
+        raise AssertionError("expected EngEvaluationError")
 ```
 
-- [ ] **Step 2: Run engine tests and verify RED**
-
-Run:
+- [ ] **Step 2: Verify RED**
 
 ```bash
 pytest -q tests/test_plot_engine.py
 ```
 
-Expected: failures because `_Evaluator.visit_Call()` has no `plot` implementation and `EngineeringEngine.evaluate()` does not return `PlotResult`.
+Expected: `plot` is unsupported by the evaluator.
 
-- [ ] **Step 3: Extend the engine result union and imports**
+- [ ] **Step 3: Add plot payload state to `_Evaluator`**
 
-In `src/engcalc_colab/engine.py`, import `PlotResult` and add it to the return annotation of `EngineeringEngine.evaluate()`.
+In `_Evaluator.__init__`:
 
-- [ ] **Step 4: Implement `plot` before generic argument evaluation**
+```python
+self.plot_evaluation = None
+```
 
-Inside `_Evaluator.visit_Call()`, before the `numeric` branch, add a dedicated `plot` branch with this structure:
+Import `PlotResult` in `engine.py` and add it to `EngineeringEngine.evaluate()`'s return union.
+
+- [ ] **Step 4: Implement the exact `plot` evaluator branch**
+
+Add before the existing `numeric` branch in `_Evaluator.visit_Call()`:
 
 ```python
 if name == "plot":
@@ -425,16 +424,15 @@ if name == "plot":
 
     expression_node = node.args[0]
     symbolic_expression = self.visit(expression_node)
-
     start_expression = self.visit(node.args[2])
     end_expression = self.visit(node.args[3])
+
     _, start_quantity = self.engine.numeric_context.evaluate_symbolic(start_expression)
     _, end_quantity = self.engine.numeric_context.evaluate_symbolic(end_expression)
     start_quantity, end_quantity = self.engine.numeric_context.normalize_plot_bounds(
         start_quantity,
         end_quantity,
     )
-
     x_values, y_values = self.engine.numeric_context.sample_symbolic(
         symbolic_expression,
         variable,
@@ -452,31 +450,37 @@ if name == "plot":
     else:
         display_label = str(symbolic_expression)
 
-    self.plot_result = PlotResult(
-        statement=self.current_statement,
+    self.plot_evaluation = (display_label, variable, x_values, y_values)
+    return symbolic_expression
+```
+
+- [ ] **Step 5: Convert the payload into `PlotResult` in `EngineeringEngine.evaluate()`**
+
+Immediately after:
+
+```python
+value = evaluator.visit(statement.expression.body)
+```
+
+add:
+
+```python
+if evaluator.plot_evaluation is not None:
+    if statement.target is not None:
+        raise EngEvaluationError("plot must be a standalone statement")
+    display_label, variable, x_values, y_values = evaluator.plot_evaluation
+    return PlotResult(
+        statement=statement,
         display_label=display_label,
         variable=variable,
         x_values=x_values,
         y_values=y_values,
     )
-    return symbolic_expression
 ```
 
-Do not literally introduce `current_statement` into `_Evaluator`; instead keep construction of `PlotResult` in `EngineeringEngine.evaluate()` where the `statement` object already exists. The evaluator should store a tuple payload analogous to `numeric_evaluation`, for example:
+This branch runs before numeric/partial-numeric and ordinary assignment handling.
 
-```python
-self.plot_evaluation = (display_label, variable, x_values, y_values)
-```
-
-Then `EngineeringEngine.evaluate()` converts that payload into `PlotResult(statement=statement, ...)` before any ordinary `EvaluationResult` is returned.
-
-- [ ] **Step 5: Ensure local sampling overrides the plot variable**
-
-Before calling `sample_symbolic`, verify that evaluating `symbolic_expression` does not eagerly require the numeric value of the plotting variable. Only `sample_symbolic(... overrides={variable: x_value})` supplies it. Do not write into `numeric_context.values[variable]`.
-
-- [ ] **Step 6: Run engine/numeric regression tests**
-
-Run:
+- [ ] **Step 6: Verify GREEN and engine regression**
 
 ```bash
 pytest -q tests/test_plot_engine.py tests/test_plot_sampling.py tests/test_engine.py tests/test_numeric_engine.py
@@ -484,16 +488,16 @@ pytest -q tests/test_plot_engine.py tests/test_plot_sampling.py tests/test_engin
 
 Expected: all selected tests pass.
 
-- [ ] **Step 7: Commit the engine slice**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/engcalc_colab/engine.py src/engcalc_colab/models.py tests/test_plot_engine.py
+git add src/engcalc_colab/engine.py tests/test_plot_engine.py
 git commit -m "feat: evaluate native plot statements"
 ```
 
 ---
 
-### Task 4: Render plots with Matplotlib and preserve notebook source order
+### Task 4: Add Matplotlib adapter and source-ordered notebook display
 
 **Files:**
 - Create: `src/engcalc_colab/plotting.py`
@@ -502,10 +506,10 @@ git commit -m "feat: evaluate native plot statements"
 - Modify: `tests/test_magic.py`
 
 **Interfaces:**
-- Consumes: `PlotResult` from the engine.
-- Produces: `render_plot(result: PlotResult) -> matplotlib.figure.Figure` and source-ordered figure display in `%%eng`.
+- Consumes: `PlotResult`.
+- Produces: `render_plot(result: PlotResult) -> matplotlib.figure.Figure` and Math → Figure → Math sequencing in `%%eng`.
 
-- [ ] **Step 1: Write failing plotting-adapter tests**
+- [ ] **Step 1: Write failing adapter tests**
 
 Create `tests/test_plotting.py`:
 
@@ -522,7 +526,7 @@ def eval_cell(engine, text):
     return [engine.evaluate(stmt) for stmt in parse_cell(text)]
 
 
-def _moment_plot_result():
+def moment_plot_result():
     engine = EngineeringEngine()
     eval_cell(engine, "M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2")
     eval_cell(engine, "q := 2.8*tonf/m\nL := 4*m")
@@ -530,10 +534,8 @@ def _moment_plot_result():
 
 
 def test_render_plot_labels_axes_title_and_zero_reference():
-    result = _moment_plot_result()
-    figure = render_plot(result)
+    figure = render_plot(moment_plot_result())
     axis = figure.axes[0]
-
     assert axis.get_xlabel().startswith("x [")
     assert "m" in axis.get_xlabel()
     assert axis.get_ylabel().startswith("M(x) [")
@@ -543,16 +545,13 @@ def test_render_plot_labels_axes_title_and_zero_reference():
     assert len(axis.lines) == 2
 
 
-def test_render_plot_returns_closed_figure_to_prevent_duplicate_jupyter_output():
+def test_render_plot_returns_closed_figure():
     import matplotlib.pyplot as plt
-
-    result = _moment_plot_result()
-    figure = render_plot(result)
-
+    figure = render_plot(moment_plot_result())
     assert figure.number not in plt.get_fignums()
 ```
 
-- [ ] **Step 2: Write failing notebook sequencing test**
+- [ ] **Step 2: Write failing magic sequencing test**
 
 Append to `tests/test_magic.py`:
 
@@ -564,30 +563,24 @@ def test_eng_magic_flushes_math_before_plot_and_resumes_after(monkeypatch):
 
     displayed = []
     monkeypatch.setattr(magic_module, "display", displayed.append)
-
     magics = magic_module.EngMagics(shell=None)
     magics.eng(
         "",
         "A = q*L\nq := 2.8*tonf/m\nL := 4*m\n"
         "plot(A*x, x, 0, L)\nB = 2*A",
     )
-
     assert [type(item) for item in displayed] == [Math, Figure, Math]
 ```
 
-- [ ] **Step 3: Run focused tests and verify RED**
-
-Run:
+- [ ] **Step 3: Verify RED**
 
 ```bash
 pytest -q tests/test_plotting.py tests/test_magic.py::test_eng_magic_flushes_math_before_plot_and_resumes_after
 ```
 
-Expected: import failure for `engcalc_colab.plotting` and/or sequencing failure because `PlotResult` is still batched into MathJax.
+Expected: missing `plotting.py` and/or sequencing failure.
 
-- [ ] **Step 4: Implement `plotting.py` without a custom theme**
-
-Create `src/engcalc_colab/plotting.py`:
+- [ ] **Step 4: Implement `plotting.py` without custom styling**
 
 ```python
 from __future__ import annotations
@@ -623,24 +616,18 @@ def render_plot(result: PlotResult):
     return figure
 ```
 
-Do not set a color or Matplotlib style; the user's existing `rcParams` remain authoritative.
+Do not specify a curve color or Matplotlib style.
 
-- [ ] **Step 5: Teach `EngMagics.eng()` to treat `PlotResult` as an output boundary**
+- [ ] **Step 5: Add PlotResult as an output boundary in `EngMagics.eng()`**
 
-In `src/engcalc_colab/magic.py`:
+Import:
 
 ```python
 from .models import PlotResult
 from .plotting import render_plot
 ```
 
-Then change the statement-processing path from unconditional append:
-
-```python
-pending_results.append(self.engine.evaluate(item))
-```
-
-to:
+Replace unconditional append with:
 
 ```python
 result = self.engine.evaluate(item)
@@ -652,19 +639,17 @@ if isinstance(result, PlotResult):
 pending_results.append(result)
 ```
 
-Do not add `PlotResult` to the `CalculationResult` alias used by `render_aligned_results`; plots must never enter the MathJax renderer.
+Do not add `PlotResult` to the MathJax `CalculationResult` alias.
 
-- [ ] **Step 6: Run adapter, sequencing and existing magic tests**
-
-Run:
+- [ ] **Step 6: Verify GREEN and magic/headings regression**
 
 ```bash
 pytest -q tests/test_plotting.py tests/test_magic.py tests/test_headings.py
 ```
 
-Expected: all selected tests pass, and the sequencing test sees exactly Math → Figure → Math.
+Expected: all selected tests pass and source order is exactly Math → Figure → Math.
 
-- [ ] **Step 7: Commit the notebook display slice**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/engcalc_colab/plotting.py src/engcalc_colab/magic.py tests/test_plotting.py tests/test_magic.py
@@ -673,7 +658,7 @@ git commit -m "feat: render native plots in eng cells"
 
 ---
 
-### Task 5: Acceptance case, packaging, documentation and 0.3.0 release gate
+### Task 5: Acceptance, packaging, documentation and release gate
 
 **Files:**
 - Create: `tests/test_acceptance_native_plot.py`
@@ -682,11 +667,11 @@ git commit -m "feat: render native plots in eng cells"
 - Modify: `pyproject.toml`
 - Modify: `src/engcalc_colab/__init__.py`
 - Modify: `README.md`
-- Temporary during validation only: `.github/workflows/native-plot-validation.yml`
+- Temporary only: `.github/workflows/native-plot-validation.yml`
 
 **Interfaces:**
-- Consumes: complete `plot()` flow from Tasks 1–4.
-- Produces: user-facing EngCalc 0.3.0 release with Matplotlib declared as runtime dependency.
+- Consumes: Tasks 1–4.
+- Produces: installable EngCalc 0.3.0 with Matplotlib runtime support.
 
 - [ ] **Step 1: Write the end-to-end structural acceptance test**
 
@@ -710,7 +695,6 @@ plot(M(x), x, 0, L)
 """
     results = [engine.evaluate(stmt) for stmt in parse_cell(cell)]
     plots = [result for result in results if isinstance(result, PlotResult)]
-
     assert len(plots) == 2
     shear, moment = plots
     assert len(shear.x_values) == 201
@@ -718,9 +702,9 @@ plot(M(x), x, 0, L)
     assert abs(moment.y_values[-1].to("tonf*m").magnitude) < 1e-12
 ```
 
-- [ ] **Step 2: Put release metadata in RED before changing version/dependencies**
+- [ ] **Step 2: Put release metadata in RED before changing it**
 
-Modify `tests/test_packaging.py` so it requires:
+In `tests/test_packaging.py`, require:
 
 ```python
 def test_pyproject_version_is_0_3_0():
@@ -731,7 +715,7 @@ def test_matplotlib_is_a_runtime_dependency():
     assert "matplotlib" in _dependency_names()
 ```
 
-Modify the existing version assertion in `tests/test_parser.py`:
+In `tests/test_parser.py`, change the package-version assertion to:
 
 ```python
 assert __version__ == "0.3.0"
@@ -743,32 +727,32 @@ Run:
 pytest -q tests/test_acceptance_native_plot.py tests/test_packaging.py tests/test_parser.py
 ```
 
-Expected: plot acceptance passes after Tasks 1–4; release tests fail only because current metadata still reports 0.2.9 and Matplotlib is not yet declared.
+Expected: acceptance passes; release assertions fail only because metadata is still 0.2.9 and Matplotlib is not declared.
 
-- [ ] **Step 3: Bump package metadata and runtime dependency**
+- [ ] **Step 3: Bump package metadata**
 
-In `pyproject.toml` set:
+In `pyproject.toml`:
 
 ```toml
 version = "0.3.0"
 dependencies = ["sympy>=1.13", "pint>=0.24", "matplotlib>=3.8"]
 ```
 
-In `src/engcalc_colab/__init__.py` set:
+In `src/engcalc_colab/__init__.py`:
 
 ```python
 __version__ = "0.3.0"
 ```
 
-- [ ] **Step 4: Update README command reference and example**
+- [ ] **Step 4: Update README**
 
-Document all of the following in `README.md`:
+Document:
 
 ```text
 plot(expression, variable, start, end)
 ```
 
-Canonical example:
+and the canonical example:
 
 ```text
 %%eng
@@ -780,11 +764,9 @@ plot(V(x), x, 0, L)
 plot(M(x), x, 0, L)
 ```
 
-State explicitly that 0.3.0 creates one curve/figure per call, uses 201 samples, infers natural units, reuses EngCalc state, ignores a stored numeric value for the sampling variable locally, and does not yet support kwargs/multiple curves/custom styles/piecewise plotting.
+State explicitly: one figure per call, 201 samples, natural units, reuse of EngCalc state, local override of any stored sampling-variable value, and no kwargs/multiple curves/custom styles/piecewise support in 0.3.0.
 
-- [ ] **Step 5: Run the full local/CI-equivalent suite**
-
-Run:
+- [ ] **Step 5: Run the full suite**
 
 ```bash
 pytest -q
@@ -792,9 +774,9 @@ pytest -q
 
 Expected: complete suite passes.
 
-- [ ] **Step 6: Add a temporary wheel-validation workflow**
+- [ ] **Step 6: Add temporary wheel-validation CI**
 
-Create `.github/workflows/native-plot-validation.yml` on the feature branch:
+Create `.github/workflows/native-plot-validation.yml`:
 
 ```yaml
 name: Native plot validation
@@ -826,59 +808,41 @@ jobs:
         run: pytest -q
 ```
 
-- [ ] **Step 7: Open/update the PR and wait for a green wheel gate**
+- [ ] **Step 7: Open/update PR and obtain fresh GREEN evidence**
 
-The PR body must record:
+PR body must record each RED/GREEN phase, the final wheel build/install, runtime version check and fresh full-suite pass count. Do not state a pass count until the final run completes.
 
-```text
-- parser/model RED then GREEN
-- sampling RED then GREEN
-- engine RED then GREEN
-- plotting/magic RED then GREEN
-- release RED limited to version/dependency metadata
-- final wheel build/install of engcalc-colab 0.3.0
-- full pytest pass count from the fresh final run
-```
+- [ ] **Step 8: Remove temporary workflow**
 
-Do not claim a pass count until the final CI run has completed successfully.
-
-- [ ] **Step 8: Remove the temporary workflow after the green gate**
-
-Delete:
-
-```text
-.github/workflows/native-plot-validation.yml
-```
-
-Then verify the final diff contains only permanent source, tests, documentation and package metadata.
+Delete `.github/workflows/native-plot-validation.yml` after the green release gate. Verify the final diff contains only permanent source, tests, docs and metadata.
 
 - [ ] **Step 9: Final review and squash merge**
 
-Review these invariants before merge:
+Verify:
 
 ```text
-plot is restricted EngCalc syntax, not arbitrary Python
-PlotResult contains data, not Matplotlib objects
-sampling does not mutate stored x
-MathJax output is unchanged when no plot is present
-plot flushes equation groups in source order
-plotting.py sets no colors/styles
-Matplotlib is a declared runtime dependency
+plot remains restricted EngCalc syntax
+PlotResult contains no Matplotlib object
+sampling never mutates stored x
+non-plot MathJax output is unchanged
+plot flushes equations in source order
+plotting.py specifies no colors/styles
+Matplotlib is a direct dependency
 version is 0.3.0
 ```
 
-Then squash merge with the PR head SHA pinned.
+Then squash merge with expected head SHA pinned.
 
-- [ ] **Step 10: Verify `main` after merge**
+- [ ] **Step 10: Post-merge verification on `main`**
 
-Fetch from `main` and confirm:
+Confirm:
 
 ```text
-pyproject.toml -> version 0.3.0 + matplotlib>=3.8
+pyproject.toml -> version 0.3.0 and matplotlib>=3.8
 src/engcalc_colab/__init__.py -> __version__ 0.3.0
 src/engcalc_colab/plotting.py exists
 parser reserves plot
 README documents plot(expression, variable, start, end)
 ```
 
-Report the final merge SHA and the fresh final test count.
+Report the merge SHA and only the fresh final test count.
