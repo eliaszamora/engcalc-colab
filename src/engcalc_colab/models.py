@@ -73,9 +73,22 @@ class PartialNumericEvaluationResult:
 
 
 @dataclass(frozen=True)
+class PlotSeries:
+    display_label: str
+    y_values: tuple[Any, ...]
+    is_moment: bool
+
+
+@dataclass(frozen=True)
 class PlotResult:
     statement: ParsedStatement
     display_label: str
     variable: str
     x_values: tuple[Any, ...]
-    y_values: tuple[Any, ...]
+    series: tuple[PlotSeries, ...]
+
+    @property
+    def y_values(self) -> tuple[Any, ...]:
+        if len(self.series) != 1:
+            raise AttributeError("y_values is unavailable for multi-series plots")
+        return self.series[0].y_values

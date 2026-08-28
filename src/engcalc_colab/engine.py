@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import ast
+import re
 
 import sympy as sp
+from pint.errors import DimensionalityError
 
 from .errors import AmbiguousSolveError, EngCalcError, EngEvaluationError, EngSyntaxError
 from .models import (
@@ -13,9 +15,13 @@ from .models import (
     ParsedStatement,
     PartialNumericEvaluationResult,
     PlotResult,
+    PlotSeries,
     UserFunction,
 )
 from .numeric import NumericContext
+
+
+_MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 
 
 class EngineeringEngine:
@@ -78,13 +84,13 @@ class EngineeringEngine:
             if evaluator.plot_evaluation is not None:
                 if statement.target is not None:
                     raise EngEvaluationError("plot must be a standalone statement")
-                display_label, variable, x_values, y_values = evaluator.plot_evaluation
+                display_label, variable, x_values, series = evaluator.plot_evaluation
                 return PlotResult(
                     statement=statement,
                     display_label=display_label,
                     variable=variable,
                     x_values=x_values,
-                    y_values=y_values,
+                    series=series,
                 )
 
             if evaluator.partial_numeric_evaluation is not None:
@@ -220,42 +226,7 @@ class _Evaluator(ast.NodeVisitor):
             return symbolic_sum
 
         if name == "plot":
-            self._require_arity(name, node.args, 4, "expression, variable, start, end")
-            variable_node = node.args[1]
-            if not isinstance(variable_node, ast.Name):
-                raise EngEvaluationError("plot variable must be a symbolic identifier")
-            variable = variable_node.id
-
-            expression_node = node.args[0]
-            symbolic_expression = self.visit(expression_node)
-            start_expression = self.visit(node.args[2])
-            end_expression = self.visit(node.args[3])
-
-            _, start_quantity = self.engine.numeric_context.evaluate_symbolic(start_expression)
-            _, end_quantity = self.engine.numeric_context.evaluate_symbolic(end_expression)
-            start_quantity, end_quantity = self.engine.numeric_context.normalize_plot_bounds(
-                start_quantity,
-                end_quantity,
-            )
-            x_values, y_values = self.engine.numeric_context.sample_symbolic(
-                symbolic_expression,
-                variable,
-                start_quantity,
-                end_quantity,
-                count=201,
-            )
-
-            if (
-                isinstance(expression_node, ast.Call)
-                and isinstance(expression_node.func, ast.Name)
-                and expression_node.func.id in self.engine.functions
-            ):
-                display_label = f"{expression_node.func.id}({variable})"
-            else:
-                display_label = str(symbolic_expression)
-
-            self.plot_evaluation = (display_label, variable, x_values, y_values)
-            return symbolic_expression
+            return self._evaluate_plot(node)
 
         if name == "numeric":
             if len(node.args) not in (1, 2):
@@ -423,6 +394,222 @@ class _Evaluator(ast.NodeVisitor):
             return sp.sympify(args[0]).subs(args[1], args[2])
 
         raise EngSyntaxError(f"unsupported function '{name}'")
+
+    def _evaluate_plot(self, node: ast.Call):
+        if len(node.args) < 4:
+            raise EngEvaluationError(
+                "plot expects at least 4 positional arguments: "
+                "expression[, ...], variable, start, end"
+            )
+
+        expression_nodes = node.args[:-3]
+        variable_node, start_node, end_node = node.args[-3:]
+        if not expression_nodes:
+            raise EngEvaluationError("plot requires at least one expression")
+        if not isinstance(variable_node, ast.Name):
+            raise EngEvaluationError("plot variable must be a symbolic identifier")
+        variable = variable_node.id
+
+        if node.keywords and len(expression_nodes) != 1:
+            raise EngEvaluationError(
+                "plot parameter sweep requires exactly one expression"
+            )
+
+        start_expression = self.visit(start_node)
+        end_expression = self.visit(end_node)
+        _, start_quantity = self.engine.numeric_context.evaluate_symbolic(start_expression)
+        _, end_quantity = self.engine.numeric_context.evaluate_symbolic(end_expression)
+        start_quantity, end_quantity = self.engine.numeric_context.normalize_plot_bounds(
+            start_quantity,
+            end_quantity,
+        )
+
+        symbolic_expressions = [self.visit(item) for item in expression_nodes]
+        source_labels = [
+            self._plot_expression_label(item, variable, symbolic_expression)
+            for item, symbolic_expression in zip(expression_nodes, symbolic_expressions)
+        ]
+
+        if node.keywords:
+            raw_series, x_values = self._evaluate_plot_sweep(
+                symbolic_expressions[0],
+                source_labels[0],
+                variable,
+                start_quantity,
+                end_quantity,
+                node.keywords[0],
+            )
+            display_label = source_labels[0]
+        else:
+            raw_series = []
+            x_values = None
+            for symbolic_expression, label in zip(symbolic_expressions, source_labels):
+                series_x, y_values = self.engine.numeric_context.sample_symbolic(
+                    symbolic_expression,
+                    variable,
+                    start_quantity,
+                    end_quantity,
+                    count=201,
+                )
+                if x_values is None:
+                    x_values = series_x
+                raw_series.append(
+                    PlotSeries(
+                        display_label=label,
+                        y_values=y_values,
+                        is_moment=self._is_moment_label(label),
+                    )
+                )
+            display_label = self._common_plot_label(source_labels, variable)
+
+        series = self._normalize_plot_series(tuple(raw_series))
+        if len(series) > 1:
+            moment_flags = {item.is_moment for item in series}
+            if len(moment_flags) > 1:
+                raise EngEvaluationError(
+                    "plot cannot mix moment and non-moment series on one axis"
+                )
+
+        self.plot_evaluation = (
+            display_label,
+            variable,
+            x_values,
+            series,
+        )
+        return symbolic_expressions[0]
+
+    def _evaluate_plot_sweep(
+        self,
+        symbolic_expression,
+        source_label: str,
+        variable: str,
+        start_quantity,
+        end_quantity,
+        keyword_node: ast.keyword,
+    ) -> tuple[list[PlotSeries], tuple]:
+        parameter_name = keyword_node.arg
+        if parameter_name is None:
+            raise EngEvaluationError("plot sweep parameter must be named")
+
+        free_names = {
+            symbol.name for symbol in sp.sympify(symbolic_expression).free_symbols
+        }
+        if parameter_name not in free_names:
+            raise EngEvaluationError(
+                f"plot sweep parameter '{parameter_name}' is not used in the plotted expression"
+            )
+
+        sweep_values = [
+            self.engine.numeric_context.evaluate_expression(
+                ast.Expression(body=element)
+            )
+            for element in keyword_node.value.elts
+        ]
+        sweep_values = self._normalize_sweep_values(parameter_name, sweep_values)
+
+        is_moment = self._is_moment_label(source_label)
+        series: list[PlotSeries] = []
+        x_values = None
+        for sweep_value in sweep_values:
+            series_x, y_values = self.engine.numeric_context.sample_symbolic(
+                symbolic_expression,
+                variable,
+                start_quantity,
+                end_quantity,
+                count=201,
+                overrides={parameter_name: sweep_value},
+            )
+            if x_values is None:
+                x_values = series_x
+            series.append(
+                PlotSeries(
+                    display_label=(
+                        f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"
+                    ),
+                    y_values=y_values,
+                    is_moment=is_moment,
+                )
+            )
+        return series, x_values
+
+    def _normalize_sweep_values(self, parameter_name: str, values: list):
+        stored = self.engine.numeric_context.get(parameter_name)
+        target_unit = stored.units if stored is not None else values[0].units
+        normalized = []
+        for value in values:
+            try:
+                normalized.append(value.to(target_unit))
+            except DimensionalityError as exc:
+                raise EngEvaluationError(
+                    "plot sweep values have incompatible units"
+                ) from exc
+        return normalized
+
+    @staticmethod
+    def _normalize_plot_series(series: tuple[PlotSeries, ...]) -> tuple[PlotSeries, ...]:
+        if not series:
+            raise EngEvaluationError("plot requires at least one series")
+
+        target_unit = series[0].y_values[0].units
+        normalized: list[PlotSeries] = []
+        for item in series:
+            try:
+                y_values = tuple(value.to(target_unit) for value in item.y_values)
+            except DimensionalityError as exc:
+                raise EngEvaluationError(
+                    "plot series have incompatible y dimensions"
+                ) from exc
+            normalized.append(
+                PlotSeries(
+                    display_label=item.display_label,
+                    y_values=y_values,
+                    is_moment=item.is_moment,
+                )
+            )
+        return tuple(normalized)
+
+    def _plot_expression_label(
+        self,
+        expression_node: ast.AST,
+        variable: str,
+        symbolic_expression,
+    ) -> str:
+        if (
+            isinstance(expression_node, ast.Call)
+            and isinstance(expression_node.func, ast.Name)
+            and expression_node.func.id in self.engine.functions
+        ):
+            return f"{expression_node.func.id}({variable})"
+        return str(symbolic_expression)
+
+    @staticmethod
+    def _common_plot_label(labels: list[str], variable: str) -> str:
+        if len(labels) == 1:
+            return labels[0]
+
+        function_names = []
+        for label in labels:
+            if not label.endswith(f"({variable})"):
+                return "Comparison"
+            function_names.append(label[: -(len(variable) + 2)])
+
+        families = {name.split("_", 1)[0] for name in function_names}
+        if len(families) == 1:
+            family = next(iter(families))
+            return f"{family}({variable})"
+        return "Comparison"
+
+    @staticmethod
+    def _is_moment_label(label: str) -> bool:
+        return _MOMENT_LABEL.match(label.strip()) is not None
+
+    @staticmethod
+    def _format_plot_quantity(quantity) -> str:
+        magnitude = float(quantity.magnitude)
+        value = f"{magnitude:g}"
+        if quantity.dimensionless:
+            return value
+        return f"{value} {quantity.units:~P}"
 
     @staticmethod
     def _require_arity(name: str, args: list, count: int, signature: str) -> None:

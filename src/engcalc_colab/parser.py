@@ -12,6 +12,11 @@ _ALLOWED_NODES = (
     ast.Constant, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow,
     ast.UAdd, ast.USub, ast.Load,
 )
+_SWEEP_VALUE_NODES = (
+    ast.BinOp, ast.UnaryOp, ast.Name, ast.Constant,
+    ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow,
+    ast.UAdd, ast.USub, ast.Load,
+)
 _ALLOWED_CALLS = {
     "integral", "diff", "solve", "simplify", "expand", "factor", "subs", "eq", "sum", "numeric", "plot"
 }
@@ -128,22 +133,89 @@ def _validate_target(name: str, line_no: int) -> None:
 
 
 def _validate_ast(tree: ast.AST, line_no: int) -> None:
-    for node in ast.walk(tree):
-        if not isinstance(node, _ALLOWED_NODES):
+    _validate_normal_node(tree, line_no)
+
+
+def _validate_normal_node(node: ast.AST, line_no: int) -> None:
+    if isinstance(node, ast.List):
+        raise EngSyntaxError(f"line {line_no}: unsupported syntax 'List'")
+    if isinstance(node, ast.keyword):
+        raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")
+    if not isinstance(node, _ALLOWED_NODES):
+        raise EngSyntaxError(
+            f"line {line_no}: unsupported syntax '{type(node).__name__}'"
+        )
+
+    if isinstance(node, ast.Call):
+        if not isinstance(node.func, ast.Name):
             raise EngSyntaxError(
-                f"line {line_no}: unsupported syntax '{type(node).__name__}'"
+                f"line {line_no}: unsupported syntax '{type(node.func).__name__}'"
             )
-        if isinstance(node, ast.Call):
-            if not isinstance(node.func, ast.Name):
+        if node.func.id.startswith("__"):
+            raise EngSyntaxError(
+                f"line {line_no}: unsupported function '{node.func.id}'"
+            )
+
+        for arg in node.args:
+            _validate_normal_node(arg, line_no)
+
+        if node.keywords:
+            if node.func.id != "plot":
                 raise EngSyntaxError(
-                    f"line {line_no}: unsupported syntax '{type(node.func).__name__}'"
+                    f"line {line_no}: keyword arguments are unsupported"
                 )
-            if node.func.id.startswith("__"):
-                raise EngSyntaxError(
-                    f"line {line_no}: unsupported function '{node.func.id}'"
-                )
-            if node.keywords:
-                raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")
+            _validate_plot_keywords(node, line_no)
+        return
+
+    for child in ast.iter_child_nodes(node):
+        _validate_normal_node(child, line_no)
+
+
+def _validate_plot_keywords(node: ast.Call, line_no: int) -> None:
+    if len(node.keywords) > 1:
+        raise EngSyntaxError(
+            f"line {line_no}: plot accepts at most one sweep parameter"
+        )
+
+    keyword_node = node.keywords[0]
+    if keyword_node.arg is None:
+        raise EngSyntaxError(
+            f"line {line_no}: plot does not support keyword unpacking"
+        )
+    if (
+        not _IDENTIFIER.fullmatch(keyword_node.arg)
+        or keyword.iskeyword(keyword_node.arg)
+        or keyword_node.arg in _RESERVED
+    ):
+        raise EngSyntaxError(
+            f"line {line_no}: invalid plot sweep parameter '{keyword_node.arg}'"
+        )
+
+    sweep_value = keyword_node.value
+    if not isinstance(sweep_value, ast.List):
+        if isinstance(sweep_value, (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)):
+            raise EngSyntaxError(
+                f"line {line_no}: unsupported plot sweep syntax '{type(sweep_value).__name__}'"
+            )
+        raise EngSyntaxError(
+            f"line {line_no}: plot sweep values must be a list"
+        )
+    if not sweep_value.elts:
+        raise EngSyntaxError(
+            f"line {line_no}: plot sweep list cannot be empty"
+        )
+
+    for element in sweep_value.elts:
+        _validate_sweep_value(element, line_no)
+
+
+def _validate_sweep_value(node: ast.AST, line_no: int) -> None:
+    if not isinstance(node, _SWEEP_VALUE_NODES):
+        raise EngSyntaxError(
+            f"line {line_no}: unsupported plot sweep syntax '{type(node).__name__}'"
+        )
+    for child in ast.iter_child_nodes(node):
+        _validate_sweep_value(child, line_no)
 
 
 def _split_top_level_numeric_assignment(text: str) -> tuple[str, str] | None:

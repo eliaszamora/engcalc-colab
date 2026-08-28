@@ -29,6 +29,26 @@ def test_numeric_values_can_reference_previous_numeric_values():
     assert p.to("tonf").magnitude == pytest.approx(11.2)
 
 
+def test_evaluate_expression_returns_quantity_without_persisting_assignment():
+    ctx = NumericContext()
+
+    value = ctx.evaluate_expression(expr("5*kN/m"))
+
+    assert value.to("kN/m").magnitude == pytest.approx(5.0)
+    assert ctx.values == {}
+
+
+def test_evaluate_expression_can_reference_existing_numeric_values_without_mutation():
+    ctx = NumericContext()
+    ctx.assign("q_ref", expr("5*kN/m"))
+    before = dict(ctx.values)
+
+    value = ctx.evaluate_expression(expr("2*q_ref"))
+
+    assert value.to("kN/m").magnitude == pytest.approx(10.0)
+    assert ctx.values == before
+
+
 def test_tonf_conversion_uses_engineering_definition():
     ctx = NumericContext()
 

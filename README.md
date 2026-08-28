@@ -1,6 +1,6 @@
 # engcalc-colab
 
-`engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and now plot unit-aware functions without redefining the problem in Python.
+`engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
 ## Install in Google Colab
 
@@ -52,7 +52,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.3.0:
+Supported unit aliases include:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -69,13 +69,52 @@ Units are interpreted only inside the numerical context. A name such as `m` rema
 
 Numerical quantities render with two decimal places by default. Global presentation settings can change that policy without altering stored values or symbolic formulas.
 
+## v0.4.0 multi-series plotting
+
+v0.4.0 extends native `plot(...)` with two additive comparison workflows while preserving the four-argument single-curve syntax.
+
+Several compatible functions may share one axis:
+
+```text
+# Several compatible functions on one axis
+plot(M_D(x), M_L(x), x, 0, L)
+```
+
+The final three positional arguments are always interpreted as `variable, start, end`; every earlier positional argument is a plotted expression.
+
+One function may also be swept over several numerical values of one parameter:
+
+```text
+# One function swept over one parameter
+plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m, 15*kN/m])
+```
+
+The sweep keyword is intentionally narrow. v0.4.0 accepts one sweep parameter with a non-empty list of complete EngCalc numerical expressions such as `5*kN/m`. The shorthand `[5, 10, 15]*kN/m` is not supported. A sweep and multiple plotted expressions cannot be combined in the same call.
+
+Sweep values are local plot overrides. They do not create, replace or mutate the stored numerical value of the swept parameter. The plotting variable is also overridden locally while sampling, so existing numerical values such as `x := 2.5*m` remain unchanged after plotting.
+
+Every series on one y-axis must have compatible dimensions. EngCalc normalizes compatible ordinates to one shared unit and rejects misleading comparisons such as shear and moment on the same ordinary y-axis. A multi-expression comparison that mixes moment-classified and non-moment-classified series is also rejected.
+
+Structural moment plots retain the EngCalc convention of **positive moment downward**. If every series is a moment series, the shared y-axis is inverted consistently.
+
+Presentation depends on the number of series:
+
+- one series keeps the existing structural diagram presentation: line, translucent fill, endpoint/extrema markers, and smart in-plot maximum/minimum callouts;
+- two or more series use clean lines without overlapping area fills, an automatic legend, restrained extrema markers for each curve, and an external **Characteristic values** panel containing each series' sampled maximum/minimum and x locations.
+
+One `plot(...)` statement still creates exactly one Matplotlib figure and remains in source order between surrounding MathJax calculation groups.
+
+v0.4.0 deliberately does not expose arbitrary plot styling, labeled dictionary cases, multi-parameter/cartesian sweeps, dual y-axes or arbitrary Matplotlib keyword arguments. Those remain separate future capabilities.
+
 ## v0.3.0 native plotting inside `%%eng`
 
-v0.3.0 adds a restricted, unit-aware plotting command:
+v0.3.0 introduced the original restricted, unit-aware plotting command:
 
 ```text
 plot(expression, variable, start, end)
 ```
+
+That four-argument form remains fully supported in v0.4.0.
 
 The primary workflow is to define the engineering functions and numerical data once and plot them in the same EngCalc cell:
 
@@ -120,11 +159,11 @@ x [m]
 M(x) [tonf·m]
 ```
 
-Each figure contains the requested curve, a horizontal `y = 0` reference, automatic axis labels, the expression/function name as title, and `tight_layout()`. EngCalc deliberately does not impose a separate plot color/theme: the figure inherits the active Matplotlib `rcParams`.
+Each single-series figure contains the requested curve, a horizontal `y = 0` reference, automatic axis labels, the expression/function name as title, and `tight_layout()`. EngCalc deliberately does not impose a separate plot color/theme: the figure inherits the active Matplotlib `rcParams`.
 
 `plot(...)` is a standalone output statement. It does not create an extra MathJax equation row. When a plot occurs between calculations, EngCalc preserves source order by flushing the preceding equation group, displaying the figure, and then continuing with subsequent equations.
 
-The initial v0.3.0 plotting contract intentionally does **not** include multiple curves, keyword/style arguments, custom plot-unit conversion, fills, legends, extrema/root annotations, discontinuity handling, `piecewise`, image export, or arbitrary Matplotlib access. Those can be added later without changing the four-argument base syntax.
+The original v0.3.0 contract was intentionally monoserie and had no plot keywords. v0.4.0 adds multiple compatible curves and one restricted parameter-sweep keyword without changing the original four-argument form or exposing arbitrary Matplotlib access.
 
 ## v0.2.9 global numerical presentation settings
 
@@ -380,11 +419,17 @@ The last four calls reuse the same symbolic functions and numerical data: `numer
 
 ### Plotting
 
-- `plot(expression, variable, start, end)` — create one unit-aware Matplotlib figure using 201 samples including both endpoints.
-- `plot(V(x), x, 0, L)` — plot a defined EngCalc function over a known span without redefining data in Python.
+- `plot(expression, variable, start, end)` — create the existing single-series unit-aware Matplotlib figure using 201 samples including both endpoints.
+- `plot(expr1, expr2, ..., variable, start, end)` — overlay several dimensionally compatible expressions on one shared axis.
+- `plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])` — plot one expression for several local values of one parameter.
+- the final three positional arguments are always `variable, start, end`.
+- a parameter sweep accepts one keyword with a non-empty list of complete numerical expressions; only one sweep parameter is supported in v0.4.0.
+- a sweep does not persist or overwrite the swept parameter's stored numerical value.
 - the plotting variable is locally overridden for sampling and any stored numeric value for that name is preserved.
+- all y series on one shared axis must have compatible dimensions.
+- all-moment multi-series plots retain positive moment downward.
 - plotting is a standalone statement; assigning `A = plot(...)` is rejected.
-- keyword/style arguments are not supported in v0.3.0.
+- arbitrary plot styling/Matplotlib keyword arguments are not exposed.
 
 ### Arithmetic syntax
 
@@ -438,29 +483,31 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Safety
 
-`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. `plot(...)` is also a restricted EngCalc operation: it does not expose arbitrary Matplotlib functions, callbacks, filenames, Python objects, or keyword arguments. Raw cell text is never passed to unrestricted Python `eval` or `exec`.
+`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. `plot(...)` is also a restricted EngCalc operation: it does not expose arbitrary Matplotlib functions, callbacks, filenames or Python objects. The only plot keyword form accepted in v0.4.0 is the restricted one-parameter sweep list. Raw cell text is never passed to unrestricted Python `eval` or `exec`.
 
 ## Current limitations
 
-v0.3.0 intentionally does not yet provide:
+v0.4.0 intentionally does not yet provide:
 
-- multiple curves in one native plot or subplots;
-- plot styling/options from EngCalc syntax;
+- subplots or multiple axes in one `plot(...)` statement;
+- arbitrary plot styling/options from EngCalc syntax;
+- labeled dictionary cases such as named load combinations;
+- multi-parameter/cartesian sweeps;
+- dual y-axes for quantities with different dimensions;
 - explicit plot x/y target-unit conversion;
-- automatic maxima, minima, roots or engineering annotations;
 - `piecewise`/discontinuous-function plotting and jump markers;
 - automatic scientific-notation policy for very large/small displayed values;
 - target-unit conversion of partially evaluated functions with a free independent variable;
 - automatic compact coefficient evaluation for non-polynomial partial functions;
 - exact browser-pixel-aware MathJax line wrapping;
 - wrapping inside a single indivisible top-level mathematical term wider than the target budget;
-- keyword arguments;
+- general keyword arguments or general list/dictionary syntax outside the restricted plot sweep slot;
 - arrays/tables or dedicated matrix syntax;
 - arbitrary Python execution or arbitrary library functions;
 - multi-solution `solve(...)`;
 - full LaTeX parsing.
 
-These are separate future milestones rather than hidden behavior in v0.3.0.
+These are separate future milestones rather than hidden behavior in v0.4.0.
 
 ## Development
 
@@ -469,4 +516,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.3.0`.
+Version: `0.4.0`.
