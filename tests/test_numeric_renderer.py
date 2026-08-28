@@ -109,7 +109,7 @@ def test_aligned_named_numeric_evaluation_uses_vertical_stage_rows():
     assert latex.count(" & = & ") == 3
     assert r"\\[2pt] & = & \displaystyle" in latex
     assert "5.60" in latex
-    assert " = " not in latex
+    assert " = " not in latex.replace(" & = & ", "")
 
 
 def test_aligned_long_numeric_substitution_splits_additive_terms_into_continuation_rows():
