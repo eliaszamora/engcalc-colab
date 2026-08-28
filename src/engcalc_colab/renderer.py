@@ -408,6 +408,123 @@ def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[s
     return [_standard_result_row(result, settings)]
 
 
+def _stage_spacing_sequence(stage_lengths: list[int]) -> list[str]:
+    """Return semantic gaps: 4 pt within one stage and 8 pt between stages."""
+    spacings: list[str] = []
+    row_seen = False
+    for stage_length in stage_lengths:
+        if stage_length <= 0:
+  continue
+        for row_index in range(stage_length):
+  if not row_seen:
+      row_seen = True
+      continue
+  spacings.append("8pt" if row_index == 0 else "4pt")
+    return spacings
+
+
+def _assignment_stage_row_count(lhs: str | None, body_rows: list[str]) -> int:
+    stage_rows: list[str] = []
+    _append_assignment_stage(stage_rows, lhs, body_rows)
+    return len(stage_rows)
+
+
+def _internal_row_spacings(
+    result: CalculationResult,
+    result_rows: list[str],
+    settings: RenderSettings,
+) -> list[str]:
+    """Classify internal rows as wrapped continuations or new mathematical stages."""
+    if len(result_rows) <= 1:
+        return []
+
+    if isinstance(result, NumericEvaluationResult):
+        formula_rows = _bounded_expression_rows(
+  result.symbolic_expression,
+  settings=settings,
+        )
+        stage_lengths = [
+  _assignment_stage_row_count(_display_lhs(result), formula_rows)
+        ]
+        if _shows_substitution(result):
+  stage_lengths.append(
+      len(
+_bounded_expression_rows(
+    result.symbolic_expression,
+    result.substitutions,
+    settings=settings,
+)
+      )
+  )
+        stage_lengths.append(1)
+
+    elif isinstance(result, PartialNumericEvaluationResult):
+        formula_rows = _bounded_expression_rows(
+  result.symbolic_expression,
+  settings=settings,
+        )
+        stage_lengths = [
+  _assignment_stage_row_count(_display_lhs(result), formula_rows)
+        ]
+        if _shows_substitution(result):
+  stage_lengths.append(
+      len(
+_bounded_expression_rows(
+    result.symbolic_expression,
+    result.substitutions,
+    settings=settings,
+)
+      )
+  )
+        evaluated_latex = None
+        if len(result.unresolved_symbols) == 1:
+  evaluated_latex = _partial_polynomial_latex(
+      result.evaluated_terms,
+      result.unresolved_symbols[0],
+      settings,
+  )
+        if evaluated_latex is not None:
+  stage_lengths.append(1)
+
+    elif isinstance(result, EvaluationResult):
+        statement = result.statement
+        lhs = _render_lhs(statement.target, statement.parameter)
+        value = sp.sympify(result.value)
+        display_input = result.display_input
+
+        if display_input is None or sp.sstr(display_input) == sp.sstr(value):
+  stage_lengths = [len(result_rows)]
+        elif isinstance(display_input, sp.Equality):
+  value_rows = _bounded_expression_rows(value, settings=settings)
+  stage_lengths = [
+      len(_equality_stage_rows(display_input, settings)),
+      _assignment_stage_row_count(lhs, value_rows),
+  ]
+        else:
+  input_latex = _latex(display_input)
+  input_candidate = (
+      rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"
+      if lhs is not None
+      else rf" & & \displaystyle {input_latex}"
+  )
+  input_stage_length = 1
+  if _latex_visual_width(input_candidate) > _COMPLETE_ROW_VISUAL_BUDGET:
+      input_stage_length += 1 if lhs is not None else 0
+  value_rows = _bounded_expression_rows(value, settings=settings)
+  stage_lengths = [input_stage_length, len(value_rows)]
+
+    else:
+        stage_lengths = [len(result_rows)]
+
+    spacings = _stage_spacing_sequence(stage_lengths)
+    expected = len(result_rows) - 1
+    if len(spacings) != expected:
+        raise RuntimeError(
+  "renderer semantic spacing metadata does not match rendered row count"
+        )
+    return spacings
+
+
 def render_aligned_results(results: list[CalculationResult], *, settings: RenderSettings | None = None) -> str:
     """Render all calculation groups with one consistent MathJax array layout."""
     if not results:
@@ -419,13 +536,21 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
         result_rows = _display_rows(result, active_settings)
 
         if result_index:
-            spacing = "16pt" if result.statement.blank_before else "8pt"
-            rows.append(rf"\\[{spacing}]")
+  spacing = "16pt" if result.statement.blank_before else "8pt"
+  rows.append(rf"\\[{spacing}]")
         rows.append(result_rows[0])
 
-        for continuation_row in result_rows[1:]:
-            rows.append(r"\\[2pt]")
-            rows.append(continuation_row)
+        internal_spacings = _internal_row_spacings(
+  result,
+  result_rows,
+  active_settings,
+        )
+        for spacing, continuation_row in zip(
+  internal_spacings,
+  result_rows[1:],
+        ):
+  rows.append(rf"\\[{spacing}]")
+  rows.append(continuation_row)
 
     body = " ".join(rows)
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
