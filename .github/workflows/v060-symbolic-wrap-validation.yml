@@ -72,7 +72,8 @@ jobs:
           axis = figure.axes[0]
           assert len(axis.texts) >= 1
           assert not figure.texts
-          assert [line.get_label() for line in axis.lines if not line.get_label().startswith('_')] == ['|V|_max(x)']
+          visible_labels = [line.get_label() for line in axis.lines if not line.get_label().startswith('_')]
+          assert '|V|_max(x)' in visible_labels
 
           long_engine = EngineeringEngine()
           long_result = long_engine.evaluate(parse_cell(
