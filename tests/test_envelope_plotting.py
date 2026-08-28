@@ -31,9 +31,10 @@ def shear_magnitude_envelope_result():
     engine = EngineeringEngine()
     eval_cell(
         engine,
-        "V_constr(x) = 6*kN - 4*kN/m*x\n"
-        "V_uso(x) = -9*kN + 1*kN/m*x\n"
-        "L := 2*m",
+        "V_constr(x) = R_constr - q_constr*x\n"
+        "V_uso(x) = R_uso + q_uso*x\n"
+        "R_constr := 6*kN\nq_constr := 4*kN/m\n"
+        "R_uso := -9*kN\nq_uso := 1*kN/m\nL := 2*m",
     )
     return eval_cell(
         engine,
