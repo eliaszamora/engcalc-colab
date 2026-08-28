@@ -419,7 +419,7 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
         result_rows = _display_rows(result, active_settings)
 
         if result_index:
-            spacing = "8pt" if result.statement.blank_before else "4pt"
+            spacing = "16pt" if result.statement.blank_before else "8pt"
             rows.append(rf"\\[{spacing}]")
         rows.append(result_rows[0])
 
