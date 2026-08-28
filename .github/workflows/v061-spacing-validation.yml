@@ -13,9 +13,44 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install
+      - name: Install source test environment
         run: |
           python -m pip install -e '.[dev]'
-          python -m pip install ipython
+          python -m pip install ipython build
       - name: Focused spacing tests
         run: python -m pytest -q tests/test_magic.py
+      - name: Complete source suite
+        run: python -m pytest -q
+      - name: Build wheel
+        run: python -m build --wheel
+      - name: Install exact wheel in clean venv
+        run: |
+          python -m venv /tmp/engcalc-v061-spacing-wheel
+          /tmp/engcalc-v061-spacing-wheel/bin/python -m pip install --upgrade pip
+          /tmp/engcalc-v061-spacing-wheel/bin/python -m pip install dist/engcalc_colab-0.6.1-py3-none-any.whl pytest ipython
+      - name: Smoke installed wheel from outside repository
+        run: |
+          cd /tmp
+          PYTHONPATH= /tmp/engcalc-v061-spacing-wheel/bin/python - <<'PY'
+          import engcalc_colab
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.renderer import render_aligned_results
+
+          assert engcalc_colab.__version__ == "0.6.1"
+
+          engine = EngineeringEngine()
+          consecutive = [engine.evaluate(stmt) for stmt in parse_cell("A = 1\nB = 2")]
+          blank = [engine.evaluate(stmt) for stmt in parse_cell("C = 3\n\nD = 4")]
+
+          assert r"\\[8pt]" in render_aligned_results(consecutive)
+          assert r"\\[16pt]" in render_aligned_results(blank)
+          print("installed wheel spacing smoke: PASS")
+          PY
+      - name: Complete suite against installed wheel
+        run: |
+          mv src /tmp/engcalc-v061-spacing-source
+          PYTHONPATH= /tmp/engcalc-v061-spacing-wheel/bin/python -m pytest -q
+          mv /tmp/engcalc-v061-spacing-source src
+      - name: Repeat source suite
+        run: python -m pytest -q
