@@ -70,7 +70,8 @@ def test_result_aligned_output_uses_formula_and_final_as_two_stages():
     rendered = render_aligned_results([evaluate(engine, "result(M_A)")])
 
     assert rendered.count(" & = & ") == 2
-    assert rendered.count(r"\\[2pt]") == 1
+    assert rendered.count(r"\\[8pt]") == 1
+    assert r"\\[2pt]" not in rendered
     assert "2.80" not in rendered
     assert "4.00" not in rendered
 
