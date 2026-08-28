@@ -485,10 +485,34 @@ def _envelope_characteristic_panel_text(result: PlotResult) -> str:
     ])
 
 
-def _render_envelope(figure, axis, result: PlotResult) -> None:
-    x_values = [float(value.magnitude) for value in result.x_values]
-    panel_data: list[tuple[float, float]] = []
+def _magnitude_envelope_characteristic_panel_text(result: PlotResult) -> str:
+    magnitude_series = result.series[0]
+    magnitude_values = [
+        float(value.magnitude) for value in magnitude_series.y_values
+    ]
+    maximum_index = max(
+        range(len(magnitude_values)),
+        key=magnitude_values.__getitem__,
+    )
+    governing_index = result.governing_max[maximum_index]
+    governing_signed = result.governing_signed[maximum_index]
+    moment = magnitude_series.is_moment
 
+    return "\n".join([
+        "Magnitude envelope",
+        (
+            "|max| = "
+            f"{_quantity_label(magnitude_series.y_values[maximum_index], moment=moment)}"
+            "    x = "
+            f"{_quantity_label(result.x_values[maximum_index])}"
+        ),
+        f"signed = {_quantity_label(governing_signed, moment=moment)}",
+        f"governing = {result.source_labels[governing_index]}",
+    ])
+
+
+def _render_envelope_sources(axis, result: PlotResult, x_values):
+    panel_data: list[tuple[float, float]] = []
     for source_series in result.source_series:
         source_y = [float(value.magnitude) for value in source_series.y_values]
         panel_data.extend(zip(x_values, source_y))
@@ -500,6 +524,12 @@ def _render_envelope(figure, axis, result: PlotResult) -> None:
             label="_nolegend_",
             zorder=1,
         )
+    return panel_data
+
+
+def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
+    x_values = [float(value.magnitude) for value in result.x_values]
+    panel_data = _render_envelope_sources(axis, result, x_values)
 
     maximum_series, minimum_series = result.series
     maximum_y = [float(value.magnitude) for value in maximum_series.y_values]
@@ -569,6 +599,76 @@ def _render_envelope(figure, axis, result: PlotResult) -> None:
         legend_corner="upper right",
     )
     figure.tight_layout()
+
+
+def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
+    x_values = [float(value.magnitude) for value in result.x_values]
+    panel_data = _render_envelope_sources(axis, result, x_values)
+
+    magnitude_series = result.series[0]
+    magnitude_y = [float(value.magnitude) for value in magnitude_series.y_values]
+    panel_data.extend(zip(x_values, magnitude_y))
+
+    magnitude_line = axis.plot(
+        x_values,
+        magnitude_y,
+        linewidth=2.5,
+        alpha=1.0,
+        label=magnitude_series.display_label,
+        zorder=4,
+    )[0]
+    axis.fill_between(
+        x_values,
+        0.0,
+        magnitude_y,
+        color=magnitude_line.get_color(),
+        alpha=0.10,
+        zorder=2,
+    )
+    axis.axhline(
+        0.0,
+        linewidth=1.0,
+        color=axis.spines["bottom"].get_edgecolor(),
+        alpha=0.75,
+        label="_zero",
+        zorder=3,
+    )
+    axis.legend(handles=[magnitude_line], loc="upper right")
+
+    moment = magnitude_series.is_moment
+    if moment:
+        axis.invert_yaxis()
+
+    axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
+    axis.set_ylabel(
+        _axis_label(
+            result.display_label,
+            magnitude_series.y_values[0],
+            moment=moment,
+        )
+    )
+    axis.set_title(
+        f"|{result.display_label}| envelope",
+        pad=10,
+        fontweight="semibold",
+    )
+    _style_axes(axis)
+    axis.margins(x=0.02, y=0.12)
+
+    _add_characteristic_panel(
+        axis,
+        _magnitude_envelope_characteristic_panel_text(result),
+        panel_data,
+        legend_corner="upper right",
+    )
+    figure.tight_layout()
+
+
+def _render_envelope(figure, axis, result: PlotResult) -> None:
+    if result.envelope_mode == "magnitude":
+        _render_magnitude_envelope(figure, axis, result)
+    else:
+        _render_signed_envelope(figure, axis, result)
 
 
 def render_plot(result: PlotResult):
