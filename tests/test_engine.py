@@ -49,14 +49,14 @@ def test_abs_rejects_zero_arguments():
     engine = EngineeringEngine()
     with pytest_raises(EngEvaluationError) as captured:
         eval_cell(engine, "A = abs()")
-    assert str(captured.value) == "line 1: abs expects 1 arguments: expression"
+    assert str(captured.value) == "line 1: abs expects 1 argument: expression"
 
 
 def test_abs_rejects_multiple_arguments():
     engine = EngineeringEngine()
     with pytest_raises(EngEvaluationError) as captured:
         eval_cell(engine, "A = abs(x, 2)")
-    assert str(captured.value) == "line 1: abs expects 1 arguments: expression"
+    assert str(captured.value) == "line 1: abs expects 1 argument: expression"
 
 
 def test_numeric_accepts_abs_and_preserves_units():
