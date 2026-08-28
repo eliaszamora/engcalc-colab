@@ -570,7 +570,10 @@ class _Evaluator(ast.NodeVisitor):
                 )
             display_label = self._common_plot_label(source_labels, variable)
 
-        series = self._normalize_plot_series(tuple(raw_series))
+        series = self._normalize_response_series(
+            tuple(raw_series),
+            call_name=call_name,
+        )
         if len(series) > 1:
             moment_flags = {item.is_moment for item in series}
             if len(moment_flags) > 1:
@@ -618,7 +621,11 @@ class _Evaluator(ast.NodeVisitor):
             )
             for element in keyword_node.value.elts
         ]
-        sweep_values = self._normalize_sweep_values(parameter_name, sweep_values)
+        sweep_values = self._normalize_sweep_values(
+            parameter_name,
+            sweep_values,
+            call_name=call_name,
+        )
 
         is_moment = self._is_moment_label(source_label)
         series: list[PlotSeries] = []
@@ -645,7 +652,13 @@ class _Evaluator(ast.NodeVisitor):
             )
         return series, x_values
 
-    def _normalize_sweep_values(self, parameter_name: str, values: list):
+    def _normalize_sweep_values(
+        self,
+        parameter_name: str,
+        values: list,
+        *,
+        call_name: str,
+    ):
         stored = self.engine.numeric_context.get(parameter_name)
         target_unit = stored.units if stored is not None else values[0].units
         normalized = []
@@ -654,14 +667,20 @@ class _Evaluator(ast.NodeVisitor):
                 normalized.append(value.to(target_unit))
             except DimensionalityError as exc:
                 raise EngEvaluationError(
-                    "plot sweep values have incompatible units"
+                    f"{call_name} sweep values have incompatible units"
                 ) from exc
         return normalized
 
     @staticmethod
-    def _normalize_plot_series(series: tuple[PlotSeries, ...]) -> tuple[PlotSeries, ...]:
+    def _normalize_response_series(
+        series: tuple[PlotSeries, ...],
+        *,
+        call_name: str,
+    ) -> tuple[PlotSeries, ...]:
         if not series:
-            raise EngEvaluationError("plot requires at least one series")
+            raise EngEvaluationError(
+                f"{call_name} requires at least one series"
+            )
 
         target_unit = series[0].y_values[0].units
         normalized: list[PlotSeries] = []
@@ -670,7 +689,7 @@ class _Evaluator(ast.NodeVisitor):
                 y_values = tuple(value.to(target_unit) for value in item.y_values)
             except DimensionalityError as exc:
                 raise EngEvaluationError(
-                    "plot series have incompatible y dimensions"
+                    f"{call_name} series have incompatible y dimensions"
                 ) from exc
             normalized.append(
                 PlotSeries(
