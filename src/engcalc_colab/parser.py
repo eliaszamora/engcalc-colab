@@ -10,7 +10,7 @@ from .models import ParsedHeading, ParsedNumericAssignment, ParsedStatement
 _ALLOWED_NODES = (
     ast.Expression, ast.BinOp, ast.UnaryOp, ast.Call, ast.Name,
     ast.Constant, ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow,
-    ast.UAdd, ast.USub, ast.Load,
+    ast.UAdd, ast.USub, ast.Load, ast.keyword, ast.List,
 )
 _ALLOWED_CALLS = {
     "integral", "diff", "solve", "simplify", "expand", "factor", "subs", "eq", "sum", "numeric", "plot"
@@ -128,6 +128,12 @@ def _validate_target(name: str, line_no: int) -> None:
 
 
 def _validate_ast(tree: ast.AST, line_no: int) -> None:
+    parents = {
+        child: parent
+        for parent in ast.walk(tree)
+        for child in ast.iter_child_nodes(parent)
+    }
+
     for node in ast.walk(tree):
         if not isinstance(node, _ALLOWED_NODES):
             raise EngSyntaxError(
@@ -142,8 +148,49 @@ def _validate_ast(tree: ast.AST, line_no: int) -> None:
                 raise EngSyntaxError(
                     f"line {line_no}: unsupported function '{node.func.id}'"
                 )
-            if node.keywords:
+            if node.func.id != "plot" and node.keywords:
                 raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")
+            if node.func.id == "plot":
+                _validate_plot_keywords(node, line_no)
+
+        if isinstance(node, ast.List):
+            keyword_node = parents.get(node)
+            call = parents.get(keyword_node) if isinstance(keyword_node, ast.keyword) else None
+            if not (
+                isinstance(keyword_node, ast.keyword)
+                and isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Name)
+                and call.func.id == "plot"
+                and keyword_node.value is node
+            ):
+                raise EngSyntaxError(
+                    f"line {line_no}: unsupported syntax 'List'"
+                )
+
+
+def _validate_plot_keywords(node: ast.Call, line_no: int) -> None:
+    if len(node.keywords) > 1:
+        raise EngSyntaxError(
+            f"line {line_no}: plot accepts at most one sweep parameter"
+        )
+    if not node.keywords:
+        return
+
+    keyword_node = node.keywords[0]
+    if keyword_node.arg is None:
+        raise EngSyntaxError(f"line {line_no}: plot does not support **kwargs")
+    if keyword_node.arg in _RESERVED or keyword.iskeyword(keyword_node.arg):
+        raise EngSyntaxError(
+            f"line {line_no}: invalid plot sweep parameter '{keyword_node.arg}'"
+        )
+    if not isinstance(keyword_node.value, ast.List):
+        raise EngSyntaxError(
+            f"line {line_no}: plot sweep values must be a list"
+        )
+    if not keyword_node.value.elts:
+        raise EngSyntaxError(
+            f"line {line_no}: plot sweep list cannot be empty"
+        )
 
 
 def _split_top_level_numeric_assignment(text: str) -> tuple[str, str] | None:
