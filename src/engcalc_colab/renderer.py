@@ -136,7 +136,13 @@ def render_result(result: CalculationResult) -> str:
         )
         final_latex = _quantity_latex(result.quantity)
         if result.display_name is not None:
-            lhs = _render_lhs(result.display_name, None)
+            if result.display_argument is None:
+                lhs = _render_lhs(result.display_name, None)
+            else:
+                lhs = _render_function_call_lhs(
+                    result.display_name,
+                    result.display_argument,
+                )
             return rf"{lhs} = {formula_latex} = {substituted_latex} = {final_latex}"
         return rf"{formula_latex} = {substituted_latex} = {final_latex}"
 
@@ -154,6 +160,11 @@ def render_result(result: CalculationResult) -> str:
         if sp.sstr(result.display_input) != sp.sstr(result.value):
             return rf"{lhs} = {input_latex} = {value_latex}"
     return rf"{lhs} = {value_latex}"
+
+
+def _render_function_call_lhs(name: str, argument) -> str:
+    name_latex = _latex(sp.Symbol(name))
+    return rf"{name_latex}\left({_latex(argument)}\right)"
 
 
 def _render_lhs(target: str | None, parameter: str | None) -> str | None:

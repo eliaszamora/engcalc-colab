@@ -69,18 +69,30 @@ class NumericContext:
             return self.ureg.Unit(_UNIT_ALIASES[name])
         raise EngEvaluationError(f"unknown numeric name '{name}'")
 
-    def evaluate_symbolic(self, expression: sp.Expr):
+    def evaluate_symbolic(
+        self,
+        expression: sp.Expr,
+        overrides: dict[str, Any] | None = None,
+    ):
         expr = sp.sympify(expression)
+        overrides = overrides or {}
         names = sorted(symbol.name for symbol in expr.free_symbols)
-        missing = [name for name in names if name not in self.values]
+        missing = [
+            name
+            for name in names
+            if name not in overrides and name not in self.values
+        ]
         if missing:
             raise EngEvaluationError(
                 "numeric evaluation requires values for: " + ", ".join(missing)
             )
 
-        substitutions = {name: self.values[name] for name in names}
+        substitutions = {
+            name: overrides[name] if name in overrides else self.values[name]
+            for name in names
+        }
         try:
-            value = self._evaluate_sympy(expr)
+            value = self._evaluate_sympy(expr, substitutions)
             quantity = self._as_quantity(value)
         except EngEvaluationError:
             raise
@@ -92,9 +104,9 @@ class NumericContext:
             raise EngEvaluationError(f"numeric evaluation failed: {exc}") from exc
         return substitutions, quantity
 
-    def _evaluate_sympy(self, expr):
+    def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):
         if isinstance(expr, sp.Symbol):
-            return self.values[expr.name]
+            return substitutions[expr.name]
 
         if expr.is_Number:
             if expr.is_Integer:
@@ -104,18 +116,22 @@ class NumericContext:
             return float(expr)
 
         if expr.is_Add:
-            values = [self._evaluate_sympy(arg) for arg in expr.args]
+            values = [self._evaluate_sympy(arg, substitutions) for arg in expr.args]
             result = values[0]
             for value in values[1:]:
                 result = result + value
             return result
 
         if expr.is_Mul:
-            return reduce(mul, (self._evaluate_sympy(arg) for arg in expr.args), 1)
+            return reduce(
+                mul,
+                (self._evaluate_sympy(arg, substitutions) for arg in expr.args),
+                1,
+            )
 
         if expr.is_Pow:
-            base = self._evaluate_sympy(expr.base)
-            exponent = self._evaluate_sympy(expr.exp)
+            base = self._evaluate_sympy(expr.base, substitutions)
+            exponent = self._evaluate_sympy(expr.exp, substitutions)
             if hasattr(exponent, "dimensionality"):
                 if not exponent.dimensionless:
                     raise EngEvaluationError("numeric exponent must be dimensionless")

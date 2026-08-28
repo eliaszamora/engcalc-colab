@@ -58,3 +58,4 @@ class NumericEvaluationResult:
     substitutions: dict[str, Any]
     quantity: Any
     display_name: str | None = None
+    display_argument: Any | None = None

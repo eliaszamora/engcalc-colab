@@ -88,7 +88,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.0:
+Supported unit aliases in v0.2.1:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -105,7 +105,41 @@ Units are interpreted only inside the numerical context. A name such as `m` rema
 
 `numeric(expr)` requires numerical values for every free symbol in the evaluated expression. Missing values produce a concise EngCalc error instead of a raw Pint traceback.
 
-Final numerical quantities are rendered with two decimal places in v0.2.0.
+Final numerical quantities are rendered with two decimal places in v0.2.1.
+
+## v0.2.1 validation and function-evaluation polish
+
+v0.2.1 validates the symbolic-to-numerical workflow against a complete force-method beam calculation using mixed engineering units (`tonf/m`, `m`, `GPa`, `mm^4`). It also improves numerical evaluation of user-defined symbolic functions.
+
+Function calls keep their engineering label in the rendered memory:
+
+```text
+V(x) = 5*q*L/8 - q*x
+M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2
+
+q := 2.8*tonf/m
+L := 4*m
+x := 2.5*m
+
+numeric(V(x))
+numeric(M(x))
+numeric(M(L))
+```
+
+The left side remains `V(x)`, `M(x)` or `M(L)` rather than being replaced by the expanded expression. Function evaluation is performed with Pint before an exact symbolic zero can erase dimensional information, so a boundary value such as `numeric(M(L))` remains a zero **moment** rather than a dimensionless zero.
+
+The validation case also covers displacement and flexibility quantities such as:
+
+```text
+Delta_B0 = integral(M_0(x)*M_1(x)/(E*I), x, 0, L)
+f_11 = integral(M_1(x)^2/(E*I), x, 0, L)
+
+E := 200*GPa
+I := 8.5e8*mm^4
+
+numeric(Delta_B0)
+numeric(f_11)
+```
 
 ## Example — propped cantilever by the force method
 
@@ -117,46 +151,53 @@ Final numerical quantities are rendered with two decimal places in v0.2.0.
 ### Reacciones de la estructura base
 
 Sigma_F_y_0 = 0
-R_A0 = q*L
+V_A0 = q*L
 
 Sigma_M_A_0 = 0
 M_A0 = q*L^2/2
 
 ### Fuerzas internas
 
-V_0(x) = R_A0 - q*x
-M_0(x) = -M_A0 + R_A0*x - q*x^2/2
+V_0(x) = V_A0 - q*x
+M_0(x) = -M_A0 + V_A0*x - q*x^2/2
 
 ## Estado 1: carga unitaria en B
 ### Reacciones de la estructura base
 
 Sigma_F_y_1 = 0
-R_A1 = -1
+V_A1 = -1
 
 Sigma_M_A_1 = 0
 M_A1 = -L
 
 ### Fuerzas internas
 
-V_1(x) = R_A1
-M_1(x) = -M_A1 + R_A1*x
+V_1(x) = V_A1
+M_1(x) = -M_A1 + V_A1*x
 
 ## Compatibilidad
 
-Delta_B0 = integral(M_0(x)*M_1(x), x, 0, L)
-f_11 = integral(M_1(x)^2, x, 0, L)
-V_B = -Delta_B0/f_11
+Delta_B0 = integral(M_0(x)*M_1(x)/(E*I), x, 0, L)
+f_11 = integral(M_1(x)^2/(E*I), x, 0, L)
+Delta_B = Delta_B0 + V_B*f_11
+V_B = solve(Delta_B = 0, V_B)
 
 V_A = q*L - V_B
 M_A = q*L^2/2 - V_B*L
+V(x) = expand(V_0(x) + V_B*V_1(x))
+M(x) = expand(M_0(x) + V_B*M_1(x))
 
 ## Datos numéricos
 
 q := 2.8*tonf/m
 L := 4*m
+E := 200*GPa
+I := 8.5e8*mm^4
 
 ## Resultados
 
+numeric(Delta_B0)
+numeric(f_11)
 numeric(V_B)
 numeric(V_A)
 numeric(M_A)
@@ -185,7 +226,8 @@ numeric(M_A)
 - `P := q*L` — numerical values may reference earlier numerical values.
 - `numeric(V_B)` — evaluate a named symbolic result with the current numerical context.
 - `numeric(q*L^2/8)` — evaluate a direct symbolic expression.
-- `numeric(V(x))` — evaluate a user-defined symbolic function when the required numerical symbols, including `x`, have values.
+- `numeric(V(x))` — evaluate a user-defined symbolic function with the numerical value associated with `x`.
+- `numeric(M(L))` — evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
 
 ### Arithmetic syntax
 
@@ -249,7 +291,7 @@ EngCalc ignores the directive because it begins with a single `#`.
 
 ## Current limitations
 
-v0.2.0 intentionally does not yet provide:
+v0.2.1 intentionally does not yet provide:
 
 - target-unit conversion in `numeric(...)`
 - configurable numerical precision
@@ -259,7 +301,7 @@ v0.2.0 intentionally does not yet provide:
 - multi-solution `solve(...)`
 - full LaTeX parsing
 
-These are separate future milestones rather than hidden behavior in 0.2.0.
+These are separate future milestones rather than hidden behavior in v0.2.1.
 
 ## Development
 
@@ -268,4 +310,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.0`.
+Version: `0.2.1`.
