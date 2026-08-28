@@ -14,8 +14,10 @@ from .models import (
     NumericEvaluationResult,
     ParsedHeading,
     PartialNumericEvaluationResult,
+    PlotResult,
 )
 from .parser import parse_cell
+from .plotting import render_plot
 from .renderer import RenderSettings, render_aligned_results
 
 _HEADING_STYLE = {
@@ -79,7 +81,17 @@ class EngMagics(Magics):
                     display(_render_heading(item))
                     continue
 
-                pending_results.append(self.engine.evaluate(item))
+                result = self.engine.evaluate(item)
+                if isinstance(result, PlotResult):
+                    _display_equation_group(
+                        pending_results,
+                        self.render_settings,
+                    )
+                    pending_results.clear()
+                    display(render_plot(result))
+                    continue
+
+                pending_results.append(result)
 
             _display_equation_group(
                 pending_results,
