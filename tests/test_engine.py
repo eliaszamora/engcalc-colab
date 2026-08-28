@@ -38,6 +38,34 @@ def test_supported_symbolic_operations():
     assert eval_cell(engine, "at2 = subs(F(x), x, 2)")[-1].value == 9
 
 
+def test_abs_builds_sympy_absolute_value():
+    engine = EngineeringEngine()
+    result = eval_cell(engine, "A = abs(x - 3)")[-1]
+    x = sp.Symbol("x")
+    assert result.value == sp.Abs(x - 3)
+
+
+def test_abs_rejects_zero_arguments():
+    engine = EngineeringEngine()
+    with pytest_raises(EngEvaluationError) as captured:
+        eval_cell(engine, "A = abs()")
+    assert str(captured.value) == "line 1: abs expects 1 arguments: expression"
+
+
+def test_abs_rejects_multiple_arguments():
+    engine = EngineeringEngine()
+    with pytest_raises(EngEvaluationError) as captured:
+        eval_cell(engine, "A = abs(x, 2)")
+    assert str(captured.value) == "line 1: abs expects 1 arguments: expression"
+
+
+def test_numeric_accepts_abs_and_preserves_units():
+    engine = EngineeringEngine()
+    eval_cell(engine, "P := -7*tonf")
+    result = eval_cell(engine, "numeric(abs(P))")[-1]
+    assert result.quantity.to("tonf").magnitude == 7.0
+
+
 def test_state_reset_removes_assignments():
     engine = EngineeringEngine()
     eval_cell(engine, "A = q*L")
