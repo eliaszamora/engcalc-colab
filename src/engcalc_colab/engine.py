@@ -77,6 +77,7 @@ class EngineeringEngine:
                     symbolic_expression,
                     substitutions,
                     unresolved_symbols,
+                    evaluated_terms,
                     display_name,
                     display_argument,
                 ) = evaluator.partial_numeric_evaluation
@@ -85,6 +86,7 @@ class EngineeringEngine:
                     symbolic_expression=symbolic_expression,
                     substitutions=substitutions,
                     unresolved_symbols=unresolved_symbols,
+                    evaluated_terms=evaluated_terms,
                     display_name=display_name,
                     display_argument=display_argument,
                 )
@@ -240,10 +242,15 @@ class _Evaluator(ast.NodeVisitor):
                             allowed_unresolved={argument_node.id},
                         )
                     )
+                    evaluated_terms = self.engine.numeric_context.evaluate_partial_polynomial(
+                        symbolic_expression,
+                        argument_node.id,
+                    )
                     self.partial_numeric_evaluation = (
                         symbolic_expression,
                         substitutions,
                         unresolved_symbols,
+                        evaluated_terms,
                         display_name,
                         display_argument,
                     )

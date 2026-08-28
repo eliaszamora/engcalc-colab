@@ -88,7 +88,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.2:
+Supported unit aliases in v0.2.3:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -105,11 +105,11 @@ Units are interpreted only inside the numerical context. A name such as `m` rema
 
 For ordinary scalar expressions, `numeric(expr)` requires numerical values for every free symbol. Missing values produce a concise EngCalc error instead of a raw Pint traceback.
 
-Final numerical quantities are rendered with two decimal places in v0.2.2.
+Final numerical quantities are rendered with two decimal places in v0.2.3.
 
-## v0.2.2 partial numerical evaluation of functions
+## v0.2.3 evaluated partial numerical functions
 
-v0.2.2 adds the intermediate workflow needed for engineering functions such as shear, moment, displacement or rotation diagrams: known parameters can be replaced numerically while the function argument remains symbolic.
+v0.2.3 extends the partial-function workflow introduced in v0.2.2. When a user-defined function keeps its independent variable free, EngCalc now evaluates every known polynomial coefficient with Pint instead of stopping after textual substitution.
 
 For example:
 
@@ -122,17 +122,43 @@ L := 2*m
 numeric(V(x))
 ```
 
-Because `x` has no numerical assignment, EngCalc keeps it as the independent variable while substituting the known data `q` and `L`. The rendered calculation remains a function of `x` rather than failing because `x` has no value.
-
-Conceptually the output follows:
+The output follows the complete engineering-memory chain:
 
 \[
 V(x)=\frac{5qL}{8}-qx
 \]
 
-followed by the unit-aware partial substitution of `q` and `L`, with `x` preserved symbolically.
+\[
+=\frac{5(2.80\,\mathrm{tonf/m})(2.00\,\mathrm m)}{8}
+ -(2.80\,\mathrm{tonf/m})x
+\]
 
-This relaxation is intentionally limited to user-defined function calls. EngCalc does **not** guess a free variable in an arbitrary direct expression:
+\[
+=3.50\,\mathrm{tonf}
+ -2.80\,\frac{\mathrm{tonf}}{\mathrm m}x.
+\]
+
+The same mechanism evaluates each coefficient of higher-order polynomial functions independently. For example,
+
+```text
+M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2
+numeric(M(x))
+```
+
+with the same `q` and `L` produces a compact function equivalent to:
+
+\[
+M(x)=
+-1.40\,\mathrm{tonf\,m}
++3.50\,\mathrm{tonf}\,x
+-1.40\,\frac{\mathrm{tonf}}{\mathrm m}x^2.
+\]
+
+The symbolic definition remains unchanged. Only the numerical presentation is evaluated.
+
+Partial coefficient evaluation is intentionally limited to functions that are polynomial in their free argument. If a partial function is not polynomial in that argument, EngCalc keeps the v0.2.2 substitution-only representation rather than failing or inventing an approximation.
+
+This relaxation is still limited to user-defined function calls. EngCalc does **not** guess a free variable in an arbitrary direct expression:
 
 ```text
 q := 2.8*tonf/m
@@ -257,7 +283,7 @@ numeric(V(x))
 numeric(M(x))
 ```
 
-The last two calls keep `x` symbolic unless a numerical value has been assigned to `x`.
+The last two calls keep `x` symbolic unless a numerical value has been assigned to `x`, while evaluating the known polynomial coefficients numerically.
 
 ## Complete command reference
 
@@ -282,7 +308,7 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 - `P := q*L` — numerical values may reference earlier numerical values.
 - `numeric(V_B)` — evaluate a named symbolic result with the current numerical context.
 - `numeric(q*L^2/8)` — evaluate a direct symbolic expression; every free symbol must have a numerical value.
-- `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free, or fully evaluate it if the argument has a numerical value.
+- `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free, including evaluation of known polynomial coefficients; fully evaluate it if the argument has a numerical value.
 - `numeric(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
 
 ### Arithmetic syntax
@@ -347,18 +373,18 @@ EngCalc ignores the directive because it begins with a single `#`.
 
 ## Current limitations
 
-v0.2.2 intentionally does not yet provide:
+v0.2.3 intentionally does not yet provide:
 
 - target-unit conversion in `numeric(...)`
 - configurable numerical precision
-- simplification of partially evaluated functions into unit-aware numerical coefficients
+- automatic compact coefficient evaluation for non-polynomial partial functions
 - keyword arguments
 - arrays/tables or dedicated matrix syntax
 - arbitrary Python execution or arbitrary library functions
 - multi-solution `solve(...)`
 - full LaTeX parsing
 
-These are separate future milestones rather than hidden behavior in v0.2.2.
+These are separate future milestones rather than hidden behavior in v0.2.3.
 
 ## Development
 
@@ -367,4 +393,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.2`.
+Version: `0.2.3`.
