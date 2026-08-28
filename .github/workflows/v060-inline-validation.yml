@@ -5,9 +5,6 @@ on:
     branches:
       - feature/v0.6.0-abs-envelope-panel
 
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,50 +13,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Apply Task 2 source patch
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          models = Path('src/engcalc_colab/models.py')
-          text = models.read_text()
-          old = '''    governing_max: tuple[int, ...] | None = None\n    governing_min: tuple[int, ...] | None = None\n\n    @property\n'''
-          new = '''    governing_max: tuple[int, ...] | None = None\n    governing_min: tuple[int, ...] | None = None\n    envelope_mode: str | None = None\n    governing_signed: tuple[Any, ...] | None = None\n\n    @property\n'''
-          if old in text:
-              models.write_text(text.replace(old, new, 1))
-          elif new not in text:
-              raise SystemExit('PlotResult transport insertion point not found')
-
-          engine = Path('src/engcalc_colab/engine.py')
-          text = engine.read_text()
-
-          old = '''@dataclass(frozen=True)\nclass _ResolvedResponseSeries:\n    display_label: str\n    variable: str\n    x_values: tuple\n    series: tuple[PlotSeries, ...]\n    first_symbolic_expression: object\n\n\n@dataclass(frozen=True)\nclass _PlotEvaluation:\n'''
-          new = '''@dataclass(frozen=True)\nclass _ResolvedExpression:\n    source_label: str\n    display_label: str\n    signed_expression: object\n    comparison_expression: object\n    is_absolute: bool\n\n\n@dataclass(frozen=True)\nclass _ResolvedResponseSeries:\n    display_label: str\n    variable: str\n    x_values: tuple\n    series: tuple[PlotSeries, ...]\n    source_series: tuple[PlotSeries, ...]\n    source_labels: tuple[str, ...]\n    first_symbolic_expression: object\n    envelope_mode: str | None = None\n\n\n@dataclass(frozen=True)\nclass _PlotEvaluation:\n'''
-          if old in text:
-              text = text.replace(old, new, 1)
-          elif new not in text:
-              raise SystemExit('resolved dataclass insertion point not found')
-
-          old = '''    governing_max: tuple[int, ...] | None = None\n    governing_min: tuple[int, ...] | None = None\n\n\nclass EngineeringEngine:\n'''
-          new = '''    governing_max: tuple[int, ...] | None = None\n    governing_min: tuple[int, ...] | None = None\n    envelope_mode: str | None = None\n    governing_signed: tuple | None = None\n\n\nclass EngineeringEngine:\n'''
-          if old in text:
-              text = text.replace(old, new, 1)
-          elif new not in text:
-              raise SystemExit('_PlotEvaluation transport insertion point not found')
-
-          old = '''                    governing_max=plot_evaluation.governing_max,\n                    governing_min=plot_evaluation.governing_min,\n                )\n'''
-          new = '''                    governing_max=plot_evaluation.governing_max,\n                    governing_min=plot_evaluation.governing_min,\n                    envelope_mode=plot_evaluation.envelope_mode,\n                    governing_signed=plot_evaluation.governing_signed,\n                )\n'''
-          if old in text:
-              text = text.replace(old, new, 1)
-          elif new not in text:
-              raise SystemExit('PlotResult pass-through insertion point not found')
-
-          start = text.index('    def _resolve_response_series(\n')
-          end = text.index('    def _evaluate_response_sweep(\n', start)
-          replacement = '''    def _resolve_response_expression(\n        self,\n        node: ast.AST,\n        variable: str,\n    ) -> _ResolvedExpression:\n        is_absolute = (\n            isinstance(node, ast.Call)\n            and isinstance(node.func, ast.Name)\n            and node.func.id == "abs"\n        )\n        if is_absolute:\n            self._require_arity("abs", node.args, 1, "expression")\n            signed_node = node.args[0]\n            signed_expression = self.visit(signed_node)\n            comparison_expression = sp.Abs(signed_expression)\n            source_label = self._plot_expression_label(\n                signed_node,\n                variable,\n                signed_expression,\n            )\n            display_label = f"|{source_label}|"\n        else:\n            signed_expression = self.visit(node)\n            comparison_expression = signed_expression\n            source_label = self._plot_expression_label(\n                node,\n                variable,\n                signed_expression,\n            )\n            display_label = source_label\n\n        return _ResolvedExpression(\n            source_label=source_label,\n            display_label=display_label,\n            signed_expression=signed_expression,\n            comparison_expression=comparison_expression,\n            is_absolute=is_absolute,\n        )\n\n    def _resolve_response_series(\n        self,\n        node: ast.Call,\n        *,\n        call_name: str,\n    ) -> _ResolvedResponseSeries:\n        if len(node.args) < 4:\n            raise EngEvaluationError(\n                f"{call_name} expects at least 4 positional arguments: "\n                "expression[, ...], variable, start, end"\n            )\n\n        expression_nodes = node.args[:-3]\n        variable_node, start_node, end_node = node.args[-3:]\n        if not expression_nodes:\n            raise EngEvaluationError(\n                f"{call_name} requires at least one expression"\n            )\n        if not isinstance(variable_node, ast.Name):\n            raise EngEvaluationError(\n                f"{call_name} variable must be a symbolic identifier"\n            )\n        variable = variable_node.id\n\n        if node.keywords and len(expression_nodes) != 1:\n            raise EngEvaluationError(\n                f"{call_name} parameter sweep requires exactly one expression"\n            )\n\n        start_expression = self.visit(start_node)\n        end_expression = self.visit(end_node)\n        _, start_quantity = self.engine.numeric_context.evaluate_symbolic(start_expression)\n        _, end_quantity = self.engine.numeric_context.evaluate_symbolic(end_expression)\n        start_quantity, end_quantity = self.engine.numeric_context.normalize_plot_bounds(\n            start_quantity,\n            end_quantity,\n        )\n\n        resolved_expressions = [\n            self._resolve_response_expression(item, variable)\n            for item in expression_nodes\n        ]\n        source_labels = [item.source_label for item in resolved_expressions]\n\n        if node.keywords:\n            expression = resolved_expressions[0]\n            raw_series, x_values = self._evaluate_response_sweep(\n                expression.comparison_expression,\n                expression.source_label,\n                variable,\n                start_quantity,\n                end_quantity,\n                node.keywords[0],\n                call_name=call_name,\n            )\n            raw_source_series = raw_series\n            display_label = (\n                expression.display_label\n                if call_name == "plot"\n                else expression.source_label\n            )\n        else:\n            raw_series = []\n            raw_source_series = []\n            x_values = None\n            for expression in resolved_expressions:\n                series_x, y_values = self.engine.numeric_context.sample_symbolic(\n                    expression.comparison_expression,\n                    variable,\n                    start_quantity,\n                    end_quantity,\n                    count=201,\n                )\n                source_x, source_y_values = self.engine.numeric_context.sample_symbolic(\n                    expression.signed_expression,\n                    variable,\n                    start_quantity,\n                    end_quantity,\n                    count=201,\n                )\n                if x_values is None:\n                    x_values = series_x\n                raw_series.append(\n                    PlotSeries(\n                        display_label=expression.display_label,\n                        y_values=y_values,\n                        is_moment=self._is_moment_label(expression.source_label),\n                    )\n                )\n                raw_source_series.append(\n                    PlotSeries(\n                        display_label=expression.source_label,\n                        y_values=source_y_values,\n                        is_moment=self._is_moment_label(expression.source_label),\n                    )\n                )\n            if call_name == "plot" and len(resolved_expressions) == 1:\n                display_label = resolved_expressions[0].display_label\n            else:\n                display_label = self._common_plot_label(source_labels, variable)\n\n        series = self._normalize_response_series(\n            tuple(raw_series),\n            call_name=call_name,\n        )\n        source_series = self._normalize_response_series(\n            tuple(raw_source_series),\n            call_name=call_name,\n        )\n        if len(series) > 1:\n            moment_flags = {item.is_moment for item in series}\n            if len(moment_flags) > 1:\n                raise EngEvaluationError(\n                    f"{call_name} cannot mix moment and non-moment series on one axis"\n                )\n\n        envelope_mode = None\n        if call_name == "envelope":\n            absolute_flags = {item.is_absolute for item in resolved_expressions}\n            if absolute_flags == {True}:\n                envelope_mode = "magnitude"\n            elif absolute_flags == {False}:\n                envelope_mode = "signed"\n\n        return _ResolvedResponseSeries(\n            display_label=display_label,\n            variable=variable,\n            x_values=x_values,\n            series=series,\n            source_series=source_series,\n            source_labels=tuple(source_labels),\n            first_symbolic_expression=resolved_expressions[0].comparison_expression,\n            envelope_mode=envelope_mode,\n        )\n\n'''
-          text = text[:start] + replacement + text[end:]
-          engine.write_text(text)
-          PY
       - name: Install project
         run: |
           python -m pip install --upgrade pip
@@ -67,12 +20,3 @@ jobs:
           python -m pip install pytest ipython
       - name: Run test suite
         run: pytest -q
-      - name: Commit Task 2 source patch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/engcalc_colab/models.py src/engcalc_colab/engine.py
-          if ! git diff --cached --quiet; then
-            git commit -m "refactor: preserve response expression metadata"
-            git push
-          fi
