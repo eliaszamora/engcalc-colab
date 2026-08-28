@@ -71,7 +71,7 @@ def test_envelope_legend_contains_only_the_two_boundaries():
     assert [text.get_text() for text in legend.get_texts()] == ["M_max(x)", "M_min(x)"]
 
 
-def test_signed_envelope_replaces_panel_with_global_point_annotations():
+def test_signed_envelope_replaces_panel_with_global_compact_coordinate_annotations():
     figure = render_plot(moment_envelope_result())
     axis = figure.axes[0]
     items = annotations(axis)
@@ -80,9 +80,10 @@ def test_signed_envelope_replaces_panel_with_global_point_annotations():
     assert len(figure.texts) == 0
     assert not any("Envelope characteristic values" in text.get_text() for text in axis.texts)
     assert len(items) == 2
-    assert "x = 3.00 m\nM = 36.00 kN·m" in labels
-    assert "x = 3.00 m\nM = -18.00 kN·m" in labels
+    assert "(3, 36)" in labels
+    assert "(3, -18)" in labels
     assert all(item.xy == (3.0, 36.0) or item.xy == (3.0, -18.0) for item in items)
+    assert all(item.arrow_patch is None and item.get_bbox_patch() is None for item in items)
 
 
 def test_envelope_keeps_zero_reference_line():
@@ -111,7 +112,7 @@ def test_magnitude_envelope_fill_and_legend():
     assert [text.get_text() for text in axis.get_legend().get_texts()] == ["|V|_max(x)"]
 
 
-def test_magnitude_envelope_replaces_panel_with_one_governing_magnitude_annotation():
+def test_magnitude_envelope_replaces_panel_with_one_compact_coordinate_annotation():
     figure = render_plot(shear_magnitude_envelope_result())
     axis = figure.axes[0]
     items = annotations(axis)
@@ -119,8 +120,10 @@ def test_magnitude_envelope_replaces_panel_with_one_governing_magnitude_annotati
     assert len(figure.texts) == 0
     assert not any("Magnitude envelope" in text.get_text() for text in axis.texts)
     assert len(items) == 1
-    assert items[0].get_text() == "x = 0.00 m\n|V| = 9.00 kN"
+    assert items[0].get_text() == "(0, 9)"
     assert items[0].xy == (0.0, 9.0)
+    assert items[0].arrow_patch is None
+    assert items[0].get_bbox_patch() is None
 
 
 def test_envelope_render_returns_closed_figure():
