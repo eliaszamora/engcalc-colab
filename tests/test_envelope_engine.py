@@ -110,3 +110,109 @@ def test_envelope_cannot_be_assigned_to_symbol():
         match="envelope must be a standalone statement",
     ):
         eval_cell(engine, "A = envelope(x, 2*x, x, 0, 4)")
+
+
+def test_envelope_parameter_sweep_reduces_source_series_and_keeps_governing_cases():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M(x) = q*x*(L-x)/2\nL := 6*m")
+
+    result = eval_cell(
+        engine,
+        "envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m, 15*kN/m])",
+    )[-1]
+
+    assert len(result.source_series) == 3
+    assert len(result.series) == 2
+    assert result.series[0].y_values[100].to("kN*m").magnitude == pytest.approx(67.5)
+    assert result.series[1].y_values[100].to("kN*m").magnitude == pytest.approx(22.5)
+    assert result.governing_max[100] == 2
+    assert result.governing_min[100] == 0
+
+
+def test_envelope_sweep_does_not_mutate_existing_parameter_or_x_value():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "M(x) = q*x*(L-x)/2\n"
+        "q := 2.8*tonf/m\nL := 6*m\nx := 1.5*m",
+    )
+
+    eval_cell(
+        engine,
+        "envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])",
+    )
+
+    assert engine.numeric_context.get("q").to("tonf/m").magnitude == pytest.approx(2.8)
+    assert engine.numeric_context.get("x").to("m").magnitude == pytest.approx(1.5)
+
+
+def test_envelope_rejects_sweep_that_expands_to_one_source_series():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M(x) = q*x\nL := 2*m")
+    with pytest.raises(
+        EngEvaluationError,
+        match="envelope requires at least two response series",
+    ):
+        eval_cell(engine, "envelope(M(x), x, 0, L, q=[5*kN/m])")
+
+
+def test_envelope_rejects_sweep_parameter_absent_from_expanded_expression():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M(x) = q*x\nq := 5*kN/m\nL := 2*m")
+    with pytest.raises(
+        EngEvaluationError,
+        match="envelope sweep parameter 'P' is not used in the plotted expression",
+    ):
+        eval_cell(engine, "envelope(M(x), x, 0, L, P=[1*kN, 2*kN])")
+
+
+def test_envelope_rejects_incompatible_sweep_value_dimensions():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M(x) = q*x^2\nL := 2*m")
+    with pytest.raises(
+        EngEvaluationError,
+        match="envelope sweep values have incompatible units",
+    ):
+        eval_cell(engine, "envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN])")
+
+
+def test_envelope_normalizes_compatible_source_units_before_comparison():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "R_A(x) = q_A*x\n"
+        "R_B(x) = q_B*x\n"
+        "q_A := 1*kN/m\nq_B := 500*N/m\nL := 2*m",
+    )
+    result = eval_cell(engine, "envelope(R_A(x), R_B(x), x, 0, L)")[-1]
+
+    assert result.source_series[0].y_values[100].to("kN").magnitude == pytest.approx(1.0)
+    assert result.source_series[1].y_values[100].to("kN").magnitude == pytest.approx(0.5)
+    assert result.series[0].y_values[100].to("kN").magnitude == pytest.approx(1.0)
+    assert result.series[1].y_values[100].to("kN").magnitude == pytest.approx(0.5)
+
+
+def test_envelope_rejects_series_with_incompatible_y_dimensions():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "V(x) = q*(L-x)\nM(x) = q*(L-x)^2\nq := 5*kN/m\nL := 2*m",
+    )
+    with pytest.raises(
+        EngEvaluationError,
+        match="envelope series have incompatible y dimensions",
+    ):
+        eval_cell(engine, "envelope(V(x), M(x), x, 0, L)")
+
+
+def test_envelope_rejects_mixed_moment_and_non_moment_series_even_with_same_dimensions():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "M_A(x) = q*x^2\nR(x) = q*x^2\nq := 5*kN/m\nL := 2*m",
+    )
+    with pytest.raises(
+        EngEvaluationError,
+        match="envelope cannot mix moment and non-moment series on one axis",
+    ):
+        eval_cell(engine, "envelope(M_A(x), R(x), x, 0, L)")
