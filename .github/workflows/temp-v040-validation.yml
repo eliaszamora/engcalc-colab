@@ -9,14 +9,32 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 81d743a14592412f7170306f3f6514e9f1b298c5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install baseline and test dependencies
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pip install 'ipython>=8'
+      - name: Verify EngCalc 0.3.3 baseline
+        run: pytest -q
+
+  current:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install package and test dependencies
-        run: python -m pip install -e '.[dev]'
-      - name: Run full test suite
+      - name: Install current branch and test dependencies
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pip install 'ipython>=8'
+      - name: Run current full test suite
         run: pytest -q
