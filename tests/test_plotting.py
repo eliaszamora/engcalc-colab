@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use("Agg")
 
-from matplotlib.collections import PathCollection
+from matplotlib.collections import PathCollection, PolyCollection
 
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
@@ -29,6 +29,26 @@ def shear_plot_result():
 
 def constant_plot_result():
     return plot_result("C", "q*L")
+
+
+def multi_moment_plot_result():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "M_D(x) = q_D*x*(L-x)/2\n"
+        "M_L(x) = q_L*x*(L-x)/2\n"
+        "q_D := 8*kN/m\nq_L := 5*kN/m\nL := 6*m",
+    )
+    return eval_cell(engine, "plot(M_D(x), M_L(x), x, 0, L)")[-1]
+
+
+def sweep_moment_plot_result():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M(x) = q*x*(L-x)/2\nL := 6*m")
+    return eval_cell(
+        engine,
+        "plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m, 15*kN/m])",
+    )[-1]
 
 
 def test_render_plot_labels_axes_title_and_zero_reference():
@@ -147,6 +167,56 @@ def test_plot_uses_one_deduplicated_marker_collection():
     assert len(moment_markers) == 1
     assert len(moment_markers[0].get_offsets()) == 3
     assert max(moment_markers[0].get_sizes()) <= 34
+
+
+def test_multiseries_render_uses_lines_legend_and_no_area_fills():
+    figure = render_plot(multi_moment_plot_result())
+    axis = figure.axes[0]
+
+    # two data lines plus the horizontal zero reference
+    assert len(axis.lines) == 3
+    assert axis.get_legend() is not None
+    assert [text.get_text() for text in axis.get_legend().get_texts()] == [
+        "M_D(x)",
+        "M_L(x)",
+    ]
+    assert not any(
+        isinstance(collection, PolyCollection)
+        for collection in axis.collections
+    )
+
+
+def test_multiseries_moment_axis_keeps_positive_down_convention():
+    axis = render_plot(multi_moment_plot_result()).axes[0]
+    assert axis.yaxis_inverted()
+    assert axis.get_ylabel() == "M(x) [kN·m]"
+
+
+def test_multiseries_uses_one_restrained_extrema_marker_collection_per_series():
+    axis = render_plot(sweep_moment_plot_result()).axes[0]
+    markers = [
+        item for item in axis.collections if isinstance(item, PathCollection)
+    ]
+    assert len(markers) == 3
+    assert all(len(marker.get_offsets()) in (1, 2) for marker in markers)
+    assert all(max(marker.get_sizes()) <= 28 for marker in markers)
+
+
+def test_multiseries_moves_characteristic_values_outside_data_area():
+    figure = render_plot(sweep_moment_plot_result())
+    axis = figure.axes[0]
+
+    # No 0.3.3 boxed extrema annotations are placed over the data curves.
+    assert axis.texts == []
+
+    panel_text = "\n".join(text.get_text() for text in figure.texts)
+    assert "Characteristic values" in panel_text
+    assert "q = 5" in panel_text
+    assert "q = 10" in panel_text
+    assert "q = 15" in panel_text
+    assert "max =" in panel_text
+    assert "min =" in panel_text
+    assert "x =" in panel_text
 
 
 def test_render_plot_returns_closed_figure():
