@@ -1,0 +1,19 @@
+name: EngCalc 0.6.1 result command validation
+
+on:
+  push:
+    branches:
+      - feature/v0.6.1-visual-polish-2
+
+jobs:
+  result-command:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install source
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Focused result command tests
+        run: pytest -q tests/test_result_command_v061.py
