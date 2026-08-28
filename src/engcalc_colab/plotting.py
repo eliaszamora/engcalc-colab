@@ -213,6 +213,7 @@ def _choose_annotation_offset(
     candidates = []
     for order, offset in enumerate(_ANNOTATION_CANDIDATES):
         temporary = _create_annotation(axis, text, x, y, offset, line_color)
+        temporary.get_window_extent(renderer)
         patch = temporary.get_bbox_patch()
         candidate_box = patch.get_window_extent(renderer).expanded(1.04, 1.08)
         temporary.remove()
@@ -260,6 +261,7 @@ def _annotate_characteristic(
         occupied_boxes=occupied_boxes,
     )
     annotation = _create_annotation(axis, text, x, y, (dx, dy), line_color)
+    annotation.get_window_extent(renderer)
     occupied_boxes.append(annotation.get_bbox_patch().get_window_extent(renderer).expanded(1.04, 1.08))
 
 
