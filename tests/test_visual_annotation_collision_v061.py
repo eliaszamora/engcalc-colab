@@ -33,26 +33,20 @@ def propped_cantilever_stage_moment_plot():
 
 
 def label_box(annotation, renderer):
-    # Force Matplotlib to resolve text/patch geometry, then measure the callout box only.
     annotation.get_window_extent(renderer)
     return annotation.get_bbox_patch().get_window_extent(renderer)
 
 
-def placement_diagnostics(items, renderer):
-    rows = []
-    for item in items:
-        box = label_box(item, renderer)
-        rows.append(
-            (
-                item.get_text().replace("\n", " | "),
-                item.xy,
-                item.get_position(),
-                item.get_ha(),
-                item.get_va(),
-                (box.x0, box.y0, box.x1, box.y1),
-            )
-        )
-    return rows
+def placement_diagnostic(item, renderer):
+    box = label_box(item, renderer)
+    return {
+        "text": item.get_text().replace("\n", " | "),
+        "xy": tuple(float(value) for value in item.xy),
+        "offset": tuple(float(value) for value in item.get_position()),
+        "ha": item.get_ha(),
+        "va": item.get_va(),
+        "box": tuple(float(value) for value in (box.x0, box.y0, box.x1, box.y1)),
+    }
 
 
 def test_propped_cantilever_characteristic_callouts_do_not_overlap():
@@ -66,10 +60,12 @@ def test_propped_cantilever_characteristic_callouts_do_not_overlap():
     canvas.draw()
     renderer = canvas.get_renderer()
     boxes = [label_box(item, renderer).expanded(1.04, 1.08) for item in items]
-    diagnostics = placement_diagnostics(items, renderer)
 
     for (left_index, left), (right_index, right) in combinations(enumerate(boxes), 2):
-        assert not left.overlaps(right), (left_index, right_index, diagnostics)
+        assert not left.overlaps(right), (
+            placement_diagnostic(items[left_index], renderer),
+            placement_diagnostic(items[right_index], renderer),
+        )
 
 
 def test_propped_cantilever_callouts_stay_inside_axes_and_clear_of_legend():
@@ -82,12 +78,12 @@ def test_propped_cantilever_callouts_stay_inside_axes_and_clear_of_legend():
     renderer = canvas.get_renderer()
     axes_box = axis.get_window_extent(renderer)
     legend_box = axis.get_legend().get_window_extent(renderer)
-    diagnostics = placement_diagnostics(items, renderer)
 
-    for index, item in enumerate(items):
+    for item in items:
         box = label_box(item, renderer)
-        assert box.x0 >= axes_box.x0 - 1, (index, diagnostics)
-        assert box.x1 <= axes_box.x1 + 1, (index, diagnostics)
-        assert box.y0 >= axes_box.y0 - 1, (index, diagnostics)
-        assert box.y1 <= axes_box.y1 + 1, (index, diagnostics)
-        assert not box.expanded(1.02, 1.05).overlaps(legend_box), (index, diagnostics)
+        diagnostic = placement_diagnostic(item, renderer)
+        assert box.x0 >= axes_box.x0 - 1, diagnostic
+        assert box.x1 <= axes_box.x1 + 1, diagnostic
+        assert box.y0 >= axes_box.y0 - 1, diagnostic
+        assert box.y1 <= axes_box.y1 + 1, diagnostic
+        assert not box.expanded(1.02, 1.05).overlaps(legend_box), diagnostic
