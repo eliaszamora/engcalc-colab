@@ -1,6 +1,8 @@
 import matplotlib
 matplotlib.use("Agg")
 
+from matplotlib.collections import PathCollection
+
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.plotting import render_plot
@@ -72,6 +74,44 @@ def test_render_plot_deduplicates_equal_maximum_and_minimum():
 
     assert len(labels) == 1
     assert labels[0].startswith("max = min = 11.20")
+
+
+def test_moment_units_render_in_engineering_force_length_order():
+    axis = render_plot(moment_plot_result()).axes[0]
+    labels = [text.get_text() for text in axis.texts]
+
+    assert axis.get_ylabel() == "M(x) [tonf·m]"
+    assert any("3.15 tonf·m" in label for label in labels)
+    assert any("-5.60 tonf·m" in label for label in labels)
+
+
+def test_edge_annotations_point_inward_horizontally():
+    axis = render_plot(shear_plot_result()).axes[0]
+    annotations = {text.get_text().split(" = ", 1)[0]: text for text in axis.texts}
+
+    maximum = annotations["max"]
+    minimum = annotations["min"]
+
+    assert maximum.get_ha() == "left"
+    assert maximum.get_position()[0] > 0
+    assert minimum.get_ha() == "right"
+    assert minimum.get_position()[0] < 0
+
+
+def test_plot_uses_one_deduplicated_marker_collection():
+    shear_axis = render_plot(shear_plot_result()).axes[0]
+    moment_axis = render_plot(moment_plot_result()).axes[0]
+
+    shear_markers = [item for item in shear_axis.collections if isinstance(item, PathCollection)]
+    moment_markers = [item for item in moment_axis.collections if isinstance(item, PathCollection)]
+
+    assert len(shear_markers) == 1
+    assert len(shear_markers[0].get_offsets()) == 2
+    assert max(shear_markers[0].get_sizes()) <= 34
+
+    assert len(moment_markers) == 1
+    assert len(moment_markers[0].get_offsets()) == 3
+    assert max(moment_markers[0].get_sizes()) <= 34
 
 
 def test_render_plot_returns_closed_figure():
