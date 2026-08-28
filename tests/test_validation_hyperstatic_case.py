@@ -140,6 +140,40 @@ def test_numeric_user_function_keeps_unassigned_parameter_symbolic():
     assert latex.endswith("x")
 
 
+def test_partial_numeric_shear_evaluates_known_coefficients():
+    engine = EngineeringEngine()
+    run(engine, "V(x) = 5*q*L/8 - q*x")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 2*m")
+
+    latex = render_result(run(engine, "numeric(V(x))"))
+    final_latex = latex.split(" = ")[-1]
+
+    assert "3.50" in final_latex
+    assert "2.80" in final_latex
+    assert r"\mathrm{tonf}" in final_latex
+    assert "2.00" not in final_latex
+    assert r"\frac{5" not in final_latex
+    assert r"\left(" not in final_latex
+    assert final_latex.endswith("x")
+
+
+def test_partial_numeric_moment_evaluates_constant_linear_and_quadratic_coefficients():
+    engine = EngineeringEngine()
+    run(engine, "M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 2*m")
+
+    latex = render_result(run(engine, "numeric(M(x))"))
+    final_latex = latex.split(" = ")[-1]
+
+    assert final_latex.count("1.40") == 2
+    assert "3.50" in final_latex
+    assert r"x^{2}" in final_latex
+    assert "2.00" not in final_latex
+    assert r"\left(" not in final_latex
+
+
 def test_numeric_partial_function_requires_all_non_parameter_values():
     engine = EngineeringEngine()
     run(engine, "V(x) = 5*q*L/8 - q*x")
