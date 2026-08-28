@@ -5,6 +5,9 @@ on:
     branches:
       - feature/v0.6.0-abs-envelope-panel
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,6 +16,69 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Apply v0.6.0 README patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          readme = Path('README.md')
+          text = readme.read_text()
+          marker = '## v0.5.0 sampled engineering envelopes\n'
+          heading = '## v0.6.0 absolute-value envelopes and in-plot panels\n'
+          if heading not in text:
+              if marker not in text:
+                  raise SystemExit('README v0.5 marker not found')
+              section = '''## v0.6.0 absolute-value envelopes and in-plot panels
+
+v0.6.0 adds the safe, composable `abs(...)` operation and extends the existing `envelope(...)` statement with a magnitude-demand mode. The signed-envelope syntax and algebraic max/min behavior introduced in v0.5.0 remain unchanged.
+
+`abs(...)` works in symbolic expressions, numerical/Pint evaluation and native plotting. A magnitude envelope is requested by applying `abs(...)` to every source response:
+
+```text
+%%eng
+
+V_constr(x) = R_constr - q_constr*x
+V_uso(x) = R_uso + q_uso*x
+
+R_constr := 6*kN
+q_constr := 4*kN/m
+R_uso := -9*kN
+q_uso := 1*kN/m
+L := 2*m
+
+envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
+```
+
+At each of the shared 201 sample positions, EngCalc compares the absolute magnitudes and keeps one nonnegative maximum-magnitude demand branch. The original signed source curves are retained internally and shown as faint context, so a negative response may govern the absolute demand without losing its sign. The result also retains the governing source index and signed governing value.
+
+The same mode works with the existing restricted one-parameter sweep:
+
+```text
+%%eng
+
+V(x) = q*(L/2-x)
+L := 4*m
+
+envelope(
+    abs(V(x)),
+    x,
+    0,
+    L,
+    q=[2*tonf/m, 3*tonf/m, 4*tonf/m]
+)
+```
+
+Every source of one envelope must use the same comparison mode. Mixing signed and absolute responses in one call, for example `envelope(abs(V_A(x)), V_B(x), ...)`, is rejected. There is intentionally no separate `abs_envelope(...)` alias: absolute-value demand is composed with the ordinary `envelope(...)` API.
+
+Magnitude-envelope figures emphasize one `|response|_max` boundary, fill from zero to that boundary, and keep the signed source responses as faint context. Their characteristic panel reports the maximum magnitude, its x location, the signed governing value and the governing source/case.
+
+v0.6.0 also moves characteristic-value panels for multi-series plots, signed envelopes and magnitude envelopes **inside the graph axes**. EngCalc automatically chooses among the four plot corners using data occupancy and penalizes the legend corner, while keeping the complete panel bounding box inside the axes. Single-series maximum/minimum callouts remain unchanged.
+
+Structural moment diagrams continue to use the EngCalc convention of **positive moment downward**, including `plot(abs(M(x)))` and magnitude moment envelopes.
+
+'''
+              readme.write_text(text.replace(marker, section + marker, 1))
+          PY
       - name: Install project
         run: |
           python -m pip install --upgrade pip
@@ -20,3 +86,12 @@ jobs:
           python -m pip install pytest ipython
       - name: Run test suite
         run: pytest -q
+      - name: Commit README only after green suite
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: document EngCalc 0.6.0 magnitude envelopes"
+            git push
+          fi
