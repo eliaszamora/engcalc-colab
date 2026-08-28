@@ -100,8 +100,8 @@ def test_numeric_rows_preserve_three_column_layout_and_spacing():
     latex = render_aligned_results(results)
 
     assert r"\begin{array}{lcl}" in latex
-    assert r"\\[4pt]" in latex
     assert r"\\[8pt]" in latex
+    assert r"\\[16pt]" in latex
     assert latex.count(" & = & ") == 3
 
 
