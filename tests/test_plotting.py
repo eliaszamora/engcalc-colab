@@ -207,7 +207,7 @@ def test_multiseries_moves_characteristic_values_outside_data_area():
     axis = figure.axes[0]
 
     # No 0.3.3 boxed extrema annotations are placed over the data curves.
-    assert axis.texts == []
+    assert len(axis.texts) == 0
 
     panel_text = "\n".join(text.get_text() for text in figure.texts)
     assert "Characteristic values" in panel_text
