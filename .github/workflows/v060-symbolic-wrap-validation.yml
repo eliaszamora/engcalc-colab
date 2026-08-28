@@ -5,6 +5,9 @@ on:
     branches:
       - feature/v0.6.0-abs-envelope-panel
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,7 +16,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Apply candidate symbolic wrapping patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/engcalc_colab/renderer.py')
+          text = path.read_text()
+          if 'def _symbolic_evaluation_rows(' not in text:
+              old = '''def _display_rows(\n    result: CalculationResult,\n    settings: RenderSettings,\n) -> list[str]:\n    if isinstance(result, NumericEvaluationResult):\n        return _numeric_evaluation_rows(result, settings)\n    if isinstance(result, PartialNumericEvaluationResult):\n        return _partial_numeric_evaluation_rows(result, settings)\n    return [_standard_result_row(result, settings)]\n'''
+              new = '''def _symbolic_evaluation_rows(\n    result: EvaluationResult,\n    settings: RenderSettings,\n) -> list[str]:\n    statement = result.statement\n    lhs = _render_lhs(statement.target, statement.parameter)\n    value = sp.sympify(result.value)\n    display_input = result.display_input\n\n    if display_input is None or sp.sstr(display_input) == sp.sstr(value):\n        value_rows = _adaptive_additive_rows(value, settings=settings)\n        if len(value_rows) == 1:\n            return [_standard_result_row(result, settings)]\n        rows = []\n        if lhs is None:\n            rows.append(rf"\\displaystyle {value_rows[0]} & &")\n        else:\n            rows.append(rf"\\displaystyle {lhs} & = & \\displaystyle {value_rows[0]}")\n        for continuation in value_rows[1:]:\n            rows.append(rf" & & \\displaystyle {continuation}")\n        return rows\n\n    input_latex = _latex(display_input)\n    value_latex = _latex(value)\n    lhs_width = _latex_visual_width(lhs) + 3.0 if lhs is not None else 0.0\n    chain_width = lhs_width + _latex_visual_width(input_latex) + _latex_visual_width(value_latex) + 6.0\n    if chain_width <= _NUMERIC_ROW_VISUAL_BUDGET:\n        return [_standard_result_row(result, settings)]\n\n    if isinstance(display_input, sp.Equality):\n        equation_rows = _adaptive_additive_rows(display_input.lhs, settings=settings)\n        rhs_latex = _latex(display_input.rhs)\n        rows = []\n        for index, equation_row in enumerate(equation_rows):\n            if index == len(equation_rows) - 1:\n                rows.append(rf"\\displaystyle {equation_row} & = & \\displaystyle {rhs_latex}")\n            else:\n                rows.append(rf"\\displaystyle {equation_row} & &")\n\n        value_rows = _adaptive_additive_rows(value, settings=settings)\n        if lhs is None:\n            rows.append(rf" & = & \\displaystyle {value_rows[0]}")\n        else:\n            rows.append(rf"\\displaystyle {lhs} & = & \\displaystyle {value_rows[0]}")\n        for continuation in value_rows[1:]:\n            rows.append(rf" & & \\displaystyle {continuation}")\n        return rows\n\n    value_rows = _adaptive_additive_rows(value, settings=settings)\n    if lhs is None:\n        rows = [rf"\\displaystyle {input_latex} & &"]\n    else:\n        rows = [rf"\\displaystyle {lhs} & = & \\displaystyle {input_latex}"]\n    rows.append(rf" & = & \\displaystyle {value_rows[0]}")\n    for continuation in value_rows[1:]:\n        rows.append(rf" & & \\displaystyle {continuation}")\n    return rows\n\n\ndef _display_rows(\n    result: CalculationResult,\n    settings: RenderSettings,\n) -> list[str]:\n    if isinstance(result, NumericEvaluationResult):\n        return _numeric_evaluation_rows(result, settings)\n    if isinstance(result, PartialNumericEvaluationResult):\n        return _partial_numeric_evaluation_rows(result, settings)\n    if isinstance(result, EvaluationResult):\n        return _symbolic_evaluation_rows(result, settings)\n    return [_standard_result_row(result, settings)]\n'''
+              if old not in text:
+                  raise SystemExit('expected renderer block not found')
+              path.write_text(text.replace(old, new))
+          PY
       - name: Install test environment
         run: python -m pip install -e '.[dev]' ipython
+      - name: Run focused wrapping tests
+        run: pytest tests/test_symbolic_mathjax_wrapping.py tests/test_adaptive_mathjax_wrapping.py -q
       - name: Run full suite
         run: pytest -q
+      - name: Persist production patch after green suite
+        run: |
+          if git diff --quiet -- src/engcalc_colab/renderer.py; then
+            echo 'No renderer changes to persist.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/engcalc_colab/renderer.py
+          git commit -m 'fix: wrap long symbolic MathJax results'
+          git push
