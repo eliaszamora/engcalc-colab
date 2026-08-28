@@ -167,6 +167,11 @@ def _display_lhs(result: NumericEvaluationResult | PartialNumericEvaluationResul
     return _render_function_call_lhs(result.display_name, result.display_argument)
 
 
+def _shows_substitution(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> bool:
+    """Return False for the compact result(...) presentation alias."""
+    return re.match(r"^result\s*\(", result.statement.source.strip()) is None
+
+
 _NUMERIC_ROW_VISUAL_BUDGET = 64.0
 _COMPLETE_ROW_VISUAL_BUDGET = 104.0
 
@@ -281,24 +286,28 @@ def _append_assignment_stage(rows: list[str], lhs: str | None, body_rows: list[s
 
 def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSettings) -> list[str]:
     formula_rows = _bounded_expression_rows(result.symbolic_expression, settings=settings)
-    substituted_rows = _bounded_expression_rows(result.symbolic_expression, result.substitutions, settings=settings)
     final_latex = _quantity_latex(result.quantity, settings=settings)
     lhs = _display_lhs(result)
 
     rows: list[str] = []
     _append_assignment_stage(rows, lhs, formula_rows)
-    for index, body in enumerate(substituted_rows):
-        if index == 0:
-            rows.append(rf" & = & \displaystyle {body}")
-        else:
-            rows.append(rf" & & \displaystyle {body}")
+    if _shows_substitution(result):
+        substituted_rows = _bounded_expression_rows(
+            result.symbolic_expression,
+            result.substitutions,
+            settings=settings,
+        )
+        for index, body in enumerate(substituted_rows):
+            if index == 0:
+                rows.append(rf" & = & \displaystyle {body}")
+            else:
+                rows.append(rf" & & \displaystyle {body}")
     rows.append(rf" & = & \displaystyle {final_latex}")
     return rows
 
 
 def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, settings: RenderSettings) -> list[str]:
     formula_rows = _bounded_expression_rows(result.symbolic_expression, settings=settings)
-    substituted_rows = _bounded_expression_rows(result.symbolic_expression, result.substitutions, settings=settings)
     evaluated_latex = None
     if len(result.unresolved_symbols) == 1:
         evaluated_latex = _partial_polynomial_latex(result.evaluated_terms, result.unresolved_symbols[0], settings)
@@ -306,11 +315,17 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
 
     rows: list[str] = []
     _append_assignment_stage(rows, lhs, formula_rows)
-    for index, body in enumerate(substituted_rows):
-        if index == 0:
-            rows.append(rf" & = & \displaystyle {body}")
-        else:
-            rows.append(rf" & & \displaystyle {body}")
+    if _shows_substitution(result):
+        substituted_rows = _bounded_expression_rows(
+            result.symbolic_expression,
+            result.substitutions,
+            settings=settings,
+        )
+        for index, body in enumerate(substituted_rows):
+            if index == 0:
+                rows.append(rf" & = & \displaystyle {body}")
+            else:
+                rows.append(rf" & & \displaystyle {body}")
     if evaluated_latex is not None:
         rows.append(rf" & = & \displaystyle {evaluated_latex}")
     return rows
@@ -425,12 +440,19 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     if isinstance(result, PartialNumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
-        substituted_latex = _substitution_latex(result.symbolic_expression, result.substitutions, active_settings)
         evaluated_latex = None
         if len(result.unresolved_symbols) == 1:
             evaluated_latex = _partial_polynomial_latex(result.evaluated_terms, result.unresolved_symbols[0], active_settings)
 
-        chain = [formula_latex, substituted_latex]
+        chain = [formula_latex]
+        if _shows_substitution(result):
+            chain.append(
+                _substitution_latex(
+                    result.symbolic_expression,
+                    result.substitutions,
+                    active_settings,
+                )
+            )
         if evaluated_latex is not None:
             chain.append(evaluated_latex)
         right = " = ".join(chain)
@@ -445,15 +467,25 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     if isinstance(result, NumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
-        substituted_latex = _substitution_latex(result.symbolic_expression, result.substitutions, active_settings)
         final_latex = _quantity_latex(result.quantity, settings=active_settings)
+        chain = [formula_latex]
+        if _shows_substitution(result):
+            chain.append(
+                _substitution_latex(
+                    result.symbolic_expression,
+                    result.substitutions,
+                    active_settings,
+                )
+            )
+        chain.append(final_latex)
+        right = " = ".join(chain)
         if result.display_name is not None:
             if result.display_argument is None:
                 lhs = _render_lhs(result.display_name, None)
             else:
                 lhs = _render_function_call_lhs(result.display_name, result.display_argument)
-            return rf"{lhs} = {formula_latex} = {substituted_latex} = {final_latex}"
-        return rf"{formula_latex} = {substituted_latex} = {final_latex}"
+            return rf"{lhs} = {right}"
+        return right
 
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameter)
