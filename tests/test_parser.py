@@ -58,6 +58,16 @@ def test_parser_reserves_sum_as_builtin_operation():
         parse_cell("sum = 3")
 
 
+def test_parser_reserves_abs_as_builtin_operation():
+    with pytest.raises(EngSyntaxError, match="reserved"):
+        parse_cell("abs = 3")
+
+
+def test_parser_rejects_abs_keyword_arguments():
+    with pytest.raises(EngSyntaxError, match="keyword arguments are unsupported"):
+        parse_cell("A = abs(x, mode=1)")
+
+
 def test_parser_marks_blank_line_as_output_group_separator():
     stmts = parse_cell("A = 1\n\n\n# next group\nB = 2\n# same group\nC = 3")
     assert [stmt.blank_before for stmt in stmts] == [False, True, False]
