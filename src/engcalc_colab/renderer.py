@@ -106,6 +106,38 @@ def _quantity_latex(quantity, precision: int = 2) -> str:
     return rf"{magnitude_latex}\,{unit_latex}"
 
 
+def _partial_polynomial_latex(
+    evaluated_terms: tuple[tuple[int, object], ...] | None,
+    variable: str,
+) -> str | None:
+    if evaluated_terms is None:
+        return None
+
+    variable_latex = _latex(sp.Symbol(variable))
+    rendered: list[str] = []
+
+    for power, coefficient in evaluated_terms:
+        magnitude = float(coefficient.magnitude)
+        if magnitude == 0:
+            continue
+
+        coefficient_latex = _quantity_latex(abs(coefficient))
+        if power == 0:
+            term_latex = coefficient_latex
+        elif power == 1:
+            term_latex = rf"{coefficient_latex}\,{variable_latex}"
+        else:
+            term_latex = rf"{coefficient_latex}\,{variable_latex}^{{{power}}}"
+
+        if not rendered:
+            prefix = "- " if magnitude < 0 else ""
+        else:
+            prefix = " - " if magnitude < 0 else " + "
+        rendered.append(prefix + term_latex)
+
+    return "".join(rendered) if rendered else "0.00"
+
+
 def render_aligned_results(results: list[CalculationResult]) -> str:
     """Render consecutive results as a three-column engineering calculation block."""
     if not results:
@@ -140,6 +172,18 @@ def render_result(result: CalculationResult) -> str:
             result.symbolic_expression,
             result.substitutions,
         )
+        evaluated_latex = None
+        if len(result.unresolved_symbols) == 1:
+            evaluated_latex = _partial_polynomial_latex(
+                result.evaluated_terms,
+                result.unresolved_symbols[0],
+            )
+
+        chain = [formula_latex, substituted_latex]
+        if evaluated_latex is not None:
+            chain.append(evaluated_latex)
+        right = " = ".join(chain)
+
         if result.display_name is not None:
             if result.display_argument is None:
                 lhs = _render_lhs(result.display_name, None)
@@ -148,8 +192,8 @@ def render_result(result: CalculationResult) -> str:
                     result.display_name,
                     result.display_argument,
                 )
-            return rf"{lhs} = {formula_latex} = {substituted_latex}"
-        return rf"{formula_latex} = {substituted_latex}"
+            return rf"{lhs} = {right}"
+        return right
 
     if isinstance(result, NumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
