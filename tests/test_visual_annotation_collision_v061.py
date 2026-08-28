@@ -33,14 +33,13 @@ def propped_cantilever_stage_moment_plot():
 
 
 def label_box(annotation, renderer):
-    annotation.get_window_extent(renderer)
-    return annotation.get_bbox_patch().get_window_extent(renderer)
+    return annotation.get_window_extent(renderer)
 
 
 def placement_diagnostic(item, renderer):
     box = label_box(item, renderer)
     return {
-        "text": item.get_text().replace("\n", " | "),
+        "text": item.get_text(),
         "xy": tuple(float(value) for value in item.xy),
         "offset": tuple(float(value) for value in item.get_position()),
         "ha": item.get_ha(),
@@ -49,7 +48,7 @@ def placement_diagnostic(item, renderer):
     }
 
 
-def test_propped_cantilever_characteristic_callouts_do_not_overlap():
+def test_propped_cantilever_characteristic_labels_do_not_overlap():
     figure = render_plot(propped_cantilever_stage_moment_plot())
     axis = figure.axes[0]
     items = [text for text in axis.texts if isinstance(text, Annotation)]
@@ -68,7 +67,7 @@ def test_propped_cantilever_characteristic_callouts_do_not_overlap():
         )
 
 
-def test_propped_cantilever_callouts_stay_inside_axes_and_clear_of_legend():
+def test_propped_cantilever_labels_stay_inside_axes_and_clear_of_legend():
     figure = render_plot(propped_cantilever_stage_moment_plot())
     axis = figure.axes[0]
     items = [text for text in axis.texts if isinstance(text, Annotation)]
