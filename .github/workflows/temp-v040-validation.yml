@@ -25,7 +25,7 @@ jobs:
       - name: Verify EngCalc 0.3.3 baseline
         run: pytest -q
 
-  focused:
+  parser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,8 +36,22 @@ jobs:
         run: |
           python -m pip install -e '.[dev]'
           python -m pip install 'ipython>=8'
-      - name: Run current plot parser and parser regressions
+      - name: Run parser and plot grammar regressions
         run: pytest -q tests/test_plot_parser.py tests/test_parser.py
+
+  numeric:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install current branch and test dependencies
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pip install 'ipython>=8'
+      - name: Run numeric sweep foundation tests
+        run: pytest -q tests/test_numeric_context.py tests/test_numeric_engine.py tests/test_plot_sampling.py
 
   current:
     runs-on: ubuntu-latest
