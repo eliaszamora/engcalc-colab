@@ -5,6 +5,9 @@ on:
     branches:
       - feature/v0.6.0-abs-envelope-panel
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,6 +16,37 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Apply Task 1 source patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          engine = Path('src/engcalc_colab/engine.py')
+          text = engine.read_text()
+          old = '''        if name in self.engine.functions:\n            if len(args) != 1:\n                raise EngEvaluationError(f"function '{name}' expects 1 argument")\n            function = self.engine.functions[name]\n            parameter = self.engine.resolve_name(function.parameter)\n            return sp.sympify(function.expression).subs(parameter, args[0])\n\n        if name == "integral":\n'''
+          new = '''        if name in self.engine.functions:\n            if len(args) != 1:\n                raise EngEvaluationError(f"function '{name}' expects 1 argument")\n            function = self.engine.functions[name]\n            parameter = self.engine.resolve_name(function.parameter)\n            return sp.sympify(function.expression).subs(parameter, args[0])\n\n        if name == "abs":\n            self._require_arity(name, args, 1, "expression")\n            return sp.Abs(args[0])\n\n        if name == "integral":\n'''
+          if old in text:
+              engine.write_text(text.replace(old, new, 1))
+          elif new not in text:
+              raise SystemExit('engine abs insertion point not found')
+
+          numeric = Path('src/engcalc_colab/numeric.py')
+          text = numeric.read_text()
+          old = '''        if expr.is_Pow:\n            base = self._evaluate_sympy(expr.base, substitutions)\n            exponent = self._evaluate_sympy(expr.exp, substitutions)\n            if hasattr(exponent, "dimensionality"):\n                if not exponent.dimensionless:\n                    raise EngEvaluationError("numeric exponent must be dimensionless")\n                exponent = exponent.to_base_units().magnitude\n            return base ** exponent\n\n        raise EngEvaluationError(\n'''
+          new = '''        if expr.is_Pow:\n            base = self._evaluate_sympy(expr.base, substitutions)\n            exponent = self._evaluate_sympy(expr.exp, substitutions)\n            if hasattr(exponent, "dimensionality"):\n                if not exponent.dimensionless:\n                    raise EngEvaluationError("numeric exponent must be dimensionless")\n                exponent = exponent.to_base_units().magnitude\n            return base ** exponent\n\n        if expr.func == sp.Abs and len(expr.args) == 1:\n            return abs(self._evaluate_sympy(expr.args[0], substitutions))\n\n        raise EngEvaluationError(\n'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif new not in text:
+              raise SystemExit('numeric SymPy Abs insertion point not found')
+
+          old = '''    def visit_Name(self, node: ast.Name):\n        return self.context.resolve_numeric_name(node.id)\n\n    def visit_UnaryOp(self, node: ast.UnaryOp):\n'''
+          new = '''    def visit_Name(self, node: ast.Name):\n        return self.context.resolve_numeric_name(node.id)\n\n    def visit_Call(self, node: ast.Call):\n        if (\n            not isinstance(node.func, ast.Name)\n            or node.func.id != "abs"\n            or len(node.args) != 1\n            or node.keywords\n        ):\n            raise EngEvaluationError("unsupported numeric function")\n        return abs(self.visit(node.args[0]))\n\n    def visit_UnaryOp(self, node: ast.UnaryOp):\n'''
+          if old in text:
+              text = text.replace(old, new, 1)
+          elif new not in text:
+              raise SystemExit('numeric AST abs insertion point not found')
+          numeric.write_text(text)
+          PY
       - name: Install project
         run: |
           python -m pip install --upgrade pip
@@ -20,3 +54,12 @@ jobs:
           python -m pip install pytest ipython
       - name: Run test suite
         run: pytest -q
+      - name: Commit Task 1 source patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/engcalc_colab/engine.py src/engcalc_colab/numeric.py
+          if ! git diff --cached --quiet; then
+            git commit -m "feat: add safe EngCalc absolute value"
+            git push
+          fi
