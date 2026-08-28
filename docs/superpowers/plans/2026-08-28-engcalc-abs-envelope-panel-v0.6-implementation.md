@@ -4,7 +4,7 @@
 
 **Goal:** Add a safe general `abs(...)` operation, make `envelope(abs(...), ...)` produce a structural magnitude envelope while retaining signed source responses, and move multi-series/envelope characteristic panels inside the axes with deterministic automatic corner placement.
 
-**Architecture:** Preserve the EngCalc 0.5.0 shared `plot/envelope` response-resolution pipeline. Add explicit outer-`abs` metadata before symbolic expansion so magnitude envelopes can sample signed inner responses for context while comparing their absolute values; extend `PlotResult` minimally with envelope mode and governing signed quantities. Keep rendering in `plotting.py`, but introduce small deterministic helpers for axes-owned characteristic panels so multi-series plots, signed envelopes, and magnitude envelopes share one placement policy without browser-dependent measurements.
+**Architecture:** Preserve the EngCalc 0.5.0 shared `plot/envelope` response-resolution pipeline. Capture outer-`abs` syntax before symbolic expansion, sample signed inner responses for faint context, sample absolute comparison responses for governing selection, and extend `PlotResult` only with envelope mode plus governing signed quantities. Keep rendering in `plotting.py`, but centralize axes-owned characteristic-panel placement in deterministic helpers shared by multi-series plots, signed envelopes, and magnitude envelopes.
 
 **Tech Stack:** Python 3.10+, SymPy, Pint, Matplotlib, IPython/Jupyter, pytest.
 
@@ -12,56 +12,56 @@
 
 ## Global Constraints
 
-- Base checkpoint is EngCalc 0.5.0 `main` commit `01fe42376f61e7d0d3738049f01935368e2c2e16`.
-- Public absolute-value syntax is exactly `abs(expression)`.
-- `abs(...)` is explicitly allow-listed; it must not expose arbitrary Python builtins or arbitrary call dispatch.
-- Existing signed `envelope(...)` semantics remain sampled algebraic pointwise maximum/minimum.
-- Magnitude-envelope mode is selected only when every source expression is syntactically outermost `abs(...)` before symbolic expansion.
-- Mixed signed/absolute envelope sources are invalid.
+- Base checkpoint: EngCalc 0.5.0 `main` at `01fe42376f61e7d0d3738049f01935368e2c2e16`.
+- Public absolute-value syntax: `abs(expression)` only.
+- `abs` remains an explicitly supported EngCalc operation; no arbitrary Python call dispatch.
+- Existing signed `envelope(...)` remains algebraic pointwise max/min over the same 201 samples.
+- Magnitude mode is selected only when every envelope source is syntactically outermost `abs(...)` before symbolic expansion.
+- Mixed absolute/signed envelope sources are invalid.
 - Magnitude envelopes display one nonnegative maximum-magnitude branch only.
-- Magnitude-envelope faint source curves preserve their original signed values.
-- Governing source index and original signed governing quantity are retained for every sample.
-- Both signed and magnitude envelopes use the existing 201 uniformly spaced samples.
-- One sweep parameter only; the plotting variable cannot be the sweep parameter.
-- Existing Pint-aware dimensional normalization and non-mutating sweep semantics remain unchanged.
-- Signed moment envelopes keep positive moment downward.
-- Characteristic panels for multi-series plots and both envelope modes live inside the axes; no fixed right-side figure margin is reserved.
-- Panel placement considers upper-right, upper-left, lower-right, and lower-left corners using deterministic data-occupancy scoring plus legend conflict penalty.
-- Single-series `plot(...)` keeps its existing boxed extrema callouts.
-- No `abs_envelope(...)`, `envelope_abs(...)`, arbitrary envelope mode keyword, named case dictionaries, adaptive sampling, symbolic crossover solving, or new runtime dependency is introduced.
-- Target package/runtime version is `0.6.0`.
+- Magnitude-envelope faint source curves retain their original signed values.
+- Governing source index and signed governing quantity are retained per sample.
+- One sweep parameter only; plotting variable cannot be the sweep parameter.
+- Pint dimensional normalization and sweep non-mutation remain unchanged.
+- Signed moment envelopes retain positive moment downward.
+- Characteristic panels for multi-series plots and both envelope modes are placed inside the axes; no fixed right-side figure margin.
+- Panel candidate corners: upper right, upper left, lower right, lower left.
+- Panel placement uses deterministic data-occupancy scoring plus a legend-corner penalty.
+- Single-series `plot(...)` keeps its existing extrema callouts.
+- No `abs_envelope(...)`, `envelope_abs(...)`, named-case dictionaries, adaptive sampling, symbolic crossover solver, or new runtime dependency.
+- Target package/runtime version: `0.6.0`.
 
 ---
 
 ## File Structure
 
-### Production files to modify
+### Production files
 
-- `src/engcalc_colab/parser.py` — reserve and allow-list safe `abs(...)` without relaxing existing keyword/list restrictions.
-- `src/engcalc_colab/engine.py` — evaluate symbolic `abs`, preserve outer-abs expression metadata, resolve signed/comparison source series, compute magnitude envelopes, and retain governing signed quantities.
-- `src/engcalc_colab/numeric.py` — evaluate SymPy `Abs` against Pint quantities and support restricted numeric-expression `abs(...)` without general function dispatch.
-- `src/engcalc_colab/models.py` — extend `PlotResult` with backward-compatible `envelope_mode` and `governing_signed` metadata.
-- `src/engcalc_colab/plotting.py` — add deterministic in-axes panel placement and magnitude-envelope rendering while preserving single-series behavior.
-- `src/engcalc_colab/__init__.py` — bump runtime version to 0.6.0.
-- `pyproject.toml` — bump package version to 0.6.0; dependency list remains unchanged.
-- `README.md` — document `abs(...)`, magnitude envelopes, signed source context, and in-axes characteristic panels.
+- `src/engcalc_colab/parser.py` — reserve `abs` as a built-in EngCalc operation while keeping current keyword/list restrictions.
+- `src/engcalc_colab/engine.py` — symbolic `abs`, outer-abs metadata, signed/comparison series resolution, magnitude reduction, governing signed metadata.
+- `src/engcalc_colab/numeric.py` — Pint-safe absolute value for numeric AST and SymPy `Abs` evaluation.
+- `src/engcalc_colab/models.py` — backward-compatible envelope mode and governing signed metadata.
+- `src/engcalc_colab/plotting.py` — in-axes panel placement and magnitude renderer.
+- `src/engcalc_colab/__init__.py` — version 0.6.0.
+- `pyproject.toml` — version 0.6.0; no dependency changes.
+- `README.md` — public syntax and semantics.
 
-### Tests to modify
+### Tests
 
-- `tests/test_parser.py` — reserve/version assertions and safe `abs` parsing.
-- `tests/test_engine.py` — symbolic `abs` behavior and arity.
-- `tests/test_numeric_context.py` — Pint-preserving absolute value in numeric and SymPy evaluation.
-- `tests/test_plot_engine.py` — `plot(abs(...))` sampling and structural classification.
-- `tests/test_envelope_engine.py` — magnitude-envelope reduction, metadata, mixed-mode errors, units, sweep, state.
-- `tests/test_plotting.py` — multi-series in-axes panel placement and no reserved right margin.
-- `tests/test_envelope_plotting.py` — signed-envelope in-axes panel plus magnitude-envelope visual contract.
-- `tests/test_acceptance_native_plot.py` — end-to-end `%%eng` magnitude envelope acceptance.
-- `tests/test_magic.py` — source-order rendering with magnitude envelope if not already covered by acceptance.
-- `tests/test_packaging.py` — release metadata 0.6.0.
+- `tests/test_parser.py`
+- `tests/test_engine.py`
+- `tests/test_numeric_context.py`
+- `tests/test_plot_engine.py`
+- `tests/test_envelope_engine.py`
+- `tests/test_plotting.py`
+- `tests/test_envelope_plotting.py`
+- `tests/test_acceptance_native_plot.py`
+- `tests/test_magic.py`
+- `tests/test_packaging.py`
 
 ---
 
-### Task 1: Add safe general `abs(...)` evaluation
+### Task 1: Safe general `abs(...)`
 
 **Files:**
 - Modify: `src/engcalc_colab/parser.py`
@@ -72,16 +72,16 @@
 - Test: `tests/test_numeric_context.py`
 
 **Interfaces:**
-- Consumes: existing restricted AST parser and `_Evaluator.visit_Call()` dispatch.
-- Produces: `abs(expression)` -> SymPy `Abs(expression)` in symbolic EngCalc; `NumericContext` can evaluate SymPy `Abs` and restricted numeric AST `abs(...)` while preserving Pint units.
-- Security invariant: `_NumericAstEvaluator.visit_Call()` accepts only a direct `ast.Name(id="abs")`, exactly one positional argument, and no keywords.
+- Symbolic: `abs(expression)` -> `sympy.Abs(expression)`.
+- Numeric AST: only a direct `abs` call, exactly one positional argument, no keywords.
+- SymPy numeric evaluation: `sp.Abs(quantity-expression)` returns the Pint quantity magnitude with units preserved.
 
-- [ ] **Step 1: Add parser and symbolic-engine RED tests**
+- [ ] **Step 1: Add parser tests**
 
 Append to `tests/test_parser.py`:
 
 ```python
-def test_parser_accepts_abs_as_explicit_safe_operation():
+def test_parser_accepts_abs_expression():
     stmt = parse_cell("A = abs(x)")[0]
     assert ast.unparse(stmt.expression) == "abs(x)"
 
@@ -96,6 +96,8 @@ def test_parser_rejects_abs_keyword_arguments():
         parse_cell("A = abs(x, mode=1)")
 ```
 
+- [ ] **Step 2: Add engine arity and symbolic tests**
+
 Append to `tests/test_engine.py`:
 
 ```python
@@ -106,16 +108,28 @@ def test_abs_builds_sympy_absolute_value():
     assert result.value == sp.Abs(x - 3)
 
 
-def test_abs_requires_exactly_one_argument():
+def test_abs_rejects_zero_arguments():
+    engine = EngineeringEngine()
+    with pytest_raises(EngEvaluationError) as captured:
+        eval_cell(engine, "A = abs()")
+    assert str(captured.value) == "line 1: abs expects 1 arguments: expression"
+
+
+def test_abs_rejects_multiple_arguments():
     engine = EngineeringEngine()
     with pytest_raises(EngEvaluationError) as captured:
         eval_cell(engine, "A = abs(x, 2)")
     assert str(captured.value) == "line 1: abs expects 1 arguments: expression"
+
+
+def test_numeric_abs_end_to_end_preserves_units():
+    engine = EngineeringEngine()
+    eval_cell(engine, "P := -7*tonf")
+    result = eval_cell(engine, "numeric(abs(P))")[-1]
+    assert result.quantity.to("tonf").magnitude == 7.0
 ```
 
-Note: `abs()` with zero arguments is syntactically invalid in the current parser's empty-call handling only if Python rejects it; if it parses, add the parallel engine assertion for `abs()` with the same arity message.
-
-- [ ] **Step 2: Run focused parser/engine tests and verify RED**
+- [ ] **Step 3: Run parser/engine RED gate**
 
 Run:
 
@@ -123,11 +137,15 @@ Run:
 pytest -q tests/test_parser.py tests/test_engine.py
 ```
 
-Expected: new tests fail because `abs` is not in `_ALLOWED_CALLS` and engine has no `abs` branch; all pre-existing tests remain green.
+Expected:
+- parser acceptance and keyword rejection may already pass under the generic parser;
+- the reserved-target test fails until `abs` joins the EngCalc operation set;
+- symbolic/arity/numeric-engine tests fail until evaluator support exists;
+- all previous tests remain green.
 
-- [ ] **Step 3: Implement the minimal parser and symbolic evaluator support**
+- [ ] **Step 4: Implement parser reservation and symbolic evaluator**
 
-In `src/engcalc_colab/parser.py`, add `abs` to the explicit call allow-list:
+In `src/engcalc_colab/parser.py`:
 
 ```python
 _ALLOWED_CALLS = {
@@ -136,9 +154,9 @@ _ALLOWED_CALLS = {
 }
 ```
 
-Do not add `abs` to `_DISPLAY_SWEEP_CALLS`; therefore keyword arguments remain rejected by the existing generic keyword guard.
+Do not add `abs` to `_DISPLAY_SWEEP_CALLS`.
 
-In `src/engcalc_colab/engine.py`, after user-defined function dispatch and before the other one-argument symbolic operations, add:
+In `src/engcalc_colab/engine.py`, add after user-defined function dispatch:
 
 ```python
 if name == "abs":
@@ -146,7 +164,7 @@ if name == "abs":
     return sp.Abs(args[0])
 ```
 
-- [ ] **Step 4: Add numeric RED tests**
+- [ ] **Step 5: Add NumericContext tests**
 
 Append to `tests/test_numeric_context.py`:
 
@@ -165,7 +183,7 @@ def test_sympy_abs_evaluation_preserves_pint_units():
     assert value.to("tonf").magnitude == pytest.approx(7.0)
 ```
 
-- [ ] **Step 5: Run numeric tests and verify RED**
+- [ ] **Step 6: Run NumericContext RED gate**
 
 Run:
 
@@ -173,18 +191,18 @@ Run:
 pytest -q tests/test_numeric_context.py
 ```
 
-Expected: only the new absolute-value tests fail because `_NumericAstEvaluator` rejects `Call` and `_evaluate_sympy()` rejects SymPy `Abs`.
+Expected: the two new tests fail because numeric AST and SymPy evaluators do not yet support absolute value.
 
-- [ ] **Step 6: Implement restricted numeric absolute value**
+- [ ] **Step 7: Implement restricted numeric absolute value**
 
-In `NumericContext._evaluate_sympy()` add before the final unsupported-type error:
+In `NumericContext._evaluate_sympy()` before the unsupported-type error:
 
 ```python
 if expr.func == sp.Abs and len(expr.args) == 1:
     return abs(self._evaluate_sympy(expr.args[0], substitutions))
 ```
 
-In `_NumericAstEvaluator` add:
+In `_NumericAstEvaluator`:
 
 ```python
 def visit_Call(self, node: ast.Call):
@@ -198,9 +216,7 @@ def visit_Call(self, node: ast.Call):
     return abs(self.visit(node.args[0]))
 ```
 
-This is intentionally not a general function registry.
-
-- [ ] **Step 7: Verify Task 1 GREEN and commit**
+- [ ] **Step 8: Verify Task 1 GREEN and commit**
 
 Run:
 
@@ -208,8 +224,6 @@ Run:
 pytest -q tests/test_parser.py tests/test_engine.py tests/test_numeric_context.py
 pytest -q
 ```
-
-Expected: all tests pass.
 
 Commit:
 
@@ -220,7 +234,7 @@ git commit -m "feat: add safe EngCalc absolute value"
 
 ---
 
-### Task 2: Extend plot transport and preserve signed/comparison response metadata
+### Task 2: Backward-compatible transport and response-expression metadata
 
 **Files:**
 - Modify: `src/engcalc_colab/models.py`
@@ -229,15 +243,15 @@ git commit -m "feat: add safe EngCalc absolute value"
 - Test: `tests/test_plot_engine.py`
 
 **Interfaces:**
-- Extends `PlotResult` with defaults:
+
+Extend `PlotResult` and `_PlotEvaluation` with:
 
 ```python
 envelope_mode: str | None = None
 governing_signed: tuple[Any, ...] | None = None
 ```
 
-- Extends `_PlotEvaluation` with matching fields.
-- Introduces private resolved-expression metadata:
+Introduce:
 
 ```python
 @dataclass(frozen=True)
@@ -249,9 +263,28 @@ class _ResolvedExpression:
     is_absolute: bool
 ```
 
-- Extends `_ResolvedResponseSeries` so `series` means the normalized values used for display/comparison, while `source_series` means signed source values used as faint context. For normal plots and signed envelopes they are equal; for magnitude envelopes they differ.
+Replace `_ResolvedResponseSeries` with the exact contract:
 
-- [ ] **Step 1: Add RED transport tests**
+```python
+@dataclass(frozen=True)
+class _ResolvedResponseSeries:
+    display_label: str
+    variable: str
+    x_values: tuple
+    series: tuple[PlotSeries, ...]
+    source_series: tuple[PlotSeries, ...]
+    source_labels: tuple[str, ...]
+    first_symbolic_expression: object
+    envelope_mode: str | None = None
+```
+
+Meaning:
+- `series`: normalized values used for ordinary plot display or envelope comparison;
+- `source_series`: signed context values; equal to `series` except magnitude envelopes;
+- `source_labels`: labels corresponding to `source_series`;
+- `envelope_mode`: `None` for plot, `signed` or `magnitude` for envelope.
+
+- [ ] **Step 1: Add transport RED tests**
 
 Append to `tests/test_envelope_engine.py`:
 
@@ -264,7 +297,7 @@ def test_plot_result_defaults_preserve_v050_transport():
     assert result.governing_signed is None
 
 
-def test_plot_result_can_transport_magnitude_envelope_metadata():
+def test_plot_result_can_transport_magnitude_metadata():
     statement = parse_cell("envelope(abs(A(x)), abs(B(x)), x, 0, 1)")[0]
     source = (
         PlotSeries("A(x)", (-1, 2), False),
@@ -288,49 +321,35 @@ def test_plot_result_can_transport_magnitude_envelope_metadata():
     assert result.governing_signed == (3, -4)
 ```
 
-- [ ] **Step 2: Run focused test and verify RED**
-
-Run:
+- [ ] **Step 2: Run transport RED gate**
 
 ```bash
 pytest -q tests/test_envelope_engine.py -k "transport"
 ```
 
-Expected: fail because the new `PlotResult` fields do not exist.
+Expected: fail only because new fields do not exist.
 
-- [ ] **Step 3: Extend immutable transport with backward-compatible defaults**
+- [ ] **Step 3: Extend `PlotResult` and `_PlotEvaluation`**
 
-In `src/engcalc_colab/models.py` append after `governing_min`:
+Add defaults after current governing metadata and pass them through `EngineeringEngine.evaluate()`.
 
-```python
-envelope_mode: str | None = None
-governing_signed: tuple[Any, ...] | None = None
-```
-
-In `_PlotEvaluation` add matching fields and pass them through in `EngineeringEngine.evaluate()` when creating `PlotResult`.
-
-- [ ] **Step 4: Add RED tests for `plot(abs(...))` and structural classification**
+- [ ] **Step 4: Add `plot(abs(...))` RED tests**
 
 Append to `tests/test_plot_engine.py`:
 
 ```python
-def test_plot_abs_samples_nonnegative_values_and_keeps_shear_family():
+def test_plot_abs_samples_nonnegative_shear_values():
     engine = EngineeringEngine()
     eval_cell(engine, "V(x) = q*(L/2-x)\nq := 4*kN/m\nL := 4*m")
     result = eval_cell(engine, "plot(abs(V(x)), x, 0, L)")[-1]
-
-    assert len(result.series) == 1
     values = [item.to("kN").magnitude for item in result.series[0].y_values]
-    assert min(values) >= 0.0
     assert values[0] == pytest.approx(8.0)
     assert values[100] == pytest.approx(0.0)
     assert values[-1] == pytest.approx(8.0)
+    assert min(values) >= 0.0
     assert not result.series[0].is_moment
-```
 
-Add a moment counterpart:
 
-```python
 def test_plot_abs_preserves_moment_classification_from_inner_function():
     engine = EngineeringEngine()
     eval_cell(engine, "M(x) = q*x*(L-x)/2\nq := 4*kN/m\nL := 4*m")
@@ -338,9 +357,9 @@ def test_plot_abs_preserves_moment_classification_from_inner_function():
     assert result.series[0].is_moment
 ```
 
-- [ ] **Step 5: Implement expression metadata without changing existing plot semantics**
+- [ ] **Step 5: Add `_ResolvedExpression` helper**
 
-In `engine.py`, introduce `_ResolvedExpression` and a helper with this contract:
+Implement:
 
 ```python
 def _resolve_response_expression(self, node: ast.AST, variable: str) -> _ResolvedExpression:
@@ -379,20 +398,14 @@ def _resolve_response_expression(self, node: ast.AST, variable: str) -> _Resolve
     )
 ```
 
-Use comparison expressions for ordinary `plot(abs(...))`, but compute `is_moment` from `source_label`, not the decorated `|...|` label.
+For normal `plot(...)`, sample `comparison_expression`; determine `is_moment` from `source_label`. Do not persist `source_series` in normal `PlotResult`.
 
-For normal `plot(...)`, `source_series` does not need to be persisted into `PlotResult`; preserve the 0.5.0 result contract.
-
-- [ ] **Step 6: Verify plot regression gate and commit**
-
-Run:
+- [ ] **Step 6: Verify plot regression and commit**
 
 ```bash
 pytest -q tests/test_plot_engine.py tests/test_plot_parser.py tests/test_plotting.py
 pytest -q
 ```
-
-Expected: all existing plot behavior plus new `plot(abs(...))` tests pass.
 
 Commit:
 
@@ -403,27 +416,22 @@ git commit -m "refactor: preserve response expression metadata"
 
 ---
 
-### Task 3: Implement multi-expression magnitude envelopes
+### Task 3: Multi-expression magnitude envelopes
 
 **Files:**
 - Modify: `src/engcalc_colab/engine.py`
 - Test: `tests/test_envelope_engine.py`
 
 **Interfaces:**
-- `envelope_mode="signed"` for existing algebraic envelopes.
-- `envelope_mode="magnitude"` when every source expression is outermost `abs(...)`.
-- Magnitude `PlotResult.series` contains exactly one `PlotSeries`.
-- Magnitude `PlotResult.source_series` contains normalized signed source responses.
-- `governing_max` stores the governing source index at every sample.
-- `governing_min` is `None` in magnitude mode.
-- `governing_signed` stores the original signed governing Pint quantity at every sample.
+- Signed envelope: `envelope_mode="signed"`, two displayed series, existing `governing_max/min` unchanged.
+- Magnitude envelope: `envelope_mode="magnitude"`, one displayed series, signed `source_series`, `governing_max`, `governing_min=None`, `governing_signed` per sample.
 
-- [ ] **Step 1: Add RED tests for magnitude mode and mixed-mode rejection**
+- [ ] **Step 1: Add magnitude RED tests**
 
-Append to `tests/test_envelope_engine.py`:
+Append:
 
 ```python
-def test_magnitude_envelope_keeps_signed_sources_and_returns_one_abs_max_branch():
+def test_magnitude_envelope_keeps_signed_sources_and_one_abs_max_branch():
     engine = EngineeringEngine()
     eval_cell(
         engine,
@@ -436,30 +444,18 @@ def test_magnitude_envelope_keeps_signed_sources_and_returns_one_abs_max_branch(
         "envelope(abs(V_A(x)), abs(V_B(x)), x, 0, L)",
     )[-1]
 
-    assert result.kind == "envelope"
     assert result.envelope_mode == "magnitude"
     assert result.display_label == "V(x)"
     assert len(result.series) == 1
-    assert len(result.source_series) == 2
     assert result.source_labels == ("V_A(x)", "V_B(x)")
-
-    left_sources = [s.y_values[0].to("kN").magnitude for s in result.source_series]
-    right_sources = [s.y_values[-1].to("kN").magnitude for s in result.source_series]
-    assert left_sources == pytest.approx([6.0, -2.0])
-    assert right_sources == pytest.approx([-2.0, 8.0])
-
-    envelope_values = [q.to("kN").magnitude for q in result.series[0].y_values]
-    assert envelope_values[0] == pytest.approx(6.0)
-    assert envelope_values[-1] == pytest.approx(8.0)
-    assert min(envelope_values) >= 0.0
+    assert [s.y_values[0].to("kN").magnitude for s in result.source_series] == pytest.approx([6.0, -2.0])
+    assert [s.y_values[-1].to("kN").magnitude for s in result.source_series] == pytest.approx([-2.0, 8.0])
+    assert result.series[0].y_values[0].to("kN").magnitude == pytest.approx(6.0)
+    assert result.series[0].y_values[-1].to("kN").magnitude == pytest.approx(8.0)
     assert result.governing_max[0] == 0
     assert result.governing_max[-1] == 1
     assert result.governing_min is None
-    assert result.governing_signed[0].to("kN").magnitude == pytest.approx(6.0)
-    assert result.governing_signed[-1].to("kN").magnitude == pytest.approx(8.0)
 ```
-
-Add a sign-retention case where the governing magnitude is negative:
 
 ```python
 def test_magnitude_envelope_retains_negative_signed_governing_value():
@@ -479,8 +475,6 @@ def test_magnitude_envelope_retains_negative_signed_governing_value():
     assert result.governing_max[0] == 0
 ```
 
-Add mixed-mode rejection:
-
 ```python
 def test_envelope_rejects_mixed_absolute_and_signed_sources():
     engine = EngineeringEngine()
@@ -492,21 +486,21 @@ def test_envelope_rejects_mixed_absolute_and_signed_sources():
         eval_cell(engine, "envelope(abs(V_A(x)), V_B(x), x, 0, L)")
 ```
 
-- [ ] **Step 2: Run focused engine tests and verify RED**
-
-Run:
+- [ ] **Step 2: Run magnitude RED gate**
 
 ```bash
-pytest -q tests/test_envelope_engine.py -k "magnitude or absolute"
+pytest -q tests/test_envelope_engine.py -k "magnitude or mixed_absolute"
 ```
 
-Expected: new tests fail because `envelope(...)` still treats `Abs` responses as a normal signed envelope.
+- [ ] **Step 3: Determine envelope mode before sampling**
 
-- [ ] **Step 3: Generalize `_resolve_response_series()` for envelope mode**
-
-Before sampling, build `_ResolvedExpression` metadata for every source node and determine:
+In `_resolve_response_series()`:
 
 ```python
+resolved_expressions = [
+    self._resolve_response_expression(node, variable)
+    for node in expression_nodes
+]
 absolute_flags = {item.is_absolute for item in resolved_expressions}
 if call_name == "envelope" and len(absolute_flags) > 1:
     raise EngEvaluationError(
@@ -519,17 +513,16 @@ if call_name == "envelope":
 ```
 
 For magnitude mode:
+- `series` samples `comparison_expression`;
+- `source_series` samples `signed_expression`;
+- `source_labels` use signed `source_label`;
+- `display_label` comes from `_common_plot_label(source_labels, variable)`.
 
-- sample `signed_expression` into `source_series`;
-- sample `comparison_expression` into `series`;
-- normalize both sets to the same first-source unit;
-- derive common `display_label` from signed `source_label` values.
+Normalize comparison and signed source sets to the same first comparison-series unit. `abs` preserves units, so both sets must be convertible to that target.
 
-For signed mode and normal plot, `series` and sampled source values are identical.
+- [ ] **Step 4: Split signed and magnitude reducers**
 
-- [ ] **Step 4: Split envelope reduction into signed and magnitude helpers**
-
-Keep `_evaluate_envelope()` small:
+Keep `_evaluate_envelope()` as dispatch:
 
 ```python
 resolved = self._resolve_response_series(node, call_name="envelope")
@@ -543,66 +536,49 @@ else:
 return resolved.first_symbolic_expression
 ```
 
-The magnitude reducer should compare already-normalized absolute series pointwise:
+Magnitude reduction:
 
 ```python
+magnitude_values = []
+governing_indices = []
+governing_signed = []
+
 for sample_index in range(len(resolved.x_values)):
     magnitudes = [
         float(item.y_values[sample_index].magnitude)
         for item in resolved.series
     ]
-    governing_index = max(range(len(magnitudes)), key=magnitudes.__getitem__)
-    governing_indices.append(governing_index)
-    magnitude_values.append(
-        resolved.series[governing_index].y_values[sample_index]
-    )
-    governing_signed.append(
-        resolved.source_series[governing_index].y_values[sample_index]
-    )
+    index = max(range(len(magnitudes)), key=magnitudes.__getitem__)
+    governing_indices.append(index)
+    magnitude_values.append(resolved.series[index].y_values[sample_index])
+    governing_signed.append(resolved.source_series[index].y_values[sample_index])
 ```
 
-Use one displayed `PlotSeries` whose label is generated by a helper. For common `V(x)`, use:
+Use label helper:
 
 ```python
-"|V|_max(x)"
+def _magnitude_envelope_series_label(display_label: str, variable: str) -> str:
+    suffix = f"({variable})"
+    if display_label != "Comparison" and display_label.endswith(suffix):
+        family = display_label[:-len(suffix)]
+        return f"|{family}|_max({variable})"
+    return "|response|_max"
 ```
 
-For `Comparison`, use:
+- [ ] **Step 5: Mark existing signed envelopes explicitly**
 
-```python
-"|response|_max"
-```
-
-- [ ] **Step 5: Preserve signed-envelope 0.5.0 behavior explicitly**
-
-Set `envelope_mode="signed"` on signed envelope results but leave:
-
-- two displayed series;
-- `governing_max` and `governing_min` values;
-- source series;
-- labels;
-- moment classification
-
-unchanged.
-
-Update existing tests only where they should additionally assert:
+Set `envelope_mode="signed"` while preserving all current numerical fields. Add to existing signed-envelope test:
 
 ```python
 assert result.envelope_mode == "signed"
 ```
 
-Do not change their numerical expectations.
-
-- [ ] **Step 6: Run engine regression gate and commit**
-
-Run:
+- [ ] **Step 6: Run engine regression and commit**
 
 ```bash
 pytest -q tests/test_envelope_engine.py tests/test_plot_engine.py
 pytest -q
 ```
-
-Expected: all tests pass.
 
 Commit:
 
@@ -613,92 +589,15 @@ git commit -m "feat: add composable magnitude envelopes"
 
 ---
 
-### Task 4: Complete magnitude sweep, units, and non-mutation semantics
+### Task 4: Magnitude sweep, units, and state semantics
 
 **Files:**
 - Modify: `src/engcalc_colab/engine.py`
 - Test: `tests/test_envelope_engine.py`
 
 **Interfaces:**
-- Existing sweep grammar remains `envelope(expression, variable, start, end, parameter=[...])`.
-- For magnitude mode, one outermost `abs(...)` expression expands to two or more signed source sweep series and parallel absolute comparison series.
-- Sweep case labels remain `parameter = value unit`.
 
-- [ ] **Step 1: Add sweep RED tests**
-
-Append to `tests/test_envelope_engine.py`:
-
-```python
-def test_magnitude_envelope_parameter_sweep_keeps_signed_cases_and_abs_governing_curve():
-    engine = EngineeringEngine()
-    eval_cell(engine, "V(x) = q*(L/2-x)\nL := 4*m")
-    result = eval_cell(
-        engine,
-        "envelope(abs(V(x)), x, 0, L, q=[2*kN/m, 4*kN/m, -5*kN/m])",
-    )[-1]
-
-    assert result.envelope_mode == "magnitude"
-    assert len(result.source_series) == 3
-    assert result.source_labels == (
-        "q = 2 kN/m",
-        "q = 4 kN/m",
-        "q = -5 kN/m",
-    )
-    assert result.source_series[2].y_values[0].to("kN").magnitude == pytest.approx(-10.0)
-    assert result.series[0].y_values[0].to("kN").magnitude == pytest.approx(10.0)
-    assert result.governing_max[0] == 2
-    assert result.governing_signed[0].to("kN").magnitude == pytest.approx(-10.0)
-```
-
-Add non-mutation:
-
-```python
-def test_magnitude_sweep_does_not_mutate_parameter_or_plotting_variable():
-    engine = EngineeringEngine()
-    eval_cell(
-        engine,
-        "V(x) = q*(L/2-x)\nq := 2.8*tonf/m\nL := 4*m\nx := 1*m",
-    )
-    eval_cell(
-        engine,
-        "envelope(abs(V(x)), x, 0, L, q=[2*kN/m, 4*kN/m])",
-    )
-    assert engine.numeric_context.get("q").to("tonf/m").magnitude == pytest.approx(2.8)
-    assert engine.numeric_context.get("x").to("m").magnitude == pytest.approx(1.0)
-```
-
-Add compatible-unit normalization:
-
-```python
-def test_magnitude_envelope_normalizes_compatible_source_units_before_abs_comparison():
-    engine = EngineeringEngine()
-    eval_cell(
-        engine,
-        "V_A(x) = -q_A*x\n"
-        "V_B(x) = q_B*x\n"
-        "q_A := 1*kN/m\nq_B := 1500*N/m\nL := 2*m",
-    )
-    result = eval_cell(
-        engine,
-        "envelope(abs(V_A(x)), abs(V_B(x)), x, 0, L)",
-    )[-1]
-    assert result.series[0].y_values[-1].to("kN").magnitude == pytest.approx(3.0)
-    assert result.governing_signed[-1].to("kN").magnitude == pytest.approx(3.0)
-```
-
-- [ ] **Step 2: Run focused tests and verify RED**
-
-Run:
-
-```bash
-pytest -q tests/test_envelope_engine.py -k "magnitude and (sweep or units or mutate or normalizes)"
-```
-
-Expected: failures expose any remaining one-series-only or signed-source sweep gaps.
-
-- [ ] **Step 3: Generalize sweep sampling once, not with duplicate state logic**
-
-Change `_evaluate_response_sweep()` to accept both symbolic forms:
+Change sweep helper to:
 
 ```python
 def _evaluate_response_sweep(
@@ -717,22 +616,92 @@ def _evaluate_response_sweep(
 ) -> tuple[list[PlotSeries], list[PlotSeries], tuple]:
 ```
 
-For every sweep value, call `sample_symbolic()` with the same override once for signed values and, only when `preserve_signed_source` is true, once for absolute comparison values. When comparison and signed expressions are identical, reuse the sampled tuple rather than evaluating twice.
+Return `(comparison_series, source_series, x_values)`.
 
-Normalize both output sets through the existing dimensional normalization path. Preserve the current errors for plotting-variable sweep, absent parameter, and incompatible sweep values.
+- [ ] **Step 1: Add magnitude-sweep RED tests**
 
-- [ ] **Step 4: Run all envelope and numeric gates**
+```python
+def test_magnitude_sweep_keeps_signed_cases_and_abs_governing_curve():
+    engine = EngineeringEngine()
+    eval_cell(engine, "V(x) = q*(L/2-x)\nL := 4*m")
+    result = eval_cell(
+        engine,
+        "envelope(abs(V(x)), x, 0, L, q=[2*kN/m, 4*kN/m, -5*kN/m])",
+    )[-1]
 
-Run:
+    assert result.envelope_mode == "magnitude"
+    assert result.source_labels == (
+        "q = 2 kN/m",
+        "q = 4 kN/m",
+        "q = -5 kN/m",
+    )
+    assert result.source_series[2].y_values[0].to("kN").magnitude == pytest.approx(-10.0)
+    assert result.series[0].y_values[0].to("kN").magnitude == pytest.approx(10.0)
+    assert result.governing_max[0] == 2
+    assert result.governing_signed[0].to("kN").magnitude == pytest.approx(-10.0)
+```
+
+```python
+def test_magnitude_sweep_does_not_mutate_parameter_or_x():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "V(x) = q*(L/2-x)\nq := 2.8*tonf/m\nL := 4*m\nx := 1*m",
+    )
+    eval_cell(
+        engine,
+        "envelope(abs(V(x)), x, 0, L, q=[2*kN/m, 4*kN/m])",
+    )
+    assert engine.numeric_context.get("q").to("tonf/m").magnitude == pytest.approx(2.8)
+    assert engine.numeric_context.get("x").to("m").magnitude == pytest.approx(1.0)
+```
+
+```python
+def test_magnitude_envelope_normalizes_compatible_units_before_comparison():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "V_A(x) = -q_A*x\n"
+        "V_B(x) = q_B*x\n"
+        "q_A := 1*kN/m\nq_B := 1500*N/m\nL := 2*m",
+    )
+    result = eval_cell(
+        engine,
+        "envelope(abs(V_A(x)), abs(V_B(x)), x, 0, L)",
+    )[-1]
+    assert result.series[0].y_values[-1].to("kN").magnitude == pytest.approx(3.0)
+    assert result.governing_signed[-1].to("kN").magnitude == pytest.approx(3.0)
+```
+
+- [ ] **Step 2: Run sweep RED gate**
+
+```bash
+pytest -q tests/test_envelope_engine.py -k "magnitude and (sweep or mutate or units or normalizes)"
+```
+
+- [ ] **Step 3: Implement shared sweep sampling**
+
+For each sweep value:
+1. sample `comparison_expression` with the existing local override;
+2. if `preserve_signed_source` and expressions differ, sample `signed_expression` with the identical override;
+3. otherwise reuse comparison values as source values;
+4. use the same sweep label for both series.
+
+Preserve current validation:
+- sweep parameter is named;
+- sweep parameter is not plotting variable;
+- parameter appears in expanded expression;
+- sweep values have compatible units;
+- stored parameter/x are not mutated.
+
+- [ ] **Step 4: Verify and commit**
 
 ```bash
 pytest -q tests/test_envelope_engine.py tests/test_numeric_context.py
 pytest -q
 ```
 
-Expected: all tests pass.
-
-- [ ] **Step 5: Commit Task 4**
+Commit:
 
 ```bash
 git add src/engcalc_colab/engine.py tests/test_envelope_engine.py
@@ -741,7 +710,7 @@ git commit -m "test: harden magnitude envelope sweeps"
 
 ---
 
-### Task 5: Move characteristic panels inside the axes with deterministic auto-placement
+### Task 5: In-axes characteristic panel auto-placement
 
 **Files:**
 - Modify: `src/engcalc_colab/plotting.py`
@@ -749,7 +718,6 @@ git commit -m "test: harden magnitude envelope sweeps"
 - Test: `tests/test_envelope_plotting.py`
 
 **Interfaces:**
-- Adds private corner constants and helpers:
 
 ```python
 _PANEL_CORNERS = (
@@ -759,79 +727,103 @@ _PANEL_CORNERS = (
     "lower left",
 )
 
-def _panel_footprint(text: str) -> tuple[float, float]: ...
-def _choose_panel_corner(axis, data_xy, text: str, *, legend_corner: str | None) -> str: ...
-def _add_characteristic_panel(axis, text: str, data_xy, *, legend_corner: str | None = None): ...
+
+def _panel_footprint(text: str) -> tuple[float, float]:
+    ...
+
+
+def _choose_panel_corner(
+    axis,
+    data_xy: list[tuple[float, float]],
+    text: str,
+    *,
+    legend_corner: str | None,
+) -> str:
+    ...
+
+
+def _add_characteristic_panel(
+    axis,
+    text: str,
+    data_xy: list[tuple[float, float]],
+    *,
+    legend_corner: str | None = None,
+):
+    ...
 ```
 
-- Panel is created through `axis.text(..., transform=axis.transAxes, ...)`.
-- No `figure.text(...)` is used by multi-series or envelope renderers after this task.
-- `figure.tight_layout()` uses the full figure; no `rect=(0, 0, 0.73, 1)` reserve.
+Implementation code in the steps below replaces the signature placeholders above.
 
-- [ ] **Step 1: Replace old outside-panel expectations with RED in-axes assertions**
+- [ ] **Step 1: Replace old outside-panel expectations**
 
-Update `tests/test_plotting.py` by replacing `test_multiseries_moves_characteristic_values_outside_data_area` with:
+In `tests/test_plotting.py`:
 
 ```python
-def test_multiseries_characteristic_panel_is_inside_axes_not_figure_margin():
+def test_multiseries_characteristic_panel_is_inside_axes():
     figure = render_plot(sweep_moment_plot_result())
     axis = figure.axes[0]
-
     assert len(figure.texts) == 0
-    panel = [text for text in axis.texts if "Characteristic values" in text.get_text()]
-    assert len(panel) == 1
-    x, y = panel[0].get_position()
+    panels = [text for text in axis.texts if "Characteristic values" in text.get_text()]
+    assert len(panels) == 1
+    assert panels[0].get_transform() == axis.transAxes
+    x, y = panels[0].get_position()
     assert 0.0 <= x <= 1.0
     assert 0.0 <= y <= 1.0
-    assert panel[0].get_transform() == axis.transAxes
 ```
 
-Update `tests/test_envelope_plotting.py` by replacing the outside-data-area test with:
+In `tests/test_envelope_plotting.py`:
 
 ```python
-def test_envelope_characteristic_panel_is_inside_axes():
+def test_signed_envelope_characteristic_panel_is_inside_axes():
     figure = render_plot(moment_envelope_result())
     axis = figure.axes[0]
     assert len(figure.texts) == 0
-    panel = [
+    panels = [
         text for text in axis.texts
         if "Envelope characteristic values" in text.get_text()
     ]
-    assert len(panel) == 1
-    assert "max = 36.00 kN·m" in panel[0].get_text()
-    assert "min = -18.00 kN·m" in panel[0].get_text()
-    assert panel[0].get_transform() == axis.transAxes
+    assert len(panels) == 1
+    assert "max = 36.00 kN·m" in panels[0].get_text()
+    assert "min = -18.00 kN·m" in panels[0].get_text()
+    assert panels[0].get_transform() == axis.transAxes
 ```
 
-- [ ] **Step 2: Add RED tests for changing corners based on data occupancy**
+- [ ] **Step 2: Add deterministic corner-selection RED tests**
 
-In `tests/test_plotting.py`, import the private chooser for focused deterministic testing:
-
-```python
-from engcalc_colab.plotting import _choose_panel_corner
-```
-
-Add:
+Import `_choose_panel_corner` in `tests/test_plotting.py`, then add:
 
 ```python
-def test_panel_chooser_changes_corner_when_upper_right_is_occupied():
+def test_panel_chooser_uses_different_corners_for_different_occupancy():
     import matplotlib.pyplot as plt
 
     fig, axis = plt.subplots()
     axis.set_xlim(0, 10)
     axis.set_ylim(0, 10)
-    upper_right_data = [(8.5, 8.5), (9.0, 9.0), (9.5, 9.5)] * 20
-    corner = _choose_panel_corner(
+
+    upper_right_data = [(8.5, 8.5), (9.0, 9.0), (9.5, 9.5)] * 30
+    lower_left_data = [(0.5, 0.5), (1.0, 1.0), (1.5, 1.5)] * 30
+
+    first = _choose_panel_corner(
         axis,
         upper_right_data,
         "Characteristic values\nmax = 10\nmin = 0",
         legend_corner=None,
     )
+    second = _choose_panel_corner(
+        axis,
+        lower_left_data,
+        "Characteristic values\nmax = 10\nmin = 0",
+        legend_corner=None,
+    )
     plt.close(fig)
-    assert corner != "upper right"
 
+    assert first != "upper right"
+    assert second != "lower left"
+    assert first != second
+```
 
-def test_panel_chooser_penalizes_known_legend_corner():
+```python
+def test_panel_chooser_avoids_known_legend_corner():
     import matplotlib.pyplot as plt
 
     fig, axis = plt.subplots()
@@ -847,19 +839,13 @@ def test_panel_chooser_penalizes_known_legend_corner():
     assert corner != "upper right"
 ```
 
-- [ ] **Step 3: Run plotting tests and verify RED**
-
-Run:
+- [ ] **Step 3: Run panel RED gate**
 
 ```bash
 pytest -q tests/test_plotting.py tests/test_envelope_plotting.py
 ```
 
-Expected: failures because panels still live in `figure.text` and chooser does not exist.
-
-- [ ] **Step 4: Implement deterministic panel footprint and corner scoring**
-
-In `plotting.py`, add:
+- [ ] **Step 4: Implement panel footprint**
 
 ```python
 _PANEL_CORNERS = (
@@ -878,7 +864,7 @@ def _panel_footprint(text: str) -> tuple[float, float]:
     return width, height
 ```
 
-Add a helper that maps a data point to axes fractions using current limits, including inverted axes:
+- [ ] **Step 5: Implement normalized-data helper and scoring**
 
 ```python
 def _data_to_axes_fraction(axis, x: float, y: float) -> tuple[float, float]:
@@ -889,71 +875,71 @@ def _data_to_axes_fraction(axis, x: float, y: float) -> tuple[float, float]:
     return x_fraction, y_fraction
 ```
 
-Build candidate rectangles from the footprint with 0.02 axes padding. Score:
+For each corner, create a rectangle using footprint plus 0.02 padding. Score:
+- `3` per sample inside rectangle;
+- `1` per sample inside rectangle expanded by `0.04`;
+- `1000` if corner equals `legend_corner`;
+- choose minimum `(score, corner_priority_index)`.
 
-- `3` points for each sample inside the candidate rectangle;
-- `1` point for each sample inside a 0.04-expanded neighborhood;
-- `1000` penalty if candidate equals the known legend corner;
-- tie-break by `_PANEL_CORNERS` order.
-
-Do not rely on browser dimensions or OCR.
-
-- [ ] **Step 5: Implement axes-owned panel creation**
-
-Map corner to axes anchor/alignment:
+- [ ] **Step 6: Implement axes-owned panel**
 
 ```python
-anchors = {
-    "upper right": (0.98, 0.98, "right", "top"),
-    "upper left": (0.02, 0.98, "left", "top"),
-    "lower right": (0.98, 0.02, "right", "bottom"),
-    "lower left": (0.02, 0.02, "left", "bottom"),
-}
+def _add_characteristic_panel(
+    axis,
+    text: str,
+    data_xy: list[tuple[float, float]],
+    *,
+    legend_corner: str | None = None,
+):
+    corner = _choose_panel_corner(
+        axis,
+        data_xy,
+        text,
+        legend_corner=legend_corner,
+    )
+    anchors = {
+        "upper right": (0.98, 0.98, "right", "top"),
+        "upper left": (0.02, 0.98, "left", "top"),
+        "lower right": (0.98, 0.02, "right", "bottom"),
+        "lower left": (0.02, 0.02, "left", "bottom"),
+    }
+    x, y, ha, va = anchors[corner]
+    return axis.text(
+        x,
+        y,
+        text,
+        transform=axis.transAxes,
+        ha=ha,
+        va=va,
+        fontsize=8.5,
+        zorder=8,
+        bbox={
+            "boxstyle": "round,pad=0.45",
+            "facecolor": axis.get_facecolor(),
+            "edgecolor": axis.spines["bottom"].get_edgecolor(),
+            "linewidth": 0.8,
+            "alpha": 0.94,
+        },
+    )
 ```
 
-Create the text with:
-
-```python
-axis.text(
-    x,
-    y,
-    text,
-    transform=axis.transAxes,
-    ha=ha,
-    va=va,
-    fontsize=8.5,
-    zorder=8,
-    bbox={
-        "boxstyle": "round,pad=0.45",
-        "facecolor": axis.get_facecolor(),
-        "edgecolor": axis.spines["bottom"].get_edgecolor(),
-        "linewidth": 0.8,
-        "alpha": 0.94,
-    },
-)
-```
-
-- [ ] **Step 6: Wire helper into multi-series and signed envelope renderers**
+- [ ] **Step 7: Wire multi-series and signed envelope renderers**
 
 For each renderer:
+- collect data points from visible response curves;
+- set legend with `loc="upper right"`;
+- call `_add_characteristic_panel(..., legend_corner="upper right")`;
+- remove `figure.text(...)`;
+- replace `figure.tight_layout(rect=(0.0, 0.0, 0.73, 1.0))` with `figure.tight_layout()`.
 
-1. collect `(x, y)` pairs from all visible response curves (exclude the zero line);
-2. use a deterministic legend corner, initially `"upper right"`, via `axis.legend(loc="upper right", ...)`;
-3. call `_add_characteristic_panel(..., legend_corner="upper right")`;
-4. replace `figure.tight_layout(rect=(0.0, 0.0, 0.73, 1.0))` with `figure.tight_layout()`.
+Do not modify `_render_single_series()`.
 
-Single-series `_render_single_series()` remains untouched.
-
-- [ ] **Step 7: Run plotting regression gate and commit**
-
-Run:
+- [ ] **Step 8: Verify and commit**
 
 ```bash
 pytest -q tests/test_plotting.py tests/test_envelope_plotting.py
 pytest -q
 ```
-
-Expected: panels are axes-owned, automatic corner tests pass, no right-side margin is reserved, single-series tests remain unchanged.
 
 Commit:
 
@@ -964,22 +950,20 @@ git commit -m "fix: place characteristic panels inside plots"
 
 ---
 
-### Task 6: Render magnitude envelopes with signed context and governing information
+### Task 6: Magnitude-envelope renderer
 
 **Files:**
 - Modify: `src/engcalc_colab/plotting.py`
 - Test: `tests/test_envelope_plotting.py`
 
 **Interfaces:**
-- `_render_envelope()` dispatches internally on `result.envelope_mode`.
-- Signed mode keeps two emphasized branches and fill between them.
-- Magnitude mode renders one emphasized nonnegative branch and fill from zero to it.
-- Faint `result.source_series` remain signed in both modes.
-- Magnitude panel includes global maximum magnitude, x-location, governing signed value, and governing source label.
+- `_render_envelope()` branches on `result.envelope_mode`.
+- Signed mode: two emphasized branches, fill between them.
+- Magnitude mode: one emphasized branch, fill from zero to branch.
+- Both modes: signed faint source curves.
+- Magnitude panel: max magnitude, x, signed governing value, governing source label.
 
-- [ ] **Step 1: Add magnitude-result fixture and RED visual tests**
-
-Append to `tests/test_envelope_plotting.py`:
+- [ ] **Step 1: Add magnitude fixture**
 
 ```python
 def shear_magnitude_envelope_result():
@@ -996,72 +980,48 @@ def shear_magnitude_envelope_result():
     )[-1]
 ```
 
-Add:
+- [ ] **Step 2: Add magnitude visual RED tests**
 
 ```python
-def test_magnitude_envelope_renders_signed_source_curves_but_one_nonnegative_boundary():
+def test_magnitude_envelope_shows_signed_sources_and_one_nonnegative_boundary():
     axis = render_plot(shear_magnitude_envelope_result()).axes[0]
-    faint_lines = [
-        line for line in axis.lines
-        if line.get_label() == "_nolegend_"
-    ]
+    faint_lines = [line for line in axis.lines if line.get_label() == "_nolegend_"]
     assert len(faint_lines) == 2
     assert any(min(line.get_ydata()) < 0 for line in faint_lines)
 
-    boundary = [
-        line for line in axis.lines
-        if line.get_label() == "|V|_max(x)"
-    ]
-    assert len(boundary) == 1
-    assert min(boundary[0].get_ydata()) >= 0.0
+    boundaries = [line for line in axis.lines if line.get_label() == "|V|_max(x)"]
+    assert len(boundaries) == 1
+    assert min(boundaries[0].get_ydata()) >= 0.0
 ```
 
-Add fill and legend assertions:
-
 ```python
-def test_magnitude_envelope_fills_from_zero_and_legend_has_only_abs_max():
+def test_magnitude_envelope_fill_and_legend():
     axis = render_plot(shear_magnitude_envelope_result()).axes[0]
-    fills = [
-        collection for collection in axis.collections
-        if isinstance(collection, PolyCollection)
-    ]
+    fills = [c for c in axis.collections if isinstance(c, PolyCollection)]
     assert len(fills) == 1
-    legend = axis.get_legend()
-    assert legend is not None
-    assert [text.get_text() for text in legend.get_texts()] == ["|V|_max(x)"]
+    assert [text.get_text() for text in axis.get_legend().get_texts()] == ["|V|_max(x)"]
 ```
 
-Add panel content:
-
 ```python
-def test_magnitude_envelope_panel_reports_governing_signed_value_and_case_inside_axes():
+def test_magnitude_panel_reports_signed_governing_case_inside_axes():
     figure = render_plot(shear_magnitude_envelope_result())
     axis = figure.axes[0]
-    panel = [
-        text for text in axis.texts
-        if "Magnitude envelope" in text.get_text()
-    ]
-    assert len(panel) == 1
-    text = panel[0].get_text()
+    panels = [text for text in axis.texts if "Magnitude envelope" in text.get_text()]
+    assert len(panels) == 1
+    text = panels[0].get_text()
     assert "|max| = 9.00 kN" in text
     assert "signed = -9.00 kN" in text
     assert "V_uso(x)" in text
-    assert panel[0].get_transform() == axis.transAxes
+    assert panels[0].get_transform() == axis.transAxes
 ```
 
-- [ ] **Step 2: Run magnitude plotting tests and verify RED**
-
-Run:
+- [ ] **Step 3: Run magnitude renderer RED gate**
 
 ```bash
 pytest -q tests/test_envelope_plotting.py -k "magnitude"
 ```
 
-Expected: fail because current renderer destructures exactly two envelope series.
-
-- [ ] **Step 3: Add magnitude characteristic panel formatter**
-
-Implement:
+- [ ] **Step 4: Add magnitude panel formatter**
 
 ```python
 def _magnitude_envelope_characteristic_panel_text(result: PlotResult) -> str:
@@ -1087,9 +1047,9 @@ def _magnitude_envelope_characteristic_panel_text(result: PlotResult) -> str:
     ])
 ```
 
-- [ ] **Step 4: Split signed and magnitude rendering paths without duplicating source rendering**
+- [ ] **Step 5: Split envelope body rendering**
 
-Refactor `_render_envelope()` so shared setup renders signed faint source curves and zero line once, then:
+Shared `_render_envelope()` renders faint signed source curves and zero line. Then:
 
 ```python
 if result.envelope_mode == "magnitude":
@@ -1098,38 +1058,23 @@ else:
     _render_signed_envelope_body(figure, axis, result, x_values)
 ```
 
-Magnitude body:
+Magnitude body requirements:
+- one line, linewidth `2.5`, zorder `4`;
+- `fill_between(x_values, 0.0, magnitude_y, alpha=0.10, zorder=2)`;
+- legend only magnitude line;
+- y-axis label uses signed common response family and unit;
+- title `|V(x)| envelope` for display label `V(x)`;
+- invert moment axis if magnitude series is moment-classified;
+- panel uses signed-source + magnitude data points for occupancy scoring.
 
-- one line `linewidth=2.5`, `zorder=4`;
-- `axis.fill_between(x_values, 0.0, magnitude_y, alpha=0.10, zorder=2)`;
-- legend contains only magnitude line;
-- use common signed response family for y-axis label;
-- title `|V(x)| envelope` when display label is `V(x)`;
-- preserve moment inversion when `series[0].is_moment` is true;
-- feed all signed-source and magnitude points into `_add_characteristic_panel()`.
-
-- [ ] **Step 5: Verify signed-envelope rendering is unchanged except panel placement**
-
-Run:
+- [ ] **Step 6: Verify signed and magnitude rendering together**
 
 ```bash
-pytest -q tests/test_envelope_plotting.py
-```
-
-Expected: signed tests and magnitude tests all pass.
-
-- [ ] **Step 6: Run full plotting/engine gate and commit**
-
-Run:
-
-```bash
-pytest -q tests/test_envelope_engine.py tests/test_envelope_plotting.py tests/test_plotting.py
+pytest -q tests/test_envelope_plotting.py tests/test_plotting.py
 pytest -q
 ```
 
-Expected: all tests pass.
-
-Commit:
+- [ ] **Step 7: Commit**
 
 ```bash
 git add src/engcalc_colab/plotting.py tests/test_envelope_plotting.py
@@ -1138,7 +1083,7 @@ git commit -m "feat: render magnitude envelope design demand"
 
 ---
 
-### Task 7: End-to-end integration, documentation, version 0.6.0, and clean-wheel release gate
+### Task 7: Integration, documentation, version 0.6.0, and clean-wheel gate
 
 **Files:**
 - Modify: `tests/test_acceptance_native_plot.py`
@@ -1148,16 +1093,14 @@ git commit -m "feat: render magnitude envelope design demand"
 - Modify: `README.md`
 - Modify: `src/engcalc_colab/__init__.py`
 - Modify: `pyproject.toml`
-- Temporary validation workflow during execution only: `.github/workflows/engcalc-v060-validation.yml`
+- Temporary during execution only: `.github/workflows/engcalc-v060-validation.yml`
 
 **Interfaces:**
-- Public package/runtime version: `0.6.0`.
+- Version: `0.6.0`.
+- Wheel: `engcalc_colab-0.6.0-py3-none-any.whl`.
 - No runtime dependency additions.
-- Clean wheel filename: `engcalc_colab-0.6.0-py3-none-any.whl`.
 
-- [ ] **Step 1: Add end-to-end acceptance RED test**
-
-Append to `tests/test_acceptance_native_plot.py`:
+- [ ] **Step 1: Add end-to-end acceptance test**
 
 ```python
 def test_native_magnitude_envelope_acceptance():
@@ -1187,31 +1130,29 @@ envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
     ]
 ```
 
-If `tests/test_acceptance_native_plot.py` does not already import `PlotResult` and `render_plot`, add those exact imports.
+Use existing imports/helpers in that test file; add only missing `PlotResult` or `render_plot` imports.
 
-- [ ] **Step 2: Add or update source-order magic test**
+- [ ] **Step 2: Add magnitude-envelope source-order magic test**
 
-In `tests/test_magic.py`, add a cell containing a symbolic output before and after the magnitude envelope and assert the emitted display object order remains:
+Reuse the current `tests/test_magic.py` display-capture helper. Construct a cell whose outputs are:
 
 ```text
 Math -> Figure -> Math
 ```
 
-Reuse the existing display-capture helper in that file; do not create a second IPython harness.
+with the figure generated by `envelope(abs(V_A(x)), abs(V_B(x)), x, 0, L)`.
 
-- [ ] **Step 3: Run integration tests before version bump**
+Assert exactly that order; do not build a second IPython harness.
 
-Run:
+- [ ] **Step 3: Run integration gate**
 
 ```bash
 pytest -q tests/test_acceptance_native_plot.py tests/test_magic.py
 ```
 
-Expected: functional integration tests pass if Tasks 1-6 are complete.
+- [ ] **Step 4: Introduce release-version RED**
 
-- [ ] **Step 4: Introduce release-version RED tests**
-
-Update `tests/test_packaging.py`:
+In `tests/test_packaging.py`:
 
 ```python
 def test_pyproject_version_is_0_6_0():
@@ -1222,7 +1163,7 @@ def test_runtime_version_is_0_6_0():
     assert engcalc_colab.__version__ == "0.6.0"
 ```
 
-Update `tests/test_parser.py::test_package_version_and_statement_model` to expect:
+In `tests/test_parser.py::test_package_version_and_statement_model`:
 
 ```python
 assert __version__ == "0.6.0"
@@ -1234,27 +1175,27 @@ Run:
 pytest -q tests/test_packaging.py tests/test_parser.py
 ```
 
-Expected: exactly the version assertions fail while all other tests pass.
+Expected: only old-version assertions fail.
 
-- [ ] **Step 5: Bump package/runtime version without changing dependencies**
+- [ ] **Step 5: Bump version**
 
-In `pyproject.toml`:
+`pyproject.toml`:
 
 ```toml
 version = "0.6.0"
 ```
 
-In `src/engcalc_colab/__init__.py`:
+`src/engcalc_colab/__init__.py`:
 
 ```python
 __version__ = "0.6.0"
 ```
 
-Do not alter `sympy`, `pint`, or `matplotlib` dependency floors.
+Do not alter dependency declarations.
 
-- [ ] **Step 6: Update README public documentation**
+- [ ] **Step 6: Update README**
 
-Add a `v0.6.0` section above the 0.5.0 envelope section with these canonical examples:
+Add canonical examples:
 
 ```text
 %%eng
@@ -1266,8 +1207,6 @@ L := 2*m
 envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
 ```
 
-and:
-
 ```text
 %%eng
 
@@ -1277,43 +1216,32 @@ L := 4*m
 envelope(abs(V(x)), x, 0, L, q=[2*tonf/m, 3*tonf/m, 4*tonf/m])
 ```
 
-Document explicitly:
+Document:
+- `abs(...)` safe mathematical operation;
+- signed `envelope(...)` unchanged;
+- all-outermost-`abs` envelope = maximum magnitude;
+- signed faint source curves retained;
+- mixed mode rejected;
+- panels auto-place inside graph;
+- no `abs_envelope(...)` alias.
 
-- `abs(...)` is a safe EngCalc mathematical operation;
-- normal `envelope(...)` remains signed algebraic max/min;
-- all-outermost-`abs(...)` envelope means maximum magnitude;
-- faint context curves preserve signed response;
-- mixed signed/absolute sources are rejected;
-- characteristic panels now auto-place inside the graph;
-- no `abs_envelope(...)` command exists.
-
-- [ ] **Step 7: Run source full suite**
-
-Run:
+- [ ] **Step 7: Source full suite**
 
 ```bash
 pytest -q
 ```
 
-Expected: full suite passes.
+Record exact count from output for PR evidence.
 
-Record the exact test count in the eventual PR body; do not hard-code a predicted count in release claims.
-
-- [ ] **Step 8: Build the real 0.6.0 wheel**
-
-Run:
+- [ ] **Step 8: Build real wheel**
 
 ```bash
 rm -rf build dist
 python -m build --wheel
-ls -l dist/engcalc_colab-0.6.0-py3-none-any.whl
+test -f dist/engcalc_colab-0.6.0-py3-none-any.whl
 ```
 
-Expected: wheel exists with version 0.6.0.
-
-- [ ] **Step 9: Install wheel in a clean environment**
-
-Run:
+- [ ] **Step 9: Install clean wheel**
 
 ```bash
 python -m venv /tmp/engcalc-v060-wheel
@@ -1321,11 +1249,7 @@ python -m venv /tmp/engcalc-v060-wheel
 /tmp/engcalc-v060-wheel/bin/python -m pip install dist/engcalc_colab-0.6.0-py3-none-any.whl pytest ipython
 ```
 
-Expected: installation succeeds without pulling any new EngCalc runtime dependency beyond those already declared.
-
-- [ ] **Step 10: Run installed-wheel smoke test outside the source tree**
-
-From `/tmp` run:
+- [ ] **Step 10: Installed-wheel smoke test from `/tmp`**
 
 ```bash
 cd /tmp
@@ -1374,56 +1298,49 @@ print("EngCalc 0.6.0 installed-wheel smoke PASS")
 PY
 ```
 
-Expected output:
+Expected:
 
 ```text
 EngCalc 0.6.0 installed-wheel smoke PASS
 ```
 
-- [ ] **Step 11: Run full suite against installed wheel from outside repository source**
+- [ ] **Step 11: Full suite against installed wheel outside source tree**
 
-Run:
+Under GitHub Actions:
 
 ```bash
 cd /tmp
 PYTHONPATH= /tmp/engcalc-v060-wheel/bin/python -m pytest -q -c /dev/null "$GITHUB_WORKSPACE/tests"
 ```
 
-When executing outside GitHub Actions, replace `$GITHUB_WORKSPACE/tests` with the absolute repository test directory. Expected: same full suite passes against the installed wheel.
+Outside Actions, substitute the repository test directory absolute path.
 
-- [ ] **Step 12: Repeat source full suite after wheel validation**
-
-Return to repository root and run:
+- [ ] **Step 12: Repeat source suite**
 
 ```bash
 pytest -q
 ```
 
-Expected: full suite passes again.
+- [ ] **Step 13: Remove temporary validation workflow if created**
 
-- [ ] **Step 13: Remove temporary release-validation workflow if one was used**
+If `.github/workflows/engcalc-v060-validation.yml` was created solely for release validation, delete it after the final successful gate. Verify the cleanup commit contains only that deletion.
 
-If execution created `.github/workflows/engcalc-v060-validation.yml` solely to obtain CI evidence, delete it after the final successful gate and verify the cleanup commit changes only that temporary workflow.
-
-- [ ] **Step 14: Final diff review and commit release changes**
-
-Review:
+- [ ] **Step 14: Final diff review**
 
 ```bash
 git diff main...HEAD --stat
 git diff main...HEAD -- src/engcalc_colab/parser.py src/engcalc_colab/numeric.py src/engcalc_colab/engine.py src/engcalc_colab/models.py src/engcalc_colab/plotting.py
 ```
 
-Confirm:
+Verify:
+- no `abs_envelope`/`envelope_abs` public API;
+- no arbitrary function execution;
+- signed-envelope math unchanged;
+- single-series renderer unchanged;
+- no figure-level characteristic panel in multi-series/envelope paths;
+- no new runtime dependency.
 
-- no `abs_envelope`/`envelope_abs` public API exists;
-- no arbitrary Python function execution was enabled;
-- signed envelope math did not change;
-- single-series plotting did not change;
-- no external right panel remains in multi-series/envelope rendering;
-- no new runtime dependency was added.
-
-Commit remaining release files:
+- [ ] **Step 15: Commit release files**
 
 ```bash
 git add README.md pyproject.toml src/engcalc_colab/__init__.py tests/test_acceptance_native_plot.py tests/test_magic.py tests/test_packaging.py tests/test_parser.py
@@ -1434,28 +1351,31 @@ git commit -m "release: prepare EngCalc 0.6.0"
 
 ## Final Acceptance Checklist
 
-Before opening a PR, all of the following must be true:
-
 - [ ] `abs(expression)` works symbolically.
-- [ ] Numeric `abs(...)` preserves Pint units.
-- [ ] `plot(abs(V(x)), ...)` works without losing structural family classification.
-- [ ] Existing signed envelope returns algebraic max/min exactly as 0.5.0.
-- [ ] `envelope(abs(V1(x)), abs(V2(x)), ...)` returns one maximum-magnitude branch.
-- [ ] Magnitude envelope source curves retain original signs.
-- [ ] Magnitude envelope stores governing source indices and signed governing quantities.
-- [ ] Mixed absolute/signed envelope sources are rejected.
-- [ ] Magnitude sweep works with compatible units and does not mutate stored state.
-- [ ] Multi-series characteristic panel is inside axes.
-- [ ] Signed-envelope characteristic panel is inside axes.
-- [ ] Magnitude-envelope characteristic panel is inside axes.
-- [ ] Automatic panel placement responds to data occupancy and legend conflict.
-- [ ] No fixed ~27% right-hand panel margin remains.
-- [ ] Single-series extrema callouts are unchanged.
-- [ ] Moment-positive-down convention remains unchanged.
-- [ ] Full source suite is green.
+- [ ] `abs()` and multi-argument `abs` fail with concise arity errors.
+- [ ] Numeric `abs` preserves Pint units.
+- [ ] `numeric(abs(P))` works end-to-end.
+- [ ] `plot(abs(V(x)), ...)` samples nonnegative values.
+- [ ] `plot(abs(M(x)), ...)` retains moment classification.
+- [ ] Signed envelope still returns 0.5.0 algebraic max/min.
+- [ ] Magnitude envelope returns one maximum-magnitude branch.
+- [ ] Magnitude source curves preserve signs.
+- [ ] Governing source index and signed governing quantity are retained.
+- [ ] Mixed signed/absolute envelope sources are rejected.
+- [ ] Magnitude sweep works and does not mutate state.
+- [ ] Compatible units normalize before magnitude comparison.
+- [ ] Multi-series panel is inside axes.
+- [ ] Signed-envelope panel is inside axes.
+- [ ] Magnitude-envelope panel is inside axes.
+- [ ] Panel chooser demonstrates different corners for different occupancy.
+- [ ] Legend corner is penalized.
+- [ ] No fixed right-side panel margin remains.
+- [ ] Single-series callouts remain unchanged.
+- [ ] Moment-positive-down remains unchanged.
+- [ ] Full source suite passes.
 - [ ] Real 0.6.0 wheel builds.
-- [ ] Clean-environment wheel installation succeeds.
-- [ ] Installed-wheel smoke test passes.
-- [ ] Full suite is green against installed wheel outside source tree.
-- [ ] README documents the final syntax and semantics.
-- [ ] Temporary validation workflow is absent from the final product diff.
+- [ ] Clean wheel installation passes.
+- [ ] Installed-wheel smoke passes.
+- [ ] Full suite passes against installed wheel outside source tree.
+- [ ] README matches final public syntax.
+- [ ] Temporary validation workflow is absent from final product diff.
