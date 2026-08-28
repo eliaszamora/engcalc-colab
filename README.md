@@ -15,13 +15,6 @@ If the extension is already loaded after an update, use:
 %reload_ext engcalc_colab
 ```
 
-For a folder uploaded directly to Colab:
-
-```python
-%pip install -q /content/engcalc-colab
-%load_ext engcalc_colab
-```
-
 ## Symbolic + numerical workflow
 
 Symbolic definitions use `=`. Numerical data use `:=`. The two contexts are intentionally separate: assigning a numerical value never overwrites the symbolic formula.
@@ -29,48 +22,19 @@ Symbolic definitions use `=`. Numerical data use `:=`. The two contexts are inte
 ```text
 %%eng
 
-## Reacciones simbólicas
-
 V_B = 3*q*L/8
 V_A = 5*q*L/8
 M_A = q*L^2/8
 
-## Datos numéricos
-
 q := 2.8*tonf/m
 L := 4*m
-
-## Resultados numéricos
 
 numeric(V_B)
 numeric(V_A)
 numeric(M_A)
 ```
 
-The symbolic namespace still contains:
-
-\[
-V_B=\frac{3qL}{8},\qquad
-V_A=\frac{5qL}{8},\qquad
-M_A=\frac{qL^2}{8}.
-\]
-
-The numerical context contains the independent data `q = 2.8 tonf/m` and `L = 4 m`. `numeric(...)` evaluates the existing symbolic expressions and renders the calculation as formula → numerical substitution → final quantity. For the example above:
-
-\[
-V_B=4.20\,\mathrm{tonf},\qquad
-V_A=7.00\,\mathrm{tonf},\qquad
-M_A=5.60\,\mathrm{tonf\,m}.
-\]
-
-Because the contexts are separate, this is valid:
-
-```text
-q := 3.5*tonf/m
-numeric(M_A)
-```
-
-The value changes while the symbolic definition `M_A = q*L^2/8` remains unchanged.
+The symbolic namespace still contains the original formulas, while `numeric(...)` evaluates them with the current numerical context and renders formula → numerical substitution → final quantity.
 
 ## Numerical context and units
 
@@ -80,7 +44,7 @@ Numeric assignments use:
 name := numeric_expression
 ```
 
-A numeric expression may reference previously assigned numerical values and the supported unit aliases. Example:
+Numerical values may reference earlier values:
 
 ```text
 q := 2.8*tonf/m
@@ -88,7 +52,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.3:
+Supported unit aliases in v0.2.4:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -103,49 +67,99 @@ EngCalc defines:
 
 Units are interpreted only inside the numerical context. A name such as `m` remains available as a normal symbolic identifier in symbolic expressions.
 
-For ordinary scalar expressions, `numeric(expr)` requires numerical values for every free symbol. Missing values produce a concise EngCalc error instead of a raw Pint traceback.
+Final numerical quantities are rendered with two decimal places in v0.2.4.
 
-Final numerical quantities are rendered with two decimal places in v0.2.3.
+## v0.2.4 target-unit conversion
 
-## v0.2.3 evaluated partial numerical functions
+v0.2.4 adds an optional target unit to fully numerical evaluations:
 
-v0.2.3 extends the partial-function workflow introduced in v0.2.2. When a user-defined function keeps its independent variable free, EngCalc now evaluates every known polynomial coefficient with Pint instead of stopping after textual substitution.
+```text
+numeric(expression, target_unit)
+```
 
-For example:
+Examples:
+
+```text
+numeric(M_A, kN*m)
+numeric(V_A, kN)
+numeric(Delta_B0, mm)
+numeric(f_11, mm/kN)
+```
+
+Target-unit expressions use the same engineering aliases and may contain products, divisions and powers, for example:
+
+```text
+kN*m
+N*mm
+mm^4
+mm/kN
+```
+
+The conversion applies to the **final result**. The formula and numerical-substitution stages preserve the units in which the input data were defined. For example:
+
+```text
+M_A = q*L^2/8
+q := 2.8*tonf/m
+L := 4*m
+numeric(M_A, kN*m)
+```
+
+renders the symbolic formula, substitutes `q` and `L` in their original `tonf/m` and `m` units, and finishes with approximately:
+
+\[
+M_A=54.92\,\mathrm{kN\,m}.
+\]
+
+The same syntax works for a user-defined function once its argument is numerically known:
 
 ```text
 V(x) = 5*q*L/8 - q*x
+q := 2.8*tonf/m
+L := 4*m
+x := 2*m
 
+numeric(V(x), kN)
+```
+
+Pint checks dimensional compatibility. Asking for an incompatible target, such as converting a moment directly to `kN`, produces a concise EngCalc error instead of silently changing dimensions.
+
+Target-unit conversion in v0.2.4 intentionally requires a **fully numerical result**. A partial function such as:
+
+```text
+numeric(V(x), kN)
+```
+
+with `x` still free is rejected. Use `numeric(V(x))` to keep the symbolic independent variable, or assign/evaluate the coordinate first and then request a target unit.
+
+The original one-argument form `numeric(expr)` is unchanged.
+
+## v0.2.3 evaluated partial numerical functions
+
+When a user-defined function keeps its independent variable free, EngCalc evaluates every known polynomial coefficient with Pint instead of stopping after textual substitution.
+
+```text
+V(x) = 5*q*L/8 - q*x
 q := 2.8*tonf/m
 L := 2*m
 
 numeric(V(x))
 ```
 
-The output follows the complete engineering-memory chain:
+produces a compact numerical function equivalent to:
 
 \[
-V(x)=\frac{5qL}{8}-qx
+V(x)=3.50\,\mathrm{tonf}
+-2.80\,\frac{\mathrm{tonf}}{\mathrm m}x.
 \]
 
-\[
-=\frac{5(2.80\,\mathrm{tonf/m})(2.00\,\mathrm m)}{8}
- -(2.80\,\mathrm{tonf/m})x
-\]
-
-\[
-=3.50\,\mathrm{tonf}
- -2.80\,\frac{\mathrm{tonf}}{\mathrm m}x.
-\]
-
-The same mechanism evaluates each coefficient of higher-order polynomial functions independently. For example,
+Likewise:
 
 ```text
 M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2
 numeric(M(x))
 ```
 
-with the same `q` and `L` produces a compact function equivalent to:
+with the same data produces a function equivalent to:
 
 \[
 M(x)=
@@ -154,56 +168,15 @@ M(x)=
 -1.40\,\frac{\mathrm{tonf}}{\mathrm m}x^2.
 \]
 
-The symbolic definition remains unchanged. Only the numerical presentation is evaluated.
+The symbolic definition remains unchanged. Partial coefficient evaluation is limited to functions polynomial in their free argument; non-polynomial partial functions retain the substitution-only representation rather than being approximated.
 
-Partial coefficient evaluation is intentionally limited to functions that are polynomial in their free argument. If a partial function is not polynomial in that argument, EngCalc keeps the v0.2.2 substitution-only representation rather than failing or inventing an approximation.
+Direct expressions remain strict: `numeric(q*x)` does not guess that `x` is an independent variable.
 
-This relaxation is still limited to user-defined function calls. EngCalc does **not** guess a free variable in an arbitrary direct expression:
+## Function evaluation and dimensional zeros
 
-```text
-q := 2.8*tonf/m
-numeric(q*x)
-```
+Fully evaluated user functions keep their engineering label in the rendered memory. Function evaluation is performed with Pint before an exact symbolic zero can erase dimensional information, so a boundary value such as `numeric(M(L))` remains a zero moment rather than a dimensionless zero.
 
-still requires a numerical value for `x`.
-
-If the function argument does have a numerical value, EngCalc keeps the existing full-evaluation behavior:
-
-```text
-V(x) = 5*q*L/8 - q*x
-q := 2.8*tonf/m
-L := 2*m
-x := 1*m
-
-numeric(V(x))
-```
-
-Similarly, `numeric(M(L))` fully evaluates the function when `L` has a numerical value.
-
-All non-argument symbols of a partially evaluated function must still have numerical values. For example, `numeric(V(x))` will report a missing `q` if `L` is known but `q` is not.
-
-## v0.2.1 validation and function-evaluation polish
-
-v0.2.1 validated the symbolic-to-numerical workflow against a complete force-method beam calculation using mixed engineering units (`tonf/m`, `m`, `GPa`, `mm^4`). It also improved numerical evaluation of user-defined symbolic functions.
-
-Function calls keep their engineering label in the rendered memory:
-
-```text
-V(x) = 5*q*L/8 - q*x
-M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2
-
-q := 2.8*tonf/m
-L := 4*m
-x := 2.5*m
-
-numeric(V(x))
-numeric(M(x))
-numeric(M(L))
-```
-
-The left side remains `V(x)`, `M(x)` or `M(L)` rather than being replaced by the expanded expression. Function evaluation is performed with Pint before an exact symbolic zero can erase dimensional information, so a boundary value such as `numeric(M(L))` remains a zero **moment** rather than a dimensionless zero.
-
-The validation case also covers displacement and flexibility quantities such as:
+The numerical workflow also supports mixed engineering units, for example:
 
 ```text
 Delta_B0 = integral(M_0(x)*M_1(x)/(E*I), x, 0, L)
@@ -271,11 +244,10 @@ I := 8.5e8*mm^4
 
 ## Resultados
 
-numeric(Delta_B0)
-numeric(f_11)
-numeric(V_B)
-numeric(V_A)
-numeric(M_A)
+numeric(Delta_B0, mm)
+numeric(V_B, kN)
+numeric(V_A, kN)
+numeric(M_A, kN*m)
 
 ## Funciones con datos conocidos
 
@@ -306,7 +278,8 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 
 - `q := 2.8*tonf/m` — associate a unit-aware numerical value with `q` without changing symbolic `q`.
 - `P := q*L` — numerical values may reference earlier numerical values.
-- `numeric(V_B)` — evaluate a named symbolic result with the current numerical context.
+- `numeric(V_B)` — evaluate a named symbolic result with natural resulting units.
+- `numeric(M_A, kN*m)` — evaluate a fully numerical result and convert its final quantity to the requested compatible unit.
 - `numeric(q*L^2/8)` — evaluate a direct symbolic expression; every free symbol must have a numerical value.
 - `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free, including evaluation of known polynomial coefficients; fully evaluate it if the argument has a numerical value.
 - `numeric(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
@@ -346,19 +319,13 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 - `### text` — visible subsection heading.
 - blank line — adds a larger visual separation inside the current equation group.
 
-Consecutive calculation rows are rendered in a three-column mathematical block: left expressions are left-aligned, equal signs share one centered vertical column, and right expressions are left-aligned. Consecutive rows use 4 pt spacing; a source blank line uses 8 pt.
+Consecutive calculation rows are rendered in a three-column mathematical block. Consecutive rows use 4 pt spacing; a source blank line uses 8 pt.
 
-For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics: numeric coefficient first, then lowercase-leading symbols, then uppercase-leading symbols. Examples include:
-
-\[
-M_A=\frac{qL^2}{2},\qquad
-R_B=\frac{3qL}{8},\qquad
-D=\frac{qL^4}{8EI}.
-\]
+For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics.
 
 ## Google Colab side-by-side layout
 
-Google Colab can place code on the left and output on the right for an individual cell. Put this Colab directive immediately below `%%eng`:
+Put this Colab directive immediately below `%%eng` when desired:
 
 ```text
 %%eng
@@ -369,14 +336,14 @@ EngCalc ignores the directive because it begins with a single `#`.
 
 ## Safety
 
-`%%eng` uses restricted AST evaluators for both symbolic and numerical expressions. Raw cell text is never passed to unrestricted Python `eval` or `exec`. Attribute access, arbitrary Python calls, keyword arguments and unsupported syntax are rejected. Visible heading text is HTML-escaped before display.
+`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. Raw cell text is never passed to unrestricted Python `eval` or `exec`. Attribute access, arbitrary Python calls, keyword arguments and unsupported syntax are rejected.
 
 ## Current limitations
 
-v0.2.3 intentionally does not yet provide:
+v0.2.4 intentionally does not yet provide:
 
-- target-unit conversion in `numeric(...)`
-- configurable numerical precision
+- configurable numerical precision or zero tolerance
+- target-unit conversion of partially evaluated functions with a free independent variable
 - automatic compact coefficient evaluation for non-polynomial partial functions
 - keyword arguments
 - arrays/tables or dedicated matrix syntax
@@ -384,7 +351,7 @@ v0.2.3 intentionally does not yet provide:
 - multi-solution `solve(...)`
 - full LaTeX parsing
 
-These are separate future milestones rather than hidden behavior in v0.2.3.
+These are separate future milestones rather than hidden behavior in v0.2.4.
 
 ## Development
 
@@ -393,4 +360,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.3`.
+Version: `0.2.4`.

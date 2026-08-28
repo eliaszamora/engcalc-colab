@@ -49,6 +49,32 @@ def test_symbolic_expression_evaluates_with_pint_quantities():
     assert value.to("tonf").magnitude == pytest.approx(4.2)
 
 
+def test_target_unit_expression_supports_compound_engineering_units():
+    ctx = NumericContext()
+
+    unit = ctx.evaluate_unit_expression(expr("kN*m"))
+    converted = (5.6 * ctx.ureg.tonf * ctx.ureg.m).to(unit)
+
+    assert converted.magnitude == pytest.approx(54.91724)
+    assert "kilonewton" in str(unit)
+    assert "meter" in str(unit)
+
+
+def test_target_unit_expression_supports_powers():
+    ctx = NumericContext()
+
+    unit = ctx.evaluate_unit_expression(expr("mm^4"))
+
+    assert str(unit) == "millimeter ** 4"
+
+
+def test_target_unit_expression_rejects_unknown_names():
+    ctx = NumericContext()
+
+    with pytest.raises(EngEvaluationError, match="unknown target unit 'banana'"):
+        ctx.evaluate_unit_expression(expr("banana"))
+
+
 def test_missing_numeric_symbol_is_reported_in_sorted_order():
     ctx = NumericContext()
     q, L, E = sp.symbols("q L E")

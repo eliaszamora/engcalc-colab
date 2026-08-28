@@ -49,6 +49,24 @@ def test_named_numeric_evaluation_renders_formula_substitution_and_result():
     assert r"\mathrm{m}" in latex
 
 
+def test_target_unit_conversion_keeps_original_substitution_and_converts_final_result():
+    engine = EngineeringEngine()
+    evaluate(engine, "M_A = q*L^2/8")
+    evaluate(engine, "q := 2.8*tonf/m")
+    evaluate(engine, "L := 4*m")
+
+    latex = render_result(evaluate(engine, "numeric(M_A, kN*m)"))
+    final_latex = latex.split(" = ")[-1]
+
+    assert latex.startswith(r"M_{A} = ")
+    assert "2.80" in latex
+    assert r"\mathrm{tonf}" in latex
+    assert "54.92" in final_latex
+    assert r"\mathrm{kN}" in final_latex
+    assert r"\mathrm{m}" in final_latex
+    assert r"\mathrm{tonf}" not in final_latex
+
+
 def test_direct_numeric_expression_uses_formula_as_left_side():
     engine = EngineeringEngine()
     evaluate(engine, "q := 2.8*tonf/m")

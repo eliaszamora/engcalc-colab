@@ -204,8 +204,18 @@ class _Evaluator(ast.NodeVisitor):
             return symbolic_sum
 
         if name == "numeric":
-            self._require_arity(name, node.args, 1, "expression")
+            if len(node.args) not in (1, 2):
+                raise EngEvaluationError(
+                    "numeric expects 1 or 2 arguments: expression[, target_unit]"
+                )
+
             argument = node.args[0]
+            target_unit = None
+            if len(node.args) == 2:
+                target_unit = self.engine.numeric_context.evaluate_unit_expression(
+                    ast.Expression(body=node.args[1])
+                )
+
             display_name = argument.id if isinstance(argument, ast.Name) else None
             display_argument = None
 
@@ -231,6 +241,10 @@ class _Evaluator(ast.NodeVisitor):
                     and isinstance(argument_expression, sp.Symbol)
                     and self.engine.numeric_context.get(argument_node.id) is None
                 ):
+                    if target_unit is not None:
+                        raise EngEvaluationError(
+                            "target-unit conversion requires a fully numeric result"
+                        )
                     parameter = self.engine.resolve_symbol(function.parameter)
                     symbolic_expression = symbolic_expression.subs(
                         parameter,
@@ -267,6 +281,12 @@ class _Evaluator(ast.NodeVisitor):
                 symbolic_expression = self.visit(argument)
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
                     symbolic_expression
+                )
+
+            if target_unit is not None:
+                quantity = self.engine.numeric_context.convert_quantity(
+                    quantity,
+                    target_unit,
                 )
 
             self.numeric_evaluation = (

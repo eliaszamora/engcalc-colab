@@ -70,6 +70,36 @@ class NumericContext:
             return self.ureg.Unit(_UNIT_ALIASES[name])
         raise EngEvaluationError(f"unknown numeric name '{name}'")
 
+    def resolve_target_unit_name(self, name: str):
+        if name in _UNIT_ALIASES:
+            return self.ureg.Unit(_UNIT_ALIASES[name])
+        raise EngEvaluationError(f"unknown target unit '{name}'")
+
+    def evaluate_unit_expression(self, expression: ast.Expression):
+        """Evaluate a restricted target-unit expression without consulting numeric values."""
+        try:
+            unit = _UnitAstEvaluator(self).visit(expression.body)
+        except EngEvaluationError:
+            raise
+        except PintError as exc:
+            raise EngEvaluationError(f"target unit evaluation failed: {exc}") from exc
+        except Exception as exc:
+            raise EngEvaluationError(f"target unit evaluation failed: {exc}") from exc
+
+        if isinstance(unit, numbers.Number) or hasattr(unit, "magnitude"):
+            raise EngEvaluationError("target unit must be a unit expression")
+        if not hasattr(unit, "dimensionality"):
+            raise EngEvaluationError("target unit must be a unit expression")
+        return unit
+
+    def convert_quantity(self, quantity, target_unit):
+        try:
+            return quantity.to(target_unit)
+        except DimensionalityError as exc:
+            raise EngEvaluationError("target unit is incompatible with result") from exc
+        except PintError as exc:
+            raise EngEvaluationError(f"target unit conversion failed: {exc}") from exc
+
     def partial_substitutions(
         self,
         expression: sp.Expr,
@@ -245,3 +275,47 @@ class _NumericAstEvaluator(ast.NodeVisitor):
         except PintError as exc:
             raise EngEvaluationError(f"numeric unit evaluation failed: {exc}") from exc
         raise EngEvaluationError("unsupported numeric operator")
+
+
+class _UnitAstEvaluator(ast.NodeVisitor):
+    def __init__(self, context: NumericContext) -> None:
+        self.context = context
+
+    def generic_visit(self, node):
+        raise EngEvaluationError(f"unsupported target unit syntax '{type(node).__name__}'")
+
+    def visit_Name(self, node: ast.Name):
+        return self.context.resolve_target_unit_name(node.id)
+
+    def visit_Constant(self, node: ast.Constant):
+        if isinstance(node.value, bool) or node.value is None:
+            raise EngEvaluationError("target unit exponents must be numeric")
+        if isinstance(node.value, (int, float)):
+            return node.value
+        raise EngEvaluationError("target unit exponents must be numeric")
+
+    def visit_UnaryOp(self, node: ast.UnaryOp):
+        value = self.visit(node.operand)
+        if not isinstance(value, numbers.Number):
+            raise EngEvaluationError("target unit unary signs are only valid for exponents")
+        if isinstance(node.op, ast.UAdd):
+            return value
+        if isinstance(node.op, ast.USub):
+            return -value
+        raise EngEvaluationError("unsupported target unit unary operator")
+
+    def visit_BinOp(self, node: ast.BinOp):
+        left = self.visit(node.left)
+        right = self.visit(node.right)
+        try:
+            if isinstance(node.op, ast.Mult):
+                return left * right
+            if isinstance(node.op, ast.Div):
+                return left / right
+            if isinstance(node.op, ast.Pow):
+                if not isinstance(right, numbers.Number):
+                    raise EngEvaluationError("target unit exponent must be numeric")
+                return left ** right
+        except PintError as exc:
+            raise EngEvaluationError(f"target unit evaluation failed: {exc}") from exc
+        raise EngEvaluationError("target units support only *, /, and powers")
