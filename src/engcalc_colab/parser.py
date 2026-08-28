@@ -20,16 +20,18 @@ _SWEEP_VALUE_NODES = (
 _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
 _ALLOWED_CALLS = {
     "integral", "diff", "solve", "simplify", "expand", "factor",
-    "subs", "eq", "sum", "numeric", "plot", "envelope", "abs"
+    "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "abs"
 }
 _RESERVED = _ALLOWED_CALLS | {"True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _FUNCTION_TARGET = re.compile(r"^([A-Za-z_]\w*)\s*\(\s*([A-Za-z_]\w*)\s*\)$")
 _HEADING = re.compile(r"^(#{2,3})\s+(.+)$")
+_RESULT_CALL = re.compile(r"\bresult\s*(?=\()")
 
 
 def normalize_expression(text: str) -> str:
     text = text.replace("^", "**")
+    text = _RESULT_CALL.sub("numeric", text)
     return _rewrite_solve_equality(text)
 
 
