@@ -69,6 +69,62 @@ Units are interpreted only inside the numerical context. A name such as `m` rema
 
 Numerical quantities render with two decimal places by default. Global presentation settings can change that policy without altering stored values or symbolic formulas.
 
+## v0.5.0 sampled engineering envelopes
+
+v0.5.0 adds a restricted `envelope(...)` statement for structural-response comparisons. It reuses the same symbolic functions, Pint-aware numerical state, 201-point sampling grid and structural sign conventions as `plot(...)`.
+
+Several compatible response functions may be reduced directly to one upper and one lower envelope:
+
+```text
+%%eng
+
+M_A(x) = q_A*x*(L-x)/2
+M_B(x) = -0.5*q_B*x*(L-x)/2
+
+q_A := 8*kN/m
+q_B := 10*kN/m
+L := 6*m
+
+envelope(M_A(x), M_B(x), x, 0, L)
+```
+
+The final three positional arguments are `variable, start, end`. Every earlier positional argument is a source response series. A non-sweep envelope requires at least two response series.
+
+One expression may also be enveloped over a restricted one-parameter sweep:
+
+```text
+%%eng
+
+M(x) = q*x*(L-x)/2
+L := 6*m
+
+envelope(
+    M(x),
+    x,
+    0,
+    L,
+    q=[-10*kN/m, 5*kN/m, 15*kN/m]
+)
+```
+
+The sweep follows the same narrow grammar as multi-series plotting: exactly one keyword parameter, a non-empty list of complete numerical EngCalc expressions, no dictionaries, no cartesian sweep and no arbitrary keyword arguments. Sweep values are local overrides and do not mutate the stored numerical value of the swept parameter or plotting variable.
+
+At every one of the 201 shared sample positions, EngCalc computes the **signed algebraic maximum and signed algebraic minimum** across all source series. It does not compute an absolute-value envelope. Therefore a negative response can govern the lower envelope while a positive response governs the upper envelope. The result also retains the governing source-series index for each sampled x location internally.
+
+All source responses must be dimensionally compatible. Compatible values are normalized to a common unit before comparison. Mixed moment/non-moment series on one envelope axis are rejected, as are incompatible dimensions such as shear and moment.
+
+Structural moments keep the EngCalc convention of **positive moment downward**. For a moment envelope the y-axis remains inverted consistently.
+
+The envelope figure is intentionally different from a normal multi-series comparison:
+
+- original source responses are shown as faint context curves without markers or inline callouts;
+- only the upper and lower envelope boundaries are emphasized;
+- the region between the two envelope boundaries is lightly filled;
+- the `y = 0` reference remains visible;
+- maximum/minimum characteristic values are placed in an external panel rather than on top of the structural diagram.
+
+`envelope(...)` is a standalone output statement and produces exactly one Matplotlib figure in source order inside `%%eng`, just like `plot(...)`.
+
 ## v0.4.0 multi-series plotting
 
 v0.4.0 extends native `plot(...)` with two additive comparison workflows while preserving the four-argument single-curve syntax.
@@ -114,7 +170,7 @@ v0.3.0 introduced the original restricted, unit-aware plotting command:
 plot(expression, variable, start, end)
 ```
 
-That four-argument form remains fully supported in v0.4.0.
+That four-argument form remains fully supported in v0.5.0.
 
 The primary workflow is to define the engineering functions and numerical data once and plot them in the same EngCalc cell:
 
@@ -417,18 +473,21 @@ The last four calls reuse the same symbolic functions and numerical data: `numer
 - `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free; fully evaluate it if the argument has a numerical value.
 - `numeric(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
 
-### Plotting
+### Plotting and envelopes
 
 - `plot(expression, variable, start, end)` — create the existing single-series unit-aware Matplotlib figure using 201 samples including both endpoints.
 - `plot(expr1, expr2, ..., variable, start, end)` — overlay several dimensionally compatible expressions on one shared axis.
 - `plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])` — plot one expression for several local values of one parameter.
+- `envelope(expr1, expr2, ..., variable, start, end)` — compute and render signed pointwise upper/lower envelopes from several compatible response series.
+- `envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])` — compute an envelope from one expression evaluated over one local parameter sweep.
 - the final three positional arguments are always `variable, start, end`.
-- a parameter sweep accepts one keyword with a non-empty list of complete numerical expressions; only one sweep parameter is supported in v0.4.0.
-- a sweep does not persist or overwrite the swept parameter's stored numerical value.
+- a parameter sweep accepts one keyword with a non-empty list of complete numerical expressions; only one sweep parameter is supported in v0.5.0.
+- sweeps do not persist or overwrite the swept parameter's stored numerical value.
 - the plotting variable is locally overridden for sampling and any stored numeric value for that name is preserved.
-- all y series on one shared axis must have compatible dimensions.
-- all-moment multi-series plots retain positive moment downward.
-- plotting is a standalone statement; assigning `A = plot(...)` is rejected.
+- all y series on one shared plot/envelope axis must have compatible dimensions.
+- all-moment plots and envelopes retain positive moment downward.
+- `envelope(...)` uses signed algebraic max/min, not absolute magnitude.
+- plotting and envelopes are standalone statements; assigning `A = plot(...)` or `A = envelope(...)` is rejected.
 - arbitrary plot styling/Matplotlib keyword arguments are not exposed.
 
 ### Arithmetic syntax
@@ -483,31 +542,31 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Safety
 
-`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. `plot(...)` is also a restricted EngCalc operation: it does not expose arbitrary Matplotlib functions, callbacks, filenames or Python objects. The only plot keyword form accepted in v0.4.0 is the restricted one-parameter sweep list. Raw cell text is never passed to unrestricted Python `eval` or `exec`.
+`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. `plot(...)` and `envelope(...)` are also restricted EngCalc operations: they do not expose arbitrary Matplotlib functions, callbacks, filenames or Python objects. The only keyword form accepted by either display operation in v0.5.0 is the restricted one-parameter sweep list. Raw cell text is never passed to unrestricted Python `eval` or `exec`.
 
 ## Current limitations
 
-v0.4.0 intentionally does not yet provide:
+v0.5.0 intentionally does not yet provide:
 
-- subplots or multiple axes in one `plot(...)` statement;
+- subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
 - labeled dictionary cases such as named load combinations;
 - multi-parameter/cartesian sweeps;
 - dual y-axes for quantities with different dimensions;
-- explicit plot x/y target-unit conversion;
+- explicit plot/envelope x/y target-unit conversion;
 - `piecewise`/discontinuous-function plotting and jump markers;
 - automatic scientific-notation policy for very large/small displayed values;
 - target-unit conversion of partially evaluated functions with a free independent variable;
 - automatic compact coefficient evaluation for non-polynomial partial functions;
 - exact browser-pixel-aware MathJax line wrapping;
 - wrapping inside a single indivisible top-level mathematical term wider than the target budget;
-- general keyword arguments or general list/dictionary syntax outside the restricted plot sweep slot;
+- general keyword arguments or general list/dictionary syntax outside the restricted plot/envelope sweep slot;
 - arrays/tables or dedicated matrix syntax;
 - arbitrary Python execution or arbitrary library functions;
 - multi-solution `solve(...)`;
 - full LaTeX parsing.
 
-These are separate future milestones rather than hidden behavior in v0.4.0.
+These are separate future milestones rather than hidden behavior in v0.5.0.
 
 ## Development
 
@@ -516,4 +575,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.4.0`.
+Version: `0.5.0`.
