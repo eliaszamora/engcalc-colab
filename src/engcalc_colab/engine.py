@@ -662,16 +662,20 @@ class _Evaluator(ast.NodeVisitor):
 
         if node.keywords:
             expression = resolved_expressions[0]
-            raw_series, x_values = self._evaluate_response_sweep(
+            raw_series, raw_source_series, x_values = self._evaluate_response_sweep(
                 expression.comparison_expression,
+                expression.signed_expression,
                 expression.source_label,
                 variable,
                 start_quantity,
                 end_quantity,
                 node.keywords[0],
                 call_name=call_name,
+                preserve_signed_source=(
+                    call_name == "envelope" and expression.is_absolute
+                ),
             )
-            raw_source_series = raw_series
+            source_labels = [item.display_label for item in raw_source_series]
             display_label = (
                 expression.display_label
                 if call_name == "plot"
@@ -753,7 +757,8 @@ class _Evaluator(ast.NodeVisitor):
 
     def _evaluate_response_sweep(
         self,
-        symbolic_expression,
+        comparison_expression,
+        signed_expression,
         source_label: str,
         variable: str,
         start_quantity,
@@ -761,7 +766,8 @@ class _Evaluator(ast.NodeVisitor):
         keyword_node: ast.keyword,
         *,
         call_name: str,
-    ) -> tuple[list[PlotSeries], tuple]:
+        preserve_signed_source: bool,
+    ) -> tuple[list[PlotSeries], list[PlotSeries], tuple]:
         parameter_name = keyword_node.arg
         if parameter_name is None:
             raise EngEvaluationError(
@@ -774,7 +780,8 @@ class _Evaluator(ast.NodeVisitor):
             )
 
         free_names = {
-            symbol.name for symbol in sp.sympify(symbolic_expression).free_symbols
+            symbol.name
+            for symbol in sp.sympify(comparison_expression).free_symbols
         }
         if parameter_name not in free_names:
             raise EngEvaluationError(
@@ -795,29 +802,54 @@ class _Evaluator(ast.NodeVisitor):
         )
 
         is_moment = self._is_moment_label(source_label)
-        series: list[PlotSeries] = []
+        comparison_series: list[PlotSeries] = []
+        source_series: list[PlotSeries] = []
         x_values = None
         for sweep_value in sweep_values:
-            series_x, y_values = self.engine.numeric_context.sample_symbolic(
-                symbolic_expression,
-                variable,
-                start_quantity,
-                end_quantity,
-                count=201,
-                overrides={parameter_name: sweep_value},
+            overrides = {parameter_name: sweep_value}
+            series_x, comparison_y_values = (
+                self.engine.numeric_context.sample_symbolic(
+                    comparison_expression,
+                    variable,
+                    start_quantity,
+                    end_quantity,
+                    count=201,
+                    overrides=overrides,
+                )
             )
+            if preserve_signed_source:
+                _, source_y_values = self.engine.numeric_context.sample_symbolic(
+                    signed_expression,
+                    variable,
+                    start_quantity,
+                    end_quantity,
+                    count=201,
+                    overrides=overrides,
+                )
+            else:
+                source_y_values = comparison_y_values
+
             if x_values is None:
                 x_values = series_x
-            series.append(
+            case_label = (
+                f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"
+            )
+            comparison_series.append(
                 PlotSeries(
-                    display_label=(
-                        f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"
-                    ),
-                    y_values=y_values,
+                    display_label=case_label,
+                    y_values=comparison_y_values,
                     is_moment=is_moment,
                 )
             )
-        return series, x_values
+            source_series.append(
+                PlotSeries(
+                    display_label=case_label,
+                    y_values=source_y_values,
+                    is_moment=is_moment,
+                )
+            )
+
+        return comparison_series, source_series, x_values
 
     def _normalize_sweep_values(
         self,
