@@ -125,7 +125,8 @@ jobs:
               assert len(annotations) == expected_annotations, (name, [a.get_text() for a in annotations])
               forbidden = ("Characteristic values", "Envelope characteristic values", "Magnitude envelope")
               assert not any(any(token in text.get_text() for token in forbidden) for text in axis.texts)
-              assert axis.yaxis_inverted() is inverted
+              axis_inverted = bool(axis.yaxis_inverted())
+              assert axis_inverted == inverted
               legend = axis.get_legend()
               assert legend is not None
               assert len(legend.get_texts()) == expected_legend
@@ -154,7 +155,7 @@ jobs:
                   "title": axis.get_title(),
                   "annotations": [item.get_text() for item in annotations],
                   "legend": [item.get_text() for item in legend.get_texts()],
-                  "yaxis_inverted": axis.yaxis_inverted(),
+                  "yaxis_inverted": axis_inverted,
               })
 
           (evidence / "visual-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
