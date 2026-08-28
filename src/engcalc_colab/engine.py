@@ -11,6 +11,7 @@ from .models import (
     NumericEvaluationResult,
     ParsedNumericAssignment,
     ParsedStatement,
+    PartialNumericEvaluationResult,
     UserFunction,
 )
 from .numeric import NumericContext
@@ -42,7 +43,12 @@ class EngineeringEngine:
     def evaluate(
         self,
         statement: ParsedStatement | ParsedNumericAssignment,
-    ) -> EvaluationResult | NumericAssignmentResult | NumericEvaluationResult:
+    ) -> (
+        EvaluationResult
+        | NumericAssignmentResult
+        | NumericEvaluationResult
+        | PartialNumericEvaluationResult
+    ):
         evaluator = _Evaluator(self)
         try:
             if isinstance(statement, ParsedNumericAssignment):
@@ -66,6 +72,23 @@ class EngineeringEngine:
                     )
 
             value = evaluator.visit(statement.expression.body)
+            if evaluator.partial_numeric_evaluation is not None:
+                (
+                    symbolic_expression,
+                    substitutions,
+                    unresolved_symbols,
+                    display_name,
+                    display_argument,
+                ) = evaluator.partial_numeric_evaluation
+                return PartialNumericEvaluationResult(
+                    statement=statement,
+                    symbolic_expression=symbolic_expression,
+                    substitutions=substitutions,
+                    unresolved_symbols=unresolved_symbols,
+                    display_name=display_name,
+                    display_argument=display_argument,
+                )
+
             if evaluator.numeric_evaluation is not None:
                 (
                     symbolic_expression,
@@ -113,6 +136,7 @@ class _Evaluator(ast.NodeVisitor):
         self.engine = engine
         self.display_input = None
         self.numeric_evaluation = None
+        self.partial_numeric_evaluation = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
 
     def generic_visit(self, node):
@@ -194,17 +218,44 @@ class _Evaluator(ast.NodeVisitor):
                         f"function '{function_name}' expects 1 argument"
                     )
                 function = self.engine.functions[function_name]
-                argument_expression = self.visit(argument.args[0])
+                argument_node = argument.args[0]
+                argument_expression = self.visit(argument_node)
+                symbolic_expression = sp.sympify(function.expression)
+                display_name = function_name
+                display_argument = argument_expression
+
+                if (
+                    isinstance(argument_node, ast.Name)
+                    and isinstance(argument_expression, sp.Symbol)
+                    and self.engine.numeric_context.get(argument_node.id) is None
+                ):
+                    parameter = self.engine.resolve_symbol(function.parameter)
+                    symbolic_expression = symbolic_expression.subs(
+                        parameter,
+                        argument_expression,
+                    )
+                    substitutions, unresolved_symbols = (
+                        self.engine.numeric_context.partial_substitutions(
+                            symbolic_expression,
+                            allowed_unresolved={argument_node.id},
+                        )
+                    )
+                    self.partial_numeric_evaluation = (
+                        symbolic_expression,
+                        substitutions,
+                        unresolved_symbols,
+                        display_name,
+                        display_argument,
+                    )
+                    return symbolic_expression
+
                 _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
                     argument_expression
                 )
-                symbolic_expression = sp.sympify(function.expression)
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
                     symbolic_expression,
                     overrides={function.parameter: argument_quantity},
                 )
-                display_name = function_name
-                display_argument = argument_expression
             else:
                 symbolic_expression = self.visit(argument)
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
