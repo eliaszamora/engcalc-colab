@@ -9,7 +9,13 @@ from .models import PlotResult
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 _FORCE_UNITS = {"N", "kN", "MN", "GN", "kgf", "tonf"}
 _LENGTH_UNITS = {"mm", "cm", "m", "km"}
-_ANNOTATION_CANDIDATES = ((16, 24), (-16, 24), (16, -24), (-16, -24), (0, 28), (0, -28))
+_HORIZONTAL_ANNOTATION_OFFSETS = (18, 72, 126, -18, -72, -126, 0)
+_VERTICAL_ANNOTATION_OFFSETS = (24, 72, 120, -24, -72, -120)
+_ANNOTATION_CANDIDATES = tuple(
+    (dx, dy)
+    for dy in _VERTICAL_ANNOTATION_OFFSETS
+    for dx in _HORIZONTAL_ANNOTATION_OFFSETS
+)
 
 
 def _is_moment_plot(label: str) -> bool:
@@ -65,68 +71,27 @@ def _series_response_symbol(result: PlotResult, series) -> str:
     return _response_symbol(label)
 
 
-def _data_to_axes_fraction(axis, x: float, y: float) -> tuple[float, float]:
-    x0, x1 = axis.get_xlim()
-    y0, y1 = axis.get_ylim()
-    return (0.5 if x1 == x0 else (x - x0) / (x1 - x0), 0.5 if y1 == y0 else (y - y0) / (y1 - y0))
-
-
 def _visual_above_for_role(role: str, inverted: bool) -> bool:
     mathematical_maximum = role == "max"
     return (mathematical_maximum and not inverted) or (not mathematical_maximum and inverted)
 
 
-def _annotation_candidate_score(axis, x: float, y: float, offset: tuple[int, int], *, occupied: list[tuple[float, float]], legend_corner: str | None) -> float:
-    x_fraction, y_fraction = _data_to_axes_fraction(axis, x, y)
+def _annotation_alignment(offset: tuple[int, int]) -> tuple[str, str]:
     dx, dy = offset
-    label_x = x_fraction + dx / 430.0
-    label_y = y_fraction + dy / 320.0
-    score = 0.0
-    if label_x < 0.05 or label_x > 0.95:
-        score += 200.0
-    if label_y < 0.06 or label_y > 0.94:
-        score += 200.0
-    if x_fraction <= 0.10 and dx <= 0:
-        score += 80.0
-    if x_fraction >= 0.90 and dx >= 0:
-        score += 80.0
-    if legend_corner == "upper right" and label_x > 0.70 and label_y > 0.72:
-        score += 120.0
-    for occupied_x, occupied_y in occupied:
-        distance = math.hypot(label_x - occupied_x, label_y - occupied_y)
-        if distance < 0.12:
-            score += 140.0
-        elif distance < 0.20:
-            score += 35.0
-    score += 0.02 * math.hypot(dx, dy)
-    return score
-
-
-def _choose_annotation_offset(axis, x: float, y: float, *, role: str, inverted: bool, occupied: list[tuple[float, float]], legend_corner: str | None) -> tuple[int, int, str, str, tuple[float, float]]:
-    candidate_offsets = _ANNOTATION_CANDIDATES
-    if role in {"max", "min"}:
-        visually_above = _visual_above_for_role(role, inverted)
-        candidate_offsets = tuple(offset for offset in _ANNOTATION_CANDIDATES if (offset[1] > 0) == visually_above)
-
-    candidates = []
-    for order, offset in enumerate(candidate_offsets):
-        score = _annotation_candidate_score(axis, x, y, offset, occupied=occupied, legend_corner=legend_corner)
-        candidates.append((score, order, offset))
-    _, _, (dx, dy) = min(candidates)
-    x_fraction, y_fraction = _data_to_axes_fraction(axis, x, y)
-    anchor = (x_fraction + dx / 430.0, y_fraction + dy / 320.0)
-    ha = "left" if dx >= 0 else "right"
+    if dx > 0:
+        ha = "left"
+    elif dx < 0:
+        ha = "right"
+    else:
+        ha = "center"
     va = "bottom" if dy >= 0 else "top"
-    return dx, dy, ha, va, anchor
+    return ha, va
 
 
-def _annotate_characteristic(axis, x_quantity, y_quantity, response_label: str, *, role: str, inverted: bool, line_color, occupied: list[tuple[float, float]], legend_corner: str | None = None) -> None:
-    x = float(x_quantity.magnitude)
-    y = float(y_quantity.magnitude)
-    dx, dy, ha, va, anchor = _choose_annotation_offset(axis, x, y, role=role, inverted=inverted, occupied=occupied, legend_corner=legend_corner)
-    occupied.append(anchor)
-    text = f"x = {_quantity_label(x_quantity)}\n{response_label} = {_quantity_label(y_quantity, moment=inverted)}"
-    axis.annotate(
+def _create_annotation(axis, text: str, x: float, y: float, offset: tuple[int, int], line_color):
+    dx, dy = offset
+    ha, va = _annotation_alignment(offset)
+    return axis.annotate(
         text,
         xy=(x, y),
         xytext=(dx, dy),
@@ -139,6 +104,163 @@ def _annotate_characteristic(axis, x_quantity, y_quantity, response_label: str, 
         arrowprops={"arrowstyle": "-", "linewidth": 0.8, "color": line_color, "alpha": 0.72, "shrinkA": 4, "shrinkB": 4},
         annotation_clip=False,
     )
+
+
+def _bbox_overlap_area(left, right) -> float:
+    width = max(0.0, min(left.x1, right.x1) - max(left.x0, right.x0))
+    height = max(0.0, min(left.y1, right.y1) - max(left.y0, right.y0))
+    return width * height
+
+
+def _bbox_outside_amount(box, boundary) -> float:
+    return (
+        max(0.0, boundary.x0 - box.x0)
+        + max(0.0, box.x1 - boundary.x1)
+        + max(0.0, boundary.y0 - box.y0)
+        + max(0.0, box.y1 - boundary.y1)
+    )
+
+
+def _curve_display_points(axis) -> list[tuple[float, float]]:
+    points: list[tuple[float, float]] = []
+    for line in axis.lines:
+        if line.get_label() == "_zero":
+            continue
+        for x_value, y_value in zip(line.get_xdata(), line.get_ydata()):
+            try:
+                x = float(x_value)
+                y = float(y_value)
+            except (TypeError, ValueError):
+                continue
+            display_x, display_y = axis.transData.transform((x, y))
+            points.append((float(display_x), float(display_y)))
+    return points
+
+
+def _annotation_candidate_score(
+    axis,
+    candidate_box,
+    offset: tuple[int, int],
+    *,
+    x: float,
+    role: str,
+    inverted: bool,
+    occupied_boxes: list,
+    axes_box,
+    legend_box,
+    curve_points: list[tuple[float, float]],
+) -> float:
+    dx, dy = offset
+    score = 0.0
+
+    outside = _bbox_outside_amount(candidate_box, axes_box)
+    if outside > 0:
+        score += 1_000_000.0 + 10_000.0 * outside
+
+    for occupied in occupied_boxes:
+        overlap = _bbox_overlap_area(candidate_box, occupied)
+        if overlap > 0:
+            score += 500_000.0 + 100.0 * overlap
+
+    if legend_box is not None:
+        legend_overlap = _bbox_overlap_area(candidate_box, legend_box)
+        if legend_overlap > 0:
+            score += 400_000.0 + 100.0 * legend_overlap
+
+    padded_box = candidate_box.expanded(1.08, 1.16)
+    curve_hits = sum(
+        1
+        for point_x, point_y in curve_points
+        if padded_box.x0 <= point_x <= padded_box.x1 and padded_box.y0 <= point_y <= padded_box.y1
+    )
+    score += 24.0 * curve_hits
+
+    x0, x1 = axis.get_xlim()
+    span = x1 - x0
+    x_fraction = 0.5 if span == 0 else (x - x0) / span
+    if x_fraction <= 0.10 and dx <= 0:
+        score += 200_000.0
+    if x_fraction >= 0.90 and dx >= 0:
+        score += 200_000.0
+
+    visually_above = _visual_above_for_role(role, inverted)
+    if (dy > 0) != visually_above:
+        score += 2_500.0
+
+    score += 0.08 * math.hypot(dx, dy)
+    return score
+
+
+def _choose_annotation_offset(
+    axis,
+    text: str,
+    x: float,
+    y: float,
+    *,
+    role: str,
+    inverted: bool,
+    line_color,
+    occupied_boxes: list,
+) -> tuple[int, int, str, str, object]:
+    figure = axis.figure
+    figure.canvas.draw()
+    renderer = figure.canvas.get_renderer()
+    axes_box = axis.get_window_extent(renderer)
+    legend = axis.get_legend()
+    legend_box = None if legend is None else legend.get_window_extent(renderer).expanded(1.03, 1.08)
+    curve_points = _curve_display_points(axis)
+
+    candidates = []
+    for order, offset in enumerate(_ANNOTATION_CANDIDATES):
+        temporary = _create_annotation(axis, text, x, y, offset, line_color)
+        patch = temporary.get_bbox_patch()
+        candidate_box = patch.get_window_extent(renderer).expanded(1.04, 1.08)
+        temporary.remove()
+        score = _annotation_candidate_score(
+            axis,
+            candidate_box,
+            offset,
+            x=x,
+            role=role,
+            inverted=inverted,
+            occupied_boxes=occupied_boxes,
+            axes_box=axes_box,
+            legend_box=legend_box,
+            curve_points=curve_points,
+        )
+        candidates.append((score, order, offset))
+
+    _, _, offset = min(candidates)
+    ha, va = _annotation_alignment(offset)
+    return offset[0], offset[1], ha, va, renderer
+
+
+def _annotate_characteristic(
+    axis,
+    x_quantity,
+    y_quantity,
+    response_label: str,
+    *,
+    role: str,
+    inverted: bool,
+    line_color,
+    occupied_boxes: list,
+) -> None:
+    x = float(x_quantity.magnitude)
+    y = float(y_quantity.magnitude)
+    text = f"x = {_quantity_label(x_quantity)}\n{response_label} = {_quantity_label(y_quantity, moment=inverted)}"
+    dx, dy, _, _, renderer = _choose_annotation_offset(
+        axis,
+        text,
+        x,
+        y,
+        role=role,
+        inverted=inverted,
+        line_color=line_color,
+        occupied_boxes=occupied_boxes,
+    )
+    annotation = _create_annotation(axis, text, x, y, (dx, dy), line_color)
+    occupied_boxes.append(annotation.get_bbox_patch().get_window_extent(renderer).expanded(1.04, 1.08))
 
 
 def _style_axes(axis) -> None:
@@ -171,17 +293,17 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
     axis.set_title(result.display_label, pad=10, fontweight="semibold")
     _style_axes(axis)
     axis.margins(x=0.02, y=0.26)
+    figure.tight_layout()
 
     response_label = _series_response_symbol(result, series)
-    occupied: list[tuple[float, float]] = []
+    occupied_boxes: list = []
     maximum_value = y_values[maximum_index]
     minimum_value = y_values[minimum_index]
     if math.isclose(maximum_value, minimum_value, rel_tol=1e-12, abs_tol=1e-12):
-        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=inverted, line_color=line_color, occupied=occupied)
+        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=inverted, line_color=line_color, occupied_boxes=occupied_boxes)
     else:
-        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=inverted, line_color=line_color, occupied=occupied)
-        _annotate_characteristic(axis, result.x_values[minimum_index], series.y_values[minimum_index], response_label, role="min", inverted=inverted, line_color=line_color, occupied=occupied)
-    figure.tight_layout()
+        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=inverted, line_color=line_color, occupied_boxes=occupied_boxes)
+        _annotate_characteristic(axis, result.x_values[minimum_index], series.y_values[minimum_index], response_label, role="min", inverted=inverted, line_color=line_color, occupied_boxes=occupied_boxes)
 
 
 def _render_multi_series(figure, axis, result: PlotResult) -> None:
@@ -206,14 +328,14 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
     axis.set_title(result.display_label, pad=10, fontweight="semibold")
     _style_axes(axis)
     axis.margins(x=0.02, y=0.26)
+    figure.tight_layout()
 
-    occupied: list[tuple[float, float]] = []
+    occupied_boxes: list = []
     for series, line_color, maximum_index, minimum_index, y_values in characteristics:
         response_label = _series_response_symbol(result, series)
-        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=line_color, occupied=occupied, legend_corner="upper right")
+        _annotate_characteristic(axis, result.x_values[maximum_index], series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=line_color, occupied_boxes=occupied_boxes)
         if not math.isclose(y_values[maximum_index], y_values[minimum_index], rel_tol=1e-12, abs_tol=1e-12):
-            _annotate_characteristic(axis, result.x_values[minimum_index], series.y_values[minimum_index], response_label, role="min", inverted=moment, line_color=line_color, occupied=occupied, legend_corner="upper right")
-    figure.tight_layout()
+            _annotate_characteristic(axis, result.x_values[minimum_index], series.y_values[minimum_index], response_label, role="min", inverted=moment, line_color=line_color, occupied_boxes=occupied_boxes)
 
 
 def _render_envelope_sources(axis, result: PlotResult, x_values):
@@ -246,12 +368,12 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
     axis.set_title(f"{result.display_label} envelope", pad=10, fontweight="semibold")
     _style_axes(axis)
     axis.margins(x=0.02, y=0.26)
-
-    occupied: list[tuple[float, float]] = []
-    response_label = _response_symbol(result.display_label)
-    _annotate_characteristic(axis, result.x_values[maximum_index], maximum_series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=maximum_line.get_color(), occupied=occupied, legend_corner="upper right")
-    _annotate_characteristic(axis, result.x_values[minimum_index], minimum_series.y_values[minimum_index], response_label, role="min", inverted=moment, line_color=minimum_line.get_color(), occupied=occupied, legend_corner="upper right")
     figure.tight_layout()
+
+    occupied_boxes: list = []
+    response_label = _response_symbol(result.display_label)
+    _annotate_characteristic(axis, result.x_values[maximum_index], maximum_series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=maximum_line.get_color(), occupied_boxes=occupied_boxes)
+    _annotate_characteristic(axis, result.x_values[minimum_index], minimum_series.y_values[minimum_index], response_label, role="min", inverted=moment, line_color=minimum_line.get_color(), occupied_boxes=occupied_boxes)
 
 
 def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
@@ -275,10 +397,10 @@ def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
     axis.set_title(f"|{result.display_label}| envelope", pad=10, fontweight="semibold")
     _style_axes(axis)
     axis.margins(x=0.02, y=0.26)
+    figure.tight_layout()
 
     response_label = f"|{_response_symbol(result.display_label)}|"
-    _annotate_characteristic(axis, result.x_values[maximum_index], magnitude_series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=magnitude_line.get_color(), occupied=[], legend_corner="upper right")
-    figure.tight_layout()
+    _annotate_characteristic(axis, result.x_values[maximum_index], magnitude_series.y_values[maximum_index], response_label, role="max", inverted=moment, line_color=magnitude_line.get_color(), occupied_boxes=[])
 
 
 def _render_envelope(figure, axis, result: PlotResult) -> None:
