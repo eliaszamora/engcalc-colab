@@ -107,7 +107,7 @@ def test_aligned_named_numeric_evaluation_uses_vertical_stage_rows():
 
     assert r"M_{A} & = & \displaystyle \frac{q L^{2}}{8}" in latex
     assert latex.count(" & = & ") == 3
-    assert r"\\[2pt] & = & \displaystyle" in latex
+    assert latex.count(r"\\[2pt]") == 2
     assert "5.60" in latex
     assert " = " not in latex.replace(" & = & ", "")
 
