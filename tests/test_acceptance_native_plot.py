@@ -1,3 +1,5 @@
+import pytest
+
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import PlotResult
 from engcalc_colab.parser import parse_cell
@@ -23,3 +25,38 @@ plot(M(x), x, 0, L)
     assert shear.y_values[0].to("tonf").magnitude == 7.0
     assert abs(moment.y_values[-1].to("tonf*m").magnitude) < 1e-12
     assert not moment.y_values[-1].dimensionless
+
+
+def test_multicurve_plot_end_to_end():
+    engine = EngineeringEngine()
+    cell = """
+M_D(x) = q_D*x*(L-x)/2
+M_L(x) = q_L*x*(L-x)/2
+q_D := 8*kN/m
+q_L := 5*kN/m
+L := 6*m
+plot(M_D(x), M_L(x), x, 0, L)
+"""
+    result = [engine.evaluate(stmt) for stmt in parse_cell(cell)][-1]
+
+    assert isinstance(result, PlotResult)
+    assert len(result.series) == 2
+    assert len(result.x_values) == 201
+    assert result.display_label == "M(x)"
+    assert result.series[0].y_values[100].to("kN*m").magnitude == pytest.approx(36.0)
+    assert result.series[1].y_values[100].to("kN*m").magnitude == pytest.approx(22.5)
+
+
+def test_parameter_sweep_plot_end_to_end():
+    engine = EngineeringEngine()
+    cell = """
+M(x) = q*x*(L-x)/2
+L := 6*m
+plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m, 15*kN/m])
+"""
+    result = [engine.evaluate(stmt) for stmt in parse_cell(cell)][-1]
+
+    assert isinstance(result, PlotResult)
+    assert len(result.series) == 3
+    assert result.display_label == "M(x)"
+    assert result.series[-1].y_values[100].to("kN*m").magnitude == pytest.approx(67.5)
