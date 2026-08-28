@@ -53,6 +53,26 @@ jobs:
       - name: Run numeric sweep foundation tests
         run: pytest -q tests/test_numeric_context.py tests/test_numeric_engine.py tests/test_plot_sampling.py
 
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install current branch and test dependencies
+        run: |
+          python -m pip install -e '.[dev]'
+          python -m pip install 'ipython>=8'
+      - name: Run multi-series engine acceptance tests
+        run: |
+          pytest -q \
+            tests/test_plot_parser.py \
+            tests/test_numeric_context.py \
+            tests/test_plot_sampling.py \
+            tests/test_plot_engine.py \
+            tests/test_acceptance_native_plot.py
+
   current:
     runs-on: ubuntu-latest
     steps:
