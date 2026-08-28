@@ -1,50 +1,96 @@
-name: EngCalc 0.6.0 Inline Validation
+name: EngCalc 0.6.0 Release Gate
 
 on:
   push:
     branches:
       - feature/v0.6.0-abs-envelope-panel
 
-permissions:
-  contents: write
-
 jobs:
-  test:
+  release-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Apply v0.6.0 README patch
-        run: |
-          python - <<'PY'
-          import base64
-          from pathlib import Path
-          readme = Path('README.md')
-          text = readme.read_text()
-          marker = '## v0.5.0 sampled engineering envelopes\n'
-          heading = '## v0.6.0 absolute-value envelopes and in-plot panels\n'
-          payload = 'IyMgdjAuNi4wIGFic29sdXRlLXZhbHVlIGVudmVsb3BlcyBhbmQgaW4tcGxvdCBwYW5lbHMKCnYwLjYuMCBhZGRzIHRoZSBzYWZlLCBjb21wb3NhYmxlIGBhYnMoLi4uKWAgb3BlcmF0aW9uIGFuZCBleHRlbmRzIHRoZSBleGlzdGluZyBgZW52ZWxvcGUoLi4uKWAgc3RhdGVtZW50IHdpdGggYSBtYWduaXR1ZGUtZGVtYW5kIG1vZGUuIFRoZSBzaWduZWQtZW52ZWxvcGUgc3ludGF4IGFuZCBhbGdlYnJhaWMgbWF4L21pbiBiZWhhdmlvciBpbnRyb2R1Y2VkIGluIHYwLjUuMCByZW1haW4gdW5jaGFuZ2VkLgoKYGFicyguLi4pYCB3b3JrcyBpbiBzeW1ib2xpYyBleHByZXNzaW9ucywgbnVtZXJpY2FsL1BpbnQgZXZhbHVhdGlvbiBhbmQgbmF0aXZlIHBsb3R0aW5nLiBBIG1hZ25pdHVkZSBlbnZlbG9wZSBpcyByZXF1ZXN0ZWQgYnkgYXBwbHlpbmcgYGFicyguLi4pYCB0byBldmVyeSBzb3VyY2UgcmVzcG9uc2U6CgpgYGB0ZXh0CiUlZW5nCgpWX2NvbnN0cih4KSA9IFJfY29uc3RyIC0gcV9jb25zdHIqeApWX3Vzbyh4KSA9IFJfdXNvICsgcV91c28qeAoKUl9jb25zdHIgOj0gNiprTgpxX2NvbnN0ciA6PSA0KmtOL20KUl91c28gOj0gLTkqa04KcV91c28gOj0gMSprTi9tCkwgOj0gMiptCgplbnZlbG9wZShhYnMoVl9jb25zdHIoeCkpLCBhYnMoVl91c28oeCkpLCB4LCAwLCBMKQpgYGAKCkF0IGVhY2ggb2YgdGhlIHNoYXJlZCAyMDEgc2FtcGxlIHBvc2l0aW9ucywgRW5nQ2FsYyBjb21wYXJlcyB0aGUgYWJzb2x1dGUgbWFnbml0dWRlcyBhbmQga2VlcHMgb25lIG5vbm5lZ2F0aXZlIG1heGltdW0tbWFnbml0dWRlIGRlbWFuZCBicmFuY2guIFRoZSBvcmlnaW5hbCBzaWduZWQgc291cmNlIGN1cnZlcyBhcmUgcmV0YWluZWQgaW50ZXJuYWxseSBhbmQgc2hvd24gYXMgZmFpbnQgY29udGV4dCwgc28gYSBuZWdhdGl2ZSByZXNwb25zZSBtYXkgZ292ZXJuIHRoZSBhYnNvbHV0ZSBkZW1hbmQgd2l0aG91dCBsb3NpbmcgaXRzIHNpZ24uIFRoZSByZXN1bHQgYWxzbyByZXRhaW5zIHRoZSBnb3Zlcm5pbmcgc291cmNlIGluZGV4IGFuZCBzaWduZWQgZ292ZXJuaW5nIHZhbHVlLgoKVGhlIHNhbWUgbW9kZSB3b3JrcyB3aXRoIHRoZSBleGlzdGluZyByZXN0cmljdGVkIG9uZS1wYXJhbWV0ZXIgc3dlZXA6CgpgYGB0ZXh0CiUlZW5nCgpWKHgpID0gcSooTC8yLXgpCkwgOj0gNCptCgplbnZlbG9wZSgKICAgIGFicyhWKHgpKSwKICAgIHgsCiAgICAwLAogICAgTCwKICAgIHE9WzIqdG9uZi9tLCAzKnRvbmYvbSwgNCp0b25mL21dCikKYGBgCgpFdmVyeSBzb3VyY2Ugb2Ygb25lIGVudmVsb3BlIG11c3QgdXNlIHRoZSBzYW1lIGNvbXBhcmlzb24gbW9kZS4gTWl4aW5nIHNpZ25lZCBhbmQgYWJzb2x1dGUgcmVzcG9uc2VzIGluIG9uZSBjYWxsLCBmb3IgZXhhbXBsZSBgZW52ZWxvcGUoYWJzKFZfQSh4KSksIFZfQih4KSwgLi4uKWAsIGlzIHJlamVjdGVkLiBUaGVyZSBpcyBpbnRlbnRpb25hbGx5IG5vIHNlcGFyYXRlIGBhYnNfZW52ZWxvcGUoLi4uKWAgYWxpYXM6IGFic29sdXRlLXZhbHVlIGRlbWFuZCBpcyBjb21wb3NlZCB3aXRoIHRoZSBvcmRpbmFyeSBgZW52ZWxvcGUoLi4uKWAgQVBJLgoKTWFnbml0dWRlLWVudmVsb3BlIGZpZ3VyZXMgZW1waGFzaXplIG9uZSBgfHJlc3BvbnNlfF9tYXhgIGJvdW5kYXJ5LCBmaWxsIGZyb20gemVybyB0byB0aGF0IGJvdW5kYXJ5LCBhbmQga2VlcCB0aGUgc2lnbmVkIHNvdXJjZSByZXNwb25zZXMgYXMgZmFpbnQgY29udGV4dC4gVGhlaXIgY2hhcmFjdGVyaXN0aWMgcGFuZWwgcmVwb3J0cyB0aGUgbWF4aW11bSBtYWduaXR1ZGUsIGl0cyB4IGxvY2F0aW9uLCB0aGUgc2lnbmVkIGdvdmVybmluZyB2YWx1ZSBhbmQgdGhlIGdvdmVybmluZyBzb3VyY2UvY2FzZS4KCnYwLjYuMCBhbHNvIG1vdmVzIGNoYXJhY3RlcmlzdGljLXZhbHVlIHBhbmVscyBmb3IgbXVsdGktc2VyaWVzIHBsb3RzLCBzaWduZWQgZW52ZWxvcGVzIGFuZCBtYWduaXR1ZGUgZW52ZWxvcGVzICoqaW5zaWRlIHRoZSBncmFwaCBheGVzKiouIEVuZ0NhbGMgYXV0b21hdGljYWxseSBjaG9vc2VzIGFtb25nIHRoZSBmb3VyIHBsb3QgY29ybmVycyB1c2luZyBkYXRhIG9jY3VwYW5jeSBhbmQgcGVuYWxpemVzIHRoZSBsZWdlbmQgY29ybmVyLCB3aGlsZSBrZWVwaW5nIHRoZSBjb21wbGV0ZSBwYW5lbCBib3VuZGluZyBib3ggaW5zaWRlIHRoZSBheGVzLiBTaW5nbGUtc2VyaWVzIG1heGltdW0vbWluaW11bSBjYWxsb3V0cyByZW1haW4gdW5jaGFuZ2VkLgoKU3RydWN0dXJhbCBtb21lbnQgZGlhZ3JhbXMgY29udGludWUgdG8gdXNlIHRoZSBFbmdDYWxjIGNvbnZlbnRpb24gb2YgKipwb3NpdGl2ZSBtb21lbnQgZG93bndhcmQqKiwgaW5jbHVkaW5nIGBwbG90KGFicyhNKHgpKSlgIGFuZCBtYWduaXR1ZGUgbW9tZW50IGVudmVsb3Blcy4KCg=='
-          if heading not in text:
-              if marker not in text:
-                  raise SystemExit('README v0.5 marker not found')
-              section = base64.b64decode(payload).decode()
-              readme.write_text(text.replace(marker, section + marker, 1))
-          PY
-      - name: Install project
+
+      - name: Install source and validation tools
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .
-          python -m pip install pytest ipython
-      - name: Run test suite
+          python -m pip install pytest ipython build
+
+      - name: Source full suite
         run: pytest -q
-      - name: Commit README only after green suite
+
+      - name: Build EngCalc 0.6.0 wheel
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          if ! git diff --cached --quiet; then
-            git commit -m "docs: document EngCalc 0.6.0 magnitude envelopes"
-            git push
-          fi
+          rm -rf build dist
+          python -m build --wheel
+          test -f dist/engcalc_colab-0.6.0-py3-none-any.whl
+
+      - name: Install wheel in clean virtual environment
+        run: |
+          rm -rf /tmp/engcalc-v060-wheel
+          python -m venv /tmp/engcalc-v060-wheel
+          /tmp/engcalc-v060-wheel/bin/python -m pip install --upgrade pip
+          /tmp/engcalc-v060-wheel/bin/python -m pip install dist/engcalc_colab-0.6.0-py3-none-any.whl pytest ipython
+
+      - name: Installed-wheel smoke from tmp
+        run: |
+          cd /tmp
+          PYTHONPATH= /tmp/engcalc-v060-wheel/bin/python - <<'PY'
+          import engcalc_colab
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.plotting import render_plot
+
+          assert engcalc_colab.__version__ == "0.6.0"
+
+          engine = EngineeringEngine()
+          cell = """
+          V_constr(x) = R_constr - q_constr*x
+          V_uso(x) = R_uso + q_uso*x
+          R_constr := 6*kN
+          q_constr := 4*kN/m
+          R_uso := -9*kN
+          q_uso := 1*kN/m
+          L := 2*m
+          envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
+          """
+          result = [engine.evaluate(stmt) for stmt in parse_cell(cell)][-1]
+          assert result.envelope_mode == "magnitude"
+          assert result.series[0].y_values[0].to("kN").magnitude == 9.0
+          assert result.governing_signed[0].to("kN").magnitude == -9.0
+          figure = render_plot(result)
+          axis = figure.axes[0]
+          assert len(figure.texts) == 0
+          assert any("Magnitude envelope" in text.get_text() for text in axis.texts)
+          assert [text.get_text() for text in axis.get_legend().get_texts()] == ["|V|_max(x)"]
+
+          signed_engine = EngineeringEngine()
+          signed_cell = """
+          M_A(x) = q*x*(L-x)/2
+          M_B(x) = -0.5*q*x*(L-x)/2
+          q := 8*kN/m
+          L := 6*m
+          envelope(M_A(x), M_B(x), x, 0, L)
+          """
+          signed = [signed_engine.evaluate(stmt) for stmt in parse_cell(signed_cell)][-1]
+          assert signed.envelope_mode == "signed"
+          assert len(signed.series) == 2
+          assert render_plot(signed).axes[0].yaxis_inverted()
+
+          print("EngCalc 0.6.0 installed-wheel smoke PASS")
+          PY
+
+      - name: Full suite against installed wheel
+        run: |
+          cd /tmp
+          PYTHONPATH= /tmp/engcalc-v060-wheel/bin/python -m pytest -q -c /dev/null "$GITHUB_WORKSPACE/tests"
+
+      - name: Repeat source full suite
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          pytest -q
