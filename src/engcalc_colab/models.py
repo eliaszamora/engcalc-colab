@@ -67,5 +67,6 @@ class PartialNumericEvaluationResult:
     symbolic_expression: Any
     substitutions: dict[str, Any]
     unresolved_symbols: tuple[str, ...]
+    evaluated_terms: tuple[tuple[int, Any], ...] | None = None
     display_name: str | None = None
     display_argument: Any | None = None
