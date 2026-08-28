@@ -461,9 +461,68 @@ class _Evaluator(ast.NodeVisitor):
 
     def _evaluate_envelope(self, node: ast.Call):
         resolved = self._resolve_response_series(node, call_name="envelope")
-        source_series = resolved.series
-        if len(source_series) < 2:
+        comparison_series = resolved.series
+        if len(comparison_series) < 2:
             raise EngEvaluationError("envelope requires at least two response series")
+        if resolved.envelope_mode is None:
+            raise EngEvaluationError(
+                "envelope cannot mix absolute and signed response series"
+            )
+
+        if resolved.envelope_mode == "magnitude":
+            maximum_values = []
+            governing_maximum = []
+            governing_signed = []
+
+            for sample_index in range(len(resolved.x_values)):
+                magnitudes = [
+                    float(item.y_values[sample_index].magnitude)
+                    for item in comparison_series
+                ]
+                maximum_index = max(
+                    range(len(magnitudes)),
+                    key=magnitudes.__getitem__,
+                )
+                governing_maximum.append(maximum_index)
+                maximum_values.append(
+                    comparison_series[maximum_index].y_values[sample_index]
+                )
+                governing_signed.append(
+                    resolved.source_series[maximum_index].y_values[sample_index]
+                )
+
+            suffix = f"({resolved.variable})"
+            if (
+                resolved.display_label != "Comparison"
+                and resolved.display_label.endswith(suffix)
+            ):
+                family = resolved.display_label[: -len(suffix)]
+                magnitude_label = f"|{family}|_max({resolved.variable})"
+            else:
+                magnitude_label = "|max|"
+
+            envelope_series = (
+                PlotSeries(
+                    display_label=magnitude_label,
+                    y_values=tuple(maximum_values),
+                    is_moment=comparison_series[0].is_moment,
+                ),
+            )
+
+            self.plot_evaluation = _PlotEvaluation(
+                display_label=resolved.display_label,
+                variable=resolved.variable,
+                x_values=resolved.x_values,
+                series=envelope_series,
+                kind="envelope",
+                source_series=resolved.source_series,
+                source_labels=resolved.source_labels,
+                governing_max=tuple(governing_maximum),
+                governing_min=None,
+                envelope_mode="magnitude",
+                governing_signed=tuple(governing_signed),
+            )
+            return resolved.first_symbolic_expression
 
         maximum_values = []
         minimum_values = []
@@ -473,20 +532,24 @@ class _Evaluator(ast.NodeVisitor):
         for sample_index in range(len(resolved.x_values)):
             magnitudes = [
                 float(item.y_values[sample_index].magnitude)
-                for item in source_series
+                for item in comparison_series
             ]
             maximum_index = max(range(len(magnitudes)), key=magnitudes.__getitem__)
             minimum_index = min(range(len(magnitudes)), key=magnitudes.__getitem__)
             governing_maximum.append(maximum_index)
             governing_minimum.append(minimum_index)
-            maximum_values.append(source_series[maximum_index].y_values[sample_index])
-            minimum_values.append(source_series[minimum_index].y_values[sample_index])
+            maximum_values.append(
+                comparison_series[maximum_index].y_values[sample_index]
+            )
+            minimum_values.append(
+                comparison_series[minimum_index].y_values[sample_index]
+            )
 
         maximum_label, minimum_label = self._envelope_series_labels(
             resolved.display_label,
             resolved.variable,
         )
-        is_moment = source_series[0].is_moment
+        is_moment = comparison_series[0].is_moment
         envelope_series = (
             PlotSeries(
                 display_label=maximum_label,
@@ -506,10 +569,11 @@ class _Evaluator(ast.NodeVisitor):
             x_values=resolved.x_values,
             series=envelope_series,
             kind="envelope",
-            source_series=source_series,
-            source_labels=tuple(item.display_label for item in source_series),
+            source_series=resolved.source_series,
+            source_labels=resolved.source_labels,
             governing_max=tuple(governing_maximum),
             governing_min=tuple(governing_minimum),
+            envelope_mode="signed",
         )
         return resolved.first_symbolic_expression
 
