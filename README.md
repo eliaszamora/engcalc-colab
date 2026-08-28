@@ -88,7 +88,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.1:
+Supported unit aliases in v0.2.2:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -103,13 +103,62 @@ EngCalc defines:
 
 Units are interpreted only inside the numerical context. A name such as `m` remains available as a normal symbolic identifier in symbolic expressions.
 
-`numeric(expr)` requires numerical values for every free symbol in the evaluated expression. Missing values produce a concise EngCalc error instead of a raw Pint traceback.
+For ordinary scalar expressions, `numeric(expr)` requires numerical values for every free symbol. Missing values produce a concise EngCalc error instead of a raw Pint traceback.
 
-Final numerical quantities are rendered with two decimal places in v0.2.1.
+Final numerical quantities are rendered with two decimal places in v0.2.2.
+
+## v0.2.2 partial numerical evaluation of functions
+
+v0.2.2 adds the intermediate workflow needed for engineering functions such as shear, moment, displacement or rotation diagrams: known parameters can be replaced numerically while the function argument remains symbolic.
+
+For example:
+
+```text
+V(x) = 5*q*L/8 - q*x
+
+q := 2.8*tonf/m
+L := 2*m
+
+numeric(V(x))
+```
+
+Because `x` has no numerical assignment, EngCalc keeps it as the independent variable while substituting the known data `q` and `L`. The rendered calculation remains a function of `x` rather than failing because `x` has no value.
+
+Conceptually the output follows:
+
+\[
+V(x)=\frac{5qL}{8}-qx
+\]
+
+followed by the unit-aware partial substitution of `q` and `L`, with `x` preserved symbolically.
+
+This relaxation is intentionally limited to user-defined function calls. EngCalc does **not** guess a free variable in an arbitrary direct expression:
+
+```text
+q := 2.8*tonf/m
+numeric(q*x)
+```
+
+still requires a numerical value for `x`.
+
+If the function argument does have a numerical value, EngCalc keeps the existing full-evaluation behavior:
+
+```text
+V(x) = 5*q*L/8 - q*x
+q := 2.8*tonf/m
+L := 2*m
+x := 1*m
+
+numeric(V(x))
+```
+
+Similarly, `numeric(M(L))` fully evaluates the function when `L` has a numerical value.
+
+All non-argument symbols of a partially evaluated function must still have numerical values. For example, `numeric(V(x))` will report a missing `q` if `L` is known but `q` is not.
 
 ## v0.2.1 validation and function-evaluation polish
 
-v0.2.1 validates the symbolic-to-numerical workflow against a complete force-method beam calculation using mixed engineering units (`tonf/m`, `m`, `GPa`, `mm^4`). It also improves numerical evaluation of user-defined symbolic functions.
+v0.2.1 validated the symbolic-to-numerical workflow against a complete force-method beam calculation using mixed engineering units (`tonf/m`, `m`, `GPa`, `mm^4`). It also improved numerical evaluation of user-defined symbolic functions.
 
 Function calls keep their engineering label in the rendered memory:
 
@@ -201,7 +250,14 @@ numeric(f_11)
 numeric(V_B)
 numeric(V_A)
 numeric(M_A)
+
+## Funciones con datos conocidos
+
+numeric(V(x))
+numeric(M(x))
 ```
+
+The last two calls keep `x` symbolic unless a numerical value has been assigned to `x`.
 
 ## Complete command reference
 
@@ -225,9 +281,9 @@ numeric(M_A)
 - `q := 2.8*tonf/m` — associate a unit-aware numerical value with `q` without changing symbolic `q`.
 - `P := q*L` — numerical values may reference earlier numerical values.
 - `numeric(V_B)` — evaluate a named symbolic result with the current numerical context.
-- `numeric(q*L^2/8)` — evaluate a direct symbolic expression.
-- `numeric(V(x))` — evaluate a user-defined symbolic function with the numerical value associated with `x`.
-- `numeric(M(L))` — evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
+- `numeric(q*L^2/8)` — evaluate a direct symbolic expression; every free symbol must have a numerical value.
+- `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free, or fully evaluate it if the argument has a numerical value.
+- `numeric(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
 
 ### Arithmetic syntax
 
@@ -291,17 +347,18 @@ EngCalc ignores the directive because it begins with a single `#`.
 
 ## Current limitations
 
-v0.2.1 intentionally does not yet provide:
+v0.2.2 intentionally does not yet provide:
 
 - target-unit conversion in `numeric(...)`
 - configurable numerical precision
+- simplification of partially evaluated functions into unit-aware numerical coefficients
 - keyword arguments
 - arrays/tables or dedicated matrix syntax
 - arbitrary Python execution or arbitrary library functions
 - multi-solution `solve(...)`
 - full LaTeX parsing
 
-These are separate future milestones rather than hidden behavior in v0.2.1.
+These are separate future milestones rather than hidden behavior in v0.2.2.
 
 ## Development
 
@@ -310,4 +367,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.1`.
+Version: `0.2.2`.
