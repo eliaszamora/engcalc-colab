@@ -114,4 +114,5 @@ def test_magic_uses_responsive_html_when_group_contains_numeric_evaluation(monke
     assert "engcalc-responsive" in html
     assert "flex-wrap:wrap" in html
     assert "4.20" in html
-    assert r"\mathrm{tonf}" in html
+    assert "<math" in html
+    assert "$" not in html
