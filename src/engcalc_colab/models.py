@@ -59,3 +59,13 @@ class NumericEvaluationResult:
     quantity: Any
     display_name: str | None = None
     display_argument: Any | None = None
+
+
+@dataclass(frozen=True)
+class PartialNumericEvaluationResult:
+    statement: ParsedStatement
+    symbolic_expression: Any
+    substitutions: dict[str, Any]
+    unresolved_symbols: tuple[str, ...]
+    display_name: str | None = None
+    display_argument: Any | None = None

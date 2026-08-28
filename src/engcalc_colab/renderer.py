@@ -7,9 +7,15 @@ from .models import (
     EvaluationResult,
     NumericAssignmentResult,
     NumericEvaluationResult,
+    PartialNumericEvaluationResult,
 )
 
-CalculationResult = EvaluationResult | NumericAssignmentResult | NumericEvaluationResult
+CalculationResult = (
+    EvaluationResult
+    | NumericAssignmentResult
+    | NumericEvaluationResult
+    | PartialNumericEvaluationResult
+)
 
 
 class _EngineeringLatexPrinter(LatexPrinter):
@@ -127,6 +133,23 @@ def render_result(result: CalculationResult) -> str:
     if isinstance(result, NumericAssignmentResult):
         lhs = _render_lhs(result.statement.target, None)
         return rf"{lhs} = {_quantity_latex(result.quantity)}"
+
+    if isinstance(result, PartialNumericEvaluationResult):
+        formula_latex = _latex(result.symbolic_expression)
+        substituted_latex = _substitution_latex(
+            result.symbolic_expression,
+            result.substitutions,
+        )
+        if result.display_name is not None:
+            if result.display_argument is None:
+                lhs = _render_lhs(result.display_name, None)
+            else:
+                lhs = _render_function_call_lhs(
+                    result.display_name,
+                    result.display_argument,
+                )
+            return rf"{lhs} = {formula_latex} = {substituted_latex}"
+        return rf"{formula_latex} = {substituted_latex}"
 
     if isinstance(result, NumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)

@@ -69,6 +69,35 @@ class NumericContext:
             return self.ureg.Unit(_UNIT_ALIASES[name])
         raise EngEvaluationError(f"unknown numeric name '{name}'")
 
+    def partial_substitutions(
+        self,
+        expression: sp.Expr,
+        allowed_unresolved: set[str],
+    ) -> tuple[dict[str, Any], tuple[str, ...]]:
+        expr = sp.sympify(expression)
+        names = sorted(symbol.name for symbol in expr.free_symbols)
+        missing = [
+            name
+            for name in names
+            if name not in self.values and name not in allowed_unresolved
+        ]
+        if missing:
+            raise EngEvaluationError(
+                "numeric evaluation requires values for: " + ", ".join(missing)
+            )
+
+        substitutions = {
+            name: self.values[name]
+            for name in names
+            if name in self.values
+        }
+        unresolved = tuple(
+            name
+            for name in names
+            if name not in substitutions
+        )
+        return substitutions, unresolved
+
     def evaluate_symbolic(
         self,
         expression: sp.Expr,

@@ -1,6 +1,7 @@
 import pytest
 
 from engcalc_colab.engine import EngineeringEngine
+from engcalc_colab.errors import EngEvaluationError
 from engcalc_colab.models import ParsedHeading
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.renderer import render_result
@@ -119,3 +120,38 @@ def test_numeric_user_function_with_symbolic_argument_preserves_call_label():
 
     assert latex.startswith(r"M\left(L\right) = ")
     assert "0.00" in latex
+
+
+def test_numeric_user_function_keeps_unassigned_parameter_symbolic():
+    engine = EngineeringEngine()
+    run(engine, "V(x) = 5*q*L/8 - q*x")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 2*m")
+
+    result = run(engine, "numeric(V(x))")
+    latex = render_result(result)
+
+    assert result.unresolved_symbols == ("x",)
+    assert set(result.substitutions) == {"L", "q"}
+    assert latex.startswith(r"V\left(x\right) = ")
+    assert "2.00" in latex
+    assert "2.80" in latex
+    assert r"\mathrm{tonf}" in latex
+    assert latex.endswith("x")
+
+
+def test_numeric_partial_function_requires_all_non_parameter_values():
+    engine = EngineeringEngine()
+    run(engine, "V(x) = 5*q*L/8 - q*x")
+    run(engine, "L := 2*m")
+
+    with pytest.raises(EngEvaluationError, match="numeric evaluation requires values for: q"):
+        run(engine, "numeric(V(x))")
+
+
+def test_direct_numeric_expression_does_not_guess_a_free_parameter():
+    engine = EngineeringEngine()
+    run(engine, "q := 2.8*tonf/m")
+
+    with pytest.raises(EngEvaluationError, match="numeric evaluation requires values for: x"):
+        run(engine, "numeric(q*x)")
