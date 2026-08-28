@@ -94,3 +94,38 @@ def test_numeric_rows_preserve_three_column_layout_and_spacing():
     assert r"\\[4pt]" in latex
     assert r"\\[8pt]" in latex
     assert latex.count(" & = & ") == 3
+
+
+def test_aligned_named_numeric_evaluation_uses_vertical_stage_rows():
+    engine = EngineeringEngine()
+    evaluate(engine, "M_A = q*L^2/8")
+    evaluate(engine, "q := 2.8*tonf/m")
+    evaluate(engine, "L := 4*m")
+
+    result = evaluate(engine, "numeric(M_A)")
+    latex = render_aligned_results([result])
+
+    assert r"M_{A} & = & \displaystyle \frac{q L^{2}}{8}" in latex
+    assert latex.count(" & = & ") == 3
+    assert latex.count(r"\\[2pt]") == 2
+    assert "5.60" in latex
+    assert " = " not in latex.replace(" & = & ", "")
+
+
+def test_aligned_long_numeric_substitution_splits_additive_terms_into_continuation_rows():
+    engine = EngineeringEngine()
+    evaluate(engine, "M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2")
+    evaluate(engine, "q := 2.8*tonf/m")
+    evaluate(engine, "L := 4*m")
+    evaluate(engine, "x := 2.5*m")
+
+    result = evaluate(engine, "numeric(M(x))")
+    latex = render_aligned_results([result])
+
+    assert r"M\left(x\right) & = & \displaystyle" in latex
+    assert latex.count(r"\\[2pt]") >= 4
+    assert latex.count(" & = & ") == 3
+    assert latex.count(" & & ") >= 2
+    assert r"\quad +" in latex
+    assert r"\quad -" in latex
+    assert "3.15" in latex

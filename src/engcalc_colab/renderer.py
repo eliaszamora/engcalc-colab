@@ -138,24 +138,129 @@ def _partial_polynomial_latex(
     return "".join(rendered) if rendered else "0.00"
 
 
+def _display_lhs(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> str | None:
+    if result.display_name is None:
+        return None
+    if result.display_argument is None:
+        return _render_lhs(result.display_name, None)
+    return _render_function_call_lhs(
+        result.display_name,
+        result.display_argument,
+    )
+
+
+def _additive_substitution_rows(
+    expression: sp.Expr,
+    substitutions: dict[str, object],
+) -> list[str]:
+    """Render a substituted sum one top-level term per visual row."""
+    expression = sp.sympify(expression)
+    terms = expression.as_ordered_terms() if expression.is_Add else [expression]
+    rows: list[str] = []
+
+    for index, term in enumerate(terms):
+        negative = term.could_extract_minus_sign()
+        unsigned_term = -term if negative else term
+        term_latex = _substitution_latex(unsigned_term, substitutions)
+
+        if index == 0:
+            prefix = "- " if negative else ""
+        else:
+            prefix = r"\quad - " if negative else r"\quad + "
+        rows.append(prefix + term_latex)
+
+    return rows
+
+
+def _numeric_evaluation_rows(result: NumericEvaluationResult) -> list[str]:
+    formula_latex = _latex(result.symbolic_expression)
+    substituted_rows = _additive_substitution_rows(
+        result.symbolic_expression,
+        result.substitutions,
+    )
+    final_latex = _quantity_latex(result.quantity)
+    lhs = _display_lhs(result)
+
+    rows: list[str] = []
+    if lhs is not None:
+        rows.append(rf"\displaystyle {lhs} & = & \displaystyle {formula_latex}")
+        rows.append(rf" & = & \displaystyle {substituted_rows[0]}")
+    else:
+        rows.append(
+            rf"\displaystyle {formula_latex} & = & \displaystyle {substituted_rows[0]}"
+        )
+
+    for continuation in substituted_rows[1:]:
+        rows.append(rf" & & \displaystyle {continuation}")
+
+    rows.append(rf" & = & \displaystyle {final_latex}")
+    return rows
+
+
+def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult) -> list[str]:
+    formula_latex = _latex(result.symbolic_expression)
+    substituted_rows = _additive_substitution_rows(
+        result.symbolic_expression,
+        result.substitutions,
+    )
+    evaluated_latex = None
+    if len(result.unresolved_symbols) == 1:
+        evaluated_latex = _partial_polynomial_latex(
+            result.evaluated_terms,
+            result.unresolved_symbols[0],
+        )
+    lhs = _display_lhs(result)
+
+    rows: list[str] = []
+    if lhs is not None:
+        rows.append(rf"\displaystyle {lhs} & = & \displaystyle {formula_latex}")
+        rows.append(rf" & = & \displaystyle {substituted_rows[0]}")
+    else:
+        rows.append(
+            rf"\displaystyle {formula_latex} & = & \displaystyle {substituted_rows[0]}"
+        )
+
+    for continuation in substituted_rows[1:]:
+        rows.append(rf" & & \displaystyle {continuation}")
+
+    if evaluated_latex is not None:
+        rows.append(rf" & = & \displaystyle {evaluated_latex}")
+    return rows
+
+
+def _standard_result_row(result: CalculationResult) -> str:
+    rendered = render_result(result)
+    if " = " in rendered:
+        left, right = rendered.split(" = ", 1)
+        return rf"\displaystyle {left} & = & \displaystyle {right}"
+    return rf"\displaystyle {rendered} & &"
+
+
+def _display_rows(result: CalculationResult) -> list[str]:
+    if isinstance(result, NumericEvaluationResult):
+        return _numeric_evaluation_rows(result)
+    if isinstance(result, PartialNumericEvaluationResult):
+        return _partial_numeric_evaluation_rows(result)
+    return [_standard_result_row(result)]
+
+
 def render_aligned_results(results: list[CalculationResult]) -> str:
-    """Render consecutive results as a three-column engineering calculation block."""
+    """Render results in a three-column block that remains readable in narrow panes."""
     if not results:
         return ""
 
     rows: list[str] = []
-    for index, result in enumerate(results):
-        rendered = render_result(result)
-        if " = " in rendered:
-            left, right = rendered.split(" = ", 1)
-            row = rf"\displaystyle {left} & = & \displaystyle {right}"
-        else:
-            row = rf"\displaystyle {rendered} & &"
+    for result_index, result in enumerate(results):
+        result_rows = _display_rows(result)
 
-        if index:
+        if result_index:
             spacing = "8pt" if result.statement.blank_before else "4pt"
             rows.append(rf"\\[{spacing}]")
-        rows.append(row)
+        rows.append(result_rows[0])
+
+        for continuation_row in result_rows[1:]:
+            rows.append(r"\\[2pt]")
+            rows.append(continuation_row)
 
     body = " ".join(rows)
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
