@@ -414,12 +414,12 @@ def _stage_spacing_sequence(stage_lengths: list[int]) -> list[str]:
     row_seen = False
     for stage_length in stage_lengths:
         if stage_length <= 0:
-  continue
+            continue
         for row_index in range(stage_length):
-  if not row_seen:
-      row_seen = True
-      continue
-  spacings.append("8pt" if row_index == 0 else "4pt")
+            if not row_seen:
+                row_seen = True
+                continue
+            spacings.append("8pt" if row_index == 0 else "4pt")
     return spacings
 
 
@@ -440,51 +440,51 @@ def _internal_row_spacings(
 
     if isinstance(result, NumericEvaluationResult):
         formula_rows = _bounded_expression_rows(
-  result.symbolic_expression,
-  settings=settings,
+            result.symbolic_expression,
+            settings=settings,
         )
         stage_lengths = [
-  _assignment_stage_row_count(_display_lhs(result), formula_rows)
+            _assignment_stage_row_count(_display_lhs(result), formula_rows)
         ]
         if _shows_substitution(result):
-  stage_lengths.append(
-      len(
-_bounded_expression_rows(
-    result.symbolic_expression,
-    result.substitutions,
-    settings=settings,
-)
-      )
-  )
+            stage_lengths.append(
+                len(
+                    _bounded_expression_rows(
+                        result.symbolic_expression,
+                        result.substitutions,
+                        settings=settings,
+                    )
+                )
+            )
         stage_lengths.append(1)
 
     elif isinstance(result, PartialNumericEvaluationResult):
         formula_rows = _bounded_expression_rows(
-  result.symbolic_expression,
-  settings=settings,
+            result.symbolic_expression,
+            settings=settings,
         )
         stage_lengths = [
-  _assignment_stage_row_count(_display_lhs(result), formula_rows)
+            _assignment_stage_row_count(_display_lhs(result), formula_rows)
         ]
         if _shows_substitution(result):
-  stage_lengths.append(
-      len(
-_bounded_expression_rows(
-    result.symbolic_expression,
-    result.substitutions,
-    settings=settings,
-)
-      )
-  )
+            stage_lengths.append(
+                len(
+                    _bounded_expression_rows(
+                        result.symbolic_expression,
+                        result.substitutions,
+                        settings=settings,
+                    )
+                )
+            )
         evaluated_latex = None
         if len(result.unresolved_symbols) == 1:
-  evaluated_latex = _partial_polynomial_latex(
-      result.evaluated_terms,
-      result.unresolved_symbols[0],
-      settings,
-  )
+            evaluated_latex = _partial_polynomial_latex(
+                result.evaluated_terms,
+                result.unresolved_symbols[0],
+                settings,
+            )
         if evaluated_latex is not None:
-  stage_lengths.append(1)
+            stage_lengths.append(1)
 
     elif isinstance(result, EvaluationResult):
         statement = result.statement
@@ -493,25 +493,25 @@ _bounded_expression_rows(
         display_input = result.display_input
 
         if display_input is None or sp.sstr(display_input) == sp.sstr(value):
-  stage_lengths = [len(result_rows)]
+            stage_lengths = [len(result_rows)]
         elif isinstance(display_input, sp.Equality):
-  value_rows = _bounded_expression_rows(value, settings=settings)
-  stage_lengths = [
-      len(_equality_stage_rows(display_input, settings)),
-      _assignment_stage_row_count(lhs, value_rows),
-  ]
+            value_rows = _bounded_expression_rows(value, settings=settings)
+            stage_lengths = [
+                len(_equality_stage_rows(display_input, settings)),
+                _assignment_stage_row_count(lhs, value_rows),
+            ]
         else:
-  input_latex = _latex(display_input)
-  input_candidate = (
-      rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"
-      if lhs is not None
-      else rf" & & \displaystyle {input_latex}"
-  )
-  input_stage_length = 1
-  if _latex_visual_width(input_candidate) > _COMPLETE_ROW_VISUAL_BUDGET:
-      input_stage_length += 1 if lhs is not None else 0
-  value_rows = _bounded_expression_rows(value, settings=settings)
-  stage_lengths = [input_stage_length, len(value_rows)]
+            input_latex = _latex(display_input)
+            input_candidate = (
+                rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"
+                if lhs is not None
+                else rf" & & \displaystyle {input_latex}"
+            )
+            input_stage_length = 1
+            if _latex_visual_width(input_candidate) > _COMPLETE_ROW_VISUAL_BUDGET:
+                input_stage_length += 1 if lhs is not None else 0
+            value_rows = _bounded_expression_rows(value, settings=settings)
+            stage_lengths = [input_stage_length, len(value_rows)]
 
     else:
         stage_lengths = [len(result_rows)]
@@ -520,7 +520,7 @@ _bounded_expression_rows(
     expected = len(result_rows) - 1
     if len(spacings) != expected:
         raise RuntimeError(
-  "renderer semantic spacing metadata does not match rendered row count"
+            "renderer semantic spacing metadata does not match rendered row count"
         )
     return spacings
 
@@ -536,21 +536,21 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
         result_rows = _display_rows(result, active_settings)
 
         if result_index:
-  spacing = "16pt" if result.statement.blank_before else "8pt"
-  rows.append(rf"\\[{spacing}]")
+            spacing = "16pt" if result.statement.blank_before else "8pt"
+            rows.append(rf"\\[{spacing}]")
         rows.append(result_rows[0])
 
         internal_spacings = _internal_row_spacings(
-  result,
-  result_rows,
-  active_settings,
+            result,
+            result_rows,
+            active_settings,
         )
         for spacing, continuation_row in zip(
-  internal_spacings,
-  result_rows[1:],
+            internal_spacings,
+            result_rows[1:],
         ):
-  rows.append(rf"\\[{spacing}]")
-  rows.append(continuation_row)
+            rows.append(rf"\\[{spacing}]")
+            rows.append(continuation_row)
 
     body = " ".join(rows)
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
