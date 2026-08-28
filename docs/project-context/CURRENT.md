@@ -1,178 +1,143 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-28 after doubling inter-result MathJax spacing to the user-approved 8 pt / 16 pt policy and completing a fresh source/wheel distribution gate. PR #25 remains open and must not be merged without explicit user approval after the remaining real-Colab QA._
+_Last updated: 2026-08-28 after implementing and distribution-validating the user-approved semantic **4 / 8 / 16 pt** MathJax spacing hierarchy. PR #25 remains open and must not be merged without explicit user approval after real-Colab visual QA of this final presentation change._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Default branch `main` still contains EngCalc **0.6.0**.
-- Release candidate branch: `feature/v0.6.1-visual-polish-2`.
+- Release-candidate branch: `feature/v0.6.1-visual-polish-2`.
 - Open PR: **#25 — `release: EngCalc 0.6.1 visual polish`**, targeting `main`.
-- Release candidate version: **0.6.1** in both `pyproject.toml` and `src/engcalc_colab/__init__.py`.
-- PR is intentionally **not merged** pending explicit final user approval.
-- Compact plot-label implementation is already user-approved in real Colab.
-- `result(...)` implementation is complete and distribution-tested; final real-Colab visual comparison remains pending.
-- Latest output-spacing production commit: `8ea386500b106a3f01a2494176b51e795c60467a`.
-- Latest fully validated spacing/product-test head: `f2c1ce5d1c5acffe0b6423087ee5dd3c65afd2ff`.
-- Temporary spacing validation workflow removed in `600de43f7e8973c15631de8172a01ea3a60c5e96`.
+- Release-candidate version: **0.6.1**.
+- PR must remain unmerged until the user explicitly approves the final real-Colab QA.
+- Compact plot labels `(x, y)` are already user-approved in real Colab.
+- `result(...)` is implemented and distribution-tested; final real-Colab visual comparison with `numeric(...)` remains pending.
+- Latest semantic-spacing renderer implementation: `1e14147b8edd48d621e9d8d5e07d3ec79a03ed1a`.
+- Latest fully distribution-validated product/test head: `6069ba78a180669bc1377681a6a328c18d6809ca`.
+- Temporary semantic-spacing workflow removed in `844001e255d162eb7b629eb99ef59d36b9468781`.
 
 ## Approved behavior
 
-EngCalc 0.6.1 remains presentation-focused. Structural calculations, the unit engine, the 201-point plot sampling grid, signed-envelope rules, magnitude-envelope rules and structural sign convention are unchanged.
+EngCalc 0.6.1 remains presentation-focused. Structural calculations, Pint unit evaluation, the 201-point plotting grid, signed/magnitude envelope rules and the structural sign convention are unchanged.
 
-### Numerical presentation commands
+### Numerical presentation
 
-- `numeric(expr)` remains the detailed numerical presentation: **symbolic formula → explicit numerical substitution → final result**.
-- `numeric(expr, target_unit)` preserves that detailed presentation and converts the final quantity to the requested compatible unit.
-- `result(expr)` is the compact numerical presentation: **symbolic formula → final result**, omitting only the explicit substitution stage.
-- `result(expr, target_unit)` uses the same compact presentation with final-unit conversion.
-- `result(...)` deliberately reuses the existing `numeric(...)` evaluation path; it does not introduce a second calculation engine.
-- For supported partially evaluated polynomial functions such as `M(x)`, `result(M(x))` shows the symbolic function followed directly by the evaluated numerical-coefficient function; `numeric(M(x))` continues to show the intermediate substitution stage.
-- `result` is a reserved EngCalc command name.
-
-Examples:
-
-```text
-numeric(M_A)
-numeric(M_A, kN*m)
-result(M_A)
-result(M_A, kN*m)
-
-numeric(M(x))
-result(M(x))
-```
+- `numeric(expr)` = symbolic formula → explicit numerical substitution → final result.
+- `numeric(expr, target_unit)` keeps the same detailed stages and converts the final quantity.
+- `result(expr)` = symbolic formula → final result, omitting only the explicit substitution stage.
+- `result(expr, target_unit)` is the compact variant with target-unit conversion.
+- `result(...)` reuses the existing `numeric(...)` evaluation path; it is a presentation alias, not a second calculation engine.
 
 ### Plot presentation
 
-- Positive structural moment plots **downward**.
-- Multi-series plotting remains `plot(expr1, expr2, ..., x, start, end)`.
-- Signed `envelope(...)` remains algebraic max/min.
-- `abs(...)` and magnitude envelopes remain available; mixed signed/absolute sources in one envelope are rejected.
-- Multi-series plots and envelopes do not use characteristic-value summary panels.
-- Characteristic points use compact coordinate labels in the form **`(x, y)`**, for example `(2.5, 3.15)`.
-- Characteristic labels contain no duplicated units, no `x =`, `M =`, `V =` prefixes, no boxes and no leader lines/arrows.
-- Label text uses the corresponding series color.
-- Placement treats axes boundaries, legend, previous labels and sampled curve points as collision constraints before ranking candidate positions.
-- A label may be moved farther from a dense characteristic cluster when necessary rather than allow overlap or reintroduce a leader line.
-- **Real-Colab visual QA passed:** after installing the exact validated revision, the user confirmed the modified graphs rendered correctly and approved their appearance.
+- Positive structural moment plots downward.
+- Multi-series `plot(...)`, signed `envelope(...)`, `abs(...)` and magnitude envelopes remain available.
+- Characteristic points use compact coordinate labels `(x, y)` with no duplicated units, prefixes, boxes or leader lines.
+- Label color follows its series; placement avoids axes bounds, legend, prior labels and sampled curves.
+- Real-Colab visual QA of the compact plot-label design is **approved by the user**.
 
-### MathJax presentation and vertical spacing
+### Semantic MathJax spacing — final 4 / 8 / 16 hierarchy
 
-- Long symbolic and numerical MathJax output is split into semantic stages/rows under the notebook width budget; short expressions remain compact.
-- `result(...)` uses the same formula/final-result MathJax renderer and simply omits the numerical-substitution stage.
-- User-approved inter-result vertical spacing is now:
-  - **8 pt** between consecutive source results, e.g. `A = 1` immediately followed by `B = 2`;
-  - **16 pt** before a result preceded by a source blank line.
-- Internal continuation rows that belong to one wrapped/staged mathematical result remain at **2 pt**. The 8/16 pt change does not alter wrapping or the internal formula → substitution → result hierarchy.
+The renderer now distinguishes a **wrapped continuation of one mathematical stage** from a **new mathematical stage**.
 
-## Real-Colab installation lesson for pre-merge QA
+- **4 pt** — continuation row of the same mathematical stage because an expression wrapped for width.
+- **8 pt** — a new mathematical stage inside one operation, e.g. `solve`: equation → solved result; `numeric`: formula → substitution → result; `result`: formula → result.
+- **8 pt** — consecutive source instructions/results with no blank source line.
+- **16 pt** — the next source result is preceded by an explicit blank line in `%%eng`.
+- The old blanket `2 pt` policy for every internal row is removed.
 
-During QA, the user observed `engcalc_colab.__version__ == "0.6.1"` while the installed `plotting.py` was still an older 0.6.1 revision. Diagnostics showed:
-
-- package version: `0.6.1`;
-- `magic.render_plot is plotting.render_plot`: `True`;
-- compact renderer symbol `_coordinate_label`: absent in the installed package.
-
-The branch itself did contain the new renderer. The practical issue was repeatedly installing a **moving branch under the same package version 0.6.1**. For all remaining pre-merge QA, do **not** rely on `--upgrade` plus the branch name alone.
-
-Use an exact commit SHA and force reinstall. The latest fully validated product/test head for the spacing change is:
+Examples of intended hierarchy:
 
 ```text
-f2c1ce5d1c5acffe0b6423087ee5dd3c65afd2ff
+solve(...)
+  equation being solved
+      8 pt
+  solved assignment
+
+numeric(...)
+  symbolic formula
+      8 pt
+  numerical substitution
+      8 pt
+  final result
+
+long wrapped formula
+  first part
+      4 pt
+  continuation of same formula
 ```
 
-Recommended QA install command:
+## Semantic-spacing TDD and validation
 
-```python
-%pip install -q --force-reinstall --no-deps --no-cache-dir "git+https://github.com/eliaszamora/engcalc-colab.git@f2c1ce5d1c5acffe0b6423087ee5dd3c65afd2ff"
-```
+User feedback from a real `solve(...)` output showed that equation and solution were incorrectly separated by the same old 2 pt used for mere wrapping. The approved correction was the general 4/8/16 hierarchy above rather than a `solve`-specific patch.
 
-Then restart the Colab session before loading/running EngCalc. After an approved merge, installation from `main` becomes canonical again.
+### RED
 
-## Validation evidence
+- Regression-test commit: `e2c48917b5c68022aa037cb57151011cf2fb6d75`.
+- GitHub Actions RED run: `33219994765`.
+- Result: **3 failed**.
+- Failures demonstrated that `solve`, `numeric` stages and true wrapping all still used `2 pt`.
+
+### GREEN implementation
+
+- Final repaired renderer commit: `1e14147b8edd48d621e9d8d5e07d3ec79a03ed1a`.
+- Focused GREEN run: `33220209199`.
+- Result: **3 passed**.
+- The implementation classifies internal rows semantically: same-stage wrapping receives 4 pt; stage boundaries receive 8 pt.
+- A first automated patch attempt produced invalid indentation and was discarded/repaired before validation; no successful gate relies on that malformed intermediate tree.
+
+### Full distribution gate
+
+The first complete-suite attempt correctly found six legacy tests still asserting the retired 2 pt contract. Those tests were updated to the approved hierarchy. Final gate:
+
+- GitHub Actions run: **`33220438965`**.
+- Validated head: **`6069ba78a180669bc1377681a6a328c18d6809ca`**.
+- Focused semantic/magic/renderer suite: **23 passed in 5.44 s**.
+- Complete source suite: **249 passed in 52.00 s**.
+- Wheel `engcalc_colab-0.6.1-py3-none-any.whl`: **built successfully**.
+- Clean-venv wheel installation: **PASS**.
+- Installed-wheel smoke from `/tmp` with empty `PYTHONPATH`: **PASS**, explicitly checking solve=8 pt, wrapping=4 pt, consecutive=8 pt, blank-line=16 pt and numeric stage boundaries=8 pt.
+- Complete suite against the installed wheel with repository `src` removed: **249 passed in 51.35 s**.
+- Repeated source suite: **249 passed in 51.39 s**.
+- Temporary workflow removed after the successful gate in `844001e255d162eb7b629eb99ef59d36b9468781`.
+
+## Earlier 0.6.1 validation already retained
 
 ### Compact characteristic labels
 
-User visual QA rejected the earlier boxed callouts with leader lines and requested a simpler technical-plot notation: show only `(x, y)` near each characteristic point, without units or leader lines, while preventing overlaps with labels and plotted curves.
+- Compact-label visual gate run `33204609923`: focused 3 passed; source 239 passed; four-figure visual acceptance PASS.
+- 21-station comparison against merged 0.6.0 in run `33205092470`: worst absolute numerical difference `0.000e+00`.
+- User subsequently approved the compact graph appearance in real Colab after exact-commit installation.
 
-- RED test commit: `15cea62505249fc51d48f49af9c48f90baefd3fa`.
-- RED focused result: **3 failed**.
-- Production implementation: `cd05a0a00fc04be86712dca6e9781985fa3859b9`.
-- Final visual gate: GitHub Actions run `33204609923`.
-- Focused compact-label suite: **3 passed**.
-- Complete source suite at that gate: **239 passed**.
-- Four-figure compact-label visual acceptance: **PASS**.
-- Visual artifact: `engcalc-v061-compact-label-visuals`, artifact ID `9699168071`, ZIP SHA256 `9f5caf08d2e5caa0f77225ddfeedf06e8d5ff7b0b1bcf120394d5802ca1b0b9d`.
-- Compact-label distribution gate run `33205092470`: 21-station comparison against merged 0.6.0 **PASS**, worst absolute difference `0.000e+00`; source, clean-wheel and repeated-source suites were all **239 passed**.
-- Subsequent **real-Colab visual QA is approved by the user** after exact-commit forced installation exposed the correct renderer.
+### `result(...)`
 
-### `result(...)` TDD cycle
-
-The user approved `result(...)` as an additive compact presentation command while keeping `numeric(...)` unchanged.
-
-- RED test commit: `659b71e095597862284c255ca8a2b012cb3cccc1`.
-- RED GitHub Actions run `33209657979`: **5 failed, 1 passed**.
+- RED run `33209657979`: 5 failed, 1 passed.
+- Focused GREEN: 6 passed.
 - Parser implementation: `0ba84e376180fad90c3b472ecb4b13433a86e5f1`.
 - Renderer implementation: `2892f245ee278cea2ef9bd1ac1eecf6c2e636701`.
-- Focused GREEN: **6 passed**.
-- Final `result(...)` distribution gate run `33210052766` on `9152a40ffd4bb8269a4bba6a3a38393966be9c80`:
-  - focused suite: **6 passed**;
-  - complete source suite: **245 passed**;
-  - exact wheel `engcalc_colab-0.6.1-py3-none-any.whl`: built successfully;
-  - clean-venv installation and smoke: **PASS**;
-  - complete suite against installed wheel: **245 passed**;
-  - repeated source suite: **245 passed**.
+- Distribution run `33210052766`: source 245 passed; wheel build/install PASS; installed-wheel 245 passed; repeated source 245 passed.
 
-The `result(...)` change does not modify `src/engcalc_colab/numeric.py`, structural formulas, plotting sampling or envelope calculations. It changes command recognition and which already-computed rendering stage is displayed.
+## Real-Colab installation rule before merge
 
-### 8 pt / 16 pt spacing TDD cycle
+Because successive QA revisions all report package version `0.6.1`, installing a moving branch with only `--upgrade` previously left an older submodule in `site-packages` while `__version__` still read `0.6.1`.
 
-The user explicitly approved doubling the existing source-result spacing from 4/8 pt to **8/16 pt**.
+For remaining pre-merge QA use the exact validated product/test commit:
 
-- RED contract commit: `1b4b73590d67db2ee5c93ef5c7f5ce25ba533c6d`.
-- Valid RED GitHub Actions run `33214577611`: **2 failed, 13 passed**; the failures showed the old `4 pt` consecutive and `8 pt` blank-line behavior.
-- Production implementation: `8ea386500b106a3f01a2494176b51e795c60467a`.
-- Focused GREEN run `33214784059`: **15 passed** in `tests/test_magic.py`.
-- The first full-suite attempt correctly exposed three legacy tests still asserting the old 4/8 pt contract; those test expectations were aligned with the approved behavior in `e4b3da15bbddd8a7ef85ac13259c9f6a0c829a60` and `f2c1ce5d1c5acffe0b6423087ee5dd3c65afd2ff`.
-- Final spacing distribution gate: GitHub Actions run `33215053282` on `f2c1ce5d1c5acffe0b6423087ee5dd3c65afd2ff`:
-  - focused spacing/magic suite: **15 passed in 4.61 s**;
-  - complete source suite: **246 passed in 59.94 s**;
-  - exact wheel `engcalc_colab-0.6.1-py3-none-any.whl`: **built successfully**;
-  - clean venv install: **PASS**;
-  - installed-wheel smoke from `/tmp`: **PASS**, explicitly asserting consecutive `8 pt` and blank-line `16 pt` spacing;
-  - complete suite against installed wheel with repository `src` removed: **246 passed in 59.37 s**;
-  - repeated source suite: **246 passed in 58.61 s**.
-- Temporary spacing workflow removed in `600de43f7e8973c15631de8172a01ea3a60c5e96`.
-
-## Professor Excel comparison
-
-Use like-for-like chart families:
-
-- stage moment chart: unfactored `M_C`, `M_D`, `M_L`;
-- stage shear chart: unfactored `V_C`, `V_D`, `V_L`;
-- design moment envelope: `M_UC` versus `M_UU`;
-- design shear envelope: maximum magnitude of `V_UC` versus `V_UU`.
-
-Compact commands:
-
-```text
-plot(M_C(x), M_D(x), M_L(x), x, 0, L)
-plot(V_C(x), V_D(x), V_L(x), x, 0, L)
-envelope(M_UC(x), M_UU(x), x, 0, L)
-envelope(abs(V_UC(x)), abs(V_UU(x)), x, 0, L)
+```python
+%pip install -q --force-reinstall --no-deps --no-cache-dir "git+https://github.com/eliaszamora/engcalc-colab.git@6069ba78a180669bc1377681a6a328c18d6809ca"
 ```
+
+Then restart the Colab session before loading/running EngCalc.
 
 ## Colab side-by-side browser extension
 
-The vertical-scroll issue in the user's custom Colab side-by-side Chrome extension was investigated separately from EngCalc. Diagnostic evidence showed that the actual output lived in cross-origin `*-colab.googleusercontent.com/outputframe.html` iframes, including one frame fixed at 1000 px. Extension **v1.0.4** adds frame-height synchronization for those Colab output frames. The user subsequently reported that the vertical-output scrollbar problem appears solved.
-
-This fix belongs to the browser extension, not EngCalc. Do not add Colab-specific output-height code to EngCalc unless new independent evidence requires it.
+The separate vertical-output scrollbar issue was traced to cross-origin Colab `outputframe.html` iframes. Browser-extension v1.0.4 synchronizes those frame heights, and the user reported the issue solved. This is extension behavior, not EngCalc code.
 
 ## Documentation still to align before merge
 
-- README command-reference documentation for `result(...)` still needs to be added/aligned.
-- README's old 4 pt / 8 pt spacing sentence must be changed to the approved 8 pt / 16 pt policy.
-- These are documentation-only release-closure items; implementation and distribution validation are complete.
+- README command-reference documentation should explicitly include `result(...)`.
+- README spacing prose must be updated from its stale values to the final **4 / 8 / 16 pt semantic policy**.
+- These are documentation-only release-closure items and do not invalidate the distribution gate above.
 
 ## Roadmap / active plan
 
@@ -181,24 +146,26 @@ Master roadmap remains on branch `planning/engcalc-evolution-roadmap`:
 - `docs/superpowers/specs/2026-08-28-engcalc-evolution-roadmap-design.md`;
 - `docs/superpowers/plans/2026-08-28-engcalc-evolution-roadmap-implementation.md`.
 
-The original 0.6.1 visual-polish spec had deferred numeric ergonomics. The user explicitly reopened that narrow scope before merge and approved the additive `result(...)` command. The later 8/16 pt spacing adjustment is also an explicitly approved pre-merge presentation refinement. Do not infer that a broader roadmap milestone has started.
+The original 0.6.1 visual-polish scope was explicitly amended by user-approved pre-merge refinements: compact coordinate plot labels, `result(...)`, and the final semantic 4/8/16 MathJax spacing hierarchy.
 
 ## Exact next step
 
-1. In Colab, force-install exact commit `f2c1ce5d1c5acffe0b6423087ee5dd3c65afd2ff`, then restart the session.
-2. Rerun a representative `%%eng` block and visually confirm the new hierarchy:
-   - consecutive equations: 8 pt;
-   - a source blank line: 16 pt;
-   - continuation rows inside one long calculation remain compact.
-3. In the same final visual pass, compare `numeric(M_A, kN*m)` vs `result(M_A, kN*m)` and `numeric(M(x))` vs `result(M(x))`.
-4. If the spacing and `result(...)` presentation are approved, align README for `result(...)` and 8/16 pt spacing.
-5. Inspect PR #25 one final time; **do not merge yet**.
-6. Merge PR #25 only after the user gives explicit approval to merge the final 0.6.1 candidate.
+1. In Colab, force-install exact commit `6069ba78a180669bc1377681a6a328c18d6809ca`, then restart the session.
+2. Rerun the same calculation that visually exposed the problem, especially a `solve(...)` output.
+3. Confirm visually:
+   - wrapped continuation of one equation: 4 pt;
+   - equation → solve result: 8 pt;
+   - formula → substitution → result in `numeric(...)`: 8 pt between stages;
+   - consecutive source results: 8 pt;
+   - explicit source blank line: 16 pt.
+4. In the same pass, visually compare `numeric(...)` and `result(...)`.
+5. If approved, align README, inspect PR #25 one final time, and request explicit user authorization before merge.
+6. **Do not merge PR #25 without explicit user approval.**
 
 ## How to resume in a new conversation
 
 Tell the new agent:
 
-> Continue EngCalc from `docs/project-context/CURRENT.md`. Read root `AGENTS.md`, verify GitHub state, inspect PR #25 and continue the final real-Colab QA for 8/16 pt MathJax spacing plus `result(...)`. Compact plot labels are already user-approved. Do not merge without explicit approval.
+> Continue EngCalc from `docs/project-context/CURRENT.md`. Read root `AGENTS.md`, verify GitHub/PR #25 state, and continue the final real-Colab QA for the semantic 4/8/16 MathJax spacing plus `result(...)`. Compact plot labels are already user-approved. Do not merge without explicit approval.
 
-The repository context file and Git history are authoritative for project continuity.
+The repository context file and Git history are authoritative for continuity.
