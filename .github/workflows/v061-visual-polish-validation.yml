@@ -15,5 +15,7 @@ jobs:
           python-version: '3.11'
       - name: Install
         run: python -m pip install -e '.[dev]' ipython
+      - name: Focused MathJax renderer GREEN
+        run: pytest -q tests/test_visual_polish_renderer_v061.py tests/test_renderer.py
       - name: Full suite
         run: pytest -q
