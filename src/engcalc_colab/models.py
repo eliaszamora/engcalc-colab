@@ -86,6 +86,11 @@ class PlotResult:
     variable: str
     x_values: tuple[Any, ...]
     series: tuple[PlotSeries, ...]
+    kind: str = "plot"
+    source_series: tuple[PlotSeries, ...] = ()
+    source_labels: tuple[str, ...] = ()
+    governing_max: tuple[int, ...] | None = None
+    governing_min: tuple[int, ...] | None = None
 
     @property
     def y_values(self) -> tuple[Any, ...]:

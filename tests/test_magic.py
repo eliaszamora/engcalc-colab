@@ -180,3 +180,23 @@ def test_eng_magic_displays_one_figure_for_parameter_sweep_in_source_order(monke
     )
 
     assert [type(item) for item in displayed] == [Math, Figure, Math]
+
+
+def test_eng_magic_displays_one_envelope_figure_in_source_order(monkeypatch):
+    import engcalc_colab.magic as magic_module
+    from matplotlib.figure import Figure
+
+    displayed = []
+    monkeypatch.setattr(magic_module, "display", displayed.append)
+
+    magics = magic_module.EngMagics(shell=None)
+    magics.eng(
+        "",
+        "A = q*L\n"
+        "M(x) = q*x*(L-x)/2\n"
+        "L := 6*m\n"
+        "envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])\n"
+        "B = 2*A",
+    )
+
+    assert [type(item) for item in displayed] == [Math, Figure, Math]

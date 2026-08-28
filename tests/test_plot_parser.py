@@ -96,3 +96,16 @@ def test_plot_result_does_not_fake_single_y_values_for_multi_series():
     )
     with pytest.raises(AttributeError, match="multi-series"):
         _ = result.y_values
+
+
+def test_plot_result_defaults_preserve_v040_plot_transport():
+    statement = parse_cell("plot(M(x), x, 0, L)")[0]
+    series = PlotSeries("M(x)", (1, 2), True)
+    result = PlotResult(statement, "M(x)", "x", (0, 1), (series,))
+
+    assert result.kind == "plot"
+    assert result.source_series == ()
+    assert result.source_labels == ()
+    assert result.governing_max is None
+    assert result.governing_min is None
+    assert result.y_values == (1, 2)
