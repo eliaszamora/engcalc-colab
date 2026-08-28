@@ -27,6 +27,7 @@ jobs:
 
           import matplotlib
           matplotlib.use("Agg")
+          from matplotlib.backends.backend_agg import FigureCanvasAgg
           from matplotlib.figure import Figure
           from matplotlib.text import Annotation
           from IPython.display import Math
@@ -141,8 +142,9 @@ jobs:
                   assert any(abs(float(px) - float(x)) < 1e-9 and abs(float(py) - float(y)) < 1e-9 for px, py in line_points)
                   assert "x =" in annotation.get_text()
 
-              figure.canvas.draw()
-              renderer = figure.canvas.get_renderer()
+              canvas = FigureCanvasAgg(figure)
+              canvas.draw()
+              renderer = canvas.get_renderer()
               canvas_box = figure.bbox
               for annotation in annotations:
                   box = annotation.get_window_extent(renderer)
