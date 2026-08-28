@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use("Agg")
 
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.collections import PathCollection, PolyCollection
 
 from engcalc_colab.engine import EngineeringEngine
@@ -261,6 +262,7 @@ def test_panel_chooser_avoids_known_legend_corner():
 
 def test_characteristic_panel_bbox_stays_inside_axes():
     figure = render_plot(sweep_moment_plot_result())
+    FigureCanvasAgg(figure)
     axis = figure.axes[0]
     panel = [
         text for text in axis.texts
