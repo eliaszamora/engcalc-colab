@@ -15,11 +15,12 @@ def _eng_magics_instance(shell):
     return shell.magics_manager.magics["cell"]["eng"].__self__
 
 
-def test_extension_registers_eng_and_reset_magics():
+def test_extension_registers_eng_reset_and_config_magics():
     shell = _fresh_shell()
     shell.extension_manager.load_extension("engcalc_colab")
     assert "eng" in shell.magics_manager.magics["cell"]
     assert "eng_reset" in shell.magics_manager.magics["line"]
+    assert "eng_config" in shell.magics_manager.magics["line"]
 
 
 def test_magic_persists_state_and_reset_clears_it():
@@ -113,3 +114,34 @@ def test_magic_uses_mathjax_when_group_contains_numeric_evaluation(monkeypatch):
     latex = displayed[0].data
     assert r"\begin{array}{lcl}" in latex
     assert "4.20" in latex
+
+
+def test_eng_config_updates_and_reports_render_settings(capsys):
+    shell = _fresh_shell()
+    shell.extension_manager.load_extension("engcalc_colab")
+    magics = _eng_magics_instance(shell)
+
+    shell.run_line_magic("eng_config", "precision=4 zero_tolerance=1e-6")
+
+    assert magics.render_settings.precision == 4
+    assert magics.render_settings.zero_tolerance == 1e-6
+    assert "precision=4" in capsys.readouterr().out
+
+    shell.run_line_magic("eng_config", "")
+    output = capsys.readouterr().out
+    assert "precision=4" in output
+    assert "zero_tolerance=1e-06" in output
+
+
+def test_eng_config_rejects_unknown_or_invalid_options_without_traceback(capsys):
+    shell = _fresh_shell()
+    shell.extension_manager.load_extension("engcalc_colab")
+
+    shell.run_line_magic("eng_config", "unknown=3")
+    shell.run_line_magic("eng_config", "precision=-1")
+
+    output = capsys.readouterr().out
+    assert "engcalc:" in output
+    assert "unknown option 'unknown'" in output
+    assert "precision must be an integer from 0 to 10" in output
+    assert "Traceback" not in output
