@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import re
+from dataclasses import dataclass
 
 import sympy as sp
 from pint.errors import DimensionalityError
@@ -22,6 +23,28 @@ from .numeric import NumericContext
 
 
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
+
+
+@dataclass(frozen=True)
+class _ResolvedResponseSeries:
+    display_label: str
+    variable: str
+    x_values: tuple
+    series: tuple[PlotSeries, ...]
+    first_symbolic_expression: object
+
+
+@dataclass(frozen=True)
+class _PlotEvaluation:
+    display_label: str
+    variable: str
+    x_values: tuple
+    series: tuple[PlotSeries, ...]
+    kind: str = "plot"
+    source_series: tuple[PlotSeries, ...] = ()
+    source_labels: tuple[str, ...] = ()
+    governing_max: tuple[int, ...] | None = None
+    governing_min: tuple[int, ...] | None = None
 
 
 class EngineeringEngine:
@@ -82,15 +105,22 @@ class EngineeringEngine:
             value = evaluator.visit(statement.expression.body)
 
             if evaluator.plot_evaluation is not None:
+                plot_evaluation = evaluator.plot_evaluation
                 if statement.target is not None:
-                    raise EngEvaluationError("plot must be a standalone statement")
-                display_label, variable, x_values, series = evaluator.plot_evaluation
+                    raise EngEvaluationError(
+                        f"{plot_evaluation.kind} must be a standalone statement"
+                    )
                 return PlotResult(
                     statement=statement,
-                    display_label=display_label,
-                    variable=variable,
-                    x_values=x_values,
-                    series=series,
+                    display_label=plot_evaluation.display_label,
+                    variable=plot_evaluation.variable,
+                    x_values=plot_evaluation.x_values,
+                    series=plot_evaluation.series,
+                    kind=plot_evaluation.kind,
+                    source_series=plot_evaluation.source_series,
+                    source_labels=plot_evaluation.source_labels,
+                    governing_max=plot_evaluation.governing_max,
+                    governing_min=plot_evaluation.governing_min,
                 )
 
             if evaluator.partial_numeric_evaluation is not None:
@@ -160,7 +190,7 @@ class _Evaluator(ast.NodeVisitor):
         self.display_input = None
         self.numeric_evaluation = None
         self.partial_numeric_evaluation = None
-        self.plot_evaluation = None
+        self.plot_evaluation: _PlotEvaluation | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
 
     def generic_visit(self, node):
@@ -227,6 +257,9 @@ class _Evaluator(ast.NodeVisitor):
 
         if name == "plot":
             return self._evaluate_plot(node)
+
+        if name == "envelope":
+            return self._evaluate_envelope(node)
 
         if name == "numeric":
             if len(node.args) not in (1, 2):
@@ -396,23 +429,97 @@ class _Evaluator(ast.NodeVisitor):
         raise EngSyntaxError(f"unsupported function '{name}'")
 
     def _evaluate_plot(self, node: ast.Call):
+        resolved = self._resolve_response_series(node, call_name="plot")
+        self.plot_evaluation = _PlotEvaluation(
+            display_label=resolved.display_label,
+            variable=resolved.variable,
+            x_values=resolved.x_values,
+            series=resolved.series,
+            kind="plot",
+        )
+        return resolved.first_symbolic_expression
+
+    def _evaluate_envelope(self, node: ast.Call):
+        resolved = self._resolve_response_series(node, call_name="envelope")
+        source_series = resolved.series
+        if len(source_series) < 2:
+            raise EngEvaluationError("envelope requires at least two response series")
+
+        maximum_values = []
+        minimum_values = []
+        governing_maximum = []
+        governing_minimum = []
+
+        for sample_index in range(len(resolved.x_values)):
+            magnitudes = [
+                float(item.y_values[sample_index].magnitude)
+                for item in source_series
+            ]
+            maximum_index = max(range(len(magnitudes)), key=magnitudes.__getitem__)
+            minimum_index = min(range(len(magnitudes)), key=magnitudes.__getitem__)
+            governing_maximum.append(maximum_index)
+            governing_minimum.append(minimum_index)
+            maximum_values.append(source_series[maximum_index].y_values[sample_index])
+            minimum_values.append(source_series[minimum_index].y_values[sample_index])
+
+        maximum_label, minimum_label = self._envelope_series_labels(
+            resolved.display_label,
+            resolved.variable,
+        )
+        is_moment = source_series[0].is_moment
+        envelope_series = (
+            PlotSeries(
+                display_label=maximum_label,
+                y_values=tuple(maximum_values),
+                is_moment=is_moment,
+            ),
+            PlotSeries(
+                display_label=minimum_label,
+                y_values=tuple(minimum_values),
+                is_moment=is_moment,
+            ),
+        )
+
+        self.plot_evaluation = _PlotEvaluation(
+            display_label=resolved.display_label,
+            variable=resolved.variable,
+            x_values=resolved.x_values,
+            series=envelope_series,
+            kind="envelope",
+            source_series=source_series,
+            source_labels=tuple(item.display_label for item in source_series),
+            governing_max=tuple(governing_maximum),
+            governing_min=tuple(governing_minimum),
+        )
+        return resolved.first_symbolic_expression
+
+    def _resolve_response_series(
+        self,
+        node: ast.Call,
+        *,
+        call_name: str,
+    ) -> _ResolvedResponseSeries:
         if len(node.args) < 4:
             raise EngEvaluationError(
-                "plot expects at least 4 positional arguments: "
+                f"{call_name} expects at least 4 positional arguments: "
                 "expression[, ...], variable, start, end"
             )
 
         expression_nodes = node.args[:-3]
         variable_node, start_node, end_node = node.args[-3:]
         if not expression_nodes:
-            raise EngEvaluationError("plot requires at least one expression")
+            raise EngEvaluationError(
+                f"{call_name} requires at least one expression"
+            )
         if not isinstance(variable_node, ast.Name):
-            raise EngEvaluationError("plot variable must be a symbolic identifier")
+            raise EngEvaluationError(
+                f"{call_name} variable must be a symbolic identifier"
+            )
         variable = variable_node.id
 
         if node.keywords and len(expression_nodes) != 1:
             raise EngEvaluationError(
-                "plot parameter sweep requires exactly one expression"
+                f"{call_name} parameter sweep requires exactly one expression"
             )
 
         start_expression = self.visit(start_node)
@@ -431,13 +538,14 @@ class _Evaluator(ast.NodeVisitor):
         ]
 
         if node.keywords:
-            raw_series, x_values = self._evaluate_plot_sweep(
+            raw_series, x_values = self._evaluate_response_sweep(
                 symbolic_expressions[0],
                 source_labels[0],
                 variable,
                 start_quantity,
                 end_quantity,
                 node.keywords[0],
+                call_name=call_name,
             )
             display_label = source_labels[0]
         else:
@@ -467,18 +575,18 @@ class _Evaluator(ast.NodeVisitor):
             moment_flags = {item.is_moment for item in series}
             if len(moment_flags) > 1:
                 raise EngEvaluationError(
-                    "plot cannot mix moment and non-moment series on one axis"
+                    f"{call_name} cannot mix moment and non-moment series on one axis"
                 )
 
-        self.plot_evaluation = (
-            display_label,
-            variable,
-            x_values,
-            series,
+        return _ResolvedResponseSeries(
+            display_label=display_label,
+            variable=variable,
+            x_values=x_values,
+            series=series,
+            first_symbolic_expression=symbolic_expressions[0],
         )
-        return symbolic_expressions[0]
 
-    def _evaluate_plot_sweep(
+    def _evaluate_response_sweep(
         self,
         symbolic_expression,
         source_label: str,
@@ -486,17 +594,22 @@ class _Evaluator(ast.NodeVisitor):
         start_quantity,
         end_quantity,
         keyword_node: ast.keyword,
+        *,
+        call_name: str,
     ) -> tuple[list[PlotSeries], tuple]:
         parameter_name = keyword_node.arg
         if parameter_name is None:
-            raise EngEvaluationError("plot sweep parameter must be named")
+            raise EngEvaluationError(
+                f"{call_name} sweep parameter must be named"
+            )
 
         free_names = {
             symbol.name for symbol in sp.sympify(symbolic_expression).free_symbols
         }
         if parameter_name not in free_names:
             raise EngEvaluationError(
-                f"plot sweep parameter '{parameter_name}' is not used in the plotted expression"
+                f"{call_name} sweep parameter '{parameter_name}' "
+                "is not used in the plotted expression"
             )
 
         sweep_values = [
@@ -598,6 +711,14 @@ class _Evaluator(ast.NodeVisitor):
             family = next(iter(families))
             return f"{family}({variable})"
         return "Comparison"
+
+    @staticmethod
+    def _envelope_series_labels(display_label: str, variable: str) -> tuple[str, str]:
+        suffix = f"({variable})"
+        if display_label != "Comparison" and display_label.endswith(suffix):
+            family = display_label[: -len(suffix)]
+            return f"{family}_max({variable})", f"{family}_min({variable})"
+        return "max", "min"
 
     @staticmethod
     def _is_moment_label(label: str) -> bool:
