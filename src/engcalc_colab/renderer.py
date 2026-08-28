@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 import sympy as sp
 from sympy.printing.latex import LatexPrinter
@@ -18,6 +19,25 @@ CalculationResult = (
     | NumericEvaluationResult
     | PartialNumericEvaluationResult
 )
+
+
+@dataclass(frozen=True)
+class RenderSettings:
+    """Global numerical presentation settings for EngCalc output."""
+
+    precision: int = 2
+    zero_tolerance: float = 1e-10
+
+    def __post_init__(self) -> None:
+        if isinstance(self.precision, bool) or not isinstance(self.precision, int):
+            raise ValueError("precision must be an integer from 0 to 10")
+        if not 0 <= self.precision <= 10:
+            raise ValueError("precision must be an integer from 0 to 10")
+        if self.zero_tolerance < 0:
+            raise ValueError("zero_tolerance must be non-negative")
+
+
+_DEFAULT_RENDER_SETTINGS = RenderSettings()
 
 
 class _EngineeringLatexPrinter(LatexPrinter):
@@ -61,15 +81,20 @@ class _EngineeringLatexPrinter(LatexPrinter):
 
 
 class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
-    def __init__(self, substitutions: dict[str, object]):
+    def __init__(
+        self,
+        substitutions: dict[str, object],
+        settings: RenderSettings,
+    ):
         super().__init__()
         self.substitutions = substitutions
+        self.render_settings = settings
 
     def _print_Symbol(self, expr):
         quantity = self.substitutions.get(expr.name)
         if quantity is None:
             return super()._print_Symbol(expr)
-        return rf"\left({_quantity_latex(quantity)}\right)"
+        return rf"\left({_quantity_latex(quantity, settings=self.render_settings)}\right)"
 
 
 def _engineering_factor_key(term):
@@ -94,13 +119,26 @@ def _latex(expr) -> str:
     return _EngineeringLatexPrinter().doprint(expr)
 
 
-def _substitution_latex(expr, substitutions: dict[str, object]) -> str:
-    return _NumericSubstitutionLatexPrinter(substitutions).doprint(expr)
+def _substitution_latex(
+    expr,
+    substitutions: dict[str, object],
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+) -> str:
+    return _NumericSubstitutionLatexPrinter(substitutions, settings).doprint(expr)
 
 
-def _quantity_latex(quantity, precision: int = 2) -> str:
+def _quantity_latex(
+    quantity,
+    precision: int | None = None,
+    *,
+    settings: RenderSettings | None = None,
+) -> str:
+    active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    active_precision = active_settings.precision if precision is None else precision
     magnitude = float(quantity.magnitude)
-    magnitude_latex = f"{magnitude:.{precision}f}"
+    if abs(magnitude) < active_settings.zero_tolerance:
+        magnitude = 0.0
+    magnitude_latex = f"{magnitude:.{active_precision}f}"
     if getattr(quantity, "dimensionless", False):
         return magnitude_latex
 
@@ -111,6 +149,7 @@ def _quantity_latex(quantity, precision: int = 2) -> str:
 def _partial_polynomial_latex(
     evaluated_terms: tuple[tuple[int, object], ...] | None,
     variable: str,
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
 ) -> str | None:
     if evaluated_terms is None:
         return None
@@ -120,10 +159,10 @@ def _partial_polynomial_latex(
 
     for power, coefficient in evaluated_terms:
         magnitude = float(coefficient.magnitude)
-        if magnitude == 0:
+        if abs(magnitude) < settings.zero_tolerance:
             continue
 
-        coefficient_latex = _quantity_latex(abs(coefficient))
+        coefficient_latex = _quantity_latex(abs(coefficient), settings=settings)
         if power == 0:
             term_latex = coefficient_latex
         elif power == 1:
@@ -137,7 +176,8 @@ def _partial_polynomial_latex(
             prefix = " - " if magnitude < 0 else " + "
         rendered.append(prefix + term_latex)
 
-    return "".join(rendered) if rendered else "0.00"
+    zero_latex = f"{0.0:.{settings.precision}f}"
+    return "".join(rendered) if rendered else zero_latex
 
 
 def _display_lhs(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> str | None:
@@ -176,13 +216,14 @@ def _render_signed_term(
     term: sp.Expr,
     *,
     substitutions: dict[str, object] | None,
+    settings: RenderSettings,
 ) -> tuple[bool, str]:
     negative = term.could_extract_minus_sign()
     unsigned_term = -term if negative else term
     if substitutions is None:
         body = _latex(unsigned_term)
     else:
-        body = _substitution_latex(unsigned_term, substitutions)
+        body = _substitution_latex(unsigned_term, substitutions, settings)
     return negative, body
 
 
@@ -191,12 +232,17 @@ def _adaptive_additive_rows(
     substitutions: dict[str, object] | None = None,
     *,
     visual_budget: float = _NUMERIC_ROW_VISUAL_BUDGET,
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
 ) -> list[str]:
     """Pack complete top-level additive terms into MathJax rows adaptively."""
     expression = sp.sympify(expression)
     terms = expression.as_ordered_terms() if expression.is_Add else [expression]
     rendered_terms = [
-        _render_signed_term(term, substitutions=substitutions)
+        _render_signed_term(
+            term,
+            substitutions=substitutions,
+            settings=settings,
+        )
         for term in terms
     ]
 
@@ -236,13 +282,20 @@ def _adaptive_additive_rows(
     return rows
 
 
-def _numeric_evaluation_rows(result: NumericEvaluationResult) -> list[str]:
-    formula_rows = _adaptive_additive_rows(result.symbolic_expression)
+def _numeric_evaluation_rows(
+    result: NumericEvaluationResult,
+    settings: RenderSettings,
+) -> list[str]:
+    formula_rows = _adaptive_additive_rows(
+        result.symbolic_expression,
+        settings=settings,
+    )
     substituted_rows = _adaptive_additive_rows(
         result.symbolic_expression,
         result.substitutions,
+        settings=settings,
     )
-    final_latex = _quantity_latex(result.quantity)
+    final_latex = _quantity_latex(result.quantity, settings=settings)
     lhs = _display_lhs(result)
 
     rows: list[str] = []
@@ -264,17 +317,25 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult) -> list[str]:
     return rows
 
 
-def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult) -> list[str]:
-    formula_rows = _adaptive_additive_rows(result.symbolic_expression)
+def _partial_numeric_evaluation_rows(
+    result: PartialNumericEvaluationResult,
+    settings: RenderSettings,
+) -> list[str]:
+    formula_rows = _adaptive_additive_rows(
+        result.symbolic_expression,
+        settings=settings,
+    )
     substituted_rows = _adaptive_additive_rows(
         result.symbolic_expression,
         result.substitutions,
+        settings=settings,
     )
     evaluated_latex = None
     if len(result.unresolved_symbols) == 1:
         evaluated_latex = _partial_polynomial_latex(
             result.evaluated_terms,
             result.unresolved_symbols[0],
+            settings,
         )
     lhs = _display_lhs(result)
 
@@ -298,30 +359,41 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult) -> 
     return rows
 
 
-def _standard_result_row(result: CalculationResult) -> str:
-    rendered = render_result(result)
+def _standard_result_row(
+    result: CalculationResult,
+    settings: RenderSettings,
+) -> str:
+    rendered = render_result(result, settings=settings)
     if " = " in rendered:
         left, right = rendered.split(" = ", 1)
         return rf"\displaystyle {left} & = & \displaystyle {right}"
     return rf"\displaystyle {rendered} & &"
 
 
-def _display_rows(result: CalculationResult) -> list[str]:
+def _display_rows(
+    result: CalculationResult,
+    settings: RenderSettings,
+) -> list[str]:
     if isinstance(result, NumericEvaluationResult):
-        return _numeric_evaluation_rows(result)
+        return _numeric_evaluation_rows(result, settings)
     if isinstance(result, PartialNumericEvaluationResult):
-        return _partial_numeric_evaluation_rows(result)
-    return [_standard_result_row(result)]
+        return _partial_numeric_evaluation_rows(result, settings)
+    return [_standard_result_row(result, settings)]
 
 
-def render_aligned_results(results: list[CalculationResult]) -> str:
+def render_aligned_results(
+    results: list[CalculationResult],
+    *,
+    settings: RenderSettings | None = None,
+) -> str:
     """Render all calculation groups with one consistent MathJax array layout."""
     if not results:
         return ""
 
+    active_settings = settings or _DEFAULT_RENDER_SETTINGS
     rows: list[str] = []
     for result_index, result in enumerate(results):
-        result_rows = _display_rows(result)
+        result_rows = _display_rows(result, active_settings)
 
         if result_index:
             spacing = "8pt" if result.statement.blank_before else "4pt"
@@ -336,22 +408,30 @@ def render_aligned_results(results: list[CalculationResult]) -> str:
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
 
 
-def render_result(result: CalculationResult) -> str:
+def render_result(
+    result: CalculationResult,
+    *,
+    settings: RenderSettings | None = None,
+) -> str:
+    active_settings = settings or _DEFAULT_RENDER_SETTINGS
+
     if isinstance(result, NumericAssignmentResult):
         lhs = _render_lhs(result.statement.target, None)
-        return rf"{lhs} = {_quantity_latex(result.quantity)}"
+        return rf"{lhs} = {_quantity_latex(result.quantity, settings=active_settings)}"
 
     if isinstance(result, PartialNumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
         substituted_latex = _substitution_latex(
             result.symbolic_expression,
             result.substitutions,
+            active_settings,
         )
         evaluated_latex = None
         if len(result.unresolved_symbols) == 1:
             evaluated_latex = _partial_polynomial_latex(
                 result.evaluated_terms,
                 result.unresolved_symbols[0],
+                active_settings,
             )
 
         chain = [formula_latex, substituted_latex]
@@ -375,8 +455,9 @@ def render_result(result: CalculationResult) -> str:
         substituted_latex = _substitution_latex(
             result.symbolic_expression,
             result.substitutions,
+            active_settings,
         )
-        final_latex = _quantity_latex(result.quantity)
+        final_latex = _quantity_latex(result.quantity, settings=active_settings)
         if result.display_name is not None:
             if result.display_argument is None:
                 lhs = _render_lhs(result.display_name, None)
