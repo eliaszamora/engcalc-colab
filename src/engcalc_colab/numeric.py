@@ -47,10 +47,10 @@ class NumericContext:
     def get(self, name: str):
         return self.values.get(name)
 
-    def assign(self, name: str, expression: ast.Expression):
+    def evaluate_expression(self, expression: ast.Expression):
         try:
             value = _NumericAstEvaluator(self).visit(expression.body)
-            quantity = self._as_quantity(value)
+            return self._as_quantity(value)
         except EngEvaluationError:
             raise
         except DimensionalityError as exc:
@@ -60,6 +60,8 @@ class NumericContext:
         except Exception as exc:
             raise EngEvaluationError(f"numeric evaluation failed: {exc}") from exc
 
+    def assign(self, name: str, expression: ast.Expression):
+        quantity = self.evaluate_expression(expression)
         self.values[name] = quantity
         return quantity
 
@@ -122,20 +124,31 @@ class NumericContext:
             raise EngEvaluationError("plot end must be greater than start")
         return start, end
 
-    def sample_symbolic(self, expression, variable, start, end, count=201):
+    def sample_symbolic(
+        self,
+        expression,
+        variable,
+        start,
+        end,
+        count=201,
+        overrides: dict[str, Any] | None = None,
+    ):
         if count < 2:
             raise EngEvaluationError("plot sampling requires at least 2 points")
 
         start, end = self.normalize_plot_bounds(start, end)
         delta = end - start
         xs = tuple(start + delta * (index / (count - 1)) for index in range(count))
+        fixed_overrides = dict(overrides or {})
 
         ys = []
         y_unit = None
         for x_value in xs:
+            sample_overrides = dict(fixed_overrides)
+            sample_overrides[variable] = x_value
             _, y_value = self.evaluate_symbolic(
                 expression,
-                overrides={variable: x_value},
+                overrides=sample_overrides,
             )
             if y_unit is None:
                 y_unit = y_value.units
