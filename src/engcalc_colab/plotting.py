@@ -10,6 +10,8 @@ _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 _FORCE_UNITS = {"N", "kN", "MN", "GN", "kgf", "tonf"}
 _LENGTH_UNITS = {"mm", "cm", "m", "km"}
 _PLOT_Y_MARGIN = 0.30
+_CALLOUT_CLEARANCE_X = 1.08
+_CALLOUT_CLEARANCE_Y = 1.16
 _HORIZONTAL_ANNOTATION_OFFSETS = (18, 72, 126, 180, -18, -72, -126, -180, 0)
 _VERTICAL_ANNOTATION_OFFSETS = (24, 72, 120, 168, -24, -72, -120, -168)
 _ANNOTATION_CANDIDATES = tuple(
@@ -238,7 +240,10 @@ def _place_annotation(
         annotation.set_position(offset)
         annotation.set_ha(ha)
         annotation.set_va(va)
-        candidate_box = _annotation_box(annotation, renderer).expanded(1.04, 1.08)
+        candidate_box = _annotation_box(annotation, renderer).expanded(
+            _CALLOUT_CLEARANCE_X,
+            _CALLOUT_CLEARANCE_Y,
+        )
         outside, occupied_overlap, legend_overlap = _candidate_constraints(
             candidate_box,
             occupied_boxes,
@@ -269,7 +274,12 @@ def _place_annotation(
     annotation.set_position(best_offset)
     annotation.set_ha(ha)
     annotation.set_va(va)
-    occupied_boxes.append(_annotation_box(annotation, renderer).expanded(1.04, 1.08))
+    occupied_boxes.append(
+        _annotation_box(annotation, renderer).expanded(
+            _CALLOUT_CLEARANCE_X,
+            _CALLOUT_CLEARANCE_Y,
+        )
+    )
 
 
 def _annotate_characteristic(
