@@ -14,6 +14,7 @@ _Last updated: 2026-08-28 after incorporating final Colab visual-QA feedback int
 - Final compact-label distribution gate was run from `c73f25bbf91b67d1d7f82565a1cc0d227da50e67`; commits after that gate only remove temporary workflows and update documentation.
 - Temporary compact-label visual workflow removed in `c0a4f101fed9a9587527aaf8a76b0669450dc501`.
 - Temporary compact-label release workflow removed in `36556234d4632f683304d648d76ff3251e289dbf`.
+- README was aligned with the final compact `(x, y)` label behavior in `6a774cc21d4a44557e02ec3a5db66501bc4b4d89`.
 
 ## 0.6.1 approved behavior
 
