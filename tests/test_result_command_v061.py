@@ -53,10 +53,11 @@ def test_result_partial_function_renders_formula_then_evaluated_function_only():
 
     assert rendered.startswith(r"M\left(x\right) = ")
     assert "q" in rendered
-    assert "5.60" not in rendered
     assert "2.80" not in rendered
+    assert "4.00" not in rendered
+    assert "5.60" in rendered
+    assert "7.00" in rendered
     assert "1.40" in rendered
-    assert "3.50" in rendered
     assert rendered.count(" = ") == 2
 
 
