@@ -200,3 +200,28 @@ def test_eng_magic_displays_one_envelope_figure_in_source_order(monkeypatch):
     )
 
     assert [type(item) for item in displayed] == [Math, Figure, Math]
+
+
+def test_eng_magic_displays_magnitude_envelope_in_source_order(monkeypatch):
+    import engcalc_colab.magic as magic_module
+    from matplotlib.figure import Figure
+
+    displayed = []
+    monkeypatch.setattr(magic_module, "display", displayed.append)
+
+    magics = magic_module.EngMagics(shell=None)
+    magics.eng(
+        "",
+        "A = R_constr\n"
+        "V_constr(x) = R_constr - q_constr*x\n"
+        "V_uso(x) = R_uso + q_uso*x\n"
+        "R_constr := 6*kN\nq_constr := 4*kN/m\n"
+        "R_uso := -9*kN\nq_uso := 1*kN/m\nL := 2*m\n"
+        "envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)\n"
+        "B = 2*A",
+    )
+
+    assert [type(item) for item in displayed] == [Math, Figure, Math]
+    axis = displayed[1].axes[0]
+    assert axis.get_title() == "|V(x)| envelope"
+    assert any("Magnitude envelope" in text.get_text() for text in axis.texts)

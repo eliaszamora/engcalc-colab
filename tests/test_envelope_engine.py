@@ -45,6 +45,39 @@ def test_plot_result_can_transport_envelope_metadata_immutably():
         result.kind = "plot"
 
 
+def test_plot_result_defaults_preserve_v050_transport():
+    statement = parse_cell("plot(x, x, 0, 1)")[0]
+    series = PlotSeries("x", (1, 2), False)
+    result = PlotResult(statement, "x", "x", (0, 1), (series,))
+
+    assert result.envelope_mode is None
+    assert result.governing_signed is None
+
+
+def test_plot_result_can_transport_magnitude_metadata():
+    statement = parse_cell("envelope(abs(A(x)), abs(B(x)), x, 0, 1)")[0]
+    source = (
+        PlotSeries("A(x)", (-1, 2), False),
+        PlotSeries("B(x)", (3, -4), False),
+    )
+    result = PlotResult(
+        statement,
+        "V(x)",
+        "x",
+        (0, 1),
+        (PlotSeries("|V|_max(x)", (3, 4), False),),
+        kind="envelope",
+        source_series=source,
+        source_labels=("A(x)", "B(x)"),
+        governing_max=(1, 1),
+        envelope_mode="magnitude",
+        governing_signed=(3, -4),
+    )
+
+    assert result.envelope_mode == "magnitude"
+    assert result.governing_signed == (3, -4)
+
+
 def test_envelope_multiple_expressions_computes_signed_pointwise_max_min():
     engine = EngineeringEngine()
     eval_cell(

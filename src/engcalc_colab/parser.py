@@ -20,7 +20,7 @@ _SWEEP_VALUE_NODES = (
 _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
 _ALLOWED_CALLS = {
     "integral", "diff", "solve", "simplify", "expand", "factor",
-    "subs", "eq", "sum", "numeric", "plot", "envelope"
+    "subs", "eq", "sum", "numeric", "plot", "envelope", "abs"
 }
 _RESERVED = _ALLOWED_CALLS | {"True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")

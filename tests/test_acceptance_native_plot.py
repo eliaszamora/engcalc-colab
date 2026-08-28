@@ -3,6 +3,7 @@ import pytest
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import PlotResult
 from engcalc_colab.parser import parse_cell
+from engcalc_colab.plotting import render_plot
 
 
 def test_native_plot_end_to_end():
@@ -97,3 +98,33 @@ envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m, 15*kN/m])
     assert result.series[1].y_values[100].to("kN*m").magnitude == pytest.approx(22.5)
     assert result.governing_max[100] == 2
     assert result.governing_min[100] == 0
+
+
+def test_native_magnitude_envelope_acceptance():
+    engine = EngineeringEngine()
+    cell = """
+V_constr(x) = R_constr - q_constr*x
+V_uso(x) = R_uso + q_uso*x
+R_constr := 6*kN
+q_constr := 4*kN/m
+R_uso := -9*kN
+q_uso := 1*kN/m
+L := 2*m
+
+envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
+"""
+    result = [engine.evaluate(stmt) for stmt in parse_cell(cell)][-1]
+
+    assert isinstance(result, PlotResult)
+    assert result.envelope_mode == "magnitude"
+    assert len(result.x_values) == 201
+    assert len(result.series) == 1
+    assert len(result.source_series) == 2
+    assert result.series[0].y_values[0].to("kN").magnitude == pytest.approx(9.0)
+    assert result.governing_signed[0].to("kN").magnitude == pytest.approx(-9.0)
+
+    figure = render_plot(result)
+    axis = figure.axes[0]
+    assert len(figure.texts) == 0
+    assert axis.get_title() == "|V(x)| envelope"
+    assert any("Magnitude envelope" in text.get_text() for text in axis.texts)

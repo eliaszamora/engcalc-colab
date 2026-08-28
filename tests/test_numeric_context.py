@@ -49,6 +49,12 @@ def test_evaluate_expression_can_reference_existing_numeric_values_without_mutat
     assert ctx.values == before
 
 
+def test_numeric_ast_abs_preserves_pint_units():
+    ctx = NumericContext()
+    value = ctx.evaluate_expression(expr("abs(-3*tonf)"))
+    assert value.to("tonf").magnitude == pytest.approx(3.0)
+
+
 def test_tonf_conversion_uses_engineering_definition():
     ctx = NumericContext()
 
@@ -67,6 +73,14 @@ def test_symbolic_expression_evaluates_with_pint_quantities():
 
     assert set(substitutions) == {"q", "L"}
     assert value.to("tonf").magnitude == pytest.approx(4.2)
+
+
+def test_sympy_abs_evaluation_preserves_pint_units():
+    ctx = NumericContext()
+    P = sp.Symbol("P")
+    ctx.assign("P", expr("-7*tonf"))
+    _, value = ctx.evaluate_symbolic(sp.Abs(P))
+    assert value.to("tonf").magnitude == pytest.approx(7.0)
 
 
 def test_target_unit_expression_supports_compound_engineering_units():

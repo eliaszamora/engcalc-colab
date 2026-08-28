@@ -192,3 +192,24 @@ def test_plot_cannot_be_assigned_to_symbol():
     engine = EngineeringEngine()
     with pytest.raises(EngEvaluationError, match="plot must be a standalone statement"):
         eval_cell(engine, "A = plot(x, x, 0, 4)")
+
+
+def test_plot_abs_samples_nonnegative_shear_values():
+    engine = EngineeringEngine()
+    eval_cell(engine, "V(x) = q*(L/2-x)\nq := 4*kN/m\nL := 4*m")
+    result = eval_cell(engine, "plot(abs(V(x)), x, 0, L)")[-1]
+
+    values = [item.to("kN").magnitude for item in result.series[0].y_values]
+    assert values[0] == pytest.approx(8.0)
+    assert values[100] == pytest.approx(0.0)
+    assert values[-1] == pytest.approx(8.0)
+    assert min(values) >= 0.0
+    assert not result.series[0].is_moment
+
+
+def test_plot_abs_preserves_moment_classification_from_inner_function():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M(x) = q*x*(L-x)/2\nq := 4*kN/m\nL := 4*m")
+    result = eval_cell(engine, "plot(abs(M(x)), x, 0, L)")[-1]
+
+    assert result.series[0].is_moment
