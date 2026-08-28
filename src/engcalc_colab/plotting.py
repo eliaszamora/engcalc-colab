@@ -34,8 +34,8 @@ def _unit_label(quantity, *, moment: bool = False) -> str:
     return _force_length_unit_order(unit) if moment else unit
 
 
-def _axis_label(name: str, quantity) -> str:
-    unit = _unit_label(quantity, moment=_is_moment_plot(name))
+def _axis_label(name: str, quantity, *, moment: bool = False) -> str:
+    unit = _unit_label(quantity, moment=moment)
     return name if not unit else f"{name} [{unit}]"
 
 
@@ -170,14 +170,18 @@ def _annotate_extreme(
     )
 
 
-def render_plot(result: PlotResult):
-    """Create one closed Matplotlib figure from normalized EngCalc plot data."""
-    import matplotlib.pyplot as plt
+def _style_axes(axis) -> None:
+    axis.spines["top"].set_visible(False)
+    axis.spines["right"].set_visible(False)
+    axis.set_axisbelow(True)
+    axis.grid(True, which="major", alpha=0.22)
 
+
+def _render_single_series(figure, axis, result: PlotResult) -> None:
+    series = result.series[0]
     x_values = [float(value.magnitude) for value in result.x_values]
-    y_values = [float(value.magnitude) for value in result.y_values]
+    y_values = [float(value.magnitude) for value in series.y_values]
 
-    figure, axis = plt.subplots()
     line = axis.plot(x_values, y_values, linewidth=2.2, zorder=3)[0]
     line_color = line.get_color()
 
@@ -209,7 +213,7 @@ def render_plot(result: PlotResult):
         zorder=4,
     )
 
-    inverted = _is_moment_plot(result.display_label)
+    inverted = series.is_moment
     if inverted:
         axis.invert_yaxis()
 
@@ -231,7 +235,7 @@ def render_plot(result: PlotResult):
         _annotate_extreme(
             axis,
             result.x_values[maximum_index],
-            result.y_values[maximum_index],
+            series.y_values[maximum_index],
             "max = min",
             **annotation_kwargs,
         )
@@ -249,28 +253,133 @@ def render_plot(result: PlotResult):
         _annotate_extreme(
             axis,
             result.x_values[maximum_index],
-            result.y_values[maximum_index],
+            series.y_values[maximum_index],
             "max",
             **annotation_kwargs,
         )
         _annotate_extreme(
             axis,
             result.x_values[minimum_index],
-            result.y_values[minimum_index],
+            series.y_values[minimum_index],
             "min",
             stagger=10 if close_extrema else 0,
             **annotation_kwargs,
         )
 
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(_axis_label(result.display_label, result.y_values[0]))
+    axis.set_ylabel(
+        _axis_label(
+            result.display_label,
+            series.y_values[0],
+            moment=series.is_moment,
+        )
+    )
     axis.set_title(result.display_label, pad=10, fontweight="semibold")
-    axis.spines["top"].set_visible(False)
-    axis.spines["right"].set_visible(False)
-    axis.set_axisbelow(True)
-    axis.grid(True, which="major", alpha=0.22)
+    _style_axes(axis)
     axis.margins(x=0.02, y=0.16)
     figure.tight_layout()
+
+
+def _characteristic_panel_text(result: PlotResult) -> str:
+    lines = ["Characteristic values"]
+    for series in result.series:
+        values = [float(value.magnitude) for value in series.y_values]
+        maximum_index, minimum_index = _extreme_indices(values)
+        lines.extend([
+            series.display_label,
+            (
+                "max = "
+                f"{_quantity_label(series.y_values[maximum_index], moment=series.is_moment)}"
+                "    x = "
+                f"{_quantity_label(result.x_values[maximum_index])}"
+            ),
+            (
+                "min = "
+                f"{_quantity_label(series.y_values[minimum_index], moment=series.is_moment)}"
+                "    x = "
+                f"{_quantity_label(result.x_values[minimum_index])}"
+            ),
+            "",
+        ])
+    return "\n".join(lines).rstrip()
+
+
+def _render_multi_series(figure, axis, result: PlotResult) -> None:
+    x_values = [float(value.magnitude) for value in result.x_values]
+
+    for series in result.series:
+        y_values = [float(value.magnitude) for value in series.y_values]
+        line = axis.plot(
+            x_values,
+            y_values,
+            linewidth=2.0,
+            label=series.display_label,
+            zorder=3,
+        )[0]
+        line_color = line.get_color()
+
+        maximum_index, minimum_index = _extreme_indices(y_values)
+        marker_indices = sorted({maximum_index, minimum_index})
+        axis.scatter(
+            [x_values[index] for index in marker_indices],
+            [y_values[index] for index in marker_indices],
+            s=26,
+            color=line_color,
+            zorder=4,
+        )
+
+    axis.axhline(
+        0.0,
+        linewidth=1.0,
+        color=axis.spines["bottom"].get_edgecolor(),
+        alpha=0.75,
+        zorder=2,
+    )
+    axis.legend()
+
+    moment = all(series.is_moment for series in result.series)
+    if moment:
+        axis.invert_yaxis()
+
+    axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
+    axis.set_ylabel(
+        _axis_label(
+            result.display_label,
+            result.series[0].y_values[0],
+            moment=moment,
+        )
+    )
+    axis.set_title(result.display_label, pad=10, fontweight="semibold")
+    _style_axes(axis)
+    axis.margins(x=0.02, y=0.12)
+
+    figure.text(
+        0.76,
+        0.50,
+        _characteristic_panel_text(result),
+        ha="left",
+        va="center",
+        fontsize=8.5,
+        bbox={
+            "boxstyle": "round,pad=0.5",
+            "facecolor": axis.get_facecolor(),
+            "edgecolor": axis.spines["bottom"].get_edgecolor(),
+            "linewidth": 0.8,
+            "alpha": 0.96,
+        },
+    )
+    figure.tight_layout(rect=(0.0, 0.0, 0.73, 1.0))
+
+
+def render_plot(result: PlotResult):
+    """Create one closed Matplotlib figure from normalized EngCalc plot data."""
+    import matplotlib.pyplot as plt
+
+    figure, axis = plt.subplots()
+    if len(result.series) == 1:
+        _render_single_series(figure, axis, result)
+    else:
+        _render_multi_series(figure, axis, result)
 
     # IPython displays the returned figure explicitly. Closing it here prevents
     # pyplot/Jupyter from also auto-rendering the same figure a second time.
