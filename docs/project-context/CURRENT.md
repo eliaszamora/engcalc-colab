@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-28 after implementing and distribution-validating the user-approved semantic **4 / 8 / 16 pt** MathJax spacing hierarchy. PR #25 remains open and must not be merged without explicit user approval after real-Colab visual QA of this final presentation change._
+_Last updated: 2026-08-28 after implementing and distribution-validating the user-approved semantic **4 / 8 / 16 pt** MathJax spacing hierarchy and aligning public README documentation. PR #25 remains open and must not be merged without explicit user approval after real-Colab visual QA of this final presentation change._
 
 ## Current baseline
 
@@ -15,6 +15,7 @@ _Last updated: 2026-08-28 after implementing and distribution-validating the use
 - Latest semantic-spacing renderer implementation: `1e14147b8edd48d621e9d8d5e07d3ec79a03ed1a`.
 - Latest fully distribution-validated product/test head: `6069ba78a180669bc1377681a6a328c18d6809ca`.
 - Temporary semantic-spacing workflow removed in `844001e255d162eb7b629eb99ef59d36b9468781`.
+- README was aligned with `result(...)` and the final 4/8/16 spacing policy in `7de4c4ed73b29ae3b74da4de7138b3c3f4048967`.
 
 ## Approved behavior
 
@@ -133,11 +134,16 @@ Then restart the Colab session before loading/running EngCalc.
 
 The separate vertical-output scrollbar issue was traced to cross-origin Colab `outputframe.html` iframes. Browser-extension v1.0.4 synchronizes those frame heights, and the user reported the issue solved. This is extension behavior, not EngCalc code.
 
-## Documentation still to align before merge
+## Documentation alignment
 
-- README command-reference documentation should explicitly include `result(...)`.
-- README spacing prose must be updated from its stale values to the final **4 / 8 / 16 pt semantic policy**.
-- These are documentation-only release-closure items and do not invalidate the distribution gate above.
+README now documents:
+
+- `result(expr[, target_unit])` alongside `numeric(...)`;
+- formula → result versus formula → substitution → result behavior;
+- the final **4 / 8 / 16 pt** semantic spacing hierarchy;
+- the updated 0.6.1 version note.
+
+No documentation-only commit after the distribution gate modifies the validated package source or tests.
 
 ## Roadmap / active plan
 
@@ -159,7 +165,7 @@ The original 0.6.1 visual-polish scope was explicitly amended by user-approved p
    - consecutive source results: 8 pt;
    - explicit source blank line: 16 pt.
 4. In the same pass, visually compare `numeric(...)` and `result(...)`.
-5. If approved, align README, inspect PR #25 one final time, and request explicit user authorization before merge.
+5. If approved, inspect PR #25 one final time and request explicit user authorization before merge.
 6. **Do not merge PR #25 without explicit user approval.**
 
 ## How to resume in a new conversation
