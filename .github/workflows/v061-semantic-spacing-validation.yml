@@ -5,191 +5,71 @@ on:
     branches:
       - feature/v0.6.1-visual-polish-2
 
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Restore renderer baseline and apply semantic spacing
-        run: |
-          git fetch origin 312fbcb5381cb282930a363481e05ad16cfdbaef --depth=1
-          git show 312fbcb5381cb282930a363481e05ad16cfdbaef:src/engcalc_colab/renderer.py > src/engcalc_colab/renderer.py
-
-          python - <<'PY'
-          from pathlib import Path
-          from textwrap import dedent
-
-          path = Path("src/engcalc_colab/renderer.py")
-          text = path.read_text()
-          start = text.index("def render_aligned_results(")
-          end = text.index("\n\ndef render_result(", start)
-
-          new_block = dedent(r'''
-          def _stage_spacing_sequence(stage_lengths: list[int]) -> list[str]:
-              """Return semantic gaps: 4 pt within one stage and 8 pt between stages."""
-              spacings: list[str] = []
-              row_seen = False
-              for stage_length in stage_lengths:
-                  if stage_length <= 0:
-                      continue
-                  for row_index in range(stage_length):
-                      if not row_seen:
-                          row_seen = True
-                          continue
-                      spacings.append("8pt" if row_index == 0 else "4pt")
-              return spacings
-
-
-          def _assignment_stage_row_count(lhs: str | None, body_rows: list[str]) -> int:
-              stage_rows: list[str] = []
-              _append_assignment_stage(stage_rows, lhs, body_rows)
-              return len(stage_rows)
-
-
-          def _internal_row_spacings(
-              result: CalculationResult,
-              result_rows: list[str],
-              settings: RenderSettings,
-          ) -> list[str]:
-              """Classify internal rows as wrapped continuations or new mathematical stages."""
-              if len(result_rows) <= 1:
-                  return []
-
-              if isinstance(result, NumericEvaluationResult):
-                  formula_rows = _bounded_expression_rows(
-                      result.symbolic_expression,
-                      settings=settings,
-                  )
-                  stage_lengths = [
-                      _assignment_stage_row_count(_display_lhs(result), formula_rows)
-                  ]
-                  if _shows_substitution(result):
-                      stage_lengths.append(
-                          len(
-                              _bounded_expression_rows(
-                                  result.symbolic_expression,
-                                  result.substitutions,
-                                  settings=settings,
-                              )
-                          )
-                      )
-                  stage_lengths.append(1)
-
-              elif isinstance(result, PartialNumericEvaluationResult):
-                  formula_rows = _bounded_expression_rows(
-                      result.symbolic_expression,
-                      settings=settings,
-                  )
-                  stage_lengths = [
-                      _assignment_stage_row_count(_display_lhs(result), formula_rows)
-                  ]
-                  if _shows_substitution(result):
-                      stage_lengths.append(
-                          len(
-                              _bounded_expression_rows(
-                                  result.symbolic_expression,
-                                  result.substitutions,
-                                  settings=settings,
-                              )
-                          )
-                      )
-                  evaluated_latex = None
-                  if len(result.unresolved_symbols) == 1:
-                      evaluated_latex = _partial_polynomial_latex(
-                          result.evaluated_terms,
-                          result.unresolved_symbols[0],
-                          settings,
-                      )
-                  if evaluated_latex is not None:
-                      stage_lengths.append(1)
-
-              elif isinstance(result, EvaluationResult):
-                  statement = result.statement
-                  lhs = _render_lhs(statement.target, statement.parameter)
-                  value = sp.sympify(result.value)
-                  display_input = result.display_input
-
-                  if display_input is None or sp.sstr(display_input) == sp.sstr(value):
-                      stage_lengths = [len(result_rows)]
-                  elif isinstance(display_input, sp.Equality):
-                      value_rows = _bounded_expression_rows(value, settings=settings)
-                      stage_lengths = [
-                          len(_equality_stage_rows(display_input, settings)),
-                          _assignment_stage_row_count(lhs, value_rows),
-                      ]
-                  else:
-                      input_latex = _latex(display_input)
-                      input_candidate = (
-                          rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"
-                          if lhs is not None
-                          else rf" & & \displaystyle {input_latex}"
-                      )
-                      input_stage_length = 1
-                      if _latex_visual_width(input_candidate) > _COMPLETE_ROW_VISUAL_BUDGET:
-                          input_stage_length += 1 if lhs is not None else 0
-                      value_rows = _bounded_expression_rows(value, settings=settings)
-                      stage_lengths = [input_stage_length, len(value_rows)]
-
-              else:
-                  stage_lengths = [len(result_rows)]
-
-              spacings = _stage_spacing_sequence(stage_lengths)
-              expected = len(result_rows) - 1
-              if len(spacings) != expected:
-                  raise RuntimeError(
-                      "renderer semantic spacing metadata does not match rendered row count"
-                  )
-              return spacings
-
-
-          def render_aligned_results(results: list[CalculationResult], *, settings: RenderSettings | None = None) -> str:
-              """Render all calculation groups with one consistent MathJax array layout."""
-              if not results:
-                  return ""
-
-              active_settings = settings or _DEFAULT_RENDER_SETTINGS
-              rows: list[str] = []
-              for result_index, result in enumerate(results):
-                  result_rows = _display_rows(result, active_settings)
-
-                  if result_index:
-                      spacing = "16pt" if result.statement.blank_before else "8pt"
-                      rows.append(rf"\\[{spacing}]")
-                  rows.append(result_rows[0])
-
-                  internal_spacings = _internal_row_spacings(
-                      result,
-                      result_rows,
-                      active_settings,
-                  )
-                  for spacing, continuation_row in zip(
-                      internal_spacings,
-                      result_rows[1:],
-                  ):
-                      rows.append(rf"\\[{spacing}]")
-                      rows.append(continuation_row)
-
-              body = " ".join(rows)
-              return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
-          ''').lstrip("\n")
-
-          path.write_text(text[:start] + new_block + text[end:])
-          PY
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/engcalc_colab/renderer.py
-          git commit -m "fix: repair semantic spacing implementation"
-          git push
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install test environment
+      - name: Install source test environment
         run: |
           python -m pip install -e '.[dev]'
-          python -m pip install ipython
+          python -m pip install ipython build
       - name: Focused semantic spacing tests
-        run: python -m pytest -q tests/test_semantic_row_spacing_v061.py
+        run: python -m pytest -q tests/test_semantic_row_spacing_v061.py tests/test_magic.py tests/test_visual_polish_renderer_v061.py
+      - name: Complete source suite
+        run: python -m pytest -q
+      - name: Build wheel
+        run: python -m build --wheel
+      - name: Install exact wheel in clean venv
+        run: |
+          python -m venv /tmp/engcalc-v061-semantic-spacing-wheel
+          /tmp/engcalc-v061-semantic-spacing-wheel/bin/python -m pip install --upgrade pip
+          /tmp/engcalc-v061-semantic-spacing-wheel/bin/python -m pip install dist/engcalc_colab-0.6.1-py3-none-any.whl pytest ipython
+      - name: Smoke semantic spacing from installed wheel
+        run: |
+          cd /tmp
+          PYTHONPATH= /tmp/engcalc-v061-semantic-spacing-wheel/bin/python - <<'PY'
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.renderer import render_aligned_results
+
+          def evaluate(source):
+              engine = EngineeringEngine()
+              return [engine.evaluate(stmt) for stmt in parse_cell(source)]
+
+          solve_result = evaluate("R_Ac = solve(eq(R_Ac - qC*L, 0), R_Ac)")[-1]
+          solve_latex = render_aligned_results([solve_result])
+          assert r"\\[8pt]" in solve_latex
+          assert r"\\[2pt]" not in solve_latex
+
+          terms = " + ".join(f"a{i:02d}" for i in range(1, 41))
+          wrapped_result = evaluate(f"A = {terms}")[-1]
+          wrapped_latex = render_aligned_results([wrapped_result])
+          assert r"\\[4pt]" in wrapped_latex
+          assert r"\\[2pt]" not in wrapped_latex
+
+          consecutive = evaluate("A = 1\nB = 2")
+          assert r"\\[8pt]" in render_aligned_results(consecutive)
+          blank = evaluate("A = 1\n\nB = 2")
+          assert r"\\[16pt]" in render_aligned_results(blank)
+
+          numeric_result = evaluate(
+              "M_A = q*L^2/2\n"
+              "q := 2*tonf/m\n"
+              "L := 4*m\n"
+              "numeric(M_A)"
+          )[-1]
+          numeric_latex = render_aligned_results([numeric_result])
+          assert numeric_latex.count(r"\\[8pt]") == 2
+          print("installed wheel semantic spacing smoke: PASS")
+          PY
+      - name: Complete suite against installed wheel
+        run: |
+          mv src /tmp/engcalc-v061-semantic-spacing-source
+          PYTHONPATH= /tmp/engcalc-v061-semantic-spacing-wheel/bin/python -m pytest -q
+          mv /tmp/engcalc-v061-semantic-spacing-source src
+      - name: Repeat source suite
+        run: python -m pytest -q
