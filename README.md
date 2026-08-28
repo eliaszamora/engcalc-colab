@@ -21,9 +21,10 @@ If the extension is already loaded after an update, use:
 
 v0.6.1 is a presentation-focused release. It does not change the structural mathematics, the 201-point sampling grid, unit handling, signed-envelope rules, magnitude-envelope rules, or the convention of **positive structural moment downward**.
 
-The release refines two parts of the notebook output:
+The release refines the notebook output in three related ways:
 
-- **MathJax calculations** remain the single mathematical renderer. Formula, numerical-substitution and final-result stages are kept semantically separate and may wrap over several rows when required by the visual-width budget. Long additive expressions wrap at complete top-level terms rather than splitting mathematical fragments. Engineering identifiers such as `Sigma_F_y` retain their intended `\Sigma` rendering.
+- **MathJax calculations** remain the single mathematical renderer. Formula, numerical-substitution and final-result stages are kept semantically separate and may wrap over several rows when required by the visual-width budget. Long additive expressions wrap at complete top-level terms rather than splitting mathematical fragments. The final vertical hierarchy is 4 pt for a wrapped continuation of the same mathematical stage, 8 pt between distinct mathematical stages or consecutive source results, and 16 pt when an explicit blank source line precedes the next result.
+- **Compact numerical presentation** is available through `result(expr[, target_unit])`, which reuses the existing numerical evaluation path but displays only symbolic formula → final result. `numeric(...)` keeps the detailed formula → substitution → result presentation.
 - **Characteristic plot values** are attached to the sampled points they describe using compact coordinate labels such as `(2.5, 3.15)`. Multi-series plots, signed envelopes and magnitude envelopes no longer use a separate characteristic-value panel. Labels contain no duplicated units, boxes or leader lines; their color follows the corresponding series, while placement avoids axes boundaries, the legend, sampled curves and other labels.
 
 For example:
@@ -63,7 +64,13 @@ numeric(V_A)
 numeric(M_A)
 ```
 
-The symbolic namespace still contains the original formulas, while `numeric(...)` evaluates them with the current numerical context and renders formula → numerical substitution → final quantity.
+The symbolic namespace still contains the original formulas. `numeric(...)` evaluates with the current numerical context and renders formula → numerical substitution → final quantity. When the explicit substitution is not useful in the memory, `result(...)` uses the same evaluation but renders formula → final quantity:
+
+```text
+result(M_A)
+result(M_A, kN*m)
+result(M(x))
+```
 
 ## Numerical context and units
 
@@ -110,7 +117,21 @@ formula
 = final result
 ```
 
+`result(...)` uses the compact two-stage form:
+
+```text
+formula
+= final result
+```
+
 Formula and substitution stages use adaptive top-level term packing. EngCalc estimates the visual complexity of complete `+` / `-` terms and keeps adding whole terms to the current row while the row stays within a conservative visual budget. If the next term would exceed the budget, that term starts a continuation row.
+
+The renderer applies a semantic vertical hierarchy:
+
+- **4 pt** between rows that are only continuations of the same wrapped mathematical stage;
+- **8 pt** between distinct stages of one operation, such as equation → solution in `solve(...)`, formula → substitution → result in `numeric(...)`, or formula → result in `result(...)`;
+- **8 pt** between consecutive source results when there is no blank source line;
+- **16 pt** when an explicit blank line in `%%eng` precedes the next source result.
 
 A short expression such as:
 
@@ -125,7 +146,7 @@ remains on one row when it fits. A longer engineering expression can instead be 
 - [ long term 3 ]
 ```
 
-The final numerical result always starts its own row. The visual budget is a deterministic heuristic rather than a browser-pixel measurement.
+The final numerical result always starts its own semantic stage. The visual budget is a deterministic heuristic rather than a browser-pixel measurement.
 
 ## Global numerical presentation settings
 
@@ -144,7 +165,7 @@ zero_tolerance=1e-10
 
 Run `%eng_config` with no arguments to inspect the active settings.
 
-`precision` accepts integers from 0 through 10 and applies to numerical assignments, substituted values, final `numeric(...)` results, and evaluated coefficients of partial numerical functions.
+`precision` accepts integers from 0 through 10 and applies to numerical assignments, substituted values, final `numeric(...)` / `result(...)` results, and evaluated coefficients of partial numerical functions.
 
 `zero_tolerance` is presentation-only. Values whose displayed magnitude is below the threshold render as zero, while the stored Pint quantity remains unchanged.
 
@@ -156,6 +177,7 @@ A fully numerical evaluation may request a compatible target unit:
 
 ```text
 numeric(expression, target_unit)
+result(expression, target_unit)
 ```
 
 Examples:
@@ -163,8 +185,8 @@ Examples:
 ```text
 numeric(M_A, kN*m)
 numeric(V_A, kN)
-numeric(Delta_B0, mm)
-numeric(f_11, mm/kN)
+result(M_A, kN*m)
+result(V_A, kN)
 ```
 
 Target-unit expressions may contain products, divisions and powers:
@@ -176,9 +198,9 @@ mm^4
 mm/kN
 ```
 
-The conversion applies to the final result. Formula and numerical-substitution stages preserve the units in which the input data were defined. Pint checks dimensional compatibility and rejects incompatible targets.
+The conversion applies to the final result. `numeric(...)` preserves original units in its formula/substitution stages; `result(...)` omits the substitution stage but uses the same converted final quantity. Pint checks dimensional compatibility and rejects incompatible targets.
 
-Target-unit conversion currently requires a fully numerical result. A partial function with a free independent variable should use `numeric(V(x))` without a target unit.
+Target-unit conversion currently requires a fully numerical result. A partial function with a free independent variable should use `numeric(V(x))` or `result(V(x))` without a target unit.
 
 ## Evaluated partial numerical functions
 
@@ -215,7 +237,7 @@ M(x)=
 -1.40\,\frac{\mathrm{tonf}}{\mathrm m}x^2.
 \]
 
-The symbolic definition remains unchanged. Direct expressions remain strict: `numeric(q*x)` does not guess that `x` is an independent variable.
+`result(M(x))` produces the same evaluated coefficient function but omits the explicit numerical-substitution stage. The symbolic definition remains unchanged. Direct expressions remain strict: `numeric(q*x)` and `result(q*x)` do not guess that `x` is an independent variable.
 
 ## Function evaluation and dimensional zeros
 
@@ -494,11 +516,13 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
 
 - `q := 2.8*tonf/m` — associate a unit-aware numerical value with `q` without changing symbolic `q`.
 - `P := q*L` — numerical values may reference earlier numerical values.
-- `numeric(V_B)` — evaluate a named symbolic result with natural resulting units.
-- `numeric(M_A, kN*m)` — evaluate a fully numerical result and convert its final quantity to the requested compatible unit.
-- `numeric(q*L^2/8)` — evaluate a direct symbolic expression; every free symbol must have a numerical value.
-- `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free; fully evaluate it if the argument has a numerical value.
-- `numeric(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
+- `numeric(V_B)` — detailed numerical presentation: symbolic formula → explicit substitution → final result.
+- `numeric(M_A, kN*m)` — detailed evaluation with final target-unit conversion.
+- `result(V_B)` — compact numerical presentation: symbolic formula → final result.
+- `result(M_A, kN*m)` — compact presentation with final target-unit conversion.
+- `numeric(q*L^2/8)` / `result(q*L^2/8)` — evaluate a direct symbolic expression; every free symbol must have a numerical value.
+- `numeric(V(x))` / `result(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free; fully evaluate it if the argument has a numerical value.
+- `numeric(M(L))` / `result(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
 
 ### Plotting and envelopes
 
@@ -553,7 +577,7 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
 - `### text` — visible subsection heading.
 - blank line — adds a larger visual separation inside the current equation group.
 
-Calculation rows use compact three-column MathJax blocks. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Complete and partial numerical evaluations use adaptive MathJax row packing.
+Calculation rows use compact three-column MathJax blocks. The semantic spacing policy is **4 / 8 / 16 pt**: 4 pt for a wrapped continuation of the same stage, 8 pt for a distinct stage or consecutive source result, and 16 pt after an explicit blank source line.
 
 For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics.
 
@@ -596,7 +620,7 @@ v0.6.1 intentionally does not yet provide:
 
 ## Version notes
 
-- **0.6.1** — adaptive MathJax semantic-stage polish; compact collision-aware `(x, y)` characteristic labels for plots and envelopes, without boxes, units or leader lines; no numerical-method changes.
+- **0.6.1** — adaptive semantic MathJax rendering with 4/8/16 spacing; compact `result(...)`; compact collision-aware `(x, y)` characteristic labels for plots and envelopes; no numerical-method changes.
 - **0.6.0** — `abs(...)` and magnitude envelopes.
 - **0.5.0** — sampled signed engineering envelopes.
 - **0.4.0** — multi-series plotting and restricted one-parameter sweeps.
