@@ -3,7 +3,15 @@ from IPython.display import Math
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.magic import _display_equation_group
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.renderer import render_aligned_results
+from engcalc_colab.renderer import (
+    RenderSettings,
+    _display_rows,
+    _latex_visual_width,
+    render_aligned_results,
+)
+
+
+ROW_LIMIT = 104.0
 
 
 def evaluate(engine: EngineeringEngine, source: str):
@@ -32,12 +40,15 @@ def test_long_substitution_wraps_only_when_visual_budget_is_exceeded():
     evaluate(engine, "L := 4*m")
     evaluate(engine, "x := 2.5*m")
 
-    latex = render_aligned_results([evaluate(engine, "numeric(M(x))")])
+    result = evaluate(engine, "numeric(M(x))")
+    rows = _display_rows(result, RenderSettings())
+    latex = render_aligned_results([result])
 
-    # The first two substituted terms share a row; only the third continues.
-    # Stages: formula -> substitution row 1 -> continuation -> final result.
-    assert latex.count(r"\\[2pt]") == 3
-    assert latex.count(" & & ") == 1
+    # Formula and substitution stages may each wrap as required by the notebook width budget.
+    assert len(rows) >= 5
+    assert all(_latex_visual_width(row) <= ROW_LIMIT for row in rows)
+    assert latex.count(" & = & ") == 3
+    assert latex.count(" & & ") >= 2
     assert "3.15" in latex
 
 

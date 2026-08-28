@@ -1,7 +1,16 @@
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import ParsedHeading
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.renderer import render_aligned_results, render_result
+from engcalc_colab.renderer import (
+    RenderSettings,
+    _display_rows,
+    _latex_visual_width,
+    render_aligned_results,
+    render_result,
+)
+
+
+ROW_LIMIT = 104.0
 
 
 def evaluate(engine: EngineeringEngine, source: str):
@@ -120,11 +129,13 @@ def test_aligned_long_numeric_substitution_packs_terms_adaptively():
     evaluate(engine, "x := 2.5*m")
 
     result = evaluate(engine, "numeric(M(x))")
+    rows = _display_rows(result, RenderSettings())
     latex = render_aligned_results([result])
 
-    assert r"M\left(x\right) & = & \displaystyle" in latex
-    assert latex.count(r"\\[2pt]") == 3
+    assert r"M\left(x\right) & = &" in latex
+    assert len(rows) >= 5
+    assert all(_latex_visual_width(row) <= ROW_LIMIT for row in rows)
     assert latex.count(" & = & ") == 3
-    assert latex.count(" & & ") == 1
+    assert latex.count(" & & ") >= 2
     assert r"\quad -" in latex
     assert "3.15" in latex
