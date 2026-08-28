@@ -65,9 +65,14 @@ def test_envelope_source_curves_have_no_markers_or_inline_callouts():
         collection for collection in axis.collections
         if isinstance(collection, PathCollection)
     ]
+    panels = [
+        text for text in axis.texts
+        if "Envelope characteristic values" in text.get_text()
+    ]
 
     assert len(markers) <= 1
-    assert len(axis.texts) == 0
+    assert len(panels) == 1
+    assert all(not text.get_text().startswith(("max =", "min =")) for text in axis.texts)
 
 
 def test_envelope_preserves_moment_positive_down_and_engineering_units():
@@ -89,15 +94,21 @@ def test_envelope_legend_contains_only_the_two_boundaries():
     ]
 
 
-def test_envelope_characteristic_values_are_outside_the_data_area():
+def test_signed_envelope_characteristic_panel_is_inside_axes():
     figure = render_plot(moment_envelope_result())
-    panel_text = "\n".join(text.get_text() for text in figure.texts)
+    axis = figure.axes[0]
 
-    assert "Envelope characteristic values" in panel_text
+    assert len(figure.texts) == 0
+    panels = [
+        text for text in axis.texts
+        if "Envelope characteristic values" in text.get_text()
+    ]
+    assert len(panels) == 1
+    panel_text = panels[0].get_text()
     assert "max = 36.00 kN·m" in panel_text
     assert "min = -18.00 kN·m" in panel_text
     assert "x = 3.00 m" in panel_text
-    assert len(figure.axes[0].texts) == 0
+    assert panels[0].get_transform() == axis.transAxes
 
 
 def test_envelope_keeps_zero_reference_line():
