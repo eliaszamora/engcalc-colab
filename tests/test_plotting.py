@@ -75,26 +75,26 @@ def test_render_plot_adds_engineering_visual_polish():
     assert not axis.spines["right"].get_visible()
 
 
-def test_render_plot_annotates_coordinates_and_ordinate_at_extrema():
+def test_render_plot_annotates_compact_coordinates_at_extrema():
     axis = render_plot(moment_plot_result()).axes[0]
     labels = [item.get_text() for item in annotations(axis)]
-    assert "x = 2.50 m\nM = 3.15 tonf·m" in labels
-    assert "x = 0.00 m\nM = -5.60 tonf·m" in labels
+    assert "(2.5, 3.15)" in labels
+    assert "(0, -5.6)" in labels
 
 
 def test_render_plot_deduplicates_equal_maximum_and_minimum():
     axis = render_plot(constant_plot_result()).axes[0]
     items = annotations(axis)
     assert len(items) == 1
-    assert items[0].get_text() == "x = 0.00 m\nC = 11.20 tonf"
+    assert items[0].get_text() == "(0, 11.2)"
 
 
-def test_moment_units_render_in_engineering_force_length_order():
+def test_moment_units_remain_on_axis_not_characteristic_labels():
     axis = render_plot(moment_plot_result()).axes[0]
     labels = [item.get_text() for item in annotations(axis)]
     assert axis.get_ylabel() == "M(x) [tonf·m]"
-    assert any("3.15 tonf·m" in label for label in labels)
-    assert any("-5.60 tonf·m" in label for label in labels)
+    assert set(labels) == {"(2.5, 3.15)", "(0, -5.6)"}
+    assert all("tonf" not in label and "m" not in label for label in labels)
 
 
 def test_edge_annotations_point_inward_horizontally():
@@ -107,12 +107,12 @@ def test_edge_annotations_point_inward_horizontally():
     assert right.get_position()[0] < 0
 
 
-def test_characteristic_labels_use_boxed_callouts():
+def test_characteristic_labels_are_unboxed_without_leader_lines():
     for result in (shear_plot_result(), moment_plot_result()):
         axis = render_plot(result).axes[0]
         for annotation in annotations(axis):
-            assert annotation.get_bbox_patch() is not None
-            assert annotation.arrow_patch is not None
+            assert annotation.get_bbox_patch() is None
+            assert annotation.arrow_patch is None
             assert annotation.get_zorder() > axis.lines[0].get_zorder()
 
 
@@ -168,7 +168,7 @@ def test_multiseries_uses_one_restrained_extrema_marker_collection_per_series():
     assert all(max(marker.get_sizes()) <= 28 for marker in markers)
 
 
-def test_multiseries_replaces_characteristic_panel_with_point_annotations():
+def test_multiseries_replaces_characteristic_panel_with_compact_point_annotations():
     figure = render_plot(multi_moment_plot_result())
     axis = figure.axes[0]
     items = annotations(axis)
@@ -177,21 +177,23 @@ def test_multiseries_replaces_characteristic_panel_with_point_annotations():
     assert len(figure.texts) == 0
     assert not any("Characteristic values" in text.get_text() for text in axis.texts)
     assert len(items) == 4
-    assert any(label.startswith("x = 3.00 m\nM_D = 36.00 kN·m") for label in labels)
-    assert any(label.startswith("x = 0.00 m\nM_D = 0.00 kN·m") for label in labels)
-    assert any(label.startswith("x = 3.00 m\nM_L = 22.50 kN·m") for label in labels)
-    assert any(label.startswith("x = 0.00 m\nM_L = 0.00 kN·m") for label in labels)
+    assert labels.count("(3, 36)") == 1
+    assert labels.count("(3, 22.5)") == 1
+    assert labels.count("(0, 0)") == 2
 
     for item in items:
         assert item.xy is not None
         assert item.get_transform() != axis.transAxes
+        assert item.arrow_patch is None
+        assert item.get_bbox_patch() is None
 
 
 def test_sweep_multiseries_characteristics_are_attached_to_each_curve_not_a_box():
     axis = render_plot(sweep_moment_plot_result()).axes[0]
     items = annotations(axis)
     assert len(items) == 6
-    assert all("x =" in item.get_text() and "M =" in item.get_text() for item in items)
+    assert all(item.get_text().startswith("(") and item.get_text().endswith(")") for item in items)
+    assert all("=" not in item.get_text() for item in items)
     assert not any("Characteristic values" in text.get_text() for text in axis.texts)
 
 
