@@ -9,6 +9,7 @@ from typing import Any
 import sympy as sp
 from pint import UnitRegistry
 from pint.errors import DimensionalityError, PintError
+from sympy.polys.polyerrors import PolynomialError
 
 from .errors import EngEvaluationError
 
@@ -97,6 +98,25 @@ class NumericContext:
             if name not in substitutions
         )
         return substitutions, unresolved
+
+    def evaluate_partial_polynomial(
+        self,
+        expression: sp.Expr,
+        variable: str,
+    ) -> tuple[tuple[int, Any], ...] | None:
+        """Evaluate known coefficients of a polynomial while leaving its variable free."""
+        expr = sp.sympify(expression)
+        symbol = sp.Symbol(variable)
+        try:
+            polynomial = sp.Poly(expr, symbol)
+        except PolynomialError:
+            return None
+
+        evaluated_terms: list[tuple[int, Any]] = []
+        for (power,), coefficient in reversed(polynomial.terms()):
+            _, quantity = self.evaluate_symbolic(coefficient)
+            evaluated_terms.append((int(power), quantity))
+        return tuple(evaluated_terms)
 
     def evaluate_symbolic(
         self,
