@@ -24,5 +24,5 @@ def test_pint_is_a_runtime_dependency():
     assert "pint" in _dependency_names()
 
 
-def test_latex2mathml_is_a_runtime_dependency():
-    assert "latex2mathml" in _dependency_names()
+def test_latex2mathml_is_not_a_runtime_dependency():
+    assert "latex2mathml" not in _dependency_names()
