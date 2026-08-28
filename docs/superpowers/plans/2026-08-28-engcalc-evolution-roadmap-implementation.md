@@ -33,7 +33,7 @@ Existing core files:
 - `src/engcalc_colab/renderer.py` — MathJax/LaTeX rendering for calculation results.
 - `src/engcalc_colab/plotting.py` — Matplotlib rendering for plot/envelope results.
 - `src/engcalc_colab/magic.py` — `%%eng`, `%eng_reset`, `%eng_config` display orchestration.
-- `src/engcalc_colab/errors.py` — user-facing EngCalc exceptions.
+- `src/engcalc_colab/errors.py` — user-facing EngCalc exceptions and centralized diagnostic hints.
 
 New focused modules introduced by this roadmap:
 
@@ -94,8 +94,8 @@ Suggested branch: `feature/v0.6.1-numeric-ergonomics`.
 
 **Interfaces:**
 - Consumes: existing `numeric(...)`, `UserFunction`, Pint unit aliases.
-- Produces: direct numeric function-argument bridge capable of evaluating complete numeric AST arguments before function substitution.
-- Produces: diagnostic helper `format_engcalc_hint(message_key: str, **context) -> str` or equivalent centralized error-copy mechanism; do not scatter contradictory hints.
+- Produces: `_resolve_numeric_function_argument(self, node: ast.AST)` inside the evaluator, returning either an intentionally unresolved SymPy symbol/expression or a fully evaluated Pint quantity.
+- Produces: `diagnostic_hint(code: str, **context) -> str` in `errors.py` as the single source for corrective user hints.
 
 - [ ] **Step 1: Write RED tests for direct unit-bearing function arguments**
 
@@ -120,22 +120,20 @@ def test_numeric_parameter_function_accepts_direct_load_quantity(engine, parse_o
 Run: `pytest tests/test_numeric_function_arguments.py -v`
 Expected: FAIL because unit-bearing call arguments currently cross the symbolic/numeric boundary incorrectly.
 
-- [ ] **Step 3: Add a restricted numeric-argument resolver to `numeric(...)` function-call evaluation**
-
-Implementation contract:
+- [ ] **Step 3: Add the restricted numeric-argument resolver to `numeric(...)` function-call evaluation**
 
 ```python
 def _resolve_numeric_function_argument(self, node: ast.AST):
-    """Return either an unresolved symbolic argument or a Pint quantity.
-
-    Names that are intentionally unresolved symbols stay symbolic.
-    Complete numeric/unit expressions are evaluated by NumericContext.
-    """
+    if isinstance(node, ast.Name):
+        symbolic = self.visit(node)
+        if isinstance(symbolic, sp.Symbol) and self.engine.numeric_context.get(node.id) is None:
+            return symbolic
+    return self.engine.numeric_context.evaluate_expression(ast.Expression(body=node))
 ```
 
-The resolver must not make all ordinary symbolic calls unit-aware; it is used only by `numeric(...)` evaluation.
+Adapt the exact implementation to preserve current line-number/error wrapping, but keep this decision rule: a lone unassigned name may remain symbolic; a complete expression containing values/units is evaluated by `NumericContext`.
 
-- [ ] **Step 4: Add RED diagnostic tests**
+- [ ] **Step 4: Add RED diagnostic tests with concrete invalid dimensions**
 
 ```python
 def test_unknown_numeric_name_error_names_the_missing_value(engine, parse_one):
@@ -143,20 +141,23 @@ def test_unknown_numeric_name_error_names_the_missing_value(engine, parse_one):
         engine.evaluate(parse_one("q := q_missing*kN/m"))
 
 
-def test_incompatible_numeric_function_argument_reports_expected_dimension(engine, parse_one):
-    # Use an existing function whose formula forces an incompatible operation.
-    ...
+def test_numeric_function_dimension_error_names_function(engine, parse_one):
+    engine.evaluate(parse_one("f(x) = L + x"))
+    engine.evaluate(parse_one("L := 1*m"))
+    with pytest.raises(
+        EngEvaluationError,
+        match="incompatible units while evaluating numeric function 'f'",
+    ):
+        engine.evaluate(parse_one("numeric(f(2*kN))"))
 ```
-
-Replace the second fixture with a concrete dimensionally invalid expression from the current test helpers; expected text must distinguish incompatible units from unresolved symbols.
 
 - [ ] **Step 5: Centralize corrective diagnostics and keep exception types stable**
 
-Do not change `EngEvaluationError`/`EngSyntaxError` inheritance. Improve messages only.
+`errors.py` must expose `diagnostic_hint`. Add stable codes such as `direct_numeric_argument`, `unknown_numeric_name`, `incompatible_function_units`, and `unresolved_numeric_symbols`. Do not change `EngEvaluationError`/`EngSyntaxError` inheritance.
 
 - [ ] **Step 6: Add acceptance test for the professor-exercise ergonomics**
 
-A `%%eng` test must prove `numeric(M_UU(0*m))` or an equivalent direct-unit argument works without introducing `x0 := 0*m`.
+A `%%eng` test must prove `numeric(M_UU(0*m))` works directly without introducing `x0 := 0*m`.
 
 - [ ] **Step 7: Run full source suite**
 
@@ -191,7 +192,7 @@ Commit message: `release: EngCalc 0.6.1 numeric ergonomics`.
 **Interfaces:**
 - Produces public symbolic functions: `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `exp`, `log`.
 - Produces reserved symbolic constant: `pi`.
-- Numeric angle policy: forward trig accepts dimensionless or angle quantities and evaluates in radians; inverse trig returns radians.
+- Numeric angle policy: forward trig accepts dimensionless or angle quantities and evaluates in radians; inverse trig returns a Pint radian quantity.
 
 - [ ] **Step 1: Write parser RED tests for the complete scalar function whitelist and `pi`**
 
@@ -205,7 +206,7 @@ def test_scalar_math_syntax_is_accepted(source):
     assert parse_cell(source)
 ```
 
-Also assert these names become reserved assignment targets.
+Also assert `sqrt`, trig names, `exp`, `log`, and `pi` cannot be used as assignment targets.
 
 - [ ] **Step 2: Confirm RED**
 
@@ -214,7 +215,7 @@ Expected: unsupported/reserved-name failures for the new functions/constant.
 
 - [ ] **Step 3: Add exact SymPy mappings in engine**
 
-Use a fixed mapping, not dynamic `getattr(sympy, name)`:
+Use a fixed mapping, never dynamic `getattr(sympy, name)`:
 
 ```python
 _SCALAR_SYMBOLIC_FUNCTIONS = {
@@ -246,15 +247,15 @@ def test_log_rejects_dimensional_quantity(context):
         context.evaluate_expression(parse_numeric("log(2*m)"))
 ```
 
-Cover `sqrt(9*m^2) -> 3*m`, `atan(1)` in radians, `numeric(atan(1), deg) -> 45 deg`, and `exp` dimensional rejection.
+Also test `sqrt(9*m^2) -> 3*m`, `atan(1)` returns radians, `numeric(atan(1), deg) -> 45 deg`, and `exp(2*m)` is rejected.
 
 - [ ] **Step 5: Implement explicit NumericContext adapters**
 
-Do not rely on NumPy. Convert angle quantities to radians using Pint before `math.sin/cos/tan`; use stdlib `math` for numeric scalar evaluation.
+Use `value ** 0.5` for unit-aware square root. Convert forward-trig angle quantities to radians with Pint before stdlib `math.sin/cos/tan`. For `asin/acos/atan`, evaluate a dimensionless magnitude and wrap the returned float in `ureg.radian`. `exp`/`log` accept only dimensionless quantities.
 
 - [ ] **Step 6: Add plot and partial-numeric acceptance tests**
 
-Examples must include `f(x) = A*sin(pi*x/L)` with numeric `A`, `L`, and `plot(f(x), x, 0, L)`.
+Use the executable example `f(x) = A*sin(pi*x/L)` with numeric `A`, `L`, and `plot(f(x), x, 0, L)`; also exercise `numeric(f(x))` under the pre-0.7.1 partial behavior to document its current boundary.
 
 - [ ] **Step 7: Run regression, docs, version and wheel gate**
 
@@ -278,9 +279,9 @@ Commit message: `release: EngCalc 0.7.0 scalar engineering math`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Replace internal `UserFunction(parameter: str, expression)` with `UserFunction(parameters: tuple[str, ...], expression)`.
-- Provide a compatibility property `parameter` only if exactly one parameter exists, so old internal tests can migrate without silently accepting wrong arity.
-- General partial-evaluation output keeps `symbolic_expression`, known `substitutions`, unresolved names and a rendered partially evaluated expression.
+- `ParsedStatement` gains `parameters: tuple[str, ...] | None`; a compatibility `parameter` property returns the sole parameter for one-argument function definitions and `None` otherwise.
+- `UserFunction` becomes `UserFunction(parameters: tuple[str, ...], expression: Any)` with the same one-argument compatibility property.
+- `PartialNumericEvaluationResult` keeps `symbolic_expression`, `substitutions`, `unresolved_symbols` and gains `partial_expression` plus `display_arguments: tuple[Any, ...]`.
 
 - [ ] **Step 1: RED parser tests for multi-parameter definitions**
 
@@ -289,8 +290,6 @@ def test_parses_multi_argument_function_definition():
     stmt = parse_cell("M(x, q, L) = q*x*(L-x)/2")[0]
     assert stmt.parameters == ("x", "q", "L")
 ```
-
-Update `ParsedStatement` deliberately; do not encode multiple names back into the old single `parameter` string.
 
 - [ ] **Step 2: RED engine tests for exact arity**
 
@@ -301,11 +300,11 @@ def test_multiarg_function_substitutes_positionally(engine, parse_one):
     assert sp.simplify(result.value - (2*sp.Symbol("t") + 3)) == 0
 ```
 
-Also test too few and too many arguments.
+Add explicit error tests for two arguments supplied to a three-parameter function and four arguments supplied to the same function.
 
 - [ ] **Step 3: Implement parser/model migration and engine substitution**
 
-The function call implementation must build `dict(zip(parameters, args, strict=True))` or an equivalent exact-arity substitution map.
+The function call implementation must validate `len(args) == len(function.parameters)` and build a deterministic substitution map from parameters to arguments. Update every existing internal use of `statement.parameter`/`function.parameter` in the same commit.
 
 - [ ] **Step 4: RED generalized partial-evaluation tests**
 
@@ -316,27 +315,30 @@ def test_partial_numeric_preserves_symbol_inside_trig_expression(engine, parse_o
     engine.evaluate(parse_one("L := 4*m"))
     result = engine.evaluate(parse_one("numeric(f(x, A, L))"))
     assert result.unresolved_symbols == ("x",)
+    assert result.display_arguments == (sp.Symbol("x"), sp.Symbol("A"), sp.Symbol("L"))
 ```
 
-The rendered partial result must contain the evaluated `A`/`L` information and retain `x` symbolically.
+- [ ] **Step 5: Replace polynomial-only rendering dependency with general partial substitution**
 
-- [ ] **Step 5: Replace polynomial-only rendering dependency with a general partial-substitution representation**
-
-Keep `evaluate_partial_polynomial` temporarily if older tests still use it, but new rendering must not require a polynomial decomposition. Introduce a structured representation in `PartialNumericEvaluationResult`, for example:
+Use this exact target model shape:
 
 ```python
 @dataclass(frozen=True)
 class PartialNumericEvaluationResult:
-    ...
-    known_substitutions: tuple[tuple[str, object], ...]
+    statement: ParsedStatement
+    symbolic_expression: Any
+    substitutions: dict[str, Any]
     unresolved_symbols: tuple[str, ...]
+    partial_expression: Any
+    display_name: str | None = None
+    display_arguments: tuple[Any, ...] = ()
 ```
 
-Use one authoritative field name consistently across engine and renderer.
+`partial_expression` is the symbolic expression after known scalar substitutions have been applied while unresolved symbols remain symbolic. Retire `evaluated_terms` after migrating its existing renderer/tests in this release.
 
 - [ ] **Step 6: Add backward-compatibility tests for all existing one-argument functions**
 
-All existing plot/envelope/numeric tests must remain unchanged in behavior.
+All existing plot/envelope/numeric examples must preserve user-visible behavior.
 
 - [ ] **Step 7: Close 0.7.1 with docs and wheel gate**
 
@@ -359,15 +361,14 @@ Commit message: `release: EngCalc 0.7.1 multi-argument functions`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Add `TableSeries(display_label: str, values: tuple)` and `TableResult(variable, x_values, series)` models.
-- Public forms:
-  - `table(expr1, ..., variable, [point1, ...])`
-  - `table(expr1, ..., variable, start, end, count)`
-- Add `render_table(result: TableResult) -> IPython.display.HTML` in `tabular.py`.
+- Add `TableSeries(display_label: str, values: tuple[Any, ...])`.
+- Add `TableResult(statement, variable: str, x_values: tuple[Any, ...], series: tuple[TableSeries, ...])`.
+- Public forms: `table(expr1, expr2, x, [0*m, 1*m])` and `table(expr1, expr2, x, 0, L, 21)`; one expression is equally valid.
+- Add `render_table(result: TableResult, settings: RenderSettings) -> IPython.display.HTML` in `tabular.py`.
 
 - [ ] **Step 1: RED parser tests for list points restricted to `table(...)`**
 
-Ensure ordinary expressions still reject arbitrary lists.
+Ordinary expressions must continue rejecting arbitrary lists; plot/envelope sweep lists retain their current restricted grammar.
 
 - [ ] **Step 2: RED engine tests for unit-aware point sampling and no mutation**
 
@@ -381,13 +382,13 @@ def test_table_points_do_not_mutate_existing_x(engine, parse_one):
     assert len(result.x_values) == 3
 ```
 
-- [ ] **Step 3: Implement table resolver by reusing response-series normalization rules**
+- [ ] **Step 3: Implement table resolver by reusing response-series unit normalization**
 
-Do not duplicate unit-compatibility logic from plot/envelope. Extract a private/shared response evaluator only if the current engine helper can be reused cleanly.
+The explicit-list form evaluates exactly the supplied positions. The uniform form generates `count` inclusive positions from `start` to `end`; require integer `count >= 2`. Both use local overrides and never mutate stored variables.
 
 - [ ] **Step 4: RED HTML-render tests**
 
-Assert headers contain variable and series labels with units; values honor `%eng_config precision`.
+Assert headers contain variable and series labels with units; rows honor `%eng_config precision`; multi-series values align in one row per x-position.
 
 - [ ] **Step 5: Integrate `TableResult` into `%%eng` source ordering**
 
@@ -395,7 +396,7 @@ Assert headers contain variable and series labels with units; values honor `%eng
 
 - [ ] **Step 6: Acceptance-test the professor Excel 21-station use case entirely inside EngCalc**
 
-Use uniform form `table(..., x, 0, L, 21)` and verify 21 rows without Python-side sampling.
+Use `table(M_UC(x), M_UU(x), x, 0, L, 21)` and an equivalent shear table. Verify exactly 21 rows without Python-side sampling.
 
 - [ ] **Step 7: Close 0.7.2 with wheel gate**
 
@@ -415,11 +416,13 @@ Commit message: `release: EngCalc 0.7.2 engineering tables`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Add `DerivationStep(kind: str, expression: object, label: str | None = None)`.
-- Add `derivation_steps: tuple[DerivationStep, ...]` to ordinary symbolic evaluation results.
-- Extend `RenderSettings` with `steps: Literal["off", "compact", "full"]`, default `compact` only if backward visual tests approve; otherwise default `off` and document opt-in.
+- Add `DerivationStep(kind: str, expression: Any, label: str | None = None)`.
+- Add `derivation_steps: tuple[DerivationStep, ...] = ()` to `EvaluationResult`.
+- Extend `RenderSettings` with `steps: Literal["off", "compact", "full"] = "off"` to preserve 0.7.2 visual behavior by default.
 
 - [ ] **Step 1: RED config tests for `steps=off|compact|full` and invalid values**
+
+`%eng_config steps=compact` and `steps=full` must update only the rendering setting; `steps=verbose` must print a stable invalid-option error and preserve the previous setting.
 
 - [ ] **Step 2: RED solve/integral/diff trace tests**
 
@@ -429,19 +432,19 @@ def test_solve_trace_contains_normalized_equation_and_solution(engine, parse_one
     assert [step.kind for step in result.derivation_steps] == ["equation", "solution"]
 ```
 
-For integral/diff, test unevaluated operator + evaluated result; do not demand invented intermediate algebra.
+Integral traces must contain `integral` and `evaluated`; differentiation traces must contain `derivative` and `evaluated`.
 
-- [ ] **Step 3: Implement traces at the exact operation sites in `_Evaluator.visit_Call`**
+- [ ] **Step 3: Implement traces at exact operation sites in `_Evaluator.visit_Call`**
 
-Never introspect private SymPy algorithms to manufacture steps.
+For `solve`, store the normalized `Eq` and solved expression. For `integral`, store unevaluated `sp.Integral` and evaluated result. For `diff`, store `sp.Derivative` and evaluated result. `simplify`, `expand`, `factor` store input and transformed output. Never inspect private SymPy algorithms.
 
-- [ ] **Step 4: Render traces without duplicating the final assignment line**
+- [ ] **Step 4: Render `off`, `compact` and `full` deterministically**
 
-Compact/full output must remain readable in calculation memories.
+`off`: current output only. `compact`: operation line + assignment result. `full`: every stored `DerivationStep` + assignment result. Do not duplicate the same expression twice when operation result equals final assignment value.
 
 - [ ] **Step 5: Acceptance-test the propped-cantilever derivation**
 
-Verify `R_B(q) = solve(delta_B, R_B_aux)` renders compatibility equation and solved reaction coherently.
+Verify `R_B(q) = solve(delta_B, R_B_aux)` renders the compatibility equation and solved reaction coherently under `steps=full`.
 
 - [ ] **Step 6: Close 0.7.3 with wheel gate**
 
@@ -463,32 +466,32 @@ Commit message: `release: EngCalc 0.7.3 derivation traces`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Public `piecewise(value1, condition1, ..., default)`.
+- Public `piecewise(value1, condition1, value2, condition2, default)` generalized to any positive number of value/condition pairs plus exactly one default.
 - Restricted comparison AST support only in condition contexts.
 
 - [ ] **Step 1: RED parser tests for allowed and forbidden comparison contexts**
 
 ```python
 def test_piecewise_accepts_comparison_condition():
-    assert parse_cell("q(x) = piecewise(q1, x < a, q2, x <= L, 0)")
+    assert parse_cell("q(x) = piecewise(q1, x < a, q2, x <= L, q0)")
 
 
-def test_bare_comparison_is_still_rejected_outside_condition_context():
+def test_bare_comparison_is_rejected_outside_condition_context():
     with pytest.raises(EngSyntaxError):
         parse_cell("flag = x < a")
 ```
 
 - [ ] **Step 2: Implement context-aware AST validation for `ast.Compare`**
 
-Allow only one comparator and operators `< <= > >=`; reject chained comparisons and equality/inequality in 0.8.0.
+Allow exactly one comparator and only `< <= > >=`; reject chained comparisons and `== !=` in 0.8.0.
 
 - [ ] **Step 3: RED symbolic and numeric tests**
 
-Build `sp.Piecewise` from value/condition pairs plus default. Numeric evaluation must evaluate only the selected branch and enforce compatible output units across sampled/tabled results.
+Build `sp.Piecewise` from value/condition pairs plus default. Use `q0 := 0*kN/m`, `q1 := 10*kN/m`, `q2 := 5*kN/m` in numeric tests so all branches carry compatible dimensions.
 
 - [ ] **Step 4: Test integration, differentiation, table and plot workflows**
 
-Use a two-zone distributed load represented by symbols `q1`, `q2`, `a`, `L` with numeric assignments carrying units.
+Use a two-zone distributed load with `q1`, `q2`, `q0`, `a`, `L`; verify table/plot samples switch branches at the exact comparison boundaries.
 
 - [ ] **Step 5: Close 0.8.0 with wheel gate**
 
@@ -512,8 +515,8 @@ Commit message: `release: EngCalc 0.8.0 piecewise expressions`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Add `CharacteristicPoint(x_value, y_value=None, kind=None, exact=True)`.
-- Add `CharacteristicResult(kind, variable, points, method)`.
+- Add `CharacteristicPoint(x_value: Any, y_value: Any | None = None, kind: str | None = None, exact: bool = True)`.
+- Add `CharacteristicResult(statement, kind: str, variable: str, points: tuple[CharacteristicPoint, ...], method: str)`.
 - Public calls: `roots(expr, x, start, end)`, `extrema(expr, x, start, end)`, `intersections(expr1, expr2, x, start, end)`.
 
 - [ ] **Step 1: RED exact-root tests**
@@ -527,19 +530,26 @@ def test_roots_filters_real_solutions_to_domain(engine, parse_one):
 
 - [ ] **Step 2: Implement pure characteristic helpers in `characteristics.py`**
 
-Functions must accept SymPy expressions/domain values and return deterministic structured points; they must not know about IPython display.
+Create exact helper signatures:
+
+```python
+def exact_real_roots(expr: sp.Expr, variable: sp.Symbol, start: sp.Expr, end: sp.Expr) -> tuple[sp.Expr, ...]:
+    ...
+```
+
+Implementation requirement: use `sp.solve`, filter solutions with `is_real is not False`, and retain only solutions provably or numerically within the domain. If symbolic ordering cannot be decided, pass the candidate to the numerical validation path rather than discarding it.
 
 - [ ] **Step 3: RED extrema tests including endpoints**
 
-For `M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2`, prove the exact interior maximum occurs at `5*L/8` and the interval endpoints are considered for global min/max.
+For the propped-beam moment expression, assert an exact critical point `5*L/8`; after numeric assignments, assert global max/min include both critical points and endpoints.
 
 - [ ] **Step 4: Implement numerical fallback without SciPy**
 
-Use SymPy numeric root tools and/or deterministic bracketing based on an internal coarse scan. Mark fallback points `exact=False` and `method="numeric"`; never label them exact.
+Use a deterministic internal scan of 401 points only to create sign-change brackets, then `sp.nsolve`/SymPy numeric refinement from bracket midpoints. Deduplicate roots within the existing zero tolerance. Mark fallback points `exact=False` and `method="numeric"`.
 
 - [ ] **Step 5: Integrate rendering and `%%eng`**
 
-Characteristic results should be concise calculation outputs, not plots.
+Characteristic results render as concise Math/HTML calculation outputs, never as implicit plots.
 
 - [ ] **Step 6: Close 0.8.1 with wheel gate**
 
@@ -561,28 +571,28 @@ Commit message: `release: EngCalc 0.8.1 exact-first characteristics`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Add `GoverningInterval(start, end, source_index, exact_boundaries: bool)`.
-- Extend `PlotResult` envelope metadata with exact/fallback crossover points and governing intervals while preserving current `governing_max/min` sampled arrays for renderer compatibility during migration.
+- Add `GoverningInterval(start: Any, end: Any, source_index: int, exact_boundaries: bool)`.
+- Extend `PlotResult` with `crossover_points: tuple[CharacteristicPoint, ...] = ()` and `governing_intervals: tuple[GoverningInterval, ...] = ()` while preserving sampled `governing_max/min` arrays for renderer compatibility.
 
 - [ ] **Step 1: RED crossover tests with a non-grid intersection**
 
-Choose two simple functions whose crossover is intentionally not one of the 201 existing sample x-values. Assert the stored crossover equals the symbolic solution, not the nearest sample.
+Use `f1(x) = x` and `f2(x) = 1/3` on `[0, 1]`; assert stored crossover is exactly `1/3`, which is not a 201-grid x-value.
 
-- [ ] **Step 2: Build interval partitioning from `intersections(...)` output**
+- [ ] **Step 2: Build interval partitioning from exact/fallback intersection output**
 
-For each interval, evaluate source responses at a safe interior probe point to select the governing branch.
+Partition `[start, end]` by ordered crossover points. For each open interval, evaluate source responses at its symbolic midpoint when possible; otherwise use a numeric midpoint. Store the governing source index.
 
 - [ ] **Step 3: Add magnitude-envelope crossover logic**
 
-Solve equality of magnitudes using an exact-safe transformation such as `f**2 - g**2 = 0` plus validation, avoiding unsupported direct `Abs` solve assumptions.
+For two signed source functions `f`, `g`, solve `f**2 - g**2 = 0`; validate each candidate by comparing `Abs(f)` and `Abs(g)` within zero tolerance before accepting it as a magnitude crossover.
 
 - [ ] **Step 4: Make exact characteristic data authoritative for panel summaries**
 
-Keep the 201-point grid for drawing curves/fill only.
+Use exact/fallback characteristic analysis for extrema and governing case transitions. Keep the 201-point grid only for drawing curves/fill.
 
 - [ ] **Step 5: Regression-test all 0.5/0.6 envelope visuals and semantics**
 
-Positive moment remains downward, source curves remain faint, magnitude envelope remains one nonnegative branch.
+Positive moment remains downward, source curves remain faint, magnitude envelope remains one nonnegative branch, and legacy sampled governing arrays remain populated.
 
 - [ ] **Step 6: Close 0.8.2 with wheel gate**
 
@@ -604,12 +614,12 @@ Commit message: `release: EngCalc 0.8.2 exact envelopes`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Add `ResponseCase(label: str, expression: object)` internal/public result wrapper.
-- Public `case("label", expression)` accepted only inside response-consuming operations in the first release.
+- Add `ResponseCase(label: str, expression: Any)`.
+- Public `case("label", expression)` is accepted only as a response wrapper consumed by `plot`, `envelope` and `table` in 0.8.3.
 
 - [ ] **Step 1: RED parser tests for whitelisted strings**
 
-Strings remain rejected generally but are accepted as the first argument of `case(...)`.
+Strings remain rejected as general expression constants. Accept a string only as the first argument of `case(...)`; reject missing/empty labels and more than two arguments.
 
 - [ ] **Step 2: RED plot/envelope label tests**
 
@@ -623,9 +633,11 @@ def test_named_cases_flow_to_envelope_sources(engine, parse_one):
 
 - [ ] **Step 3: Implement case unwrapping in the shared response resolver**
 
-Do not store labels in symbolic namespace and do not change the underlying expressions.
+Do not store labels in the symbolic namespace and do not alter the wrapped expression.
 
 - [ ] **Step 4: Render labels in legends, governing intervals and tables**
+
+When a governing interval points to `source_index`, resolve its user-visible name through `source_labels`.
 
 - [ ] **Step 5: Close 0.8.3 with wheel gate**
 
@@ -650,28 +662,30 @@ Commit message: `release: EngCalc 0.8.3 named response cases`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Public: `matrix([row...], ...)`, `vector(...)`, `transpose(...)`, `det(...)`, `inv(...)`, `linsolve(A, b)`.
-- Internal helpers in `linear_algebra.py` validate shape/dimensions and convert homogeneous Pint matrix entries safely.
+- Public constructors/operations: `matrix([a11, a12], [a21, a22])`, `vector(b1, b2)`, `transpose(A)`, `det(A)`, `inv(A)`, `linsolve(A, b)`.
+- Symbolic storage uses `sp.MatrixBase` instances.
+- Numeric homogeneous matrix evaluation stores a common entry unit plus a magnitude matrix; vector evaluation does the same.
+- For `linsolve(A, b)`, if A entries share unit `uA` and b entries share unit `ub`, the solution vector has unit `ub/uA`.
 
 - [ ] **Step 1: RED parser tests for nested lists only inside `matrix(...)`**
 
-Ordinary list syntax must remain rejected elsewhere except already-whitelisted `table` point lists.
+Ordinary list syntax remains rejected outside already-whitelisted `table` point lists and matrix rows.
 
 - [ ] **Step 2: RED symbolic matrix-operation tests**
 
-Cover addition, scalar multiplication, matrix multiplication through `*`, transpose, determinant and inverse.
+Test matrix addition, scalar multiplication, matrix multiplication through `*`, transpose, determinant and inverse. Shape errors must be EngCalc errors, not raw SymPy tracebacks.
 
 - [ ] **Step 3: Implement explicit SymPy Matrix construction and operation routing**
 
-Do not allow Python object methods such as `A.inv()` in the DSL.
+Do not expose Python/SymPy object methods such as `A.inv()` in the DSL.
 
 - [ ] **Step 4: RED `linsolve(A, b)` tests**
 
-Reject non-square/incompatible systems clearly; return a vector result for unique systems only in 0.9.0.
+Require square A, matching b length and a unique solution in 0.9.0. Singular/multiple-solution systems produce a clear `EngEvaluationError`.
 
 - [ ] **Step 5: Add homogeneous-unit numeric matrix evaluation**
 
-Allow matrices/vectors whose entries share compatible dimensions; normalize to one unit before array algebra. Reject heterogeneous engineering matrices explicitly with a message that 0.9.0 does not support heterogeneous-unit matrices.
+Normalize A entries to one compatible unit and b entries to one compatible unit, solve the pure magnitude system, then attach `ub/uA` to every solution component. Reject heterogeneous entry dimensions explicitly.
 
 - [ ] **Step 6: Render matrices as LaTeX brackets**
 
@@ -679,7 +693,7 @@ No Python list representation in user output.
 
 - [ ] **Step 7: Acceptance-test a 2×2 stiffness-style linear system**
 
-Use dimensionally homogeneous coefficients and forces; verify displacements with units.
+Use A in `kN/m` and b in `kN`; verify `linsolve(A, b)` returns displacement components in `m` and reproduces A·u=b numerically.
 
 - [ ] **Step 8: Close 0.9.0 with wheel gate**
 
@@ -703,13 +717,15 @@ Commit message: `release: EngCalc 0.9.0 linear algebra`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Add `CheckResult(label, left_quantity, operator, right_quantity, passed, utilization=None)`.
+- Add `CheckResult(statement, label: str | None, left_quantity: Any, operator: str, right_quantity: Any, passed: bool, utilization: float | None = None)`.
 - Public `check(condition)` and `check("label", condition)`.
 - Comparison support inside `check`: `<`, `<=`, `>`, `>=`; exactly one comparison.
 
-- [ ] **Step 1: RED parser tests for comparison expressions only in check/piecewise-safe contexts**
+- [ ] **Step 1: RED parser tests for comparison expressions in check context**
 
-- [ ] **Step 2: RED unit-compatibility tests**
+`check(Mu <= phiMn)` and `check("Flexion", Mu <= phiMn)` parse; arbitrary assignment `flag = Mu <= phiMn` remains rejected.
+
+- [ ] **Step 2: RED unit-compatibility and utilization tests**
 
 ```python
 def test_check_compares_compatible_quantities(engine, parse_one):
@@ -720,26 +736,32 @@ def test_check_compares_compatible_quantities(engine, parse_one):
     assert result.utilization == pytest.approx(0.88)
 ```
 
-Also reject `kN` versus `kN*m` before comparing magnitudes.
+Also assert `check(Vu <= phiMn)` rejects `kN` versus `kN*m` before comparing magnitudes.
 
-- [ ] **Step 3: Implement utilization policy in `verification.py`**
+- [ ] **Step 3: Implement exact utilization policy in `verification.py`**
 
 ```python
-def compute_utilization(left, operator, right):
-    # <=/< : left/right when both are nonnegative and right != 0
-    # >=/> : right/left when both are nonnegative and left != 0
-    # otherwise None
+def compute_utilization(left, operator: str, right) -> float | None:
+    left_mag = float(left.magnitude)
+    right_mag = float(right.magnitude)
+    if left_mag < 0 or right_mag < 0:
+        return None
+    if operator in {"<", "<="} and right_mag != 0:
+        return left_mag / right_mag
+    if operator in {">", ">="} and left_mag != 0:
+        return right_mag / left_mag
+    return None
 ```
 
-Never use a ratio when signs or zeros make it misleading.
+Convert right to left units before passing quantities to this helper.
 
 - [ ] **Step 4: Integrate CheckResult rendering into source order**
 
-Render label, criterion, substituted quantities, utilization if available and clear PASS/FAIL status. Avoid arbitrary colors as semantic necessity; text/symbols must remain sufficient.
+Render label, criterion, substituted quantities, utilization if available and textual/symbolic PASS/FAIL. Status must remain understandable without color.
 
 - [ ] **Step 5: Acceptance-test a structural mini-memory**
 
-Use flexure, shear and deflection checks with units and one failing criterion.
+Use one flexure check, one shear check and one deflection check; make one criterion fail and assert the three statuses.
 
 - [ ] **Step 6: Close 0.10.0 with wheel gate**
 
@@ -759,25 +781,29 @@ Commit message: `release: EngCalc 0.10.0 engineering checks`.
 - Modify: `README.md`
 
 **Interfaces:**
-- Engine keeps `verification_results: list[CheckResult]` in execution order.
-- Public standalone `summary()` returns `VerificationSummaryResult`.
-- `%eng_reset` clears the collection.
+- `EngineeringEngine` gains `verification_results: list[CheckResult]` initialized empty and cleared by `reset()`.
+- Add `VerificationSummaryResult(statement, checks: tuple[CheckResult, ...])`.
+- Public standalone `summary()` returns the current snapshot.
 
 - [ ] **Step 1: RED collection-order and reset tests**
 
+Evaluate two successful `check(...)` statements and assert summary preserves execution order; call `engine.reset()` and assert summary is empty.
+
 - [ ] **Step 2: Implement collection only after a check evaluates successfully**
 
-Failed-to-evaluate checks must not appear in summary state.
+A check that raises before producing `CheckResult` must not modify `verification_results`.
 
 - [ ] **Step 3: RED summary rendering test**
 
-Columns: Verification, Criterion/Demand, Limit/Capacity, Utilization, Status. Omit utilization cell content when model value is `None`.
+Require columns: Verification, Criterion, Limit, Utilization, Status. Render an empty utilization cell when the model value is `None`.
 
 - [ ] **Step 4: Integrate `summary()` as standalone output**
 
-Reject assignment such as `x = summary()`.
+Reject assignment `x = summary()` with `EngEvaluationError("summary must be a standalone statement")`.
 
 - [ ] **Step 5: Acceptance-test a multi-check calculation memory**
+
+Run `check(...)`, normal equations, more `check(...)`, then `summary()` and assert source-order display plus complete summary rows.
 
 - [ ] **Step 6: Close 0.10.1 with wheel gate**
 
@@ -807,44 +833,31 @@ Commit message: `release: EngCalc 0.10.1 verification summaries`.
 
 - [ ] **Step 1: Inventory every public function, magic and result form**
 
-Generate a checked list from parser whitelist and magic methods; reconcile it with docs. Any undocumented public call is a release blocker.
+Generate a checked list from the parser whitelist and magic methods. The expected public call families at this point are scalar math, `integral`, `diff`, `solve`, algebraic transforms, `numeric`, `table`, `plot`, `envelope`, `piecewise`, `roots`, `extrema`, `intersections`, `case`, matrix operations, `check`, and `summary`.
 
 - [ ] **Step 2: Define compatibility/deprecation policy**
 
-Document that 1.x preserves valid 1.0 syntax unless a deprecation path is announced; document experimental areas, if any, explicitly rather than implicitly.
+Document that 1.x preserves valid 1.0 syntax unless a deprecation path is announced; document any experimental area explicitly.
 
 - [ ] **Step 3: Review module sizes and split only stable responsibilities**
 
-Candidate extractions are allowed only when roadmap code demonstrates repeated cohesive clusters. Preserve import-level compatibility.
+Candidate extractions are allowed only when roadmap code demonstrates repeated cohesive clusters. Preserve import-level compatibility for `engcalc_colab` public imports.
 
 - [ ] **Step 4: Build executable reference-example tests**
 
-Examples must cover:
-
-```text
-# scalar math + units
-# multi-argument partial evaluation
-# table
-# piecewise
-# extrema/intersections
-# exact envelope with named cases
-# matrix/linsolve
-# check + summary
-```
-
-Every code block presented as EngCalc syntax in reference docs must be represented by an executable test fixture.
+Create one fixture per documented category: scalar math + units; multi-argument partial evaluation; table; piecewise; extrema/intersections; exact envelope with named cases; matrix/linsolve; check + summary. Every EngCalc code block in reference docs must map to an executable fixture in `tests/test_reference_examples.py`.
 
 - [ ] **Step 5: Run supported-Python CI matrix**
 
-At minimum use the Python floor declared in `pyproject.toml` and current stable versions validated by dependencies. Do not claim unsupported versions.
+Read the Python floor from `pyproject.toml`; test that floor plus every currently supported minor version up to the CI runner's stable Python version. Remove a version from the declared support range if dependencies cannot install cleanly instead of marking a failing job allowed-to-fail.
 
 - [ ] **Step 6: Build wheel and sdist and test both from clean environments**
 
-Run imports/tests from a directory outside the repository.
+For each artifact, install into a fresh venv and run smoke imports from `/tmp` plus the full test suite with `PYTHONPATH` cleared.
 
 - [ ] **Step 7: Run full regression and visual acceptance set**
 
-Include the professor Excel example as one structural acceptance case, but also include non-structural scalar/table/check examples so 1.0 is not accidentally structure-specific.
+Include the professor Excel example as one structural case and add at least one non-structural scalar/table/check example so the stable language remains general engineering tooling.
 
 - [ ] **Step 8: Bump to 1.0.0 and prepare release metadata**
 
@@ -852,19 +865,17 @@ Update both version declarations only after every gate above is green.
 
 - [ ] **Step 9: Create GitHub Release and attach built artifacts**
 
-If PyPI Trusted Publishing is already configured and authorized, publish 1.0.0; otherwise document the missing account/repository configuration and leave the tested artifacts attached to GitHub Release rather than inventing credentials.
+If PyPI Trusted Publishing is already configured and authorized, publish 1.0.0. If not, leave the tested wheel/sdist attached to GitHub Release and record the exact missing repository/account configuration; never invent credentials.
 
 - [ ] **Step 10: Final verification-before-completion**
 
-Record exact source-test count, installed-wheel test count, sdist test count, Python-version matrix and artifact hashes in release notes.
+Record exact source-test count, installed-wheel test count, sdist test count, Python-version matrix and artifact SHA-256 hashes in release notes.
 
 Commit message: `release: EngCalc 1.0.0`.
 
 ---
 
 ## Dependency and Priority Graph
-
-Execution order is intentionally mostly linear because later features consume earlier language primitives:
 
 ```text
 0.6.0 merge
@@ -898,11 +909,12 @@ Execution order is intentionally mostly linear because later features consume ea
 
 Allowed reprioritization after 0.7.2:
 
-- 0.7.3 derivation traces can move later if exact analysis is more valuable operationally.
-- 0.9.0 matrices can move after 0.10.1 if verification workflows are higher priority; neither subsystem is required by the other.
+- 0.7.3 derivation traces may move after 0.8.3 if exact engineering analysis becomes the immediate priority; no later feature consumes trace data.
+- 0.9.0 matrices may move after 0.10.1; matrices and verification state are independent.
 - 0.8.1 must precede 0.8.2.
-- 0.7.0 must precede generalized partial evaluation acceptance examples involving trig/exp/log.
-- 0.8.0 should precede exact-analysis hardening because piecewise domains expose important root/extrema edge cases.
+- 0.7.0 must precede 0.7.1 because generalized partial acceptance covers trig/exp/log expressions.
+- 0.8.0 should precede 0.8.1 hardening because piecewise domains expose important root/extrema edge cases.
+- 0.8.3 must precede 0.10.0 only for shared restricted string-literal infrastructure; if checks are reprioritized earlier, extract that parser infrastructure as part of the check release.
 
 ## Release Gate Template for Every Version
 
@@ -920,4 +932,4 @@ Temporary workflow cleanup: PASS
 README/reference executable examples: PASS
 ```
 
-Never merge a release branch with a known failing gate and never use tree-shape arguments as a substitute for tests unless the exact validated tree identity is proven after a history-only squash.
+Never merge a release branch with a known failing gate. After a history-only squash, tree identity may prove the merged product bytes are the validated bytes, but retain the original test evidence in the PR/release record.
