@@ -12,9 +12,10 @@ from .models import (
     NumericAssignmentResult,
     NumericEvaluationResult,
     ParsedHeading,
+    PartialNumericEvaluationResult,
 )
 from .parser import parse_cell
-from .renderer import render_aligned_results
+from .renderer import render_aligned_results, render_responsive_results
 
 _HEADING_STYLE = {
     2: (
@@ -31,11 +32,27 @@ def _render_heading(heading: ParsedHeading) -> HTML:
     return HTML(f'<div style="{style}">{escape(heading.text)}</div>')
 
 
-CalculationResult = EvaluationResult | NumericAssignmentResult | NumericEvaluationResult
+CalculationResult = (
+    EvaluationResult
+    | NumericAssignmentResult
+    | NumericEvaluationResult
+    | PartialNumericEvaluationResult
+)
+
+
+def _uses_responsive_numeric_layout(results: list[CalculationResult]) -> bool:
+    return any(
+        isinstance(result, (NumericEvaluationResult, PartialNumericEvaluationResult))
+        for result in results
+    )
 
 
 def _display_equation_group(results: list[CalculationResult]) -> None:
-    if results:
+    if not results:
+        return
+    if _uses_responsive_numeric_layout(results):
+        display(HTML(render_responsive_results(results)))
+    else:
         display(Math(render_aligned_results(results)))
 
 
