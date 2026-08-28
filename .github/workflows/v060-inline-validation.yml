@@ -5,6 +5,9 @@ on:
     branches:
       - feature/v0.6.0-abs-envelope-panel
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,6 +16,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Apply Task 6 source patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          plotting = Path('src/engcalc_colab/plotting.py')
+          text = plotting.read_text()
+          start = text.index('def _envelope_characteristic_panel_text(result: PlotResult) -> str:\n')
+          end = text.index('def render_plot(result: PlotResult):\n', start)
+          replacement = '''def _envelope_characteristic_panel_text(result: PlotResult) -> str:\n    maximum_series, minimum_series = result.series\n    maximum_values = [float(value.magnitude) for value in maximum_series.y_values]\n    minimum_values = [float(value.magnitude) for value in minimum_series.y_values]\n    maximum_index = max(range(len(maximum_values)), key=maximum_values.__getitem__)\n    minimum_index = min(range(len(minimum_values)), key=minimum_values.__getitem__)\n    moment = maximum_series.is_moment\n\n    return "\\n".join([\n        "Envelope characteristic values",\n        (\n            "max = "\n            f"{_quantity_label(maximum_series.y_values[maximum_index], moment=moment)}"\n            "    x = "\n            f"{_quantity_label(result.x_values[maximum_index])}"\n        ),\n        (\n            "min = "\n            f"{_quantity_label(minimum_series.y_values[minimum_index], moment=moment)}"\n            "    x = "\n            f"{_quantity_label(result.x_values[minimum_index])}"\n        ),\n    ])\n\n\ndef _magnitude_envelope_characteristic_panel_text(result: PlotResult) -> str:\n    magnitude_series = result.series[0]\n    magnitude_values = [\n        float(value.magnitude) for value in magnitude_series.y_values\n    ]\n    maximum_index = max(\n        range(len(magnitude_values)),\n        key=magnitude_values.__getitem__,\n    )\n    governing_index = result.governing_max[maximum_index]\n    governing_signed = result.governing_signed[maximum_index]\n    moment = magnitude_series.is_moment\n\n    return "\\n".join([\n        "Magnitude envelope",\n        (\n            "|max| = "\n            f"{_quantity_label(magnitude_series.y_values[maximum_index], moment=moment)}"\n            "    x = "\n            f"{_quantity_label(result.x_values[maximum_index])}"\n        ),\n        f"signed = {_quantity_label(governing_signed, moment=moment)}",\n        f"governing = {result.source_labels[governing_index]}",\n    ])\n\n\ndef _render_envelope_sources(axis, result: PlotResult, x_values):\n    panel_data: list[tuple[float, float]] = []\n    for source_series in result.source_series:\n        source_y = [float(value.magnitude) for value in source_series.y_values]\n        panel_data.extend(zip(x_values, source_y))\n        axis.plot(\n            x_values,\n            source_y,\n            linewidth=1.0,\n            alpha=0.22,\n            label="_nolegend_",\n            zorder=1,\n        )\n    return panel_data\n\n\ndef _render_signed_envelope(figure, axis, result: PlotResult) -> None:\n    x_values = [float(value.magnitude) for value in result.x_values]\n    panel_data = _render_envelope_sources(axis, result, x_values)\n\n    maximum_series, minimum_series = result.series\n    maximum_y = [float(value.magnitude) for value in maximum_series.y_values]\n    minimum_y = [float(value.magnitude) for value in minimum_series.y_values]\n    panel_data.extend(zip(x_values, maximum_y))\n    panel_data.extend(zip(x_values, minimum_y))\n\n    maximum_line = axis.plot(\n        x_values,\n        maximum_y,\n        linewidth=2.5,\n        alpha=1.0,\n        label=maximum_series.display_label,\n        zorder=4,\n    )[0]\n    minimum_line = axis.plot(\n        x_values,\n        minimum_y,\n        linewidth=2.5,\n        alpha=1.0,\n        label=minimum_series.display_label,\n        zorder=4,\n    )[0]\n\n    axis.fill_between(\n        x_values,\n        minimum_y,\n        maximum_y,\n        color=maximum_line.get_color(),\n        alpha=0.10,\n        zorder=2,\n    )\n    axis.axhline(\n        0.0,\n        linewidth=1.0,\n        color=axis.spines["bottom"].get_edgecolor(),\n        alpha=0.75,\n        label="_zero",\n        zorder=3,\n    )\n    axis.legend(handles=[maximum_line, minimum_line], loc="upper right")\n\n    moment = maximum_series.is_moment\n    if moment:\n        axis.invert_yaxis()\n\n    axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))\n    axis.set_ylabel(\n        _axis_label(\n            result.display_label,\n            maximum_series.y_values[0],\n            moment=moment,\n        )\n    )\n    axis.set_title(\n        f"{result.display_label} envelope",\n        pad=10,\n        fontweight="semibold",\n    )\n    _style_axes(axis)\n    axis.margins(x=0.02, y=0.12)\n\n    _add_characteristic_panel(\n        axis,\n        _envelope_characteristic_panel_text(result),\n        panel_data,\n        legend_corner="upper right",\n    )\n    figure.tight_layout()\n\n\ndef _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:\n    x_values = [float(value.magnitude) for value in result.x_values]\n    panel_data = _render_envelope_sources(axis, result, x_values)\n\n    magnitude_series = result.series[0]\n    magnitude_y = [float(value.magnitude) for value in magnitude_series.y_values]\n    panel_data.extend(zip(x_values, magnitude_y))\n\n    magnitude_line = axis.plot(\n        x_values,\n        magnitude_y,\n        linewidth=2.5,\n        alpha=1.0,\n        label=magnitude_series.display_label,\n        zorder=4,\n    )[0]\n    axis.fill_between(\n        x_values,\n        0.0,\n        magnitude_y,\n        color=magnitude_line.get_color(),\n        alpha=0.10,\n        zorder=2,\n    )\n    axis.axhline(\n        0.0,\n        linewidth=1.0,\n        color=axis.spines["bottom"].get_edgecolor(),\n        alpha=0.75,\n        label="_zero",\n        zorder=3,\n    )\n    axis.legend(handles=[magnitude_line], loc="upper right")\n\n    moment = magnitude_series.is_moment\n    if moment:\n        axis.invert_yaxis()\n\n    axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))\n    axis.set_ylabel(\n        _axis_label(\n            result.display_label,\n            magnitude_series.y_values[0],\n            moment=moment,\n        )\n    )\n    axis.set_title(\n        f"|{result.display_label}| envelope",\n        pad=10,\n        fontweight="semibold",\n    )\n    _style_axes(axis)\n    axis.margins(x=0.02, y=0.12)\n\n    _add_characteristic_panel(\n        axis,\n        _magnitude_envelope_characteristic_panel_text(result),\n        panel_data,\n        legend_corner="upper right",\n    )\n    figure.tight_layout()\n\n\ndef _render_envelope(figure, axis, result: PlotResult) -> None:\n    if result.envelope_mode == "magnitude":\n        _render_magnitude_envelope(figure, axis, result)\n    else:\n        _render_signed_envelope(figure, axis, result)\n\n\n'''
+          plotting.write_text(text[:start] + replacement + text[end:])
+          PY
       - name: Install project
         run: |
           python -m pip install --upgrade pip
@@ -20,3 +35,12 @@ jobs:
           python -m pip install pytest ipython
       - name: Run test suite
         run: pytest -q
+      - name: Commit Task 6 source patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/engcalc_colab/plotting.py
+          if ! git diff --cached --quiet; then
+            git commit -m "feat: render magnitude envelopes with signed context"
+            git push
+          fi
