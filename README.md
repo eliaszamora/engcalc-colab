@@ -52,7 +52,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.4:
+Supported unit aliases in v0.2.5:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -67,11 +67,41 @@ EngCalc defines:
 
 Units are interpreted only inside the numerical context. A name such as `m` remains available as a normal symbolic identifier in symbolic expressions.
 
-Final numerical quantities are rendered with two decimal places in v0.2.4.
+Final numerical quantities are rendered with two decimal places in v0.2.5.
+
+## v0.2.5 narrow numerical layout for split view
+
+v0.2.5 changes the **display layout** of numerical evaluations so long engineering calculations remain readable when Google Colab shows code on the left and output on the right.
+
+Earlier versions rendered a complete numerical chain on one mathematical line:
+
+```text
+M(x) = formula = full numerical substitution = result
+```
+
+For moments, deflections and other expressions with several additive terms, that line could become wider than the output pane and force horizontal scrolling.
+
+`%%eng` now renders the same calculation as aligned vertical stages. A fully evaluated result follows this structure:
+
+\[
+\begin{aligned}
+M(x) &= \text{symbolic formula}\\
+     &= \text{first substituted term}\\
+     &\quad + \text{second substituted term}\\
+     &\quad - \text{third substituted term}\\
+     &= \text{final quantity}.
+\end{aligned}
+\]
+
+The breakpoints are mathematical rather than screen-width heuristics: each top-level additive term in a long numerical substitution gets its own continuation row. This keeps the presentation deterministic across notebook widths and avoids solving the problem by shrinking the font.
+
+Short symbolic equations and numerical assignments remain compact. The extra vertical rows are used for `numeric(...)` and partial numerical function evaluations, where the formula → substitution → result chain would otherwise become excessively wide.
+
+The standalone `render_result()` representation remains backward-compatible; the narrow layout is applied by the grouped renderer used by `%%eng`.
 
 ## v0.2.4 target-unit conversion
 
-v0.2.4 adds an optional target unit to fully numerical evaluations:
+v0.2.4 added an optional target unit to fully numerical evaluations:
 
 ```text
 numeric(expression, target_unit)
@@ -123,7 +153,7 @@ numeric(V(x), kN)
 
 Pint checks dimensional compatibility. Asking for an incompatible target, such as converting a moment directly to `kN`, produces a concise EngCalc error instead of silently changing dimensions.
 
-Target-unit conversion in v0.2.4 intentionally requires a **fully numerical result**. A partial function such as:
+Target-unit conversion intentionally requires a **fully numerical result**. A partial function such as:
 
 ```text
 numeric(V(x), kN)
@@ -319,7 +349,7 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 - `### text` — visible subsection heading.
 - blank line — adds a larger visual separation inside the current equation group.
 
-Consecutive calculation rows are rendered in a three-column mathematical block. Consecutive rows use 4 pt spacing; a source blank line uses 8 pt.
+Consecutive calculation rows are rendered in a three-column mathematical block. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Internal stages of one numerical evaluation use compact 2 pt spacing.
 
 For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics.
 
@@ -332,7 +362,7 @@ Put this Colab directive immediately below `%%eng` when desired:
 #@title { vertical-output: true }
 ```
 
-EngCalc ignores the directive because it begins with a single `#`.
+EngCalc ignores the directive because it begins with a single `#`. In v0.2.5, long `numeric(...)` substitutions are also broken into vertical mathematical stages so this side-by-side mode does not require one extremely wide calculation row.
 
 ## Safety
 
@@ -340,7 +370,7 @@ EngCalc ignores the directive because it begins with a single `#`.
 
 ## Current limitations
 
-v0.2.4 intentionally does not yet provide:
+v0.2.5 intentionally does not yet provide:
 
 - configurable numerical precision or zero tolerance
 - target-unit conversion of partially evaluated functions with a free independent variable
@@ -351,7 +381,7 @@ v0.2.4 intentionally does not yet provide:
 - multi-solution `solve(...)`
 - full LaTeX parsing
 
-These are separate future milestones rather than hidden behavior in v0.2.4.
+These are separate future milestones rather than hidden behavior in v0.2.5.
 
 ## Development
 
@@ -360,4 +390,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.4`.
+Version: `0.2.5`.
