@@ -5,9 +5,6 @@ on:
     branches:
       - feature/v0.6.0-abs-envelope-panel
 
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,26 +13,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Apply Task 4 source patch
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          engine = Path('src/engcalc_colab/engine.py')
-          text = engine.read_text()
-
-          old = '''        if node.keywords:\n            expression = resolved_expressions[0]\n            raw_series, x_values = self._evaluate_response_sweep(\n                expression.comparison_expression,\n                expression.source_label,\n                variable,\n                start_quantity,\n                end_quantity,\n                node.keywords[0],\n                call_name=call_name,\n            )\n            raw_source_series = raw_series\n            display_label = (\n                expression.display_label\n                if call_name == "plot"\n                else expression.source_label\n            )\n'''
-          new = '''        if node.keywords:\n            expression = resolved_expressions[0]\n            raw_series, raw_source_series, x_values = self._evaluate_response_sweep(\n                expression.comparison_expression,\n                expression.signed_expression,\n                expression.source_label,\n                variable,\n                start_quantity,\n                end_quantity,\n                node.keywords[0],\n                call_name=call_name,\n                preserve_signed_source=(\n                    call_name == "envelope" and expression.is_absolute\n                ),\n            )\n            source_labels = [item.display_label for item in raw_source_series]\n            display_label = (\n                expression.display_label\n                if call_name == "plot"\n                else expression.source_label\n            )\n'''
-          if old not in text:
-              raise SystemExit('Task 4 sweep call site not found')
-          text = text.replace(old, new, 1)
-
-          start = text.index('    def _evaluate_response_sweep(\n')
-          end = text.index('    def _normalize_sweep_values(\n', start)
-          replacement = '''    def _evaluate_response_sweep(\n        self,\n        comparison_expression,\n        signed_expression,\n        source_label: str,\n        variable: str,\n        start_quantity,\n        end_quantity,\n        keyword_node: ast.keyword,\n        *,\n        call_name: str,\n        preserve_signed_source: bool,\n    ) -> tuple[list[PlotSeries], list[PlotSeries], tuple]:\n        parameter_name = keyword_node.arg\n        if parameter_name is None:\n            raise EngEvaluationError(\n                f"{call_name} sweep parameter must be named"\n            )\n        if parameter_name == variable:\n            raise EngEvaluationError(\n                f"{call_name} sweep parameter '{parameter_name}' "\n                "cannot be the plotting variable"\n            )\n\n        free_names = {\n            symbol.name\n            for symbol in sp.sympify(comparison_expression).free_symbols\n        }\n        if parameter_name not in free_names:\n            raise EngEvaluationError(\n                f"{call_name} sweep parameter '{parameter_name}' "\n                "is not used in the plotted expression"\n            )\n\n        sweep_values = [\n            self.engine.numeric_context.evaluate_expression(\n                ast.Expression(body=element)\n            )\n            for element in keyword_node.value.elts\n        ]\n        sweep_values = self._normalize_sweep_values(\n            parameter_name,\n            sweep_values,\n            call_name=call_name,\n        )\n\n        is_moment = self._is_moment_label(source_label)\n        comparison_series: list[PlotSeries] = []\n        source_series: list[PlotSeries] = []\n        x_values = None\n        for sweep_value in sweep_values:\n            overrides = {parameter_name: sweep_value}\n            series_x, comparison_y_values = (\n                self.engine.numeric_context.sample_symbolic(\n                    comparison_expression,\n                    variable,\n                    start_quantity,\n                    end_quantity,\n                    count=201,\n                    overrides=overrides,\n                )\n            )\n            if preserve_signed_source:\n                _, source_y_values = self.engine.numeric_context.sample_symbolic(\n                    signed_expression,\n                    variable,\n                    start_quantity,\n                    end_quantity,\n                    count=201,\n                    overrides=overrides,\n                )\n            else:\n                source_y_values = comparison_y_values\n\n            if x_values is None:\n                x_values = series_x\n            case_label = (\n                f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"\n            )\n            comparison_series.append(\n                PlotSeries(\n                    display_label=case_label,\n                    y_values=comparison_y_values,\n                    is_moment=is_moment,\n                )\n            )\n            source_series.append(\n                PlotSeries(\n                    display_label=case_label,\n                    y_values=source_y_values,\n                    is_moment=is_moment,\n                )\n            )\n\n        return comparison_series, source_series, x_values\n\n'''
-          text = text[:start] + replacement + text[end:]
-          engine.write_text(text)
-          PY
       - name: Install project
         run: |
           python -m pip install --upgrade pip
@@ -43,12 +20,3 @@ jobs:
           python -m pip install pytest ipython
       - name: Run test suite
         run: pytest -q
-      - name: Commit Task 4 source patch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/engcalc_colab/engine.py
-          if ! git diff --cached --quiet; then
-            git commit -m "feat: preserve signed sources in magnitude sweeps"
-            git push
-          fi
