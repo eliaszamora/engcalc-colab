@@ -123,7 +123,7 @@ def _create_annotation(axis, text: str, x: float, y: float, offset: tuple[int, i
 
 
 def _annotation_box(annotation, renderer):
-    annotation.get_window_extent(renderer)
+    annotation.update_bbox_position_size(renderer)
     return annotation.get_bbox_patch().get_window_extent(renderer)
 
 
