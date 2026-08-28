@@ -75,11 +75,72 @@ def test_numeric_missing_values_are_line_aware():
         run(engine, "numeric(M_A)")
 
 
-def test_numeric_requires_exactly_one_argument():
+def test_numeric_converts_named_result_to_target_unit():
+    engine = EngineeringEngine()
+    run(engine, "M_A = q*L^2/8")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 4*m")
+
+    result = run(engine, "numeric(M_A, kN*m)")
+
+    assert isinstance(result, NumericEvaluationResult)
+    assert result.quantity.to("kN*m").magnitude == pytest.approx(54.91724)
+    assert "kilonewton" in str(result.quantity.units)
+
+
+def test_numeric_converts_fully_evaluated_function_to_target_unit():
+    engine = EngineeringEngine()
+    run(engine, "V(x) = 5*q*L/8 - q*x")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 4*m")
+    run(engine, "x := 2*m")
+
+    result = run(engine, "numeric(V(x), kN)")
+
+    assert result.quantity.to("kN").magnitude == pytest.approx(13.72931)
+
+
+def test_numeric_rejects_incompatible_target_unit():
+    engine = EngineeringEngine()
+    run(engine, "M_A = q*L^2/8")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 4*m")
+
+    with pytest.raises(EngEvaluationError, match=r"line 1: target unit is incompatible with result"):
+        run(engine, "numeric(M_A, kN)")
+
+
+def test_numeric_rejects_unknown_target_unit():
+    engine = EngineeringEngine()
+    run(engine, "V_B = 3*q*L/8")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 4*m")
+
+    with pytest.raises(EngEvaluationError, match=r"line 1: unknown target unit 'banana'"):
+        run(engine, "numeric(V_B, banana)")
+
+
+def test_numeric_target_unit_requires_fully_numeric_function():
+    engine = EngineeringEngine()
+    run(engine, "V(x) = 5*q*L/8 - q*x")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 2*m")
+
+    with pytest.raises(
+        EngEvaluationError,
+        match=r"line 1: target-unit conversion requires a fully numeric result",
+    ):
+        run(engine, "numeric(V(x), kN)")
+
+
+def test_numeric_rejects_more_than_two_arguments():
     engine = EngineeringEngine()
 
-    with pytest.raises(EngEvaluationError, match=r"line 1: numeric expects 1 argument: expression"):
-        run(engine, "numeric(q, L)")
+    with pytest.raises(
+        EngEvaluationError,
+        match=r"line 1: numeric expects 1 or 2 arguments: expression\[, target_unit\]",
+    ):
+        run(engine, "numeric(q, kN, m)")
 
 
 def test_reset_clears_symbolic_and_numeric_state():
