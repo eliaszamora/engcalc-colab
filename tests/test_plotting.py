@@ -98,6 +98,41 @@ def test_edge_annotations_point_inward_horizontally():
     assert minimum.get_position()[0] < 0
 
 
+def test_characteristic_labels_use_boxed_callouts():
+    for result in (shear_plot_result(), moment_plot_result()):
+        axis = render_plot(result).axes[0]
+        for annotation in axis.texts:
+            assert annotation.get_bbox_patch() is not None
+            assert annotation.arrow_patch is not None
+            assert annotation.get_zorder() > axis.lines[0].get_zorder()
+
+
+def test_shear_characteristic_labels_move_away_from_curve_lobes():
+    axis = render_plot(shear_plot_result()).axes[0]
+    annotations = {text.get_text().split(" = ", 1)[0]: text for text in axis.texts}
+
+    maximum = annotations["max"]
+    minimum = annotations["min"]
+
+    # V(x) descends from the left maximum to the right minimum.  Moving the
+    # callouts outward (up for max, down for min) keeps the boxes off the line.
+    assert maximum.get_position()[1] >= 20
+    assert minimum.get_position()[1] <= -20
+
+
+def test_inverted_moment_labels_move_away_from_curve_lobes_visually():
+    axis = render_plot(moment_plot_result()).axes[0]
+    annotations = {text.get_text().split(" = ", 1)[0]: text for text in axis.texts}
+
+    maximum = annotations["max"]
+    minimum = annotations["min"]
+
+    # Moment-positive-down reverses the visual direction: mathematical max is
+    # at the bottom of the diagram and mathematical min is at the top.
+    assert maximum.get_position()[1] <= -20
+    assert minimum.get_position()[1] >= 20
+
+
 def test_plot_uses_one_deduplicated_marker_collection():
     shear_axis = render_plot(shear_plot_result()).axes[0]
     moment_axis = render_plot(moment_plot_result()).axes[0]
