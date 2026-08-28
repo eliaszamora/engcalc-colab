@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 import sympy as sp
 from sympy.printing.latex import LatexPrinter
 
@@ -245,7 +247,7 @@ def _display_rows(result: CalculationResult) -> list[str]:
 
 
 def render_aligned_results(results: list[CalculationResult]) -> str:
-    """Render results in a three-column block that remains readable in narrow panes."""
+    """Render results in the legacy three-column MathJax array layout."""
     if not results:
         return ""
 
@@ -264,6 +266,156 @@ def render_aligned_results(results: list[CalculationResult]) -> str:
 
     body = " ".join(rows)
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
+
+
+_RESPONSIVE_STYLE = """
+<style>
+.engcalc-responsive{width:100%;max-width:100%;box-sizing:border-box;}
+.engcalc-responsive .engcalc-calculation{width:100%;min-width:0;}
+.engcalc-responsive .engcalc-stage{display:grid;grid-template-columns:max-content 1.15em minmax(0,1fr);column-gap:.35em;align-items:baseline;min-width:0;}
+.engcalc-responsive .engcalc-stage+.engcalc-stage{margin-top:2pt;}
+.engcalc-responsive .engcalc-lhs,.engcalc-responsive .engcalc-eq{white-space:nowrap;}
+.engcalc-responsive .engcalc-rhs{min-width:0;}
+.engcalc-responsive .engcalc-terms{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.45em;row-gap:2pt;min-width:0;}
+.engcalc-responsive .engcalc-term{display:inline-block;white-space:nowrap;}
+.engcalc-responsive .engcalc-single{display:inline-block;white-space:nowrap;}
+</style>
+""".strip()
+
+
+def _math_html(latex: str, css_class: str) -> str:
+    return f'<span class="{css_class}">${escape(latex)}$</span>'
+
+
+def _responsive_additive_terms(
+    expression: sp.Expr,
+    substitutions: dict[str, object] | None = None,
+) -> str:
+    expression = sp.sympify(expression)
+    terms = expression.as_ordered_terms() if expression.is_Add else [expression]
+    rendered: list[str] = []
+
+    for index, term in enumerate(terms):
+        negative = term.could_extract_minus_sign()
+        unsigned_term = -term if negative else term
+        if substitutions is None:
+            body = _latex(unsigned_term)
+        else:
+            body = _substitution_latex(unsigned_term, substitutions)
+
+        if index == 0:
+            prefix = "- " if negative else ""
+        else:
+            prefix = "- " if negative else "+ "
+        rendered.append(_math_html(prefix + body, "engcalc-term"))
+
+    return '<span class="engcalc-terms">' + "".join(rendered) + "</span>"
+
+
+def _responsive_single(latex: str) -> str:
+    return _math_html(latex, "engcalc-single")
+
+
+def _responsive_stage(
+    lhs_latex: str | None,
+    equals: bool,
+    rhs_html: str,
+    stage: str,
+) -> str:
+    lhs = _responsive_single(lhs_latex) if lhs_latex else ""
+    eq = _responsive_single("=") if equals else ""
+    return (
+        f'<div class="engcalc-stage" data-stage="{stage}">'
+        f'<span class="engcalc-lhs">{lhs}</span>'
+        f'<span class="engcalc-eq">{eq}</span>'
+        f'<span class="engcalc-rhs">{rhs_html}</span>'
+        "</div>"
+    )
+
+
+def _responsive_numeric_stages(result: NumericEvaluationResult) -> list[str]:
+    lhs = _display_lhs(result)
+    formula = _responsive_additive_terms(result.symbolic_expression)
+    substitution = _responsive_additive_terms(
+        result.symbolic_expression,
+        result.substitutions,
+    )
+    final = _responsive_single(_quantity_latex(result.quantity))
+
+    if lhs is not None:
+        return [
+            _responsive_stage(lhs, True, formula, "formula"),
+            _responsive_stage(None, True, substitution, "substitution"),
+            _responsive_stage(None, True, final, "result"),
+        ]
+
+    return [
+        _responsive_stage(_latex(result.symbolic_expression), True, substitution, "substitution"),
+        _responsive_stage(None, True, final, "result"),
+    ]
+
+
+def _responsive_partial_stages(result: PartialNumericEvaluationResult) -> list[str]:
+    lhs = _display_lhs(result)
+    formula = _responsive_additive_terms(result.symbolic_expression)
+    substitution = _responsive_additive_terms(
+        result.symbolic_expression,
+        result.substitutions,
+    )
+    evaluated_latex = None
+    if len(result.unresolved_symbols) == 1:
+        evaluated_latex = _partial_polynomial_latex(
+            result.evaluated_terms,
+            result.unresolved_symbols[0],
+        )
+
+    if lhs is not None:
+        stages = [
+            _responsive_stage(lhs, True, formula, "formula"),
+            _responsive_stage(None, True, substitution, "substitution"),
+        ]
+    else:
+        stages = [
+            _responsive_stage(_latex(result.symbolic_expression), True, substitution, "substitution")
+        ]
+
+    if evaluated_latex is not None:
+        stages.append(
+            _responsive_stage(None, True, _responsive_single(evaluated_latex), "result")
+        )
+    return stages
+
+
+def _responsive_standard_stage(result: CalculationResult) -> str:
+    rendered = render_result(result)
+    if " = " in rendered:
+        left, right = rendered.split(" = ", 1)
+        return _responsive_stage(left, True, _responsive_single(right), "standard")
+    return _responsive_stage(rendered, False, "", "standard")
+
+
+def render_responsive_results(results: list[CalculationResult]) -> str:
+    """Render numeric groups as responsive HTML whose terms wrap at real pane width."""
+    if not results:
+        return ""
+
+    calculations: list[str] = []
+    for index, result in enumerate(results):
+        if isinstance(result, NumericEvaluationResult):
+            stages = _responsive_numeric_stages(result)
+        elif isinstance(result, PartialNumericEvaluationResult):
+            stages = _responsive_partial_stages(result)
+        else:
+            stages = [_responsive_standard_stage(result)]
+
+        margin = "0" if index == 0 else ("8pt" if result.statement.blank_before else "4pt")
+        calculations.append(
+            f'<div class="engcalc-calculation" style="margin-top:{margin}">'
+            + "".join(stages)
+            + "</div>"
+        )
+
+    return _RESPONSIVE_STYLE + '<div class="engcalc-responsive">' + "".join(calculations) + "</div>"
 
 
 def render_result(result: CalculationResult) -> str:

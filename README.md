@@ -52,7 +52,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.5:
+Supported unit aliases in v0.2.6:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -67,37 +67,42 @@ EngCalc defines:
 
 Units are interpreted only inside the numerical context. A name such as `m` remains available as a normal symbolic identifier in symbolic expressions.
 
-Final numerical quantities are rendered with two decimal places in v0.2.5.
+Final numerical quantities are rendered with two decimal places in v0.2.6.
 
-## v0.2.5 narrow numerical layout for split view
+## v0.2.6 responsive numerical wrapping for split view
 
-v0.2.5 changes the **display layout** of numerical evaluations so long engineering calculations remain readable when Google Colab shows code on the left and output on the right.
+v0.2.6 refines the numerical layout for Google Colab's side-by-side code/output view.
 
-Earlier versions rendered a complete numerical chain on one mathematical line:
+A numerical evaluation still keeps the calculation stages separate:
 
 ```text
-M(x) = formula = full numerical substitution = result
+formula
+= numerical substitution
+= final result
 ```
 
-For moments, deflections and other expressions with several additive terms, that line could become wider than the output pane and force horizontal scrolling.
+However, **additive terms inside the formula and substitution are no longer forced onto one row per term**. Each top-level `+` or `-` term is rendered as an indivisible visual item inside a browser `flex-wrap` container.
 
-`%%eng` now renders the same calculation as aligned vertical stages. A fully evaluated result follows this structure:
+That means the browser uses the **real width of the output pane**:
 
-\[
-\begin{aligned}
-M(x) &= \text{symbolic formula}\\
-     &= \text{first substituted term}\\
-     &\quad + \text{second substituted term}\\
-     &\quad - \text{third substituted term}\\
-     &= \text{final quantity}.
-\end{aligned}
-\]
+```text
+[ term 1 ][ + term 2 ][ - term 3 ]
+```
 
-The breakpoints are mathematical rather than screen-width heuristics: each top-level additive term in a long numerical substitution gets its own continuation row. This keeps the presentation deterministic across notebook widths and avoids solving the problem by shrinking the font.
+when all terms fit. If the pane is narrower, only the terms that no longer fit continue below:
 
-Short symbolic equations and numerical assignments remain compact. The extra vertical rows are used for `numeric(...)` and partial numerical function evaluations, where the formula → substitution → result chain would otherwise become excessively wide.
+```text
+[ term 1 ][ + term 2 ]
+[ - term 3 ][ + term 4 ]
+```
 
-The standalone `render_result()` representation remains backward-compatible; the narrow layout is applied by the grouped renderer used by `%%eng`.
+If the user changes the split between code and output, the browser can redistribute the same terms again without EngCalc estimating character counts or using a fixed number of terms per row.
+
+The left-hand side and equality sign remain aligned using CSS Grid, while only the right-hand expression is allowed to wrap. Individual mathematical terms remain unbroken, so line breaks occur at meaningful engineering `+` / `-` boundaries rather than inside a fraction or unit.
+
+Pure symbolic groups and compact numerical assignments continue to use the existing MathJax array renderer. The responsive HTML path is activated only when the output group contains a complete or partial `numeric(...)` evaluation.
+
+v0.2.5 introduced vertical formula/substitution/result staging to eliminate very long one-line calculations. v0.2.6 keeps those stages but replaces the earlier deterministic one-term-per-row continuation strategy with width-aware browser wrapping.
 
 ## v0.2.4 target-unit conversion
 
@@ -349,7 +354,7 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 - `### text` — visible subsection heading.
 - blank line — adds a larger visual separation inside the current equation group.
 
-Consecutive calculation rows are rendered in a three-column mathematical block. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Internal stages of one numerical evaluation use compact 2 pt spacing.
+Pure symbolic calculation rows use the compact three-column mathematical block. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Complete and partial numerical evaluations use the responsive HTML layout described above.
 
 For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics.
 
@@ -362,7 +367,7 @@ Put this Colab directive immediately below `%%eng` when desired:
 #@title { vertical-output: true }
 ```
 
-EngCalc ignores the directive because it begins with a single `#`. In v0.2.5, long `numeric(...)` substitutions are also broken into vertical mathematical stages so this side-by-side mode does not require one extremely wide calculation row.
+EngCalc ignores the directive because it begins with a single `#`. In v0.2.6, formula and substitution terms inside `numeric(...)` react to the actual output-pane width instead of forcing one additive term per row.
 
 ## Safety
 
@@ -370,18 +375,19 @@ EngCalc ignores the directive because it begins with a single `#`. In v0.2.5, lo
 
 ## Current limitations
 
-v0.2.5 intentionally does not yet provide:
+v0.2.6 intentionally does not yet provide:
 
 - configurable numerical precision or zero tolerance
 - target-unit conversion of partially evaluated functions with a free independent variable
 - automatic compact coefficient evaluation for non-polynomial partial functions
+- wrapping inside a single indivisible mathematical term that is itself wider than the output pane
 - keyword arguments
 - arrays/tables or dedicated matrix syntax
 - arbitrary Python execution or arbitrary library functions
 - multi-solution `solve(...)`
 - full LaTeX parsing
 
-These are separate future milestones rather than hidden behavior in v0.2.5.
+These are separate future milestones rather than hidden behavior in v0.2.6.
 
 ## Development
 
@@ -390,4 +396,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.5`.
+Version: `0.2.6`.
