@@ -32,6 +32,12 @@ def propped_cantilever_stage_moment_plot():
     return eval_cell(engine, "plot(M_C(x), M_D(x), M_L(x), x, 0, L)")[-1]
 
 
+def label_box(annotation, renderer):
+    # Force Matplotlib to resolve text/patch geometry, then measure the callout box only.
+    annotation.get_window_extent(renderer)
+    return annotation.get_bbox_patch().get_window_extent(renderer)
+
+
 def test_propped_cantilever_characteristic_callouts_do_not_overlap():
     figure = render_plot(propped_cantilever_stage_moment_plot())
     axis = figure.axes[0]
@@ -42,7 +48,7 @@ def test_propped_cantilever_characteristic_callouts_do_not_overlap():
     canvas = FigureCanvasAgg(figure)
     canvas.draw()
     renderer = canvas.get_renderer()
-    boxes = [item.get_window_extent(renderer).expanded(1.04, 1.08) for item in items]
+    boxes = [label_box(item, renderer).expanded(1.04, 1.08) for item in items]
 
     for left, right in combinations(boxes, 2):
         assert not left.overlaps(right)
@@ -60,7 +66,7 @@ def test_propped_cantilever_callouts_stay_inside_axes_and_clear_of_legend():
     legend_box = axis.get_legend().get_window_extent(renderer)
 
     for item in items:
-        box = item.get_window_extent(renderer)
+        box = label_box(item, renderer)
         assert box.x0 >= axes_box.x0 - 1
         assert box.x1 <= axes_box.x1 + 1
         assert box.y0 >= axes_box.y0 - 1
