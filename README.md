@@ -52,7 +52,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.6:
+Supported unit aliases in v0.2.7:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -67,13 +67,23 @@ EngCalc defines:
 
 Units are interpreted only inside the numerical context. A name such as `m` remains available as a normal symbolic identifier in symbolic expressions.
 
-Final numerical quantities are rendered with two decimal places in v0.2.6.
+Final numerical quantities are rendered with two decimal places in v0.2.7.
+
+## v0.2.7 native math rendering in responsive output
+
+v0.2.7 fixes a Google Colab regression introduced by the first responsive HTML renderer in v0.2.6. Colab does not automatically re-typeset `$...$` LaTeX fragments placed inside arbitrary `IPython.display.HTML`, so the first responsive implementation could display the raw LaTeX source instead of mathematics.
+
+The responsive path now converts every generated LaTeX fragment to **native MathML** before the HTML is displayed. Each term therefore remains a normal flex item for browser wrapping, while the mathematical content itself is already browser-renderable markup.
+
+The user-visible responsive output contains `<math>...</math>` elements rather than raw dollar-delimited LaTeX. This preserves the v0.2.6 width-aware behavior without depending on a second MathJax pass from Google Colab.
+
+The conversion layer uses `latex2mathml` as a runtime dependency. Pure symbolic groups still use the existing `IPython.display.Math` path; MathML is used only for the responsive complete/partial `numeric(...)` HTML path.
 
 ## v0.2.6 responsive numerical wrapping for split view
 
-v0.2.6 refines the numerical layout for Google Colab's side-by-side code/output view.
+v0.2.6 introduced responsive numerical layout for Google Colab's side-by-side code/output view.
 
-A numerical evaluation still keeps the calculation stages separate:
+A numerical evaluation keeps the calculation stages separate:
 
 ```text
 formula
@@ -81,7 +91,7 @@ formula
 = final result
 ```
 
-However, **additive terms inside the formula and substitution are no longer forced onto one row per term**. Each top-level `+` or `-` term is rendered as an indivisible visual item inside a browser `flex-wrap` container.
+Additive terms inside the formula and substitution are not forced onto one row per term. Each top-level `+` or `-` term is an indivisible visual item inside a browser `flex-wrap` container.
 
 That means the browser uses the **real width of the output pane**:
 
@@ -102,7 +112,7 @@ The left-hand side and equality sign remain aligned using CSS Grid, while only t
 
 Pure symbolic groups and compact numerical assignments continue to use the existing MathJax array renderer. The responsive HTML path is activated only when the output group contains a complete or partial `numeric(...)` evaluation.
 
-v0.2.5 introduced vertical formula/substitution/result staging to eliminate very long one-line calculations. v0.2.6 keeps those stages but replaces the earlier deterministic one-term-per-row continuation strategy with width-aware browser wrapping.
+v0.2.5 introduced vertical formula/substitution/result staging to eliminate very long one-line calculations. v0.2.6 replaced the earlier deterministic one-term-per-row continuation strategy with width-aware browser wrapping; v0.2.7 fixes the actual mathematical rendering inside that responsive HTML.
 
 ## v0.2.4 target-unit conversion
 
@@ -354,7 +364,7 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 - `### text` — visible subsection heading.
 - blank line — adds a larger visual separation inside the current equation group.
 
-Pure symbolic calculation rows use the compact three-column mathematical block. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Complete and partial numerical evaluations use the responsive HTML layout described above.
+Pure symbolic calculation rows use the compact three-column mathematical block. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Complete and partial numerical evaluations use the responsive HTML/MathML layout described above.
 
 For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics.
 
@@ -367,7 +377,7 @@ Put this Colab directive immediately below `%%eng` when desired:
 #@title { vertical-output: true }
 ```
 
-EngCalc ignores the directive because it begins with a single `#`. In v0.2.6, formula and substitution terms inside `numeric(...)` react to the actual output-pane width instead of forcing one additive term per row.
+EngCalc ignores the directive because it begins with a single `#`. In v0.2.7, formula and substitution terms inside `numeric(...)` react to the actual output-pane width, while their mathematics is supplied as native MathML so Colab does not need to re-typeset raw LaTeX embedded in HTML.
 
 ## Safety
 
@@ -375,7 +385,7 @@ EngCalc ignores the directive because it begins with a single `#`. In v0.2.6, fo
 
 ## Current limitations
 
-v0.2.6 intentionally does not yet provide:
+v0.2.7 intentionally does not yet provide:
 
 - configurable numerical precision or zero tolerance
 - target-unit conversion of partially evaluated functions with a free independent variable
@@ -387,7 +397,7 @@ v0.2.6 intentionally does not yet provide:
 - multi-solution `solve(...)`
 - full LaTeX parsing
 
-These are separate future milestones rather than hidden behavior in v0.2.6.
+These are separate future milestones rather than hidden behavior in v0.2.7.
 
 ## Development
 
@@ -396,4 +406,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.6`.
+Version: `0.2.7`.
