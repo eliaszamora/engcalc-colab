@@ -605,6 +605,11 @@ class _Evaluator(ast.NodeVisitor):
             raise EngEvaluationError(
                 f"{call_name} sweep parameter must be named"
             )
+        if parameter_name == variable:
+            raise EngEvaluationError(
+                f"{call_name} sweep parameter '{parameter_name}' "
+                "cannot be the plotting variable"
+            )
 
         free_names = {
             symbol.name for symbol in sp.sympify(symbolic_expression).free_symbols
