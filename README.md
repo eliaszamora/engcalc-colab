@@ -52,7 +52,7 @@ L := 4*m
 P := q*L
 ```
 
-Supported unit aliases in v0.2.8:
+Supported unit aliases in v0.2.9:
 
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
@@ -67,7 +67,40 @@ EngCalc defines:
 
 Units are interpreted only inside the numerical context. A name such as `m` remains available as a normal symbolic identifier in symbolic expressions.
 
-Final numerical quantities are rendered with two decimal places in v0.2.8.
+Numerical quantities render with two decimal places by default. v0.2.9 adds global presentation settings so the notebook can change that policy without altering stored values or symbolic formulas.
+
+## v0.2.9 global numerical presentation settings
+
+Use `%eng_config` to control numerical formatting for all later `%%eng` output in the current notebook session:
+
+```python
+%eng_config precision=3 zero_tolerance=1e-10
+```
+
+The defaults are:
+
+```text
+precision=2
+zero_tolerance=1e-10
+```
+
+Run `%eng_config` with no arguments to inspect the active settings.
+
+`precision` accepts integers from 0 through 10 and applies consistently to numerical assignments, substituted values, final `numeric(...)` results, and evaluated coefficients of partial numerical functions.
+
+`zero_tolerance` is a **presentation-only cleanup threshold**. If the absolute magnitude of the quantity in its currently displayed unit is smaller than the threshold, EngCalc renders that magnitude as zero. The stored Pint quantity is not changed and subsequent calculations continue using the original numerical value.
+
+For example:
+
+```python
+%eng_config precision=4 zero_tolerance=1e-8
+```
+
+can render a tiny numerical residue as `0.0000` while keeping the underlying value intact.
+
+`%eng_reset` clears symbolic and numerical calculation state but does not change the active render configuration. Configure the display explicitly when a different memory needs another precision policy.
+
+Scientific-notation policy is intentionally not part of v0.2.9; it remains a separate presentation milestone.
 
 ## v0.2.8 adaptive MathJax wrapping for split view
 
@@ -296,6 +329,8 @@ The last two calls keep `x` symbolic unless a numerical value has been assigned 
 
 - `%%eng` — evaluate a whole EngCalc cell.
 - `%eng_reset` — clear both the symbolic and numerical EngCalc state.
+- `%eng_config precision=3 zero_tolerance=1e-10` — set global numerical presentation settings.
+- `%eng_config` — show the active numerical presentation settings.
 
 `%load_ext engcalc_colab` and `%reload_ext engcalc_colab` are IPython extension-management magics, not EngCalc expression commands.
 
@@ -365,7 +400,7 @@ Put this Colab directive immediately below `%%eng` when desired:
 #@title { vertical-output: true }
 ```
 
-EngCalc ignores the directive because it begins with a single `#`. In v0.2.8, `numeric(...)` uses the same MathJax renderer as symbolic equations. Long top-level additive formulas/substitutions are grouped by an estimated visual-width budget rather than by a fixed number of terms, while the final result always starts a new row.
+EngCalc ignores the directive because it begins with a single `#`. In v0.2.9, `numeric(...)` continues to use the same MathJax renderer as symbolic equations. Long top-level additive formulas/substitutions are grouped by an estimated visual-width budget rather than by a fixed number of terms, while the final result always starts a new row.
 
 ## Safety
 
@@ -373,12 +408,12 @@ EngCalc ignores the directive because it begins with a single `#`. In v0.2.8, `n
 
 ## Current limitations
 
-v0.2.8 intentionally does not yet provide:
+v0.2.9 intentionally does not yet provide:
 
-- configurable numerical precision or zero tolerance
+- automatic scientific-notation policy for very large/small displayed values
 - target-unit conversion of partially evaluated functions with a free independent variable
 - automatic compact coefficient evaluation for non-polynomial partial functions
-- exact browser-pixel-aware line wrapping; v0.2.8 uses a deterministic visual-complexity heuristic
+- exact browser-pixel-aware line wrapping; EngCalc uses a deterministic visual-complexity heuristic
 - wrapping inside a single indivisible top-level mathematical term that is itself wider than the target budget
 - keyword arguments
 - arrays/tables or dedicated matrix syntax
@@ -386,7 +421,7 @@ v0.2.8 intentionally does not yet provide:
 - multi-solution `solve(...)`
 - full LaTeX parsing
 
-These are separate future milestones rather than hidden behavior in v0.2.8.
+These are separate future milestones rather than hidden behavior in v0.2.9.
 
 ## Development
 
@@ -395,4 +430,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.2.8`.
+Version: `0.2.9`.
