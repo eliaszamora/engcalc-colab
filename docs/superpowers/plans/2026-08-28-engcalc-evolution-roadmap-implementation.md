@@ -153,7 +153,7 @@ def test_numeric_function_dimension_error_names_function(engine, parse_one):
 
 - [ ] **Step 5: Centralize corrective diagnostics and keep exception types stable**
 
-`errors.py` must expose `diagnostic_hint`. Add stable codes such as `direct_numeric_argument`, `unknown_numeric_name`, `incompatible_function_units`, and `unresolved_numeric_symbols`. Do not change `EngEvaluationError`/`EngSyntaxError` inheritance.
+`errors.py` must expose `diagnostic_hint`. Add stable codes `direct_numeric_argument`, `unknown_numeric_name`, `incompatible_function_units`, and `unresolved_numeric_symbols`. Do not change `EngEvaluationError`/`EngSyntaxError` inheritance.
 
 - [ ] **Step 6: Add acceptance test for the professor-exercise ergonomics**
 
@@ -530,14 +530,41 @@ def test_roots_filters_real_solutions_to_domain(engine, parse_one):
 
 - [ ] **Step 2: Implement pure characteristic helpers in `characteristics.py`**
 
-Create exact helper signatures:
+Use these helper contracts:
 
 ```python
-def exact_real_roots(expr: sp.Expr, variable: sp.Symbol, start: sp.Expr, end: sp.Expr) -> tuple[sp.Expr, ...]:
-    ...
+def _inside_domain_exact(value: sp.Expr, start: sp.Expr, end: sp.Expr) -> bool | None:
+    lower = sp.simplify(value - start)
+    upper = sp.simplify(end - value)
+    if lower.is_nonnegative is True and upper.is_nonnegative is True:
+        return True
+    if lower.is_negative is True or upper.is_negative is True:
+        return False
+    return None
+
+
+def exact_real_roots(
+    expr: sp.Expr,
+    variable: sp.Symbol,
+    start: sp.Expr,
+    end: sp.Expr,
+) -> tuple[tuple[sp.Expr, ...], tuple[sp.Expr, ...]]:
+    accepted: list[sp.Expr] = []
+    undecidable: list[sp.Expr] = []
+    for candidate in sp.solve(sp.Eq(expr, 0), variable):
+        if candidate.is_real is False:
+            continue
+        inside = _inside_domain_exact(candidate, start, end)
+        if inside is True:
+            accepted.append(sp.simplify(candidate))
+        elif inside is None:
+            undecidable.append(sp.simplify(candidate))
+    accepted = sorted(set(accepted), key=sp.default_sort_key)
+    undecidable = sorted(set(undecidable), key=sp.default_sort_key)
+    return tuple(accepted), tuple(undecidable)
 ```
 
-Implementation requirement: use `sp.solve`, filter solutions with `is_real is not False`, and retain only solutions provably or numerically within the domain. If symbolic ordering cannot be decided, pass the candidate to the numerical validation path rather than discarding it.
+Candidates in the second tuple are validated numerically in Step 4; they are never silently dropped or mislabeled exact.
 
 - [ ] **Step 3: RED extrema tests including endpoints**
 
@@ -545,7 +572,7 @@ For the propped-beam moment expression, assert an exact critical point `5*L/8`; 
 
 - [ ] **Step 4: Implement numerical fallback without SciPy**
 
-Use a deterministic internal scan of 401 points only to create sign-change brackets, then `sp.nsolve`/SymPy numeric refinement from bracket midpoints. Deduplicate roots within the existing zero tolerance. Mark fallback points `exact=False` and `method="numeric"`.
+Use a deterministic internal scan of 401 points to create sign-change brackets, then SymPy numerical refinement from bracket midpoints. Deduplicate roots within the configured zero tolerance. Candidates returned as `undecidable` by `exact_real_roots` enter the same numerical domain-validation path. Mark fallback points `exact=False` and `method="numeric"`.
 
 - [ ] **Step 5: Integrate rendering and `%%eng`**
 
