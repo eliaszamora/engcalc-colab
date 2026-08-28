@@ -413,7 +413,7 @@ def _render_lhs(target: str | None, parameter: str | None) -> str | None:
     if target is None:
         return None
     if target.startswith("Sigma_") and len(target) > len("Sigma_"):
-        quantity = target[len("Sigma_\"):]
+        quantity = target[len("Sigma_"):]
         target_latex = rf"\Sigma {_latex(sp.Symbol(quantity))}"
     else:
         target_latex = _latex(sp.Symbol(target))
