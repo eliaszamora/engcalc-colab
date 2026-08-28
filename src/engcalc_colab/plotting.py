@@ -59,34 +59,54 @@ def _horizontal_annotation_placement(
 ) -> tuple[int, str]:
     span = x_max - x_min
     if span <= 0:
-        return 8, "left"
+        return 16, "left"
 
     fraction = (x - x_min) / span
     if fraction >= 0.85:
-        return -10, "right"
-    return 10 if fraction <= 0.15 else 8, "left"
+        return -16, "right"
+    return 16 if fraction <= 0.15 else 14, "left"
 
 
 def _vertical_annotation_placement(
-    y: float,
-    y_min: float,
-    y_max: float,
+    label: str,
     *,
     inverted: bool,
 ) -> tuple[int, str]:
-    span = y_max - y_min
-    if span <= 0:
-        return 11, "bottom"
+    """Move extrema callouts visually away from the diagram lobe."""
+    if label == "max = min":
+        return 26, "bottom"
 
-    fraction_from_bottom = (y - y_min) / span
-    if inverted:
-        fraction_from_bottom = 1.0 - fraction_from_bottom
+    mathematical_maximum = label == "max"
+    visually_above = (
+        mathematical_maximum and not inverted
+    ) or (
+        not mathematical_maximum and inverted
+    )
 
-    if fraction_from_bottom >= 0.80:
-        return -12, "top"
-    if fraction_from_bottom <= 0.20:
-        return 12, "bottom"
-    return 10, "bottom"
+    if visually_above:
+        return 26, "bottom"
+    return -26, "top"
+
+
+def _extrema_are_close(
+    x_a: float,
+    y_a: float,
+    x_b: float,
+    y_b: float,
+    *,
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float,
+) -> bool:
+    x_span = x_max - x_min
+    y_span = y_max - y_min
+    if x_span <= 0 or y_span <= 0:
+        return True
+
+    relative_x = abs(x_a - x_b) / x_span
+    relative_y = abs(y_a - y_b) / y_span
+    return relative_x < 0.16 and relative_y < 0.18
 
 
 def _annotate_extreme(
@@ -99,8 +119,7 @@ def _annotate_extreme(
     line_color,
     x_min: float,
     x_max: float,
-    y_min: float,
-    y_max: float,
+    stagger: int = 0,
 ) -> None:
     x = float(x_quantity.magnitude)
     y = float(y_quantity.magnitude)
@@ -110,11 +129,14 @@ def _annotate_extreme(
         x_max,
     )
     offset_y, vertical_alignment = _vertical_annotation_placement(
-        y,
-        y_min,
-        y_max,
+        label,
         inverted=inverted,
     )
+
+    if stagger:
+        offset_x += stagger if offset_x >= 0 else -stagger
+        offset_y += 6 if offset_y >= 0 else -6
+
     text = (
         f"{label} = {_quantity_label(y_quantity, moment=inverted)}\n"
         f"x = {_quantity_label(x_quantity)}"
@@ -128,11 +150,21 @@ def _annotate_extreme(
         ha=horizontal_alignment,
         va=vertical_alignment,
         fontsize=9,
+        zorder=6,
+        bbox={
+            "boxstyle": "round,pad=0.35",
+            "facecolor": axis.get_facecolor(),
+            "edgecolor": line_color,
+            "linewidth": 0.8,
+            "alpha": 0.94,
+        },
         arrowprops={
             "arrowstyle": "-",
             "linewidth": 0.8,
             "color": line_color,
             "alpha": 0.75,
+            "shrinkA": 5,
+            "shrinkB": 4,
         },
         annotation_clip=False,
     )
@@ -193,8 +225,6 @@ def render_plot(result: PlotResult):
         "line_color": line_color,
         "x_min": x_min,
         "x_max": x_max,
-        "y_min": y_min,
-        "y_max": y_max,
     }
 
     if math.isclose(maximum_value, minimum_value, rel_tol=1e-12, abs_tol=1e-12):
@@ -206,6 +236,16 @@ def render_plot(result: PlotResult):
             **annotation_kwargs,
         )
     else:
+        close_extrema = _extrema_are_close(
+            x_values[maximum_index],
+            y_values[maximum_index],
+            x_values[minimum_index],
+            y_values[minimum_index],
+            x_min=x_min,
+            x_max=x_max,
+            y_min=y_min,
+            y_max=y_max,
+        )
         _annotate_extreme(
             axis,
             result.x_values[maximum_index],
@@ -218,6 +258,7 @@ def render_plot(result: PlotResult):
             result.x_values[minimum_index],
             result.y_values[minimum_index],
             "min",
+            stagger=10 if close_extrema else 0,
             **annotation_kwargs,
         )
 
@@ -228,7 +269,7 @@ def render_plot(result: PlotResult):
     axis.spines["right"].set_visible(False)
     axis.set_axisbelow(True)
     axis.grid(True, which="major", alpha=0.22)
-    axis.margins(x=0.02, y=0.12)
+    axis.margins(x=0.02, y=0.16)
     figure.tight_layout()
 
     # IPython displays the returned figure explicitly. Closing it here prevents
