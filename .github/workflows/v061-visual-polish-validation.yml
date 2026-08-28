@@ -19,3 +19,226 @@ jobs:
         run: pytest -q tests/test_visual_polish_renderer_v061.py tests/test_renderer.py
       - name: Full suite
         run: pytest -q
+      - name: Generate 0.6.1 visual acceptance evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          import matplotlib
+          matplotlib.use("Agg")
+          from matplotlib.figure import Figure
+          from matplotlib.text import Annotation
+          from IPython.display import Math
+
+          import engcalc_colab.magic as magic_module
+          from engcalc_colab.magic import EngMagics
+
+          evidence = Path("artifacts/v061-visual-acceptance")
+          evidence.mkdir(parents=True, exist_ok=True)
+
+          source = r"""
+          ## Datos del problema
+          L := 4*m
+          x0 := 0*m
+          qC := 2*tonf/m
+          qD := 4*tonf/m
+          qL := 3*tonf/m
+          gC := 1.4
+          gD := 1.2
+          gL := 1.6
+
+          ## Etapa de construcción — voladizo
+          R_Ac = solve(eq(R_Ac - qC*L, 0), R_Ac)
+          M_Ac = solve(eq(M_Ac + qC*L^2/2, 0), M_Ac)
+          V_c = R_Ac - integral(qC, s, 0, x)
+          M_c = M_Ac + integral(subs(V_c, x, s), s, 0, x)
+          V_C(x) = V_c
+          M_C(x) = M_c
+
+          ## Etapa de uso — viga empotrada / apuntalada
+          delta_B = integral((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)
+          R_B(q) = solve(eq(delta_B, 0), R_B_aux)
+          R_A(q) = solve(eq(R_A_aux + R_B(q) - q*L, 0), R_A_aux)
+          M_A(q) = solve(eq(M_A_aux + q*L^2/2 - R_B(q)*L, 0), M_A_aux)
+          V_prop = R_A(q) - integral(q, s, 0, x)
+          M_prop = M_A(q) + integral(subs(V_prop, x, s), s, 0, x)
+          V_D(x) = subs(V_prop, q, qD)
+          M_D(x) = subs(M_prop, q, qD)
+          V_L(x) = subs(V_prop, q, qL)
+          M_L(x) = subs(M_prop, q, qL)
+
+          ## Combinaciones últimas
+          V_UC(x) = gC*V_C(x)
+          M_UC(x) = gC*M_C(x)
+          V_UU(x) = gD*V_D(x) + gL*V_L(x)
+          M_UU(x) = gD*M_D(x) + gL*M_L(x)
+          numeric(M_UU(x0))
+
+          ## Evidencia visual 0.6.1
+          plot(M_C(x), M_D(x), M_L(x), x, 0, L)
+          plot(V_C(x), V_D(x), V_L(x), x, 0, L)
+          envelope(M_UC(x), M_UU(x), x, 0, L)
+          envelope(abs(V_UC(x)), abs(V_UU(x)), x, 0, L)
+          """
+
+          captured = []
+          original_display = magic_module.display
+          magic_module.display = captured.append
+          try:
+              EngMagics().eng("", source)
+          finally:
+              magic_module.display = original_display
+
+          math_items = [item for item in captured if isinstance(item, Math)]
+          figures = [item for item in captured if isinstance(item, Figure)]
+          assert math_items, "No MathJax output captured from %%eng flow"
+          assert len(figures) == 4, f"Expected four figures, got {len(figures)}"
+
+          (evidence / "mathjax-output.txt").write_text(
+              "\n\n--- MathJax block ---\n\n".join(str(item.data) for item in math_items),
+              encoding="utf-8",
+          )
+
+          names = [
+              "01_stage_moments.png",
+              "02_stage_shears.png",
+              "03_signed_moment_envelope.png",
+              "04_magnitude_shear_envelope.png",
+          ]
+          expected_annotation_counts = [6, 6, 2, 1]
+          expected_legend_counts = [3, 3, 2, 1]
+          expected_inverted = [True, False, True, False]
+          summary = []
+
+          for figure, name, expected_annotations, expected_legend, inverted in zip(
+              figures,
+              names,
+              expected_annotation_counts,
+              expected_legend_counts,
+              expected_inverted,
+              strict=True,
+          ):
+              axis = figure.axes[0]
+              annotations = [item for item in axis.texts if isinstance(item, Annotation)]
+              assert len(figure.texts) == 0
+              assert len(annotations) == expected_annotations, (name, [a.get_text() for a in annotations])
+              forbidden = ("Characteristic values", "Envelope characteristic values", "Magnitude envelope")
+              assert not any(any(token in text.get_text() for token in forbidden) for text in axis.texts)
+              assert axis.yaxis_inverted() is inverted
+              legend = axis.get_legend()
+              assert legend is not None
+              assert len(legend.get_texts()) == expected_legend
+
+              line_points = []
+              for line in axis.lines:
+                  if line.get_label() in {"_zero", "_nolegend_"}:
+                      continue
+                  line_points.extend(zip(line.get_xdata(), line.get_ydata()))
+              for annotation in annotations:
+                  x, y = annotation.xy
+                  assert any(abs(float(px) - float(x)) < 1e-9 and abs(float(py) - float(y)) < 1e-9 for px, py in line_points)
+                  assert "x =" in annotation.get_text()
+
+              figure.canvas.draw()
+              renderer = figure.canvas.get_renderer()
+              canvas_box = figure.bbox
+              for annotation in annotations:
+                  box = annotation.get_window_extent(renderer)
+                  assert box.x0 >= canvas_box.x0 - 1 and box.x1 <= canvas_box.x1 + 1, (name, annotation.get_text(), box, canvas_box)
+                  assert box.y0 >= canvas_box.y0 - 1 and box.y1 <= canvas_box.y1 + 1, (name, annotation.get_text(), box, canvas_box)
+
+              figure.savefig(evidence / name, dpi=180, bbox_inches="tight")
+              summary.append({
+                  "file": name,
+                  "title": axis.get_title(),
+                  "annotations": [item.get_text() for item in annotations],
+                  "legend": [item.get_text() for item in legend.get_texts()],
+                  "yaxis_inverted": axis.yaxis_inverted(),
+              })
+
+          (evidence / "visual-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+          print("Visual acceptance: PASS (4 figures, point annotations, axes-safe callouts)")
+          PY
+      - name: Create 21-station branch regression data
+        run: |
+          cat > /tmp/envelope_regression.py <<'PY'
+          import json
+          import sys
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+
+          def eval_cell(engine, text):
+              return [engine.evaluate(stmt) for stmt in parse_cell(text)]
+
+          engine = EngineeringEngine()
+          eval_cell(engine, """
+          L := 4*m
+          qC := 2*tonf/m
+          qD := 4*tonf/m
+          qL := 3*tonf/m
+          gC := 1.4
+          gD := 1.2
+          gL := 1.6
+          R_Ac = solve(eq(R_Ac - qC*L, 0), R_Ac)
+          M_Ac = solve(eq(M_Ac + qC*L^2/2, 0), M_Ac)
+          V_c = R_Ac - integral(qC, s, 0, x)
+          M_c = M_Ac + integral(subs(V_c, x, s), s, 0, x)
+          V_C(x) = V_c
+          M_C(x) = M_c
+          delta_B = integral((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)
+          R_B(q) = solve(eq(delta_B, 0), R_B_aux)
+          R_A(q) = solve(eq(R_A_aux + R_B(q) - q*L, 0), R_A_aux)
+          M_A(q) = solve(eq(M_A_aux + q*L^2/2 - R_B(q)*L, 0), M_A_aux)
+          V_prop = R_A(q) - integral(q, s, 0, x)
+          M_prop = M_A(q) + integral(subs(V_prop, x, s), s, 0, x)
+          V_D(x) = subs(V_prop, q, qD)
+          M_D(x) = subs(M_prop, q, qD)
+          V_L(x) = subs(V_prop, q, qL)
+          M_L(x) = subs(M_prop, q, qL)
+          V_UC(x) = gC*V_C(x)
+          M_UC(x) = gC*M_C(x)
+          V_UU(x) = gD*V_D(x) + gL*V_L(x)
+          M_UU(x) = gD*M_D(x) + gL*M_L(x)
+          """)
+          moment = eval_cell(engine, "envelope(M_UC(x), M_UU(x), x, 0, L)")[-1]
+          shear = eval_cell(engine, "envelope(abs(V_UC(x)), abs(V_UU(x)), x, 0, L)")[-1]
+          assert len(moment.x_values) == 201 and len(shear.x_values) == 201
+          indices = list(range(0, 201, 10))
+          payload = {
+              "x_m": [float(moment.x_values[i].to("m").magnitude) for i in indices],
+              "Mu_max_tonf_m": [float(moment.series[0].y_values[i].to("tonf*m").magnitude) for i in indices],
+              "Mu_min_tonf_m": [float(moment.series[1].y_values[i].to("tonf*m").magnitude) for i in indices],
+              "Vu_abs_max_tonf": [float(shear.series[0].y_values[i].to("tonf").magnitude) for i in indices],
+          }
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, indent=2)
+          PY
+          python /tmp/envelope_regression.py artifacts/v061-visual-acceptance/branch-21-stations.json
+      - name: Compare 21 stations with merged 0.6.0 baseline
+        run: |
+          python -m venv /tmp/engcalc-v060
+          /tmp/engcalc-v060/bin/python -m pip install -q --upgrade pip
+          /tmp/engcalc-v060/bin/python -m pip install -q 'git+https://github.com/eliaszamora/engcalc-colab.git@8b13ede8a6993de734c2b49de429125265210e56'
+          (cd /tmp && PYTHONPATH= /tmp/engcalc-v060/bin/python /tmp/envelope_regression.py "$GITHUB_WORKSPACE/artifacts/v061-visual-acceptance/baseline-21-stations.json")
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts/v061-visual-acceptance")
+          branch = json.loads((root / "branch-21-stations.json").read_text())
+          baseline = json.loads((root / "baseline-21-stations.json").read_text())
+          assert branch.keys() == baseline.keys()
+          worst = 0.0
+          for key in branch:
+              assert len(branch[key]) == len(baseline[key]) == 21
+              for actual, expected in zip(branch[key], baseline[key], strict=True):
+                  worst = max(worst, abs(actual - expected))
+          assert worst <= 1e-9, worst
+          print(f"21-station 0.6.0 numerical regression: PASS; worst abs diff={worst:.3e}")
+          PY
+      - name: Upload visual acceptance artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-v061-visual-acceptance
+          path: artifacts/v061-visual-acceptance
