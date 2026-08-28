@@ -370,6 +370,65 @@ def _standard_result_row(
     return rf"\displaystyle {rendered} & &"
 
 
+def _symbolic_evaluation_rows(
+    result: EvaluationResult,
+    settings: RenderSettings,
+) -> list[str]:
+    statement = result.statement
+    lhs = _render_lhs(statement.target, statement.parameter)
+    value = sp.sympify(result.value)
+    display_input = result.display_input
+
+    if display_input is None or sp.sstr(display_input) == sp.sstr(value):
+        value_rows = _adaptive_additive_rows(value, settings=settings)
+        if len(value_rows) == 1:
+            return [_standard_result_row(result, settings)]
+        rows = []
+        if lhs is None:
+            rows.append(rf"\displaystyle {value_rows[0]} & &")
+        else:
+            rows.append(rf"\displaystyle {lhs} & = & \displaystyle {value_rows[0]}")
+        for continuation in value_rows[1:]:
+            rows.append(rf" & & \displaystyle {continuation}")
+        return rows
+
+    input_latex = _latex(display_input)
+    value_latex = _latex(value)
+    lhs_width = _latex_visual_width(lhs) + 3.0 if lhs is not None else 0.0
+    chain_width = lhs_width + _latex_visual_width(input_latex) + _latex_visual_width(value_latex) + 6.0
+    if chain_width <= _NUMERIC_ROW_VISUAL_BUDGET:
+        return [_standard_result_row(result, settings)]
+
+    if isinstance(display_input, sp.Equality):
+        equation_rows = _adaptive_additive_rows(display_input.lhs, settings=settings)
+        rhs_latex = _latex(display_input.rhs)
+        rows = []
+        for index, equation_row in enumerate(equation_rows):
+            if index == len(equation_rows) - 1:
+                rows.append(rf"\displaystyle {equation_row} & = & \displaystyle {rhs_latex}")
+            else:
+                rows.append(rf"\displaystyle {equation_row} & &")
+
+        value_rows = _adaptive_additive_rows(value, settings=settings)
+        if lhs is None:
+            rows.append(rf" & = & \displaystyle {value_rows[0]}")
+        else:
+            rows.append(rf"\displaystyle {lhs} & = & \displaystyle {value_rows[0]}")
+        for continuation in value_rows[1:]:
+            rows.append(rf" & & \displaystyle {continuation}")
+        return rows
+
+    value_rows = _adaptive_additive_rows(value, settings=settings)
+    if lhs is None:
+        rows = [rf"\displaystyle {input_latex} & &"]
+    else:
+        rows = [rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"]
+    rows.append(rf" & = & \displaystyle {value_rows[0]}")
+    for continuation in value_rows[1:]:
+        rows.append(rf" & & \displaystyle {continuation}")
+    return rows
+
+
 def _display_rows(
     result: CalculationResult,
     settings: RenderSettings,
@@ -378,6 +437,8 @@ def _display_rows(
         return _numeric_evaluation_rows(result, settings)
     if isinstance(result, PartialNumericEvaluationResult):
         return _partial_numeric_evaluation_rows(result, settings)
+    if isinstance(result, EvaluationResult):
+        return _symbolic_evaluation_rows(result, settings)
     return [_standard_result_row(result, settings)]
 
 
