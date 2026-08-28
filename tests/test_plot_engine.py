@@ -100,6 +100,16 @@ def test_plot_sweep_does_not_mutate_existing_parameter_or_x_value():
     assert engine.numeric_context.get("x").to("m").magnitude == pytest.approx(1.5)
 
 
+def test_plot_rejects_sweep_of_plotting_variable():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M(x) = x^2\nL := 2*m")
+    with pytest.raises(
+        EngEvaluationError,
+        match="plot sweep parameter 'x' cannot be the plotting variable",
+    ):
+        eval_cell(engine, "plot(M(x), x, 0, L, x=[0.5*m, 1.0*m])")
+
+
 def test_plot_rejects_sweep_parameter_absent_from_expanded_expression():
     engine = EngineeringEngine()
     eval_cell(engine, "M(x) = q*x\nq := 5*kN/m\nL := 2*m")
