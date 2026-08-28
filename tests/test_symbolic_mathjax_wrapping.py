@@ -28,7 +28,8 @@ def test_long_symbolic_integral_breaks_input_and_evaluated_expression_across_row
 
     assert len(rows) >= 2
     assert r"\int" in latex
-    assert r"\\[2pt]" in latex
+    assert r"\\[4pt]" in latex
+    assert r"\\[2pt]" not in latex
 
 
 def test_long_solve_equation_is_wrapped_and_solution_gets_its_own_row():
@@ -43,6 +44,8 @@ def test_long_solve_equation_is_wrapped_and_solution_gets_its_own_row():
     latex = render_aligned_results([result])
 
     assert len(rows) >= 3
-    assert r"\\[2pt]" in latex
+    assert r"\\[4pt]" in latex
+    assert r"\\[8pt]" in latex
+    assert r"\\[2pt]" not in latex
     assert "R_{B}" in latex
     assert "3 q L" in latex
