@@ -1,0 +1,76 @@
+name: EngCalc 0.6.1 release gate
+
+on:
+  push:
+    branches:
+      - feature/v0.6.1-visual-polish-2
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install source and release tooling
+        run: python -m pip install -e '.[dev]' ipython build
+
+      - name: Verify source version
+        run: |
+          python - <<'PY'
+          import engcalc_colab
+          assert engcalc_colab.__version__ == "0.6.1", engcalc_colab.__version__
+          print("source version:", engcalc_colab.__version__)
+          PY
+
+      - name: Source suite
+        run: pytest -q
+
+      - name: Build 0.6.1 wheel
+        run: |
+          rm -rf dist build
+          python -m build --wheel
+          test -f dist/engcalc_colab-0.6.1-py3-none-any.whl
+          ls -lh dist/engcalc_colab-0.6.1-py3-none-any.whl
+
+      - name: Install wheel into clean venv
+        run: |
+          python -m venv /tmp/engcalc-v061-wheel
+          /tmp/engcalc-v061-wheel/bin/python -m pip install -q --upgrade pip
+          /tmp/engcalc-v061-wheel/bin/python -m pip install dist/engcalc_colab-0.6.1-py3-none-any.whl
+          /tmp/engcalc-v061-wheel/bin/python -m pip install -q pytest ipython
+
+      - name: Installed-wheel smoke from /tmp
+        run: |
+          cd /tmp
+          PYTHONPATH= /tmp/engcalc-v061-wheel/bin/python - <<'PY'
+          import engcalc_colab
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+
+          assert engcalc_colab.__version__ == "0.6.1", engcalc_colab.__version__
+          engine = EngineeringEngine()
+          results = [engine.evaluate(stmt) for stmt in parse_cell("L := 4*m\nq := 2*tonf/m\nA = q*L")]
+          assert len(results) == 3
+          print("installed-wheel smoke: PASS", engcalc_colab.__version__)
+          PY
+
+      - name: Full suite against installed wheel
+        run: |
+          rm -rf /tmp/engcalc-wheel-test
+          mkdir -p /tmp/engcalc-wheel-test
+          cp -a . /tmp/engcalc-wheel-test/repo
+          rm -rf /tmp/engcalc-wheel-test/repo/src
+          cd /tmp/engcalc-wheel-test/repo
+          PYTHONPATH= /tmp/engcalc-v061-wheel/bin/python -m pytest -q
+
+      - name: Repeat source suite
+        run: pytest -q
+
+      - name: Upload release wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-colab-0.6.1-wheel
+          path: dist/engcalc_colab-0.6.1-py3-none-any.whl
