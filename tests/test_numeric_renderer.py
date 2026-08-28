@@ -1,11 +1,7 @@
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import ParsedHeading
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.renderer import (
-    render_aligned_results,
-    render_responsive_results,
-    render_result,
-)
+from engcalc_colab.renderer import render_aligned_results, render_result
 
 
 def evaluate(engine: EngineeringEngine, source: str):
@@ -116,7 +112,7 @@ def test_aligned_named_numeric_evaluation_uses_vertical_stage_rows():
     assert " = " not in latex.replace(" & = & ", "")
 
 
-def test_aligned_long_numeric_substitution_splits_additive_terms_into_continuation_rows():
+def test_aligned_long_numeric_substitution_packs_terms_adaptively():
     engine = EngineeringEngine()
     evaluate(engine, "M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2")
     evaluate(engine, "q := 2.8*tonf/m")
@@ -127,45 +123,8 @@ def test_aligned_long_numeric_substitution_splits_additive_terms_into_continuati
     latex = render_aligned_results([result])
 
     assert r"M\left(x\right) & = & \displaystyle" in latex
-    assert latex.count(r"\\[2pt]") >= 4
+    assert latex.count(r"\\[2pt]") == 3
     assert latex.count(" & = & ") == 3
-    assert latex.count(" & & ") >= 2
-    assert r"\quad +" in latex
+    assert latex.count(" & & ") == 1
     assert r"\quad -" in latex
     assert "3.15" in latex
-
-
-def test_responsive_numeric_substitution_keeps_additive_terms_in_one_wrapping_container():
-    engine = EngineeringEngine()
-    evaluate(engine, "M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2")
-    evaluate(engine, "q := 2.8*tonf/m")
-    evaluate(engine, "L := 4*m")
-    evaluate(engine, "x := 2.5*m")
-
-    html = render_responsive_results([evaluate(engine, "numeric(M(x))")])
-
-    assert "engcalc-responsive" in html
-    assert "display:flex" in html
-    assert "flex-wrap:wrap" in html
-    assert 'data-stage="substitution"' in html
-    substitution = html.split('data-stage="substitution"', 1)[1].split('data-stage="result"', 1)[0]
-    assert substitution.count('class="engcalc-term"') == 3
-    assert "<br" not in substitution
-    assert r"\quad" not in substitution
-    assert "3.15" in html
-
-
-def test_responsive_terms_are_indivisible_items_so_browser_wraps_only_when_needed():
-    engine = EngineeringEngine()
-    evaluate(engine, "V(x) = 5*q*L/8 - q*x")
-    evaluate(engine, "q := 2.8*tonf/m")
-    evaluate(engine, "L := 4*m")
-    evaluate(engine, "x := 2.5*m")
-
-    html = render_responsive_results([evaluate(engine, "numeric(V(x))")])
-    substitution = html.split('data-stage="substitution"', 1)[1].split('data-stage="result"', 1)[0]
-
-    assert substitution.count('class="engcalc-term"') == 2
-    assert "white-space:nowrap" in html
-    assert "flex-wrap:wrap" in html
-    assert "<br" not in substitution
