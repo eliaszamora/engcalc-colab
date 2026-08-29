@@ -1,12 +1,18 @@
 from dataclasses import replace
 
+import engcalc_colab.renderer as renderer_module
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.renderer import RenderSettings, render_table
+from engcalc_colab.renderer import RenderSettings
 
 
 def eval_cell(engine: EngineeringEngine, text: str):
     return [engine.evaluate(stmt) for stmt in parse_cell(text)]
+
+
+def render_table(result, *, settings=None):
+    assert hasattr(renderer_module, "render_table"), "render_table is not implemented"
+    return renderer_module.render_table(result, settings=settings)
 
 
 def test_render_table_places_units_once_in_headers_not_cells():
