@@ -496,11 +496,23 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
 
     maximum_index = max(range(len(maximum_y)), key=maximum_y.__getitem__)
     minimum_index = min(range(len(minimum_y)), key=minimum_y.__getitem__)
+    coincident_extrema = (
+        maximum_index == minimum_index
+        and math.isclose(
+            maximum_y[maximum_index],
+            minimum_y[minimum_index],
+            rel_tol=1e-12,
+            abs_tol=1e-12,
+        )
+    )
+    marker_indices = [(maximum_index, maximum_y[maximum_index], maximum_line.get_color())]
+    if not coincident_extrema:
+        marker_indices.append((minimum_index, minimum_y[minimum_index], minimum_line.get_color()))
     axis.scatter(
-        [x_values[maximum_index], x_values[minimum_index]],
-        [maximum_y[maximum_index], minimum_y[minimum_index]],
-        s=[30, 30],
-        color=[maximum_line.get_color(), minimum_line.get_color()],
+        [x_values[index] for index, _, _ in marker_indices],
+        [value for _, value, _ in marker_indices],
+        s=[30] * len(marker_indices),
+        color=[color for _, _, color in marker_indices],
         zorder=5,
     )
 
@@ -526,16 +538,17 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
         line_color=maximum_line.get_color(),
         occupied_boxes=occupied_boxes,
     )
-    _annotate_characteristic(
-        axis,
-        result.x_values[minimum_index],
-        minimum_series.y_values[minimum_index],
-        response_label,
-        role="min",
-        inverted=moment,
-        line_color=minimum_line.get_color(),
-        occupied_boxes=occupied_boxes,
-    )
+    if not coincident_extrema:
+        _annotate_characteristic(
+            axis,
+            result.x_values[minimum_index],
+            minimum_series.y_values[minimum_index],
+            response_label,
+            role="min",
+            inverted=moment,
+            line_color=minimum_line.get_color(),
+            occupied_boxes=occupied_boxes,
+        )
 
 
 def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
