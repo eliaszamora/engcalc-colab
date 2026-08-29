@@ -13,6 +13,7 @@ from .models import (
     NumericAssignmentResult,
     NumericEvaluationResult,
     ParsedHeading,
+    ParsedNarrative,
     PartialNumericEvaluationResult,
     PlotResult,
     TableResult,
@@ -29,11 +30,24 @@ _HEADING_STYLE = {
     ),
     3: "font-size:0.95rem;font-weight:600;margin:0.28rem 0 0.12rem 0;",
 }
+_NARRATIVE_STYLE = (
+    "font-size:0.95rem;line-height:1.55;"
+    "margin:0.28rem 0 0.42rem 0;"
+)
+_NARRATIVE_PARAGRAPH_STYLE = "margin:0 0 0.42rem 0;"
 
 
 def _render_heading(heading: ParsedHeading) -> HTML:
     style = _HEADING_STYLE[heading.level]
     return HTML(f'<div style="{style}">{escape(heading.text)}</div>')
+
+
+def _render_narrative(narrative: ParsedNarrative) -> HTML:
+    paragraphs = "".join(
+        f'<p style="{_NARRATIVE_PARAGRAPH_STYLE}">{escape(paragraph)}</p>'
+        for paragraph in narrative.paragraphs
+    )
+    return HTML(f'<div style="{_NARRATIVE_STYLE}">{paragraphs}</div>')
 
 
 CalculationResult = (
@@ -80,6 +94,15 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     display(_render_heading(item))
+                    continue
+
+                if isinstance(item, ParsedNarrative):
+                    _display_equation_group(
+                        pending_results,
+                        self.render_settings,
+                    )
+                    pending_results.clear()
+                    display(_render_narrative(item))
                     continue
 
                 result = self.engine.evaluate(item)
