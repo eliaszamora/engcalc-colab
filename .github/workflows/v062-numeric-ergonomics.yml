@@ -5,6 +5,9 @@ on:
     branches:
       - feature/v0.6.2-numeric-ergonomics
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,5 +20,185 @@ jobs:
         run: |
           python -m pip install -e '.[dev]'
           python -m pip install ipython
-      - name: Focused 0.6.2 contracts
+      - name: Apply minimal GREEN implementation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          errors_path = Path('src/engcalc_colab/errors.py')
+          errors_text = '''class EngCalcError(Exception):
+              """Base user-facing engcalc error."""
+
+
+          class EngSyntaxError(EngCalcError):
+              pass
+
+
+          class EngEvaluationError(EngCalcError):
+              pass
+
+
+          class AmbiguousSolveError(EngEvaluationError):
+              pass
+
+
+          def diagnostic_hint(code: str, **context) -> str:
+              """Return a stable corrective hint for a known engineering-facing error."""
+              if code == "direct_numeric_argument":
+                  example = context.get("example", "M(2.5*m)")
+                  return f"Use numeric({example}) directly when the function argument is fully numeric."
+              if code == "unknown_numeric_name":
+                  name = context["name"]
+                  return f"Define the numeric value first, for example: {name} := <value>*<unit>."
+              if code == "incompatible_function_units":
+                  function = context["function"]
+                  return f"Provide compatible units for the argument and terms of numeric function '{function}'."
+              if code == "unresolved_numeric_symbols":
+                  names = tuple(context.get("names", ()))
+                  examples = ", ".join(f"{name} := <value>*<unit>" for name in names)
+                  return f"Define the missing numeric values first, for example: {examples}."
+              raise ValueError(f"unknown diagnostic code '{code}'")
+          '''
+          # Dedent the intentionally indented heredoc literal.
+          import textwrap
+          errors_text = textwrap.dedent(errors_text)
+          if errors_path.read_text() != errors_text:
+              errors_path.write_text(errors_text)
+
+          numeric_path = Path('src/engcalc_colab/numeric.py')
+          numeric = numeric_path.read_text()
+          numeric = numeric.replace(
+              'from .errors import EngEvaluationError\n',
+              'from .errors import EngEvaluationError, diagnostic_hint\n',
+              1,
+          )
+          old_unknown = '''        raise EngEvaluationError(f"unknown numeric name '{name}'")
+          '''
+          new_unknown = '''        hint = diagnostic_hint("unknown_numeric_name", name=name)
+                  raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")
+          '''
+          new_unknown = textwrap.dedent(new_unknown).replace(
+              'hint = diagnostic_hint', '        hint = diagnostic_hint', 1
+          ).replace(
+              'raise EngEvaluationError', '        raise EngEvaluationError', 1
+          )
+          if old_unknown in numeric:
+              numeric = numeric.replace(old_unknown, new_unknown, 1)
+
+          old_partial_missing = '''        if missing:
+              raise EngEvaluationError(
+                  "numeric evaluation requires values for: " + ", ".join(missing)
+              )
+
+          substitutions = {
+          '''
+          new_partial_missing = '''        if missing:
+              hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
+              raise EngEvaluationError(
+                  "numeric evaluation requires values for: "
+                  + ", ".join(missing)
+                  + f". {hint}"
+              )
+
+          substitutions = {
+          '''
+          if old_partial_missing in numeric:
+              numeric = numeric.replace(old_partial_missing, new_partial_missing, 1)
+
+          old_eval = '''        overrides = overrides or {}
+          names = sorted(symbol.name for symbol in expr.free_symbols)
+          missing = [
+              name
+              for name in names
+              if name not in overrides and name not in self.values
+          ]
+          if missing:
+              raise EngEvaluationError(
+                  "numeric evaluation requires values for: " + ", ".join(missing)
+              )
+
+          substitutions = {
+              name: overrides[name] if name in overrides else self.values[name]
+              for name in names
+          }
+          '''
+          new_eval = '''        overrides = overrides or {}
+          names = sorted(symbol.name for symbol in expr.free_symbols)
+          substitutions: dict[str, Any] = {}
+          missing: list[str] = []
+          for name in names:
+              if name in overrides:
+                  substitutions[name] = overrides[name]
+              elif name in self.values:
+                  substitutions[name] = self.values[name]
+              elif name in _UNIT_ALIASES:
+                  substitutions[name] = self.ureg.Unit(_UNIT_ALIASES[name])
+              else:
+                  missing.append(name)
+          if missing:
+              hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
+              raise EngEvaluationError(
+                  "numeric evaluation requires values for: "
+                  + ", ".join(missing)
+                  + f". {hint}"
+              )
+          '''
+          if old_eval in numeric:
+              numeric = numeric.replace(old_eval, new_eval, 1)
+          numeric_path.write_text(numeric)
+
+          engine_path = Path('src/engcalc_colab/engine.py')
+          engine = engine_path.read_text()
+          engine = engine.replace(
+              'from .errors import AmbiguousSolveError, EngCalcError, EngEvaluationError, EngSyntaxError\n',
+              'from .errors import (\n    AmbiguousSolveError,\n    EngCalcError,\n    EngEvaluationError,\n    EngSyntaxError,\n    diagnostic_hint,\n)\n',
+              1,
+          )
+          old_function_eval = '''                _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
+                      argument_expression
+                  )
+                  substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
+                      symbolic_expression,
+                      overrides={function.parameter: argument_quantity},
+                  )
+          '''
+          new_function_eval = '''                try:
+                      _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
+                          argument_expression
+                      )
+                      substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
+                          symbolic_expression,
+                          overrides={function.parameter: argument_quantity},
+                      )
+                  except EngEvaluationError as exc:
+                      if "incompatible units" not in str(exc):
+                          raise
+                      hint = diagnostic_hint(
+                          "incompatible_function_units",
+                          function=function_name,
+                      )
+                      raise EngEvaluationError(
+                          f"incompatible units while evaluating numeric function '{function_name}'. {hint}"
+                      ) from exc
+          '''
+          if old_function_eval not in engine and 'incompatible units while evaluating numeric function' not in engine:
+              raise SystemExit('expected numeric function evaluation block not found')
+          if old_function_eval in engine:
+              engine = engine.replace(old_function_eval, new_function_eval, 1)
+          engine_path.write_text(engine)
+          PY
+      - name: Focused GREEN contracts
         run: python -m pytest -q tests/test_numeric_function_arguments.py tests/test_diagnostics.py
+      - name: Full source regression
+        run: python -m pytest -q
+      - name: Commit GREEN product changes
+        run: |
+          if git diff --quiet -- src/engcalc_colab; then
+            echo "GREEN implementation already committed"
+            exit 0
+          fi
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add src/engcalc_colab/errors.py src/engcalc_colab/numeric.py src/engcalc_colab/engine.py
+          git commit -m "feat: support direct unit-bearing numeric function arguments"
+          git push
