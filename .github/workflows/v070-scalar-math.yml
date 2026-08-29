@@ -19,66 +19,12 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e '.[dev]'
-      - name: Apply scalar numeric GREEN
+          python -m pip install -e '.[dev]' ipython
+      - name: Scalar math focused acceptance
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('src/engcalc_colab/numeric.py')
-          text = path.read_text()
-
-          if 'import math\n' not in text:
-              text = text.replace('import ast\n', 'import ast\nimport math\n', 1)
-
-          old_resolve = '''    def resolve_numeric_name(self, name: str):\n        if name in self.values:\n            return self.values[name]\n        if name in _UNIT_ALIASES:\n            return self.ureg.Unit(_UNIT_ALIASES[name])\n        hint = diagnostic_hint("unknown_numeric_name", name=name)\n        raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")\n'''
-          new_resolve = '''    def resolve_numeric_name(self, name: str):\n        if name in self.values:\n            return self.values[name]\n        if name == "pi":\n            return math.pi\n        if name in _UNIT_ALIASES:\n            return self.ureg.Unit(_UNIT_ALIASES[name])\n        hint = diagnostic_hint("unknown_numeric_name", name=name)\n        raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")\n'''
-          if old_resolve in text:
-              text = text.replace(old_resolve, new_resolve, 1)
-          elif new_resolve not in text:
-              raise SystemExit('resolve_numeric_name anchor not found')
-
-          insert_anchor = '''    def resolve_target_unit_name(self, name: str):\n'''
-          scalar_method = '''    def evaluate_scalar_function(self, name: str, value):\n        quantity = self._as_quantity(value)\n\n        if name == "sqrt":\n            return quantity ** 0.5\n\n        forward_trig = {\n            "sin": math.sin,\n            "cos": math.cos,\n            "tan": math.tan,\n        }\n        if name in forward_trig:\n            try:\n                angle = quantity.to(self.ureg.radian)\n            except DimensionalityError as exc:\n                raise EngEvaluationError(\n                    f"{name} requires a dimensionless or angle argument"\n                ) from exc\n            return forward_trig[name](float(angle.magnitude))\n\n        inverse_trig = {\n            "asin": math.asin,\n            "acos": math.acos,\n            "atan": math.atan,\n        }\n        if name in inverse_trig:\n            if not quantity.dimensionless:\n                raise EngEvaluationError(f"{name} requires a dimensionless argument")\n            magnitude = float(quantity.to_base_units().magnitude)\n            return self.ureg.Quantity(inverse_trig[name](magnitude), self.ureg.radian)\n\n        scalar_dimensionless = {\n            "exp": math.exp,\n            "log": math.log,\n        }\n        if name in scalar_dimensionless:\n            if not quantity.dimensionless:\n                raise EngEvaluationError(f"{name} requires a dimensionless argument")\n            magnitude = float(quantity.to_base_units().magnitude)\n            return scalar_dimensionless[name](magnitude)\n\n        raise EngEvaluationError(f"unsupported numeric function '{name}'")\n\n'''
-          if scalar_method not in text:
-              if insert_anchor not in text:
-                  raise SystemExit('scalar method insertion anchor not found')
-              text = text.replace(insert_anchor, scalar_method + insert_anchor, 1)
-
-          old_pi_number = '''    def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):\n        if isinstance(expr, sp.Symbol):\n            return substitutions[expr.name]\n\n        if expr.is_Number:\n'''
-          new_pi_number = '''    def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):\n        if isinstance(expr, sp.Symbol):\n            return substitutions[expr.name]\n\n        if expr == sp.pi:\n            return math.pi\n\n        if expr.is_Number:\n'''
-          if old_pi_number in text:
-              text = text.replace(old_pi_number, new_pi_number, 1)
-          elif new_pi_number not in text:
-              raise SystemExit('sympy pi anchor not found')
-
-          old_abs = '''        if expr.func == sp.Abs and len(expr.args) == 1:\n            return abs(self._evaluate_sympy(expr.args[0], substitutions))\n\n        raise EngEvaluationError(\n'''
-          new_abs = '''        if expr.func == sp.Abs and len(expr.args) == 1:\n            return abs(self._evaluate_sympy(expr.args[0], substitutions))\n\n        scalar_sympy = {\n            sp.sin: "sin",\n            sp.cos: "cos",\n            sp.tan: "tan",\n            sp.asin: "asin",\n            sp.acos: "acos",\n            sp.atan: "atan",\n            sp.exp: "exp",\n            sp.log: "log",\n        }\n        if expr.func in scalar_sympy and len(expr.args) == 1:\n            value = self._evaluate_sympy(expr.args[0], substitutions)\n            return self.evaluate_scalar_function(scalar_sympy[expr.func], value)\n\n        raise EngEvaluationError(\n'''
-          if old_abs in text:
-              text = text.replace(old_abs, new_abs, 1)
-          elif new_abs not in text:
-              raise SystemExit('sympy scalar-function anchor not found')
-
-          old_call = '''    def visit_Call(self, node: ast.Call):\n        if (\n            not isinstance(node.func, ast.Name)\n            or node.func.id != "abs"\n            or len(node.args) != 1\n            or node.keywords\n        ):\n            raise EngEvaluationError("unsupported numeric function")\n        return abs(self.visit(node.args[0]))\n'''
-          new_call = '''    def visit_Call(self, node: ast.Call):\n        if (\n            not isinstance(node.func, ast.Name)\n            or len(node.args) != 1\n            or node.keywords\n        ):\n            raise EngEvaluationError("unsupported numeric function")\n        name = node.func.id\n        value = self.visit(node.args[0])\n        if name == "abs":\n            return abs(value)\n        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"}:\n            return self.context.evaluate_scalar_function(name, value)\n        raise EngEvaluationError("unsupported numeric function")\n'''
-          if old_call in text:
-              text = text.replace(old_call, new_call, 1)
-          elif new_call not in text:
-              raise SystemExit('numeric AST call anchor not found')
-
-          path.write_text(text)
-          PY
-      - name: Scalar math focused GREEN
-        run: pytest tests/test_scalar_math_parser.py tests/test_scalar_math_engine.py tests/test_scalar_math_numeric.py -q
-      - name: Commit numeric implementation when changed
-        run: |
-          if git diff --quiet -- src/engcalc_colab/numeric.py; then
-            echo "Numeric implementation already persisted"
-            exit 0
-          fi
-          git config user.name "eliaszamora"
-          git config user.email "37598447+eliaszamora@users.noreply.github.com"
-          git add src/engcalc_colab/numeric.py
-          git diff --cached --check
-          git commit -m "feat: add unit-aware scalar numeric math"
-          git push
+          pytest tests/test_scalar_math_parser.py \
+                 tests/test_scalar_math_engine.py \
+                 tests/test_scalar_math_numeric.py \
+                 tests/test_scalar_math_acceptance.py -q
+      - name: Complete source regression
+        run: pytest -q
