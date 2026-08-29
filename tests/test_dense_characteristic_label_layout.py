@@ -61,6 +61,21 @@ def _dense_six_series_moment_plot():
     )[-1]
 
 
+def _sparse_two_series_plot():
+    engine = EngineeringEngine()
+    _eval_cell(
+        engine,
+        """
+        L := 4*m
+        q1 := 2*kN/m
+        q2 := 3*kN/m
+        M_1(x) = q1*x*(L-x)/2
+        M_2(x) = q2*x*(L-x)/2
+        """,
+    )
+    return _eval_cell(engine, "plot(M_1(x), M_2(x), x, 0, L)")[-1]
+
+
 def _annotations(axis):
     return [item for item in axis.texts if isinstance(item, Annotation)]
 
@@ -114,13 +129,16 @@ def _assert_minimum_vertical_clearance(cluster, renderer):
     assert min(clearances) >= _MIN_RAIL_VERTICAL_CLEARANCE_PX, clearances
 
 
-def _render_dense_case():
-    result = _dense_six_series_moment_plot()
+def _render(result):
     figure = render_presented_plot(result)
     axis = figure.axes[0]
     canvas = FigureCanvasAgg(figure)
     canvas.draw()
     return figure, axis, _annotations(axis), canvas.get_renderer()
+
+
+def _render_dense_case():
+    return _render(_dense_six_series_moment_plot())
 
 
 def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
@@ -136,8 +154,10 @@ def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
     _assert_cluster_preserves_visual_order(axis, interior_cluster, renderer)
 
 
-def test_dense_shared_x_groups_use_one_aligned_label_rail_each():
-    _, _, items, renderer = _render_dense_case()
+def test_dense_shared_x_groups_use_external_callout_rails_with_leaders():
+    figure, axis, items, renderer = _render_dense_case()
+    axes_box = axis.get_window_extent(renderer)
+    figure_box = figure.bbox
     left_cluster = [item for item in items if abs(float(item.xy[0])) < 1e-9]
     interior_cluster = [item for item in items if abs(float(item.xy[0]) - 2.5) < 0.03]
     assert len(left_cluster) == 6
@@ -145,6 +165,13 @@ def test_dense_shared_x_groups_use_one_aligned_label_rail_each():
 
     _assert_single_label_rail(left_cluster, renderer)
     _assert_single_label_rail(interior_cluster, renderer)
+    assert all(item.arrow_patch is not None for item in left_cluster + interior_cluster)
+
+    left_boxes = [item.get_window_extent(renderer) for item in left_cluster]
+    right_boxes = [item.get_window_extent(renderer) for item in interior_cluster]
+    assert all(box.x1 < axes_box.x0 for box in left_boxes)
+    assert all(box.x0 > axes_box.x1 for box in right_boxes)
+    assert all(box.x0 >= figure_box.x0 and box.x1 <= figure_box.x1 for box in left_boxes + right_boxes)
 
 
 def test_dense_shared_x_groups_have_robust_vertical_clearance():
@@ -158,17 +185,24 @@ def test_dense_shared_x_groups_have_robust_vertical_clearance():
     _assert_minimum_vertical_clearance(interior_cluster, renderer)
 
 
-def test_dense_reflow_keeps_labels_inside_axes_and_non_overlapping():
-    _, axis, items, renderer = _render_dense_case()
-    axes_box = axis.get_window_extent(renderer)
+def test_dense_callouts_are_non_overlapping_and_figure_reserves_side_space():
+    figure, _, items, renderer = _render_dense_case()
     boxes = [item.get_window_extent(renderer) for item in items]
 
-    for box in boxes:
-        assert box.x0 >= axes_box.x0
-        assert box.x1 <= axes_box.x1
-        assert box.y0 >= axes_box.y0
-        assert box.y1 <= axes_box.y1
-
+    assert figure.get_figwidth() > matplotlib.rcParams["figure.figsize"][0]
     for index, left in enumerate(boxes):
         for right in boxes[index + 1:]:
             assert _overlap_area(left, right) == 0.0
+
+
+def test_sparse_two_label_clusters_keep_existing_inline_annotations():
+    figure, axis, items, renderer = _render(_sparse_two_series_plot())
+    axes_box = axis.get_window_extent(renderer)
+    assert len(items) == 4
+    assert all(item.arrow_patch is None for item in items)
+    assert all(
+        item.get_window_extent(renderer).x0 >= axes_box.x0
+        and item.get_window_extent(renderer).x1 <= axes_box.x1
+        for item in items
+    )
+    assert figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
