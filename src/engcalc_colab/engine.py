@@ -419,14 +419,17 @@ class _Evaluator(ast.NodeVisitor):
                 if unresolved:
                     overrides = {}
                     bindings = {}
+                    allowed_unresolved = set()
                     for parameter, argument_expression, argument_value in zip(
                         function.parameters,
                         argument_expressions,
                         argument_values,
                     ):
                         if isinstance(argument_value, sp.Expr):
-                            bindings[self.engine.resolve_symbol(parameter)] = (
-                                sp.sympify(argument_expression)
+                            symbolic_argument = sp.sympify(argument_expression)
+                            bindings[self.engine.resolve_symbol(parameter)] = symbolic_argument
+                            allowed_unresolved.update(
+                                symbol.name for symbol in symbolic_argument.free_symbols
                             )
                         else:
                             overrides[parameter] = argument_value
@@ -440,7 +443,7 @@ class _Evaluator(ast.NodeVisitor):
                     substitutions, unresolved_symbols = (
                         self.engine.numeric_context.partial_substitutions(
                             symbolic_expression,
-                            allowed_unresolved=None,
+                            allowed_unresolved=allowed_unresolved,
                             overrides=overrides,
                         )
                     )
