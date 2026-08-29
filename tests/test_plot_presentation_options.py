@@ -14,20 +14,19 @@ def eval_cell(engine, text):
     return [engine.evaluate(stmt) for stmt in parse_cell(text)]
 
 
-def test_plot_parser_accepts_optional_title_and_axis_label_strings():
+def test_plot_parser_accepts_optional_title_and_axis_label_strings_as_metadata():
     statement = parse_cell(
         'plot(M(x), x, 0, L, title="Diagrama de momento", '
         'xlabel="Longitud", ylabel="Momento flector")'
     )[0]
     call = statement.expression.body
 
-    assert [item.arg for item in call.keywords] == ["title", "xlabel", "ylabel"]
-    assert [item.value.value for item in call.keywords] == [
-        "Diagrama de momento",
-        "Longitud",
-        "Momento flector",
-    ]
-    assert all(isinstance(item.value, ast.Constant) for item in call.keywords)
+    assert statement.display_options == (
+        ("title", "Diagrama de momento"),
+        ("xlabel", "Longitud"),
+        ("ylabel", "Momento flector"),
+    )
+    assert call.keywords == []
 
 
 def test_envelope_parser_accepts_presentation_options_with_multiple_responses():
@@ -37,7 +36,11 @@ def test_envelope_parser_accepts_presentation_options_with_multiple_responses():
     )[0]
     call = statement.expression.body
 
-    assert [item.arg for item in call.keywords] == ["title", "ylabel"]
+    assert statement.display_options == (
+        ("title", "Envolvente de momento"),
+        ("ylabel", "Momento"),
+    )
+    assert call.keywords == []
 
 
 def test_plot_parser_allows_one_sweep_together_with_presentation_options():
@@ -47,7 +50,11 @@ def test_plot_parser_allows_one_sweep_together_with_presentation_options():
     )[0]
     call = statement.expression.body
 
-    assert [item.arg for item in call.keywords] == ["q", "title", "xlabel"]
+    assert statement.display_options == (
+        ("title", "Comparación"),
+        ("xlabel", "Posición"),
+    )
+    assert [item.arg for item in call.keywords] == ["q"]
     assert isinstance(call.keywords[0].value, ast.List)
 
 
@@ -70,7 +77,7 @@ def test_plot_still_rejects_more_than_one_actual_sweep_parameter():
         )
 
 
-def test_plot_engine_transports_presentation_options_without_changing_sampling():
+def test_plot_engine_exposes_presentation_options_without_changing_sampling():
     engine = EngineeringEngine()
     eval_cell(engine, "M(x) = q*x*(L-x)/2\nq := 10*kN/m\nL := 6*m")
 
