@@ -6,7 +6,13 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.text import Annotation
 
 from .models import PlotResult
-from .plotting import _annotate_characteristic, _series_response_symbol
+from .plotting import (
+    _CALLOUT_CLEARANCE_X,
+    _CALLOUT_CLEARANCE_Y,
+    _annotate_characteristic,
+    _annotation_box,
+    _series_response_symbol,
+)
 
 
 _CLUSTER_X_TOLERANCE_PX = 14.0
@@ -90,6 +96,51 @@ def _cluster_requests(axis, requests):
     return clusters
 
 
+def _box_center(box) -> tuple[float, float]:
+    return (0.5 * (box.x0 + box.x1), 0.5 * (box.y0 + box.y1))
+
+
+def _reassign_cluster_slots(
+    figure,
+    axis,
+    annotations: list[Annotation],
+    occupied_boxes: list,
+    occupied_start: int,
+) -> None:
+    if len(annotations) < 2:
+        return
+
+    figure.canvas.draw()
+    renderer = figure.canvas.get_renderer()
+    slots = sorted(
+        (_box_center(_annotation_box(annotation, renderer)) for annotation in annotations),
+        key=lambda center: center[1],
+    )
+
+    pixels_to_points = 72.0 / float(figure.dpi)
+    for annotation, (target_x, target_y) in zip(annotations, slots):
+        anchor_x, anchor_y = axis.transData.transform(annotation.xy)
+        annotation.set_position(
+            (
+                (target_x - float(anchor_x)) * pixels_to_points,
+                (target_y - float(anchor_y)) * pixels_to_points,
+            )
+        )
+        annotation.set_ha("center")
+        annotation.set_va("center")
+
+    figure.canvas.draw()
+    renderer = figure.canvas.get_renderer()
+    del occupied_boxes[occupied_start:]
+    for annotation in annotations:
+        occupied_boxes.append(
+            _annotation_box(annotation, renderer).expanded(
+                _CALLOUT_CLEARANCE_X,
+                _CALLOUT_CLEARANCE_Y,
+            )
+        )
+
+
 def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
     """Re-place multi-series characteristic labels in spatial reading order.
 
@@ -115,6 +166,8 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
         occupied_boxes: list = []
         for cluster in _cluster_requests(axis, requests):
             cluster.sort(key=lambda item: item[1])
+            occupied_start = len(occupied_boxes)
+            cluster_annotations: list[Annotation] = []
             for _, _, request in cluster:
                 (
                     x_quantity,
@@ -134,5 +187,16 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
                     line_color=line_color,
                     occupied_boxes=occupied_boxes,
                 )
+                annotation = axis.texts[-1]
+                if isinstance(annotation, Annotation):
+                    cluster_annotations.append(annotation)
+
+            _reassign_cluster_slots(
+                figure,
+                axis,
+                cluster_annotations,
+                occupied_boxes,
+                occupied_start,
+            )
     finally:
         figure.set_canvas(original_canvas)
