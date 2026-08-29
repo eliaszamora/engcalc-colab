@@ -1,107 +1,87 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 after EngCalc 0.7.1 was merged through PR #28 and the merged tree was verified against the finalized release branch._
+_Last updated: 2026-08-29 after the 0.7.2 engineering-table design was written on the planning branch._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Default/canonical branch: `main`.
-- Current release: **EngCalc 0.7.1 — multi-argument user functions and generalized partial numeric evaluation**.
-- Release PR: **#28 — `release: EngCalc 0.7.1 multi-argument functions`**, merged into `main`.
-- Merge commit: `f142a85ae90b657b8f85216f0510e686709ee602`.
-- Final PR head: `b6e7effa6aca8a5bb228e02bb02f78b643aec780`.
-- Comparison final PR head → merge commit contained **zero changed files**, proving the merge introduced no tree changes beyond merge history.
-- Package/runtime version: **0.7.1** in `pyproject.toml` and `src/engcalc_colab/__init__.py`.
-- Latest functional corrective included in the release: `4a46bbf7c48373a5d40c03edf99cfa8343d48573` — `fix: ignore unused unresolved numeric parameters`.
-- Approved release design is persistent on `main`:
-  - `docs/superpowers/specs/2026-08-29-engcalc-v0.7.1-multiarg-partial-eval-design.md`;
-  - `docs/superpowers/plans/2026-08-29-engcalc-v0.7.1-multiarg-partial-eval-final.md`.
-- Release branch `feature/v0.7.1-multiarg-partial-eval` is retained; it has not been deleted.
+- Canonical product branch: `main`.
+- Canonical released baseline: **EngCalc 0.7.1**.
+- Current planning branch: `planning/v0.7.2-engineering-tables`, created from `main` at `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e`.
+- 0.7.1 release PR #28 is merged; merge commit `f142a85ae90b657b8f85216f0510e686709ee602`.
+- Package/runtime version remains **0.7.1** during planning. No 0.7.2 production code or version bump has been made.
+- 0.7.2 design spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
+- Spec creation commit: `d5ad296325157cceee088d704849f9073e3a0ec8`.
+- Retain existing release/planning branches unless the user explicitly requests cleanup.
 - Do not manually invoke Codex, `@codex review`, Codex Cloud, or anything that may consume the user's Codex quota without explicit authorization.
 
 ## Approved behavior
 
-- User functions accept one or more ordered positional parameters; the one-argument form remains compatible.
-- Calls require exact positional arity. Defaults, keyword calls, variadics, keyword-only parameters and overload-by-arity are unsupported.
-- Parameter substitution is simultaneous. Local parameters shadow same-named context values only inside their function body.
-- `=` symbolic state and `:=` Pint-backed numeric state remain separate.
-- Fully numeric multi-argument calls preserve Pint units, direct numeric expressions, nested user functions and dimensional zero in any argument position.
-- Generalized partial evaluation substitutes every known value and preserves only dependencies that remain symbolic after substitution.
-- An unresolved caller argument whose parameter is unused by the function body does not force a partial result. `f(x, y) = x`; `numeric(f(2*m, y), cm)` returns `200 cm`.
-- Only caller-supplied symbolic arguments may remain intentionally unresolved. Missing global/body numeric dependencies remain strict errors.
-- Target-unit conversion is rejected only when symbols actually remain unresolved in the resulting expression.
-- Non-polynomial partials preserve truthful symbolic structure and do not fabricate a final quantity.
-- Scalar-math behavior inherited from 0.7.0 remains unchanged.
-- Plot/envelope behavior remains unchanged: 201-point sampling and structural positive moment downward. No Cartesian multi-parameter sweep was added.
+### Existing 0.7.1 baseline
+
+- User functions support one or more ordered positional parameters with exact arity.
+- Generalized partial numeric evaluation substitutes known values while preserving only genuinely unresolved caller-side symbols.
+- Scalar engineering math, Pint-backed numeric values, plotting and envelopes remain unchanged.
+- Plot/envelope rendering remains 201-point with positive structural moment plotted downward.
+
+### 0.7.2 conceptual decisions already approved in chat
+
+- Next milestone is **engineering tables / evaluation by points**.
+- Automatic discretization is the primary/recommended workflow:
+  `table(M(x), x, 0, L, 21)`.
+- When `L` carries units, exact dimensionless zero may inherit the compatible endpoint unit; users should not be forced to write `0*m`.
+- Explicit point magnitudes can declare the unit once:
+  `table(M(x), x, [0, 1, 1.5, 2, 3, 4], m)`.
+- Fully explicit quantities remain supported for mixed compatible point units:
+  `table(M(x), x, [0*m, 50*cm, 1*m, 150*cm, 2*m])`.
+- EngCalc must never infer metres merely from the variable name. A dimensionless domain remains dimensionless unless unit information is supplied.
+- Table output is intended to render natively inside `%%eng`, not require pandas.
 
 ## Open issues / user feedback
 
 - No known functional blocker remains for 0.7.1.
-- Opening PR #28 triggered the repository-configured automatic Codex review; no manual `@codex review` or Codex Cloud review action was initiated as part of the release workflow.
-- All three automatic-review findings were addressed before merge:
-  1. mandatory stable `CURRENT.md` headings restored and verified by the final gate;
-  2. approved spec and plan persisted in the release tree;
-  3. unused unresolved parameter partial-evaluation defect reproduced RED, fixed and revalidated through the installed wheel.
-- All three PR review threads were replied to and marked resolved before merge.
-- Future work should start from this merged 0.7.1 baseline; no 0.7.2 behavior has been approved yet.
+- The written 0.7.2 spec is **pending explicit user review/approval** before an implementation plan or production code may begin.
+- The current spec deliberately keeps the original roadmap constraint that multiple response expressions in one 0.7.2 table are dimensionally compatible. Cross-dimension tables (for example moment + shear + displacement together) are deferred unless the user explicitly expands scope.
+- No CSV/Excel export, interactive spreadsheet behavior, Cartesian multi-parameter sweep, arbitrary list syntax or pandas runtime dependency is included in 0.7.2.
 
 ## Validation evidence
 
-### Implementation history
+### Authoritative 0.7.1 release evidence
 
-- Task 0 baseline: **350/350**.
-- Task 1 ordered signatures: **358/358**.
-- Task 2 symbolic binding: **366/366**.
-- Task 3 numeric multi-argument evaluation: **372/372**, Actions `33237962065`.
-- Task 4 generalized partial evaluation: **378/378**, Actions `33238407627`.
-- Task 5 renderer / real `%%eng`: **381/381**, Actions `33238752978`.
-- Task 6 plot/envelope integration: focused **39/39**, full **384/384**, Actions `33238999984`.
-
-### Review corrective RED → GREEN
-
-- Regression tests: `e2ee4d4e3e31f0d446741779bca16a71277c08a8`.
-- RED Actions `33259267930`: **2 failed, 6 passed**, reproducing both unused-parameter symptoms.
-- Product corrective: `4a46bbf7c48373a5d40c03edf99cfa8343d48573`.
-- GREEN Actions `33259332512`: focused **19/19 passed**, complete source **386/386 passed**.
-- Persistent approved spec/plan: commit `75e0d6454cb00fc080795bf7f23cefacc00cd552`; Actions `33259426881`.
-
-### Definitive corrected 0.7.1 distribution gate
-
-- GitHub Actions: `33259552699` — **success**.
+- Corrected distribution gate: GitHub Actions `33259552699` — success.
 - Validated SHA: `2332bd29e571a360cc47a29562e09b5828a3d2cb`.
-- Persistent release-context/design checks: **passed**.
-- Release metadata: **0.7.1 verified**.
 - Focused corrected release contracts: **77/77 passed**.
 - Complete source suite: **386/386 passed**.
-- Real wheel: `engcalc_colab-0.7.1-py3-none-any.whl`; METADATA verified as `Version: 0.7.1`.
-- Wheel installed into a clean virtual environment.
-- Outside-checkout smoke with `PYTHONPATH=''` imported from `/tmp/engcalc-v071-corrected-wheel-venv/lib/python3.13/site-packages/engcalc_colab/__init__.py`.
-- Installed-wheel smoke covered fully numeric multi-argument evaluation, generalized partials, non-polynomial partials, nested composition/201-point plotting, dimensional zero, exact arity and `numeric(f_unused(2*m, y), cm) == 200 cm`.
 - Complete source-free suite against installed wheel: **386/386 passed**.
 - Repeated complete source suite: **386/386 passed**.
-- Validated wheel artifact:
-  - ID: `9716898144`;
-  - name: `engcalc-colab-0.7.1-corrected-final-wheel`;
-  - size: `29225` bytes;
-  - digest: `sha256:18670d97351bd2403d3be912aaff9773953ccaaa54aeb409973cd48baec20361`;
-  - expires: `2026-11-27`.
-- Validated SHA → final PR head changed only by temporary workflow removal and release-context update.
-- Final PR head `b6e7effa6aca8a5bb228e02bb02f78b643aec780` → merge commit `f142a85ae90b657b8f85216f0510e686709ee602`: **zero changed files**.
+- Wheel artifact ID: `9716898144`.
+- Wheel digest: `sha256:18670d97351bd2403d3be912aaff9773953ccaaa54aeb409973cd48baec20361`.
+- Final PR head → merge commit had zero changed files.
+
+### 0.7.2 planning evidence
+
+- `AGENTS.md`, `CURRENT.md`, roadmap design, parser, models, engine and renderer were inspected before writing the new design.
+- Current parser deliberately rejects arbitrary list literals, confirming that `table(...)` needs a narrow table-specific whitelist rather than general list support.
+- Current public result types are immutable dataclasses, supporting a dedicated `TableResult` rather than overloading `PlotResult`.
+- 0.7.2 spec was written and self-reviewed for placeholders, internal contradictions, scope and ambiguous requirements.
+- No production code has been modified and no tests have been claimed for 0.7.2 yet.
 
 ## Roadmap / active plan
 
 - **0.7.1 is complete and merged.**
-- Approved 0.7.1 spec and plan are retained as release-history documents on `main`.
-- No next feature/release scope has been approved in this context.
-- New work should begin by defining the next milestone/spec from the 0.7.1 baseline rather than reopening closed 0.7.1 tasks unless a regression is found.
+- Active milestone candidate: **0.7.2 — engineering tables / evaluation by points**.
+- Written design exists on `planning/v0.7.2-engineering-tables`.
+- Core user-facing design is automatic discretization first, explicit points second.
+- After written-spec approval, invoke the writing-plans workflow and create a detailed RED → GREEN implementation plan.
+- The existing roadmap continues to 0.7.3 derivation traces after 0.7.2 unless later amended.
 
 ## Exact next step
 
-- Treat `main` at EngCalc **0.7.1** as the new development baseline.
-- If the user requests another feature or release, first inspect this file and the relevant existing architecture/tests, then create/approve the next spec/plan before implementation.
-- If a 0.7.1 regression is reported, reproduce it with a RED test against `main` before modifying production code.
-- Do not delete the retained release branch unless the user explicitly requests repository cleanup.
+- User reviews `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
+- If approved, create the 0.7.2 implementation plan before touching production code.
+- Then implement from the 0.7.1 `main` baseline with strict RED → GREEN TDD, focused tests first and full-suite verification after each coherent block.
+- Do not bump the package version until the release-closing task.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc **0.7.1 is merged on `main` through PR #28**, merge commit `f142a85ae90b657b8f85216f0510e686709ee602`. The finalized release branch head was `b6e7effa6aca8a5bb228e02bb02f78b643aec780`, and comparison to the merge commit had zero changed files. The authoritative corrected distribution gate is Actions `33259552699` on SHA `2332bd29e571a360cc47a29562e09b5828a3d2cb`: 77 focused, 386 source, 386 installed-wheel source-free, 386 repeated source; corrected installed-wheel smoke passed; artifact `9716898144`, digest `sha256:18670d97351bd2403d3be912aaff9773953ccaaa54aeb409973cd48baec20361`. The automatic PR review's three findings were corrected and all review threads resolved before merge. Start any future work from the 0.7.1 `main` baseline. Do not manually invoke Codex without explicit authorization.
+Read this file first. EngCalc 0.7.1 is the validated canonical baseline on `main`. Planning for 0.7.2 is on `planning/v0.7.2-engineering-tables`; design spec `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`, creation commit `d5ad296325157cceee088d704849f9073e3a0ec8`. The approved conceptual syntax prioritizes `table(M(x), x, 0, L, 21)` and also supports a one-unit explicit-point form such as `table(M(x), x, [0, 1, 2], m)`. The written spec is awaiting explicit user review before an implementation plan or production code. Do not manually invoke Codex without explicit authorization.
