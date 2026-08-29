@@ -1,130 +1,145 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 after PR #27 was explicitly approved by the user, merged into `main`, and the merged tree was verified to be product-identical to the validated 0.7.0 release head._
+_Last updated: 2026-08-29 after EngCalc 0.7.1 Task 3 was verified GREEN and its temporary applicator was removed._
 
-## Current baseline
+## Active milestone
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Default branch `main` now contains EngCalc **0.7.0**.
-- PR **#27 — `release: EngCalc 0.7.0 scalar engineering mathematics`** merged successfully on 2026-08-29 after explicit user approval.
-- Merge commit: `03212e2c47f16492e87aadc451efe8bee6b3ee11`.
-- Merged PR head: `3dfeddcf25ce9fd6eb7b2f2b90e616db67c1002d`.
-- Definitive validated release tree before cleanup: `0d9e2ae308f40f6cf7707a2de3970b985f7270a7`.
-- Latest product corrective commit: `d83ac69f45f57063750baece09b32e3ca52db1c8`.
-- `pyproject.toml` and `src/engcalc_colab/__init__.py` both report version **0.7.0** on `main`.
-- Comparing merged PR head `3dfeddcf...` to merge commit `03212e2c...` returns **zero changed files**, proving that the merge introduced no product, test, documentation, or workflow content difference beyond the merge commit itself.
-- Canonical Colab installation can again use `main` directly:
+- Active branch: `feature/v0.7.1-multiarg-partial-eval`.
+- Release baseline: merged EngCalc **0.7.0** on `main`.
+- 0.7.0 merge commit: `03212e2c47f16492e87aadc451efe8bee6b3ee11` (PR #27).
+- 0.7.1 target: **multi-argument user functions and generalized partial numeric evaluation**.
+- Approved implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.1-multiarg-partial-eval-final.md` on `planning/v0.7.1-multiarg-partial-eval`.
+- Do not bump the package version until release closure.
+- Do not merge 0.7.1 without explicit user approval.
+- **Do not invoke Codex, `@codex review`, Codex Cloud, or any action that consumes the user's Codex quota without explicit user authorization.**
 
-```python
-%pip install -q --upgrade --no-cache-dir git+https://github.com/eliaszamora/engcalc-colab.git
-%load_ext engcalc_colab
-```
+## 0.7.1 execution state
 
-## Approved behavior
+### Task 0 — baseline
 
-### Retained 0.6.x behavior
+- Started from the verified merged 0.7.0 tree.
+- Baseline suite: **350/350 GREEN**.
+- The branch intentionally keeps package/runtime version `0.7.0` until release closure.
+- Temporary baseline workflow: `.github/workflows/v071-baseline.yml` runs Python 3.13, installs `.[dev]` + IPython, checks runtime version `0.7.0`, then runs `pytest -q`.
+
+### Task 1 — ordered multi-argument signatures
+
+Status: **complete and GREEN**.
+
+- RED contracts commit: `f92f21e23572e80632938c299d3099948481e6ef` — `test: define multi-argument parser contracts`.
+- Product commit: `92e7df2aa1bcbb2ee29b025143a0ff8331679b86` — `feat: parse multi-argument function signatures`.
+- Verified complete suite after Task 1: **358/358 GREEN**.
+- `ParsedStatement.parameters` and `UserFunction.parameters` are ordered tuples.
+- One-argument compatibility remains available through `.parameter`.
+- Zero-argument, duplicate, invalid and reserved parameter names are rejected.
+
+### Task 2 — symbolic multi-argument binding
+
+Status: **complete and GREEN**.
+
+- RED contracts commit: `cf49ab48c9171f0c701279430023ec637a960433` — `test: define multi-argument symbolic binding contracts`.
+- Product commit: `b899eb26a21061fd63aafa91f97ae32da0c2925a` — `feat: bind multi-argument functions symbolically`.
+- Temporary Task 2 applicator was removed by `05577d3052a5b11c4f38ce6c3a67b75dd8147040`.
+- Verified complete suite after Task 2: **366/366 GREEN**.
+- Calls use exact positional arity.
+- Local parameters shadow same-named symbolic context values.
+- Parameter substitutions are simultaneous rather than sequential.
+- Function redefinition replaces the active signature; there is no overload-by-arity.
+- Nested user functions compose symbolically.
+- Inverse-trig preservation through substitution remains intact.
+
+### Task 3 — fully numeric multi-argument evaluation with units
+
+Status: **complete and GREEN**.
+
+- RED contracts commit: `29a45f14a1e1b4575f40f84f66c96dc07a065664` — `test: define multi-argument numeric contracts`.
+- RED evidence: **5 failed, 367 passed**. The five failures were the intended pre-implementation limitation where `numeric(...)` still required a single user-function argument. The local-parameter-vs-numeric-context shadowing contract already passed.
+- Product commit: `eab52107558f98843162c4ce45cfa0b3f8108410` — `feat: evaluate multi-argument functions numerically`.
+- Product behavior added:
+  - tuple-based `display_arguments` with one-argument compatibility property;
+  - independent AST-first/Pint resolution of every positional argument;
+  - numeric arguments such as `1.2*qD + 1.6*qL`;
+  - dimensional zero in any argument position;
+  - nested numeric user-function arguments such as `qU(qD, qL)`;
+  - local numeric parameter values passed as overrides without mixing Pint quantities into SymPy.
+- Temporary Task 3 workflow removed by `d94b75391e56e0255ef95fb1a1006521ec77c66b`.
+- Temporary Task 3 patch script removed by `6926682a80f6352be6229f0e221a90b23d5d515b`.
+- Compare from RED `29a45f14...` to clean head `6926682a...` changes only `src/engcalc_colab/engine.py` and `src/engcalc_colab/models.py`; no test file changed after the RED contract was frozen.
+- Definitive clean-HEAD baseline run: GitHub Actions `33237962065`, head `6926682a80f6352be6229f0e221a90b23d5d515b`, conclusion **success**; the full `pytest -q` step completed successfully.
+- Because the frozen RED tree contained 372 tests and no test changed between RED and the verified clean head, Task 3 closes at **372/372 GREEN**.
+
+## Approved behavior inherited from 0.7.0
 
 - `numeric(...)` renders formula → explicit numerical substitution → final result.
-- `result(...)` renders formula → final result through the same numerical engine.
-- Semantic MathJax spacing remains 4 pt for wrapped continuation rows, 8 pt for a new mathematical stage/consecutive source result, and 16 pt after an explicit blank source line.
-- Direct unit-bearing user-function arguments from 0.6.2 remain supported, including dimensional-zero arguments.
-- Structural positive moment remains plotted downward.
-- Existing plot/envelope behavior, 201-point rendering grid, signed/magnitude envelope semantics and compact characteristic labels remain unchanged.
-
-### EngCalc 0.7.0 scalar engineering mathematics
-
+- `result(...)` uses the same numerical engine with compact presentation.
+- `=` symbolic state and `:=` Pint numeric state remain separate.
+- Unit-bearing function arguments are supported, including dimensional zero.
+- Existing native plot/envelope behavior remains unchanged, including 201-point sampling and structural positive moment plotted downward.
 - Public fixed scalar functions: `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `exp`, `log`; public constant: `pi`.
-- These names are reserved from user scalar assignment, numeric assignment and function-parameter use.
-- The symbolic layer uses a fixed explicit SymPy mapping; arbitrary SymPy access is not exposed.
-- `sqrt` propagates units through a one-half power.
-- `sin`, `cos` and `tan` accept dimensionless values or angle quantities and convert degree quantities to radians before evaluation.
-- `asin`, `acos` and `atan` require **truly unitless** dimensionless inputs and return explicit Pint radian quantities. Explicit `deg` or `rad` inputs are rejected even though Pint classifies angle dimensions as dimensionless.
-- `exp` and `log` likewise require truly unitless dimensionless inputs and reject explicit angle quantities.
-- Exact inverse-trig expressions remain unevaluated symbolically until the numeric layer can attach the required angle unit; e.g. `numeric(atan(1))` returns a radian quantity rather than a plain dimensionless `pi/4`.
-- Inverse-trig nodes are also preserved through one-argument user-function substitution; e.g. `f(x) = atan(x)`, `a = f(1)`, `numeric(a)` retains radians.
-- Explicit angle units are preserved in notebook rendering even though Pint classifies angles as dimensionless; `a := atan(1)` visibly includes `rad`, and `numeric(atan(1), deg)` visibly includes `deg`.
-- Scalar math works inside user functions and native plots, including `f(x) = A*sin(pi*x/L)` and the existing 201-point plot grid.
-- `numeric(f(x))` may intentionally retain `x` unresolved; generalized non-polynomial partial evaluation remains deferred to 0.7.1.
-- Multi-argument user functions remain deferred to 0.7.1.
+- Scalar/reserved names cannot be redefined as user scalar assignments, numeric assignments or function parameters.
+- `sqrt` propagates units through one-half power.
+- `sin`, `cos`, `tan` accept unitless values or explicit angle quantities; degree quantities convert to radians for evaluation.
+- `asin`, `acos`, `atan`, `exp`, `log` require truly unitless dimensionless inputs and reject explicit `deg`/`rad` quantities where required by the 0.7.0 contract.
+- Inverse trig preserves explicit Pint angle units through numeric evaluation and user-function substitution.
 
-## Open issues / user feedback
+## Active next task — Task 4: generalized partial numeric evaluation
 
-- No known functional regression or release blocker remains open for merged 0.7.0.
-- PR #27 accumulated five review threads during final inspection; all five were corrected where necessary, answered, and resolved before merge.
-- Intermediate wheel smoke `33232296558` failed only because its validation harness exercised a different symbolic boundary than the approved Pint-backed direct numeric contract. No product/test change was made for that harness-only failure; the smoke was aligned with the public contract and the definitive gate passed.
-- **Do not invoke Codex, `@codex review`, Codex Cloud, or any action that may consume the user's Codex quota for EngCalc without explicit user authorization first.** Use direct inspection, repository tools, GitHub Actions and the existing test suite instead.
+Implement strictly RED → GREEN according to the approved plan.
 
-## Validation evidence
+Required behavior:
 
-### Original 0.7.0 implementation TDD
+```text
+M(x, q, L) = q*x*(L-x)/2
+qD := 10*kN/m
+L := 4*m
+numeric(M(x, qD, L))
+```
 
-- Parser RED run `33229331526`, followed by GREEN parser contracts.
-- Symbolic-engine RED run `33229446807`.
-- Numeric RED run `33229577297`.
-- Integrated acceptance run `33229699540`: **74/74** focused scalar contracts and **336/336** complete source tests passed.
+must substitute `qD` and `L` numerically while leaving `x` symbolic.
 
-### First review corrective RED → GREEN
+Task 4 contracts also require:
 
-- Regression contracts covered exact inverse-trig radian preservation and explicit `rad` / `deg` rendering.
-- RED run `33231160212`: **3/3 failed** for the reported pre-corrective defects.
-- First corrective implementation commit: `ed7716fb5d965661934bd2309d6ccfee2b417cf3`.
-- GREEN run `33231261259`: **32/32** focused and **339/339** complete source tests passed.
+- any number of unresolved symbols, not just one;
+- caller-side unresolved names replace local parameter names correctly (`numeric(f(x, q))` must retain `q`, not local `p`);
+- known numeric context symbols referenced inside a function body are substituted too;
+- non-polynomial partials such as `A*sin(pi*x/L)` are valid with `evaluated_terms=None`;
+- target-unit conversion is rejected whenever the result remains partial.
 
-### Second review corrective RED → GREEN
+Planned interfaces:
 
-- Added contracts requiring `asin`, `acos`, `atan`, `exp` and `log` to reject explicit `deg` and `rad` quantities, plus preservation of inverse-trig nodes through user-function substitution.
-- RED run `33232038361`: **11 failed, 3 passed**, reproducing exactly the ten explicit-angle acceptance defects and one user-function radian-loss defect.
-- Second corrective implementation commit: `d83ac69f45f57063750baece09b32e3ca52db1c8`.
-- GREEN run `33232136886`: **63/63** focused and **350/350** complete source tests passed.
+- `NumericContext.partial_substitutions(expression, allowed_unresolved=None, overrides=None)`;
+- arbitrary-count unresolved-symbol tracking;
+- hybrid local binding: known local parameters stay as body symbols with Pint overrides, unresolved local parameters are simultaneously replaced by caller-side symbolic expressions;
+- `evaluate_partial_polynomial` remains an optional richer presentation only when exactly one unresolved polynomial variable remains.
 
-### Definitive EngCalc 0.7.0 distribution gate
+Task 4 files:
 
-GitHub Actions run **`33232439088`** on tree **`0d9e2ae308f40f6cf7707a2de3970b985f7270a7`** completed successfully:
+- modify `src/engcalc_colab/numeric.py`;
+- modify `src/engcalc_colab/engine.py`;
+- create `tests/test_partial_numeric_general.py`;
+- extend `tests/test_scalar_math_acceptance.py` where required by the approved regression contract.
 
-- release metadata: PASS (`0.7.0` in package and `pyproject.toml`);
-- focused 0.7.0 contracts: **123 passed in 14.73 s**;
-- complete source suite: **350 passed in 66.96 s**;
-- real wheel `engcalc_colab-0.7.0-py3-none-any.whl`: built successfully;
-- clean virtual-environment wheel installation: PASS;
-- installed-wheel smoke from `/tmp` with empty `PYTHONPATH`: PASS;
-- smoke explicitly verified exact `atan(1)` radian preservation, visible `rad` / `deg`, rejection of explicit `deg` / `rad` in the dimensionless-only scalar functions through the public Pint-backed `:=` path, user-function inverse-trig radian preservation, `sin(30*deg)`, `sqrt(9*m^2)`, unit-aware user-function evaluation and a 201-point plot;
-- source-free complete suite against installed wheel: **350 passed in 67.12 s**;
-- repeated complete source suite: **350 passed in 66.04 s**;
-- validated artifact: `engcalc-colab-0.7.0-final-wheel`;
-- artifact ID: **9708946389**;
-- artifact ZIP digest: `sha256:f88e98b7cdee221587caee56b34d0dfae779d2591be3b01609f6af4ff0115668`.
+Exact next execution sequence:
 
-### Merge verification
+1. Add Task 4 RED contracts only; do not modify production code first.
+2. Run `pytest tests/test_partial_numeric_general.py tests/test_scalar_math_acceptance.py -q` and confirm failures are caused by the current one-unresolved-symbol/single-parameter partial-evaluation limitation.
+3. Implement the minimum generalized partial-substitution and hybrid binding changes.
+4. Run focused GREEN: `pytest tests/test_partial_numeric_general.py tests/test_numeric_function_arguments.py tests/test_scalar_math_acceptance.py -q`.
+5. Run the complete source suite and record the new all-green count.
+6. Update this file and continue to Task 5 only after fresh verification.
 
-- PR #27 merged as `03212e2c47f16492e87aadc451efe8bee6b3ee11` with second parent `3dfeddcf25ce9fd6eb7b2f2b90e616db67c1002d`.
-- `main` points to that merge commit.
-- The merge commit is GitHub-verified.
-- Comparing `3dfeddcf25ce9fd6eb7b2f2b90e616db67c1002d` → `03212e2c47f16492e87aadc451efe8bee6b3ee11` yields **no file differences**.
-- `pyproject.toml` and package `__version__` on `main` both report **0.7.0**.
-- Therefore the merged product/test tree is identical to the fully inspected release head whose product/tests are downstream of the definitive validated distribution-gate tree.
+## Release evidence retained from 0.7.0
 
-## Roadmap / active plan
-
-- The master roadmap remains on `planning/engcalc-evolution-roadmap`.
-- Completed milestone: **0.7.0 — scalar engineering mathematics**.
-- Next milestone: **0.7.1 — multi-argument user functions and generalized partial evaluation**.
-- 0.7.1 must start from the verified merged 0.7.0 `main` baseline.
-- Preserve TDD RED → GREEN and run a fresh source/wheel distribution gate before any 0.7.1 release merge.
-
-## Exact next step
-
-1. Read the 0.7.1 roadmap/spec from `planning/engcalc-evolution-roadmap` and reconcile it with the now-merged 0.7.0 behavior.
-2. Define the narrow 0.7.1 acceptance contract before implementation, centered on:
-   - multi-argument user functions such as `f(x, a) = ...`;
-   - positional argument count/validation and reserved-name rules;
-   - numeric evaluation with units for each argument;
-   - generalized partial evaluation of non-polynomial expressions while preserving unresolved symbols;
-   - compatibility with `numeric(...)`, `result(...)`, `plot(...)`, existing one-argument functions, scalar math and unit semantics.
-3. Create a dedicated 0.7.1 feature branch from current `main`.
-4. Add RED tests first; only then implement the minimum code needed to turn them GREEN.
-5. Run focused tests, the complete source suite, wheel installation/smoke, source-free installed-wheel suite and repeated source suite.
-6. Open the 0.7.1 PR only after the distribution gate is clean; do not merge without explicit user approval.
+- Definitive 0.7.0 distribution gate: Actions run `33232439088`.
+- Focused scalar contracts: **123 passed**.
+- Complete source suite: **350 passed**.
+- Real wheel built and installed successfully into a clean virtual environment.
+- Source-free installed-wheel full suite: **350 passed**.
+- Repeated source suite: **350 passed**.
+- Validated artifact ID: `9708946389`.
+- 0.7.0 merged through PR #27 only after explicit approval.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc **0.7.0 is merged into `main`** via PR #27, merge commit `03212e2c47f16492e87aadc451efe8bee6b3ee11`. The definitive 0.7.0 distribution gate is run `33232439088`: 123 focused, 350 source, 350 installed-wheel and 350 repeated-source tests passed; artifact `9708946389`. Merge verification found zero file differences between the inspected PR head and the merge commit, and both package/runtime version sources on `main` report 0.7.0. All five PR review threads are resolved. Do not invoke Codex for EngCalc without explicit user authorization. The next milestone is **0.7.1 — multi-argument user functions and generalized partial evaluation**; begin by reading the roadmap/spec and freezing the acceptance contract before writing implementation code.
+Read this file first and inspect branch `feature/v0.7.1-multiarg-partial-eval`. Tasks 1–3 are complete. Task 3's clean verified head before this documentation commit was `6926682a80f6352be6229f0e221a90b23d5d515b`; the definitive clean-head Actions run is `33237962065`. The frozen Task 3 RED tree had 372 tests and no tests changed afterward, so Task 3 closes at 372/372 GREEN. Resume with **Task 4 RED — generalized partial numeric evaluation**. Do not invoke Codex for EngCalc without explicit user authorization, do not bump the version until release closure, and do not merge without explicit user approval.
