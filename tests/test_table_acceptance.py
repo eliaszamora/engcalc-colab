@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from IPython.display import HTML, Math
 from matplotlib.figure import Figure
@@ -136,3 +138,22 @@ def test_acceptance_real_eng_mixes_heading_equations_table_plot_in_source_order(
     assert "x [m]" in displayed[2].data
     assert "M(x) [kN·m]" in displayed[2].data
     assert displayed[3].axes[0].get_xlabel() == "x [m]"
+
+
+def test_readme_documents_engineering_tables_with_automatic_form_first():
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    heading = "## v0.7.2 engineering tables"
+    assert heading in readme
+    section = readme.split(heading, 1)[1].split("\n## ", 1)[0]
+
+    primary = "table(M(x), x, 0, L, 21)"
+    unit_once = "table(M(x), x, [0, 1, 1.5, 2], m)"
+    explicit = "table(M(x), x, [0*m, 50*cm, 1*m])"
+
+    assert primary in section
+    assert unit_once in section
+    assert explicit in section
+    assert section.index(primary) < section.index(unit_once) < section.index(explicit)
+    assert "descending" in section.lower()
+    assert "pandas" in section.lower()
