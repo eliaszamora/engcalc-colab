@@ -3,9 +3,9 @@ from pathlib import Path
 path = Path("src/engcalc_colab/renderer.py")
 text = path.read_text()
 
-if text.count("result.display_argument") != 5:
+if text.count("result.display_argument") != 6:
     raise RuntimeError(
-        f"expected 5 singular display-argument references, found {text.count('result.display_argument')}"
+        f"expected 6 singular display-argument references, found {text.count('result.display_argument')}"
     )
 text = text.replace("result.display_argument", "result.display_arguments")
 
