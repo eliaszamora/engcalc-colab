@@ -163,9 +163,9 @@ def _partial_polynomial_latex(evaluated_terms: tuple[tuple[int, object], ...] | 
 def _display_lhs(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> str | None:
     if result.display_name is None:
         return None
-    if result.display_argument is None:
+    if result.display_arguments is None:
         return _render_lhs(result.display_name, None)
-    return _render_function_call_lhs(result.display_name, result.display_argument)
+    return _render_function_call_lhs(result.display_name, result.display_arguments)
 
 
 def _shows_substitution(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> bool:
@@ -462,7 +462,7 @@ def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -
 
 def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
     statement = result.statement
-    lhs = _render_lhs(statement.target, statement.parameter)
+    lhs = _render_lhs(statement.target, statement.parameters)
     value = sp.sympify(result.value)
     display_input = result.display_input
 
@@ -596,7 +596,7 @@ def _internal_row_spacings(
 
     elif isinstance(result, EvaluationResult):
         statement = result.statement
-        lhs = _render_lhs(statement.target, statement.parameter)
+        lhs = _render_lhs(statement.target, statement.parameters)
         value = sp.sympify(result.value)
         display_input = result.display_input
 
@@ -691,10 +691,10 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         right = " = ".join(chain)
 
         if result.display_name is not None:
-            if result.display_argument is None:
+            if result.display_arguments is None:
                 lhs = _render_lhs(result.display_name, None)
             else:
-                lhs = _render_function_call_lhs(result.display_name, result.display_argument)
+                lhs = _render_function_call_lhs(result.display_name, result.display_arguments)
             return rf"{lhs} = {right}"
         return right
 
@@ -713,15 +713,15 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         chain.append(final_latex)
         right = " = ".join(chain)
         if result.display_name is not None:
-            if result.display_argument is None:
+            if result.display_arguments is None:
                 lhs = _render_lhs(result.display_name, None)
             else:
-                lhs = _render_function_call_lhs(result.display_name, result.display_argument)
+                lhs = _render_function_call_lhs(result.display_name, result.display_arguments)
             return rf"{lhs} = {right}"
         return right
 
     statement = result.statement
-    lhs = _render_lhs(statement.target, statement.parameter)
+    lhs = _render_lhs(statement.target, statement.parameters)
     value_latex = _latex(result.value)
 
     if lhs is None:
@@ -736,12 +736,18 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
     return rf"{lhs} = {value_latex}"
 
 
-def _render_function_call_lhs(name: str, argument) -> str:
+def _render_function_call_lhs(name: str, arguments: tuple) -> str:
+    if not isinstance(arguments, tuple):
+        arguments = (arguments,)
     name_latex = _latex(sp.Symbol(name))
-    return rf"{name_latex}\left({_latex(argument)}\right)"
+    argument_latex = ", ".join(_latex(argument) for argument in arguments)
+    return rf"{name_latex}\left({argument_latex}\right)"
 
 
-def _render_lhs(target: str | None, parameter: str | None) -> str | None:
+def _render_lhs(
+    target: str | None,
+    parameters: tuple[str, ...] | str | None,
+) -> str | None:
     if target is None:
         return None
     if target.startswith("Sigma_") and len(target) > len("Sigma_"):
@@ -749,7 +755,11 @@ def _render_lhs(target: str | None, parameter: str | None) -> str | None:
         target_latex = rf"\Sigma {_latex(sp.Symbol(quantity))}"
     else:
         target_latex = _latex(sp.Symbol(target))
-    if parameter is None:
+    if parameters is None:
         return target_latex
-    parameter_latex = _latex(sp.Symbol(parameter))
+    if isinstance(parameters, str):
+        parameters = (parameters,)
+    parameter_latex = ", ".join(
+        _latex(sp.Symbol(parameter)) for parameter in parameters
+    )
     return rf"{target_latex}\left({parameter_latex}\right)"
