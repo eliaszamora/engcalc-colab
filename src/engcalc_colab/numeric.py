@@ -220,17 +220,11 @@ class NumericContext:
         expr = sp.sympify(expression)
         overrides = overrides or {}
         names = sorted(symbol.name for symbol in expr.free_symbols)
-        substitutions: dict[str, Any] = {}
-        missing: list[str] = []
-        for name in names:
-            if name in overrides:
-                substitutions[name] = overrides[name]
-            elif name in self.values:
-                substitutions[name] = self.values[name]
-            elif name in _UNIT_ALIASES:
-                substitutions[name] = self.ureg.Unit(_UNIT_ALIASES[name])
-            else:
-                missing.append(name)
+        missing = [
+            name
+            for name in names
+            if name not in overrides and name not in self.values
+        ]
         if missing:
             hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
             raise EngEvaluationError(
@@ -238,6 +232,11 @@ class NumericContext:
                 + ", ".join(missing)
                 + f". {hint}"
             )
+
+        substitutions = {
+            name: overrides[name] if name in overrides else self.values[name]
+            for name in names
+        }
         try:
             value = self._evaluate_sympy(expr, substitutions)
             quantity = self._as_quantity(value)
