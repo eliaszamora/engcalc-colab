@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — presentation polish is visually validated; first characteristic-label layout was rejected by real-Colab visual QA; aligned-rail refinement is now 480/480 machine green and awaits a new screenshot._
+_Last updated: 2026-08-29 — presentation polish is visually validated; first and second characteristic-label layouts were rejected by real-Colab visual QA; robust-clearance aligned rails are now 481/481 machine green and await a new screenshot._
 
 ## Current baseline
 
@@ -40,17 +40,20 @@ _Last updated: 2026-08-29 — presentation polish is visually validated; first c
 
 - Mathematical characteristic-point detection remains authoritative in the plotting layer; layout never changes coordinates, values, colors, units, curves, legend, or sign convention.
 - Multi-series characteristic annotations are clustered by nearby display-space x position.
-- Real-Colab QA proved that merely avoiding overlap and preserving anchor-y order is **not sufficient**: the previous output still formed alternating/scattered left-right clouds at `x=0` and `x≈2.5`.
-- New required presentation contract: each dense shared-x group uses **one aligned label rail/column**, with one common left or right text edge chosen automatically from available axes space.
-- Within the rail, vertical label order follows vertical anchor order; safe vertical slots are retained where possible and spread only enough to prevent overlap.
+- Real-Colab QA proved that merely avoiding overlap and preserving anchor-y order is **not sufficient**: the first output formed alternating/scattered left-right clouds.
+- A second real-Colab pass with aligned rails improved horizontal order but still showed labels visually touching/overlapping vertically, especially around `x≈2.5`.
+- Required presentation contract: each dense shared-x group uses **one aligned label rail/column**, with one common left or right text edge chosen automatically from available axes space.
+- Within the rail, vertical label order follows vertical anchor order.
+- Consecutive label boxes in a dense rail must retain a robust visual clearance, not merely zero geometric overlap.
+- Current implementation uses a 12 px internal vertical rail gap; machine tests require at least 10 px free clearance between adjacent label boxes.
 - Labels must remain inside the axes and pairwise non-overlapping.
-- The feature must not solve crowding by simply applying one larger fixed offset.
+- The feature must not change characteristic-point mathematics or solve crowding with one generic fixed offset applied to every point.
 
 ## Open issues / user feedback
 
 - User explicitly rejected the first real-Colab characteristic-label result as visually unordered. Do not describe that output as approved.
-- The screenshot showed two specific failures: the `x=0` group alternated horizontally in a zig-zag; the `x≈2.5` group split into left/center/right subgroups despite zero box overlap.
-- A second real-Colab visual QA pass is required for the new aligned-rail refinement before closing this graphics task.
+- User also rejected the second aligned-rail screenshot as still needing improvement because labels visibly overlapped/touched in the dense interior cluster.
+- A third real-Colab visual QA pass is required for the robust-clearance refinement before closing this graphics task.
 - Multiline ordinary function-call parsing remains a possible later ergonomics improvement, outside this label-layout task.
 - Piecewise implementation has not started.
 
@@ -66,10 +69,13 @@ _Last updated: 2026-08-29 — presentation polish is visually validated; first c
 - Child branch baseline: **477/477 passed**.
 - Initial ordering RED: **1 failed, 477 passed**.
 - Intermediate implementation reached **479/479 passed**, including tests for vertical anchor order, axes containment, and zero pairwise label-box overlap.
-- Real-Colab screenshot then **failed visual QA**: non-overlapping labels were still visibly scattered into multiple horizontal positions.
-- New aligned-rail RED commit **`a6e18667e9d0ebb451b42b98f6f169ccda331546`**: Actions `33280534065`, job `99174840543`, Python 3.13.15: **1 failed, 479 passed**. The sole new failure measured the problem directly: shared-x labels had ~81–95 px horizontal edge spread instead of one aligned rail.
-- Aligned-rail implementation commit **`15bf024fd03dbd29fc1f96f0c6bc98c72965f435`**: Actions `33280670988`, job `99175192258`, Python 3.13.15: **480/480 passed**.
-- New implementation chooses one rail side from available axes space, aligns the group on one common text edge, preserves vertical reading order, enforces a small vertical gap, and keeps existing no-overlap/inside-axes guarantees green.
+- First real-Colab screenshot **failed visual QA**: non-overlapping labels were still visibly scattered into multiple horizontal positions.
+- Aligned-rail RED commit `a6e18667e9d0ebb451b42b98f6f169ccda331546`: **1 failed, 479 passed**; failure measured ~81–95 px horizontal edge spread.
+- Aligned-rail implementation commit `15bf024fd03dbd29fc1f96f0c6bc98c72965f435`: Actions `33280670988`, job `99175192258`, Python 3.13.15: **480/480 passed**.
+- Second real-Colab screenshot improved horizontal ordering but **failed visual QA** because adjacent rail labels were still too close and visibly overlapped/touched.
+- Robust-clearance RED commit **`60d83b2737eb0058404e5f04f079dfee6ac9a60e`**: Actions `33280875717`, job `99175714568`: **1 failed, 480 passed**. The new test measured only 5 px clearance between most adjacent rail boxes versus a required 10 px.
+- Robust-clearance implementation commit **`af3c4eb9b3eac086924cbbbaf8c14ed17e1738d7`** increases the internal rail gap to 12 px.
+- Actions **`33281000238`**, job **`99176037827`**, Python 3.13.15: **481/481 passed**.
 - Temporary characteristic-label workflow remains active until the new real-Colab visual QA is accepted.
 - Package/runtime version remains **0.7.2**.
 
@@ -79,7 +85,7 @@ _Last updated: 2026-08-29 — presentation polish is visually validated; first c
 - **0.7.3 derivation traces:** RETIRED.
 - **Narrative text:** IMPLEMENTED + MACHINE GREEN + REAL-COLAB VISUALLY VALIDATED.
 - **Presentation polish:** IMPLEMENTED + 477/477 + REAL-COLAB VISUALLY VALIDATED; retained and not merged.
-- **Characteristic-point label deconfliction:** aligned-rail refinement **480/480 MACHINE GREEN**; second real-Colab visual QA pending.
+- **Characteristic-point label deconfliction:** robust-clearance aligned-rail refinement **481/481 MACHINE GREEN**; third real-Colab visual QA pending.
 - **0.8.0 Piecewise:** DESIGN + SPEC + IMPLEMENTATION PLAN COMPLETE; implementation not started.
 - **0.8.1:** exact-first extrema, roots and intersections.
 - **0.8.2:** exact envelopes and governing intervals.
@@ -91,14 +97,14 @@ _Last updated: 2026-08-29 — presentation polish is visually validated; first c
 
 ## Exact next step
 
-1. Use SHA `15bf024fd03dbd29fc1f96f0c6bc98c72965f435` for a one-shot Colab installation/reload.
-2. Render the same dense six-series moment fixture used in the rejected screenshot.
-3. Require visually that each shared-x group reads as one aligned column/rail rather than a zig-zag or left/center/right cloud.
-4. Also verify no overlaps, axes containment, color association, legend, axes/title, and positive-moment-down convention.
+1. Use SHA `af3c4eb9b3eac086924cbbbaf8c14ed17e1738d7` for a one-shot Colab installation/reload.
+2. Render the same dense six-series moment fixture used in the prior screenshots.
+3. Require visually that each shared-x group remains one aligned column/rail and that adjacent labels have clearly visible whitespace between them.
+4. Also verify axes containment, color association, legend, axes/title, and positive-moment-down convention.
 5. If visually accepted, run one fresh final full gate on the checkpointed HEAD, remove the temporary workflow, and verify cleanup changes are administrative only.
 6. If still visually unsatisfactory, refine presentation only and rerun focused + complete tests before another screenshot.
 7. Do not merge without explicit user approval.
 
 ## How to resume in a new conversation
 
-Read this file first. Released `main` remains EngCalc 0.7.2. Narrative and presentation polish are retained and visually validated. The first characteristic-label deconfliction attempt passed 479 tests but was **rejected by the user visually** because labels still scattered horizontally. The active branch now contains an aligned single-rail refinement at SHA `15bf024fd03dbd29fc1f96f0c6bc98c72965f435`, machine-green **480/480**. The immediate next action is real-Colab visual QA using the same dense six-series fixture. Piecewise remains planned but unimplemented. Never invoke Codex without explicit authorization and never merge without explicit user approval.
+Read this file first. Released `main` remains EngCalc 0.7.2. Narrative and presentation polish are retained and visually validated. The first characteristic-label attempt was rejected for scattered labels; the second aligned-rail attempt was rejected because labels were still too tightly packed in Colab. The active branch now contains robust-clearance rails at SHA `af3c4eb9b3eac086924cbbbaf8c14ed17e1738d7`, machine-green **481/481**. The immediate next action is a third real-Colab visual QA using the same dense six-series fixture. Piecewise remains planned but unimplemented. Never invoke Codex without explicit authorization and never merge without explicit user approval.
