@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — narrative/presentation polish are visually validated; three in-axes dense-label iterations were rejected by real-Colab QA; dense clusters now use external callout rails with leader lines and 482/482 machine-green coverage, pending new visual QA._
+_Last updated: 2026-08-29 — narrative/presentation polish are visually validated; three in-axes dense-label iterations were rejected by real-Colab QA; dense clusters now use external callout rails with leader lines and the checkpointed branch is 482/482 machine green, pending new visual QA._
 
 ## Current baseline
 
@@ -77,8 +77,10 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 - New callout-contract test commit `8ba571885a78b6f9bc4695529bfa24e59a52b166`; refined text-box measurement commit `61f3544f52e773d34ab02f75566eb35f04a3ce3f`.
 - Refined RED Actions `33281581420`, job `99177529004`, Python 3.13.15: **2 failed, 480 passed**. The two expected failures were: no leader arrows existed and the figure still remained at the default 6.4 in width instead of reserving external side space.
 - External-callout implementation commit **`70c303d9c73d5027d0940778229fbdeb5a58a9fc`**.
-- GREEN Actions **`33281734799`**, job **`99177923324`**, Python 3.13.15: **482/482 passed** in 97.09 s.
-- Coverage now verifies: dense anchor-y order, aligned external rails, leader-line presence, dense text outside axes but inside the figure, robust vertical clearance, no pairwise text overlap, figure side-space reservation, and preservation of the existing inline layout for sparse two-label clusters.
+- Initial GREEN Actions **`33281734799`**, job **`99177923324`**, Python 3.13.15: **482/482 passed** in 97.09 s.
+- Checkpoint commit **`9434f943579b501846583a9c9fe350ad7c4a1af4`** includes production, tests, and the persistent context.
+- Fresh checkpoint gate Actions **`33281880955`**, job **`99178298084`**, Python 3.13.15: **482/482 passed** in 79.03 s.
+- Coverage verifies: dense anchor-y order, aligned external rails, leader-line presence, dense text outside axes but inside the figure, robust vertical clearance, no pairwise text overlap, figure side-space reservation, and preservation of the existing inline layout for sparse two-label clusters.
 - Temporary characteristic-label workflow remains active until real-Colab visual QA is accepted.
 - Package/runtime version remains **0.7.2**.
 
@@ -88,7 +90,7 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 - **0.7.3 derivation traces:** RETIRED.
 - **Narrative text:** IMPLEMENTED + MACHINE GREEN + REAL-COLAB VISUALLY VALIDATED.
 - **Presentation polish:** IMPLEMENTED + 477/477 + REAL-COLAB VISUALLY VALIDATED; retained and not merged.
-- **Characteristic-point label deconfliction:** external callout rails **482/482 MACHINE GREEN**; real-Colab visual QA pending.
+- **Characteristic-point label deconfliction:** external callout rails **482/482 CHECKPOINT GREEN**; real-Colab visual QA pending.
 - **0.8.0 Piecewise:** DESIGN + SPEC + IMPLEMENTATION PLAN COMPLETE; implementation not started.
 - **0.8.1:** exact-first extrema, roots and intersections.
 - **0.8.2:** exact envelopes and governing intervals.
@@ -100,14 +102,13 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 
 ## Exact next step
 
-1. Run one fresh complete 482-test gate on the checkpointed HEAD containing production, tests and this context file.
-2. Pin that validated SHA in a one-shot Colab installer which clears stale EngCalc modules and re-registers the fresh `%%eng` magic.
-3. Render the same six-series dense moment fixture used in every prior visual comparison.
-4. Require visually: dense labels outside the data axes, no text overlap, readable leader lines, clear point-to-label association, no interference with title/axes/legend, and preservation of positive-moment-down convention.
-5. If accepted, remove the temporary workflow, verify administrative-only cleanup, and await explicit integration/merge decision.
-6. If still visually unsatisfactory, refine only the external callout presentation and rerun focused + complete tests before another screenshot.
-7. Do not merge without explicit user approval.
+1. Install checkpoint SHA `9434f943579b501846583a9c9fe350ad7c4a1af4` in Colab using a one-shot installer that clears stale EngCalc modules and re-registers the fresh `%%eng` magic.
+2. Render the same six-series dense moment fixture used in every prior visual comparison.
+3. Require visually: dense labels outside the data axes, no text overlap, readable leader lines, clear point-to-label association, no interference with title/axes/legend, and preservation of positive-moment-down convention.
+4. If accepted, remove the temporary workflow, verify administrative-only cleanup, and await explicit integration/merge decision.
+5. If still visually unsatisfactory, refine only the external callout presentation and rerun focused + complete tests before another screenshot.
+6. Do not merge without explicit user approval.
 
 ## How to resume in a new conversation
 
-Read this file first. Released `main` remains EngCalc 0.7.2. Narrative and presentation polish are retained and visually validated. Multiple in-axes dense-label approaches were machine-green but rejected by real-Colab QA. The user approved a structural change: clusters of 3+ characteristic labels now move outside the data axes to aligned side rails with same-color leader lines and reserved figure space; clusters of 1–2 labels remain inline. Production SHA `70c303d9c73d5027d0940778229fbdeb5a58a9fc` is GREEN **482/482**. A fresh gate on the checkpointed HEAD and real-Colab screenshot are the immediate next actions. Piecewise remains planned but unimplemented. Never invoke Codex without explicit authorization and never merge without explicit user approval.
+Read this file first. Released `main` remains EngCalc 0.7.2. Narrative and presentation polish are retained and visually validated. Multiple in-axes dense-label approaches were machine-green but rejected by real-Colab QA. The user approved a structural change: clusters of 3+ characteristic labels now move outside the data axes to aligned side rails with same-color leader lines and reserved figure space; clusters of 1–2 labels remain inline. External-callout production is at SHA `70c303d9c73d5027d0940778229fbdeb5a58a9fc`, and checkpoint SHA `9434f943579b501846583a9c9fe350ad7c4a1af4` passed a fresh **482/482** gate. The immediate next action is real-Colab visual QA using that checkpoint. Piecewise remains planned but unimplemented. Never invoke Codex without explicit authorization and never merge without explicit user approval.
