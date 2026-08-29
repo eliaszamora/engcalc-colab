@@ -150,8 +150,10 @@ def test_custom_magnitude_envelope_title_and_labels_override_only_requested_text
     engine = EngineeringEngine()
     eval_cell(
         engine,
-        "V_A(x) = 6*kN - 4*kN/m*x\n"
-        "V_B(x) = -9*kN + 1*kN/m*x\n"
+        "V_A(x) = R_A - q_A*x\n"
+        "V_B(x) = R_B + q_B*x\n"
+        "R_A := 6*kN\nq_A := 4*kN/m\n"
+        "R_B := -9*kN\nq_B := 1*kN/m\n"
         "L := 2*m",
     )
     result = eval_cell(
