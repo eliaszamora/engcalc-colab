@@ -33,7 +33,9 @@ The open 0.6.0 release PR must be merged to `main` before any roadmap implementa
 
 ## Release roadmap
 
-### 0.6.1 — symbolic/numeric ergonomics and diagnostic quality
+**Versioning reconciliation (2026-08-29):** the release that actually shipped as 0.6.1 became the visual/presentation release. The numeric-ergonomics milestone below is therefore 0.6.2; 0.7.0 and every later milestone keep their existing numbers and scope.
+
+### 0.6.2 — symbolic/numeric ergonomics and diagnostic quality
 
 Goal: remove avoidable friction exposed by the professor-Excel exercise without changing the conceptual architecture.
 

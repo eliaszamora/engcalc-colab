@@ -74,11 +74,13 @@ Expected baseline: 226 tests from the 0.6.0 branch remain green.
 
 - [ ] **Step 5: Create the Task 1 feature branch from merged `main`**
 
-Suggested branch: `feature/v0.6.1-numeric-ergonomics`.
+Suggested branch: `feature/v0.6.2-numeric-ergonomics`.
 
 ---
 
-### Task 1: EngCalc 0.6.1 — Symbolic/Numeric Ergonomics and Diagnostics
+### Task 1: EngCalc 0.6.2 — Symbolic/Numeric Ergonomics and Diagnostics
+
+**Versioning reconciliation (2026-08-29):** actual EngCalc 0.6.1 shipped as the visual/presentation release, so this unchanged numeric-ergonomics scope is implemented as 0.6.2. Milestone 0.7.0 and later numbering remains unchanged.
 
 **Files:**
 - Modify: `src/engcalc_colab/engine.py`
@@ -162,16 +164,16 @@ A `%%eng` test must prove `numeric(M_UU(0*m))` works directly without introducin
 - [ ] **Step 7: Run full source suite**
 
 Run: `pytest -q`
-Expected: all 0.6.0 tests plus new 0.6.1 tests PASS.
+Expected: all existing regression tests plus new 0.6.2 tests PASS.
 
-- [ ] **Step 8: Update README and close release 0.6.1**
+- [ ] **Step 8: Update README and close release 0.6.2**
 
-Document `solve(expr, x)` as the primary zero-equality shorthand while retaining `eq(...)` documentation for explicit equalities. Bump both version declarations to 0.6.1 only now.
+Document `solve(expr, x)` as the primary zero-equality shorthand while retaining `eq(...)` documentation for explicit equalities. Bump both version declarations to 0.6.2 only now.
 
 - [ ] **Step 9: Run wheel gate and commit**
 
 Build wheel, install clean, smoke from `/tmp`, run full suite against wheel, repeat source suite.
-Commit message: `release: EngCalc 0.6.1 numeric ergonomics`.
+Commit message: `release: EngCalc 0.6.2 numeric ergonomics`.
 
 ---
 
@@ -907,7 +909,7 @@ Commit message: `release: EngCalc 1.0.0`.
 ```text
 0.6.0 merge
    ↓
-0.6.1 numeric ergonomics
+0.6.2 numeric ergonomics
    ↓
 0.7.0 scalar math
    ↓
