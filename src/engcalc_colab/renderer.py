@@ -69,11 +69,7 @@ class _EngineeringLatexPrinter(LatexPrinter):
 
         for index, term in enumerate(args):
             term_latex = self._print(term)
-            if self._needs_mul_brackets(
-                term,
-                first=(index == 0),
-                last=(index == len(args) - 1),
-            ):
+            if self._needs_mul_brackets(term, first=(index == 0), last=(index == len(args) - 1)):
                 term_latex = rf"\left({term_latex}\right)"
             rendered.append(term_latex)
 
@@ -81,11 +77,7 @@ class _EngineeringLatexPrinter(LatexPrinter):
 
 
 class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
-    def __init__(
-        self,
-        substitutions: dict[str, object],
-        settings: RenderSettings,
-    ):
+    def __init__(self, substitutions: dict[str, object], settings: RenderSettings):
         super().__init__()
         self.substitutions = substitutions
         self.render_settings = settings
@@ -119,20 +111,11 @@ def _latex(expr) -> str:
     return _EngineeringLatexPrinter().doprint(expr)
 
 
-def _substitution_latex(
-    expr,
-    substitutions: dict[str, object],
-    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
-) -> str:
+def _substitution_latex(expr, substitutions: dict[str, object], settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> str:
     return _NumericSubstitutionLatexPrinter(substitutions, settings).doprint(expr)
 
 
-def _quantity_latex(
-    quantity,
-    precision: int | None = None,
-    *,
-    settings: RenderSettings | None = None,
-) -> str:
+def _quantity_latex(quantity, precision: int | None = None, *, settings: RenderSettings | None = None) -> str:
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
     active_precision = active_settings.precision if precision is None else precision
     magnitude = float(quantity.magnitude)
@@ -146,11 +129,7 @@ def _quantity_latex(
     return rf"{magnitude_latex}\,{unit_latex}"
 
 
-def _partial_polynomial_latex(
-    evaluated_terms: tuple[tuple[int, object], ...] | None,
-    variable: str,
-    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
-) -> str | None:
+def _partial_polynomial_latex(evaluated_terms: tuple[tuple[int, object], ...] | None, variable: str, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> str | None:
     if evaluated_terms is None:
         return None
 
@@ -185,13 +164,16 @@ def _display_lhs(result: NumericEvaluationResult | PartialNumericEvaluationResul
         return None
     if result.display_argument is None:
         return _render_lhs(result.display_name, None)
-    return _render_function_call_lhs(
-        result.display_name,
-        result.display_argument,
-    )
+    return _render_function_call_lhs(result.display_name, result.display_argument)
 
 
-_NUMERIC_ROW_VISUAL_BUDGET = 82.0
+def _shows_substitution(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> bool:
+    """Return False for the compact result(...) presentation alias."""
+    return re.match(r"^result\s*\(", result.statement.source.strip()) is None
+
+
+_NUMERIC_ROW_VISUAL_BUDGET = 64.0
+_COMPLETE_ROW_VISUAL_BUDGET = 104.0
 
 
 def _latex_visual_width(latex: str) -> float:
@@ -212,12 +194,7 @@ def _latex_visual_width(latex: str) -> float:
     return float(len(normalized) + 6 * fraction_count)
 
 
-def _render_signed_term(
-    term: sp.Expr,
-    *,
-    substitutions: dict[str, object] | None,
-    settings: RenderSettings,
-) -> tuple[bool, str]:
+def _render_signed_term(term: sp.Expr, *, substitutions: dict[str, object] | None, settings: RenderSettings) -> tuple[bool, str]:
     negative = term.could_extract_minus_sign()
     unsigned_term = -term if negative else term
     if substitutions is None:
@@ -227,24 +204,11 @@ def _render_signed_term(
     return negative, body
 
 
-def _adaptive_additive_rows(
-    expression: sp.Expr,
-    substitutions: dict[str, object] | None = None,
-    *,
-    visual_budget: float = _NUMERIC_ROW_VISUAL_BUDGET,
-    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
-) -> list[str]:
+def _adaptive_additive_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, visual_budget: float = _NUMERIC_ROW_VISUAL_BUDGET, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> list[str]:
     """Pack complete top-level additive terms into MathJax rows adaptively."""
     expression = sp.sympify(expression)
     terms = expression.as_ordered_terms() if expression.is_Add else [expression]
-    rendered_terms = [
-        _render_signed_term(
-            term,
-            substitutions=substitutions,
-            settings=settings,
-        )
-        for term in terms
-    ]
+    rendered_terms = [_render_signed_term(term, substitutions=substitutions, settings=settings) for term in terms]
 
     packed: list[list[tuple[int, bool, str]]] = []
     current: list[tuple[int, bool, str]] = []
@@ -282,87 +246,199 @@ def _adaptive_additive_rows(
     return rows
 
 
-def _numeric_evaluation_rows(
-    result: NumericEvaluationResult,
+def _multiplicative_factor_key(term):
+    denominator_factor = bool(term.is_Pow and term.exp.is_number and term.exp.is_negative)
+    return (1 if denominator_factor else 0, _engineering_factor_key(term))
+
+
+def _render_multiplicative_factor(
+    factor: sp.Expr,
+    substitutions: dict[str, object] | None,
     settings: RenderSettings,
+) -> str:
+    if substitutions is None:
+        rendered = _latex(factor)
+    else:
+        rendered = _substitution_latex(factor, substitutions, settings)
+    if factor.is_Add:
+        rendered = rf"\left({rendered}\right)"
+    return rendered
+
+
+def _bounded_product_rows(
+    expression: sp.Expr,
+    substitutions: dict[str, object] | None = None,
+    *,
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
 ) -> list[str]:
-    formula_rows = _adaptive_additive_rows(
-        result.symbolic_expression,
+    """Split one commutative product/fraction at factor boundaries for display."""
+    expression = sp.sympify(expression)
+    if expression.could_extract_minus_sign():
+        expression = -expression
+    if not expression.is_Mul:
+        return []
+
+    factors = sorted(expression.args, key=_multiplicative_factor_key)
+    rendered_factors = [
+        _render_multiplicative_factor(factor, substitutions, settings)
+        for factor in factors
+    ]
+
+    rows: list[str] = []
+    current = ""
+    for factor_latex in rendered_factors:
+        separator = "" if not current else " "
+        candidate = f"{current}{separator}{factor_latex}"
+        if current and _latex_visual_width(candidate) > _NUMERIC_ROW_VISUAL_BUDGET:
+            rows.append(current)
+            current = rf"\quad \cdot {factor_latex}"
+        else:
+            current = candidate
+
+    if current:
+        rows.append(current)
+    return rows
+
+
+def _split_overwide_terms(
+    expression: sp.Expr,
+    substitutions: dict[str, object] | None = None,
+    *,
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+) -> list[str]:
+    """Split only over-budget multiplicative terms while preserving additive signs."""
+    expression = sp.sympify(expression)
+    terms = expression.as_ordered_terms() if expression.is_Add else [expression]
+    rows: list[str] = []
+
+    for index, term in enumerate(terms):
+        negative, body = _render_signed_term(
+            term,
+            substitutions=substitutions,
+            settings=settings,
+        )
+        if index == 0:
+            prefix = "- " if negative else ""
+        else:
+            prefix = r"\quad - " if negative else r"\quad + "
+
+        if _latex_visual_width(prefix + body) <= _NUMERIC_ROW_VISUAL_BUDGET:
+            rows.append(prefix + body)
+            continue
+
+        unsigned_term = -term if negative else term
+        product_rows = _bounded_product_rows(
+            unsigned_term,
+            substitutions,
+            settings=settings,
+        )
+        if not product_rows:
+            rows.append(prefix + body)
+            continue
+
+        rows.append(prefix + product_rows[0])
+        rows.extend(product_rows[1:])
+
+    return rows
+
+
+def _bounded_expression_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> list[str]:
+    """Return additive rows and split overwide products/fractions at safe factor boundaries."""
+    expression = sp.sympify(expression)
+    rows = _adaptive_additive_rows(expression, substitutions, settings=settings)
+    if all(_latex_visual_width(row) <= _NUMERIC_ROW_VISUAL_BUDGET for row in rows):
+        return rows
+
+    expanded = sp.expand(expression)
+    if sp.sstr(expanded) != sp.sstr(expression):
+        expanded_rows = _adaptive_additive_rows(expanded, substitutions, settings=settings)
+        if max(_latex_visual_width(row) for row in expanded_rows) < max(_latex_visual_width(row) for row in rows):
+            expression = expanded
+            rows = expanded_rows
+    if all(_latex_visual_width(row) <= _NUMERIC_ROW_VISUAL_BUDGET for row in rows):
+        return rows
+
+    split_rows = _split_overwide_terms(
+        expression,
+        substitutions,
         settings=settings,
     )
-    substituted_rows = _adaptive_additive_rows(
-        result.symbolic_expression,
-        result.substitutions,
-        settings=settings,
-    )
+    if split_rows:
+        return split_rows
+    return rows
+
+
+def _append_assignment_stage(rows: list[str], lhs: str | None, body_rows: list[str]) -> None:
+    """Append one aligned stage without allowing a long body to enlarge the identity column."""
+    if not body_rows:
+        return
+
+    if lhs is None:
+        rows.append(rf" & & \displaystyle {body_rows[0]}")
+        for continuation in body_rows[1:]:
+            rows.append(rf" & & \displaystyle {continuation}")
+        return
+
+    candidate = rf"\displaystyle {lhs} & = & \displaystyle {body_rows[0]}"
+    if _latex_visual_width(candidate) <= _COMPLETE_ROW_VISUAL_BUDGET:
+        rows.append(candidate)
+        for continuation in body_rows[1:]:
+            rows.append(rf" & & \displaystyle {continuation}")
+        return
+
+    rows.append(rf"\displaystyle {lhs} & = &")
+    for body in body_rows:
+        rows.append(rf" & & \displaystyle {body}")
+
+
+def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSettings) -> list[str]:
+    formula_rows = _bounded_expression_rows(result.symbolic_expression, settings=settings)
     final_latex = _quantity_latex(result.quantity, settings=settings)
     lhs = _display_lhs(result)
 
     rows: list[str] = []
-    if lhs is not None:
-        rows.append(rf"\displaystyle {lhs} & = & \displaystyle {formula_rows[0]}")
-        for continuation in formula_rows[1:]:
-            rows.append(rf" & & \displaystyle {continuation}")
-        rows.append(rf" & = & \displaystyle {substituted_rows[0]}")
-    else:
-        formula_latex = _latex(result.symbolic_expression)
-        rows.append(
-            rf"\displaystyle {formula_latex} & = & \displaystyle {substituted_rows[0]}"
+    _append_assignment_stage(rows, lhs, formula_rows)
+    if _shows_substitution(result):
+        substituted_rows = _bounded_expression_rows(
+            result.symbolic_expression,
+            result.substitutions,
+            settings=settings,
         )
-
-    for continuation in substituted_rows[1:]:
-        rows.append(rf" & & \displaystyle {continuation}")
-
+        for index, body in enumerate(substituted_rows):
+            if index == 0:
+                rows.append(rf" & = & \displaystyle {body}")
+            else:
+                rows.append(rf" & & \displaystyle {body}")
     rows.append(rf" & = & \displaystyle {final_latex}")
     return rows
 
 
-def _partial_numeric_evaluation_rows(
-    result: PartialNumericEvaluationResult,
-    settings: RenderSettings,
-) -> list[str]:
-    formula_rows = _adaptive_additive_rows(
-        result.symbolic_expression,
-        settings=settings,
-    )
-    substituted_rows = _adaptive_additive_rows(
-        result.symbolic_expression,
-        result.substitutions,
-        settings=settings,
-    )
+def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, settings: RenderSettings) -> list[str]:
+    formula_rows = _bounded_expression_rows(result.symbolic_expression, settings=settings)
     evaluated_latex = None
     if len(result.unresolved_symbols) == 1:
-        evaluated_latex = _partial_polynomial_latex(
-            result.evaluated_terms,
-            result.unresolved_symbols[0],
-            settings,
-        )
+        evaluated_latex = _partial_polynomial_latex(result.evaluated_terms, result.unresolved_symbols[0], settings)
     lhs = _display_lhs(result)
 
     rows: list[str] = []
-    if lhs is not None:
-        rows.append(rf"\displaystyle {lhs} & = & \displaystyle {formula_rows[0]}")
-        for continuation in formula_rows[1:]:
-            rows.append(rf" & & \displaystyle {continuation}")
-        rows.append(rf" & = & \displaystyle {substituted_rows[0]}")
-    else:
-        formula_latex = _latex(result.symbolic_expression)
-        rows.append(
-            rf"\displaystyle {formula_latex} & = & \displaystyle {substituted_rows[0]}"
+    _append_assignment_stage(rows, lhs, formula_rows)
+    if _shows_substitution(result):
+        substituted_rows = _bounded_expression_rows(
+            result.symbolic_expression,
+            result.substitutions,
+            settings=settings,
         )
-
-    for continuation in substituted_rows[1:]:
-        rows.append(rf" & & \displaystyle {continuation}")
-
+        for index, body in enumerate(substituted_rows):
+            if index == 0:
+                rows.append(rf" & = & \displaystyle {body}")
+            else:
+                rows.append(rf" & & \displaystyle {body}")
     if evaluated_latex is not None:
         rows.append(rf" & = & \displaystyle {evaluated_latex}")
     return rows
 
 
-def _standard_result_row(
-    result: CalculationResult,
-    settings: RenderSettings,
-) -> str:
+def _standard_result_row(result: CalculationResult, settings: RenderSettings) -> str:
     rendered = render_result(result, settings=settings)
     if " = " in rendered:
         left, right = rendered.split(" = ", 1)
@@ -370,69 +446,66 @@ def _standard_result_row(
     return rf"\displaystyle {rendered} & &"
 
 
-def _symbolic_evaluation_rows(
-    result: EvaluationResult,
-    settings: RenderSettings,
-) -> list[str]:
+def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -> list[str]:
+    """Render the equation being solved entirely in the right-hand block."""
+    lhs_rows = _bounded_expression_rows(display_input.lhs, settings=settings)
+    rhs_latex = _latex(display_input.rhs)
+    rows: list[str] = []
+    for index, equation_row in enumerate(lhs_rows):
+        if index == len(lhs_rows) - 1:
+            rows.append(rf" & & \displaystyle {equation_row} = {rhs_latex}")
+        else:
+            rows.append(rf" & & \displaystyle {equation_row}")
+    return rows
+
+
+def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameter)
     value = sp.sympify(result.value)
     display_input = result.display_input
 
     if display_input is None or sp.sstr(display_input) == sp.sstr(value):
-        value_rows = _adaptive_additive_rows(value, settings=settings)
+        value_rows = _bounded_expression_rows(value, settings=settings)
         if len(value_rows) == 1:
-            return [_standard_result_row(result, settings)]
-        rows = []
-        if lhs is None:
-            rows.append(rf"\displaystyle {value_rows[0]} & &")
-        else:
-            rows.append(rf"\displaystyle {lhs} & = & \displaystyle {value_rows[0]}")
-        for continuation in value_rows[1:]:
-            rows.append(rf" & & \displaystyle {continuation}")
+            standard = _standard_result_row(result, settings)
+            if _latex_visual_width(standard) <= _COMPLETE_ROW_VISUAL_BUDGET:
+                return [standard]
+        rows: list[str] = []
+        _append_assignment_stage(rows, lhs, value_rows)
+        return rows
+
+    if isinstance(display_input, sp.Equality):
+        rows = _equality_stage_rows(display_input, settings)
+        value_rows = _bounded_expression_rows(value, settings=settings)
+        _append_assignment_stage(rows, lhs, value_rows)
         return rows
 
     input_latex = _latex(display_input)
-    value_latex = _latex(value)
+    value_rows = _bounded_expression_rows(value, settings=settings)
     lhs_width = _latex_visual_width(lhs) + 3.0 if lhs is not None else 0.0
-    chain_width = lhs_width + _latex_visual_width(input_latex) + _latex_visual_width(value_latex) + 6.0
-    if chain_width <= _NUMERIC_ROW_VISUAL_BUDGET:
+    chain_width = lhs_width + _latex_visual_width(input_latex) + sum(_latex_visual_width(row) for row in value_rows) + 6.0
+    if len(value_rows) == 1 and chain_width <= _NUMERIC_ROW_VISUAL_BUDGET:
         return [_standard_result_row(result, settings)]
 
-    if isinstance(display_input, sp.Equality):
-        equation_rows = _adaptive_additive_rows(display_input.lhs, settings=settings)
-        rhs_latex = _latex(display_input.rhs)
-        rows = []
-        for index, equation_row in enumerate(equation_rows):
-            if index == len(equation_rows) - 1:
-                rows.append(rf"\displaystyle {equation_row} & = & \displaystyle {rhs_latex}")
-            else:
-                rows.append(rf"\displaystyle {equation_row} & &")
-
-        value_rows = _adaptive_additive_rows(value, settings=settings)
-        if lhs is None:
-            rows.append(rf" & = & \displaystyle {value_rows[0]}")
-        else:
-            rows.append(rf"\displaystyle {lhs} & = & \displaystyle {value_rows[0]}")
-        for continuation in value_rows[1:]:
-            rows.append(rf" & & \displaystyle {continuation}")
-        return rows
-
-    value_rows = _adaptive_additive_rows(value, settings=settings)
-    if lhs is None:
-        rows = [rf"\displaystyle {input_latex} & &"]
+    rows: list[str] = []
+    input_candidate = rf"\displaystyle {lhs} & = & \displaystyle {input_latex}" if lhs is not None else rf" & & \displaystyle {input_latex}"
+    if _latex_visual_width(input_candidate) <= _COMPLETE_ROW_VISUAL_BUDGET:
+        rows.append(input_candidate)
     else:
-        rows = [rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"]
-    rows.append(rf" & = & \displaystyle {value_rows[0]}")
-    for continuation in value_rows[1:]:
-        rows.append(rf" & & \displaystyle {continuation}")
+        if lhs is not None:
+            rows.append(rf"\displaystyle {lhs} & = &")
+        rows.append(rf" & & \displaystyle {input_latex}")
+
+    for index, body in enumerate(value_rows):
+        if index == 0:
+            rows.append(rf" & = & \displaystyle {body}")
+        else:
+            rows.append(rf" & & \displaystyle {body}")
     return rows
 
 
-def _display_rows(
-    result: CalculationResult,
-    settings: RenderSettings,
-) -> list[str]:
+def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[str]:
     if isinstance(result, NumericEvaluationResult):
         return _numeric_evaluation_rows(result, settings)
     if isinstance(result, PartialNumericEvaluationResult):
@@ -442,11 +515,124 @@ def _display_rows(
     return [_standard_result_row(result, settings)]
 
 
-def render_aligned_results(
-    results: list[CalculationResult],
-    *,
-    settings: RenderSettings | None = None,
-) -> str:
+def _stage_spacing_sequence(stage_lengths: list[int]) -> list[str]:
+    """Return semantic gaps: 4 pt within one stage and 8 pt between stages."""
+    spacings: list[str] = []
+    row_seen = False
+    for stage_length in stage_lengths:
+        if stage_length <= 0:
+            continue
+        for row_index in range(stage_length):
+            if not row_seen:
+                row_seen = True
+                continue
+            spacings.append("8pt" if row_index == 0 else "4pt")
+    return spacings
+
+
+def _assignment_stage_row_count(lhs: str | None, body_rows: list[str]) -> int:
+    stage_rows: list[str] = []
+    _append_assignment_stage(stage_rows, lhs, body_rows)
+    return len(stage_rows)
+
+
+def _internal_row_spacings(
+    result: CalculationResult,
+    result_rows: list[str],
+    settings: RenderSettings,
+) -> list[str]:
+    """Classify internal rows as wrapped continuations or new mathematical stages."""
+    if len(result_rows) <= 1:
+        return []
+
+    if isinstance(result, NumericEvaluationResult):
+        formula_rows = _bounded_expression_rows(
+            result.symbolic_expression,
+            settings=settings,
+        )
+        stage_lengths = [
+            _assignment_stage_row_count(_display_lhs(result), formula_rows)
+        ]
+        if _shows_substitution(result):
+            stage_lengths.append(
+                len(
+                    _bounded_expression_rows(
+                        result.symbolic_expression,
+                        result.substitutions,
+                        settings=settings,
+                    )
+                )
+            )
+        stage_lengths.append(1)
+
+    elif isinstance(result, PartialNumericEvaluationResult):
+        formula_rows = _bounded_expression_rows(
+            result.symbolic_expression,
+            settings=settings,
+        )
+        stage_lengths = [
+            _assignment_stage_row_count(_display_lhs(result), formula_rows)
+        ]
+        if _shows_substitution(result):
+            stage_lengths.append(
+                len(
+                    _bounded_expression_rows(
+                        result.symbolic_expression,
+                        result.substitutions,
+                        settings=settings,
+                    )
+                )
+            )
+        evaluated_latex = None
+        if len(result.unresolved_symbols) == 1:
+            evaluated_latex = _partial_polynomial_latex(
+                result.evaluated_terms,
+                result.unresolved_symbols[0],
+                settings,
+            )
+        if evaluated_latex is not None:
+            stage_lengths.append(1)
+
+    elif isinstance(result, EvaluationResult):
+        statement = result.statement
+        lhs = _render_lhs(statement.target, statement.parameter)
+        value = sp.sympify(result.value)
+        display_input = result.display_input
+
+        if display_input is None or sp.sstr(display_input) == sp.sstr(value):
+            stage_lengths = [len(result_rows)]
+        elif isinstance(display_input, sp.Equality):
+            value_rows = _bounded_expression_rows(value, settings=settings)
+            stage_lengths = [
+                len(_equality_stage_rows(display_input, settings)),
+                _assignment_stage_row_count(lhs, value_rows),
+            ]
+        else:
+            input_latex = _latex(display_input)
+            input_candidate = (
+                rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"
+                if lhs is not None
+                else rf" & & \displaystyle {input_latex}"
+            )
+            input_stage_length = 1
+            if _latex_visual_width(input_candidate) > _COMPLETE_ROW_VISUAL_BUDGET:
+                input_stage_length += 1 if lhs is not None else 0
+            value_rows = _bounded_expression_rows(value, settings=settings)
+            stage_lengths = [input_stage_length, len(value_rows)]
+
+    else:
+        stage_lengths = [len(result_rows)]
+
+    spacings = _stage_spacing_sequence(stage_lengths)
+    expected = len(result_rows) - 1
+    if len(spacings) != expected:
+        raise RuntimeError(
+            "renderer semantic spacing metadata does not match rendered row count"
+        )
+    return spacings
+
+
+def render_aligned_results(results: list[CalculationResult], *, settings: RenderSettings | None = None) -> str:
     """Render all calculation groups with one consistent MathJax array layout."""
     if not results:
         return ""
@@ -457,23 +643,27 @@ def render_aligned_results(
         result_rows = _display_rows(result, active_settings)
 
         if result_index:
-            spacing = "8pt" if result.statement.blank_before else "4pt"
+            spacing = "16pt" if result.statement.blank_before else "8pt"
             rows.append(rf"\\[{spacing}]")
         rows.append(result_rows[0])
 
-        for continuation_row in result_rows[1:]:
-            rows.append(r"\\[2pt]")
+        internal_spacings = _internal_row_spacings(
+            result,
+            result_rows,
+            active_settings,
+        )
+        for spacing, continuation_row in zip(
+            internal_spacings,
+            result_rows[1:],
+        ):
+            rows.append(rf"\\[{spacing}]")
             rows.append(continuation_row)
 
     body = " ".join(rows)
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
 
 
-def render_result(
-    result: CalculationResult,
-    *,
-    settings: RenderSettings | None = None,
-) -> str:
+def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
 
     if isinstance(result, NumericAssignmentResult):
@@ -482,20 +672,19 @@ def render_result(
 
     if isinstance(result, PartialNumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
-        substituted_latex = _substitution_latex(
-            result.symbolic_expression,
-            result.substitutions,
-            active_settings,
-        )
         evaluated_latex = None
         if len(result.unresolved_symbols) == 1:
-            evaluated_latex = _partial_polynomial_latex(
-                result.evaluated_terms,
-                result.unresolved_symbols[0],
-                active_settings,
-            )
+            evaluated_latex = _partial_polynomial_latex(result.evaluated_terms, result.unresolved_symbols[0], active_settings)
 
-        chain = [formula_latex, substituted_latex]
+        chain = [formula_latex]
+        if _shows_substitution(result):
+            chain.append(
+                _substitution_latex(
+                    result.symbolic_expression,
+                    result.substitutions,
+                    active_settings,
+                )
+            )
         if evaluated_latex is not None:
             chain.append(evaluated_latex)
         right = " = ".join(chain)
@@ -504,31 +693,31 @@ def render_result(
             if result.display_argument is None:
                 lhs = _render_lhs(result.display_name, None)
             else:
-                lhs = _render_function_call_lhs(
-                    result.display_name,
-                    result.display_argument,
-                )
+                lhs = _render_function_call_lhs(result.display_name, result.display_argument)
             return rf"{lhs} = {right}"
         return right
 
     if isinstance(result, NumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
-        substituted_latex = _substitution_latex(
-            result.symbolic_expression,
-            result.substitutions,
-            active_settings,
-        )
         final_latex = _quantity_latex(result.quantity, settings=active_settings)
+        chain = [formula_latex]
+        if _shows_substitution(result):
+            chain.append(
+                _substitution_latex(
+                    result.symbolic_expression,
+                    result.substitutions,
+                    active_settings,
+                )
+            )
+        chain.append(final_latex)
+        right = " = ".join(chain)
         if result.display_name is not None:
             if result.display_argument is None:
                 lhs = _render_lhs(result.display_name, None)
             else:
-                lhs = _render_function_call_lhs(
-                    result.display_name,
-                    result.display_argument,
-                )
-            return rf"{lhs} = {formula_latex} = {substituted_latex} = {final_latex}"
-        return rf"{formula_latex} = {substituted_latex} = {final_latex}"
+                lhs = _render_function_call_lhs(result.display_name, result.display_argument)
+            return rf"{lhs} = {right}"
+        return right
 
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameter)

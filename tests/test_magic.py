@@ -76,6 +76,20 @@ def test_eng_magic_returns_none_so_jupyter_does_not_echo_internal_results():
     assert result is None
 
 
+def test_magic_renders_consecutive_results_with_eight_point_spacing(monkeypatch):
+    import engcalc_colab.magic as magic_module
+
+    displayed = []
+    monkeypatch.setattr(magic_module, "display", displayed.append)
+
+    magics = magic_module.EngMagics(shell=None)
+    magics.eng("", "A = 1\nB = 2")
+
+    assert [type(item) for item in displayed] == [Math]
+    assert r"\\[8pt]" in displayed[0].data
+    assert r"\\[4pt]" not in displayed[0].data
+
+
 def test_magic_renders_blank_lines_inside_one_math_group(monkeypatch):
     import engcalc_colab.magic as magic_module
 
@@ -86,15 +100,14 @@ def test_magic_renders_blank_lines_inside_one_math_group(monkeypatch):
     magics.eng("", "A = 1\n\n\nB = 2")
 
     assert [type(item) for item in displayed] == [Math]
-    assert r"\\[8pt]" in displayed[0].data
+    assert r"\\[16pt]" in displayed[0].data
+    assert r"\\[8pt]" not in displayed[0].data
 
 
 def test_eng_reset_reports_general_state_clear(capsys):
     shell = _fresh_shell()
     shell.extension_manager.load_extension("engcalc_colab")
-
     shell.run_line_magic("eng_reset", "")
-
     assert capsys.readouterr().out.strip() == "engcalc state cleared"
 
 
@@ -105,10 +118,7 @@ def test_magic_uses_mathjax_when_group_contains_numeric_evaluation(monkeypatch):
     monkeypatch.setattr(magic_module, "display", displayed.append)
 
     magics = magic_module.EngMagics(shell=None)
-    magics.eng(
-        "",
-        "V_B = 3*q*L/8\nq := 2.8*tonf/m\nL := 4*m\nnumeric(V_B)",
-    )
+    magics.eng("", "V_B = 3*q*L/8\nq := 2.8*tonf/m\nL := 4*m\nnumeric(V_B)")
 
     assert [type(item) for item in displayed] == [Math]
     latex = displayed[0].data
@@ -122,7 +132,6 @@ def test_eng_config_updates_and_reports_render_settings(capsys):
     magics = _eng_magics_instance(shell)
 
     shell.run_line_magic("eng_config", "precision=4 zero_tolerance=1e-6")
-
     assert magics.render_settings.precision == 4
     assert magics.render_settings.zero_tolerance == 1e-6
     assert "precision=4" in capsys.readouterr().out
@@ -154,11 +163,7 @@ def test_eng_magic_flushes_math_before_plot_and_resumes_after(monkeypatch):
     displayed = []
     monkeypatch.setattr(magic_module, "display", displayed.append)
     magics = magic_module.EngMagics(shell=None)
-    magics.eng(
-        "",
-        "A = q*L\nq := 2.8*tonf/m\nL := 4*m\n"
-        "plot(A*x, x, 0, L)\nB = 2*A",
-    )
+    magics.eng("", "A = q*L\nq := 2.8*tonf/m\nL := 4*m\nplot(A*x, x, 0, L)\nB = 2*A")
     assert [type(item) for item in displayed] == [Math, Figure, Math]
 
 
@@ -170,15 +175,7 @@ def test_eng_magic_displays_one_figure_for_parameter_sweep_in_source_order(monke
     monkeypatch.setattr(magic_module, "display", displayed.append)
 
     magics = magic_module.EngMagics(shell=None)
-    magics.eng(
-        "",
-        "A = q*L\n"
-        "M(x) = q*x*(L-x)/2\n"
-        "L := 6*m\n"
-        "plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])\n"
-        "B = 2*A",
-    )
-
+    magics.eng("", "A = q*L\nM(x) = q*x*(L-x)/2\nL := 6*m\nplot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])\nB = 2*A")
     assert [type(item) for item in displayed] == [Math, Figure, Math]
 
 
@@ -190,15 +187,7 @@ def test_eng_magic_displays_one_envelope_figure_in_source_order(monkeypatch):
     monkeypatch.setattr(magic_module, "display", displayed.append)
 
     magics = magic_module.EngMagics(shell=None)
-    magics.eng(
-        "",
-        "A = q*L\n"
-        "M(x) = q*x*(L-x)/2\n"
-        "L := 6*m\n"
-        "envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])\n"
-        "B = 2*A",
-    )
-
+    magics.eng("", "A = q*L\nM(x) = q*x*(L-x)/2\nL := 6*m\nenvelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])\nB = 2*A")
     assert [type(item) for item in displayed] == [Math, Figure, Math]
 
 
@@ -212,16 +201,14 @@ def test_eng_magic_displays_magnitude_envelope_in_source_order(monkeypatch):
     magics = magic_module.EngMagics(shell=None)
     magics.eng(
         "",
-        "A = R_constr\n"
-        "V_constr(x) = R_constr - q_constr*x\n"
-        "V_uso(x) = R_uso + q_uso*x\n"
-        "R_constr := 6*kN\nq_constr := 4*kN/m\n"
-        "R_uso := -9*kN\nq_uso := 1*kN/m\nL := 2*m\n"
-        "envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)\n"
-        "B = 2*A",
+        "A = R_constr\nV_constr(x) = R_constr - q_constr*x\nV_uso(x) = R_uso + q_uso*x\n"
+        "R_constr := 6*kN\nq_constr := 4*kN/m\nR_uso := -9*kN\nq_uso := 1*kN/m\nL := 2*m\n"
+        "envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)\nB = 2*A",
     )
 
     assert [type(item) for item in displayed] == [Math, Figure, Math]
     axis = displayed[1].axes[0]
     assert axis.get_title() == "|V(x)| envelope"
-    assert any("Magnitude envelope" in text.get_text() for text in axis.texts)
+    labels = [text.get_text() for text in axis.texts]
+    assert "(0, 9)" in labels
+    assert not any("Magnitude envelope" in label for label in labels)

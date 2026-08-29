@@ -21,11 +21,11 @@ def test_consecutive_equations_render_as_one_aligned_math_block(monkeypatch):
     assert r"\begin{aligned}" not in displayed[1].data
 
 
-def test_blank_line_inside_equation_group_becomes_compact_row_spacing(monkeypatch):
+def test_blank_line_inside_equation_group_uses_sixteen_point_spacing(monkeypatch):
     displayed = _capture("### Reacciones\nA = 1\n\nB = 2", monkeypatch)
 
     assert [type(item) for item in displayed] == [HTML, Math]
-    assert r"\\[8pt]" in displayed[1].data
+    assert r"\\[16pt]" in displayed[1].data
 
 
 def test_level_two_heading_has_stronger_visual_hierarchy(monkeypatch):
@@ -36,10 +36,10 @@ def test_level_two_heading_has_stronger_visual_hierarchy(monkeypatch):
     assert "border-bottom" not in displayed[1].data
 
 
-def test_regular_equation_rows_use_tighter_spacing(monkeypatch):
+def test_regular_equation_rows_use_eight_point_spacing(monkeypatch):
     displayed = _capture("### Reacciones\nA = 1\nB = 2", monkeypatch)
 
-    assert r"\\[4pt]" in displayed[1].data
+    assert r"\\[8pt]" in displayed[1].data
     assert r"\\[2pt]" not in displayed[1].data
 
 

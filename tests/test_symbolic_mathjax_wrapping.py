@@ -1,6 +1,17 @@
+import sympy as sp
+
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.renderer import RenderSettings, _display_rows, render_aligned_results
+from engcalc_colab.renderer import (
+    RenderSettings,
+    _bounded_expression_rows,
+    _display_rows,
+    _latex_visual_width,
+    render_aligned_results,
+)
+
+
+ROW_LIMIT = 64.0
 
 
 def evaluate(engine: EngineeringEngine, source: str):
@@ -28,7 +39,8 @@ def test_long_symbolic_integral_breaks_input_and_evaluated_expression_across_row
 
     assert len(rows) >= 2
     assert r"\int" in latex
-    assert r"\\[2pt]" in latex
+    assert r"\\[4pt]" in latex
+    assert r"\\[2pt]" not in latex
 
 
 def test_long_solve_equation_is_wrapped_and_solution_gets_its_own_row():
@@ -43,6 +55,31 @@ def test_long_solve_equation_is_wrapped_and_solution_gets_its_own_row():
     latex = render_aligned_results([result])
 
     assert len(rows) >= 3
-    assert r"\\[2pt]" in latex
+    assert r"\\[4pt]" in latex
+    assert r"\\[8pt]" in latex
+    assert r"\\[2pt]" not in latex
     assert "R_{B}" in latex
     assert "3 q L" in latex
+
+
+def test_single_overwide_product_is_split_at_factor_boundaries():
+    factors = [sp.Symbol(f"a_{index:02d}") for index in range(1, 31)]
+    expression = sp.Mul(*factors)
+
+    rows = _bounded_expression_rows(expression)
+
+    assert len(rows) > 1
+    assert all(_latex_visual_width(row) <= ROW_LIMIT for row in rows)
+    assert all(row.startswith(r"\quad \cdot ") for row in rows[1:])
+
+
+def test_single_overwide_fraction_is_split_at_factor_boundaries():
+    numerator = sp.Mul(*(sp.Symbol(f"n_{index:02d}") for index in range(1, 17)))
+    denominator = sp.Mul(*(sp.Symbol(f"d_{index:02d}") for index in range(1, 17)))
+    expression = numerator / denominator
+
+    rows = _bounded_expression_rows(expression)
+
+    assert len(rows) > 1
+    assert all(_latex_visual_width(row) <= ROW_LIMIT for row in rows)
+    assert all(row.startswith(r"\quad \cdot ") for row in rows[1:])

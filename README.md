@@ -2,6 +2,8 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
+Current version: **0.6.1**.
+
 ## Install in Google Colab
 
 ```python
@@ -14,6 +16,34 @@ If the extension is already loaded after an update, use:
 ```python
 %reload_ext engcalc_colab
 ```
+
+## v0.6.1 visual polish
+
+v0.6.1 is a presentation-focused release. It does not change the structural mathematics, the 201-point sampling grid, unit handling, signed-envelope rules, magnitude-envelope rules, or the convention of **positive structural moment downward**.
+
+The release refines the notebook output in three related ways:
+
+- **MathJax calculations** remain the single mathematical renderer. Formula, numerical-substitution and final-result stages are kept semantically separate and may wrap over several rows when required by the visual-width budget. Long additive expressions wrap at complete top-level terms rather than splitting mathematical fragments. The final vertical hierarchy is 4 pt for a wrapped continuation of the same mathematical stage, 8 pt between distinct mathematical stages or consecutive source results, and 16 pt when an explicit blank source line precedes the next result.
+- **Compact numerical presentation** is available through `result(expr[, target_unit])`, which reuses the existing numerical evaluation path but displays only symbolic formula → final result. `numeric(...)` keeps the detailed formula → substitution → result presentation.
+- **Characteristic plot values** are attached to the sampled points they describe using compact coordinate labels such as `(2.5, 3.15)`. Multi-series plots, signed envelopes and magnitude envelopes no longer use a separate characteristic-value panel. Labels contain no duplicated units, boxes or leader lines; their color follows the corresponding series, while placement avoids axes boundaries, the legend, sampled curves and other labels.
+
+For example:
+
+```text
+%%eng
+
+M_D(x) = q_D*x*(L-x)/2
+M_L(x) = q_L*x*(L-x)/2
+
+q_D := 8*kN/m
+q_L := 5*kN/m
+L := 6*m
+
+plot(M_D(x), M_L(x), x, 0, L)
+envelope(M_D(x), M_L(x), x, 0, L)
+```
+
+The curves and envelope are evaluated exactly as before; v0.6.1 changes how their characteristic values are presented.
 
 ## Symbolic + numerical workflow
 
@@ -34,7 +64,13 @@ numeric(V_A)
 numeric(M_A)
 ```
 
-The symbolic namespace still contains the original formulas, while `numeric(...)` evaluates them with the current numerical context and renders formula → numerical substitution → final quantity.
+The symbolic namespace still contains the original formulas. `numeric(...)` evaluates with the current numerical context and renders formula → numerical substitution → final quantity. When the explicit substitution is not useful in the memory, `result(...)` uses the same evaluation but renders formula → final quantity:
+
+```text
+result(M_A)
+result(M_A, kN*m)
+result(M(x))
+```
 
 ## Numerical context and units
 
@@ -69,242 +105,9 @@ Units are interpreted only inside the numerical context. A name such as `m` rema
 
 Numerical quantities render with two decimal places by default. Global presentation settings can change that policy without altering stored values or symbolic formulas.
 
-## v0.6.0 absolute-value envelopes and in-plot panels
+## Adaptive MathJax rendering
 
-v0.6.0 adds the safe, composable `abs(...)` operation and extends the existing `envelope(...)` statement with a magnitude-demand mode. The signed-envelope syntax and algebraic max/min behavior introduced in v0.5.0 remain unchanged.
-
-`abs(...)` works in symbolic expressions, numerical/Pint evaluation and native plotting. A magnitude envelope is requested by applying `abs(...)` to every source response:
-
-```text
-%%eng
-
-V_constr(x) = R_constr - q_constr*x
-V_uso(x) = R_uso + q_uso*x
-
-R_constr := 6*kN
-q_constr := 4*kN/m
-R_uso := -9*kN
-q_uso := 1*kN/m
-L := 2*m
-
-envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
-```
-
-At each of the shared 201 sample positions, EngCalc compares the absolute magnitudes and keeps one nonnegative maximum-magnitude demand branch. The original signed source curves are retained internally and shown as faint context, so a negative response may govern the absolute demand without losing its sign. The result also retains the governing source index and signed governing value.
-
-The same mode works with the existing restricted one-parameter sweep:
-
-```text
-%%eng
-
-V(x) = q*(L/2-x)
-L := 4*m
-
-envelope(
-    abs(V(x)),
-    x,
-    0,
-    L,
-    q=[2*tonf/m, 3*tonf/m, 4*tonf/m]
-)
-```
-
-Every source of one envelope must use the same comparison mode. Mixing signed and absolute responses in one call, for example `envelope(abs(V_A(x)), V_B(x), ...)`, is rejected. There is intentionally no separate `abs_envelope(...)` alias: absolute-value demand is composed with the ordinary `envelope(...)` API.
-
-Magnitude-envelope figures emphasize one `|response|_max` boundary, fill from zero to that boundary, and keep the signed source responses as faint context. Their characteristic panel reports the maximum magnitude, its x location, the signed governing value and the governing source/case.
-
-v0.6.0 also moves characteristic-value panels for multi-series plots, signed envelopes and magnitude envelopes **inside the graph axes**. EngCalc automatically chooses among the four plot corners using data occupancy and penalizes the legend corner, while keeping the complete panel bounding box inside the axes. Single-series maximum/minimum callouts remain unchanged.
-
-Structural moment diagrams continue to use the EngCalc convention of **positive moment downward**, including `plot(abs(M(x)))` and magnitude moment envelopes.
-
-## v0.5.0 sampled engineering envelopes
-
-v0.5.0 adds a restricted `envelope(...)` statement for structural-response comparisons. It reuses the same symbolic functions, Pint-aware numerical state, 201-point sampling grid and structural sign conventions as `plot(...)`.
-
-Several compatible response functions may be reduced directly to one upper and one lower envelope:
-
-```text
-%%eng
-
-M_A(x) = q_A*x*(L-x)/2
-M_B(x) = -0.5*q_B*x*(L-x)/2
-
-q_A := 8*kN/m
-q_B := 10*kN/m
-L := 6*m
-
-envelope(M_A(x), M_B(x), x, 0, L)
-```
-
-The final three positional arguments are `variable, start, end`. Every earlier positional argument is a source response series. A non-sweep envelope requires at least two response series.
-
-One expression may also be enveloped over a restricted one-parameter sweep:
-
-```text
-%%eng
-
-M(x) = q*x*(L-x)/2
-L := 6*m
-
-envelope(
-    M(x),
-    x,
-    0,
-    L,
-    q=[-10*kN/m, 5*kN/m, 15*kN/m]
-)
-```
-
-The sweep follows the same narrow grammar as multi-series plotting: exactly one keyword parameter, a non-empty list of complete numerical EngCalc expressions, no dictionaries, no cartesian sweep and no arbitrary keyword arguments. Sweep values are local overrides and do not mutate the stored numerical value of the swept parameter or plotting variable.
-
-At every one of the 201 shared sample positions, EngCalc computes the **signed algebraic maximum and signed algebraic minimum** across all source series. It does not compute an absolute-value envelope. Therefore a negative response can govern the lower envelope while a positive response governs the upper envelope. The result also retains the governing source-series index for each sampled x location internally.
-
-All source responses must be dimensionally compatible. Compatible values are normalized to a common unit before comparison. Mixed moment/non-moment series on one envelope axis are rejected, as are incompatible dimensions such as shear and moment.
-
-Structural moments keep the EngCalc convention of **positive moment downward**. For a moment envelope the y-axis remains inverted consistently.
-
-The envelope figure is intentionally different from a normal multi-series comparison:
-
-- original source responses are shown as faint context curves without markers or inline callouts;
-- only the upper and lower envelope boundaries are emphasized;
-- the region between the two envelope boundaries is lightly filled;
-- the `y = 0` reference remains visible;
-- maximum/minimum characteristic values are placed in an external panel rather than on top of the structural diagram.
-
-`envelope(...)` is a standalone output statement and produces exactly one Matplotlib figure in source order inside `%%eng`, just like `plot(...)`.
-
-## v0.4.0 multi-series plotting
-
-v0.4.0 extends native `plot(...)` with two additive comparison workflows while preserving the four-argument single-curve syntax.
-
-Several compatible functions may share one axis:
-
-```text
-# Several compatible functions on one axis
-plot(M_D(x), M_L(x), x, 0, L)
-```
-
-The final three positional arguments are always interpreted as `variable, start, end`; every earlier positional argument is a plotted expression.
-
-One function may also be swept over several numerical values of one parameter:
-
-```text
-# One function swept over one parameter
-plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m, 15*kN/m])
-```
-
-The sweep keyword is intentionally narrow. v0.4.0 accepts one sweep parameter with a non-empty list of complete EngCalc numerical expressions such as `5*kN/m`. The shorthand `[5, 10, 15]*kN/m` is not supported. A sweep and multiple plotted expressions cannot be combined in the same call.
-
-Sweep values are local plot overrides. They do not create, replace or mutate the stored numerical value of the swept parameter. The plotting variable is also overridden locally while sampling, so existing numerical values such as `x := 2.5*m` remain unchanged after plotting.
-
-Every series on one y-axis must have compatible dimensions. EngCalc normalizes compatible ordinates to one shared unit and rejects misleading comparisons such as shear and moment on the same ordinary y-axis. A multi-expression comparison that mixes moment-classified and non-moment-classified series is also rejected.
-
-Structural moment plots retain the EngCalc convention of **positive moment downward**. If every series is a moment series, the shared y-axis is inverted consistently.
-
-Presentation depends on the number of series:
-
-- one series keeps the existing structural diagram presentation: line, translucent fill, endpoint/extrema markers, and smart in-plot maximum/minimum callouts;
-- two or more series use clean lines without overlapping area fills, an automatic legend, restrained extrema markers for each curve, and an external **Characteristic values** panel containing each series' sampled maximum/minimum and x locations.
-
-One `plot(...)` statement still creates exactly one Matplotlib figure and remains in source order between surrounding MathJax calculation groups.
-
-v0.4.0 deliberately does not expose arbitrary plot styling, labeled dictionary cases, multi-parameter/cartesian sweeps, dual y-axes or arbitrary Matplotlib keyword arguments. Those remain separate future capabilities.
-
-## v0.3.0 native plotting inside `%%eng`
-
-v0.3.0 introduced the original restricted, unit-aware plotting command:
-
-```text
-plot(expression, variable, start, end)
-```
-
-That four-argument form remains fully supported in v0.5.0.
-
-The primary workflow is to define the engineering functions and numerical data once and plot them in the same EngCalc cell:
-
-```text
-%%eng
-
-V(x) = 5*q*L/8 - q*x
-M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2
-
-q := 2.8*tonf/m
-L := 4*m
-
-numeric(V(x))
-numeric(M(x))
-
-plot(V(x), x, 0, L)
-plot(M(x), x, 0, L)
-```
-
-`plot(...)` reuses the symbolic and numerical EngCalc state directly. No duplicate Python definitions of `q`, `L`, `V(x)` or `M(x)` are required.
-
-Each call produces one Matplotlib figure and samples exactly 201 points, including both endpoints. The plotting variable is locally overridden during sampling, so an earlier value such as:
-
-```text
-x := 2.5*m
-```
-
-does not collapse `plot(M(x), x, 0, L)` to one point and is not modified by plotting.
-
-Plot bounds are unit-aware. The common structural form:
-
-```text
-plot(M(x), x, 0, L)
-```
-
-works when `L := 4*m`: the exact dimensionless zero is promoted to the compatible dimensional unit of `L`. Incompatible bounds are rejected instead of silently converted.
-
-The first evaluated ordinate establishes the y-axis unit and every later sample is converted to that same compatible unit. The default figure therefore labels axes automatically, for example:
-
-```text
-x [m]
-M(x) [tonf·m]
-```
-
-Each single-series figure contains the requested curve, a horizontal `y = 0` reference, automatic axis labels, the expression/function name as title, and `tight_layout()`. EngCalc deliberately does not impose a separate plot color/theme: the figure inherits the active Matplotlib `rcParams`.
-
-`plot(...)` is a standalone output statement. It does not create an extra MathJax equation row. When a plot occurs between calculations, EngCalc preserves source order by flushing the preceding equation group, displaying the figure, and then continuing with subsequent equations.
-
-The original v0.3.0 contract was intentionally monoserie and had no plot keywords. v0.4.0 adds multiple compatible curves and one restricted parameter-sweep keyword without changing the original four-argument form or exposing arbitrary Matplotlib access.
-
-## v0.2.9 global numerical presentation settings
-
-Use `%eng_config` to control numerical formatting for all later `%%eng` output in the current notebook session:
-
-```python
-%eng_config precision=3 zero_tolerance=1e-10
-```
-
-The defaults are:
-
-```text
-precision=2
-zero_tolerance=1e-10
-```
-
-Run `%eng_config` with no arguments to inspect the active settings.
-
-`precision` accepts integers from 0 through 10 and applies consistently to numerical assignments, substituted values, final `numeric(...)` results, and evaluated coefficients of partial numerical functions.
-
-`zero_tolerance` is a **presentation-only cleanup threshold**. If the absolute magnitude of the quantity in its currently displayed unit is smaller than the threshold, EngCalc renders that magnitude as zero. The stored Pint quantity is not changed and subsequent calculations continue using the original numerical value.
-
-For example:
-
-```python
-%eng_config precision=4 zero_tolerance=1e-8
-```
-
-can render a tiny numerical residue as `0.0000` while keeping the underlying value intact.
-
-`%eng_reset` clears symbolic and numerical calculation state but does not change the active render configuration.
-
-Scientific-notation policy is intentionally separate from this formatting feature.
-
-## v0.2.8 adaptive MathJax wrapping for split view
-
-v0.2.8 restored **MathJax as the single mathematical renderer** for symbolic and numerical calculations. This keeps the same font metrics, fraction sizing, subscripts and equation scale throughout one engineering memory.
+MathJax is the single mathematical renderer for symbolic and numerical calculations. This keeps font metrics, fraction sizing, subscripts and equation scale consistent throughout one engineering memory.
 
 Numerical evaluations keep the calculation stages separate:
 
@@ -314,7 +117,21 @@ formula
 = final result
 ```
 
-The formula and substitution stages use adaptive top-level term packing. EngCalc estimates the visual complexity of each complete `+` / `-` term and keeps adding whole terms to the current row while the row stays within a conservative visual budget. If the next term would exceed the budget, that term starts a continuation row.
+`result(...)` uses the compact two-stage form:
+
+```text
+formula
+= final result
+```
+
+Formula and substitution stages use adaptive top-level term packing. EngCalc estimates the visual complexity of complete `+` / `-` terms and keeps adding whole terms to the current row while the row stays within a conservative visual budget. If the next term would exceed the budget, that term starts a continuation row.
+
+The renderer applies a semantic vertical hierarchy:
+
+- **4 pt** between rows that are only continuations of the same wrapped mathematical stage;
+- **8 pt** between distinct stages of one operation, such as equation → solution in `solve(...)`, formula → substitution → result in `numeric(...)`, or formula → result in `result(...)`;
+- **8 pt** between consecutive source results when there is no blank source line;
+- **16 pt** when an explicit blank line in `%%eng` precedes the next source result.
 
 A short expression such as:
 
@@ -322,23 +139,45 @@ A short expression such as:
 A + B - C + D
 ```
 
-remains on one row when its estimated width fits. A longer engineering substitution can instead be arranged as:
+remains on one row when it fits. A longer engineering expression can instead be arranged as:
 
 ```text
 [ long term 1 ] + [ long term 2 ]
 - [ long term 3 ]
 ```
 
-The final numerical result always starts its own row to preserve the formula → substitution → result hierarchy.
+The final numerical result always starts its own semantic stage. The visual budget is a deterministic heuristic rather than a browser-pixel measurement.
 
-The visual budget is a deterministic heuristic, not a browser-pixel measurement. The MathJax-only approach favors typographic consistency and predictable engineering layout.
+## Global numerical presentation settings
 
-## v0.2.4 target-unit conversion
+Use `%eng_config` to control numerical formatting for later `%%eng` output in the current notebook session:
+
+```python
+%eng_config precision=3 zero_tolerance=1e-10
+```
+
+Defaults:
+
+```text
+precision=2
+zero_tolerance=1e-10
+```
+
+Run `%eng_config` with no arguments to inspect the active settings.
+
+`precision` accepts integers from 0 through 10 and applies to numerical assignments, substituted values, final `numeric(...)` / `result(...)` results, and evaluated coefficients of partial numerical functions.
+
+`zero_tolerance` is presentation-only. Values whose displayed magnitude is below the threshold render as zero, while the stored Pint quantity remains unchanged.
+
+`%eng_reset` clears symbolic and numerical calculation state but does not change the active render configuration.
+
+## Target-unit conversion
 
 A fully numerical evaluation may request a compatible target unit:
 
 ```text
 numeric(expression, target_unit)
+result(expression, target_unit)
 ```
 
 Examples:
@@ -346,11 +185,11 @@ Examples:
 ```text
 numeric(M_A, kN*m)
 numeric(V_A, kN)
-numeric(Delta_B0, mm)
-numeric(f_11, mm/kN)
+result(M_A, kN*m)
+result(V_A, kN)
 ```
 
-Target-unit expressions use the same engineering aliases and may contain products, divisions and powers:
+Target-unit expressions may contain products, divisions and powers:
 
 ```text
 kN*m
@@ -359,13 +198,11 @@ mm^4
 mm/kN
 ```
 
-The conversion applies to the final result. The formula and numerical-substitution stages preserve the units in which the input data were defined.
+The conversion applies to the final result. `numeric(...)` preserves original units in its formula/substitution stages; `result(...)` omits the substitution stage but uses the same converted final quantity. Pint checks dimensional compatibility and rejects incompatible targets.
 
-Pint checks dimensional compatibility. An incompatible target produces a concise EngCalc error rather than silently changing dimensions.
+Target-unit conversion currently requires a fully numerical result. A partial function with a free independent variable should use `numeric(V(x))` or `result(V(x))` without a target unit.
 
-Target-unit conversion currently requires a fully numerical result. A partial function with a free independent variable should use `numeric(V(x))` without a target unit.
-
-## v0.2.3 evaluated partial numerical functions
+## Evaluated partial numerical functions
 
 When a user-defined function keeps its independent variable free, EngCalc evaluates known polynomial coefficients with Pint instead of stopping after textual substitution.
 
@@ -400,13 +237,13 @@ M(x)=
 -1.40\,\frac{\mathrm{tonf}}{\mathrm m}x^2.
 \]
 
-The symbolic definition remains unchanged. Direct expressions remain strict: `numeric(q*x)` does not guess that `x` is an independent variable.
+`result(M(x))` produces the same evaluated coefficient function but omits the explicit numerical-substitution stage. The symbolic definition remains unchanged. Direct expressions remain strict: `numeric(q*x)` and `result(q*x)` do not guess that `x` is an independent variable.
 
 ## Function evaluation and dimensional zeros
 
 Fully evaluated user functions keep their engineering label in the rendered memory. Function evaluation is performed with Pint before an exact symbolic zero can erase dimensional information, so a boundary value such as `numeric(M(L))` remains a zero moment rather than a dimensionless zero.
 
-The numerical workflow also supports mixed engineering units, for example:
+The numerical workflow also supports mixed engineering units:
 
 ```text
 Delta_B0 = integral(M_0(x)*M_1(x)/(E*I), x, 0, L)
@@ -418,6 +255,170 @@ I := 8.5e8*mm^4
 numeric(Delta_B0)
 numeric(f_11)
 ```
+
+## Native plotting inside `%%eng`
+
+The restricted unit-aware plotting command is:
+
+```text
+plot(expression, variable, start, end)
+```
+
+The primary workflow is to define engineering functions and numerical data once and plot them in the same cell:
+
+```text
+%%eng
+
+V(x) = 5*q*L/8 - q*x
+M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2
+
+q := 2.8*tonf/m
+L := 4*m
+
+numeric(V(x))
+numeric(M(x))
+
+plot(V(x), x, 0, L)
+plot(M(x), x, 0, L)
+```
+
+Each plot samples exactly 201 positions including both endpoints. The plotting variable is locally overridden during sampling, so a previously stored value such as `x := 2.5*m` is neither used to collapse the plot nor modified by plotting.
+
+Plot bounds are unit-aware. The common structural form:
+
+```text
+plot(M(x), x, 0, L)
+```
+
+works when `L := 4*m`: the exact dimensionless zero is promoted to the compatible dimensional unit of `L`. Incompatible bounds are rejected.
+
+The first evaluated ordinate establishes the y-axis unit and later samples are converted to that common unit. Axes are labeled automatically, for example:
+
+```text
+x [m]
+M(x) [tonf·m]
+```
+
+Structural moment diagrams use **positive moment downward**.
+
+### Multi-series plotting
+
+Several dimensionally compatible functions may share one axis:
+
+```text
+plot(M_D(x), M_L(x), x, 0, L)
+```
+
+One function may also be swept over several numerical values of one parameter:
+
+```text
+plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m, 15*kN/m])
+```
+
+The sweep accepts exactly one keyword parameter with a non-empty list of complete numerical EngCalc expressions. `[5, 10, 15]*kN/m` is not supported. A sweep and multiple plotted expressions cannot be combined in the same call.
+
+Sweep values are local overrides and do not mutate stored numerical state. All series on a shared y-axis must have compatible dimensions, and a multi-expression comparison cannot mix moment-classified and non-moment-classified responses.
+
+Presentation in v0.6.1:
+
+- a single series uses a line, translucent fill, endpoint/extrema markers and compact `(x, y)` labels at its maximum/minimum characteristic points;
+- multiple series use clean lines without overlapping area fills, an automatic legend, restrained extrema markers and compact `(x, y)` labels for each curve;
+- coordinate labels have no boxes, leader lines or repeated units; label color follows the corresponding series, and the placement engine avoids axes boundaries, the legend, other labels and sampled curve points.
+
+One `plot(...)` statement creates exactly one Matplotlib figure in source order between surrounding MathJax calculation groups.
+
+## Sampled engineering envelopes
+
+`envelope(...)` reuses the same symbolic functions, numerical state, 201-point sampling grid, unit normalization and structural sign convention as `plot(...)`.
+
+Several compatible responses may be reduced to one upper and one lower signed envelope:
+
+```text
+%%eng
+
+M_A(x) = q_A*x*(L-x)/2
+M_B(x) = -0.5*q_B*x*(L-x)/2
+
+q_A := 8*kN/m
+q_B := 10*kN/m
+L := 6*m
+
+envelope(M_A(x), M_B(x), x, 0, L)
+```
+
+The final three positional arguments are `variable, start, end`. Every earlier positional argument is a source response. A non-sweep envelope requires at least two response series.
+
+One expression may also be enveloped over a restricted one-parameter sweep:
+
+```text
+%%eng
+
+M(x) = q*x*(L-x)/2
+L := 6*m
+
+envelope(
+    M(x),
+    x,
+    0,
+    L,
+    q=[-10*kN/m, 5*kN/m, 15*kN/m]
+)
+```
+
+At each of the 201 shared sample positions, EngCalc computes the **signed algebraic maximum and signed algebraic minimum** across source series. A negative response can govern the lower envelope while a positive response governs the upper envelope. The governing source-series index is retained internally.
+
+All source responses must be dimensionally compatible. Compatible values are normalized to a common unit before comparison. Mixed moment/non-moment series and incompatible dimensions such as shear versus moment are rejected.
+
+The envelope figure:
+
+- shows original source responses as faint context curves;
+- emphasizes the upper and lower envelope boundaries;
+- lightly fills the region between signed envelope boundaries;
+- keeps the `y = 0` reference visible;
+- places compact `(x, y)` labels at the global maximum and minimum governing sampled points without boxes, units or leader lines;
+- keeps positive moment downward for moment envelopes.
+
+## Absolute-value / magnitude envelopes
+
+`abs(...)` is a safe, composable symbolic/numerical operation. Applying it to every source of an envelope requests a nonnegative magnitude-demand envelope:
+
+```text
+%%eng
+
+V_constr(x) = R_constr - q_constr*x
+V_uso(x) = R_uso + q_uso*x
+
+R_constr := 6*kN
+q_constr := 4*kN/m
+R_uso := -9*kN
+q_uso := 1*kN/m
+L := 2*m
+
+envelope(abs(V_constr(x)), abs(V_uso(x)), x, 0, L)
+```
+
+At each sample EngCalc compares absolute magnitudes and keeps the maximum-magnitude demand. Original signed source curves remain available as faint context, so a negative response can govern magnitude without losing its original sign internally.
+
+The same mode works with the restricted parameter sweep:
+
+```text
+%%eng
+
+V(x) = q*(L/2-x)
+L := 4*m
+
+envelope(
+    abs(V(x)),
+    x,
+    0,
+    L,
+    q=[2*tonf/m, 3*tonf/m, 4*tonf/m]
+)
+```
+
+Every source in one envelope must use the same comparison mode. Mixing `abs(V_A(x))` with signed `V_B(x)` in the same envelope is rejected. There is no separate `abs_envelope(...)` alias.
+
+Magnitude-envelope figures emphasize one `|response|_max` boundary, fill from zero to that boundary, retain signed source curves as faint context and place one compact `(x, y)` label at the global maximum-magnitude point.
 
 ## Example — propped cantilever by the force method
 
@@ -490,14 +491,14 @@ plot(V(x), x, 0, L)
 plot(M(x), x, 0, L)
 ```
 
-The last four calls reuse the same symbolic functions and numerical data: `numeric(...)` presents the functions and `plot(...)` samples them across the span without a second Python definition.
+The result and plot calls reuse the same symbolic functions and numerical data; no duplicate Python definitions are required.
 
 ## Complete command reference
 
 ### Notebook magics
 
 - `%%eng` — evaluate a whole EngCalc cell.
-- `%eng_reset` — clear both the symbolic and numerical EngCalc state.
+- `%eng_reset` — clear both symbolic and numerical EngCalc state.
 - `%eng_config precision=3 zero_tolerance=1e-10` — set global numerical presentation settings.
 - `%eng_config` — show the active numerical presentation settings.
 
@@ -515,26 +516,28 @@ The last four calls reuse the same symbolic functions and numerical data: `numer
 
 - `q := 2.8*tonf/m` — associate a unit-aware numerical value with `q` without changing symbolic `q`.
 - `P := q*L` — numerical values may reference earlier numerical values.
-- `numeric(V_B)` — evaluate a named symbolic result with natural resulting units.
-- `numeric(M_A, kN*m)` — evaluate a fully numerical result and convert its final quantity to the requested compatible unit.
-- `numeric(q*L^2/8)` — evaluate a direct symbolic expression; every free symbol must have a numerical value.
-- `numeric(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free; fully evaluate it if the argument has a numerical value.
-- `numeric(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
+- `numeric(V_B)` — detailed numerical presentation: symbolic formula → explicit substitution → final result.
+- `numeric(M_A, kN*m)` — detailed evaluation with final target-unit conversion.
+- `result(V_B)` — compact numerical presentation: symbolic formula → final result.
+- `result(M_A, kN*m)` — compact presentation with final target-unit conversion.
+- `numeric(q*L^2/8)` / `result(q*L^2/8)` — evaluate a direct symbolic expression; every free symbol must have a numerical value.
+- `numeric(V(x))` / `result(V(x))` — partially evaluate a user-defined symbolic function if its argument is still free; fully evaluate it if the argument has a numerical value.
+- `numeric(M(L))` / `result(M(L))` — fully evaluate a user-defined symbolic function at another symbolic quantity whose numerical value is known.
 
 ### Plotting and envelopes
 
-- `plot(expression, variable, start, end)` — create the existing single-series unit-aware Matplotlib figure using 201 samples including both endpoints.
+- `plot(expression, variable, start, end)` — create one unit-aware Matplotlib figure using 201 samples including both endpoints.
 - `plot(expr1, expr2, ..., variable, start, end)` — overlay several dimensionally compatible expressions on one shared axis.
 - `plot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])` — plot one expression for several local values of one parameter.
-- `envelope(expr1, expr2, ..., variable, start, end)` — compute and render signed pointwise upper/lower envelopes from several compatible response series.
-- `envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])` — compute an envelope from one expression evaluated over one local parameter sweep.
+- `envelope(expr1, expr2, ..., variable, start, end)` — compute and render signed pointwise upper/lower envelopes.
+- `envelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])` — compute an envelope from one expression over one local parameter sweep.
+- `envelope(abs(V_A(x)), abs(V_B(x)), x, 0, L)` — compute a nonnegative maximum-magnitude envelope while retaining signed source context.
 - the final three positional arguments are always `variable, start, end`.
-- a parameter sweep accepts one keyword with a non-empty list of complete numerical expressions; only one sweep parameter is supported in v0.5.0.
+- a parameter sweep accepts one keyword with a non-empty list of complete numerical expressions.
 - sweeps do not persist or overwrite the swept parameter's stored numerical value.
 - the plotting variable is locally overridden for sampling and any stored numeric value for that name is preserved.
-- all y series on one shared plot/envelope axis must have compatible dimensions.
+- all y series on one shared axis must have compatible dimensions.
 - all-moment plots and envelopes retain positive moment downward.
-- `envelope(...)` uses signed algebraic max/min, not absolute magnitude.
 - plotting and envelopes are standalone statements; assigning `A = plot(...)` or `A = envelope(...)` is rejected.
 - arbitrary plot styling/Matplotlib keyword arguments are not exposed.
 
@@ -562,6 +565,7 @@ The last four calls reuse the same symbolic functions and numerical data: `numer
 - `factor(expr)` — factor.
 - `subs(expr, variable, value)` — symbolic substitution.
 - `eq(lhs, rhs)` — explicit symbolic equality, mainly for advanced/internal use.
+- `abs(expr)` — symbolic/numerical absolute value; composes with plotting and magnitude envelopes.
 
 `solve(...)` currently requires exactly one solution; zero or multiple solutions produce a concise EngCalc error.
 
@@ -573,7 +577,7 @@ The last four calls reuse the same symbolic functions and numerical data: `numer
 - `### text` — visible subsection heading.
 - blank line — adds a larger visual separation inside the current equation group.
 
-All calculation rows use the compact three-column MathJax block. Consecutive source results use 4 pt spacing; a source blank line uses 8 pt. Complete and partial numerical evaluations use adaptive MathJax row packing.
+Calculation rows use compact three-column MathJax blocks. The semantic spacing policy is **4 / 8 / 16 pt**: 4 pt for a wrapped continuation of the same stage, 8 pt for a distinct stage or consecutive source result, and 16 pt after an explicit blank source line.
 
 For commutative products, the renderer applies engineering-oriented factor order without changing the mathematics.
 
@@ -590,11 +594,11 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Safety
 
-`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. `plot(...)` and `envelope(...)` are also restricted EngCalc operations: they do not expose arbitrary Matplotlib functions, callbacks, filenames or Python objects. The only keyword form accepted by either display operation in v0.5.0 is the restricted one-parameter sweep list. Raw cell text is never passed to unrestricted Python `eval` or `exec`.
+`%%eng` uses restricted AST evaluators for symbolic expressions, numerical expressions and target-unit expressions. `plot(...)` and `envelope(...)` are restricted EngCalc operations: they do not expose arbitrary Matplotlib functions, callbacks, filenames or Python objects. Raw cell text is never passed to unrestricted Python `eval` or `exec`.
 
 ## Current limitations
 
-v0.5.0 intentionally does not yet provide:
+v0.6.1 intentionally does not yet provide:
 
 - subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
@@ -614,7 +618,14 @@ v0.5.0 intentionally does not yet provide:
 - multi-solution `solve(...)`;
 - full LaTeX parsing.
 
-These are separate future milestones rather than hidden behavior in v0.5.0.
+## Version notes
+
+- **0.6.1** — adaptive semantic MathJax rendering with 4/8/16 spacing; compact `result(...)`; compact collision-aware `(x, y)` characteristic labels for plots and envelopes; no numerical-method changes.
+- **0.6.0** — `abs(...)` and magnitude envelopes.
+- **0.5.0** — sampled signed engineering envelopes.
+- **0.4.0** — multi-series plotting and restricted one-parameter sweeps.
+- **0.3.0** — native unit-aware plotting inside `%%eng`.
+- **0.2.x** — numerical presentation settings, adaptive MathJax rendering, target-unit conversion and partial numerical functions.
 
 ## Development
 
@@ -623,4 +634,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.5.0`.
+Version: `0.6.1`.
