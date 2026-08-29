@@ -6,7 +6,7 @@ from matplotlib.text import Annotation
 
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.plotting import render_plot
+from engcalc_colab.presentation import render_presented_plot
 
 
 def _eval_cell(engine, source: str):
@@ -81,7 +81,8 @@ def _assert_cluster_preserves_visual_order(axis, cluster, renderer):
 
 
 def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
-    figure = render_plot(_dense_six_series_moment_plot())
+    result = _dense_six_series_moment_plot()
+    figure = render_presented_plot(result)
     axis = figure.axes[0]
     items = _annotations(axis)
     assert len(items) == 12
