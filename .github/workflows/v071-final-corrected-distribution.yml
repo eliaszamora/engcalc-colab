@@ -1,0 +1,200 @@
+name: EngCalc 0.7.1 Corrected Final Distribution Gate
+
+on:
+  push:
+    branches:
+      - feature/v0.7.1-multiarg-partial-eval
+
+permissions:
+  contents: read
+
+jobs:
+  distribution-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Verify persistent release context and approved design
+        run: |
+          test -s docs/superpowers/specs/2026-08-29-engcalc-v0.7.1-multiarg-partial-eval-design.md
+          test -s docs/superpowers/plans/2026-08-29-engcalc-v0.7.1-multiarg-partial-eval-final.md
+          for heading in \
+            '## Current baseline' \
+            '## Approved behavior' \
+            '## Open issues / user feedback' \
+            '## Validation evidence' \
+            '## Roadmap / active plan' \
+            '## Exact next step' \
+            '## How to resume in a new conversation'; do
+            grep -Fqx "$heading" docs/project-context/CURRENT.md
+          done
+
+      - name: Install source test and build environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[dev]'
+          python -m pip install ipython build
+
+      - name: Verify 0.7.1 release metadata
+        run: |
+          python - <<'PY'
+          import tomllib
+          import engcalc_colab
+
+          with open('pyproject.toml', 'rb') as handle:
+              version = tomllib.load(handle)['project']['version']
+          assert version == '0.7.1', version
+          assert engcalc_colab.__version__ == '0.7.1', engcalc_colab.__version__
+          print('release metadata: 0.7.1')
+          PY
+
+      - name: Focused corrected 0.7.1 release contracts
+        run: >-
+          python -m pytest -q
+          tests/test_multiarg_parser.py
+          tests/test_multiarg_functions.py
+          tests/test_multiarg_numeric.py
+          tests/test_partial_numeric_general.py
+          tests/test_multiarg_acceptance.py
+          tests/test_plot_engine.py
+          tests/test_envelope_engine.py
+          tests/test_release_version_v071.py
+          tests/test_packaging.py
+
+      - name: Complete source suite
+        run: python -m pytest -q
+
+      - name: Build real 0.7.1 wheel
+        run: |
+          rm -rf dist build
+          python -m build --wheel --outdir dist
+          test -f dist/engcalc_colab-0.7.1-py3-none-any.whl
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+
+          wheel = Path('dist/engcalc_colab-0.7.1-py3-none-any.whl')
+          assert wheel.is_file()
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_name = next(
+                  name for name in archive.namelist()
+                  if name.endswith('.dist-info/METADATA')
+              )
+              metadata = archive.read(metadata_name).decode('utf-8')
+          assert 'Version: 0.7.1\n' in metadata
+          print(wheel.name)
+          PY
+
+      - name: Install wheel into clean virtual environment
+        run: |
+          rm -rf /tmp/engcalc-v071-corrected-wheel-venv
+          python -m venv /tmp/engcalc-v071-corrected-wheel-venv
+          /tmp/engcalc-v071-corrected-wheel-venv/bin/python -m pip install --upgrade pip
+          /tmp/engcalc-v071-corrected-wheel-venv/bin/python -m pip install \
+            dist/engcalc_colab-0.7.1-py3-none-any.whl pytest ipython
+
+      - name: Installed-wheel corrected multi-argument smoke from outside repository
+        run: |
+          cd /tmp
+          PYTHONPATH='' /tmp/engcalc-v071-corrected-wheel-venv/bin/python - <<'PY'
+          from pathlib import Path
+
+          import engcalc_colab
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.errors import EngEvaluationError
+          from engcalc_colab.models import (
+              NumericEvaluationResult,
+              PartialNumericEvaluationResult,
+              PlotResult,
+          )
+          from engcalc_colab.parser import parse_cell
+
+          package_file = Path(engcalc_colab.__file__).resolve()
+          assert engcalc_colab.__version__ == '0.7.1'
+          assert 'site-packages' in str(package_file), package_file
+          assert 'engcalc-colab/src' not in str(package_file), package_file
+
+          engine = EngineeringEngine()
+          def run(source):
+              return engine.evaluate(parse_cell(source)[0])
+
+          run('M_base(x, q, L) = q*x*(L-x)/2')
+
+          exact = run('numeric(M_base(2*m, 10*kN/m, 4*m), kN*m)')
+          assert isinstance(exact, NumericEvaluationResult)
+          assert abs(exact.quantity.to('kN*m').magnitude - 20.0) < 1e-10
+
+          run('qD := 10*kN/m')
+          run('L := 4*m')
+          partial = run('numeric(M_base(x, qD, L))')
+          assert isinstance(partial, PartialNumericEvaluationResult)
+          assert partial.unresolved_symbols == ('x',)
+          assert partial.substitutions['q'].to('kN/m').magnitude == 10
+          assert partial.substitutions['L'].to('m').magnitude == 4
+
+          run('v(x, A, L) = A*sin(pi*x/L)')
+          run('A := 20*mm')
+          nonpoly = run('numeric(v(x, A, L))')
+          assert isinstance(nonpoly, PartialNumericEvaluationResult)
+          assert nonpoly.unresolved_symbols == ('x',)
+          assert nonpoly.evaluated_terms is None
+          assert nonpoly.substitutions['A'].to('mm').magnitude == 20
+
+          run('qU(qD, qL) = 1.2*qD + 1.6*qL')
+          run('M_U(x) = M_base(x, qU(qD, qL), L)')
+          run('qL := 5*kN/m')
+          plot = run('plot(M_U(x), x, 0*m, L)')
+          assert isinstance(plot, PlotResult)
+          assert len(plot.x_values) == 201
+          assert abs(plot.series[0].y_values[100].to('kN*m').magnitude - 40.0) < 1e-10
+
+          zero = run('numeric(M_base(0*m, qD, L))')
+          assert isinstance(zero, NumericEvaluationResult)
+          assert not zero.quantity.dimensionless
+          assert abs(zero.quantity.to('kN*m').magnitude) < 1e-12
+
+          run('f_unused(x, y) = x')
+          unused = run('numeric(f_unused(2*m, y), cm)')
+          assert isinstance(unused, NumericEvaluationResult)
+          assert abs(unused.quantity.to('cm').magnitude - 200.0) < 1e-10
+
+          try:
+              run('bad = M_base(x, qD)')
+          except EngEvaluationError as exc:
+              assert "function 'M_base' expects 3 arguments (x, q, L), received 2" in str(exc)
+          else:
+              raise AssertionError('M_base accepted the wrong arity')
+
+          print(f'corrected 0.7.1 wheel smoke PASS: {package_file}')
+          PY
+
+      - name: Prepare source-free installed-wheel test copy
+        run: |
+          rm -rf /tmp/engcalc-v071-corrected-wheel-suite
+          mkdir -p /tmp/engcalc-v071-corrected-wheel-suite
+          tar \
+            --exclude='./src' \
+            --exclude='./.git' \
+            --exclude='./dist' \
+            --exclude='./build' \
+            --exclude='./.pytest_cache' \
+            -cf - . | tar -xf - -C /tmp/engcalc-v071-corrected-wheel-suite
+          test ! -d /tmp/engcalc-v071-corrected-wheel-suite/src
+
+      - name: Complete suite against installed wheel
+        run: |
+          cd /tmp/engcalc-v071-corrected-wheel-suite
+          PYTHONPATH='' /tmp/engcalc-v071-corrected-wheel-venv/bin/python -m pytest -q
+
+      - name: Repeat complete source suite
+        run: python -m pytest -q
+
+      - name: Upload validated corrected 0.7.1 wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-colab-0.7.1-corrected-final-wheel
+          path: dist/engcalc_colab-0.7.1-py3-none-any.whl
+          if-no-files-found: error
