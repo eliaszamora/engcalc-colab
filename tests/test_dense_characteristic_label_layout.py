@@ -71,6 +71,12 @@ def _anchor_display_y(axis, annotation):
     return float(axis.transData.transform(annotation.xy)[1])
 
 
+def _overlap_area(left, right):
+    width = max(0.0, min(left.x1, right.x1) - max(left.x0, right.x0))
+    height = max(0.0, min(left.y1, right.y1) - max(left.y0, right.y0))
+    return width * height
+
+
 def _assert_cluster_preserves_visual_order(axis, cluster, renderer):
     ordered_by_anchor = sorted(cluster, key=lambda item: _anchor_display_y(axis, item))
     label_centers = [_box_center_y(item, renderer) for item in ordered_by_anchor]
@@ -80,16 +86,18 @@ def _assert_cluster_preserves_visual_order(axis, cluster, renderer):
     ]
 
 
-def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
+def _render_dense_case():
     result = _dense_six_series_moment_plot()
     figure = render_presented_plot(result)
     axis = figure.axes[0]
-    items = _annotations(axis)
-    assert len(items) == 12
-
     canvas = FigureCanvasAgg(figure)
     canvas.draw()
-    renderer = canvas.get_renderer()
+    return figure, axis, _annotations(axis), canvas.get_renderer()
+
+
+def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
+    _, axis, items, renderer = _render_dense_case()
+    assert len(items) == 12
 
     left_cluster = [item for item in items if abs(float(item.xy[0])) < 1e-9]
     interior_cluster = [item for item in items if abs(float(item.xy[0]) - 2.5) < 0.03]
@@ -98,3 +106,19 @@ def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
 
     _assert_cluster_preserves_visual_order(axis, left_cluster, renderer)
     _assert_cluster_preserves_visual_order(axis, interior_cluster, renderer)
+
+
+def test_dense_reflow_keeps_labels_inside_axes_and_non_overlapping():
+    _, axis, items, renderer = _render_dense_case()
+    axes_box = axis.get_window_extent(renderer)
+    boxes = [item.get_window_extent(renderer) for item in items]
+
+    for box in boxes:
+        assert box.x0 >= axes_box.x0
+        assert box.x1 <= axes_box.x1
+        assert box.y0 >= axes_box.y0
+        assert box.y1 <= axes_box.y1
+
+    for index, left in enumerate(boxes):
+        for right in boxes[index + 1:]:
+            assert _overlap_area(left, right) == 0.0
