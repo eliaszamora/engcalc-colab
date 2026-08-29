@@ -1,6 +1,17 @@
+import sympy as sp
+
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.renderer import RenderSettings, _display_rows, render_aligned_results
+from engcalc_colab.renderer import (
+    RenderSettings,
+    _bounded_expression_rows,
+    _display_rows,
+    _latex_visual_width,
+    render_aligned_results,
+)
+
+
+ROW_LIMIT = 64.0
 
 
 def evaluate(engine: EngineeringEngine, source: str):
@@ -49,3 +60,14 @@ def test_long_solve_equation_is_wrapped_and_solution_gets_its_own_row():
     assert r"\\[2pt]" not in latex
     assert "R_{B}" in latex
     assert "3 q L" in latex
+
+
+def test_single_overwide_product_is_split_at_factor_boundaries():
+    factors = [sp.Symbol(f"a_{index:02d}") for index in range(1, 31)]
+    expression = sp.Mul(*factors)
+
+    rows = _bounded_expression_rows(expression)
+
+    assert len(rows) > 1
+    assert all(_latex_visual_width(row) <= ROW_LIMIT for row in rows)
+    assert all(row.startswith(r"\quad \cdot ") for row in rows[1:])
