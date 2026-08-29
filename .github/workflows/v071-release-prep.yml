@@ -1,0 +1,31 @@
+name: EngCalc 0.7.1 Release Prep
+
+on:
+  push:
+    branches:
+      - feature/v0.7.1-multiarg-partial-eval
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.7.1-multiarg-partial-eval
+          fetch-depth: 0
+      - name: Apply deterministic release metadata and docs patch
+        run: python .github/scripts/apply_v071_release_prep.py
+      - name: Commit release metadata and docs
+        run: |
+          if git diff --quiet -- README.md pyproject.toml src/engcalc_colab/__init__.py; then
+            echo "release prep produced no product/docs change" >&2
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md pyproject.toml src/engcalc_colab/__init__.py
+          git commit -m "release: prepare EngCalc 0.7.1 metadata and docs"
+          git push origin HEAD:feature/v0.7.1-multiarg-partial-eval
