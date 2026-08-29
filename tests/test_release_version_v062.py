@@ -4,7 +4,7 @@ import tomllib
 import engcalc_colab
 
 
-EXPECTED_VERSION = "0.6.1"
+EXPECTED_VERSION = "0.6.2"
 
 
 def test_package_version_is_v061():
