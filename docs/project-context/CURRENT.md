@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — EngCalc 0.7.2 engineering tables is merged and is now the canonical `main` baseline._
+_Last updated: 2026-08-29 — EngCalc 0.7.2 is canonical; redundant 0.7.3 derivation-traces milestone retired; 0.8.0 piecewise is next._
 
 ## Current baseline
 
@@ -12,11 +12,12 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 engineering tables is merged and is 
 - Final PR head: `44257871068ff8e9138d85a713752eb44052b13c`.
 - Comparison final PR head → merge commit contains **zero changed files**, proving the merge introduced no tree changes beyond merge history.
 - Package/runtime version on `main`: **0.7.2** in `pyproject.toml` and `src/engcalc_colab/__init__.py`.
-- Approved spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
-- Approved implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`.
+- Approved 0.7.2 spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
+- Approved 0.7.2 implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`.
+- Canonical evolution roadmap is now persisted on `main`: `docs/superpowers/specs/2026-08-28-engcalc-evolution-roadmap-design.md`.
 - Authoritative distribution-validated code/test/docs SHA: `08a58e77c1ebace0790ba1082290e3a291a47948`.
 - Changes from that validated SHA through the final PR head were administrative only: release-workflow cleanup and persistent context updates. No production source, tests, package metadata, or README behavior changed after the authoritative distribution gate.
-- Release branch `feature/v0.7.2-engineering-tables` and planning branches are retained; do not delete unless explicitly requested.
+- Release branch `feature/v0.7.2-engineering-tables`, roadmap planning branch, and other planning branches are retained; do not delete unless explicitly requested.
 - Do not manually invoke Codex, `@codex review`, Codex Cloud, or anything that may consume the user's Codex quota without explicit authorization.
 
 ## Approved behavior
@@ -39,12 +40,18 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 engineering tables is merged and is 
 - README presents automatic discretization as the normal/recommended form; explicit-point forms are secondary tools for selected locations.
 - No pandas runtime dependency was added.
 - Export/download APIs and Cartesian multi-parameter table sweeps remain outside 0.7.2.
+- `numeric(...)` is the detailed calculation-memory presentation: **formula → numerical substitution → final result**.
+- `result(...)` is the compact calculation-memory presentation: **formula → final result**.
+- Fully evaluated and partial multi-argument `numeric(...)` calls preserve known substitutions and evaluated symbolic structure; do not duplicate this behavior with a separate generic trace subsystem.
 
 ## Open issues / user feedback
 
 - No known functional blocker remains for EngCalc 0.7.2.
 - Task 6 release closure and integration are complete.
-- PR #29 is merged; `main` now exposes 0.7.2.
+- PR #29 is merged; `main` exposes 0.7.2.
+- Colab verification performed after release confirmed visually that `numeric(...)` already provides the engineering-facing trace previously assumed missing: formula → substitution → result; `result(...)` provides formula → result; partial evaluation also shows known substitutions and the remaining evaluated expression.
+- Therefore the formerly planned **0.7.3 derivation-traces** milestone is retired as redundant and **no 0.7.3 release is planned**.
+- The next roadmap milestone is **0.8.0 piecewise expressions**.
 - The first final-distribution attempt exposed only a stale test assertion that still expected version 0.7.1; no production behavior failed. That stale contract was corrected and the entire distribution pipeline was rerun from the beginning successfully.
 - No production/test rerun was required after merge because the final PR head and merge commit have zero file differences; post-merge verification additionally confirmed both package metadata and runtime `__version__` are 0.7.2 on `main`.
 
@@ -126,23 +133,35 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 engineering tables is merged and is 
 - `main` `src/engcalc_colab/__init__.py`: `__version__ = "0.7.2"`.
 - Because the merged tree is file-identical to the approved final PR head, the authoritative distribution gate remains applicable to the merged product tree.
 
+### Roadmap correction after Colab verification
+
+- User-side Google Colab verification on EngCalc 0.7.2 confirmed `numeric(...)` displays formula → explicit numerical substitution → final result.
+- The same verification confirmed `result(...)` displays the compact formula → final result form.
+- Fully evaluated multi-argument `numeric(...)` showed substituted arguments and final quantity; partial `numeric(...)` showed known substitutions followed by the evaluated polynomial in the unresolved variable.
+- The old 0.7.3 derivation-traces milestone is therefore retired as duplicate scope, not implemented under a different name.
+- Updated roadmap commit on `planning/engcalc-evolution-roadmap`: `f12901c1307904cc767e5a022e101bb1cc89a107`.
+- Corrected roadmap was persisted to canonical `main` in commit `dd9ea692e346e3af4c0c09eb755efec7d52efa05`.
+- Next planned release is **0.8.0 — piecewise expressions**.
+
 ## Roadmap / active plan
 
 - **0.7.1 complete and merged.**
 - **0.7.2 engineering tables complete, distribution-validated, and merged to `main`.**
 - Tasks 0–6 for 0.7.2 are complete.
-- Canonical baseline is now EngCalc 0.7.2.
-- Next roadmap milestone remains **0.7.3 derivation traces** unless amended.
+- Canonical baseline is EngCalc 0.7.2.
+- **0.7.3 derivation traces: RETIRED / no release planned**, because existing `numeric(...)`/`result(...)` behavior already covers the useful calculation-memory trace.
+- **Next roadmap milestone: 0.8.0 — piecewise expressions.**
 
 ## Exact next step
 
 - No further 0.7.2 implementation or release action is pending.
-- Preserve 0.7.2 behavior and release evidence as the new regression baseline.
+- Preserve 0.7.2 behavior and release evidence as the regression baseline.
 - When work resumes, read `docs/superpowers/specs/2026-08-28-engcalc-evolution-roadmap-design.md` and this file first.
-- The next planned milestone is **0.7.3 derivation traces**. Start with design/spec work before implementation, following the Superpowers approval gates and strict TDD RED→GREEN workflow.
+- The next implementation work is **0.8.0 piecewise expressions**. Start with design/spec work before implementation, following the Superpowers approval gates and strict TDD RED→GREEN workflow.
+- Do not begin production implementation until the 0.8.0 piecewise design/spec has been reviewed and approved.
 - Retain feature/planning branches unless explicitly requested otherwise.
 - Do not manually invoke Codex.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc **0.7.2** is the canonical `main` release. PR #29 is merged at `a7ba9521220743f3cb79814e13bd44b0e0f9ce5d`, with zero file differences between the final PR head and merge commit. The authoritative distribution gate is Actions `33266879721` on `08a58e77c1ebace0790ba1082290e3a291a47948`: release contracts 11/11, table subset 80/80, source 454/454, external installed-wheel smoke PASS, source-free installed-wheel 454/454, repeated source 454/454. Wheel: `engcalc_colab-0.7.2-py3-none-any.whl`, SHA-256 `bb7ece9ee102f3909cf78b53e99ff46f2229053372e7446bede2af321ae621cf`; artifact ID `9718968626`. The next planned roadmap milestone is 0.7.3 derivation traces; do not begin implementation before the design/spec approval workflow. Do not manually invoke Codex.
+Read this file first. EngCalc **0.7.2** is the canonical `main` release. PR #29 is merged at `a7ba9521220743f3cb79814e13bd44b0e0f9ce5d`, with zero file differences between the final PR head and merge commit. The authoritative distribution gate is Actions `33266879721` on `08a58e77c1ebace0790ba1082290e3a291a47948`: release contracts 11/11, table subset 80/80, source 454/454, external installed-wheel smoke PASS, source-free installed-wheel 454/454, repeated source 454/454. Wheel: `engcalc_colab-0.7.2-py3-none-any.whl`, SHA-256 `bb7ece9ee102f3909cf78b53e99ff46f2229053372e7446bede2af321ae621cf`; artifact ID `9718968626`. Colab verification confirmed `numeric(...)` already provides formula → substitution → result and `result(...)` formula → result, so the previously planned 0.7.3 derivation-traces release is retired. The corrected evolution roadmap is now persisted on `main`. The next planned milestone is **0.8.0 piecewise expressions**; begin with design/spec approval before implementation. Do not manually invoke Codex.
