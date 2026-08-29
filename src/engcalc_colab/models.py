@@ -84,17 +84,48 @@ class NumericAssignmentResult:
     quantity: Any
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class NumericEvaluationResult:
     statement: ParsedStatement
     symbolic_expression: Any
     substitutions: dict[str, Any]
     quantity: Any
     display_name: str | None = None
-    display_argument: Any | None = None
+    display_arguments: tuple[Any, ...] | None = None
+
+    def __init__(
+        self,
+        statement: ParsedStatement,
+        symbolic_expression: Any,
+        substitutions: dict[str, Any],
+        quantity: Any,
+        display_name: str | None = None,
+        display_arguments: tuple[Any, ...] | None = None,
+        *,
+        display_argument: Any | None = None,
+    ) -> None:
+        if display_arguments is not None and display_argument is not None:
+            raise TypeError("provide either display_arguments or display_argument, not both")
+        normalized = (
+            (display_argument,)
+            if display_argument is not None
+            else tuple(display_arguments) if display_arguments is not None else None
+        )
+        object.__setattr__(self, "statement", statement)
+        object.__setattr__(self, "symbolic_expression", symbolic_expression)
+        object.__setattr__(self, "substitutions", substitutions)
+        object.__setattr__(self, "quantity", quantity)
+        object.__setattr__(self, "display_name", display_name)
+        object.__setattr__(self, "display_arguments", normalized)
+
+    @property
+    def display_argument(self) -> Any | None:
+        if self.display_arguments is not None and len(self.display_arguments) == 1:
+            return self.display_arguments[0]
+        return None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class PartialNumericEvaluationResult:
     statement: ParsedStatement
     symbolic_expression: Any
@@ -102,7 +133,40 @@ class PartialNumericEvaluationResult:
     unresolved_symbols: tuple[str, ...]
     evaluated_terms: tuple[tuple[int, Any], ...] | None = None
     display_name: str | None = None
-    display_argument: Any | None = None
+    display_arguments: tuple[Any, ...] | None = None
+
+    def __init__(
+        self,
+        statement: ParsedStatement,
+        symbolic_expression: Any,
+        substitutions: dict[str, Any],
+        unresolved_symbols: tuple[str, ...],
+        evaluated_terms: tuple[tuple[int, Any], ...] | None = None,
+        display_name: str | None = None,
+        display_arguments: tuple[Any, ...] | None = None,
+        *,
+        display_argument: Any | None = None,
+    ) -> None:
+        if display_arguments is not None and display_argument is not None:
+            raise TypeError("provide either display_arguments or display_argument, not both")
+        normalized = (
+            (display_argument,)
+            if display_argument is not None
+            else tuple(display_arguments) if display_arguments is not None else None
+        )
+        object.__setattr__(self, "statement", statement)
+        object.__setattr__(self, "symbolic_expression", symbolic_expression)
+        object.__setattr__(self, "substitutions", substitutions)
+        object.__setattr__(self, "unresolved_symbols", tuple(unresolved_symbols))
+        object.__setattr__(self, "evaluated_terms", evaluated_terms)
+        object.__setattr__(self, "display_name", display_name)
+        object.__setattr__(self, "display_arguments", normalized)
+
+    @property
+    def display_argument(self) -> Any | None:
+        if self.display_arguments is not None and len(self.display_arguments) == 1:
+            return self.display_arguments[0]
+        return None
 
 
 @dataclass(frozen=True)
