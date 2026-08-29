@@ -28,3 +28,5 @@ jobs:
           tests/test_table_rendering.py
           tests/test_table_acceptance.py
           tests/test_magic.py
+      - name: Complete source regression
+        run: python -m pytest -q
