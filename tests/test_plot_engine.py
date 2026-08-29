@@ -213,3 +213,36 @@ def test_plot_abs_preserves_moment_classification_from_inner_function():
     result = eval_cell(engine, "plot(abs(M(x)), x, 0, L)")[-1]
 
     assert result.series[0].is_moment
+
+
+def test_plot_accepts_direct_multiarg_response():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "M(x, q, L) = q*x*(L-x)/2\n"
+        "qD := 4*kN/m\n"
+        "L := 5*m",
+    )
+
+    result = eval_cell(engine, "plot(M(x, qD, L), x, 0*m, L)")[-1]
+
+    assert isinstance(result, PlotResult)
+    assert len(result.x_values) == 201
+    assert result.series[0].y_values[100].to("kN*m").magnitude == pytest.approx(12.5)
+
+
+def test_specialized_multiarg_function_plots_normally():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "M(x, q, L) = q*x*(L-x)/2\n"
+        "M_D(x) = M(x, qD, L)\n"
+        "qD := 4*kN/m\n"
+        "L := 5*m",
+    )
+
+    result = eval_cell(engine, "plot(M_D(x), x, 0*m, L)")[-1]
+
+    assert isinstance(result, PlotResult)
+    assert len(result.x_values) == 201
+    assert result.series[0].y_values[100].to("kN*m").magnitude == pytest.approx(12.5)

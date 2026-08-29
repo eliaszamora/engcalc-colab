@@ -259,3 +259,27 @@ def test_envelope_rejects_mixed_moment_and_non_moment_series_even_with_same_dime
         match="envelope cannot mix moment and non-moment series on one axis",
     ):
         eval_cell(engine, "envelope(M_A(x), R(x), x, 0, L)")
+
+
+def test_envelope_accepts_specialized_multiarg_sources():
+    engine = EngineeringEngine()
+    eval_cell(
+        engine,
+        "M(x, q, L) = q*x*(L-x)/2\n"
+        "M_D(x) = M(x, qD, L)\n"
+        "M_U(x) = M(x, 1.2*qD + 1.6*qL, L)\n"
+        "qD := 4*kN/m\n"
+        "qL := 2*kN/m\n"
+        "L := 5*m",
+    )
+
+    result = eval_cell(
+        engine,
+        "envelope(M_D(x), M_U(x), x, 0*m, L)",
+    )[-1]
+
+    assert isinstance(result, PlotResult)
+    assert result.kind == "envelope"
+    assert len(result.x_values) == 201
+    assert result.source_series[0].y_values[100].to("kN*m").magnitude == pytest.approx(12.5)
+    assert result.source_series[1].y_values[100].to("kN*m").magnitude == pytest.approx(25.0)
