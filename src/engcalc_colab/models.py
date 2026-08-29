@@ -10,9 +10,15 @@ class ParsedStatement:
     line_no: int
     source: str
     target: str | None
-    parameter: str | None
+    parameters: tuple[str, ...] | None
     expression: ast.Expression
     blank_before: bool = False
+
+    @property
+    def parameter(self) -> str | None:
+        if self.parameters is not None and len(self.parameters) == 1:
+            return self.parameters[0]
+        return None
 
 
 @dataclass(frozen=True)
@@ -32,10 +38,37 @@ class ParsedHeading:
     blank_before: bool = False
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class UserFunction:
-    parameter: str
+    parameters: tuple[str, ...]
     expression: Any
+
+    def __init__(
+        self,
+        parameters: tuple[str, ...] | str | None = None,
+        expression: Any = None,
+        *,
+        parameter: str | None = None,
+    ) -> None:
+        if parameter is not None:
+            if parameters is not None:
+                raise TypeError("provide either parameters or parameter, not both")
+            normalized = (parameter,)
+        elif isinstance(parameters, str):
+            normalized = (parameters,)
+        elif parameters is not None:
+            normalized = tuple(parameters)
+        else:
+            raise TypeError("UserFunction requires parameters")
+
+        object.__setattr__(self, "parameters", normalized)
+        object.__setattr__(self, "expression", expression)
+
+    @property
+    def parameter(self) -> str | None:
+        if len(self.parameters) == 1:
+            return self.parameters[0]
+        return None
 
 
 @dataclass(frozen=True)

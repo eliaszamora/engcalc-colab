@@ -27,7 +27,7 @@ _ALLOWED_CALLS = {
 } | _SCALAR_CALLS
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
-_FUNCTION_TARGET = re.compile(r"^([A-Za-z_]\w*)\s*\(\s*([A-Za-z_]\w*)\s*\)$")
+_FUNCTION_TARGET_HEAD = re.compile(r"^([A-Za-z_]\w*)\s*\((.*)\)$")
 _HEADING = re.compile(r"^(#{2,3})\s+(.+)$")
 _RESULT_CALL = re.compile(r"\bresult\s*(?=\()")
 
@@ -89,16 +89,11 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
 
             lhs, rhs = _split_top_level_assignment(source)
             target: str | None = None
-            parameter: str | None = None
+            parameters: tuple[str, ...] | None = None
             if lhs is not None:
-                function_match = _FUNCTION_TARGET.fullmatch(lhs.strip())
-                if function_match:
-                    target, parameter = function_match.groups()
-                    _validate_target(target, line_no)
-                    if keyword.iskeyword(parameter) or parameter in _RESERVED:
-                        raise EngSyntaxError(
-                            f"line {line_no}: reserved function parameter '{parameter}'"
-                        )
+                function_target = _parse_function_target(lhs.strip(), line_no)
+                if function_target is not None:
+                    target, parameters = function_target
                 else:
                     target = lhs.strip()
                     if not _IDENTIFIER.fullmatch(target):
@@ -119,7 +114,7 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
                 line_no=line_no,
                 source=source,
                 target=target,
-                parameter=parameter,
+                parameters=parameters,
                 expression=expression,
                 blank_before=pending_blank,
             ))
@@ -132,6 +127,41 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
         except Exception as exc:
             raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
     return statements
+
+
+def _parse_function_target(
+    text: str,
+    line_no: int,
+) -> tuple[str, tuple[str, ...]] | None:
+    match = _FUNCTION_TARGET_HEAD.fullmatch(text.strip())
+    if match is None:
+        return None
+
+    target, raw_parameters = match.groups()
+    _validate_target(target, line_no)
+    if not raw_parameters.strip():
+        raise EngSyntaxError(
+            f"line {line_no}: user functions require at least one parameter"
+        )
+
+    parameters: list[str] = []
+    for raw_parameter in raw_parameters.split(","):
+        parameter = raw_parameter.strip()
+        if not _IDENTIFIER.fullmatch(parameter):
+            raise EngSyntaxError(
+                f"line {line_no}: invalid function parameter '{parameter}'"
+            )
+        if keyword.iskeyword(parameter) or parameter in _RESERVED:
+            raise EngSyntaxError(
+                f"line {line_no}: reserved function parameter '{parameter}'"
+            )
+        if parameter in parameters:
+            raise EngSyntaxError(
+                f"line {line_no}: duplicate function parameter '{parameter}'"
+            )
+        parameters.append(parameter)
+
+    return target, tuple(parameters)
 
 
 def _validate_target(name: str, line_no: int) -> None:
