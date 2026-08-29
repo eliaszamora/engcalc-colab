@@ -47,8 +47,8 @@ def test_heading_margins_and_divider_are_subtle(monkeypatch):
     displayed = _capture("## Estado 0\n### Reacciones\nA = 1", monkeypatch)
 
     assert "rgba(127,127,127,0.18)" in displayed[0].data
-    assert "margin:0.50rem 0 0.24rem 0" in displayed[0].data
-    assert "margin:0.28rem 0 0.12rem 0" in displayed[1].data
+    assert "margin:0.60rem 0 0.34rem 0" in displayed[0].data
+    assert "margin:0.46rem 0 0.24rem 0" in displayed[1].data
 
 
 def test_three_column_layout_keeps_extra_equals_on_right_side(monkeypatch):
