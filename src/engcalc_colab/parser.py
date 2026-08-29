@@ -18,11 +18,14 @@ _SWEEP_VALUE_NODES = (
     ast.UAdd, ast.USub, ast.Load,
 )
 _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
+_SCALAR_CALLS = {
+    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"
+}
 _ALLOWED_CALLS = {
     "integral", "diff", "solve", "simplify", "expand", "factor",
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "abs"
-}
-_RESERVED = _ALLOWED_CALLS | {"True", "False", "None"}
+} | _SCALAR_CALLS
+_RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _FUNCTION_TARGET = re.compile(r"^([A-Za-z_]\w*)\s*\(\s*([A-Za-z_]\w*)\s*\)$")
 _HEADING = re.compile(r"^(#{2,3})\s+(.+)$")
