@@ -452,6 +452,8 @@ class _Evaluator(ast.NodeVisitor):
 
         if name in _SCALAR_SYMBOLIC_FUNCTIONS:
             self._require_arity(name, args, 1, "expression")
+            if name in {"asin", "acos", "atan"}:
+                return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0], evaluate=False)
             return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0])
 
         if name == "abs":

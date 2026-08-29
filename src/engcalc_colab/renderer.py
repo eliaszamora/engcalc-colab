@@ -122,7 +122,8 @@ def _quantity_latex(quantity, precision: int | None = None, *, settings: RenderS
     if abs(magnitude) < active_settings.zero_tolerance:
         magnitude = 0.0
     magnitude_latex = f"{magnitude:.{active_precision}f}"
-    if getattr(quantity, "dimensionless", False):
+    unit_name = str(quantity.units)
+    if getattr(quantity, "dimensionless", False) and unit_name == "dimensionless":
         return magnitude_latex
 
     unit_latex = format(quantity.units, "~L")
