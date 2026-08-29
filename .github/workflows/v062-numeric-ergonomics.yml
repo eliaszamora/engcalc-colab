@@ -5,9 +5,6 @@ on:
     branches:
       - feature/v0.6.2-numeric-ergonomics
 
-permissions:
-  contents: write
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -20,117 +17,13 @@ jobs:
         run: |
           python -m pip install -e '.[dev]'
           python -m pip install ipython
-      - name: Apply AST numeric-argument resolver
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          # Restore NumericContext.evaluate_symbolic to values/overrides only.
-          numeric_path = Path("src/engcalc_colab/numeric.py")
-          lines = numeric_path.read_text().splitlines()
-          fn = next(i for i, line in enumerate(lines) if line.startswith("    def evaluate_symbolic("))
-          start = next(i for i in range(fn, len(lines)) if lines[i] == "        overrides = overrides or {}")
-          stop = next(i for i in range(start + 1, len(lines)) if lines[i] == "        try:")
-          replacement = [
-              "        overrides = overrides or {}",
-              "        names = sorted(symbol.name for symbol in expr.free_symbols)",
-              "        missing = [",
-              "            name",
-              "            for name in names",
-              "            if name not in overrides and name not in self.values",
-              "        ]",
-              "        if missing:",
-              "            hint = diagnostic_hint(\"unresolved_numeric_symbols\", names=tuple(missing))",
-              "            raise EngEvaluationError(",
-              "                \"numeric evaluation requires values for: \"",
-              "                + \", \".join(missing)",
-              "                + f\". {hint}\"",
-              "            )",
-              "",
-              "        substitutions = {",
-              "            name: overrides[name] if name in overrides else self.values[name]",
-              "            for name in names",
-              "        }",
-          ]
-          lines[start:stop] = replacement
-          numeric_path.write_text("\n".join(lines) + "\n")
-
-          # Add the AST-level resolver and route user-function numeric arguments through it.
-          engine_path = Path("src/engcalc_colab/engine.py")
-          lines = engine_path.read_text().splitlines()
-
-          if not any("def _resolve_numeric_function_argument" in line for line in lines):
-              class_i = next(i for i, line in enumerate(lines) if line == "class _Evaluator(ast.NodeVisitor):")
-              generic_i = next(i for i in range(class_i, len(lines)) if lines[i] == "    def generic_visit(self, node):")
-              insert_i = generic_i + 2
-              resolver = [
-                  "",
-                  "    def _resolve_numeric_function_argument(self, node: ast.AST):",
-                  "        if isinstance(node, ast.Name):",
-                  "            symbolic = self.visit(node)",
-                  "            if (",
-                  "                isinstance(symbolic, sp.Symbol)",
-                  "                and self.engine.numeric_context.get(node.id) is None",
-                  "            ):",
-                  "                return symbolic",
-                  "        return self.engine.numeric_context.evaluate_expression(",
-                  "            ast.Expression(body=node)",
-                  "        )",
-              ]
-              lines[insert_i:insert_i] = resolver
-
-          arg_i = next(i for i, line in enumerate(lines) if line.strip() == "argument_expression = self.visit(argument_node)")
-          if lines[arg_i + 1].strip() != "argument_value = self._resolve_numeric_function_argument(argument_node)":
-              lines.insert(arg_i + 1, "                argument_value = self._resolve_numeric_function_argument(argument_node)")
-
-          partial_guard_i = next(
-              i for i in range(arg_i, len(lines))
-              if lines[i].strip() == "and isinstance(argument_expression, sp.Symbol)"
-          )
-          lines[partial_guard_i] = "                    and isinstance(argument_value, sp.Symbol)"
-
-          subs_i = next(i for i in range(arg_i, len(lines)) if lines[i].strip() == "symbolic_expression = symbolic_expression.subs(")
-          value_i = next(
-              i for i in range(subs_i + 1, min(subs_i + 6, len(lines)))
-              if lines[i].strip() == "argument_expression,"
-          )
-          lines[value_i] = "                        argument_value,"
-
-          quantity_i = next(
-              (i for i in range(arg_i, len(lines)) if lines[i].strip() == "_, argument_quantity = self.engine.numeric_context.evaluate_symbolic("),
-              None,
-          )
-          if quantity_i is not None:
-              if lines[quantity_i + 1].strip() != "argument_expression" or lines[quantity_i + 2].strip() != ")":
-                  raise SystemExit("unexpected argument_quantity block shape")
-              del lines[quantity_i:quantity_i + 3]
-
-          override_i = next(
-              i for i in range(arg_i, len(lines))
-              if "overrides={function.parameter:" in lines[i]
-          )
-          lines[override_i] = "                        overrides={function.parameter: argument_value},"
-
-          engine_path.write_text("\n".join(lines) + "\n")
-          PY
-      - name: Compile modified modules
+      - name: Compile persisted modules
         run: python -m py_compile src/engcalc_colab/engine.py src/engcalc_colab/numeric.py
-      - name: Focused GREEN contracts and acceptance
+      - name: Focused persisted contracts and acceptance
         run: >-
           python -m pytest -q
           tests/test_numeric_function_arguments.py
           tests/test_diagnostics.py
           tests/test_numeric_function_magic_acceptance.py
-      - name: Full source regression
+      - name: Full persisted source regression
         run: python -m pytest -q
-      - name: Commit GREEN product changes
-        run: |
-          if git diff --quiet -- src/engcalc_colab; then
-            echo "GREEN implementation already committed"
-            exit 0
-          fi
-          git config user.name "eliaszamora"
-          git config user.email "37598447+eliaszamora@users.noreply.github.com"
-          git add src/engcalc_colab/numeric.py src/engcalc_colab/engine.py
-          git commit -m "fix: preserve units in direct numeric function arguments"
-          git push
