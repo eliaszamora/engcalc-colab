@@ -1,16 +1,20 @@
 from __future__ import annotations
 
+from .label_layout import reflow_dense_characteristic_labels
 from .models import PlotResult
 from .plotting import _axis_label, render_plot
 
 
 def render_presented_plot(result: PlotResult):
-    """Render a plot/envelope and apply optional user-facing text overrides."""
+    """Render a plot/envelope and apply user-facing presentation polish."""
     figure = render_plot(result)
-    if result.title is None and result.xlabel is None and result.ylabel is None:
-        return figure
-
     axis = figure.axes[0]
+
+    has_text_override = (
+        result.title is not None
+        or result.xlabel is not None
+        or result.ylabel is not None
+    )
     if result.title is not None:
         axis.set_title(result.title, pad=10, fontweight="semibold")
     if result.xlabel is not None:
@@ -25,5 +29,8 @@ def render_presented_plot(result: PlotResult):
             )
         )
 
-    figure.tight_layout()
+    if has_text_override:
+        figure.tight_layout()
+
+    reflow_dense_characteristic_labels(figure, result)
     return figure
