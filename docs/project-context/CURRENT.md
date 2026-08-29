@@ -1,167 +1,119 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — EngCalc 0.7.2 is canonical; redundant 0.7.3 derivation-traces milestone retired; 0.8.0 piecewise is next._
+_Last updated: 2026-08-29 — EngCalc 0.7.2 remains canonical on `main`; narrative text blocks are implemented and validated on a separate pre-0.8.0 feature branch; Piecewise remains the next architectural milestone._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Default/canonical branch: `main`.
-- Current release: **EngCalc 0.7.2 — engineering tables / evaluation by points**.
-- Release PR: **#29 — `release: EngCalc 0.7.2 engineering tables`**, merged into `main` on 2026-08-29.
-- Merge commit: `a7ba9521220743f3cb79814e13bd44b0e0f9ce5d`.
-- Final PR head: `44257871068ff8e9138d85a713752eb44052b13c`.
-- Comparison final PR head → merge commit contains **zero changed files**, proving the merge introduced no tree changes beyond merge history.
-- Package/runtime version on `main`: **0.7.2** in `pyproject.toml` and `src/engcalc_colab/__init__.py`.
-- Approved 0.7.2 spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
-- Approved 0.7.2 implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`.
-- Canonical evolution roadmap is now persisted on `main`: `docs/superpowers/specs/2026-08-28-engcalc-evolution-roadmap-design.md`.
-- Authoritative distribution-validated code/test/docs SHA: `08a58e77c1ebace0790ba1082290e3a291a47948`.
-- Changes from that validated SHA through the final PR head were administrative only: release-workflow cleanup and persistent context updates. No production source, tests, package metadata, or README behavior changed after the authoritative distribution gate.
-- Release branch `feature/v0.7.2-engineering-tables`, roadmap planning branch, and other planning branches are retained; do not delete unless explicitly requested.
-- Do not manually invoke Codex, `@codex review`, Codex Cloud, or anything that may consume the user's Codex quota without explicit authorization.
+- Canonical branch: `main`.
+- Canonical `main` checkpoint before current feature work: `72b0b1b872c57f379abe16ceaa686bec0e5ef10b`.
+- Released package/runtime version: **0.7.2**.
+- 0.7.2 authoritative final distribution gate: Actions `33266879721`; source **454/454**, installed-wheel source-free **454/454**, repeated source **454/454**, external wheel smoke PASS.
+- Active bounded feature branch: **`feature/v0.8.0-narrative-text`**, created directly from canonical `main`.
+- Active architectural planning branch: **`planning/v0.8.0-piecewise`**.
+- Formal Piecewise spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.8.0-piecewise-design.md`.
+- Piecewise implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.8.0-piecewise-implementation.md`.
+- 0.7.3 derivation traces remains retired as redundant because `numeric(...)` already provides formula → substitution → result and `result(...)` provides formula → result.
+- Do not invoke Codex, `@codex review`, Codex Cloud or anything that may consume Codex quota without explicit user authorization.
+- Retain branches unless the user explicitly requests deletion.
+- Do not merge feature/planning work without explicit user approval.
 
 ## Approved behavior
 
-- Preserve all 0.7.1 behavior, including multi-argument functions, generalized partial evaluation, scalar math, 201-point plot/envelope sampling and positive-moment-down convention.
-- Primary 0.7.2 syntax: `table(M(x), x, 0, L, 21)`.
-- Exact dimensionless zero may inherit a compatible dimensional peer endpoint; nonzero dimensionless endpoints may not.
-- Unit-once explicit points: `table(M(x), x, [0, 1, 1.5, 2], m)`.
-- Fully explicit compatible points: `table(M(x), x, [0*m, 50*cm, 1*m])`.
-- Descending uniform ranges are valid; count is a dimensionless integer >= 2 and both endpoints are included.
-- Multiple response columns preserve source order and must be dimensionally compatible in 0.7.2.
-- Table evaluation uses the table variable as a local numeric override and does not mutate stored symbolic/numeric state.
-- Constant responses, nested user functions, multi-argument user functions and supported scalar math work inside tables.
-- Table output renders as native HTML inside `%%eng`; variable is the first column and responses follow source order.
-- Units appear once in table headers, not in every body cell; dimensionless headers omit a unit suffix.
-- Table numeric cells obey the same `RenderSettings.precision` and `RenderSettings.zero_tolerance` configuration used elsewhere in `%%eng`.
-- User-derived table labels are HTML-escaped before display.
-- A table is a display boundary in `%%eng`: pending equations flush before it, the table displays as `HTML`, and later equations resume in a new MathJax group. Headings keep source order around tables.
-- Arbitrary list literals remain rejected outside the table-point whitelist and existing plot/envelope sweep whitelist.
-- README presents automatic discretization as the normal/recommended form; explicit-point forms are secondary tools for selected locations.
-- No pandas runtime dependency was added.
-- Export/download APIs and Cartesian multi-parameter table sweeps remain outside 0.7.2.
-- `numeric(...)` is the detailed calculation-memory presentation: **formula → numerical substitution → final result**.
-- `result(...)` is the compact calculation-memory presentation: **formula → final result**.
-- Fully evaluated and partial multi-argument `numeric(...)` calls preserve known substitutions and evaluated symbolic structure; do not duplicate this behavior with a separate generic trace subsystem.
+### Existing 0.7.2 regression baseline
+
+- Preserve multi-argument functions, generalized partial numerical evaluation, scalar math, native tables, sampled plots/envelopes, source-order rendering, precision/zero tolerance and positive structural moment plotted downward.
+- Package/runtime version stays `0.7.2` during pre-release development; version changes only during formal release closure.
+
+### Narrative text in `%%eng`
+
+- Narrative prose is delimited by triple double quotes.
+- Single-line form is valid: `"""Texto explicativo."""`.
+- Multiline form is valid with delimiters on their own lines.
+- Consecutive non-empty lines inside one block are joined with spaces into one paragraph.
+- A blank line inside a block starts a new paragraph.
+- `#`, `##` and `###` inside a narrative block are literal text, not comments/headings.
+- Outside narrative blocks, existing `#` comments and `##` / `###` headings retain their existing behavior.
+- Narrative text is plain text, not Markdown and not arbitrary HTML.
+- User narrative content is HTML-escaped before rendering.
+- Empty narrative blocks are rejected.
+- Unterminated blocks report the line where the narrative block started.
+- Non-whitespace content after a closing `"""` on the same line is rejected.
+- Narrative blocks are presentation boundaries: pending equations render before the prose, then later calculations continue in source order.
+- Narrative blocks do not enter the symbolic/numeric engine and do not mutate calculation state.
+- User-facing feature reference on this branch: `docs/narrative-text.md`.
+
+### Piecewise direction after narrative integration
+
+- 0.8.0 Piecewise design is globally approved and formally planned.
+- Narrative text is intentionally a separate bounded presentation feature and does not alter Piecewise grammar or numeric semantics.
+- Once narrative text is accepted/integrated, the Piecewise execution baseline should include these narrative tests as part of the inherited regression suite.
 
 ## Open issues / user feedback
 
-- No known functional blocker remains for EngCalc 0.7.2.
-- Task 6 release closure and integration are complete.
-- PR #29 is merged; `main` exposes 0.7.2.
-- Colab verification performed after release confirmed visually that `numeric(...)` already provides the engineering-facing trace previously assumed missing: formula → substitution → result; `result(...)` provides formula → result; partial evaluation also shows known substitutions and the remaining evaluated expression.
-- Therefore the formerly planned **0.7.3 derivation-traces** milestone is retired as redundant and **no 0.7.3 release is planned**.
-- The next roadmap milestone is **0.8.0 piecewise expressions**.
-- The first final-distribution attempt exposed only a stale test assertion that still expected version 0.7.1; no production behavior failed. That stale contract was corrected and the entire distribution pipeline was rerun from the beginning successfully.
-- No production/test rerun was required after merge because the final PR head and merge commit have zero file differences; post-merge verification additionally confirmed both package metadata and runtime `__version__` are 0.7.2 on `main`.
+- User explicitly requested explanatory prose in calculation memories, not only headings/subheadings.
+- Initial `#>` syntax was rejected as visually unnatural; triple-double-quote syntax was selected and approved.
+- User wants routine technical micro-decisions analyzed independently rather than requiring repeated approvals.
+- Narrative feature is implemented on its feature branch but **not merged** to `main`.
+- Piecewise implementation has **not started**; only its design/spec/implementation plan exist.
+- README on canonical 0.7.2 is intentionally not changed by this pre-release feature. Public release documentation should be integrated when the feature becomes part of the 0.8.0 baseline.
 
 ## Validation evidence
 
-### 0.7.1 release baseline
+### 0.7.2 release baseline
 
-- Authoritative corrected release gate Actions `33259552699`: focused **77/77**, source **386/386**, installed-wheel source-free **386/386**, repeated source **386/386**.
-- Artifact `9716898144`; digest `sha256:18670d97351bd2403d3be912aaff9773953ccaaa54aeb409973cd48baec20361`.
+- Release PR #29 merged successfully.
+- Canonical package/runtime version: `0.7.2`.
+- Authoritative Actions `33266879721`, Python 3.13.15: source **454/454**, installed-wheel source-free **454/454**, repeated source **454/454**, external smoke PASS.
+- Wheel SHA-256: `bb7ece9ee102f3909cf78b53e99ff46f2229053372e7446bede2af321ae621cf`.
 
-### 0.7.2 execution baseline
+### Narrative feature baseline
 
-- Corrected baseline Actions `33261841291` on SHA `c3b979f22f47d7aecdc7e5fd49541530508eccf5`: **386/386 passed** in Python 3.13.15; runtime version then remained 0.7.1.
+- Feature branch created from `main` SHA `72b0b1b872c57f379abe16ceaa686bec0e5ef10b`.
+- Temporary validation harness initially exposed only a harness dependency issue: existing tests import IPython but `.[dev]` does not install it. The temporary workflow was corrected to install `ipython`; no product code was changed for that issue.
+- Clean feature baseline Actions `33272374493`, job `99153080259`: **454/454 passed** on Python 3.13.15.
 
-### Task 1 — restricted parser grammar and result models
+### Narrative parser TDD
 
-- RED: commit `102b91b0e93f1cf47670fe873944fc08d7ec19ec`, Actions `33261976864`: **12 failed, 28 passed**.
-- Product commits: `01788b38fdd06a0054d0c0d116882d5c0631cfb9` and `cb1ccf0417ae20b31e7bbf59110f3e004bdc3c20`.
-- Complete GREEN gate Actions `33262151576`: focused **40/40**, source **402/402**.
+- RED tests commit: `ee6017c66e0b8675e0f848d0ef3615c79e90b3a2`.
+- RED Actions `33272464620`, job `99153315243`: **3 failed, 454 passed**. Failures were exactly the missing narrative parser capability.
+- Model commit: `4d05e98050c5d78e680eea5d7774da0495e7c2c4` adds `ParsedNarrative`.
+- Parser implementation commit: `752361172f7b0794c6a5093260cf3c836e8d5314`.
+- GREEN Actions `33272662408`, job `99153837821`: **457/457 passed**.
+- Parser diagnostic regression tests commit: `34f0c825cf67a03522d2fbb9dba06685a6d93063`; workflow succeeded with the complete suite.
 
-### Task 2 — table point/range normalization
+### Narrative renderer TDD
 
-- RED: commit `2a9ff3aaca0138d1fcf039ea9e540c1f96826b2f`, Actions `33262313647`: **21 failed, 34 passed**.
-- Product: `7fe7528b701448aaf05991105191078ebe1a8621` (`src/engcalc_colab/tables.py`).
-- Complete GREEN gate Actions `33262681298` on `a1a9a96acbe5b362c28c577b408b1c537c728dbb`: focused **55/55**, source **423/423**.
-
-### Task 3 — end-to-end engine table evaluation
-
-- RED: `e5759ed21bd7573d1e1976a08c9797f5fd9623e2`, Actions `33262826998`: **12 failed, 39 passed**.
-- Product: `0625a97656a6a7ffe2a4cfa692eda979c679fc1a` (`src/engcalc_colab/engine.py`).
-- Complete GREEN gate Actions `33263067183` on `326117a2190b5fe69ffce072686291f623652fbc`: focused **51/51**, source **436/436**.
-- Central engineering contract verified: `M(x,q,L)=q*x*(L-x)/2`, `q=4*kN/m`, `L=5*m`, 21-point table includes `x=2.5 m`, `M=12.5 kN*m`.
-
-### Task 4 — native HTML rendering and real `%%eng` integration
-
-- RED Actions `33263389497`: **7 failed, 37 passed**.
-- Product: `55fffe0dbcc280fb2a5685b48921e062be923f9f`, limited to renderer/magic production changes.
-- Authoritative gate Actions `33263583872` on `34be4158147e16633dc5f263c29d5df3df84f576`: focused **44/44**, source **443/443**.
-- Verified units in headers, magnitude-only body cells, dimensionless headers, precision/zero tolerance, HTML escaping, row/response order and `%%eng` ordering around headings/equations/tables.
-
-### Task 5 — engineer-facing acceptance and documentation
-
-- Acceptance tests introduced at `a3739cc4308841f9e0cda38dd61a815d6cfc7d04`.
-- Initial acceptance Actions `33265849521`: engineer-facing **7/7**, complete table subset **79/79** with no production change.
-- Documentation RED: `d16f0b9a1ad3a4f1a6266974d467bf9d35801b92`, Actions `33265916449`: **1 failed, 7 passed**, only the intentionally missing README 0.7.2 section.
-- README table documentation commit: `8cea6232090b746970dba51197dd7d67a8535091`.
-- Authoritative Task 5 gate Actions `33266011166` on `e4ceabd127227c7149d10814559c0cc561169754`: acceptance/docs **8/8**, table subset **80/80**, source **451/451**.
-
-### Task 6 — release closure and distribution validation
-
-- Version RED test commit: `3cde70bc7e2dfda86b7b0f9bae67fdfc41453d01`.
-- Version RED Actions `33266296064`: new version contract **2 expected failures** (`0.7.1` vs `0.7.2`), while table subset remained **80/80** and all prior tests remained **451/451**.
-- Release version bump commit: `e5a6a78be70ca7d3b69a253ed63e61109d813b64`; it changed only the version in `pyproject.toml`, `src/engcalc_colab/__init__.py`, and the README current-version line.
-- Obsolete 0.7.1 release contracts were cleaned from `tests/test_release_version_v071.py` and `tests/test_packaging.py`.
-- Release-documentation RED commit: `450a4dfa45a7c16b2ac1e502609fc4f39238dacf`; Actions `33266570230`: **3 failed, 2 passed**, where the technical 0.7.2 version checks passed and only stale README release text failed.
-- Final README release documentation commit: `c39344adf8cfb94b60edf944b44d42b8063ae1b8`.
-- Release-documentation GREEN Actions `33266681245`: **5/5 passed**.
-- First distribution attempt Actions `33266769037`: release contracts **11/11**, table subset **80/80**, full source **453 passed / 1 failed**. The sole failure was a historical `tests/test_parser.py` assertion still requiring `__version__ == "0.7.1"`; production was not changed. The stale assertion was updated in `ad40a8b303ca2826ea54369d41a82dd871a9db96`.
-- **Authoritative final distribution gate:** Actions **`33266879721`**, job `99138382437`, validated SHA **`08a58e77c1ebace0790ba1082290e3a291a47948`**, Python **3.13.15**.
-- Release/version/packaging contracts: **11/11 passed**.
-- Complete table feature subset: **80/80 passed**.
-- Complete source suite: **454/454 passed**.
-- Built wheel: **`engcalc_colab-0.7.2-py3-none-any.whl`**; wheel METADATA verified `Name: engcalc-colab`, `Version: 0.7.2`.
-- Clean venv installed the built wheel. External smoke executed from `/tmp` with `PYTHONPATH=''`, verified the imported package came from `site-packages`, not repository `src/`, and returned **PASS**.
-- External smoke covers primary automatic 21-point tables, unit-once points, mixed `m/cm` points, multi-response tables, descending ranges, native `%%eng` HTML + plot source ordering, representative 0.7.1 multi-argument numeric/partial evaluation and 201-point plotting.
-- Source-free installed-wheel test tree contained tests + `pyproject.toml` + README and explicitly no `src/`; full installed-wheel suite: **454/454 passed**.
-- Repeated complete source suite after installed-wheel validation: **454/454 passed**.
-- Wheel SHA-256: **`bb7ece9ee102f3909cf78b53e99ff46f2229053372e7446bede2af321ae621cf`**.
-- GitHub Actions artifact: **`engcalc-colab-0.7.2-final-wheel`**, artifact ID **`9718968626`**, size **32635 bytes**, artifact ZIP digest **`sha256:534987da55e705ee977f0f2c5d067777da2e4d3bd0860fcf594eeb77b543599f`**, created `2026-08-29T18:00:39Z`, expires `2026-11-27T17:55:16Z`.
-- Temporary final-distribution workflow was removed only after the authoritative gate succeeded.
-
-### Post-merge verification
-
-- PR #29 merged successfully at `2026-08-29T18:22:56Z`.
-- Merge commit: `a7ba9521220743f3cb79814e13bd44b0e0f9ce5d`; GitHub reports a valid verified merge signature.
-- Final PR head: `44257871068ff8e9138d85a713752eb44052b13c`.
-- Compare final PR head → merge commit: **1 merge-history commit, 0 changed files**.
-- `main` `pyproject.toml`: `version = "0.7.2"`.
-- `main` `src/engcalc_colab/__init__.py`: `__version__ = "0.7.2"`.
-- Because the merged tree is file-identical to the approved final PR head, the authoritative distribution gate remains applicable to the merged product tree.
-
-### Roadmap correction after Colab verification
-
-- User-side Google Colab verification on EngCalc 0.7.2 confirmed `numeric(...)` displays formula → explicit numerical substitution → final result.
-- The same verification confirmed `result(...)` displays the compact formula → final result form.
-- Fully evaluated multi-argument `numeric(...)` showed substituted arguments and final quantity; partial `numeric(...)` showed known substitutions followed by the evaluated polynomial in the unresolved variable.
-- The old 0.7.3 derivation-traces milestone is therefore retired as duplicate scope, not implemented under a different name.
-- Updated roadmap commit on `planning/engcalc-evolution-roadmap`: `f12901c1307904cc767e5a022e101bb1cc89a107`.
-- Corrected roadmap was persisted to canonical `main` in commit `dd9ea692e346e3af4c0c09eb755efec7d52efa05`.
-- Next planned release is **0.8.0 — piecewise expressions**.
+- Rendering RED tests commit: `66d796d909ed7278268004472b6bc7bdaf1cb83b`.
+- RED Actions `33272911228`, job `99154513271`: **3 failed, 461 passed**. Failures showed `ParsedNarrative` was still being sent to the symbolic engine.
+- Rendering implementation commit: `23e9cd338bff681a6ee0860e963fc8117abfbf92`.
+- GREEN Actions `33273056799`, job `99154906458`: **464/464 passed**.
+- The GREEN suite covers source order, HTML escaping, paragraph rendering, parser forms/diagnostics and all inherited 0.7.2 tests.
+- Feature reference documentation commit: `7a10809847b8f6d2e71c6ed89e8bab9656feb728`.
 
 ## Roadmap / active plan
 
-- **0.7.1 complete and merged.**
-- **0.7.2 engineering tables complete, distribution-validated, and merged to `main`.**
-- Tasks 0–6 for 0.7.2 are complete.
-- Canonical baseline is EngCalc 0.7.2.
-- **0.7.3 derivation traces: RETIRED / no release planned**, because existing `numeric(...)`/`result(...)` behavior already covers the useful calculation-memory trace.
-- **Next roadmap milestone: 0.8.0 — piecewise expressions.**
+- **0.7.2 engineering tables:** COMPLETE, distribution-validated and merged.
+- **0.7.3 derivation traces:** RETIRED / no release.
+- **Narrative text blocks:** IMPLEMENTED on `feature/v0.8.0-narrative-text`; final branch validation/cleanup pending, then user review before any integration.
+- **0.8.0 Piecewise:** DESIGN + IMPLEMENTATION PLAN COMPLETE; implementation not started.
+- **0.8.1:** exact-first extrema, roots and intersections.
+- **0.8.2:** exact envelopes and governing intervals.
+- **0.8.3:** named response cases/combinations.
+- **0.9.0:** vectors, matrices and linear systems.
+- **0.10.0:** engineering verification system.
+- **0.10.1:** verification collections/summaries.
+- **1.0.0:** language/API stabilization and release engineering.
 
 ## Exact next step
 
-- No further 0.7.2 implementation or release action is pending.
-- Preserve 0.7.2 behavior and release evidence as the regression baseline.
-- When work resumes, read `docs/superpowers/specs/2026-08-28-engcalc-evolution-roadmap-design.md` and this file first.
-- The next implementation work is **0.8.0 piecewise expressions**. Start with design/spec work before implementation, following the Superpowers approval gates and strict TDD RED→GREEN workflow.
-- Do not begin production implementation until the 0.8.0 piecewise design/spec has been reviewed and approved.
-- Retain feature/planning branches unless explicitly requested otherwise.
-- Do not manually invoke Codex.
+1. Run a fresh complete narrative-feature validation after this checkpoint/documentation state.
+2. If green, remove the temporary `.github/workflows/narrative-text-validation.yml` harness in a cleanup-only commit.
+3. Compare the validated product/docs SHA to cleanup HEAD and prove no product/test behavior changed after the gate.
+4. Present the retained feature branch to the user for review; do not merge without explicit approval.
+5. After user approves integration, make narrative text part of the inherited 0.8.0 baseline and then start Piecewise Task 0 under its approved implementation plan.
+6. Keep package/runtime version at `0.7.2` until formal 0.8.0 release closure.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc **0.7.2** is the canonical `main` release. PR #29 is merged at `a7ba9521220743f3cb79814e13bd44b0e0f9ce5d`, with zero file differences between the final PR head and merge commit. The authoritative distribution gate is Actions `33266879721` on `08a58e77c1ebace0790ba1082290e3a291a47948`: release contracts 11/11, table subset 80/80, source 454/454, external installed-wheel smoke PASS, source-free installed-wheel 454/454, repeated source 454/454. Wheel: `engcalc_colab-0.7.2-py3-none-any.whl`, SHA-256 `bb7ece9ee102f3909cf78b53e99ff46f2229053372e7446bede2af321ae621cf`; artifact ID `9718968626`. Colab verification confirmed `numeric(...)` already provides formula → substitution → result and `result(...)` formula → result, so the previously planned 0.7.3 derivation-traces release is retired. The corrected evolution roadmap is now persisted on `main`. The next planned milestone is **0.8.0 piecewise expressions**; begin with design/spec approval before implementation. Do not manually invoke Codex.
+Read this file first. The released baseline is EngCalc 0.7.2 on `main` at the pre-feature checkpoint `72b0b1b872c57f379abe16ceaa686bec0e5ef10b`, with authoritative 454-test wheel validation. The user requested narrative prose inside `%%eng` and approved triple-double-quote blocks. That bounded feature is implemented on `feature/v0.8.0-narrative-text`; parser and renderer both have explicit RED→GREEN evidence and the latest product GREEN gate is 464/464. Final branch validation/temporary-workflow cleanup remain before user review. Piecewise remains separate on `planning/v0.8.0-piecewise`; its spec and implementation plan are complete but no Piecewise production work has started. Never invoke Codex without explicit authorization and never merge without explicit user approval.
