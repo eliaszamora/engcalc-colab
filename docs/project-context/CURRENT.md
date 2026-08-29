@@ -1,16 +1,17 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — EngCalc 0.7.2 Tasks 1–4 are GREEN; Task 5 acceptance and documentation is next._
+_Last updated: 2026-08-29 — EngCalc 0.7.2 Tasks 1–5 are GREEN; Task 6 release closure is next._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Released baseline: **EngCalc 0.7.1** on canonical `main` at `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e`.
 - Active implementation branch: `feature/v0.7.2-engineering-tables`; planning branch retained.
-- Package/runtime version remains **0.7.1** until release closure.
+- Package/runtime version remains **0.7.1** until Task 6 release closure.
 - Approved spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
 - Approved plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`.
-- Implemented 0.7.2 scope so far: restricted table grammar/models, table-specific point normalization, end-to-end engine evaluation returning `TableResult`, native HTML rendering, and real `%%eng` source-order integration.
+- Implemented 0.7.2 scope: restricted table grammar/models, table-specific point normalization, end-to-end engine evaluation returning `TableResult`, native HTML rendering, real `%%eng` source-order integration, engineer-facing acceptance coverage, and README documentation.
+- README documents automatic discretization first, followed by unit-once explicit points and fully explicit mixed-unit points.
 - Table rendering has no pandas runtime dependency and uses scoped `.engcalc-table` HTML/CSS.
 - `main` has not been modified.
 - Do not manually invoke Codex, `@codex review`, Codex Cloud, or anything that may consume Codex quota without explicit authorization.
@@ -32,13 +33,15 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 Tasks 1–4 are GREEN; Task 5 accept
 - User-derived table labels are HTML-escaped before display.
 - A table is a display boundary in `%%eng`: pending equations flush before it, the table displays as `HTML`, and later equations resume in a new MathJax group. Headings keep source order around tables.
 - Arbitrary list literals remain rejected outside the table-point whitelist and existing plot/envelope sweep whitelist.
+- README examples must keep automatic discretization as the normal/recommended form; explicit-point forms are secondary tools for selected locations.
+- Export/download APIs and Cartesian multi-parameter table sweeps remain outside 0.7.2.
 
 ## Open issues / user feedback
 
 - No known 0.7.1 functional blocker.
 - User explicitly approved 0.7.2 design and execution.
-- No known functional blocker in Tasks 1–4 after the complete Task 4 source gate.
-- Task 5 acceptance/documentation and Task 6 release closure remain pending.
+- No known functional blocker in Tasks 1–5 after the authoritative Task 5 gate.
+- Task 6 release closure remains pending: version bump, built-wheel validation, installed-wheel validation, release artifact, and release PR preparation.
 - Initial 0.7.2 baseline CI run `33261787307` failed during collection only because the temporary workflow omitted IPython; corrected baseline `33261841291` established this was an environment issue, not a product regression.
 
 ## Validation evidence
@@ -93,6 +96,18 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 Tasks 1–4 are GREEN; Task 5 accept
 - Verified `%%eng` display ordering as equation → table → equation = `[Math, HTML, Math]`; heading/equation/table/heading/equation order is also preserved.
 - Task 4 product applicator/apply workflow were removed before the authoritative gate. The remaining Task 4 validation workflow was removed immediately after the successful gate; no product source or test changed after the authoritative gate.
 
+### Task 5 — engineer-facing acceptance and documentation
+
+- Acceptance tests were introduced in `tests/test_table_acceptance.py` at commit `a3739cc4308841f9e0cda38dd61a815d6cfc7d04`.
+- Initial acceptance Actions `33265849521` on SHA `f596bab34d1d79f4a3660b2b182bc0bae501dbf9`: engineer-facing acceptance **7/7**, complete table feature subset **79/79 passed** without any production change.
+- Acceptance coverage verifies automatic 21-point discretization, compatible `M_D/M_L/M_U` columns, unit-once explicit points, fully explicit mixed units, dimensionless tables, descending uniform ranges, and real `%%eng` source order across heading → equations → table → plot → equation.
+- Documentation RED commit: `d16f0b9a1ad3a4f1a6266974d467bf9d35801b92`.
+- Documentation RED Actions `33265916449`: **1 failed, 7 passed**; the only failure was the intentionally missing README heading `## v0.7.2 engineering tables`.
+- README documentation commit: `8cea6232090b746970dba51197dd7d67a8535091` (`docs: document EngCalc 0.7.2 engineering tables`). It presents `table(M(x), x, 0, L, 21)` first, then unit-once and fully explicit forms, and documents descending ranges, native HTML, source-order coexistence and the absence of a pandas runtime dependency.
+- The temporary documentation applicator and apply workflow were removed before the authoritative Task 5 gate.
+- Authoritative Task 5 gate Actions `33266011166` on SHA `e4ceabd127227c7149d10814559c0cc561169754` in Python 3.13.15: acceptance + documentation **8/8**, complete table feature subset **80/80**, complete source suite **451/451 passed**.
+- The Task 5 validation workflow was removed immediately after the authoritative gate; no production source, tests, or README changed after the validated SHA.
+
 ## Roadmap / active plan
 
 - **0.7.1 complete and merged.**
@@ -102,16 +117,20 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 Tasks 1–4 are GREEN; Task 5 accept
 - Task 2 point/range normalization: complete and fully regressed.
 - Task 3 engine evaluation: complete and fully regressed.
 - Task 4 native HTML renderer + real `%%eng` integration: complete and fully regressed.
-- Next: **Task 5 acceptance + documentation** → Task 6 release gate.
+- Task 5 acceptance + documentation: complete and fully regressed.
+- Next: **Task 6 release closure**.
 - Next roadmap milestone remains 0.7.3 derivation traces unless amended.
 
 ## Exact next step
 
-- Start Task 5 by adding acceptance coverage for complete engineer-facing examples, including primary uniform syntax, unit-once explicit syntax, fully explicit mixed-unit points, descending ranges, multi-response output and coexistence with existing equations/plots.
-- Update README/user documentation only after the acceptance examples are executable and GREEN.
-- Run Task 5 focused acceptance/docs checks and the complete source suite before release closure.
-- Do not bump package/runtime version until Task 6 release closure.
+- Start Task 6 with a RED version contract requiring runtime/package metadata version `0.7.2`; do not change version before observing the RED.
+- After RED, bump runtime/package metadata and release-facing README version information to 0.7.2 without changing approved table behavior.
+- Run source/version gates, then build the 0.7.2 wheel and validate it from a clean environment outside the source tree with `PYTHONPATH=''`.
+- External smoke must cover primary automatic tables, unit-once points, mixed-unit points, multi-response tables, descending ranges, native `%%eng` HTML integration, plus representative 0.7.1 multi-argument/partial/plot behavior.
+- Run the complete source-free installed-wheel suite and repeat the source suite before declaring the distribution valid.
+- Record wheel filename, artifact ID/digest and validated SHA; remove temporary release workflows after successful validation.
+- Prepare/open the release PR only after all gates are GREEN. Do not manually invoke Codex. Do not merge without explicit user approval.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.7.1 remains canonical `main`; 0.7.2 is isolated on `feature/v0.7.2-engineering-tables`. Tasks 1–4 are complete. Key gates: baseline `33261841291` = 386/386; Task 1 `33262151576` = 402/402; Task 2 `33262681298` = 423/423; Task 3 `33263067183` = 436/436; Task 4 `33263583872` = focused 44/44 and complete source 443/443. Task 4 product commit is `55fffe0dbcc280fb2a5685b48921e062be923f9f`; authoritative Task 4 validated SHA is `34be4158147e16633dc5f263c29d5df3df84f576`. Exact next work is Task 5 acceptance and documentation. Do not manually invoke Codex.
+Read this file first. EngCalc 0.7.1 remains canonical `main`; 0.7.2 is isolated on `feature/v0.7.2-engineering-tables`. Tasks 1–5 are complete. Key gates: baseline `33261841291` = 386/386; Task 1 `33262151576` = 402/402; Task 2 `33262681298` = 423/423; Task 3 `33263067183` = 436/436; Task 4 `33263583872` = 443/443; Task 5 `33266011166` on `e4ceabd127227c7149d10814559c0cc561169754` = acceptance/docs 8/8, table feature 80/80, complete source 451/451. README docs commit is `8cea6232090b746970dba51197dd7d67a8535091`. Exact next work is Task 6 release closure: RED version contract → 0.7.2 version bump → built-wheel/clean-environment/installed-wheel gates → release PR preparation. Do not manually invoke Codex and do not merge without explicit approval.
