@@ -38,6 +38,13 @@ class ParsedHeading:
     blank_before: bool = False
 
 
+@dataclass(frozen=True)
+class ParsedNarrative:
+    line_no: int
+    paragraphs: tuple[str, ...]
+    blank_before: bool = False
+
+
 @dataclass(frozen=True, init=False)
 class UserFunction:
     parameters: tuple[str, ...]
