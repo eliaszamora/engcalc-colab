@@ -18,6 +18,7 @@ _SWEEP_VALUE_NODES = (
     ast.UAdd, ast.USub, ast.Load,
 )
 _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
+_DISPLAY_TEXT_OPTIONS = {"title", "xlabel", "ylabel"}
 _SCALAR_CALLS = {
     "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"
 }
@@ -219,6 +220,7 @@ def parse_cell(
             except SyntaxError as exc:
                 raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
             _validate_ast(expression, line_no)
+            display_options = _extract_display_options(expression)
             statements.append(ParsedStatement(
                 line_no=line_no,
                 source=source,
@@ -226,6 +228,7 @@ def parse_cell(
                 parameters=parameters,
                 expression=expression,
                 blank_before=pending_blank,
+                display_options=display_options,
             ))
             pending_blank = False
             index += 1
@@ -404,16 +407,36 @@ def _validate_table_point_value(node: ast.AST, line_no: int) -> None:
 
 def _validate_display_sweep_keywords(node: ast.Call, line_no: int) -> None:
     call_name = node.func.id
-    if len(node.keywords) > 1:
+    sweep_keywords: list[ast.keyword] = []
+
+    for keyword_node in node.keywords:
+        if keyword_node.arg is None:
+            raise EngSyntaxError(
+                f"line {line_no}: {call_name} does not support keyword unpacking"
+            )
+
+        if keyword_node.arg in _DISPLAY_TEXT_OPTIONS:
+            value = keyword_node.value
+            if (
+                not isinstance(value, ast.Constant)
+                or not isinstance(value.value, str)
+                or not value.value.strip()
+            ):
+                raise EngSyntaxError(
+                    f"line {line_no}: {call_name} {keyword_node.arg} must be a non-empty string"
+                )
+            continue
+
+        sweep_keywords.append(keyword_node)
+
+    if len(sweep_keywords) > 1:
         raise EngSyntaxError(
             f"line {line_no}: {call_name} accepts at most one sweep parameter"
         )
+    if not sweep_keywords:
+        return
 
-    keyword_node = node.keywords[0]
-    if keyword_node.arg is None:
-        raise EngSyntaxError(
-            f"line {line_no}: {call_name} does not support keyword unpacking"
-        )
+    keyword_node = sweep_keywords[0]
     if (
         not _IDENTIFIER.fullmatch(keyword_node.arg)
         or keyword.iskeyword(keyword_node.arg)
@@ -443,6 +466,26 @@ def _validate_display_sweep_keywords(node: ast.Call, line_no: int) -> None:
 
     for element in sweep_value.elts:
         _validate_sweep_value(element, line_no, call_name)
+
+
+def _extract_display_options(expression: ast.Expression) -> tuple[tuple[str, str], ...]:
+    node = expression.body
+    if (
+        not isinstance(node, ast.Call)
+        or not isinstance(node.func, ast.Name)
+        or node.func.id not in _DISPLAY_SWEEP_CALLS
+    ):
+        return ()
+
+    display_options: list[tuple[str, str]] = []
+    evaluation_keywords: list[ast.keyword] = []
+    for keyword_node in node.keywords:
+        if keyword_node.arg in _DISPLAY_TEXT_OPTIONS:
+            display_options.append((keyword_node.arg, keyword_node.value.value.strip()))
+        else:
+            evaluation_keywords.append(keyword_node)
+    node.keywords = evaluation_keywords
+    return tuple(display_options)
 
 
 def _validate_sweep_value(node: ast.AST, line_no: int, call_name: str) -> None:
