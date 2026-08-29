@@ -2,9 +2,13 @@
 
 ## Status and baseline
 
-This roadmap starts from the validated EngCalc 0.6.0 product tree on `feature/v0.6.0-abs-envelope-panel`. EngCalc 0.6.0 already provides a restricted symbolic DSL, a separate Pint-backed numeric context, unit conversion through `numeric(expr, unit)`, precision/tolerance configuration, headings, native single/multi-series plotting, parameter sweeps, signed envelopes, magnitude envelopes through `envelope(abs(...))`, and in-axes characteristic panels.
+This roadmap is now anchored to the canonical **EngCalc 0.7.2** product baseline on `main`. EngCalc 0.7.2 includes the restricted symbolic DSL, separate Pint-backed numeric context, unit-aware `numeric(...)`/`result(...)`, scalar engineering math, multi-argument functions, generalized partial evaluation, plotting/envelopes, and native engineering tables.
 
-The open 0.6.0 release PR must be merged to `main` before any roadmap implementation branch begins.
+Release PR #29 merged EngCalc 0.7.2 into `main` on 2026-08-29. The authoritative 0.7.2 distribution gate is Actions `33266879721` on validated SHA `08a58e77c1ebace0790ba1082290e3a291a47948`.
+
+**Roadmap correction (2026-08-29):** the previously planned **0.7.3 derivation-traces** milestone is retired as redundant and will not be released. The existing `numeric(...)` presentation already renders **formula → numerical substitution → final result**, while `result(...)` renders the compact **formula → final result** form. Fully evaluated and partial user-function calls also retain the known substitutions and evaluated symbolic structure. We therefore do not need a separate trace subsystem merely to reproduce behavior already present. More granular invented arithmetic/algebra steps remain intentionally out of scope unless a future concrete engineering workflow demonstrates a need for them.
+
+The next planned product milestone is therefore **0.8.0 — piecewise expressions**.
 
 ## Product principles
 
@@ -12,129 +16,96 @@ The open 0.6.0 release PR must be merged to `main` before any roadmap implementa
 2. Symbolic formulas and numerical values with units remain separate concepts, but normal engineering expressions should cross that boundary ergonomically.
 3. Exact symbolic reasoning is preferred for engineering results; numerical sampling is primarily a rendering/fallback mechanism.
 4. Every new public capability must work coherently through parser → engine → numeric context → renderer/magic → tests/docs.
-5. Existing 0.6.0 syntax remains backward compatible unless a later 1.0 stabilization explicitly deprecates behavior.
-6. Public APIs stay composable. Avoid one-off aliases such as `abs_envelope(...)` when normal mathematical composition is sufficient.
+5. Existing released syntax remains backward compatible unless a later 1.0 stabilization explicitly deprecates behavior.
+6. Public APIs stay composable. Avoid one-off aliases when normal mathematical composition is sufficient.
 7. Every release is TDD-first and must pass source tests, a built-wheel smoke test from outside the source tree, and the full suite against the installed wheel.
 8. No new runtime dependency is added unless the capability cannot reasonably be implemented with Python, SymPy, Pint and Matplotlib already in the project.
 9. Engineering-facing errors must say what failed and how to correct the input when a safe correction is known.
 10. Documentation examples must be executable examples, not pseudocode presented as supported syntax.
+11. Do not create a new public feature when an existing primitive already expresses the same engineering workflow clearly.
 
 ## Already complete — do not reimplement
 
 - Unit-aware numeric assignments with `:=`.
 - Unit conversion with `numeric(expression, target_unit)`.
 - Global precision and zero-tolerance configuration.
-- Partial numeric rendering for the currently supported polynomial case.
+- Detailed numerical presentation through `numeric(...)`: formula → substitution → result.
+- Compact numerical presentation through `result(...)`: formula → result.
+- Generalized partial numerical evaluation with known substitutions preserved.
+- Scalar engineering mathematics (`sqrt`, trig/inverse trig, `exp`, `log`, `pi`).
+- Multi-argument user functions.
 - `plot(...)` with single series, multi-series and one-parameter sweeps.
 - `envelope(...)` signed max/min reduction.
 - `abs(...)` and magnitude-demand envelopes.
 - 201-point unit-aware rendering grids.
 - Structural moment convention: positive moment plotted downward.
+- Native engineering tables with uniform-count and explicit-point forms.
 
 ## Release roadmap
 
-**Versioning reconciliation (2026-08-29):** the release that actually shipped as 0.6.1 became the visual/presentation release. The numeric-ergonomics milestone below is therefore 0.6.2; 0.7.0 and every later milestone keep their existing numbers and scope.
+**Versioning reconciliation (2026-08-29):** the release that actually shipped as 0.6.1 became the visual/presentation release. Numeric ergonomics therefore shipped as 0.6.2; 0.7.0, 0.7.1 and 0.7.2 retained their planned numbers. The formerly planned 0.7.3 is now retired rather than repurposed, so the next release number in this roadmap is 0.8.0.
 
-### 0.6.2 — symbolic/numeric ergonomics and diagnostic quality
+### 0.6.2 — symbolic/numeric ergonomics and diagnostic quality — COMPLETE
 
-Goal: remove avoidable friction exposed by the professor-Excel exercise without changing the conceptual architecture.
+Goal: remove avoidable friction exposed by engineering exercises without changing the conceptual architecture.
 
-Required behavior:
+Delivered behavior includes direct unit-bearing user-function arguments, dimensional-zero preservation and improved numerical diagnostics.
 
-- `numeric(M(2.5*m))`, `numeric(V(L/2))`, and `numeric(R(4*tonf/m))` work directly when the function argument is a complete numeric/unit expression.
-- Existing `numeric(M(x))` partial evaluation remains valid when `x` is intentionally unresolved.
-- `solve(expression, unknown)` remains the recommended shorthand for `expression = 0`; `solve(eq(left, right), unknown)` remains supported.
-- Error messages distinguish unknown numeric names, incompatible units, unresolved symbols and unsupported symbolic/numeric crossings.
-- Error text includes a corrective example when EngCalc can determine one safely.
+### 0.7.0 — scalar engineering mathematics — COMPLETE
 
-Out of scope: new scalar math functions, multiple function parameters, tables.
-
-### 0.7.0 — scalar engineering mathematics
-
-Goal: make EngCalc a sufficiently complete scalar engineering calculator.
-
-Public functions:
+Delivered public functions:
 
 - `sqrt(expression)`
 - `sin(expression)`, `cos(expression)`, `tan(expression)`
 - `asin(expression)`, `acos(expression)`, `atan(expression)`
 - `exp(expression)`
-- `log(expression)` (natural logarithm)
+- `log(expression)`
 - constant `pi`
 
-Numeric rules:
+### 0.7.1 — multi-argument functions and generalized partial evaluation — COMPLETE
 
-- `sqrt` propagates units through a power of 1/2.
-- `sin/cos/tan` accept dimensionless values or angle quantities; degree quantities are converted to radians internally.
-- inverse trigonometric functions return radians and can be converted with `numeric(..., deg)`.
-- `exp` and `log` require dimensionless arguments.
-- all functions work symbolically, numerically, in user functions and in plotting.
-
-Out of scope: hyperbolic functions, arbitrary special functions.
-
-### 0.7.1 — multi-argument functions and generalized partial evaluation
-
-Goal: remove the one-argument user-function limitation and make partial substitution work beyond polynomials.
-
-Required syntax:
+Delivered syntax includes:
 
 ```text
 M(x, q, L) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2
 sigma(M, y, I) = M*y/I
 ```
 
-Required behavior:
+User functions support one or more positional parameters, exact arity, nested calls, fully numerical Pint evaluation and generalized partial evaluation while preserving unresolved caller symbols.
 
-- User functions support one or more named parameters.
-- Arity is checked exactly at call time.
-- Existing one-argument definitions remain unchanged.
-- `numeric(M(x, qD, L))` evaluates every known argument/value while preserving only unresolved symbolic arguments.
-- Partial evaluation supports expressions involving the scalar-math functions from 0.7.0, not only polynomial terms.
-- Rendering shows original formula, known substitutions and the remaining symbolic expression without fabricating units for unresolved symbols.
+### 0.7.2 — engineering tables / evaluation by points — COMPLETE
 
-Out of scope: default arguments, keyword arguments, variadic user functions.
-
-### 0.7.2 — engineering tables / evaluation by points
-
-Goal: make pointwise engineering evaluation a first-class output rather than requiring Python/pandas validation code.
-
-Required forms:
+Delivered forms include:
 
 ```text
-table(M(x), x, [0*m, 1*m, 2*m, 3*m, 4*m])
-table(M_1(x), M_2(x), x, [0*m, 1*m, 2*m])
 table(M(x), x, 0, L, 21)
+table(M_1(x), M_2(x), x, [0, 1, 2], m)
+table(M(x), x, [0*m, 50*cm, 1*m])
 ```
 
-Required behavior:
+Tables support uniform and explicit point definitions, compatible multiple response columns, unit normalization, native HTML rendering and non-mutating local evaluation of the table variable.
 
-- explicit-point and uniform-count forms;
-- one or more dimensionally compatible response expressions;
-- point units normalized consistently;
-- output rendered as an HTML table inside `%%eng` in source order;
-- no mutation of stored values for the table variable;
-- downloadable/export APIs are deferred.
+### Retired milestone — 0.7.3 derivation traces
 
-### 0.7.3 — derivation traces for calculation memories
+**Status: RETIRED / NO RELEASE PLANNED.**
 
-Goal: improve the equation → operation → result narrative without attempting to reproduce SymPy's internal algorithms.
-
-Public configuration:
+The milestone originally proposed a new trace system for engineering calculation memories. Colab verification against EngCalc 0.7.2 confirmed that the useful engineering-facing trace already exists:
 
 ```text
-%eng_config steps=off
-%eng_config steps=compact
-%eng_config steps=full
+numeric(expression)
 ```
 
-Required behavior:
+renders the formula, numerical substitution and final result, while:
 
-- `solve`, `integral`, `diff`, `simplify`, `expand`, `factor` can attach structured derivation steps.
-- compact mode shows operation input and final transformed result.
-- full mode additionally shows normalized equation/derivative/integral forms and substitutions that EngCalc itself performs.
-- no fake algebraic intermediate steps are generated when SymPy does not expose them safely.
+```text
+result(expression)
+```
 
-### 0.8.0 — piecewise expressions
+renders the compact formula and final result. Multi-argument and partial evaluations likewise show known substitutions and the remaining evaluated symbolic expression.
+
+A separate trace subsystem would therefore duplicate existing behavior. EngCalc will not generate artificial arithmetic micro-steps such as `5^2 → 25 → 250/8 → 31.25` merely to make a derivation look longer. If a future operation such as `solve`, `integral` or `diff` reveals a specific missing engineering-memory representation, that requirement should be designed from that concrete workflow rather than from a generic trace abstraction.
+
+### 0.8.0 — piecewise expressions — NEXT
 
 Goal: represent loads, properties and response functions that change by interval.
 
@@ -183,9 +154,9 @@ Required behavior:
 - signed envelopes partition the domain at exact/fallback intersections of source responses;
 - magnitude envelopes partition at equality of magnitudes;
 - each interval stores the governing source case;
-- exact characteristic values are used for panel summaries when available;
+- exact characteristic values are used for summaries when available;
 - the existing 201-point grid remains a renderer sampling policy, not the authoritative source of crossover locations;
-- 0.5/0.6 public envelope syntax remains valid.
+- existing public envelope syntax remains valid.
 
 ### 0.8.3 — named response cases and combinations
 
