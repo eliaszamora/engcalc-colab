@@ -1,20 +1,23 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — EngCalc 0.7.2 is fully implemented and distribution-validated; release PR #29 is open and awaiting explicit merge approval._
+_Last updated: 2026-08-29 — EngCalc 0.7.2 engineering tables is merged and is now the canonical `main` baseline._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical `main` remains **EngCalc 0.7.1** at `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e` until the release PR is merged.
-- Active release branch: `feature/v0.7.2-engineering-tables`; planning branch retained.
-- Release branch package/runtime version is **0.7.2**.
-- Release PR: **#29 — `release: EngCalc 0.7.2 engineering tables`**, base `main`, head `feature/v0.7.2-engineering-tables`; open, not merged.
+- Default/canonical branch: `main`.
+- Current release: **EngCalc 0.7.2 — engineering tables / evaluation by points**.
+- Release PR: **#29 — `release: EngCalc 0.7.2 engineering tables`**, merged into `main` on 2026-08-29.
+- Merge commit: `a7ba9521220743f3cb79814e13bd44b0e0f9ce5d`.
+- Final PR head: `44257871068ff8e9138d85a713752eb44052b13c`.
+- Comparison final PR head → merge commit contains **zero changed files**, proving the merge introduced no tree changes beyond merge history.
+- Package/runtime version on `main`: **0.7.2** in `pyproject.toml` and `src/engcalc_colab/__init__.py`.
 - Approved spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
 - Approved implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`.
 - Authoritative distribution-validated code/test/docs SHA: `08a58e77c1ebace0790ba1082290e3a291a47948`.
-- Changes after that validated SHA are administrative only: removal of the completed temporary distribution workflow and this persistent context update. No production source, tests, package metadata, or README behavior changed after the authoritative gate.
-- Do not manually invoke Codex, `@codex review`, Codex Cloud, or anything that may consume Codex quota without explicit authorization.
-- Do not merge PR #29 without explicit user approval.
+- Changes from that validated SHA through the final PR head were administrative only: release-workflow cleanup and persistent context updates. No production source, tests, package metadata, or README behavior changed after the authoritative distribution gate.
+- Release branch `feature/v0.7.2-engineering-tables` and planning branches are retained; do not delete unless explicitly requested.
+- Do not manually invoke Codex, `@codex review`, Codex Cloud, or anything that may consume the user's Codex quota without explicit authorization.
 
 ## Approved behavior
 
@@ -39,11 +42,11 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 is fully implemented and distributio
 
 ## Open issues / user feedback
 
-- No known functional blocker in EngCalc 0.7.2 after the authoritative final distribution gate.
-- Task 6 release closure is complete: version bump, release documentation, source validation, wheel build, clean installed-wheel smoke, source-free installed-wheel full suite, repeated source suite and release artifact are all GREEN.
-- PR #29 is open but intentionally unmerged pending explicit user approval.
-- `main` therefore still exposes 0.7.1 until that merge occurs.
+- No known functional blocker remains for EngCalc 0.7.2.
+- Task 6 release closure and integration are complete.
+- PR #29 is merged; `main` now exposes 0.7.2.
 - The first final-distribution attempt exposed only a stale test assertion that still expected version 0.7.1; no production behavior failed. That stale contract was corrected and the entire distribution pipeline was rerun from the beginning successfully.
+- No production/test rerun was required after merge because the final PR head and merge commit have zero file differences; post-merge verification additionally confirmed both package metadata and runtime `__version__` are 0.7.2 on `main`.
 
 ## Validation evidence
 
@@ -112,31 +115,34 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 is fully implemented and distributio
 - Wheel SHA-256: **`bb7ece9ee102f3909cf78b53e99ff46f2229053372e7446bede2af321ae621cf`**.
 - GitHub Actions artifact: **`engcalc-colab-0.7.2-final-wheel`**, artifact ID **`9718968626`**, size **32635 bytes**, artifact ZIP digest **`sha256:534987da55e705ee977f0f2c5d067777da2e4d3bd0860fcf594eeb77b543599f`**, created `2026-08-29T18:00:39Z`, expires `2026-11-27T17:55:16Z`.
 - Temporary final-distribution workflow was removed only after the authoritative gate succeeded.
-- Release PR **#29** opened against `main`; no Codex review was manually invoked and no merge has been performed.
+
+### Post-merge verification
+
+- PR #29 merged successfully at `2026-08-29T18:22:56Z`.
+- Merge commit: `a7ba9521220743f3cb79814e13bd44b0e0f9ce5d`; GitHub reports a valid verified merge signature.
+- Final PR head: `44257871068ff8e9138d85a713752eb44052b13c`.
+- Compare final PR head → merge commit: **1 merge-history commit, 0 changed files**.
+- `main` `pyproject.toml`: `version = "0.7.2"`.
+- `main` `src/engcalc_colab/__init__.py`: `__version__ = "0.7.2"`.
+- Because the merged tree is file-identical to the approved final PR head, the authoritative distribution gate remains applicable to the merged product tree.
 
 ## Roadmap / active plan
 
 - **0.7.1 complete and merged.**
-- **0.7.2 engineering tables implementation complete.**
-- Task 0 baseline: complete.
-- Task 1 parser/models: complete.
-- Task 2 point/range normalization: complete.
-- Task 3 engine evaluation: complete.
-- Task 4 native HTML renderer + real `%%eng`: complete.
-- Task 5 engineer-facing acceptance + docs: complete.
-- Task 6 release closure + wheel distribution validation: complete.
-- Integration state: release PR **#29 open; awaiting explicit merge approval**.
-- Next roadmap milestone after 0.7.2 integration remains **0.7.3 derivation traces** unless amended.
+- **0.7.2 engineering tables complete, distribution-validated, and merged to `main`.**
+- Tasks 0–6 for 0.7.2 are complete.
+- Canonical baseline is now EngCalc 0.7.2.
+- Next roadmap milestone remains **0.7.3 derivation traces** unless amended.
 
 ## Exact next step
 
-- Do not change the approved 0.7.2 product behavior while PR #29 awaits integration.
-- Do not merge automatically.
-- The exact next integration action is: **merge PR #29 into `main` only if the user explicitly approves the merge**.
-- After merge, verify the merge result/main tree, run or confirm the appropriate post-merge checks, then update `CURRENT.md` on `main` to record 0.7.2 as canonical baseline.
-- Retain `feature/v0.7.2-engineering-tables`, planning branches, and release evidence unless the user explicitly requests cleanup.
+- No further 0.7.2 implementation or release action is pending.
+- Preserve 0.7.2 behavior and release evidence as the new regression baseline.
+- When work resumes, read `docs/superpowers/specs/2026-08-28-engcalc-evolution-roadmap-design.md` and this file first.
+- The next planned milestone is **0.7.3 derivation traces**. Start with design/spec work before implementation, following the Superpowers approval gates and strict TDD RED→GREEN workflow.
+- Retain feature/planning branches unless explicitly requested otherwise.
 - Do not manually invoke Codex.
 
 ## How to resume in a new conversation
 
-Read this file first. `main` is still EngCalc 0.7.1 at `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e`; EngCalc 0.7.2 is fully implemented and validated on `feature/v0.7.2-engineering-tables`. The authoritative distribution gate is Actions `33266879721` on `08a58e77c1ebace0790ba1082290e3a291a47948`: release contracts 11/11, table subset 80/80, source 454/454, external installed-wheel smoke PASS, source-free installed-wheel 454/454, repeated source 454/454. Wheel: `engcalc_colab-0.7.2-py3-none-any.whl`, SHA-256 `bb7ece9ee102f3909cf78b53e99ff46f2229053372e7446bede2af321ae621cf`. Artifact ID `9718968626`. PR #29 is open and unmerged. Exact next step is to wait for explicit user approval before merging PR #29. Do not manually invoke Codex.
+Read this file first. EngCalc **0.7.2** is the canonical `main` release. PR #29 is merged at `a7ba9521220743f3cb79814e13bd44b0e0f9ce5d`, with zero file differences between the final PR head and merge commit. The authoritative distribution gate is Actions `33266879721` on `08a58e77c1ebace0790ba1082290e3a291a47948`: release contracts 11/11, table subset 80/80, source 454/454, external installed-wheel smoke PASS, source-free installed-wheel 454/454, repeated source 454/454. Wheel: `engcalc_colab-0.7.2-py3-none-any.whl`, SHA-256 `bb7ece9ee102f3909cf78b53e99ff46f2229053372e7446bede2af321ae621cf`; artifact ID `9718968626`. The next planned roadmap milestone is 0.7.3 derivation traces; do not begin implementation before the design/spec approval workflow. Do not manually invoke Codex.
