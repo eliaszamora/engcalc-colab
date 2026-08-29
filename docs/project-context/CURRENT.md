@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-28 after implementing and distribution-validating the user-approved semantic **4 / 8 / 16 pt** MathJax spacing hierarchy and aligning public README documentation. PR #25 remains open and must not be merged without explicit user approval after real-Colab visual QA of this final presentation change._
+_Last updated: 2026-08-28 after implementing and distribution-validating the user-approved semantic **4 / 8 / 16 pt** MathJax spacing hierarchy, aligning public README documentation, and correcting the pre-merge Colab QA install protocol after a fresh runtime exposed that `--no-deps` leaves Pint unavailable._
 
 ## Current baseline
 
@@ -122,13 +122,18 @@ The first complete-suite attempt correctly found six legacy tests still assertin
 
 Because successive QA revisions all report package version `0.6.1`, installing a moving branch with only `--upgrade` previously left an older submodule in `site-packages` while `__version__` still read `0.6.1`.
 
-For remaining pre-merge QA use the exact validated product/test commit:
+A fresh Colab runtime then exposed a second installation detail: using the exact VCS commit together with `--force-reinstall --no-deps` can leave EngCalc installed while required dependency **Pint** is absent. The wheel builds successfully, but `%load_ext engcalc_colab` then fails at `from pint.errors import DimensionalityError` with `ModuleNotFoundError: No module named 'pint'`.
+
+For pre-merge real-Colab QA, use this two-step protocol so the validated EngCalc source is force-reinstalled without unnecessarily force-reinstalling Colab's whole scientific stack:
 
 ```python
+%pip install -q "pint>=0.24"
 %pip install -q --force-reinstall --no-deps --no-cache-dir "git+https://github.com/eliaszamora/engcalc-colab.git@6069ba78a180669bc1377681a6a328c18d6809ca"
 ```
 
-Then restart the Colab session before loading/running EngCalc.
+Then **restart the Colab runtime** before loading/running EngCalc. The validated QA commit is `6069ba78a180669bc1377681a6a328c18d6809ca`; do not substitute an unrelated/moving SHA when performing the final visual comparison.
+
+After merge, the normal installation command should install declared dependencies conventionally; this two-step command is specifically for exact-commit pre-merge QA under the unchanged package version `0.6.1`.
 
 ## Colab side-by-side browser extension
 
@@ -156,22 +161,23 @@ The original 0.6.1 visual-polish scope was explicitly amended by user-approved p
 
 ## Exact next step
 
-1. In Colab, force-install exact commit `6069ba78a180669bc1377681a6a328c18d6809ca`, then restart the session.
-2. Rerun the same calculation that visually exposed the problem, especially a `solve(...)` output.
-3. Confirm visually:
+1. In Colab, install Pint and then force-install exact commit `6069ba78a180669bc1377681a6a328c18d6809ca` with the two commands above.
+2. Restart the Colab runtime.
+3. Load EngCalc and rerun the same calculation that visually exposed the problem, especially a `solve(...)` output.
+4. Confirm visually:
    - wrapped continuation of one equation: 4 pt;
    - equation → solve result: 8 pt;
    - formula → substitution → result in `numeric(...)`: 8 pt between stages;
    - consecutive source results: 8 pt;
    - explicit source blank line: 16 pt.
-4. In the same pass, visually compare `numeric(...)` and `result(...)`.
-5. If approved, inspect PR #25 one final time and request explicit user authorization before merge.
-6. **Do not merge PR #25 without explicit user approval.**
+5. In the same pass, visually compare `numeric(...)` and `result(...)`.
+6. If approved, inspect PR #25 one final time and request explicit user authorization before merge.
+7. **Do not merge PR #25 without explicit user approval.**
 
 ## How to resume in a new conversation
 
 Tell the new agent:
 
-> Continue EngCalc from `docs/project-context/CURRENT.md`. Read root `AGENTS.md`, verify GitHub/PR #25 state, and continue the final real-Colab QA for the semantic 4/8/16 MathJax spacing plus `result(...)`. Compact plot labels are already user-approved. Do not merge without explicit approval.
+> Continue EngCalc from `docs/project-context/CURRENT.md`. Read root `AGENTS.md`, verify GitHub/PR #25 state, and continue the final real-Colab QA for the semantic 4/8/16 MathJax spacing plus `result(...)`. Compact plot labels are already user-approved. Use the corrected Pint + exact-commit QA install protocol. Do not merge without explicit approval.
 
 The repository context file and Git history are authoritative for continuity.
