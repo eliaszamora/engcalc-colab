@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from html import escape
 
 import sympy as sp
 from sympy.printing.latex import LatexPrinter
@@ -11,6 +12,7 @@ from .models import (
     NumericAssignmentResult,
     NumericEvaluationResult,
     PartialNumericEvaluationResult,
+    TableResult,
 )
 
 CalculationResult = (
@@ -662,6 +664,74 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
 
     body = " ".join(rows)
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
+
+
+def _table_unit_text(unit) -> str:
+    if str(unit) == "dimensionless":
+        return ""
+    return format(unit, "~P")
+
+
+def _table_header(label: str, unit) -> str:
+    safe_label = escape(label)
+    unit_text = _table_unit_text(unit)
+    if not unit_text:
+        return safe_label
+    return f"{safe_label} [{escape(unit_text)}]"
+
+
+def _table_magnitude(quantity, settings: RenderSettings) -> str:
+    magnitude = float(quantity.magnitude)
+    if abs(magnitude) < settings.zero_tolerance:
+        magnitude = 0.0
+    return f"{magnitude:.{settings.precision}f}"
+
+
+def render_table(
+    result: TableResult,
+    *,
+    settings: RenderSettings | None = None,
+) -> str:
+    """Render a unit-aware engineering table as compact scoped HTML."""
+    active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    headers = [
+        _table_header(result.variable, result.point_unit),
+        *(
+            _table_header(column.display_label, column.unit)
+            for column in result.columns
+        ),
+    ]
+    header_html = "".join(f"<th>{header}</th>" for header in headers)
+
+    rows: list[str] = []
+    for row_index, point in enumerate(result.point_values):
+        cells = [_table_magnitude(point, active_settings)]
+        cells.extend(
+            _table_magnitude(column.values[row_index], active_settings)
+            for column in result.columns
+        )
+        rows.append(
+            "<tr>"
+            + "".join(f"<td>{cell}</td>" for cell in cells)
+            + "</tr>"
+        )
+
+    body_html = "".join(rows)
+    return (
+        '<style>'
+        '.engcalc-table{margin:0.35rem 0 0.55rem 0;overflow-x:auto;}'
+        '.engcalc-table table{border-collapse:collapse;font-size:0.92rem;line-height:1.35;}'
+        '.engcalc-table th,.engcalc-table td{'
+        'padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);'
+        'text-align:right;white-space:nowrap;}'
+        '.engcalc-table th{font-weight:600;border-bottom:1px solid rgba(127,127,127,0.42);}'
+        '.engcalc-table th:first-child,.engcalc-table td:first-child{text-align:left;}'
+        '</style>'
+        '<div class="engcalc-table"><table>'
+        f'<thead><tr>{header_html}</tr></thead>'
+        f'<tbody>{body_html}</tbody>'
+        '</table></div>'
+    )
 
 
 def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:

@@ -1,4 +1,4 @@
-from IPython.display import Math
+from IPython.display import HTML, Math
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 
 
@@ -212,3 +212,34 @@ def test_eng_magic_displays_magnitude_envelope_in_source_order(monkeypatch):
     labels = [text.get_text() for text in axis.texts]
     assert "(0, 9)" in labels
     assert not any("Magnitude envelope" in label for label in labels)
+
+
+def test_eng_magic_flushes_math_before_table_and_resumes_after(monkeypatch):
+    import engcalc_colab.magic as magic_module
+
+    displayed = []
+    monkeypatch.setattr(magic_module, "display", displayed.append)
+
+    magics = magic_module.EngMagics(shell=None)
+    magics.eng("", "A = 1\ntable(x, x, 0, 1, 3)\nB = 2")
+
+    assert [type(item) for item in displayed] == [Math, HTML, Math]
+    assert "engcalc-table" in displayed[1].data
+
+
+def test_eng_magic_preserves_heading_equation_table_heading_equation_order(monkeypatch):
+    import engcalc_colab.magic as magic_module
+
+    displayed = []
+    monkeypatch.setattr(magic_module, "display", displayed.append)
+
+    magics = magic_module.EngMagics(shell=None)
+    magics.eng(
+        "",
+        "## Beam\nA = 1\ntable(x, x, 0, 1, 3)\n### Checks\nB = 2",
+    )
+
+    assert [type(item) for item in displayed] == [HTML, Math, HTML, HTML, Math]
+    assert "Beam" in displayed[0].data
+    assert "engcalc-table" in displayed[2].data
+    assert "Checks" in displayed[3].data

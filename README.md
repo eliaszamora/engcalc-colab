@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.7.1**.
+Current version: **0.7.2**.
 
 ## Install in Google Colab
 
@@ -16,6 +16,46 @@ If the extension is already loaded after an update, use:
 ```python
 %reload_ext engcalc_colab
 ```
+
+## v0.7.2 engineering tables
+
+v0.7.2 adds native pointwise engineering tables to the same restricted, unit-aware `%%eng` workflow used for calculations and plots. The normal form uses automatic discretization: give the response, independent variable, start, end, and number of points. Both endpoints are included.
+
+```text
+%%eng
+
+M(x) = q*x*(L-x)/2
+q := 4*kN/m
+L := 5*m
+
+table(M(x), x, 0, L, 21)
+```
+
+When `L` already carries a length unit, the exact zero in `0, L` inherits the compatible unit automatically. You therefore do not need to write `0*m`. The example above evaluates 21 uniformly spaced positions from `0 m` through `5 m`.
+
+Several dimensionally compatible responses may share one table and remain in source order:
+
+```text
+table(M_D(x), M_L(x), M_U(x), x, 0, L, 21)
+```
+
+When particular evaluation positions matter more than uniform discretization, declare their unit once:
+
+```text
+table(M(x), x, [0, 1, 1.5, 2], m)
+```
+
+Fully explicit compatible quantities remain available when individual points use different units:
+
+```text
+table(M(x), x, [0*m, 50*cm, 1*m])
+```
+
+Explicit points are normalized to one compatible point unit. Dimensionless tables are also supported, and uniform ranges may be descending, for example `table(V(x), x, L, 0, 21)`.
+
+Inside `%%eng`, tables render as native HTML in source order alongside MathJax equations, headings, and existing plots. Units appear once in the table headers rather than in every cell, and the active `%eng_config` precision and zero tolerance are respected. EngCalc does not add pandas as a runtime dependency for this feature.
+
+General Python list literals remain restricted: list syntax is accepted only in the approved table-point context and the existing plot/envelope sweep contexts. Export/download APIs and Cartesian multi-parameter table sweeps are outside the 0.7.2 scope.
 
 ## v0.7.1 multi-argument functions and generalized partial evaluation
 
@@ -674,7 +714,7 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Current limitations
 
-v0.7.0 intentionally does not yet provide:
+v0.7.2 currently does not provide:
 
 - subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
@@ -688,13 +728,15 @@ v0.7.0 intentionally does not yet provide:
 - automatic compact coefficient evaluation for non-polynomial partial functions;
 - exact browser-pixel-aware MathJax line wrapping;
 - general keyword arguments or general list/dictionary syntax outside the restricted plot/envelope sweep slot;
-- arrays/tables or dedicated matrix syntax;
+- general arrays or dedicated matrix syntax;
 - arbitrary Python execution or arbitrary library functions;
 - multi-solution `solve(...)`;
 - full LaTeX parsing.
 
 ## Version notes
 
+- **0.7.2** — native engineering tables with automatic unit-aware discretization, unit-once and fully explicit point forms, compatible multi-response columns, native HTML rendering, and source-order `%%eng` integration.
+- **0.7.1** — multi-argument user functions and generalized partial numerical evaluation.
 - **0.7.0** — scalar engineering mathematics: `sqrt`, trig/inverse trig, `exp`, `log`, and `pi` with unit-aware numerical rules.
 - **0.6.2** — direct unit-bearing arguments for numerical user-function evaluation, dimensional-zero preservation, and corrective numerical diagnostics.
 - **0.6.1** — adaptive semantic MathJax rendering with 4/8/16 spacing; compact `result(...)`; compact collision-aware `(x, y)` characteristic labels for plots and envelopes; no numerical-method changes.
@@ -711,4 +753,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.7.0`.
+Version: `0.7.2`.

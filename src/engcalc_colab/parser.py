@@ -23,13 +23,22 @@ _SCALAR_CALLS = {
 }
 _ALLOWED_CALLS = {
     "integral", "diff", "solve", "simplify", "expand", "factor",
-    "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "abs"
+    "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs"
 } | _SCALAR_CALLS
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _FUNCTION_TARGET_HEAD = re.compile(r"^([A-Za-z_]\w*)\s*\((.*)\)$")
 _HEADING = re.compile(r"^(#{2,3})\s+(.+)$")
 _RESULT_CALL = re.compile(r"\bresult\s*(?=\()")
+_TABLE_COLLECTION_NODES = (
+    ast.ListComp,
+    ast.Set,
+    ast.SetComp,
+    ast.Dict,
+    ast.DictComp,
+    ast.GeneratorExp,
+    ast.Tuple,
+)
 
 
 def normalize_expression(text: str) -> str:
@@ -193,6 +202,10 @@ def _validate_normal_node(node: ast.AST, line_no: int) -> None:
                 f"line {line_no}: unsupported function '{node.func.id}'"
             )
 
+        if node.func.id == "table":
+            _validate_table_call(node, line_no)
+            return
+
         for arg in node.args:
             _validate_normal_node(arg, line_no)
 
@@ -206,6 +219,86 @@ def _validate_normal_node(node: ast.AST, line_no: int) -> None:
 
     for child in ast.iter_child_nodes(node):
         _validate_normal_node(child, line_no)
+
+
+def _validate_table_call(node: ast.Call, line_no: int) -> None:
+    if node.keywords:
+        raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")
+
+    args = node.args
+    for arg in args:
+        if isinstance(arg, _TABLE_COLLECTION_NODES):
+            raise EngSyntaxError(
+                f"line {line_no}: unsupported table point syntax "
+                f"'{type(arg).__name__}'"
+            )
+
+    point_list: ast.List | None = None
+    unit_node: ast.AST | None = None
+
+    if len(args) >= 3 and isinstance(args[-1], ast.List):
+        response_nodes = args[:-2]
+        variable_node = args[-2]
+        point_list = args[-1]
+        tail_nodes: tuple[ast.AST, ...] = ()
+    elif len(args) >= 4 and isinstance(args[-2], ast.List):
+        response_nodes = args[:-3]
+        variable_node = args[-3]
+        point_list = args[-2]
+        unit_node = args[-1]
+        tail_nodes = ()
+    else:
+        if len(args) == 4:
+            raise EngSyntaxError(
+                f"line {line_no}: table requires at least one response expression"
+            )
+        if len(args) < 5:
+            raise EngSyntaxError(f"line {line_no}: unsupported table call shape")
+        response_nodes = args[:-4]
+        variable_node = args[-4]
+        tail_nodes = tuple(args[-3:])
+
+    if not response_nodes:
+        raise EngSyntaxError(
+            f"line {line_no}: table requires at least one response expression"
+        )
+    if not isinstance(variable_node, ast.Name):
+        raise EngSyntaxError(
+            f"line {line_no}: table variable must be a symbolic identifier"
+        )
+    if keyword.iskeyword(variable_node.id) or variable_node.id in _RESERVED:
+        raise EngSyntaxError(
+            f"line {line_no}: table variable must be a symbolic identifier"
+        )
+
+    for response_node in response_nodes:
+        _validate_normal_node(response_node, line_no)
+
+    if point_list is not None:
+        _validate_table_point_list(point_list, line_no)
+        if unit_node is not None:
+            _validate_normal_node(unit_node, line_no)
+        return
+
+    for tail_node in tail_nodes:
+        _validate_normal_node(tail_node, line_no)
+
+
+def _validate_table_point_list(node: ast.List, line_no: int) -> None:
+    if not node.elts:
+        raise EngSyntaxError(f"line {line_no}: table point list cannot be empty")
+    for element in node.elts:
+        _validate_table_point_value(element, line_no)
+
+
+def _validate_table_point_value(node: ast.AST, line_no: int) -> None:
+    if not isinstance(node, _SWEEP_VALUE_NODES):
+        raise EngSyntaxError(
+            f"line {line_no}: unsupported table point syntax "
+            f"'{type(node).__name__}'"
+        )
+    for child in ast.iter_child_nodes(node):
+        _validate_table_point_value(child, line_no)
 
 
 def _validate_display_sweep_keywords(node: ast.Call, line_no: int) -> None:
