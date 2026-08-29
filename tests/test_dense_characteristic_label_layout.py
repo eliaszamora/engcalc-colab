@@ -9,6 +9,9 @@ from engcalc_colab.parser import parse_cell
 from engcalc_colab.presentation import render_presented_plot
 
 
+_MIN_RAIL_VERTICAL_CLEARANCE_PX = 10.0
+
+
 def _eval_cell(engine, source: str):
     return [engine.evaluate(statement) for statement in parse_cell(source)]
 
@@ -99,6 +102,18 @@ def _assert_single_label_rail(cluster, renderer, *, tolerance_px: float = 3.0):
     }
 
 
+def _assert_minimum_vertical_clearance(cluster, renderer):
+    boxes = sorted(
+        (item.get_window_extent(renderer) for item in cluster),
+        key=lambda box: float(box.y0),
+    )
+    clearances = [
+        float(upper.y0 - lower.y1)
+        for lower, upper in zip(boxes, boxes[1:])
+    ]
+    assert min(clearances) >= _MIN_RAIL_VERTICAL_CLEARANCE_PX, clearances
+
+
 def _render_dense_case():
     result = _dense_six_series_moment_plot()
     figure = render_presented_plot(result)
@@ -130,6 +145,17 @@ def test_dense_shared_x_groups_use_one_aligned_label_rail_each():
 
     _assert_single_label_rail(left_cluster, renderer)
     _assert_single_label_rail(interior_cluster, renderer)
+
+
+def test_dense_shared_x_groups_have_robust_vertical_clearance():
+    _, _, items, renderer = _render_dense_case()
+    left_cluster = [item for item in items if abs(float(item.xy[0])) < 1e-9]
+    interior_cluster = [item for item in items if abs(float(item.xy[0]) - 2.5) < 0.03]
+    assert len(left_cluster) == 6
+    assert len(interior_cluster) == 6
+
+    _assert_minimum_vertical_clearance(left_cluster, renderer)
+    _assert_minimum_vertical_clearance(interior_cluster, renderer)
 
 
 def test_dense_reflow_keeps_labels_inside_axes_and_non_overlapping():
