@@ -16,15 +16,87 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: Apply 0.7.0 release documentation and metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          pyproject = Path('pyproject.toml')
+          text = pyproject.read_text()
+          text = text.replace('version = "0.6.2"', 'version = "0.7.0"', 1)
+          pyproject.write_text(text)
+
+          init = Path('src/engcalc_colab/__init__.py')
+          text = init.read_text()
+          text = text.replace('__version__ = "0.6.2"', '__version__ = "0.7.0"', 1)
+          init.write_text(text)
+
+          packaging = Path('tests/test_packaging.py')
+          text = packaging.read_text()
+          text = text.replace('def test_pyproject_version_is_0_6_1():\n    assert _project_metadata()["version"] == "0.6.2"',
+                              'def test_pyproject_version_is_0_7_0():\n    assert _project_metadata()["version"] == "0.7.0"', 1)
+          text = text.replace('def test_runtime_version_is_0_6_1():\n    assert engcalc_colab.__version__ == "0.6.2"',
+                              'def test_runtime_version_is_0_7_0():\n    assert engcalc_colab.__version__ == "0.7.0"', 1)
+          packaging.write_text(text)
+
+          parser_test = Path('tests/test_parser.py')
+          text = parser_test.read_text().replace('assert __version__ == "0.6.2"', 'assert __version__ == "0.7.0"', 1)
+          parser_test.write_text(text)
+
+          old_release = Path('tests/test_release_version_v062.py')
+          new_release = Path('tests/test_release_version_v070.py')
+          text = old_release.read_text()
+          text = text.replace('EXPECTED_VERSION = "0.6.2"', 'EXPECTED_VERSION = "0.7.0"', 1)
+          text = text.replace('def test_package_version_is_v061():', 'def test_package_version_is_v070():', 1)
+          text = text.replace('def test_pyproject_version_is_v061():', 'def test_pyproject_version_is_v070():', 1)
+          new_release.write_text(text)
+          old_release.unlink()
+
+          readme = Path('README.md')
+          text = readme.read_text()
+          text = text.replace('Current version: **0.6.2**.', 'Current version: **0.7.0**.', 1)
+          marker = '## v0.6.2 numeric ergonomics and diagnostics\n'
+          section = '''## v0.7.0 scalar engineering mathematics\n\nv0.7.0 adds a fixed, restricted scalar-mathematics layer that works symbolically and through the Pint-backed numerical context. The public functions are `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `exp`, and `log`, together with the reserved constant `pi`. These names are built into EngCalc and cannot be redefined as variables or function parameters.\n\n```text\n%%eng\n\nf(x) = A*sin(pi*x/L)\nA := 10*mm\nL := 4*m\n\ntheta := sin(30*deg)\nr := sqrt(9*m^2)\na := atan(1)\n\nnumeric(a, deg)\nplot(f(x), x, 0, L)\n```\n\nNumerically, `sqrt` propagates units through a power of one half. `sin`, `cos`, and `tan` accept dimensionless values or angle quantities; degree quantities are converted to radians before evaluation. `asin`, `acos`, and `atan` require dimensionless arguments and return radians, so results can be converted explicitly, for example with `numeric(atan(1), deg)`. `exp` and `log` require dimensionless arguments. Incompatible dimensions produce EngCalc evaluation errors rather than silently stripping units.\n\nThe same functions are valid inside user-defined functions and native plots. For example, `f(x) = A*sin(pi*x/L)` can be sampled directly with `plot(f(x), x, 0, L)`. Under the pre-0.7.1 partial-evaluation model, `numeric(f(x))` may preserve `x` as unresolved but does not yet construct compact evaluated coefficients for a non-polynomial transcendental expression; generalized partial evaluation is reserved for 0.7.1.\n\n'''
+          if section not in text:
+              if marker not in text:
+                  raise SystemExit('README 0.6.2 marker not found')
+              text = text.replace(marker, section + marker, 1)
+          text = text.replace('v0.6.2 intentionally does not yet provide:', 'v0.7.0 intentionally does not yet provide:', 1)
+          text = text.replace('## Version notes\n\n- **0.6.2**', '## Version notes\n\n- **0.7.0** — scalar engineering mathematics: `sqrt`, trig/inverse trig, `exp`, `log`, and `pi` with unit-aware numerical rules.\n- **0.6.2**', 1)
+          text = text.replace('Version: `0.6.2`.', 'Version: `0.7.0`.', 1)
+          readme.write_text(text)
+
+          assert 'version = "0.7.0"' in pyproject.read_text()
+          assert '__version__ = "0.7.0"' in init.read_text()
+          assert '## v0.7.0 scalar engineering mathematics' in readme.read_text()
+          assert new_release.exists() and not old_release.exists()
+          PY
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e '.[dev]' ipython
-      - name: Scalar math focused acceptance
+      - name: Release metadata and scalar contracts
         run: |
-          pytest tests/test_scalar_math_parser.py \
+          pytest tests/test_release_version_v070.py \
+                 tests/test_packaging.py \
+                 tests/test_parser.py \
+                 tests/test_scalar_math_parser.py \
                  tests/test_scalar_math_engine.py \
                  tests/test_scalar_math_numeric.py \
                  tests/test_scalar_math_acceptance.py -q
       - name: Complete source regression
         run: pytest -q
+      - name: Commit 0.7.0 release closure when changed
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add README.md pyproject.toml src/engcalc_colab/__init__.py \
+                  tests/test_packaging.py tests/test_parser.py \
+                  tests/test_release_version_v070.py tests/test_release_version_v062.py
+          if git diff --cached --quiet; then
+            echo "Release metadata already persisted"
+            exit 0
+          fi
+          git diff --cached --check
+          git commit -m "release: EngCalc 0.7.0 scalar engineering math"
+          git push
