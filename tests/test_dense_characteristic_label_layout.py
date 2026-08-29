@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
-from matplotlib.text import Annotation
+from matplotlib.text import Annotation, Text
 
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
@@ -80,8 +80,12 @@ def _annotations(axis):
     return [item for item in axis.texts if isinstance(item, Annotation)]
 
 
+def _text_box(annotation, renderer):
+    return Text.get_window_extent(annotation, renderer)
+
+
 def _box_center_y(annotation, renderer):
-    box = annotation.get_window_extent(renderer)
+    box = _text_box(annotation, renderer)
     return 0.5 * (box.y0 + box.y1)
 
 
@@ -105,7 +109,7 @@ def _assert_cluster_preserves_visual_order(axis, cluster, renderer):
 
 
 def _assert_single_label_rail(cluster, renderer, *, tolerance_px: float = 3.0):
-    boxes = [item.get_window_extent(renderer) for item in cluster]
+    boxes = [_text_box(item, renderer) for item in cluster]
     left_edges = [float(box.x0) for box in boxes]
     right_edges = [float(box.x1) for box in boxes]
     left_spread = max(left_edges) - min(left_edges)
@@ -119,7 +123,7 @@ def _assert_single_label_rail(cluster, renderer, *, tolerance_px: float = 3.0):
 
 def _assert_minimum_vertical_clearance(cluster, renderer):
     boxes = sorted(
-        (item.get_window_extent(renderer) for item in cluster),
+        (_text_box(item, renderer) for item in cluster),
         key=lambda box: float(box.y0),
     )
     clearances = [
@@ -167,8 +171,8 @@ def test_dense_shared_x_groups_use_external_callout_rails_with_leaders():
     _assert_single_label_rail(interior_cluster, renderer)
     assert all(item.arrow_patch is not None for item in left_cluster + interior_cluster)
 
-    left_boxes = [item.get_window_extent(renderer) for item in left_cluster]
-    right_boxes = [item.get_window_extent(renderer) for item in interior_cluster]
+    left_boxes = [_text_box(item, renderer) for item in left_cluster]
+    right_boxes = [_text_box(item, renderer) for item in interior_cluster]
     assert all(box.x1 < axes_box.x0 for box in left_boxes)
     assert all(box.x0 > axes_box.x1 for box in right_boxes)
     assert all(box.x0 >= figure_box.x0 and box.x1 <= figure_box.x1 for box in left_boxes + right_boxes)
@@ -187,7 +191,7 @@ def test_dense_shared_x_groups_have_robust_vertical_clearance():
 
 def test_dense_callouts_are_non_overlapping_and_figure_reserves_side_space():
     figure, _, items, renderer = _render_dense_case()
-    boxes = [item.get_window_extent(renderer) for item in items]
+    boxes = [_text_box(item, renderer) for item in items]
 
     assert figure.get_figwidth() > matplotlib.rcParams["figure.figsize"][0]
     for index, left in enumerate(boxes):
@@ -201,8 +205,8 @@ def test_sparse_two_label_clusters_keep_existing_inline_annotations():
     assert len(items) == 4
     assert all(item.arrow_patch is None for item in items)
     assert all(
-        item.get_window_extent(renderer).x0 >= axes_box.x0
-        and item.get_window_extent(renderer).x1 <= axes_box.x1
+        _text_box(item, renderer).x0 >= axes_box.x0
+        and _text_box(item, renderer).x1 <= axes_box.x1
         for item in items
     )
     assert figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
