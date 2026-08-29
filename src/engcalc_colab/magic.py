@@ -15,10 +15,11 @@ from .models import (
     ParsedHeading,
     PartialNumericEvaluationResult,
     PlotResult,
+    TableResult,
 )
 from .parser import parse_cell
 from .plotting import render_plot
-from .renderer import RenderSettings, render_aligned_results
+from .renderer import RenderSettings, render_aligned_results, render_table
 
 _HEADING_STYLE = {
     2: (
@@ -89,6 +90,22 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     display(render_plot(result))
+                    continue
+
+                if isinstance(result, TableResult):
+                    _display_equation_group(
+                        pending_results,
+                        self.render_settings,
+                    )
+                    pending_results.clear()
+                    display(
+                        HTML(
+                            render_table(
+                                result,
+                                settings=self.render_settings,
+                            )
+                        )
+                    )
                     continue
 
                 pending_results.append(result)
