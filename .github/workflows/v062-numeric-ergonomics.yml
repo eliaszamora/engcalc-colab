@@ -20,150 +20,101 @@ jobs:
         run: |
           python -m pip install -e '.[dev]'
           python -m pip install ipython
-      - name: Apply AST numeric-argument GREEN implementation
+      - name: Apply AST numeric-argument resolver
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          numeric_path = Path('src/engcalc_colab/numeric.py')
-          numeric = numeric_path.read_text()
-          old_numeric = '''        overrides = overrides or {}
-          names = sorted(symbol.name for symbol in expr.free_symbols)
-          substitutions: dict[str, Any] = {}
-          missing: list[str] = []
-          for name in names:
-              if name in overrides:
-                  substitutions[name] = overrides[name]
-              elif name in self.values:
-                  substitutions[name] = self.values[name]
-              elif name in _UNIT_ALIASES:
-                  substitutions[name] = self.ureg.Unit(_UNIT_ALIASES[name])
-              else:
-                  missing.append(name)
-          if missing:
-              hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
-              raise EngEvaluationError(
-                  "numeric evaluation requires values for: "
-                  + ", ".join(missing)
-                  + f". {hint}"
-              )
-          '''
-          new_numeric = '''        overrides = overrides or {}
-          names = sorted(symbol.name for symbol in expr.free_symbols)
-          missing = [
-              name
-              for name in names
-              if name not in overrides and name not in self.values
+          # Restore NumericContext.evaluate_symbolic to values/overrides only.
+          numeric_path = Path("src/engcalc_colab/numeric.py")
+          lines = numeric_path.read_text().splitlines()
+          fn = next(i for i, line in enumerate(lines) if line.startswith("    def evaluate_symbolic("))
+          start = next(i for i in range(fn, len(lines)) if lines[i] == "        overrides = overrides or {}")
+          stop = next(i for i in range(start + 1, len(lines)) if lines[i] == "        try:")
+          replacement = [
+              "        overrides = overrides or {}",
+              "        names = sorted(symbol.name for symbol in expr.free_symbols)",
+              "        missing = [",
+              "            name",
+              "            for name in names",
+              "            if name not in overrides and name not in self.values",
+              "        ]",
+              "        if missing:",
+              "            hint = diagnostic_hint(\"unresolved_numeric_symbols\", names=tuple(missing))",
+              "            raise EngEvaluationError(",
+              "                \"numeric evaluation requires values for: \"",
+              "                + \", \".join(missing)",
+              "                + f\". {hint}\"",
+              "            )",
+              "",
+              "        substitutions = {",
+              "            name: overrides[name] if name in overrides else self.values[name]",
+              "            for name in names",
+              "        }",
           ]
-          if missing:
-              hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
-              raise EngEvaluationError(
-                  "numeric evaluation requires values for: "
-                  + ", ".join(missing)
-                  + f". {hint}"
-              )
+          lines[start:stop] = replacement
+          numeric_path.write_text("\n".join(lines) + "\n")
 
-          substitutions = {
-              name: overrides[name] if name in overrides else self.values[name]
-              for name in names
-          }
-          '''
-          if 'elif name in _UNIT_ALIASES:' in numeric:
-              if old_numeric not in numeric:
-                  raise SystemExit('evaluate_symbolic block not found')
-              numeric = numeric.replace(old_numeric, new_numeric, 1)
-          numeric_path.write_text(numeric)
+          # Add the AST-level resolver and route user-function numeric arguments through it.
+          engine_path = Path("src/engcalc_colab/engine.py")
+          lines = engine_path.read_text().splitlines()
 
-          engine_path = Path('src/engcalc_colab/engine.py')
-          engine = engine_path.read_text()
+          if not any("def _resolve_numeric_function_argument" in line for line in lines):
+              class_i = next(i for i, line in enumerate(lines) if line == "class _Evaluator(ast.NodeVisitor):")
+              generic_i = next(i for i in range(class_i, len(lines)) if lines[i] == "    def generic_visit(self, node):")
+              insert_i = generic_i + 2
+              resolver = [
+                  "",
+                  "    def _resolve_numeric_function_argument(self, node: ast.AST):",
+                  "        if isinstance(node, ast.Name):",
+                  "            symbolic = self.visit(node)",
+                  "            if (",
+                  "                isinstance(symbolic, sp.Symbol)",
+                  "                and self.engine.numeric_context.get(node.id) is None",
+                  "            ):",
+                  "                return symbolic",
+                  "        return self.engine.numeric_context.evaluate_expression(",
+                  "            ast.Expression(body=node)",
+                  "        )",
+              ]
+              lines[insert_i:insert_i] = resolver
 
-          old_generic = '''    def generic_visit(self, node):
-              raise EngEvaluationError(f"unsupported syntax '{type(node).__name__}'")
+          arg_i = next(i for i, line in enumerate(lines) if line.strip() == "argument_expression = self.visit(argument_node)")
+          if lines[arg_i + 1].strip() != "argument_value = self._resolve_numeric_function_argument(argument_node)":
+              lines.insert(arg_i + 1, "                argument_value = self._resolve_numeric_function_argument(argument_node)")
 
-          '''
-          new_generic = '''    def generic_visit(self, node):
-              raise EngEvaluationError(f"unsupported syntax '{type(node).__name__}'")
-
-              def _resolve_numeric_function_argument(self, node: ast.AST):
-              if isinstance(node, ast.Name):
-                  symbolic = self.visit(node)
-                  if (
-                      isinstance(symbolic, sp.Symbol)
-                      and self.engine.numeric_context.get(node.id) is None
-                  ):
-                      return symbolic
-              return self.engine.numeric_context.evaluate_expression(
-                  ast.Expression(body=node)
-              )
-
-          '''
-          # The heredoc keeps leading spaces; normalize these two literals explicitly.
-          old_generic = old_generic.replace('          ', '')
-          new_generic = new_generic.replace('              def _resolve', '    def _resolve')
-          new_generic = new_generic.replace('\n              if isinstance', '\n        if isinstance')
-          new_generic = new_generic.replace('\n              return self.engine.numeric_context', '\n        return self.engine.numeric_context')
-          if 'def _resolve_numeric_function_argument' not in engine:
-              if old_generic not in engine:
-                  raise SystemExit('generic_visit exact block not found')
-              engine = engine.replace(old_generic, new_generic, 1)
-
-          old_setup = '''                function = self.engine.functions[function_name]
-                  argument_node = argument.args[0]
-                  argument_expression = self.visit(argument_node)
-                  symbolic_expression = sp.sympify(function.expression)
-                  display_name = function_name
-                  display_argument = argument_expression
-          '''
-          old_setup = old_setup.replace('\n                  ', '\n                ').rstrip() + '\n'
-          new_setup = '''                function = self.engine.functions[function_name]
-                  argument_node = argument.args[0]
-                  argument_expression = self.visit(argument_node)
-                  argument_value = self._resolve_numeric_function_argument(argument_node)
-                  symbolic_expression = sp.sympify(function.expression)
-                  display_name = function_name
-                  display_argument = argument_expression
-          '''
-          new_setup = new_setup.replace('\n                  ', '\n                ').rstrip() + '\n'
-          if 'argument_value = self._resolve_numeric_function_argument(argument_node)' not in engine:
-              if old_setup not in engine:
-                  raise SystemExit('numeric function setup exact block not found')
-              engine = engine.replace(old_setup, new_setup, 1)
-
-          engine = engine.replace(
-              '                    and isinstance(argument_expression, sp.Symbol)\n',
-              '                    and isinstance(argument_value, sp.Symbol)\n',
-              1,
+          partial_guard_i = next(
+              i for i in range(arg_i, len(lines))
+              if lines[i].strip() == "and isinstance(argument_expression, sp.Symbol)"
           )
-          engine = engine.replace(
-              '                        argument_expression,\n                    )\n                    substitutions, unresolved_symbols = (\n',
-              '                        argument_value,\n                    )\n                    substitutions, unresolved_symbols = (\n',
-              1,
+          lines[partial_guard_i] = "                    and isinstance(argument_value, sp.Symbol)"
+
+          subs_i = next(i for i in range(arg_i, len(lines)) if lines[i].strip() == "symbolic_expression = symbolic_expression.subs(")
+          value_i = next(
+              i for i in range(subs_i + 1, min(subs_i + 6, len(lines)))
+              if lines[i].strip() == "argument_expression,"
           )
+          lines[value_i] = "                        argument_value,"
 
-          old_full = '''                try:
-              _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
-                  argument_expression
-              )
-              substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
-                  symbolic_expression,
-                  overrides={function.parameter: argument_quantity},
-              )
-          '''
-          old_full = old_full.replace('\n              ', '\n                    ').rstrip() + '\n'
-          new_full = '''                try:
-              substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
-                  symbolic_expression,
-                  overrides={function.parameter: argument_value},
-              )
-          '''
-          new_full = new_full.replace('\n              ', '\n                    ').rstrip() + '\n'
-          if '_, argument_quantity = self.engine.numeric_context.evaluate_symbolic(' in engine:
-              if old_full not in engine:
-                  raise SystemExit('numeric full-evaluation exact block not found')
-              engine = engine.replace(old_full, new_full, 1)
+          quantity_i = next(
+              (i for i in range(arg_i, len(lines)) if lines[i].strip() == "_, argument_quantity = self.engine.numeric_context.evaluate_symbolic("),
+              None,
+          )
+          if quantity_i is not None:
+              if lines[quantity_i + 1].strip() != "argument_expression" or lines[quantity_i + 2].strip() != ")":
+                  raise SystemExit("unexpected argument_quantity block shape")
+              del lines[quantity_i:quantity_i + 3]
 
-          engine_path.write_text(engine)
+          override_i = next(
+              i for i in range(arg_i, len(lines))
+              if "overrides={function.parameter:" in lines[i]
+          )
+          lines[override_i] = "                        overrides={function.parameter: argument_value},"
+
+          engine_path.write_text("\n".join(lines) + "\n")
           PY
+      - name: Compile modified modules
+        run: python -m py_compile src/engcalc_colab/engine.py src/engcalc_colab/numeric.py
       - name: Focused GREEN contracts and acceptance
         run: >-
           python -m pytest -q
