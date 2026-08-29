@@ -1,18 +1,24 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 after the second PR #27 review corrective was completed, the definitive 0.7.0 source/wheel distribution gate passed, all five review threads were resolved, and the temporary validation workflow was removed._
+_Last updated: 2026-08-29 after PR #27 was explicitly approved by the user, merged into `main`, and the merged tree was verified to be product-identical to the validated 0.7.0 release head._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Default branch `main` remains EngCalc **0.6.2** at `fff645936029f7348b2c080aa30eafab1116d532` until 0.7.0 is explicitly approved and merged.
-- Active release branch: `feature/v0.7.0-scalar-engineering-math`.
-- Open release PR: **#27 — `release: EngCalc 0.7.0 scalar engineering mathematics`**.
-- Candidate package/runtime version: **0.7.0**.
+- Default branch `main` now contains EngCalc **0.7.0**.
+- PR **#27 — `release: EngCalc 0.7.0 scalar engineering mathematics`** merged successfully on 2026-08-29 after explicit user approval.
+- Merge commit: `03212e2c47f16492e87aadc451efe8bee6b3ee11`.
+- Merged PR head: `3dfeddcf25ce9fd6eb7b2f2b90e616db67c1002d`.
+- Definitive validated release tree before cleanup: `0d9e2ae308f40f6cf7707a2de3970b985f7270a7`.
 - Latest product corrective commit: `d83ac69f45f57063750baece09b32e3ca52db1c8`.
-- Definitive validated release tree: `0d9e2ae308f40f6cf7707a2de3970b985f7270a7`.
-- Temporary final validation workflow was removed after the successful gate in `a296671ce11c08d8094e3ab1a2d6d222aff5d215`.
-- PR #27 must **not** be merged without explicit user approval.
+- `pyproject.toml` and `src/engcalc_colab/__init__.py` both report version **0.7.0** on `main`.
+- Comparing merged PR head `3dfeddcf...` to merge commit `03212e2c...` returns **zero changed files**, proving that the merge introduced no product, test, documentation, or workflow content difference beyond the merge commit itself.
+- Canonical Colab installation can again use `main` directly:
+
+```python
+%pip install -q --upgrade --no-cache-dir git+https://github.com/eliaszamora/engcalc-colab.git
+%load_ext engcalc_colab
+```
 
 ## Approved behavior
 
@@ -43,21 +49,19 @@ _Last updated: 2026-08-29 after the second PR #27 review corrective was complete
 
 ## Open issues / user feedback
 
-- No known functional release blocker remains in the validated 0.7.0 product/test tree.
-- PR #27 accumulated five review threads during final inspection. All five have corrective evidence and are now resolved.
-- A failed intermediate wheel smoke (`33232296558`) was a validation-harness mismatch: it tested `numeric(fn(angle-unit))`, while the approved unit-aware direct numeric contract is the Pint-backed `:=` path. No product/test file was changed to address that harness-only failure; the smoke was aligned to the tested public contract and the full gate was rerun successfully.
+- No known functional regression or release blocker remains open for merged 0.7.0.
+- PR #27 accumulated five review threads during final inspection; all five were corrected where necessary, answered, and resolved before merge.
+- Intermediate wheel smoke `33232296558` failed only because its validation harness exercised a different symbolic boundary than the approved Pint-backed direct numeric contract. No product/test change was made for that harness-only failure; the smoke was aligned with the public contract and the definitive gate passed.
 - **Do not invoke Codex, `@codex review`, Codex Cloud, or any action that may consume the user's Codex quota for EngCalc without explicit user authorization first.** Use direct inspection, repository tools, GitHub Actions and the existing test suite instead.
-- PR #27 remains unmerged until the user explicitly authorizes merge.
 
 ## Validation evidence
 
 ### Original 0.7.0 implementation TDD
 
-- Parser RED run `33229331526`: accepted syntax remained valid while reserved-name contracts failed as expected; parser then reached GREEN.
-- Symbolic-engine RED run `33229446807`: new symbolic contracts failed at the expected unsupported boundaries before implementation.
-- Numeric RED run `33229577297`: new numeric contracts failed at the expected unsupported boundaries before implementation.
+- Parser RED run `33229331526`, followed by GREEN parser contracts.
+- Symbolic-engine RED run `33229446807`.
+- Numeric RED run `33229577297`.
 - Integrated acceptance run `33229699540`: **74/74** focused scalar contracts and **336/336** complete source tests passed.
-- The earlier distribution gates are superseded as final release evidence because review subsequently required product corrections.
 
 ### First review corrective RED → GREEN
 
@@ -83,35 +87,44 @@ GitHub Actions run **`33232439088`** on tree **`0d9e2ae308f40f6cf7707a2de3970b98
 - real wheel `engcalc_colab-0.7.0-py3-none-any.whl`: built successfully;
 - clean virtual-environment wheel installation: PASS;
 - installed-wheel smoke from `/tmp` with empty `PYTHONPATH`: PASS;
-- smoke explicitly verified exact `atan(1)` radian preservation, visible `rad` / `deg`, rejection of explicit `deg` / `rad` in the dimensionless-only scalar functions via the public Pint-backed `:=` path, user-function inverse-trig radian preservation, `sin(30*deg)`, `sqrt(9*m^2)`, unit-aware user-function evaluation and a 201-point plot;
+- smoke explicitly verified exact `atan(1)` radian preservation, visible `rad` / `deg`, rejection of explicit `deg` / `rad` in the dimensionless-only scalar functions through the public Pint-backed `:=` path, user-function inverse-trig radian preservation, `sin(30*deg)`, `sqrt(9*m^2)`, unit-aware user-function evaluation and a 201-point plot;
 - source-free complete suite against installed wheel: **350 passed in 67.12 s**;
 - repeated complete source suite: **350 passed in 66.04 s**;
 - validated artifact: `engcalc-colab-0.7.0-final-wheel`;
 - artifact ID: **9708946389**;
 - artifact ZIP digest: `sha256:f88e98b7cdee221587caee56b34d0dfae779d2591be3b01609f6af4ff0115668`.
 
-### Chain of custody after definitive gate
+### Merge verification
 
-- The final validation workflow was removed after the successful gate.
-- No `src/` or `tests/` change is authorized after validated tree `0d9e2ae308f40f6cf7707a2de3970b985f7270a7` without rerunning the distribution gate.
-- The final release check must compare that validated tree to the current release-branch head and require all post-gate differences to be CI/documentation-only.
+- PR #27 merged as `03212e2c47f16492e87aadc451efe8bee6b3ee11` with second parent `3dfeddcf25ce9fd6eb7b2f2b90e616db67c1002d`.
+- `main` points to that merge commit.
+- The merge commit is GitHub-verified.
+- Comparing `3dfeddcf25ce9fd6eb7b2f2b90e616db67c1002d` → `03212e2c47f16492e87aadc451efe8bee6b3ee11` yields **no file differences**.
+- `pyproject.toml` and package `__version__` on `main` both report **0.7.0**.
+- Therefore the merged product/test tree is identical to the fully inspected release head whose product/tests are downstream of the definitive validated distribution-gate tree.
 
 ## Roadmap / active plan
 
 - The master roadmap remains on `planning/engcalc-evolution-roadmap`.
-- Current release milestone: **0.7.0 — scalar engineering mathematics**.
-- The next milestone after an approved/merged 0.7.0 is **0.7.1 — multi-argument user functions and generalized partial evaluation**.
-- Do not start 0.7.1 until 0.7.0 is merged and the merged `main` tree is verified/documented.
+- Completed milestone: **0.7.0 — scalar engineering mathematics**.
+- Next milestone: **0.7.1 — multi-argument user functions and generalized partial evaluation**.
+- 0.7.1 must start from the verified merged 0.7.0 `main` baseline.
+- Preserve TDD RED → GREEN and run a fresh source/wheel distribution gate before any 0.7.1 release merge.
 
 ## Exact next step
 
-1. Compare definitive validated tree `0d9e2ae308f40f6cf7707a2de3970b985f7270a7` against the current release-branch head and confirm only the temporary-workflow removal plus this `CURRENT.md` update occurred after validation.
-2. Re-fetch PR #27: require open/unmerged, mergeable, non-draft, zero unresolved review threads and no temporary workflow in the changed-file set.
-3. Inspect the final `engine.py`, `numeric.py`, `parser.py` and `renderer.py` patches directly; stop if any new release blocker is found.
-4. Update the PR description to identify `33232439088` / `0d9e2ae...` as the authoritative final gate and record all five review threads as resolved.
-5. Stop and wait for explicit user authorization before merging PR #27.
-6. After authorized merge, verify merged-product identity against the definitive validated product/test tree, update `CURRENT.md` on `main`, and only then begin 0.7.1.
+1. Read the 0.7.1 roadmap/spec from `planning/engcalc-evolution-roadmap` and reconcile it with the now-merged 0.7.0 behavior.
+2. Define the narrow 0.7.1 acceptance contract before implementation, centered on:
+   - multi-argument user functions such as `f(x, a) = ...`;
+   - positional argument count/validation and reserved-name rules;
+   - numeric evaluation with units for each argument;
+   - generalized partial evaluation of non-polynomial expressions while preserving unresolved symbols;
+   - compatibility with `numeric(...)`, `result(...)`, `plot(...)`, existing one-argument functions, scalar math and unit semantics.
+3. Create a dedicated 0.7.1 feature branch from current `main`.
+4. Add RED tests first; only then implement the minimum code needed to turn them GREEN.
+5. Run focused tests, the complete source suite, wheel installation/smoke, source-free installed-wheel suite and repeated source suite.
+6. Open the 0.7.1 PR only after the distribution gate is clean; do not merge without explicit user approval.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.7.0 is implemented on `feature/v0.7.0-scalar-engineering-math`; PR #27 is open and must remain unmerged until explicit user approval. Two rounds of final review correctives were reproduced RED and fixed GREEN. The definitive distribution gate is run `33232439088` on tree `0d9e2ae308f40f6cf7707a2de3970b985f7270a7`: 123 focused, 350 source, 350 installed-wheel and 350 repeated-source tests passed; final wheel artifact `9708946389`. All five review threads are resolved. Do not invoke Codex for this project without explicit user authorization. Next: prove post-gate tree identity, do the direct final PR inspection, update the PR body, and wait for explicit merge approval.
+Read this file first. EngCalc **0.7.0 is merged into `main`** via PR #27, merge commit `03212e2c47f16492e87aadc451efe8bee6b3ee11`. The definitive 0.7.0 distribution gate is run `33232439088`: 123 focused, 350 source, 350 installed-wheel and 350 repeated-source tests passed; artifact `9708946389`. Merge verification found zero file differences between the inspected PR head and the merge commit, and both package/runtime version sources on `main` report 0.7.0. All five PR review threads are resolved. Do not invoke Codex for EngCalc without explicit user authorization. The next milestone is **0.7.1 — multi-argument user functions and generalized partial evaluation**; begin by reading the roadmap/spec and freezing the acceptance contract before writing implementation code.
