@@ -20,102 +20,25 @@ jobs:
         run: |
           python -m pip install -e '.[dev]'
           python -m pip install ipython
-      - name: Apply minimal GREEN implementation
+      - name: Apply AST numeric-argument GREEN implementation
         run: |
           python - <<'PY'
           from pathlib import Path
           import textwrap
 
-          errors_path = Path('src/engcalc_colab/errors.py')
-          errors_text = textwrap.dedent('''
-          class EngCalcError(Exception):
-              """Base user-facing engcalc error."""
-
-
-          class EngSyntaxError(EngCalcError):
-              pass
-
-
-          class EngEvaluationError(EngCalcError):
-              pass
-
-
-          class AmbiguousSolveError(EngEvaluationError):
-              pass
-
-
-          def diagnostic_hint(code: str, **context) -> str:
-              """Return a stable corrective hint for a known engineering-facing error."""
-              if code == "direct_numeric_argument":
-                  example = context.get("example", "M(2.5*m)")
-                  return f"Use numeric({example}) directly when the function argument is fully numeric."
-              if code == "unknown_numeric_name":
-                  name = context["name"]
-                  return f"Define the numeric value first, for example: {name} := <value>*<unit>."
-              if code == "incompatible_function_units":
-                  function = context["function"]
-                  return f"Provide compatible units for the argument and terms of numeric function '{function}'."
-              if code == "unresolved_numeric_symbols":
-                  names = tuple(context.get("names", ()))
-                  examples = ", ".join(f"{name} := <value>*<unit>" for name in names)
-                  return f"Define the missing numeric values first, for example: {examples}."
-              raise ValueError(f"unknown diagnostic code '{code}'")
-          ''').lstrip()
-          errors_path.write_text(errors_text)
-
           numeric_path = Path('src/engcalc_colab/numeric.py')
           numeric = numeric_path.read_text()
-          numeric = numeric.replace(
-              'from .errors import EngEvaluationError\n',
-              'from .errors import EngEvaluationError, diagnostic_hint\n',
-              1,
-          )
-          numeric = numeric.replace(
-              '        raise EngEvaluationError(f"unknown numeric name \'{name}\'")\n',
-              '        hint = diagnostic_hint("unknown_numeric_name", name=name)\n'
-              '        raise EngEvaluationError(f"unknown numeric name \'{name}\'. {hint}")\n',
-              1,
-          )
-
-          partial_start = numeric.index('    def partial_substitutions(')
-          partial_end = numeric.index('    def evaluate_partial_polynomial(', partial_start)
-          partial = numeric[partial_start:partial_end]
-          old_missing = textwrap.indent(textwrap.dedent('''
-          if missing:
-              raise EngEvaluationError(
-                  "numeric evaluation requires values for: " + ", ".join(missing)
-              )
-          ''').lstrip(), '        ')
-          new_missing = textwrap.indent(textwrap.dedent('''
-          if missing:
-              hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
-              raise EngEvaluationError(
-                  "numeric evaluation requires values for: "
-                  + ", ".join(missing)
-                  + f". {hint}"
-              )
-          ''').lstrip(), '        ')
-          if old_missing in partial:
-              partial = partial.replace(old_missing, new_missing, 1)
-          numeric = numeric[:partial_start] + partial + numeric[partial_end:]
-
           eval_start = numeric.index('    def evaluate_symbolic(')
           body_start = numeric.index('        overrides = overrides or {}\n', eval_start)
           try_start = numeric.index('        try:\n', body_start)
           new_eval_prefix = textwrap.indent(textwrap.dedent('''
           overrides = overrides or {}
           names = sorted(symbol.name for symbol in expr.free_symbols)
-          substitutions: dict[str, Any] = {}
-          missing: list[str] = []
-          for name in names:
-              if name in overrides:
-                  substitutions[name] = overrides[name]
-              elif name in self.values:
-                  substitutions[name] = self.values[name]
-              elif name in _UNIT_ALIASES:
-                  substitutions[name] = self.ureg.Unit(_UNIT_ALIASES[name])
-              else:
-                  missing.append(name)
+          missing = [
+              name
+              for name in names
+              if name not in overrides and name not in self.values
+          ]
           if missing:
               hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
               raise EngEvaluationError(
@@ -123,30 +46,108 @@ jobs:
                   + ", ".join(missing)
                   + f". {hint}"
               )
+
+          substitutions = {
+              name: overrides[name] if name in overrides else self.values[name]
+              for name in names
+          }
           ''').lstrip(), '        ')
           numeric = numeric[:body_start] + new_eval_prefix + numeric[try_start:]
           numeric_path.write_text(numeric)
 
           engine_path = Path('src/engcalc_colab/engine.py')
           engine = engine_path.read_text()
+
+          if 'def _resolve_numeric_function_argument' not in engine:
+              marker = '''    def generic_visit(self, node):
+                  raise EngEvaluationError(f"unsupported syntax '{type(node).__name__}'")
+          '''
+              marker = textwrap.dedent(marker).replace(
+                  'def generic_visit', '    def generic_visit', 1
+              ).replace(
+                  '    raise EngEvaluationError', '        raise EngEvaluationError', 1
+              )
+              resolver = marker + '''
+
+              def _resolve_numeric_function_argument(self, node: ast.AST):
+                  if isinstance(node, ast.Name):
+                      symbolic = self.visit(node)
+                      if (
+                          isinstance(symbolic, sp.Symbol)
+                          and self.engine.numeric_context.get(node.id) is None
+                      ):
+                          return symbolic
+                  return self.engine.numeric_context.evaluate_expression(
+                      ast.Expression(body=node)
+                  )
+          '''
+              resolver = textwrap.dedent(resolver).replace(
+                  'def generic_visit', '    def generic_visit', 1
+              ).replace(
+                  '    raise EngEvaluationError', '        raise EngEvaluationError', 1
+              )
+              # Rebuild resolver indentation explicitly to avoid dedent ambiguity.
+              resolver = '''    def generic_visit(self, node):
+                  raise EngEvaluationError(f"unsupported syntax '{type(node).__name__}'")
+
+              def _resolve_numeric_function_argument(self, node: ast.AST):
+                  if isinstance(node, ast.Name):
+                      symbolic = self.visit(node)
+                      if (
+                          isinstance(symbolic, sp.Symbol)
+                          and self.engine.numeric_context.get(node.id) is None
+                      ):
+                          return symbolic
+                  return self.engine.numeric_context.evaluate_expression(
+                      ast.Expression(body=node)
+                  )
+          '''
+              resolver = textwrap.dedent(resolver)
+              resolver = '\n'.join(
+                  ('    ' + line if line else '') for line in resolver.splitlines()
+              ) + '\n'
+              if marker not in engine:
+                  marker = "    def generic_visit(self, node):\n        raise EngEvaluationError(f\"unsupported syntax '{type(node).__name__}'\")\n"
+              if marker not in engine:
+                  raise SystemExit('generic_visit marker not found')
+              engine = engine.replace(marker, resolver, 1)
+
+          old_setup = '''                function = self.engine.functions[function_name]
+                  argument_node = argument.args[0]
+                  argument_expression = self.visit(argument_node)
+                  symbolic_expression = sp.sympify(function.expression)
+                  display_name = function_name
+                  display_argument = argument_expression
+          '''
+          old_setup = textwrap.dedent(old_setup)
+          old_setup = '\n'.join(('                ' + line if line else '') for line in old_setup.splitlines()) + '\n'
+          new_setup = '''                function = self.engine.functions[function_name]
+                  argument_node = argument.args[0]
+                  argument_expression = self.visit(argument_node)
+                  argument_value = self._resolve_numeric_function_argument(argument_node)
+                  symbolic_expression = sp.sympify(function.expression)
+                  display_name = function_name
+                  display_argument = argument_expression
+          '''
+          new_setup = textwrap.dedent(new_setup)
+          new_setup = '\n'.join(('                ' + line if line else '') for line in new_setup.splitlines()) + '\n'
+          if 'argument_value = self._resolve_numeric_function_argument(argument_node)' not in engine:
+              if old_setup not in engine:
+                  raise SystemExit('numeric function setup block not found')
+              engine = engine.replace(old_setup, new_setup, 1)
+
           engine = engine.replace(
-              'from .errors import AmbiguousSolveError, EngCalcError, EngEvaluationError, EngSyntaxError\n',
-              'from .errors import (\n'
-              '    AmbiguousSolveError,\n'
-              '    EngCalcError,\n'
-              '    EngEvaluationError,\n'
-              '    EngSyntaxError,\n'
-              '    diagnostic_hint,\n'
-              ')\n',
+              '                    and isinstance(argument_expression, sp.Symbol)\n',
+              '                    and isinstance(argument_value, sp.Symbol)\n',
               1,
           )
-          if 'incompatible units while evaluating numeric function' not in engine:
-              block_start = engine.index(
-                  '                _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(\n'
-              )
-              block_end = engine.index('            else:\n', block_start)
-              replacement = textwrap.indent(textwrap.dedent('''
-              try:
+          engine = engine.replace(
+              '                        argument_expression,\n                    )\n                    substitutions, unresolved_symbols = (\n',
+              '                        argument_value,\n                    )\n                    substitutions, unresolved_symbols = (\n',
+              1,
+          )
+
+          old_full = '''                try:
                   _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
                       argument_expression
                   )
@@ -155,21 +156,31 @@ jobs:
                       overrides={function.parameter: argument_quantity},
                   )
               except EngEvaluationError as exc:
-                  if "incompatible units" not in str(exc):
-                      raise
-                  hint = diagnostic_hint(
-                      "incompatible_function_units",
-                      function=function_name,
+          '''
+          old_full = textwrap.dedent(old_full)
+          old_full = '\n'.join(('                ' + line if line else '') for line in old_full.splitlines()) + '\n'
+          new_full = '''                try:
+                  substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
+                      symbolic_expression,
+                      overrides={function.parameter: argument_value},
                   )
-                  raise EngEvaluationError(
-                      f"incompatible units while evaluating numeric function '{function_name}'. {hint}"
-                  ) from exc
-              ''').lstrip(), '                ')
-              engine = engine[:block_start] + replacement + engine[block_end:]
+              except EngEvaluationError as exc:
+          '''
+          new_full = textwrap.dedent(new_full)
+          new_full = '\n'.join(('                ' + line if line else '') for line in new_full.splitlines()) + '\n'
+          if '_, argument_quantity = self.engine.numeric_context.evaluate_symbolic(' in engine:
+              if old_full not in engine:
+                  raise SystemExit('numeric function full-evaluation block not found')
+              engine = engine.replace(old_full, new_full, 1)
+
           engine_path.write_text(engine)
           PY
-      - name: Focused GREEN contracts
-        run: python -m pytest -q tests/test_numeric_function_arguments.py tests/test_diagnostics.py
+      - name: Focused GREEN contracts and acceptance
+        run: >-
+          python -m pytest -q
+          tests/test_numeric_function_arguments.py
+          tests/test_diagnostics.py
+          tests/test_numeric_function_magic_acceptance.py
       - name: Full source regression
         run: python -m pytest -q
       - name: Commit GREEN product changes
@@ -180,6 +191,6 @@ jobs:
           fi
           git config user.name "eliaszamora"
           git config user.email "37598447+eliaszamora@users.noreply.github.com"
-          git add src/engcalc_colab/errors.py src/engcalc_colab/numeric.py src/engcalc_colab/engine.py
-          git commit -m "feat: support direct unit-bearing numeric function arguments"
+          git add src/engcalc_colab/numeric.py src/engcalc_colab/engine.py
+          git commit -m "fix: preserve units in direct numeric function arguments"
           git push
