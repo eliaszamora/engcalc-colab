@@ -281,15 +281,23 @@ class _Evaluator(ast.NodeVisitor):
         try:
             return self._resolve_numeric_function_argument(node)
         except EngEvaluationError as exc:
-            if not (
+            user_function_fallback = (
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Name)
                 and node.func.id in self.engine.functions
                 and "unsupported numeric function" in str(exc)
-            ):
+            )
+            unresolved_name_fallback = "unknown numeric name" in str(exc)
+            if not (user_function_fallback or unresolved_name_fallback):
                 raise
+
             symbolic = self.visit(node)
-            _, quantity = self.engine.numeric_context.evaluate_symbolic(symbolic)
+            try:
+                _, quantity = self.engine.numeric_context.evaluate_symbolic(symbolic)
+            except EngEvaluationError as symbolic_exc:
+                if "numeric evaluation requires values for:" in str(symbolic_exc):
+                    return sp.sympify(symbolic)
+                raise
             return quantity
 
     def visit_Constant(self, node: ast.Constant):
@@ -400,66 +408,73 @@ class _Evaluator(ast.NodeVisitor):
                 display_arguments = argument_expressions
 
                 unresolved = [
-                    (index, argument_node, argument_value)
-                    for index, (argument_node, argument_value) in enumerate(
-                        zip(argument.args, argument_values)
+                    (parameter, argument_expression, argument_value)
+                    for parameter, argument_expression, argument_value in zip(
+                        function.parameters,
+                        argument_expressions,
+                        argument_values,
                     )
-                    if isinstance(argument_value, sp.Symbol)
+                    if isinstance(argument_value, sp.Expr)
                 ]
                 if unresolved:
-                    if len(argument.args) == 1:
-                        _, argument_node, argument_value = unresolved[0]
-                        if isinstance(argument_node, ast.Name):
-                            if target_unit is not None:
-                                raise EngEvaluationError(
-                                    "target-unit conversion requires a fully numeric result"
-                                )
-                            parameter = self.engine.resolve_symbol(function.parameters[0])
-                            bindings = {parameter: argument_value}
-                            if any(
-                                item.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS
-                                for item in sp.preorder_traversal(symbolic_expression)
-                            ):
-                                symbolic_expression = _substitute_preserving_inverse_trig(
-                                    symbolic_expression,
-                                    bindings,
-                                )
-                            else:
-                                symbolic_expression = symbolic_expression.xreplace(bindings)
-                            substitutions, unresolved_symbols = (
-                                self.engine.numeric_context.partial_substitutions(
-                                    symbolic_expression,
-                                    allowed_unresolved={argument_node.id},
-                                )
+                    overrides = {}
+                    bindings = {}
+                    for parameter, argument_expression, argument_value in zip(
+                        function.parameters,
+                        argument_expressions,
+                        argument_values,
+                    ):
+                        if isinstance(argument_value, sp.Expr):
+                            bindings[self.engine.resolve_symbol(parameter)] = (
+                                sp.sympify(argument_expression)
                             )
-                            evaluated_terms = (
-                                self.engine.numeric_context.evaluate_partial_polynomial(
-                                    symbolic_expression,
-                                    argument_node.id,
-                                )
-                            )
-                            self.partial_numeric_evaluation = (
-                                symbolic_expression,
-                                substitutions,
-                                unresolved_symbols,
-                                evaluated_terms,
-                                display_name,
-                                display_arguments,
-                            )
-                            return symbolic_expression
+                        else:
+                            overrides[parameter] = argument_value
 
-                    unresolved_names = tuple(
-                        sorted({value.name for _, _, value in unresolved})
+                    if bindings:
+                        symbolic_expression = _substitute_preserving_inverse_trig(
+                            symbolic_expression,
+                            bindings,
+                        )
+
+                    substitutions, unresolved_symbols = (
+                        self.engine.numeric_context.partial_substitutions(
+                            symbolic_expression,
+                            allowed_unresolved=None,
+                            overrides=overrides,
+                        )
                     )
-                    hint = diagnostic_hint(
-                        "unresolved_numeric_symbols",
-                        names=unresolved_names,
+
+                    if target_unit is not None:
+                        suffix = (
+                            ": " + ", ".join(unresolved_symbols)
+                            if unresolved_symbols
+                            else ""
+                        )
+                        raise EngEvaluationError(
+                            "target-unit conversion requires a fully numeric result"
+                            + suffix
+                        )
+
+                    evaluated_terms = None
+                    if len(unresolved_symbols) == 1:
+                        evaluated_terms = (
+                            self.engine.numeric_context.evaluate_partial_polynomial(
+                                symbolic_expression,
+                                unresolved_symbols[0],
+                                overrides=overrides,
+                            )
+                        )
+
+                    self.partial_numeric_evaluation = (
+                        symbolic_expression,
+                        substitutions,
+                        unresolved_symbols,
+                        evaluated_terms,
+                        display_name,
+                        display_arguments,
                     )
-                    raise EngEvaluationError(
-                        "numeric evaluation requires values for: "
-                        + ", ".join(unresolved_names)
-                        + f". {hint}"
-                    )
+                    return symbolic_expression
 
                 overrides = dict(zip(function.parameters, argument_values))
                 try:
