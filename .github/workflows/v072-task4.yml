@@ -26,3 +26,5 @@ jobs:
           tests/test_numeric_renderer.py
           tests/test_render_settings.py
           tests/test_headings.py
+      - name: Complete source regression
+        run: python -m pytest -q
