@@ -6,6 +6,7 @@ on:
       - feature/v0.7.2-engineering-tables
     paths:
       - .github/workflows/v072-task6-distribution.yml
+      - tests/test_parser.py
 
 jobs:
   distribution:
