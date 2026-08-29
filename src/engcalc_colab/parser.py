@@ -5,7 +5,7 @@ import keyword
 import re
 
 from .errors import EngSyntaxError
-from .models import ParsedHeading, ParsedNumericAssignment, ParsedStatement
+from .models import ParsedHeading, ParsedNarrative, ParsedNumericAssignment, ParsedStatement
 
 _ALLOWED_NODES = (
     ast.Expression, ast.BinOp, ast.UnaryOp, ast.Call, ast.Name,
@@ -47,15 +47,112 @@ def normalize_expression(text: str) -> str:
     return _rewrite_solve_equality(text)
 
 
-def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | ParsedHeading]:
-    statements: list[ParsedStatement | ParsedNumericAssignment | ParsedHeading] = []
-    pending_blank = False
+def _normalize_narrative_paragraphs(content_lines: list[str]) -> tuple[str, ...]:
+    paragraphs: list[str] = []
+    current: list[str] = []
 
-    for line_no, raw_line in enumerate(cell.splitlines(), start=1):
+    for raw_line in content_lines:
+        text = raw_line.strip()
+        if not text:
+            if current:
+                paragraphs.append(" ".join(current))
+                current = []
+            continue
+        current.append(text)
+
+    if current:
+        paragraphs.append(" ".join(current))
+    return tuple(paragraphs)
+
+
+def _parse_narrative_block(
+    lines: list[str],
+    start_index: int,
+    blank_before: bool,
+) -> tuple[ParsedNarrative, int]:
+    start_line = start_index + 1
+    opening = lines[start_index].strip()
+    remainder = opening[3:]
+    content_lines: list[str] = []
+
+    if '"""' in remainder:
+        content, trailing = remainder.split('"""', 1)
+        if trailing.strip():
+            raise EngSyntaxError(
+                f"line {start_line}: unexpected content after narrative block"
+            )
+        content_lines.append(content)
+        paragraphs = _normalize_narrative_paragraphs(content_lines)
+        if not paragraphs:
+            raise EngSyntaxError(
+                f"line {start_line}: narrative block cannot be empty"
+            )
+        return (
+            ParsedNarrative(
+                line_no=start_line,
+                paragraphs=paragraphs,
+                blank_before=blank_before,
+            ),
+            start_index + 1,
+        )
+
+    content_lines.append(remainder)
+    index = start_index + 1
+    while index < len(lines):
+        raw_line = lines[index]
+        if '"""' in raw_line:
+            content, trailing = raw_line.split('"""', 1)
+            if trailing.strip():
+                raise EngSyntaxError(
+                    f"line {index + 1}: unexpected content after narrative block"
+                )
+            content_lines.append(content)
+            paragraphs = _normalize_narrative_paragraphs(content_lines)
+            if not paragraphs:
+                raise EngSyntaxError(
+                    f"line {start_line}: narrative block cannot be empty"
+                )
+            return (
+                ParsedNarrative(
+                    line_no=start_line,
+                    paragraphs=paragraphs,
+                    blank_before=blank_before,
+                ),
+                index + 1,
+            )
+        content_lines.append(raw_line)
+        index += 1
+
+    raise EngSyntaxError(f"line {start_line}: unterminated narrative block")
+
+
+def parse_cell(
+    cell: str,
+) -> list[ParsedStatement | ParsedNumericAssignment | ParsedHeading | ParsedNarrative]:
+    statements: list[
+        ParsedStatement | ParsedNumericAssignment | ParsedHeading | ParsedNarrative
+    ] = []
+    pending_blank = False
+    lines = cell.splitlines()
+    index = 0
+
+    while index < len(lines):
+        line_no = index + 1
+        raw_line = lines[index]
         source = raw_line.strip()
         if not source:
             if statements and not isinstance(statements[-1], ParsedHeading):
                 pending_blank = True
+            index += 1
+            continue
+        if source.startswith('"""'):
+            narrative, index = _parse_narrative_block(
+                lines,
+                index,
+                pending_blank,
+            )
+            statements.append(narrative)
+            pending_blank = False
             continue
         heading_match = _HEADING.fullmatch(source)
         if heading_match:
@@ -67,8 +164,10 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
                 blank_before=pending_blank,
             ))
             pending_blank = False
+            index += 1
             continue
         if source.startswith("#"):
+            index += 1
             continue
         try:
             numeric_assignment = _split_top_level_numeric_assignment(source)
@@ -94,6 +193,7 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
                     blank_before=pending_blank,
                 ))
                 pending_blank = False
+                index += 1
                 continue
 
             lhs, rhs = _split_top_level_assignment(source)
@@ -128,6 +228,7 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
                 blank_before=pending_blank,
             ))
             pending_blank = False
+            index += 1
         except EngSyntaxError as exc:
             message = str(exc)
             if message.startswith("line "):
