@@ -216,39 +216,47 @@ class NumericContext:
     def partial_substitutions(
         self,
         expression: sp.Expr,
-        allowed_unresolved: set[str],
+        allowed_unresolved: set[str] | None = None,
+        overrides: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], tuple[str, ...]]:
         expr = sp.sympify(expression)
+        overrides = dict(overrides or {})
         names = sorted(symbol.name for symbol in expr.free_symbols)
-        missing = [
-            name
-            for name in names
-            if name not in self.values and name not in allowed_unresolved
-        ]
-        if missing:
-            hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
-            raise EngEvaluationError(
-                "numeric evaluation requires values for: "
-                + ", ".join(missing)
-                + f". {hint}"
-            )
-
         substitutions = {
-            name: self.values[name]
+            name: overrides[name] if name in overrides else self.values[name]
             for name in names
-            if name in self.values
+            if name in overrides or name in self.values
         }
         unresolved = tuple(
             name
             for name in names
             if name not in substitutions
         )
+
+        if allowed_unresolved is not None:
+            unexpected = [
+                name
+                for name in unresolved
+                if name not in allowed_unresolved
+            ]
+            if unexpected:
+                hint = diagnostic_hint(
+                    "unresolved_numeric_symbols",
+                    names=tuple(unexpected),
+                )
+                raise EngEvaluationError(
+                    "numeric evaluation requires values for: "
+                    + ", ".join(unexpected)
+                    + f". {hint}"
+                )
+
         return substitutions, unresolved
 
     def evaluate_partial_polynomial(
         self,
         expression: sp.Expr,
         variable: str,
+        overrides: dict[str, Any] | None = None,
     ) -> tuple[tuple[int, Any], ...] | None:
         """Evaluate known coefficients of a polynomial while leaving its variable free."""
         expr = sp.sympify(expression)
@@ -260,7 +268,10 @@ class NumericContext:
 
         evaluated_terms: list[tuple[int, Any]] = []
         for (power,), coefficient in reversed(polynomial.terms()):
-            _, quantity = self.evaluate_symbolic(coefficient)
+            _, quantity = self.evaluate_symbolic(
+                coefficient,
+                overrides=overrides,
+            )
             evaluated_terms.append((int(power), quantity))
         return tuple(evaluated_terms)
 
