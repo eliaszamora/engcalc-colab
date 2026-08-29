@@ -1,18 +1,22 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 after the EngCalc 0.7.0 scalar-engineering-math implementation and final distribution gate completed successfully and the temporary validation workflow was removed._
+_Last updated: 2026-08-29 after PR #27 review identified inverse-trigonometric angle-unit and continuity-documentation blockers, both code defects were corrected with RED → GREEN TDD, and a fresh corrected 0.7.0 distribution gate passed._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Default branch `main` remains merged-and-documented EngCalc **0.6.2** at `fff645936029f7348b2c080aa30eafab1116d532` before the 0.7.0 release is integrated.
+- Default branch `main` remains EngCalc **0.6.2** at `fff645936029f7348b2c080aa30eafab1116d532` until 0.7.0 is explicitly approved and merged.
 - Active release branch: `feature/v0.7.0-scalar-engineering-math`.
-- Candidate version: **0.7.0** in both `pyproject.toml` and `src/engcalc_colab/__init__.py`.
-- Final validated distribution-gate tree: `331c9ff6b976a74f4b0fcc819018fe60fa2928f4`.
-- Temporary 0.7.0 validation workflow was removed afterward in `1e938c5a2ec1ea71ddb737ce6902623cc346829e`; this cleanup changed no product or test file.
-- A release PR still needs to be created and inspected. Do **not** merge without explicit user approval.
+- Open release PR: **#27 — `release: EngCalc 0.7.0 scalar engineering mathematics`**.
+- Candidate package/runtime version: **0.7.0**.
+- Corrected product commit for inverse-trig angle handling: `ed7716fb5d965661934bd2309d6ccfee2b417cf3`.
+- Authoritative corrected distribution-gate tree: `adb28861fbb274f0e60b223057c10e29bab72e9f`.
+- The temporary corrected-gate workflow was removed after the successful gate in `8e6c13c02fe898152c81093997ad856b0c75564d`.
+- Do **not** merge PR #27 without explicit user approval after final inspection.
 
-## Approved behavior retained from 0.6.x
+## Approved behavior
+
+### Retained 0.6.x behavior
 
 - `numeric(...)` renders formula → explicit numerical substitution → final result.
 - `result(...)` renders formula → final result through the same numerical engine.
@@ -21,102 +25,86 @@ _Last updated: 2026-08-29 after the EngCalc 0.7.0 scalar-engineering-math implem
 - Structural positive moment remains plotted downward.
 - Existing plot/envelope behavior, 201-point rendering grid, signed/magnitude envelope semantics and compact characteristic labels remain unchanged.
 
-## EngCalc 0.7.0 — scalar engineering mathematics
+### EngCalc 0.7.0 scalar engineering mathematics
 
-### Public symbolic capabilities
-
-The following names are now fixed public EngCalc language elements and are reserved from user assignment/function-parameter use:
-
-- `sqrt(expression)`;
-- `sin(expression)`, `cos(expression)`, `tan(expression)`;
-- `asin(expression)`, `acos(expression)`, `atan(expression)`;
-- `exp(expression)`;
-- `log(expression)`;
-- constant `pi`.
-
-Symbolically, the nine functions map through a fixed explicit SymPy mapping; no dynamic arbitrary SymPy access was introduced. `pi` resolves to exact `sp.pi` in symbolic expressions.
-
-### Unit-aware numeric rules
-
-- `sqrt` propagates units through a power of one half, e.g. `sqrt(9*m^2) -> 3*m`.
-- `sin`, `cos` and `tan` accept dimensionless values or angle quantities; degree quantities are converted to radians before evaluation.
-- `asin`, `acos` and `atan` require dimensionless arguments and return Pint radian quantities.
-- Inverse-trigonometric results may be target-converted, e.g. `numeric(atan(1), deg) -> 45 deg`.
+- Public fixed scalar functions: `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `exp`, `log`; public constant: `pi`.
+- These names are reserved from user scalar assignment, numeric assignment and function-parameter use.
+- The symbolic layer uses a fixed explicit SymPy mapping; arbitrary SymPy access was not opened.
+- `sqrt` propagates units through a one-half power.
+- `sin`, `cos` and `tan` accept dimensionless values or angle quantities and convert degree quantities to radians before evaluation.
+- `asin`, `acos` and `atan` require dimensionless inputs and numerically return explicit Pint radian quantities.
+- Exact inverse-trig expressions are kept unevaluated symbolically until the numeric layer can attach the required angle unit; e.g. `numeric(atan(1))` returns a radian quantity instead of a plain dimensionless `pi/4` result.
+- Explicit angle units are preserved in notebook rendering even though Pint classifies angles as dimensionless; therefore `a := atan(1)` visibly includes `rad`, and `numeric(atan(1), deg)` visibly includes `deg`.
 - `exp` and `log` require dimensionless arguments.
-- Incompatible dimensions raise EngCalc evaluation errors rather than silently stripping units.
-- Numeric `pi` resolves consistently to the mathematical constant.
+- Scalar math works inside user functions and native plots, including `f(x) = A*sin(pi*x/L)` and the existing 201-point plot grid.
+- `numeric(f(x))` may intentionally retain `x` unresolved; generalized non-polynomial partial evaluation remains deferred to 0.7.1.
+- Multi-argument user functions remain deferred to 0.7.1.
 
-### User functions, plotting and current partial-evaluation boundary
+## Open issues / user feedback
 
-- Scalar functions work inside user-defined functions, including `f(x) = A*sin(pi*x/L)`.
-- The same function can be evaluated directly with units, e.g. `numeric(f(2*m), mm)`.
-- Native `plot(f(x), x, 0, L)` samples the scalar-math response on the existing 201-point unit-aware grid.
-- `numeric(f(x))` may continue to preserve `x` intentionally unresolved, but compact generalized coefficient evaluation of non-polynomial transcendental partial expressions is deliberately deferred to **0.7.1**.
-- Multi-argument user functions are also deliberately deferred to 0.7.1.
+- No known functional regression remains open in the corrected 0.7.0 product/test tree.
+- PR #27 review originally reported three release blockers: missing mandatory continuity headings, hidden inverse-trig `rad/deg` rendering, and loss of radian units for exact inverse-trig expressions. The two code defects are corrected and covered by regression tests; this file restores the required continuity headings.
+- The PR review threads still need to be replied to/resolved and the final PR changed-file/code inspection must be repeated after this cleanup.
+- PR #27 must remain unmerged until that inspection is clean and the user explicitly authorizes merge.
 
-## TDD evidence
+## Validation evidence
 
-### Parser RED → GREEN
+### Original 0.7.0 implementation TDD
 
-- New parser contracts cover syntax for the nine scalar functions plus `pi`, and reserve all ten public names from scalar assignment, numeric assignment and function-parameter use.
-- RED run `33229331526`: **10 passed, 30 failed** exactly because the new names were not yet reserved.
-- Parser implementation persisted in `e19d41c7a2909a837a8d07a1d6c7206483540f77`.
-- GREEN parser gate: **40/40 passed**.
+- Parser RED run `33229331526`: 10 syntax tests passed and 30 reserved-name contracts failed as expected; parser then reached 40/40 GREEN.
+- Symbolic-engine RED run `33229446807`: parser remained 40/40 GREEN while 20 new symbolic contracts failed as expected before implementation.
+- Numeric RED run `33229577297`: existing parser/symbolic contracts remained 60/60 GREEN while all 11 new numeric contracts failed at the intended unsupported boundaries.
+- Integrated acceptance run `33229699540`: 74/74 focused scalar contracts and 336/336 complete source tests passed.
+- The earlier distribution gate `33229971355` was valid for its then-current tree but is **superseded as final release evidence** because review subsequently required product corrections.
 
-### Symbolic-engine RED → GREEN
+### Review corrective RED → GREEN
 
-- New contracts cover the fixed SymPy mappings, exact `pi`, strict single-argument arity and composition inside user functions.
-- RED run `33229446807`: parser remained **40/40 GREEN** while the **20 symbolic engine contracts failed** for the expected unsupported behavior.
-- Symbolic implementation persisted in `49ae312b511b1c59db1c9cbc7db671ea3b4e0d2a`.
+- Added `tests/test_scalar_math_angle_units.py` with three regression contracts:
+  - `numeric(atan(1))` must retain `radian`;
+  - `a := atan(1)` must render `rad`;
+  - `numeric(atan(1), deg)` must render `deg`.
+- RED run `33231160212`: **3/3 failed** for exactly those three pre-corrective defects.
+- Corrective implementation commit: `ed7716fb5d965661934bd2309d6ccfee2b417cf3`.
+- Corrective GREEN run `33231261259`: **32/32 focused tests passed** and complete source suite **339/339 passed**.
 
-### Numeric RED → GREEN
+### Authoritative corrected 0.7.0 distribution gate
 
-- Numeric contracts cover degrees-to-radians trig, `sqrt` units, inverse-trig radian results, conversion to degrees, dimensionless `exp/log`, dimension errors and `sin(pi*x/L)` inside a user function.
-- RED run `33229577297`: parser/symbolic contracts remained **60/60 GREEN** and all **11 numeric contracts failed** at the expected unsupported numeric boundaries.
-- Unit-aware numerical implementation persisted in `90a6acd7818b0963185aeef81f4cb64e30b8d312`.
-
-### Integrated acceptance and source regression
-
-- Added actual plot/magic acceptance for `f(x) = A*sin(pi*x/L)` and the intentional pre-0.7.1 partial-evaluation boundary.
-- Run `33229699540`: **74/74 focused scalar contracts passed** and the complete source suite passed **336/336**.
-- Release metadata/documentation closure then passed **94/94 focused release/scalar contracts** and **336/336 complete source tests** before the 0.7.0 versioned state was persisted.
-
-## Final 0.7.0 distribution gate
-
-GitHub Actions run **`33229971355`** on validated tree **`331c9ff6b976a74f4b0fcc819018fe60fa2928f4`** completed successfully:
+GitHub Actions run **`33231382966`** on tree **`adb28861fbb274f0e60b223057c10e29bab72e9f`** completed successfully:
 
 - release metadata: PASS (`0.7.0` in package and `pyproject.toml`);
-- focused 0.7.0/release contracts: **94 passed in 6.79 s**;
-- complete source suite: **336 passed in 56.71 s**;
-- wheel `engcalc_colab-0.7.0-py3-none-any.whl`: built successfully with metadata version 0.7.0;
+- focused corrected 0.7.0 contracts: **112 passed in 11.75 s**;
+- complete source suite: **339 passed in 66.74 s**;
+- real wheel `engcalc_colab-0.7.0-py3-none-any.whl`: built successfully;
 - clean virtual-environment wheel installation: PASS;
-- installed-wheel smoke from `/tmp` with empty `PYTHONPATH`: PASS, importing from `site-packages` and exercising `sin(30*deg)`, `sqrt(9*m^2)`, `numeric(atan(1), deg)`, a unit-aware sine user function and its 201-point plot;
-- source-free complete suite against the installed wheel: **336 passed in 55.04 s**;
-- repeated complete source suite: **336 passed in 55.26 s**;
-- validated wheel artifact: `engcalc-colab-0.7.0-wheel`;
-- artifact ID: **9708206249**;
-- artifact ZIP digest: `sha256:cab93c8df7d85bf678bb706a01d45508d0c8666aed20aa3d2fa74b2f5c48ce26`.
+- installed-wheel smoke from `/tmp` with empty `PYTHONPATH`: PASS;
+- installed-wheel smoke explicitly verified exact `atan(1)` retains radians and `_quantity_latex` renders `rad`, target conversion to degrees renders `deg`, plus `sin(30*deg)`, `sqrt(9*m^2)`, unit-aware sine user-function evaluation and its 201-point plot;
+- source-free complete suite against installed wheel: **339 passed in 65.57 s**;
+- repeated complete source suite: **339 passed in 65.50 s**;
+- validated artifact: `engcalc-colab-0.7.0-corrected-wheel`;
+- artifact ID: **9708639018**;
+- artifact ZIP digest: `sha256:0f00e5c5d9c4bc2d1a7a7fd617b000d8b4ac14552e4ac41ddf24094f238af5d4`.
 
-## Chain of custody after the gate
+### Chain of custody after corrected gate
 
-- The temporary workflow `.github/workflows/v070-scalar-math.yml` was removed after the successful gate in commit `1e938c5a2ec1ea71ddb737ce6902623cc346829e`.
-- No product or test modification is authorized after validated tree `331c9ff6b976a74f4b0fcc819018fe60fa2928f4` without invalidating this chain of custody and requiring appropriate re-verification.
-- The next verification step is to compare the validated tree against the release-branch head after workflow cleanup and this context update. Expected differences: only workflow removal plus `docs/project-context/CURRENT.md`.
+- The temporary workflow `.github/workflows/v070-angle-unit-corrective.yml` was removed after the successful corrected gate.
+- After the authoritative tree `adb28861fbb274f0e60b223057c10e29bab72e9f`, no further `src/` or `tests/` change is authorized without invalidating this gate.
+- The next check must compare that validated tree to the final release-branch head and confirm that only workflow removal plus this `CURRENT.md` update occurred after validation.
 
 ## Roadmap / active plan
 
-- The master roadmap remains on `planning/engcalc-evolution-roadmap` and already records **0.7.0 — scalar engineering mathematics** as the milestone following 0.6.2.
-- The next milestone after 0.7.0 is **0.7.1 — multi-argument user functions and generalized partial evaluation**.
-- 0.7.1 is intended to add multiple named function parameters and generalized partial substitution/rendering beyond the polynomial-only compact path, including transcendental expressions introduced in 0.7.0.
+- The master roadmap remains on `planning/engcalc-evolution-roadmap`.
+- Current release milestone: **0.7.0 — scalar engineering mathematics**.
+- The next milestone after an approved/merged 0.7.0 is **0.7.1 — multi-argument user functions and generalized partial evaluation**.
+- Do not start 0.7.1 until 0.7.0 is merged and the merged `main` tree is verified/documented.
 
 ## Exact next step
 
-1. Compare validated tree `331c9ff6b976a74f4b0fcc819018fe60fa2928f4` to the current release-branch head and confirm that only workflow cleanup and this context file changed.
-2. Create the 0.7.0 release PR from `feature/v0.7.0-scalar-engineering-math` into `main`.
-3. Inspect its changed-file set, code patches, mergeability and review threads; stop for any P1/P2 blocker.
-4. Do **not** merge the PR without the user's explicit authorization after final inspection.
-5. After an authorized merge, verify merged-product tree identity, update `CURRENT.md` on `main`, and only then begin 0.7.1 from merged-and-documented `main`.
+1. Compare corrected validated tree `adb28861fbb274f0e60b223057c10e29bab72e9f` against the current release-branch head; require post-gate differences to be only temporary-workflow removal and `docs/project-context/CURRENT.md`.
+2. Reply to and resolve the three PR #27 review threads using the corrective commits/tests and restored continuity structure as evidence.
+3. Re-fetch PR #27 review state, mergeability, head SHA and changed-file set; inspect the final product patches and stop if any P1/P2 issue remains.
+4. Do **not** merge PR #27 without explicit user authorization.
+5. After authorized merge, verify merged-product identity against the corrected validated product/test tree, update `CURRENT.md` on `main`, and only then begin 0.7.1.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.7.0 has completed TDD implementation and the full distribution gate; the authoritative validated tree is `331c9ff6b976a74f4b0fcc819018fe60fa2928f4` and artifact evidence is run `33229971355`. The temporary workflow has been removed. Next: prove chain of custody, create/inspect the release PR, and wait for explicit user merge approval.
+Read this file first. EngCalc 0.7.0 is implemented on `feature/v0.7.0-scalar-engineering-math`; PR #27 is open and unmerged. A code review exposed inverse-trig angle-unit defects, which were reproduced RED, fixed in `ed7716fb5d965661934bd2309d6ccfee2b417cf3`, and revalidated with authoritative corrected gate `33231382966` on tree `adb28861fbb274f0e60b223057c10e29bab72e9f` (339/339 source, 339/339 installed wheel, 339/339 repeated source; artifact 9708639018). The temporary workflow has been removed and this continuity file repaired. Next: prove post-gate tree identity, resolve review threads, repeat final PR inspection, and wait for explicit user merge approval.
