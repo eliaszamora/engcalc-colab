@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.6.2**.
+Current version: **0.7.0**.
 
 ## Install in Google Colab
 
@@ -16,6 +16,29 @@ If the extension is already loaded after an update, use:
 ```python
 %reload_ext engcalc_colab
 ```
+
+## v0.7.0 scalar engineering mathematics
+
+v0.7.0 adds a fixed, restricted scalar-mathematics layer that works symbolically and through the Pint-backed numerical context. The public functions are `sqrt`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `exp`, and `log`, together with the reserved constant `pi`. These names are built into EngCalc and cannot be redefined as variables or function parameters.
+
+```text
+%%eng
+
+f(x) = A*sin(pi*x/L)
+A := 10*mm
+L := 4*m
+
+theta := sin(30*deg)
+r := sqrt(9*m^2)
+a := atan(1)
+
+numeric(a, deg)
+plot(f(x), x, 0, L)
+```
+
+Numerically, `sqrt` propagates units through a power of one half. `sin`, `cos`, and `tan` accept dimensionless values or angle quantities; degree quantities are converted to radians before evaluation. `asin`, `acos`, and `atan` require dimensionless arguments and return radians, so results can be converted explicitly, for example with `numeric(atan(1), deg)`. `exp` and `log` require dimensionless arguments. Incompatible dimensions produce EngCalc evaluation errors rather than silently stripping units.
+
+The same functions are valid inside user-defined functions and native plots. For example, `f(x) = A*sin(pi*x/L)` can be sampled directly with `plot(f(x), x, 0, L)`. Under the pre-0.7.1 partial-evaluation model, `numeric(f(x))` may preserve `x` as unresolved but does not yet construct compact evaluated coefficients for a non-polynomial transcendental expression; generalized partial evaluation is reserved for 0.7.1.
 
 ## v0.6.2 numeric ergonomics and diagnostics
 
@@ -617,7 +640,7 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Current limitations
 
-v0.6.2 intentionally does not yet provide:
+v0.7.0 intentionally does not yet provide:
 
 - subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
@@ -638,6 +661,7 @@ v0.6.2 intentionally does not yet provide:
 
 ## Version notes
 
+- **0.7.0** — scalar engineering mathematics: `sqrt`, trig/inverse trig, `exp`, `log`, and `pi` with unit-aware numerical rules.
 - **0.6.2** — direct unit-bearing arguments for numerical user-function evaluation, dimensional-zero preservation, and corrective numerical diagnostics.
 - **0.6.1** — adaptive semantic MathJax rendering with 4/8/16 spacing; compact `result(...)`; compact collision-aware `(x, y)` characteristic labels for plots and envelopes; no numerical-method changes.
 - **0.6.0** — `abs(...)` and magnitude envelopes.
@@ -653,4 +677,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.6.2`.
+Version: `0.7.0`.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import math
 import numbers
 from functools import reduce
 from operator import mul
@@ -68,10 +69,61 @@ class NumericContext:
     def resolve_numeric_name(self, name: str):
         if name in self.values:
             return self.values[name]
+        if name == "pi":
+            return math.pi
         if name in _UNIT_ALIASES:
             return self.ureg.Unit(_UNIT_ALIASES[name])
         hint = diagnostic_hint("unknown_numeric_name", name=name)
         raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")
+
+    def _has_explicit_angle_unit(self, quantity) -> bool:
+        return (
+            quantity.units == self.ureg.degree
+            or quantity.units == self.ureg.radian
+        )
+
+    def evaluate_scalar_function(self, name: str, value):
+        quantity = self._as_quantity(value)
+
+        if name == "sqrt":
+            return quantity ** 0.5
+
+        forward_trig = {
+            "sin": math.sin,
+            "cos": math.cos,
+            "tan": math.tan,
+        }
+        if name in forward_trig:
+            try:
+                angle = quantity.to(self.ureg.radian)
+            except DimensionalityError as exc:
+                raise EngEvaluationError(
+                    f"{name} requires a dimensionless or angle argument"
+                ) from exc
+            return forward_trig[name](float(angle.magnitude))
+
+        inverse_trig = {
+            "asin": math.asin,
+            "acos": math.acos,
+            "atan": math.atan,
+        }
+        if name in inverse_trig:
+            if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:
+                raise EngEvaluationError(f"{name} requires a dimensionless argument")
+            magnitude = float(quantity.to_base_units().magnitude)
+            return self.ureg.Quantity(inverse_trig[name](magnitude), self.ureg.radian)
+
+        scalar_dimensionless = {
+            "exp": math.exp,
+            "log": math.log,
+        }
+        if name in scalar_dimensionless:
+            if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:
+                raise EngEvaluationError(f"{name} requires a dimensionless argument")
+            magnitude = float(quantity.to_base_units().magnitude)
+            return scalar_dimensionless[name](magnitude)
+
+        raise EngEvaluationError(f"unsupported numeric function '{name}'")
 
     def resolve_target_unit_name(self, name: str):
         if name in _UNIT_ALIASES:
@@ -254,6 +306,9 @@ class NumericContext:
         if isinstance(expr, sp.Symbol):
             return substitutions[expr.name]
 
+        if expr == sp.pi:
+            return math.pi
+
         if expr.is_Number:
             if expr.is_Integer:
                 return int(expr)
@@ -286,6 +341,20 @@ class NumericContext:
 
         if expr.func == sp.Abs and len(expr.args) == 1:
             return abs(self._evaluate_sympy(expr.args[0], substitutions))
+
+        scalar_sympy = {
+            sp.sin: "sin",
+            sp.cos: "cos",
+            sp.tan: "tan",
+            sp.asin: "asin",
+            sp.acos: "acos",
+            sp.atan: "atan",
+            sp.exp: "exp",
+            sp.log: "log",
+        }
+        if expr.func in scalar_sympy and len(expr.args) == 1:
+            value = self._evaluate_sympy(expr.args[0], substitutions)
+            return self.evaluate_scalar_function(scalar_sympy[expr.func], value)
 
         raise EngEvaluationError(
             f"numeric evaluation does not support symbolic type '{type(expr).__name__}'"
@@ -321,12 +390,17 @@ class _NumericAstEvaluator(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call):
         if (
             not isinstance(node.func, ast.Name)
-            or node.func.id != "abs"
             or len(node.args) != 1
             or node.keywords
         ):
             raise EngEvaluationError("unsupported numeric function")
-        return abs(self.visit(node.args[0]))
+        name = node.func.id
+        value = self.visit(node.args[0])
+        if name == "abs":
+            return abs(value)
+        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"}:
+            return self.context.evaluate_scalar_function(name, value)
+        raise EngEvaluationError("unsupported numeric function")
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
         value = self.visit(node.operand)

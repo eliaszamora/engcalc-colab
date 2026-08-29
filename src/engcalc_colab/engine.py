@@ -28,6 +28,36 @@ from .models import (
 from .numeric import NumericContext
 
 
+_SCALAR_SYMBOLIC_FUNCTIONS = {
+    "sqrt": sp.sqrt,
+    "sin": sp.sin,
+    "cos": sp.cos,
+    "tan": sp.tan,
+    "asin": sp.asin,
+    "acos": sp.acos,
+    "atan": sp.atan,
+    "exp": sp.exp,
+    "log": sp.log,
+}
+
+_INVERSE_TRIG_SYMBOLIC_FUNCTIONS = {sp.asin, sp.acos, sp.atan}
+
+
+def _substitute_preserving_inverse_trig(expr, symbol, replacement):
+    expr = sp.sympify(expr)
+    if expr == symbol:
+        return replacement
+    if symbol not in expr.free_symbols:
+        return expr
+
+    rebuilt_args = tuple(
+        _substitute_preserving_inverse_trig(arg, symbol, replacement)
+        for arg in expr.args
+    )
+    if expr.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS:
+        return expr.func(*rebuilt_args, evaluate=False)
+    return expr.func(*rebuilt_args)
+
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 
 
@@ -242,6 +272,8 @@ class _Evaluator(ast.NodeVisitor):
     def visit_Name(self, node: ast.Name):
         if node.id in self.symbol_overrides:
             return self.symbol_overrides[node.id]
+        if node.id == "pi":
+            return sp.pi
         return self.engine.resolve_name(node.id)
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
@@ -434,7 +466,21 @@ class _Evaluator(ast.NodeVisitor):
                 raise EngEvaluationError(f"function '{name}' expects 1 argument")
             function = self.engine.functions[name]
             parameter = self.engine.resolve_name(function.parameter)
-            return sp.sympify(function.expression).subs(parameter, args[0])
+            expression = sp.sympify(function.expression)
+            if any(
+                item.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS
+                for item in sp.preorder_traversal(expression)
+            ):
+                return _substitute_preserving_inverse_trig(
+                    expression, parameter, args[0]
+                )
+            return expression.subs(parameter, args[0])
+
+        if name in _SCALAR_SYMBOLIC_FUNCTIONS:
+            self._require_arity(name, args, 1, "expression")
+            if name in {"asin", "acos", "atan"}:
+                return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0], evaluate=False)
+            return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0])
 
         if name == "abs":
             self._require_arity(name, args, 1, "expression")
