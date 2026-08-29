@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — EngCalc 0.7.2 remains canonical on `main`; narrative text has been visually validated in real Colab; optional plot/envelope labels and roomier content spacing are implemented on a retained presentation-polish branch; Piecewise remains the next architectural milestone._
+_Last updated: 2026-08-29 — EngCalc 0.7.2 remains canonical on `main`; narrative text has been visually validated in real Colab; optional plot/envelope labels and roomier content spacing are implemented on a retained presentation-polish branch; characteristic-point label deconfliction is the next bounded graphics task after visual verification._
 
 ## Current baseline
 
@@ -60,6 +60,8 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 remains canonical on `main`; narrati
 - User prefers routine technical micro-decisions to be analyzed independently rather than requiring repeated approval prompts.
 - User approved the optional graph-title/axis-label contract for both `plot` and `envelope`.
 - User requested slightly more spacing between prose/titles and equations after inspecting real Colab output.
+- Current `%%eng` parsing is line-oriented for ordinary statements, so long calls such as `plot(...)` / `envelope(...)` must currently remain on one physical line; multiline call support is a possible later ergonomics improvement.
+- User provided a real multi-curve plot showing characteristic-point labels becoming crowded/overlapping around shared x-locations (notably many labels near the same endpoints/interior extrema). After title/axis and spacing verification is complete, the **next bounded graphics task is automatic characteristic-label deconfliction / placement**, preserving clear association with each series and avoiding naive fixed offsets.
 - The current presentation-polish feature is implementation-complete and test-green but **not merged**.
 - Final real-Colab visual verification of the new spacing and custom graph text is still pending.
 - Piecewise implementation has **not started**; its design, spec and implementation plan are complete.
@@ -113,6 +115,7 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 remains canonical on `main`; narrati
 - **0.7.3 derivation traces:** RETIRED.
 - **Narrative text blocks:** IMPLEMENTED + TEST-VALIDATED + REAL-COLAB VISUALLY VALIDATED on retained branch.
 - **Presentation polish:** IMPLEMENTED; optional graph text + roomier content spacing are green on `feature/v0.8.0-presentation-polish`; final gate/cleanup and user visual check remain.
+- **Next bounded graphics task after visual verification:** characteristic-point label deconfliction / automatic placement for multi-curve plots and envelopes.
 - **0.8.0 Piecewise:** DESIGN + SPEC + IMPLEMENTATION PLAN COMPLETE; implementation not started.
 - **0.8.1:** exact-first extrema, roots and intersections.
 - **0.8.2:** exact envelopes and governing intervals.
@@ -124,13 +127,13 @@ _Last updated: 2026-08-29 — EngCalc 0.7.2 remains canonical on `main`; narrati
 
 ## Exact next step
 
-1. Run one fresh complete validation on the presentation-polish HEAD containing production, tests, documentation and this checkpoint; require all **477 tests** green.
-2. Only after that gate succeeds, remove `.github/workflows/presentation-polish-validation.yml`.
-3. Compare the validated SHA to final cleanup HEAD and verify post-gate differences are administrative only.
-4. Give the user one-shot Colab installation pinned to the authoritative validated SHA and a real-world test cell covering narrative spacing, default plot presentation, customized `plot`, and customized `envelope`.
-5. Use the user screenshots for final visual QA. Do not merge unless explicitly approved.
-6. After integration approval, make this feature the inherited baseline for Piecewise and start the approved 0.8.0 implementation plan.
+1. Complete real-Colab visual verification of optional graph title/axis labels and roomier heading/narrative spacing using single-line `plot(...)` / `envelope(...)` calls.
+2. Then address characteristic-point label deconfliction / automatic placement as the next bounded graphics task.
+3. Run one fresh complete validation on the presentation-polish HEAD containing production, tests, documentation and checkpoint; require all **477 tests** green before cleanup/integration.
+4. Only after that gate succeeds, remove `.github/workflows/presentation-polish-validation.yml` and compare validated SHA to cleanup HEAD.
+5. Do not merge unless explicitly approved.
+6. After integration approval, make the resulting presentation baseline the inherited baseline for Piecewise and start the approved 0.8.0 implementation plan.
 
 ## How to resume in a new conversation
 
-Read this file first. Released `main` remains EngCalc 0.7.2 at checkpoint `72b0b1b872c57f379abe16ceaa686bec0e5ef10b`. Narrative `"""..."""` blocks are implemented and real-Colab visually validated. The active retained branch `feature/v0.8.0-presentation-polish` adds optional `title/xlabel/ylabel` to `plot/envelope` while preserving automatic defaults and Pint units, plus modestly roomier heading/narrative margins; the combined suite is **477/477 GREEN** at `3f83ffbb3478fdab9ca08d84e44e31735e44c7f1`, with documentation/checkpoint commits following. The authoritative final gate and temporary-CI cleanup are the immediate next steps. Piecewise remains planned but unimplemented. Never invoke Codex without explicit authorization and never merge without explicit user approval.
+Read this file first. Released `main` remains EngCalc 0.7.2 at checkpoint `72b0b1b872c57f379abe16ceaa686bec0e5ef10b`. Narrative `"""..."""` blocks are implemented and real-Colab visually validated. The active retained branch `feature/v0.8.0-presentation-polish` adds optional `title/xlabel/ylabel` to `plot/envelope` while preserving automatic defaults and Pint units, plus modestly roomier heading/narrative margins; the combined suite is **477/477 GREEN** at `3f83ffbb3478fdab9ca08d84e44e31735e44c7f1`, with documentation/checkpoint commits following. Real-Colab title/spacing verification is pending; after that, characteristic-point label deconfliction is the next bounded graphics task. Piecewise remains planned but unimplemented. Never invoke Codex without explicit authorization and never merge without explicit user approval.
