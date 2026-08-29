@@ -196,3 +196,24 @@ class PlotResult:
         if len(self.series) != 1:
             raise AttributeError("y_values is unavailable for multi-series plots")
         return self.series[0].y_values
+
+
+@dataclass(frozen=True)
+class TableColumn:
+    display_label: str
+    unit: Any
+    values: tuple[Any, ...]
+
+
+@dataclass(frozen=True)
+class TableResult:
+    statement: ParsedStatement
+    variable: str
+    point_unit: Any
+    point_values: tuple[Any, ...]
+    columns: tuple[TableColumn, ...]
+    mode: str
+
+    def __post_init__(self) -> None:
+        if self.mode not in {"uniform", "explicit"}:
+            raise ValueError("table mode must be 'uniform' or 'explicit'")
