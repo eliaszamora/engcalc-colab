@@ -19,7 +19,7 @@ from .models import (
     TableResult,
 )
 from .parser import parse_cell
-from .plotting import render_plot
+from .presentation import render_presented_plot
 from .renderer import RenderSettings, render_aligned_results, render_table
 
 _HEADING_STYLE = {
@@ -112,7 +112,7 @@ class EngMagics(Magics):
                         self.render_settings,
                     )
                     pending_results.clear()
-                    display(render_plot(result))
+                    display(render_presented_plot(result))
                     continue
 
                 if isinstance(result, TableResult):
