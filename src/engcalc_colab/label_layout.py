@@ -18,7 +18,7 @@ from .plotting import (
 _CLUSTER_X_TOLERANCE_PX = 14.0
 _RAIL_HORIZONTAL_GAP_PX = 22.0
 _RAIL_EDGE_MARGIN_PX = 5.0
-_RAIL_VERTICAL_GAP_PX = 5.0
+_RAIL_VERTICAL_GAP_PX = 12.0
 
 
 def _extreme_indices(values: list[float]) -> tuple[int, int]:
@@ -110,7 +110,7 @@ def _spread_vertical_centers(
     lower: float,
     upper: float,
 ) -> list[float]:
-    """Preserve reading order while enforcing a small vertical gap."""
+    """Preserve reading order while enforcing robust vertical clearance."""
     if not desired_centers:
         return []
 
