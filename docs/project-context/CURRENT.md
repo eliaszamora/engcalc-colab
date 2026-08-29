@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 after the user explicitly approved EngCalc 0.7.2 engineering tables and the approved design/plan were prepared for the isolated feature branch._
+_Last updated: 2026-08-29 after EngCalc 0.7.2 design/plan approval and feature-branch setup._
 
 ## Current baseline
 
@@ -8,84 +8,79 @@ _Last updated: 2026-08-29 after the user explicitly approved EngCalc 0.7.2 engin
 - Canonical product branch: `main`.
 - Canonical released baseline: **EngCalc 0.7.1**.
 - `main` baseline SHA at 0.7.2 branch creation: `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e`.
-- Active implementation branch: `feature/v0.7.2-engineering-tables`, created from that `main` baseline.
+- Active implementation branch: `feature/v0.7.2-engineering-tables`.
 - Planning branch retained: `planning/v0.7.2-engineering-tables`.
-- Package/runtime version remains **0.7.1** until the release-closing task.
-- Approved 0.7.2 spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
-- Approved 0.7.2 implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`.
-- No 0.7.2 production code or RED feature tests have been added yet.
+- Package/runtime version remains **0.7.1** until release closure.
+- Approved spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
+- Approved plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`.
+- The approved plan attachment commit is prepared as `2a492f07f91c79d07de48f86ea5402ee82ee2267`; feature branch ref must point to a descendant containing it before CI.
+- No 0.7.2 production code or RED feature tests have been added.
 - Do not manually invoke Codex, `@codex review`, Codex Cloud, or anything that may consume the user's Codex quota without explicit authorization.
 
 ## Approved behavior
 
 ### Existing 0.7.1 baseline
 
-- User functions support one or more ordered positional parameters with exact arity.
-- Generalized partial numeric evaluation substitutes known values while preserving only genuinely unresolved caller-side symbols.
-- Scalar engineering math, Pint-backed numeric values, plotting and envelopes remain unchanged.
-- Plot/envelope rendering remains 201-point with positive structural moment plotted downward.
+- Multi-argument user functions use exact positional arity.
+- Generalized partial numeric evaluation preserves only genuinely unresolved caller symbols.
+- Scalar engineering math, Pint numeric state, plotting and envelopes remain unchanged.
+- Plot/envelope sampling remains 201 points; structural positive moment plots downward.
 
 ### EngCalc 0.7.2 engineering tables
 
-- The user explicitly approved the written 0.7.2 design.
-- Primary/recommended form: `table(M(x), x, 0, L, 21)`.
-- If `L` is dimensional, exact dimensionless zero may inherit the compatible endpoint unit; users are not forced to write `0*m`.
-- Nonzero dimensionless endpoints never silently inherit a dimensional unit.
-- Explicit point magnitudes may declare their unit once: `table(M(x), x, [0, 1, 1.5, 2], m)`.
-- Fully explicit compatible quantities remain supported: `table(M(x), x, [0*m, 50*cm, 1*m])`.
-- Descending uniform ranges are valid and preserve requested order.
-- Uniform `count` must be a dimensionless integer >= 2 and includes both endpoints.
-- Multiple responses preserve source-column order and must be dimensionally compatible in 0.7.2.
-- Table evaluation is local and must not mutate stored symbolic/numeric state, including a pre-existing value for the table variable.
-- Table output renders natively as HTML inside `%%eng`; no pandas runtime dependency is added.
-- Arbitrary list literals remain invalid outside the table-point whitelist and existing plot/envelope sweep whitelist.
-- CSV/Excel export, interactive spreadsheets, Cartesian table sweeps, cross-dimension tables, piecewise expressions and derivation traces are out of scope for 0.7.2.
+- User explicitly approved the written 0.7.2 design.
+- Primary form: `table(M(x), x, 0, L, 21)`.
+- Exact dimensionless zero may inherit a compatible dimensional endpoint unit; nonzero dimensionless endpoints may not.
+- Explicit point magnitudes may declare unit once: `table(M(x), x, [0, 1, 1.5, 2], m)`.
+- Fully explicit compatible points remain valid: `table(M(x), x, [0*m, 50*cm, 1*m])`.
+- Descending uniform ranges are valid.
+- `count` is dimensionless integer >= 2 and includes both endpoints.
+- Multiple responses preserve source order and must be dimensionally compatible in 0.7.2.
+- Table evaluation must not mutate EngCalc state.
+- Tables render natively as HTML inside `%%eng`, without pandas.
+- Arbitrary lists remain invalid outside table-point and existing plot/envelope sweep whitelists.
+- Export, interactive tables, Cartesian sweeps, cross-dimension tables, piecewise and derivation traces remain out of scope.
 
 ## Open issues / user feedback
 
 - No known functional blocker remains for 0.7.1.
 - 0.7.2 design and implementation plan are approved.
-- The plan isolates table-specific unit/grid mechanics in `src/engcalc_colab/tables.py` so descending table ranges do not alter existing `plot(...)` bound semantics.
-- Feature-branch baseline source suite still needs to be rerun before the first RED feature test is introduced.
+- Table-specific unit/grid mechanics are isolated from plot semantics.
+- Feature-branch baseline source suite remains to be rerun before first RED feature test.
 
 ## Validation evidence
 
 ### Authoritative 0.7.1 release evidence
 
-- Corrected distribution gate: GitHub Actions `33259552699` — success.
+- Corrected distribution gate Actions `33259552699`: success.
 - Validated SHA: `2332bd29e571a360cc47a29562e09b5828a3d2cb`.
-- Focused corrected release contracts: **77/77 passed**.
-- Complete source suite: **386/386 passed**.
-- Complete source-free suite against installed wheel: **386/386 passed**.
-- Repeated complete source suite: **386/386 passed**.
-- Wheel artifact ID: `9716898144`.
-- Wheel digest: `sha256:18670d97351bd2403d3be912aaff9773953ccaaa54aeb409973cd48baec20361`.
+- Focused: **77/77**; source: **386/386**; installed-wheel source-free: **386/386**; repeated source: **386/386**.
+- Wheel artifact `9716898144`, digest `sha256:18670d97351bd2403d3be912aaff9773953ccaaa54aeb409973cd48baec20361`.
 
 ### 0.7.2 planning / execution evidence
 
-- User explicitly approved the 0.7.2 design on 2026-08-29.
-- Planning spec commit: `d5ad296325157cceee088d704849f9073e3a0ec8`.
-- Planning implementation-plan commit: `31e2e09f65dd42b6a7343402d484a074da16c87e`.
-- Feature branch `feature/v0.7.2-engineering-tables` was created from `main` before production work.
-- Approved spec persisted on the feature branch by `ed19f6013baa8c8ad78d652e45631d9dec98bb6d`.
-- Approved plan blob from planning: `379a9cc62cd3972852205896311033141ba20f67`; feature-branch plan attachment commit prepared as `519e22118f80089a5b4c294b9eac0bff7c5ab0b5`.
-- No 0.7.2 production test result is claimed yet.
+- User approved design on 2026-08-29.
+- Planning spec commit `d5ad296325157cceee088d704849f9073e3a0ec8`.
+- Planning plan commit `31e2e09f65dd42b6a7343402d484a074da16c87e`.
+- Feature branch created from `main` before production work.
+- Feature spec commit `ed19f6013baa8c8ad78d652e45631d9dec98bb6d`.
+- Plan blob `379a9cc62cd3972852205896311033141ba20f67`; attachment commit prepared as `2a492f07f91c79d07de48f86ea5402ee82ee2267`.
+- No 0.7.2 test result is claimed yet.
 
 ## Roadmap / active plan
 
 - **0.7.1 is complete and merged.**
 - Active milestone: **0.7.2 — engineering tables / evaluation by points**.
-- Approved design and implementation plan govern execution.
-- Execution order: baseline validation → Task 1 parser/models RED→GREEN → Task 2 point normalization → Task 3 engine evaluation → Task 4 HTML/magic → Task 5 acceptance/docs → Task 6 release gate.
-- Existing roadmap continues to 0.7.3 derivation traces after 0.7.2 unless later amended.
+- Execution: baseline validation → parser/models RED→GREEN → point normalization → engine evaluation → HTML/magic → acceptance/docs → release gate.
+- Roadmap continues to 0.7.3 derivation traces afterward unless amended.
 
 ## Exact next step
 
-- Ensure feature branch HEAD contains the approved plan attachment.
-- Run the complete 0.7.1 source suite on the feature branch and record actual green count/SHA.
-- Only after baseline proof, create `tests/test_table_parser.py` as the first RED 0.7.2 contract test; do not modify parser/models production code until that RED failure is observed.
+- Ensure branch HEAD contains the approved spec and plan.
+- Run complete baseline source suite and record exact result/SHA.
+- Then add `tests/test_table_parser.py` first and observe expected RED before modifying production parser/models.
 - Do not bump package version until release closure.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.7.1 remains the validated release baseline on `main` at `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e`. The user explicitly approved EngCalc 0.7.2 engineering tables. Active implementation branch is `feature/v0.7.2-engineering-tables`; planning branch is retained. Governing documents are `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md` and `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`. Primary syntax is `table(M(x), x, 0, L, 21)` with unit-once explicit points also supported. No production code or RED table tests have been added yet. Next mandatory step is feature-branch baseline validation, then Task 1 RED. Do not manually invoke Codex without explicit authorization.
+Read this file first. EngCalc 0.7.1 remains validated on `main` at `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e`. User approved EngCalc 0.7.2 engineering tables. Active branch is `feature/v0.7.2-engineering-tables`. Governing spec/plan are the 0.7.2 files under `docs/superpowers/specs` and `docs/superpowers/plans`. Primary syntax is `table(M(x), x, 0, L, 21)` with unit-once explicit points. No production implementation or RED feature tests exist yet. Next: baseline CI, then Task 1 RED. Do not manually invoke Codex.
