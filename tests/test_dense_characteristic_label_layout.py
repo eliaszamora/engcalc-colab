@@ -86,6 +86,19 @@ def _assert_cluster_preserves_visual_order(axis, cluster, renderer):
     ]
 
 
+def _assert_single_label_rail(cluster, renderer, *, tolerance_px: float = 3.0):
+    boxes = [item.get_window_extent(renderer) for item in cluster]
+    left_edges = [float(box.x0) for box in boxes]
+    right_edges = [float(box.x1) for box in boxes]
+    left_spread = max(left_edges) - min(left_edges)
+    right_spread = max(right_edges) - min(right_edges)
+    assert min(left_spread, right_spread) <= tolerance_px, {
+        "left_spread": left_spread,
+        "right_spread": right_spread,
+        "labels": [item.get_text() for item in cluster],
+    }
+
+
 def _render_dense_case():
     result = _dense_six_series_moment_plot()
     figure = render_presented_plot(result)
@@ -106,6 +119,17 @@ def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
 
     _assert_cluster_preserves_visual_order(axis, left_cluster, renderer)
     _assert_cluster_preserves_visual_order(axis, interior_cluster, renderer)
+
+
+def test_dense_shared_x_groups_use_one_aligned_label_rail_each():
+    _, _, items, renderer = _render_dense_case()
+    left_cluster = [item for item in items if abs(float(item.xy[0])) < 1e-9]
+    interior_cluster = [item for item in items if abs(float(item.xy[0]) - 2.5) < 0.03]
+    assert len(left_cluster) == 6
+    assert len(interior_cluster) == 6
+
+    _assert_single_label_rail(left_cluster, renderer)
+    _assert_single_label_rail(interior_cluster, renderer)
 
 
 def test_dense_reflow_keeps_labels_inside_axes_and_non_overlapping():
