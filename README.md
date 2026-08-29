@@ -714,7 +714,7 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Current limitations
 
-v0.7.0 intentionally does not yet provide:
+v0.7.2 currently does not provide:
 
 - subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
@@ -728,13 +728,15 @@ v0.7.0 intentionally does not yet provide:
 - automatic compact coefficient evaluation for non-polynomial partial functions;
 - exact browser-pixel-aware MathJax line wrapping;
 - general keyword arguments or general list/dictionary syntax outside the restricted plot/envelope sweep slot;
-- arrays/tables or dedicated matrix syntax;
+- general arrays or dedicated matrix syntax;
 - arbitrary Python execution or arbitrary library functions;
 - multi-solution `solve(...)`;
 - full LaTeX parsing.
 
 ## Version notes
 
+- **0.7.2** — native engineering tables with automatic unit-aware discretization, unit-once and fully explicit point forms, compatible multi-response columns, native HTML rendering, and source-order `%%eng` integration.
+- **0.7.1** — multi-argument user functions and generalized partial numerical evaluation.
 - **0.7.0** — scalar engineering mathematics: `sqrt`, trig/inverse trig, `exp`, `log`, and `pi` with unit-aware numerical rules.
 - **0.6.2** — direct unit-bearing arguments for numerical user-function evaluation, dimensional-zero preservation, and corrective numerical diagnostics.
 - **0.6.1** — adaptive semantic MathJax rendering with 4/8/16 spacing; compact `result(...)`; compact collision-aware `(x, y)` characteristic labels for plots and envelopes; no numerical-method changes.
@@ -751,4 +753,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.7.0`.
+Version: `0.7.2`.
