@@ -71,3 +71,15 @@ def test_single_overwide_product_is_split_at_factor_boundaries():
     assert len(rows) > 1
     assert all(_latex_visual_width(row) <= ROW_LIMIT for row in rows)
     assert all(row.startswith(r"\quad \cdot ") for row in rows[1:])
+
+
+def test_single_overwide_fraction_is_split_at_factor_boundaries():
+    numerator = sp.Mul(*(sp.Symbol(f"n_{index:02d}") for index in range(1, 17)))
+    denominator = sp.Mul(*(sp.Symbol(f"d_{index:02d}") for index in range(1, 17)))
+    expression = numerator / denominator
+
+    rows = _bounded_expression_rows(expression)
+
+    assert len(rows) > 1
+    assert all(_latex_visual_width(row) <= ROW_LIMIT for row in rows)
+    assert all(row.startswith(r"\quad \cdot ") for row in rows[1:])
