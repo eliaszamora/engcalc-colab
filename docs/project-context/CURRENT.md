@@ -13,6 +13,7 @@ _Last updated: 2026-08-29 after the user explicitly approved the EngCalc 0.7.2 e
 - Package/runtime version remains **0.7.1** until the release-closing task.
 - Approved 0.7.2 spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md`.
 - Approved 0.7.2 implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`.
+- Approved spec is already persisted on the active feature branch. The plan object is prepared and must be attached to the active branch before baseline CI.
 - No 0.7.2 production code or tests have been implemented yet at this checkpoint.
 - Do not manually invoke Codex, `@codex review`, Codex Cloud, or anything that may consume the user's Codex quota without explicit authorization.
 
@@ -67,24 +68,25 @@ _Last updated: 2026-08-29 after the user explicitly approved the EngCalc 0.7.2 e
 - Planning spec commit: `d5ad296325157cceee088d704849f9073e3a0ec8`.
 - Planning implementation-plan commit: `31e2e09f65dd42b6a7343402d484a074da16c87e`.
 - Feature branch `feature/v0.7.2-engineering-tables` was created from `main` before production work.
-- Approved spec and plan are being persisted on the feature branch before baseline validation.
+- Approved spec was persisted to feature branch by `ed19f6013baa8c8ad78d652e45631d9dec98bb6d`.
+- Approved plan blob `379a9cc62cd3972852205896311033141ba20f67` was prepared from the planning branch for feature-branch attachment.
 - No 0.7.2 production test result is claimed yet.
 
 ## Roadmap / active plan
 
 - **0.7.1 is complete and merged.**
 - Active milestone: **0.7.2 — engineering tables / evaluation by points**.
-- Approved design and implementation plan are now the governing documents for the feature branch.
+- Approved design and implementation plan are the governing documents for the feature branch.
 - Execution order: baseline validation → Task 1 parser/models RED→GREEN → Task 2 point normalization → Task 3 engine evaluation → Task 4 HTML/magic → Task 5 acceptance/docs → Task 6 release gate.
 - Existing roadmap continues to 0.7.3 derivation traces after 0.7.2 unless later amended.
 
 ## Exact next step
 
-- Finish persisting the approved plan on `feature/v0.7.2-engineering-tables`.
+- Attach the approved implementation plan commit/object to `feature/v0.7.2-engineering-tables`.
 - Run the complete 0.7.1 source suite on the feature branch and record the actual green count/SHA.
 - Only after that baseline is proven, create `tests/test_table_parser.py` as the first RED 0.7.2 production-contract test; do not modify parser/models production code until that RED failure is observed.
 - Do not bump package version until the release-closing task.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.7.1 remains the validated release baseline on `main` at `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e`. The user explicitly approved EngCalc 0.7.2 engineering tables. Active implementation branch is `feature/v0.7.2-engineering-tables`; planning branch is retained. Governing documents are `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md` and `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`. Primary syntax is `table(M(x), x, 0, L, 21)` with unit-once explicit points also supported. At this checkpoint, no production code or RED table tests have been added; the next mandatory step is feature-branch baseline validation before Task 1 RED. Do not manually invoke Codex without explicit authorization.
+Read this file first. EngCalc 0.7.1 remains the validated release baseline on `main` at `eab4f9a5dac6c6a0962419ba5273cd9fc212a86e`. The user explicitly approved EngCalc 0.7.2 engineering tables. Active implementation branch is `feature/v0.7.2-engineering-tables`; planning branch is retained. Governing documents are `docs/superpowers/specs/2026-08-29-engcalc-v0.7.2-engineering-tables-design.md` and `docs/superpowers/plans/2026-08-29-engcalc-v0.7.2-engineering-tables-implementation.md`. Primary syntax is `table(M(x), x, 0, L, 21)` with unit-once explicit points also supported. No production code or RED table tests have been added yet; the next mandatory step is feature-branch baseline validation after attaching the plan. Do not manually invoke Codex without explicit authorization.
