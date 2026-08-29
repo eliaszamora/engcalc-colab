@@ -7,7 +7,13 @@ from dataclasses import dataclass
 import sympy as sp
 from pint.errors import DimensionalityError
 
-from .errors import AmbiguousSolveError, EngCalcError, EngEvaluationError, EngSyntaxError
+from .errors import (
+    AmbiguousSolveError,
+    EngCalcError,
+    EngEvaluationError,
+    EngSyntaxError,
+    diagnostic_hint,
+)
 from .models import (
     EvaluationResult,
     NumericAssignmentResult,
@@ -212,6 +218,18 @@ class _Evaluator(ast.NodeVisitor):
     def generic_visit(self, node):
         raise EngEvaluationError(f"unsupported syntax '{type(node).__name__}'")
 
+    def _resolve_numeric_function_argument(self, node: ast.AST):
+        if isinstance(node, ast.Name):
+            symbolic = self.visit(node)
+            if (
+                isinstance(symbolic, sp.Symbol)
+                and self.engine.numeric_context.get(node.id) is None
+            ):
+                return symbolic
+        return self.engine.numeric_context.evaluate_expression(
+            ast.Expression(body=node)
+        )
+
     def visit_Constant(self, node: ast.Constant):
         if isinstance(node.value, bool) or node.value is None:
             raise EngEvaluationError("only numeric constants are supported")
@@ -306,13 +324,14 @@ class _Evaluator(ast.NodeVisitor):
                 function = self.engine.functions[function_name]
                 argument_node = argument.args[0]
                 argument_expression = self.visit(argument_node)
+                argument_value = self._resolve_numeric_function_argument(argument_node)
                 symbolic_expression = sp.sympify(function.expression)
                 display_name = function_name
                 display_argument = argument_expression
 
                 if (
                     isinstance(argument_node, ast.Name)
-                    and isinstance(argument_expression, sp.Symbol)
+                    and isinstance(argument_value, sp.Symbol)
                     and self.engine.numeric_context.get(argument_node.id) is None
                 ):
                     if target_unit is not None:
@@ -322,7 +341,7 @@ class _Evaluator(ast.NodeVisitor):
                     parameter = self.engine.resolve_symbol(function.parameter)
                     symbolic_expression = symbolic_expression.subs(
                         parameter,
-                        argument_expression,
+                        argument_value,
                     )
                     substitutions, unresolved_symbols = (
                         self.engine.numeric_context.partial_substitutions(
@@ -344,13 +363,21 @@ class _Evaluator(ast.NodeVisitor):
                     )
                     return symbolic_expression
 
-                _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
-                    argument_expression
-                )
-                substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
-                    symbolic_expression,
-                    overrides={function.parameter: argument_quantity},
-                )
+                try:
+                    substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
+                        symbolic_expression,
+                        overrides={function.parameter: argument_value},
+                    )
+                except EngEvaluationError as exc:
+                    if "incompatible units" not in str(exc):
+                        raise
+                    hint = diagnostic_hint(
+                        "incompatible_function_units",
+                        function=function_name,
+                    )
+                    raise EngEvaluationError(
+                        f"incompatible units while evaluating numeric function '{function_name}'. {hint}"
+                    ) from exc
             else:
                 symbolic_expression = self.visit(argument)
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(

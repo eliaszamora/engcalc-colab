@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.6.1**.
+Current version: **0.6.2**.
 
 ## Install in Google Colab
 
@@ -16,6 +16,25 @@ If the extension is already loaded after an update, use:
 ```python
 %reload_ext engcalc_colab
 ```
+
+## v0.6.2 numeric ergonomics and diagnostics
+
+v0.6.2 improves the boundary between EngCalc's symbolic functions and its Pint-backed numerical context. A complete numerical/unit expression may now be passed directly as the argument of a user-defined function without introducing an auxiliary numeric symbol first.
+
+```text
+M(x) = q*x*(L-x)/2
+q := 10*kN/m
+L := 6*m
+
+numeric(M(2.5*m))
+numeric(M(0*m), kN*m)
+numeric(M(L/2))
+result(M(2.5*m))
+```
+
+Direct quantities such as `2.5*m`, expressions using known numerical values such as `L/2`, load quantities such as `4*tonf/m`, and dimensional zeros such as `0*m` are evaluated from their restricted numeric AST before SymPy simplification can erase unit information. A lone unassigned name remains intentionally symbolic, so `numeric(M(x))` and `result(M(x))` continue to produce partial numerical functions.
+
+`result(...)` uses the same numerical engine as `numeric(...)`, so the direct-function-argument behavior is identical; only the presentation stages differ. Engineering-facing errors now distinguish unknown numerical names, unresolved numerical symbols and incompatible units in evaluated functions, and include a corrective hint when EngCalc can provide one safely.
 
 ## v0.6.1 visual polish
 
@@ -598,7 +617,7 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Current limitations
 
-v0.6.1 intentionally does not yet provide:
+v0.6.2 intentionally does not yet provide:
 
 - subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
@@ -611,7 +630,6 @@ v0.6.1 intentionally does not yet provide:
 - target-unit conversion of partially evaluated functions with a free independent variable;
 - automatic compact coefficient evaluation for non-polynomial partial functions;
 - exact browser-pixel-aware MathJax line wrapping;
-- wrapping inside a single indivisible top-level mathematical term wider than the target budget;
 - general keyword arguments or general list/dictionary syntax outside the restricted plot/envelope sweep slot;
 - arrays/tables or dedicated matrix syntax;
 - arbitrary Python execution or arbitrary library functions;
@@ -620,6 +638,7 @@ v0.6.1 intentionally does not yet provide:
 
 ## Version notes
 
+- **0.6.2** — direct unit-bearing arguments for numerical user-function evaluation, dimensional-zero preservation, and corrective numerical diagnostics.
 - **0.6.1** — adaptive semantic MathJax rendering with 4/8/16 spacing; compact `result(...)`; compact collision-aware `(x, y)` characteristic labels for plots and envelopes; no numerical-method changes.
 - **0.6.0** — `abs(...)` and magnitude envelopes.
 - **0.5.0** — sampled signed engineering envelopes.
@@ -634,4 +653,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.6.1`.
+Version: `0.6.2`.

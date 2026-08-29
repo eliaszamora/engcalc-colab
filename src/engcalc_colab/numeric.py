@@ -11,7 +11,7 @@ from pint import UnitRegistry
 from pint.errors import DimensionalityError, PintError
 from sympy.polys.polyerrors import PolynomialError
 
-from .errors import EngEvaluationError
+from .errors import EngEvaluationError, diagnostic_hint
 
 
 _UNIT_ALIASES = {
@@ -70,7 +70,8 @@ class NumericContext:
             return self.values[name]
         if name in _UNIT_ALIASES:
             return self.ureg.Unit(_UNIT_ALIASES[name])
-        raise EngEvaluationError(f"unknown numeric name '{name}'")
+        hint = diagnostic_hint("unknown_numeric_name", name=name)
+        raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")
 
     def resolve_target_unit_name(self, name: str):
         if name in _UNIT_ALIASES:
@@ -173,8 +174,11 @@ class NumericContext:
             if name not in self.values and name not in allowed_unresolved
         ]
         if missing:
+            hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
             raise EngEvaluationError(
-                "numeric evaluation requires values for: " + ", ".join(missing)
+                "numeric evaluation requires values for: "
+                + ", ".join(missing)
+                + f". {hint}"
             )
 
         substitutions = {
@@ -222,8 +226,11 @@ class NumericContext:
             if name not in overrides and name not in self.values
         ]
         if missing:
+            hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
             raise EngEvaluationError(
-                "numeric evaluation requires values for: " + ", ".join(missing)
+                "numeric evaluation requires values for: "
+                + ", ".join(missing)
+                + f". {hint}"
             )
 
         substitutions = {
