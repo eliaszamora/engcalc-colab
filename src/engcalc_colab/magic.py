@@ -25,14 +25,14 @@ from .renderer import RenderSettings, render_aligned_results, render_table
 _HEADING_STYLE = {
     2: (
         "font-size:1.06rem;font-weight:600;"
-        "margin:0.50rem 0 0.24rem 0;padding-bottom:0.14rem;"
+        "margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;"
         "border-bottom:1px solid rgba(127,127,127,0.18);"
     ),
-    3: "font-size:0.95rem;font-weight:600;margin:0.28rem 0 0.12rem 0;",
+    3: "font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;",
 }
 _NARRATIVE_STYLE = (
     "font-size:0.95rem;line-height:1.55;"
-    "margin:0.28rem 0 0.42rem 0;"
+    "margin:0.36rem 0 0.60rem 0;"
 )
 _NARRATIVE_PARAGRAPH_STYLE = "margin:0 0 0.42rem 0;"
 
