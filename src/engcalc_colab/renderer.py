@@ -246,8 +246,104 @@ def _adaptive_additive_rows(expression: sp.Expr, substitutions: dict[str, object
     return rows
 
 
+def _multiplicative_factor_key(term):
+    denominator_factor = bool(term.is_Pow and term.exp.is_number and term.exp.is_negative)
+    return (1 if denominator_factor else 0, _engineering_factor_key(term))
+
+
+def _render_multiplicative_factor(
+    factor: sp.Expr,
+    substitutions: dict[str, object] | None,
+    settings: RenderSettings,
+) -> str:
+    if substitutions is None:
+        rendered = _latex(factor)
+    else:
+        rendered = _substitution_latex(factor, substitutions, settings)
+    if factor.is_Add:
+        rendered = rf"\left({rendered}\right)"
+    return rendered
+
+
+def _bounded_product_rows(
+    expression: sp.Expr,
+    substitutions: dict[str, object] | None = None,
+    *,
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+) -> list[str]:
+    """Split one commutative product/fraction at factor boundaries for display."""
+    expression = sp.sympify(expression)
+    if expression.could_extract_minus_sign():
+        expression = -expression
+    if not expression.is_Mul:
+        return []
+
+    factors = sorted(expression.args, key=_multiplicative_factor_key)
+    rendered_factors = [
+        _render_multiplicative_factor(factor, substitutions, settings)
+        for factor in factors
+    ]
+
+    rows: list[str] = []
+    current = ""
+    for factor_latex in rendered_factors:
+        separator = "" if not current else " "
+        candidate = f"{current}{separator}{factor_latex}"
+        if current and _latex_visual_width(candidate) > _NUMERIC_ROW_VISUAL_BUDGET:
+            rows.append(current)
+            current = rf"\quad \cdot {factor_latex}"
+        else:
+            current = candidate
+
+    if current:
+        rows.append(current)
+    return rows
+
+
+def _split_overwide_terms(
+    expression: sp.Expr,
+    substitutions: dict[str, object] | None = None,
+    *,
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+) -> list[str]:
+    """Split only over-budget multiplicative terms while preserving additive signs."""
+    expression = sp.sympify(expression)
+    terms = expression.as_ordered_terms() if expression.is_Add else [expression]
+    rows: list[str] = []
+
+    for index, term in enumerate(terms):
+        negative, body = _render_signed_term(
+            term,
+            substitutions=substitutions,
+            settings=settings,
+        )
+        if index == 0:
+            prefix = "- " if negative else ""
+        else:
+            prefix = r"\quad - " if negative else r"\quad + "
+
+        if _latex_visual_width(prefix + body) <= _NUMERIC_ROW_VISUAL_BUDGET:
+            rows.append(prefix + body)
+            continue
+
+        unsigned_term = -term if negative else term
+        product_rows = _bounded_product_rows(
+            unsigned_term,
+            substitutions,
+            settings=settings,
+        )
+        if not product_rows:
+            rows.append(prefix + body)
+            continue
+
+        rows.append(prefix + product_rows[0])
+        rows.extend(product_rows[1:])
+
+    return rows
+
+
 def _bounded_expression_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> list[str]:
-    """Return additive rows, expanding only for presentation when a group remains too wide."""
+    """Return additive rows and split overwide products/fractions at safe factor boundaries."""
     expression = sp.sympify(expression)
     rows = _adaptive_additive_rows(expression, substitutions, settings=settings)
     if all(_latex_visual_width(row) <= _NUMERIC_ROW_VISUAL_BUDGET for row in rows):
@@ -257,7 +353,18 @@ def _bounded_expression_rows(expression: sp.Expr, substitutions: dict[str, objec
     if sp.sstr(expanded) != sp.sstr(expression):
         expanded_rows = _adaptive_additive_rows(expanded, substitutions, settings=settings)
         if max(_latex_visual_width(row) for row in expanded_rows) < max(_latex_visual_width(row) for row in rows):
+            expression = expanded
             rows = expanded_rows
+    if all(_latex_visual_width(row) <= _NUMERIC_ROW_VISUAL_BUDGET for row in rows):
+        return rows
+
+    split_rows = _split_overwide_terms(
+        expression,
+        substitutions,
+        settings=settings,
+    )
+    if split_rows:
+        return split_rows
     return rows
 
 
