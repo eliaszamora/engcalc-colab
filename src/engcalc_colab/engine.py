@@ -28,6 +28,18 @@ from .models import (
 from .numeric import NumericContext
 
 
+_SCALAR_SYMBOLIC_FUNCTIONS = {
+    "sqrt": sp.sqrt,
+    "sin": sp.sin,
+    "cos": sp.cos,
+    "tan": sp.tan,
+    "asin": sp.asin,
+    "acos": sp.acos,
+    "atan": sp.atan,
+    "exp": sp.exp,
+    "log": sp.log,
+}
+
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 
 
@@ -242,6 +254,8 @@ class _Evaluator(ast.NodeVisitor):
     def visit_Name(self, node: ast.Name):
         if node.id in self.symbol_overrides:
             return self.symbol_overrides[node.id]
+        if node.id == "pi":
+            return sp.pi
         return self.engine.resolve_name(node.id)
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
@@ -435,6 +449,10 @@ class _Evaluator(ast.NodeVisitor):
             function = self.engine.functions[name]
             parameter = self.engine.resolve_name(function.parameter)
             return sp.sympify(function.expression).subs(parameter, args[0])
+
+        if name in _SCALAR_SYMBOLIC_FUNCTIONS:
+            self._require_arity(name, args, 1, "expression")
+            return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0])
 
         if name == "abs":
             self._require_arity(name, args, 1, "expression")
