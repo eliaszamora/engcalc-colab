@@ -24,9 +24,11 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import textwrap
 
           errors_path = Path('src/engcalc_colab/errors.py')
-          errors_text = '''class EngCalcError(Exception):
+          errors_text = textwrap.dedent('''
+          class EngCalcError(Exception):
               """Base user-facing engcalc error."""
 
 
@@ -58,12 +60,8 @@ jobs:
                   examples = ", ".join(f"{name} := <value>*<unit>" for name in names)
                   return f"Define the missing numeric values first, for example: {examples}."
               raise ValueError(f"unknown diagnostic code '{code}'")
-          '''
-          # Dedent the intentionally indented heredoc literal.
-          import textwrap
-          errors_text = textwrap.dedent(errors_text)
-          if errors_path.read_text() != errors_text:
-              errors_path.write_text(errors_text)
+          ''').lstrip()
+          errors_path.write_text(errors_text)
 
           numeric_path = Path('src/engcalc_colab/numeric.py')
           numeric = numeric_path.read_text()
@@ -72,57 +70,40 @@ jobs:
               'from .errors import EngEvaluationError, diagnostic_hint\n',
               1,
           )
-          old_unknown = '''        raise EngEvaluationError(f"unknown numeric name '{name}'")
-          '''
-          new_unknown = '''        hint = diagnostic_hint("unknown_numeric_name", name=name)
-                  raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")
-          '''
-          new_unknown = textwrap.dedent(new_unknown).replace(
-              'hint = diagnostic_hint', '        hint = diagnostic_hint', 1
-          ).replace(
-              'raise EngEvaluationError', '        raise EngEvaluationError', 1
+          numeric = numeric.replace(
+              '        raise EngEvaluationError(f"unknown numeric name \'{name}\'")\n',
+              '        hint = diagnostic_hint("unknown_numeric_name", name=name)\n'
+              '        raise EngEvaluationError(f"unknown numeric name \'{name}\'. {hint}")\n',
+              1,
           )
-          if old_unknown in numeric:
-              numeric = numeric.replace(old_unknown, new_unknown, 1)
 
-          old_partial_missing = '''        if missing:
+          partial_start = numeric.index('    def partial_substitutions(')
+          partial_end = numeric.index('    def evaluate_partial_polynomial(', partial_start)
+          partial = numeric[partial_start:partial_end]
+          old_missing = textwrap.indent(textwrap.dedent('''
+          if missing:
               raise EngEvaluationError(
                   "numeric evaluation requires values for: " + ", ".join(missing)
               )
-
-          substitutions = {
-          '''
-          new_partial_missing = '''        if missing:
+          ''').lstrip(), '        ')
+          new_missing = textwrap.indent(textwrap.dedent('''
+          if missing:
               hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
               raise EngEvaluationError(
                   "numeric evaluation requires values for: "
                   + ", ".join(missing)
                   + f". {hint}"
               )
+          ''').lstrip(), '        ')
+          if old_missing in partial:
+              partial = partial.replace(old_missing, new_missing, 1)
+          numeric = numeric[:partial_start] + partial + numeric[partial_end:]
 
-          substitutions = {
-          '''
-          if old_partial_missing in numeric:
-              numeric = numeric.replace(old_partial_missing, new_partial_missing, 1)
-
-          old_eval = '''        overrides = overrides or {}
-          names = sorted(symbol.name for symbol in expr.free_symbols)
-          missing = [
-              name
-              for name in names
-              if name not in overrides and name not in self.values
-          ]
-          if missing:
-              raise EngEvaluationError(
-                  "numeric evaluation requires values for: " + ", ".join(missing)
-              )
-
-          substitutions = {
-              name: overrides[name] if name in overrides else self.values[name]
-              for name in names
-          }
-          '''
-          new_eval = '''        overrides = overrides or {}
+          eval_start = numeric.index('    def evaluate_symbolic(')
+          body_start = numeric.index('        overrides = overrides or {}\n', eval_start)
+          try_start = numeric.index('        try:\n', body_start)
+          new_eval_prefix = textwrap.indent(textwrap.dedent('''
+          overrides = overrides or {}
           names = sorted(symbol.name for symbol in expr.free_symbols)
           substitutions: dict[str, Any] = {}
           missing: list[str] = []
@@ -142,49 +123,49 @@ jobs:
                   + ", ".join(missing)
                   + f". {hint}"
               )
-          '''
-          if old_eval in numeric:
-              numeric = numeric.replace(old_eval, new_eval, 1)
+          ''').lstrip(), '        ')
+          numeric = numeric[:body_start] + new_eval_prefix + numeric[try_start:]
           numeric_path.write_text(numeric)
 
           engine_path = Path('src/engcalc_colab/engine.py')
           engine = engine_path.read_text()
           engine = engine.replace(
               'from .errors import AmbiguousSolveError, EngCalcError, EngEvaluationError, EngSyntaxError\n',
-              'from .errors import (\n    AmbiguousSolveError,\n    EngCalcError,\n    EngEvaluationError,\n    EngSyntaxError,\n    diagnostic_hint,\n)\n',
+              'from .errors import (\n'
+              '    AmbiguousSolveError,\n'
+              '    EngCalcError,\n'
+              '    EngEvaluationError,\n'
+              '    EngSyntaxError,\n'
+              '    diagnostic_hint,\n'
+              ')\n',
               1,
           )
-          old_function_eval = '''                _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
+          if 'incompatible units while evaluating numeric function' not in engine:
+              block_start = engine.index(
+                  '                _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(\n'
+              )
+              block_end = engine.index('            else:\n', block_start)
+              replacement = textwrap.indent(textwrap.dedent('''
+              try:
+                  _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
                       argument_expression
                   )
                   substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
                       symbolic_expression,
                       overrides={function.parameter: argument_quantity},
                   )
-          '''
-          new_function_eval = '''                try:
-                      _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
-                          argument_expression
-                      )
-                      substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
-                          symbolic_expression,
-                          overrides={function.parameter: argument_quantity},
-                      )
-                  except EngEvaluationError as exc:
-                      if "incompatible units" not in str(exc):
-                          raise
-                      hint = diagnostic_hint(
-                          "incompatible_function_units",
-                          function=function_name,
-                      )
-                      raise EngEvaluationError(
-                          f"incompatible units while evaluating numeric function '{function_name}'. {hint}"
-                      ) from exc
-          '''
-          if old_function_eval not in engine and 'incompatible units while evaluating numeric function' not in engine:
-              raise SystemExit('expected numeric function evaluation block not found')
-          if old_function_eval in engine:
-              engine = engine.replace(old_function_eval, new_function_eval, 1)
+              except EngEvaluationError as exc:
+                  if "incompatible units" not in str(exc):
+                      raise
+                  hint = diagnostic_hint(
+                      "incompatible_function_units",
+                      function=function_name,
+                  )
+                  raise EngEvaluationError(
+                      f"incompatible units while evaluating numeric function '{function_name}'. {hint}"
+                  ) from exc
+              ''').lstrip(), '                ')
+              engine = engine[:block_start] + replacement + engine[block_end:]
           engine_path.write_text(engine)
           PY
       - name: Focused GREEN contracts
