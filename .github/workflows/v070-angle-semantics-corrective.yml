@@ -116,7 +116,7 @@ jobs:
           for fn in ('asin', 'acos', 'atan', 'exp', 'log'):
               for unit in ('deg', 'rad'):
                   try:
-                      run(f'numeric({fn}(0.25*{unit}))')
+                      run(f'value := {fn}(0.25*{unit})')
                   except EngEvaluationError as exc:
                       assert 'requires a dimensionless argument' in str(exc)
                   else:
