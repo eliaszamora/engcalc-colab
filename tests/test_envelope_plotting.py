@@ -19,6 +19,12 @@ def moment_envelope_result():
     return eval_cell(engine, "envelope(M_A(x), M_B(x), M_C(x), x, 0, L)")[-1]
 
 
+def coincident_moment_envelope_result():
+    engine = EngineeringEngine()
+    eval_cell(engine, "M_A(x) = C\nM_B(x) = C\nC := 5*kN*m\nL := 2*m")
+    return eval_cell(engine, "envelope(M_A(x), M_B(x), x, 0, L)")[-1]
+
+
 def shear_magnitude_envelope_result():
     engine = EngineeringEngine()
     eval_cell(engine, "V_constr(x) = R_constr - q_constr*x\nV_uso(x) = R_uso + q_uso*x\nR_constr := 6*kN\nq_constr := 4*kN/m\nR_uso := -9*kN\nq_uso := 1*kN/m\nL := 2*m")
@@ -84,6 +90,15 @@ def test_signed_envelope_replaces_panel_with_global_compact_coordinate_annotatio
     assert "(3, -18)" in labels
     assert all(item.xy == (3.0, 36.0) or item.xy == (3.0, -18.0) for item in items)
     assert all(item.arrow_patch is None and item.get_bbox_patch() is None for item in items)
+
+
+def test_signed_envelope_deduplicates_coincident_global_extrema():
+    axis = render_plot(coincident_moment_envelope_result()).axes[0]
+    items = annotations(axis)
+
+    assert len(items) == 1
+    assert items[0].get_text() == "(0, 5)"
+    assert items[0].xy == (0.0, 5.0)
 
 
 def test_envelope_keeps_zero_reference_line():
