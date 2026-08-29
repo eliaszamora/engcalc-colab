@@ -13,11 +13,18 @@ class ParsedStatement:
     parameters: tuple[str, ...] | None
     expression: ast.Expression
     blank_before: bool = False
+    display_options: tuple[tuple[str, str], ...] = ()
 
     @property
     def parameter(self) -> str | None:
         if self.parameters is not None and len(self.parameters) == 1:
             return self.parameters[0]
+        return None
+
+    def display_option(self, name: str) -> str | None:
+        for option_name, value in self.display_options:
+            if option_name == name:
+                return value
         return None
 
 
@@ -203,6 +210,18 @@ class PlotResult:
         if len(self.series) != 1:
             raise AttributeError("y_values is unavailable for multi-series plots")
         return self.series[0].y_values
+
+    @property
+    def title(self) -> str | None:
+        return self.statement.display_option("title")
+
+    @property
+    def xlabel(self) -> str | None:
+        return self.statement.display_option("xlabel")
+
+    @property
+    def ylabel(self) -> str | None:
+        return self.statement.display_option("ylabel")
 
 
 @dataclass(frozen=True)
