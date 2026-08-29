@@ -3,22 +3,21 @@ from __future__ import annotations
 import math
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
-from matplotlib.text import Annotation
+from matplotlib.text import Annotation, Text
 
 from .models import PlotResult
-from .plotting import (
-    _CALLOUT_CLEARANCE_X,
-    _CALLOUT_CLEARANCE_Y,
-    _annotate_characteristic,
-    _annotation_box,
-    _series_response_symbol,
-)
+from .plotting import _coordinate_label, _series_response_symbol
 
 
 _CLUSTER_X_TOLERANCE_PX = 14.0
-_RAIL_HORIZONTAL_GAP_PX = 22.0
-_RAIL_EDGE_MARGIN_PX = 5.0
+_DENSE_CLUSTER_SIZE = 3
+_SIDE_SPACE_IN = 1.65
+_LEFT_RAIL_OFFSET_IN = 1.00
+_RIGHT_RAIL_OFFSET_IN = 0.28
+_RAIL_EDGE_MARGIN_PX = 7.0
 _RAIL_VERTICAL_GAP_PX = 12.0
+_LEADER_LINEWIDTH = 0.75
+_LEADER_ALPHA = 0.52
 
 
 def _extreme_indices(values: list[float]) -> tuple[int, int]:
@@ -99,10 +98,6 @@ def _cluster_requests(axis, requests):
     return clusters
 
 
-def _box_center(box) -> tuple[float, float]:
-    return (0.5 * (box.x0 + box.x1), 0.5 * (box.y0 + box.y1))
-
-
 def _spread_vertical_centers(
     desired_centers: list[float],
     heights: list[float],
@@ -132,142 +127,206 @@ def _spread_vertical_centers(
     return [center + shift for center in centers]
 
 
-def _choose_rail(axis, renderer, annotations: list[Annotation]) -> tuple[str, float]:
-    axes_box = axis.get_window_extent(renderer)
-    boxes = [_annotation_box(annotation, renderer) for annotation in annotations]
-    max_width = max(float(box.width) for box in boxes)
-    anchor_x_values = [float(axis.transData.transform(annotation.xy)[0]) for annotation in annotations]
-    anchor_x = sum(anchor_x_values) / len(anchor_x_values)
-
-    right_edge = axes_box.x1 - _RAIL_EDGE_MARGIN_PX
-    left_edge = axes_box.x0 + _RAIL_EDGE_MARGIN_PX
-    right_room = right_edge - (anchor_x + _RAIL_HORIZONTAL_GAP_PX)
-    left_room = (anchor_x - _RAIL_HORIZONTAL_GAP_PX) - left_edge
-
-    right_fits = right_room >= max_width
-    left_fits = left_room >= max_width
-    if right_fits and not left_fits:
-        side = "right"
-    elif left_fits and not right_fits:
-        side = "left"
-    elif right_fits and left_fits:
-        side = "right" if right_room >= left_room else "left"
-    else:
-        side = "right" if right_room >= left_room else "left"
-
-    if side == "right":
-        rail_x = min(anchor_x + _RAIL_HORIZONTAL_GAP_PX, right_edge - max_width)
-        rail_x = max(rail_x, left_edge)
-    else:
-        rail_x = max(anchor_x - _RAIL_HORIZONTAL_GAP_PX, left_edge + max_width)
-        rail_x = min(rail_x, right_edge)
-    return side, float(rail_x)
+def _cluster_side(axis, cluster) -> str:
+    x_values = [float(item[2][0].magnitude) for item in cluster]
+    anchor_x = sum(x_values) / len(x_values)
+    x0, x1 = axis.get_xlim()
+    if math.isclose(x0, x1, rel_tol=0.0, abs_tol=1e-15):
+        return "right"
+    fraction = (anchor_x - x0) / (x1 - x0)
+    return "left" if fraction < 0.5 else "right"
 
 
-def _reassign_cluster_slots(
-    figure,
-    axis,
-    annotations: list[Annotation],
-    occupied_boxes: list,
-    occupied_start: int,
-) -> None:
-    if len(annotations) < 2:
+def _reserve_side_space(figure, axis, *, use_left: bool, use_right: bool) -> None:
+    """Add external rail room while preserving the axes' physical size."""
+    if not use_left and not use_right:
         return
+
+    old_width, old_height = (float(value) for value in figure.get_size_inches())
+    position = axis.get_position()
+    axes_left_in = float(position.x0) * old_width
+    axes_bottom_fraction = float(position.y0)
+    axes_width_in = float(position.width) * old_width
+    axes_height_fraction = float(position.height)
+
+    extra_left = _SIDE_SPACE_IN if use_left else 0.0
+    extra_right = _SIDE_SPACE_IN if use_right else 0.0
+    new_width = old_width + extra_left + extra_right
+    figure.set_size_inches(new_width, old_height, forward=False)
+    axis.set_position(
+        [
+            (axes_left_in + extra_left) / new_width,
+            axes_bottom_fraction,
+            axes_width_in / new_width,
+            axes_height_fraction,
+        ]
+    )
+
+
+def _rail_x_fraction(figure, axis, side: str) -> float:
+    width = float(figure.get_figwidth())
+    position = axis.get_position()
+    if side == "left":
+        return float(position.x0) - _LEFT_RAIL_OFFSET_IN / width
+    return float(position.x1) + _RIGHT_RAIL_OFFSET_IN / width
+
+
+def _text_box(annotation: Annotation, renderer):
+    return Text.get_window_extent(annotation, renderer)
+
+
+def _request_matches_annotation(request, annotation: Annotation) -> bool:
+    x_quantity, y_quantity, *_ = request
+    request_x = float(x_quantity.magnitude)
+    request_y = float(y_quantity.magnitude)
+    annotation_x = float(annotation.xy[0])
+    annotation_y = float(annotation.xy[1])
+    return math.isclose(request_x, annotation_x, rel_tol=1e-10, abs_tol=1e-10) and math.isclose(
+        request_y,
+        annotation_y,
+        rel_tol=1e-10,
+        abs_tol=1e-10,
+    )
+
+
+def _remove_dense_inline_annotations(axis, dense_requests) -> None:
+    for item in list(axis.texts):
+        if not isinstance(item, Annotation):
+            continue
+        if any(_request_matches_annotation(request, item) for request in dense_requests):
+            item.remove()
+
+
+def _create_external_callout(figure, axis, request, *, side: str, rail_x: float, y_fraction: float):
+    x_quantity, y_quantity, _response_label, _role, _inverted, line_color = request
+    x = float(x_quantity.magnitude)
+    y = float(y_quantity.magnitude)
+    annotation = axis.annotate(
+        _coordinate_label(x, y),
+        xy=(x, y),
+        xycoords="data",
+        xytext=(rail_x, y_fraction),
+        textcoords=figure.transFigure,
+        ha="right" if side == "left" else "left",
+        va="center",
+        fontsize=8.5,
+        color=line_color,
+        zorder=7,
+        annotation_clip=False,
+        arrowprops={
+            "arrowstyle": "-",
+            "color": line_color,
+            "linewidth": _LEADER_LINEWIDTH,
+            "alpha": _LEADER_ALPHA,
+            "shrinkA": 4.0,
+            "shrinkB": 4.0,
+        },
+    )
+    annotation.set_clip_on(False)
+    if annotation.arrow_patch is not None:
+        annotation.arrow_patch.set_clip_on(False)
+        annotation.arrow_patch.set_zorder(2.4)
+    return annotation
+
+
+def _layout_external_side(figure, axis, entries, *, side: str) -> list[Annotation]:
+    """Lay one side's dense requests on a single external aligned rail."""
+    if not entries:
+        return []
 
     figure.canvas.draw()
     renderer = figure.canvas.get_renderer()
     axes_box = axis.get_window_extent(renderer)
-    original_boxes = [_annotation_box(annotation, renderer) for annotation in annotations]
-    desired_centers = sorted(_box_center(box)[1] for box in original_boxes)
-    heights = [float(box.height) for box in original_boxes]
+    rail_x = _rail_x_fraction(figure, axis, side)
+    figure_height_px = float(figure.bbox.height)
+
+    ordered = sorted(
+        entries,
+        key=lambda request: float(
+            axis.transData.transform(
+                (float(request[0].magnitude), float(request[1].magnitude))
+            )[1]
+        ),
+    )
+    desired_centers = [
+        float(
+            axis.transData.transform(
+                (float(request[0].magnitude), float(request[1].magnitude))
+            )[1]
+        )
+        for request in ordered
+    ]
+
+    annotations = [
+        _create_external_callout(
+            figure,
+            axis,
+            request,
+            side=side,
+            rail_x=rail_x,
+            y_fraction=desired_y / figure_height_px,
+        )
+        for request, desired_y in zip(ordered, desired_centers)
+    ]
+
+    figure.canvas.draw()
+    renderer = figure.canvas.get_renderer()
+    heights = [float(_text_box(annotation, renderer).height) for annotation in annotations]
     target_centers = _spread_vertical_centers(
         desired_centers,
         heights,
         lower=float(axes_box.y0 + _RAIL_EDGE_MARGIN_PX),
         upper=float(axes_box.y1 - _RAIL_EDGE_MARGIN_PX),
     )
-    side, rail_x = _choose_rail(axis, renderer, annotations)
-
-    pixels_to_points = 72.0 / float(figure.dpi)
     for annotation, target_y in zip(annotations, target_centers):
-        anchor_x, anchor_y = axis.transData.transform(annotation.xy)
-        annotation.set_position(
-            (
-                (rail_x - float(anchor_x)) * pixels_to_points,
-                (target_y - float(anchor_y)) * pixels_to_points,
-            )
-        )
-        annotation.set_ha("left" if side == "right" else "right")
-        annotation.set_va("center")
+        annotation.set_position((rail_x, target_y / figure_height_px))
 
     figure.canvas.draw()
-    renderer = figure.canvas.get_renderer()
-    del occupied_boxes[occupied_start:]
-    for annotation in annotations:
-        occupied_boxes.append(
-            _annotation_box(annotation, renderer).expanded(
-                _CALLOUT_CLEARANCE_X,
-                _CALLOUT_CLEARANCE_Y,
-            )
-        )
+    return annotations
 
 
 def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
-    """Re-place multi-series characteristic labels in ordered label rails.
+    """Move only dense multi-series characteristic clusters to external rails.
 
-    The plotting layer remains authoritative for which characteristic points
-    exist. This pass only changes annotation placement for multi-series plots.
+    Characteristic-point mathematics remains owned by the plotting layer.
+    Clusters with fewer than three labels retain the existing inline layout.
+    Dense clusters receive external aligned callouts with leader lines.
     """
     if result.kind != "plot" or len(result.series) < 2:
         return
 
     axis = figure.axes[0]
     requests = _characteristic_requests(axis, result)
-    if len(requests) < 2:
+    if len(requests) < _DENSE_CLUSTER_SIZE:
         return
-
-    for item in list(axis.texts):
-        if isinstance(item, Annotation):
-            item.remove()
 
     original_canvas = figure.canvas
     FigureCanvasAgg(figure)
     try:
         figure.canvas.draw()
-        occupied_boxes: list = []
-        for cluster in _cluster_requests(axis, requests):
-            cluster.sort(key=lambda item: item[1])
-            occupied_start = len(occupied_boxes)
-            cluster_annotations: list[Annotation] = []
-            for _, _, request in cluster:
-                (
-                    x_quantity,
-                    y_quantity,
-                    response_label,
-                    role,
-                    inverted,
-                    line_color,
-                ) = request
-                _annotate_characteristic(
-                    axis,
-                    x_quantity,
-                    y_quantity,
-                    response_label,
-                    role=role,
-                    inverted=inverted,
-                    line_color=line_color,
-                    occupied_boxes=occupied_boxes,
-                )
-                annotation = axis.texts[-1]
-                if isinstance(annotation, Annotation):
-                    cluster_annotations.append(annotation)
+        clusters = _cluster_requests(axis, requests)
+        dense_clusters = [cluster for cluster in clusters if len(cluster) >= _DENSE_CLUSTER_SIZE]
+        if not dense_clusters:
+            return
 
-            _reassign_cluster_slots(
-                figure,
-                axis,
-                cluster_annotations,
-                occupied_boxes,
-                occupied_start,
-            )
+        side_entries = {"left": [], "right": []}
+        dense_requests = []
+        for cluster in dense_clusters:
+            side = _cluster_side(axis, cluster)
+            for _, _, request in cluster:
+                side_entries[side].append(request)
+                dense_requests.append(request)
+
+        _remove_dense_inline_annotations(axis, dense_requests)
+        _reserve_side_space(
+            figure,
+            axis,
+            use_left=bool(side_entries["left"]),
+            use_right=bool(side_entries["right"]),
+        )
+        figure.canvas.draw()
+
+        _layout_external_side(figure, axis, side_entries["left"], side="left")
+        _layout_external_side(figure, axis, side_entries["right"], side="right")
     finally:
         figure.set_canvas(original_canvas)
