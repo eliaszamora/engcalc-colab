@@ -7,7 +7,13 @@ from dataclasses import dataclass
 import sympy as sp
 from pint.errors import DimensionalityError
 
-from .errors import AmbiguousSolveError, EngCalcError, EngEvaluationError, EngSyntaxError
+from .errors import (
+    AmbiguousSolveError,
+    EngCalcError,
+    EngEvaluationError,
+    EngSyntaxError,
+    diagnostic_hint,
+)
 from .models import (
     EvaluationResult,
     NumericAssignmentResult,
@@ -344,13 +350,24 @@ class _Evaluator(ast.NodeVisitor):
                     )
                     return symbolic_expression
 
-                _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
-                    argument_expression
-                )
-                substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
-                    symbolic_expression,
-                    overrides={function.parameter: argument_quantity},
-                )
+                try:
+                    _, argument_quantity = self.engine.numeric_context.evaluate_symbolic(
+                        argument_expression
+                    )
+                    substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
+                        symbolic_expression,
+                        overrides={function.parameter: argument_quantity},
+                    )
+                except EngEvaluationError as exc:
+                    if "incompatible units" not in str(exc):
+                        raise
+                    hint = diagnostic_hint(
+                        "incompatible_function_units",
+                        function=function_name,
+                    )
+                    raise EngEvaluationError(
+                        f"incompatible units while evaluating numeric function '{function_name}'. {hint}"
+                    ) from exc
             else:
                 symbolic_expression = self.visit(argument)
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
