@@ -23,9 +23,12 @@ from .models import (
     PartialNumericEvaluationResult,
     PlotResult,
     PlotSeries,
+    TableColumn,
+    TableResult,
     UserFunction,
 )
 from .numeric import NumericContext
+from .tables import normalize_explicit_points, normalize_uniform_points
 
 
 _SCALAR_SYMBOLIC_FUNCTIONS = {
@@ -97,6 +100,16 @@ class _PlotEvaluation:
     governing_signed: tuple | None = None
 
 
+@dataclass(frozen=True)
+class _TableEvaluation:
+    variable: str
+    point_unit: object
+    point_values: tuple
+    columns: tuple[TableColumn, ...]
+    mode: str
+    first_symbolic_expression: object
+
+
 class EngineeringEngine:
     def __init__(self) -> None:
         self.namespace: dict[str, sp.Expr] = {}
@@ -129,6 +142,7 @@ class EngineeringEngine:
         | NumericEvaluationResult
         | PartialNumericEvaluationResult
         | PlotResult
+        | TableResult
     ):
         evaluator = _Evaluator(self)
         try:
@@ -179,6 +193,19 @@ class EngineeringEngine:
                     governing_min=plot_evaluation.governing_min,
                     envelope_mode=plot_evaluation.envelope_mode,
                     governing_signed=plot_evaluation.governing_signed,
+                )
+
+            if evaluator.table_evaluation is not None:
+                table_evaluation = evaluator.table_evaluation
+                if statement.target is not None:
+                    raise EngEvaluationError("table must be a standalone statement")
+                return TableResult(
+                    statement=statement,
+                    variable=table_evaluation.variable,
+                    point_unit=table_evaluation.point_unit,
+                    point_values=table_evaluation.point_values,
+                    columns=table_evaluation.columns,
+                    mode=table_evaluation.mode,
                 )
 
             if evaluator.partial_numeric_evaluation is not None:
@@ -250,6 +277,7 @@ class _Evaluator(ast.NodeVisitor):
         self.numeric_evaluation = None
         self.partial_numeric_evaluation = None
         self.plot_evaluation: _PlotEvaluation | None = None
+        self.table_evaluation: _TableEvaluation | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
 
     def visit_function_body(self, node: ast.AST, parameters: tuple[str, ...]):
@@ -366,6 +394,9 @@ class _Evaluator(ast.NodeVisitor):
 
         if name == "envelope":
             return self._evaluate_envelope(node)
+
+        if name == "table":
+            return self._evaluate_table(node)
 
         if name == "numeric":
             if len(node.args) not in (1, 2):
@@ -606,6 +637,107 @@ class _Evaluator(ast.NodeVisitor):
             return sp.sympify(args[0]).subs(args[1], args[2])
 
         raise EngSyntaxError(f"unsupported function '{name}'")
+
+    def _resolve_table_numeric_value(self, node: ast.AST):
+        value = self._resolve_numeric_user_function_argument(node)
+        if isinstance(value, sp.Expr):
+            _, value = self.engine.numeric_context.evaluate_symbolic(value)
+        return value
+
+    def _evaluate_table(self, node: ast.Call):
+        args = node.args
+        point_list = None
+        declared_unit_node = None
+
+        if len(args) >= 3 and isinstance(args[-1], ast.List):
+            response_nodes = args[:-2]
+            variable_node = args[-2]
+            point_list = args[-1]
+        elif len(args) >= 4 and isinstance(args[-2], ast.List):
+            response_nodes = args[:-3]
+            variable_node = args[-3]
+            point_list = args[-2]
+            declared_unit_node = args[-1]
+        else:
+            response_nodes = args[:-4]
+            variable_node = args[-4]
+            lower_node, upper_node, count_node = args[-3:]
+
+        if not response_nodes:
+            raise EngEvaluationError("table requires at least one response expression")
+        if not isinstance(variable_node, ast.Name):
+            raise EngEvaluationError("table variable must be a symbolic identifier")
+        variable = variable_node.id
+        context = self.engine.numeric_context
+
+        if point_list is None:
+            lower = self._resolve_table_numeric_value(lower_node)
+            upper = self._resolve_table_numeric_value(upper_node)
+            count = self._resolve_table_numeric_value(count_node)
+            point_values = normalize_uniform_points(context, lower, upper, count)
+            mode = "uniform"
+        else:
+            raw_points = tuple(
+                self._resolve_table_numeric_value(element)
+                for element in point_list.elts
+            )
+            declared_unit = None
+            if declared_unit_node is not None:
+                declared_unit = context.evaluate_unit_expression(
+                    ast.Expression(body=declared_unit_node)
+                )
+            point_values = normalize_explicit_points(
+                context,
+                raw_points,
+                declared_unit,
+            )
+            mode = "explicit"
+
+        resolved_responses = [
+            self._resolve_response_expression(item, variable)
+            for item in response_nodes
+        ]
+
+        columns = []
+        canonical_unit = None
+        for response in resolved_responses:
+            values = []
+            for point in point_values:
+                _, quantity = context.evaluate_symbolic(
+                    response.comparison_expression,
+                    overrides={variable: point},
+                )
+                values.append(quantity)
+
+            if canonical_unit is None:
+                canonical_unit = values[0].units
+            try:
+                normalized_values = tuple(
+                    value.to(canonical_unit)
+                    for value in values
+                )
+            except DimensionalityError as exc:
+                raise EngEvaluationError(
+                    "table response columns have incompatible units"
+                ) from exc
+
+            columns.append(
+                TableColumn(
+                    display_label=response.display_label,
+                    unit=canonical_unit,
+                    values=normalized_values,
+                )
+            )
+
+        self.table_evaluation = _TableEvaluation(
+            variable=variable,
+            point_unit=point_values[0].units,
+            point_values=tuple(point_values),
+            columns=tuple(columns),
+            mode=mode,
+            first_symbolic_expression=resolved_responses[0].comparison_expression,
+        )
+        return resolved_responses[0].comparison_expression
 
     def _evaluate_plot(self, node: ast.Call):
         resolved = self._resolve_response_series(node, call_name="plot")
