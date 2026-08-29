@@ -78,3 +78,23 @@ def test_nested_user_function_argument_can_be_fully_numeric():
     result = run(engine, "numeric(M(2*m, qU(qD, qL), L), kN*m)")
 
     assert result.quantity.to("kN*m").magnitude == pytest.approx(24.0)
+
+
+def test_unused_unresolved_parameter_does_not_force_partial_numeric_result():
+    engine = EngineeringEngine()
+    run(engine, "f(x, y) = x")
+
+    result = run(engine, "numeric(f(2*m, y))")
+
+    assert isinstance(result, NumericEvaluationResult)
+    assert result.quantity.to("m").magnitude == pytest.approx(2.0)
+
+
+def test_unused_unresolved_parameter_allows_target_unit_conversion():
+    engine = EngineeringEngine()
+    run(engine, "f(x, y) = x")
+
+    result = run(engine, "numeric(f(2*m, y), cm)")
+
+    assert isinstance(result, NumericEvaluationResult)
+    assert result.quantity.to("cm").magnitude == pytest.approx(200.0)
