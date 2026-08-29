@@ -44,6 +44,18 @@ def test_numeric_parameter_function_accepts_direct_load_quantity():
     assert result.quantity.to("tonf").magnitude == pytest.approx(10.0)
 
 
+def test_numeric_function_preserves_units_for_dimensional_zero_argument():
+    engine = EngineeringEngine()
+    run(engine, "M(x) = -q*L^2/8 + 5*q*L*x/8 - q*x^2/2")
+    run(engine, "q := 2.8*tonf/m")
+    run(engine, "L := 4*m")
+
+    result = run(engine, "numeric(M(0*m), kN*m)")
+
+    assert isinstance(result, NumericEvaluationResult)
+    assert result.quantity.to("kN*m").magnitude == pytest.approx(-54.91724)
+
+
 def test_numeric_function_keeps_lone_unassigned_name_as_partial_symbol():
     engine = EngineeringEngine()
     run(engine, "M(x) = q*x*(L-x)/2")
