@@ -1,4 +1,4 @@
-name: v0.7.0 angle semantics corrective
+name: v0.7.0 final distribution gate
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
       - feature/v0.7.0-scalar-engineering-math
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  angle-semantics-green:
+  distribution-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,77 +17,161 @@ jobs:
         with:
           python-version: '3.13'
 
-      - name: Install test environment
+      - name: Install source test and build environment
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e '.[dev]'
-          python -m pip install ipython
+          python -m pip install ipython build
 
-      - name: Apply minimal remaining angle-semantics corrective
+      - name: Verify release metadata
         run: |
           python - <<'PY'
-          from pathlib import Path
+          import tomllib
+          import engcalc_colab
 
-          numeric_path = Path('src/engcalc_colab/numeric.py')
-          numeric = numeric_path.read_text()
-          old_numeric = '''    def evaluate_scalar_function(self, name: str, value):\n        quantity = self._as_quantity(value)\n\n        if name == "sqrt":\n'''
-          new_numeric = '''    def _has_explicit_angle_unit(self, quantity) -> bool:\n        return (\n            quantity.units == self.ureg.degree\n            or quantity.units == self.ureg.radian\n        )\n\n    def evaluate_scalar_function(self, name: str, value):\n        quantity = self._as_quantity(value)\n\n        if name == "sqrt":\n'''
-          if old_numeric in numeric:
-              numeric = numeric.replace(old_numeric, new_numeric, 1)
-          elif new_numeric not in numeric:
-              raise SystemExit('numeric helper anchor not found')
-
-          old_inverse = '''        if name in inverse_trig:\n            if not quantity.dimensionless:\n                raise EngEvaluationError(f"{name} requires a dimensionless argument")\n            magnitude = float(quantity.to_base_units().magnitude)\n'''
-          new_inverse = '''        if name in inverse_trig:\n            if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:\n                raise EngEvaluationError(f"{name} requires a dimensionless argument")\n            magnitude = float(quantity.to_base_units().magnitude)\n'''
-          if old_inverse in numeric:
-              numeric = numeric.replace(old_inverse, new_inverse, 1)
-          elif new_inverse not in numeric:
-              raise SystemExit('numeric inverse-trig anchor not found')
-
-          old_dimensionless = '''        if name in scalar_dimensionless:\n            if not quantity.dimensionless:\n                raise EngEvaluationError(f"{name} requires a dimensionless argument")\n            magnitude = float(quantity.to_base_units().magnitude)\n'''
-          new_dimensionless = '''        if name in scalar_dimensionless:\n            if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:\n                raise EngEvaluationError(f"{name} requires a dimensionless argument")\n            magnitude = float(quantity.to_base_units().magnitude)\n'''
-          if old_dimensionless in numeric:
-              numeric = numeric.replace(old_dimensionless, new_dimensionless, 1)
-          elif new_dimensionless not in numeric:
-              raise SystemExit('numeric dimensionless-function anchor not found')
-          numeric_path.write_text(numeric)
-
-          engine_path = Path('src/engcalc_colab/engine.py')
-          engine = engine_path.read_text()
-          scalar_anchor = '''_SCALAR_SYMBOLIC_FUNCTIONS = {\n    "sqrt": sp.sqrt,\n    "sin": sp.sin,\n    "cos": sp.cos,\n    "tan": sp.tan,\n    "asin": sp.asin,\n    "acos": sp.acos,\n    "atan": sp.atan,\n    "exp": sp.exp,\n    "log": sp.log,\n}\n\n'''
-          scalar_replacement = scalar_anchor + '''_INVERSE_TRIG_SYMBOLIC_FUNCTIONS = {sp.asin, sp.acos, sp.atan}\n\n\ndef _substitute_preserving_inverse_trig(expr, symbol, replacement):\n    expr = sp.sympify(expr)\n    if expr == symbol:\n        return replacement\n    if symbol not in expr.free_symbols:\n        return expr\n\n    rebuilt_args = tuple(\n        _substitute_preserving_inverse_trig(arg, symbol, replacement)\n        for arg in expr.args\n    )\n    if expr.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS:\n        return expr.func(*rebuilt_args, evaluate=False)\n    return expr.func(*rebuilt_args)\n\n'''
-          if '_substitute_preserving_inverse_trig' not in engine:
-              if scalar_anchor not in engine:
-                  raise SystemExit('engine scalar mapping anchor not found')
-              engine = engine.replace(scalar_anchor, scalar_replacement, 1)
-
-          old_function_call = '''            function = self.engine.functions[name]\n            parameter = self.engine.resolve_name(function.parameter)\n            return sp.sympify(function.expression).subs(parameter, args[0])\n'''
-          new_function_call = '''            function = self.engine.functions[name]\n            parameter = self.engine.resolve_name(function.parameter)\n            expression = sp.sympify(function.expression)\n            if any(\n                item.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS\n                for item in sp.preorder_traversal(expression)\n            ):\n                return _substitute_preserving_inverse_trig(\n                    expression, parameter, args[0]\n                )\n            return expression.subs(parameter, args[0])\n'''
-          if old_function_call in engine:
-              engine = engine.replace(old_function_call, new_function_call, 1)
-          elif new_function_call not in engine:
-              raise SystemExit('engine user-function substitution anchor not found')
-          engine_path.write_text(engine)
+          with open('pyproject.toml', 'rb') as handle:
+              version = tomllib.load(handle)['project']['version']
+          assert version == '0.7.0', version
+          assert engcalc_colab.__version__ == '0.7.0', engcalc_colab.__version__
+          print('release metadata: 0.7.0')
           PY
 
-          if git diff --quiet; then
-            echo "corrective already applied"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add src/engcalc_colab/numeric.py src/engcalc_colab/engine.py
-            git commit -m "fix: enforce scalar angle semantics"
-            git push
-          fi
-
-      - name: Focused angle semantics and scalar contracts
+      - name: Focused 0.7.0 contracts
         run: >-
           python -m pytest -q
-          tests/test_scalar_math_angle_units.py
-          tests/test_scalar_math_numeric.py
+          tests/test_release_version_v070.py
+          tests/test_packaging.py
+          tests/test_parser.py
+          tests/test_scalar_math_parser.py
           tests/test_scalar_math_engine.py
+          tests/test_scalar_math_numeric.py
           tests/test_scalar_math_acceptance.py
+          tests/test_scalar_math_angle_units.py
           tests/test_magic.py
 
       - name: Complete source suite
         run: python -m pytest -q
+
+      - name: Build real 0.7.0 wheel
+        run: |
+          rm -rf dist build
+          python -m build --wheel --outdir dist
+          test -f dist/engcalc_colab-0.7.0-py3-none-any.whl
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+
+          wheel = Path('dist/engcalc_colab-0.7.0-py3-none-any.whl')
+          assert wheel.is_file()
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_name = next(
+                  name for name in archive.namelist()
+                  if name.endswith('.dist-info/METADATA')
+              )
+              metadata = archive.read(metadata_name).decode('utf-8')
+          assert 'Version: 0.7.0\n' in metadata
+          print(wheel.name)
+          PY
+
+      - name: Install wheel into clean virtual environment
+        run: |
+          rm -rf /tmp/engcalc-v070-final-wheel-venv
+          python -m venv /tmp/engcalc-v070-final-wheel-venv
+          /tmp/engcalc-v070-final-wheel-venv/bin/python -m pip install --upgrade pip
+          /tmp/engcalc-v070-final-wheel-venv/bin/python -m pip install \
+            dist/engcalc_colab-0.7.0-py3-none-any.whl pytest ipython
+
+      - name: Installed-wheel smoke from outside repository
+        run: |
+          cd /tmp
+          PYTHONPATH='' /tmp/engcalc-v070-final-wheel-venv/bin/python - <<'PY'
+          from pathlib import Path
+
+          import engcalc_colab
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.errors import EngEvaluationError
+          from engcalc_colab.models import NumericEvaluationResult, PlotResult
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.renderer import _quantity_latex
+
+          package_file = Path(engcalc_colab.__file__).resolve()
+          assert engcalc_colab.__version__ == '0.7.0'
+          assert 'site-packages' in str(package_file), package_file
+          assert 'engcalc-colab/src' not in str(package_file), package_file
+
+          engine = EngineeringEngine()
+          run = lambda source: engine.evaluate(parse_cell(source)[0])
+
+          exact_angle = run('numeric(atan(1))')
+          assert isinstance(exact_angle, NumericEvaluationResult)
+          assert str(exact_angle.quantity.units) == 'radian'
+          assert abs(exact_angle.quantity.to('rad').magnitude - 0.7853981633974483) < 1e-12
+          assert 'rad' in _quantity_latex(exact_angle.quantity)
+
+          degree_angle = run('numeric(atan(1), deg)')
+          assert str(degree_angle.quantity.units) == 'degree'
+          assert abs(degree_angle.quantity.to('deg').magnitude - 45.0) < 1e-10
+          assert 'deg' in _quantity_latex(degree_angle.quantity)
+
+          for fn in ('asin', 'acos', 'atan', 'exp', 'log'):
+              for unit in ('deg', 'rad'):
+                  try:
+                      run(f'numeric({fn}(0.25*{unit}))')
+                  except EngEvaluationError as exc:
+                      assert 'requires a dimensionless argument' in str(exc)
+                  else:
+                      raise AssertionError(f'{fn} accepted explicit angle unit {unit}')
+
+          run('g(x) = atan(x)')
+          run('a = g(1)')
+          via_user_function = run('numeric(a)')
+          assert str(via_user_function.quantity.units) == 'radian'
+          assert abs(via_user_function.quantity.to('rad').magnitude - 0.7853981633974483) < 1e-12
+
+          sin30 = run('s := sin(30*deg)')
+          assert abs(sin30.quantity.magnitude - 0.5) < 1e-12
+
+          root = run('r := sqrt(9*m^2)')
+          assert abs(root.quantity.to('m').magnitude - 3.0) < 1e-12
+
+          run('f(x) = A*sin(pi*x/L)')
+          run('A := 10*mm')
+          run('L := 4*m')
+          midpoint = run('numeric(f(2*m), mm)')
+          assert abs(midpoint.quantity.to('mm').magnitude - 10.0) < 1e-10
+
+          plot = run('plot(f(x), x, 0, L)')
+          assert isinstance(plot, PlotResult)
+          assert len(plot.x_values) == 201
+          assert abs(plot.series[0].y_values[100].to('mm').magnitude - 10.0) < 1e-10
+
+          print(f'final wheel smoke PASS: {package_file}')
+          PY
+
+      - name: Prepare source-free installed-wheel test copy
+        run: |
+          rm -rf /tmp/engcalc-v070-final-wheel-suite
+          mkdir -p /tmp/engcalc-v070-final-wheel-suite
+          tar \
+            --exclude='./src' \
+            --exclude='./.git' \
+            --exclude='./dist' \
+            --exclude='./build' \
+            --exclude='./.pytest_cache' \
+            -cf - . | tar -xf - -C /tmp/engcalc-v070-final-wheel-suite
+          test ! -d /tmp/engcalc-v070-final-wheel-suite/src
+
+      - name: Complete suite against installed wheel
+        run: |
+          cd /tmp/engcalc-v070-final-wheel-suite
+          PYTHONPATH='' /tmp/engcalc-v070-final-wheel-venv/bin/python -m pytest -q
+
+      - name: Repeat complete source suite
+        run: python -m pytest -q
+
+      - name: Upload validated final wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-colab-0.7.0-final-wheel
+          path: dist/engcalc_colab-0.7.0-py3-none-any.whl
+          if-no-files-found: error
