@@ -16,6 +16,9 @@ from .plotting import (
 
 
 _CLUSTER_X_TOLERANCE_PX = 14.0
+_RAIL_HORIZONTAL_GAP_PX = 22.0
+_RAIL_EDGE_MARGIN_PX = 5.0
+_RAIL_VERTICAL_GAP_PX = 5.0
 
 
 def _extreme_indices(values: list[float]) -> tuple[int, int]:
@@ -100,6 +103,67 @@ def _box_center(box) -> tuple[float, float]:
     return (0.5 * (box.x0 + box.x1), 0.5 * (box.y0 + box.y1))
 
 
+def _spread_vertical_centers(
+    desired_centers: list[float],
+    heights: list[float],
+    *,
+    lower: float,
+    upper: float,
+) -> list[float]:
+    """Preserve reading order while enforcing a small vertical gap."""
+    if not desired_centers:
+        return []
+
+    centers = list(desired_centers)
+    for index in range(1, len(centers)):
+        minimum_separation = (
+            0.5 * heights[index - 1]
+            + 0.5 * heights[index]
+            + _RAIL_VERTICAL_GAP_PX
+        )
+        centers[index] = max(centers[index], centers[index - 1] + minimum_separation)
+
+    preferred_shift = sum(
+        desired - current for desired, current in zip(desired_centers, centers)
+    ) / len(centers)
+    minimum_shift = lower + 0.5 * heights[0] - centers[0]
+    maximum_shift = upper - 0.5 * heights[-1] - centers[-1]
+    shift = min(max(preferred_shift, minimum_shift), maximum_shift)
+    return [center + shift for center in centers]
+
+
+def _choose_rail(axis, renderer, annotations: list[Annotation]) -> tuple[str, float]:
+    axes_box = axis.get_window_extent(renderer)
+    boxes = [_annotation_box(annotation, renderer) for annotation in annotations]
+    max_width = max(float(box.width) for box in boxes)
+    anchor_x_values = [float(axis.transData.transform(annotation.xy)[0]) for annotation in annotations]
+    anchor_x = sum(anchor_x_values) / len(anchor_x_values)
+
+    right_edge = axes_box.x1 - _RAIL_EDGE_MARGIN_PX
+    left_edge = axes_box.x0 + _RAIL_EDGE_MARGIN_PX
+    right_room = right_edge - (anchor_x + _RAIL_HORIZONTAL_GAP_PX)
+    left_room = (anchor_x - _RAIL_HORIZONTAL_GAP_PX) - left_edge
+
+    right_fits = right_room >= max_width
+    left_fits = left_room >= max_width
+    if right_fits and not left_fits:
+        side = "right"
+    elif left_fits and not right_fits:
+        side = "left"
+    elif right_fits and left_fits:
+        side = "right" if right_room >= left_room else "left"
+    else:
+        side = "right" if right_room >= left_room else "left"
+
+    if side == "right":
+        rail_x = min(anchor_x + _RAIL_HORIZONTAL_GAP_PX, right_edge - max_width)
+        rail_x = max(rail_x, left_edge)
+    else:
+        rail_x = max(anchor_x - _RAIL_HORIZONTAL_GAP_PX, left_edge + max_width)
+        rail_x = min(rail_x, right_edge)
+    return side, float(rail_x)
+
+
 def _reassign_cluster_slots(
     figure,
     axis,
@@ -112,21 +176,28 @@ def _reassign_cluster_slots(
 
     figure.canvas.draw()
     renderer = figure.canvas.get_renderer()
-    slots = sorted(
-        (_box_center(_annotation_box(annotation, renderer)) for annotation in annotations),
-        key=lambda center: center[1],
+    axes_box = axis.get_window_extent(renderer)
+    original_boxes = [_annotation_box(annotation, renderer) for annotation in annotations]
+    desired_centers = sorted(_box_center(box)[1] for box in original_boxes)
+    heights = [float(box.height) for box in original_boxes]
+    target_centers = _spread_vertical_centers(
+        desired_centers,
+        heights,
+        lower=float(axes_box.y0 + _RAIL_EDGE_MARGIN_PX),
+        upper=float(axes_box.y1 - _RAIL_EDGE_MARGIN_PX),
     )
+    side, rail_x = _choose_rail(axis, renderer, annotations)
 
     pixels_to_points = 72.0 / float(figure.dpi)
-    for annotation, (target_x, target_y) in zip(annotations, slots):
+    for annotation, target_y in zip(annotations, target_centers):
         anchor_x, anchor_y = axis.transData.transform(annotation.xy)
         annotation.set_position(
             (
-                (target_x - float(anchor_x)) * pixels_to_points,
+                (rail_x - float(anchor_x)) * pixels_to_points,
                 (target_y - float(anchor_y)) * pixels_to_points,
             )
         )
-        annotation.set_ha("center")
+        annotation.set_ha("left" if side == "right" else "right")
         annotation.set_va("center")
 
     figure.canvas.draw()
@@ -142,7 +213,7 @@ def _reassign_cluster_slots(
 
 
 def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
-    """Re-place multi-series characteristic labels in spatial reading order.
+    """Re-place multi-series characteristic labels in ordered label rails.
 
     The plotting layer remains authoritative for which characteristic points
     exist. This pass only changes annotation placement for multi-series plots.
