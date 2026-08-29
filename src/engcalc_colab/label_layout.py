@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.text import Annotation
 
 from .models import PlotResult
@@ -107,26 +108,31 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
         if isinstance(item, Annotation):
             item.remove()
 
-    figure.canvas.draw()
-    occupied_boxes: list = []
-    for cluster in _cluster_requests(axis, requests):
-        cluster.sort(key=lambda item: item[1])
-        for _, _, request in cluster:
-            (
-                x_quantity,
-                y_quantity,
-                response_label,
-                role,
-                inverted,
-                line_color,
-            ) = request
-            _annotate_characteristic(
-                axis,
-                x_quantity,
-                y_quantity,
-                response_label,
-                role=role,
-                inverted=inverted,
-                line_color=line_color,
-                occupied_boxes=occupied_boxes,
-            )
+    original_canvas = figure.canvas
+    FigureCanvasAgg(figure)
+    try:
+        figure.canvas.draw()
+        occupied_boxes: list = []
+        for cluster in _cluster_requests(axis, requests):
+            cluster.sort(key=lambda item: item[1])
+            for _, _, request in cluster:
+                (
+                    x_quantity,
+                    y_quantity,
+                    response_label,
+                    role,
+                    inverted,
+                    line_color,
+                ) = request
+                _annotate_characteristic(
+                    axis,
+                    x_quantity,
+                    y_quantity,
+                    response_label,
+                    role=role,
+                    inverted=inverted,
+                    line_color=line_color,
+                    occupied_boxes=occupied_boxes,
+                )
+    finally:
+        figure.set_canvas(original_canvas)
