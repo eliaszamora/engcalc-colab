@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — narrative/presentation polish are visually validated; all in-axes and lateral dense-label variants were rejected by real-Colab QA; dense clusters now use a bottom callout band that preserves the original plot width/axes size. Machine gate: 482/482; new Colab visual QA pending._
+_Last updated: 2026-08-29 — narrative/presentation polish are visually validated; all in-axes, lateral, and current bottom-band dense-label variants have now been visually reviewed. The bottom band fixes plot shrink but is not aesthetically accepted because it adds excessive vertical whitespace and long leader lines. Machine baseline remains 482/482._
 
 ## Current baseline
 
@@ -32,29 +32,22 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 - Level-3 heading margin: `0.46rem 0 0.24rem 0`.
 - Narrative outer margin: `0.36rem 0 0.60rem 0`.
 
-### Dense characteristic-point layout
+### Dense characteristic-point invariants
 
-- Characteristic-point mathematics remains owned by the plotting layer; presentation never changes coordinates, values, colors, units, curves, legend, extrema detection, or sign convention.
+- Characteristic-point mathematics remains owned by the plotting layer; presentation must never change coordinates, values, colors, units, curves, legend, extrema detection, or sign convention.
 - Multi-series annotations are clustered by nearby display-space x position.
-- Clusters with fewer than **3** labels keep the existing inline annotations exactly.
-- Clusters with **3 or more** labels use a dedicated **bottom callout band**.
-- The figure width remains the original Matplotlib width; only figure height grows to make room for dense labels.
-- The data `Axes` preserves its original physical width and height and is shifted upward into the taller figure. This is required because Colab scales oversized-width figures to the notebook cell and visually shrinks the graph.
-- Each dense shared-x group is one aligned vertical rail/column within the bottom band, horizontally centered near its characteristic x location while clamped inside the figure.
-- Dense labels preserve anchor visual-y ordering and use 12 px internal vertical clearance; tests require at least 10 px free clearance.
-- Each dense label retains a thin same-color leader line to the characteristic point.
-- Dense callout text must remain below the data axes, inside the figure canvas, and pairwise non-overlapping.
-- Bottom-band height scales with the largest dense cluster; sparse plots do not enlarge the figure.
+- Sparse clusters with fewer than **3** labels retain the existing inline behavior unless a later approved design changes this explicitly.
+- Any future dense-layout strategy must preserve the original visible plot width/scale in notebook rendering; widening the whole figure is prohibited because Colab scales it down.
 
-## Open issues / user feedback
+## Open issues / visual QA history
 
 - User rejected the initial scattered in-axes labels.
 - User rejected aligned in-axes rails because labels remained visually crowded/overlapping.
 - User rejected the increased-clearance in-axes rail because curves and labels still competed for the same area.
-- User approved moving dense labels outside the plot, but the first **lateral** external-callout screenshot was also rejected because Colab scaled the 9.7-inch-wide figure down and the graph visibly became smaller.
-- Root cause: preserving the Matplotlib axes' physical size was insufficient when the whole raster exceeded Colab's display width; notebook scaling shrank the entire visual.
-- Current corrective strategy is therefore **vertical expansion only** via the bottom callout band.
-- New real-Colab visual QA is required before this graphics task can be closed.
+- User approved moving dense labels outside the plot, but the first **lateral** external-callout screenshot was rejected because Colab scaled the 9.7-inch-wide figure down and the graph visibly became smaller.
+- Root cause of lateral shrink: preserving the Matplotlib axes' physical size was insufficient when the whole raster exceeded Colab's display width; notebook scaling shrank the whole visual.
+- A **bottom callout band** was then implemented to keep figure width at 6.4 in and preserve the axes size. Machine geometry is correct, but assistant-run visual QA shows the band is too tall and the leader lines are long/visually dominant. Therefore this bottom-band presentation is **not accepted as the final dense-label design**.
+- Recommended next design direction: keep the full-size plot and replace dense per-point callout leaders with a compact characteristic-point summary/table below the plot, grouped by series or shared x and keyed by the same series colors. Sparse points can remain inline. This should preserve information while avoiding overlap, long leaders, and horizontal shrink.
 - Multiline ordinary function-call parsing remains a later ergonomics item outside this task.
 
 ## Validation evidence
@@ -68,16 +61,29 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 
 - Child branch baseline: **477/477 passed**.
 - Multiple in-axes iterations reached 479/479, 480/480 and 481/481 but failed real-Colab visual QA.
-- Lateral external-callout implementation SHA `70c303d9c73d5027d0940778229fbdeb5a58a9fc` reached **482/482**, but the real-Colab screenshot showed the graph visually shrinking because the figure widened from 6.4 in to 9.7 in.
+- Lateral external-callout implementation SHA `70c303d9c73d5027d0940778229fbdeb5a58a9fc` reached **482/482**, but real-Colab QA rejected the visible shrink caused by widening the figure from 6.4 in to 9.7 in.
 
 ### Bottom callout band RED → GREEN
 
-- RED commit **`8fc9e516abf9d87b9d7ce4a901a10bbee8431504`** changed the contract to require a bottom band, original figure width, increased height, and preservation of baseline axes pixel width/height.
+- RED commit **`8fc9e516abf9d87b9d7ce4a901a10bbee8431504`** required a bottom band, original figure width, increased height, and preservation of baseline axes pixel width/height.
 - RED Actions `33283117813`, job `99181543314`, Python 3.13.15: **2 failed, 480 passed**. Expected failures: labels were not below the axes and figure width was still 9.7 in instead of 6.4 in.
 - Bottom-band implementation commit **`34b807ab24c3071b91f1a710f8152fbaeaa3b3ae`**.
-- GREEN Actions **`33283236424`**, job **`99181850054`**, Python 3.13.15: **482/482 passed** in 59.94 s.
-- Coverage verifies: dense anchor-y order, aligned rails, leader-line presence, robust vertical clearance, bottom-of-axes placement, figure containment, pairwise text non-overlap, unchanged figure width, increased figure height, preservation of baseline `Axes` width/height, and unchanged sparse inline behavior.
-- Temporary characteristic-label workflow remains active until real-Colab QA is accepted.
+- GREEN Actions **`33283236424`**, job **`99181850054`**, Python 3.13.15: **482/482 passed**.
+- Fresh checkpoint gate at `ac3cd1db4c5f75fe4e3533fcc49f703b63ad010f`: **482/482 passed**.
+
+### Assistant-run visual evidence
+
+- To remove dependence on the user's computer, a temporary Actions QA harness rendered the exact six-series dense fixture and exported both PNG and metrics. The instrumentation was removed after capture; no production behavior was changed by the QA harness.
+- Evidence run: Actions **`33285562569`**, artifact `engcalc-bottom-band-qa`.
+- Metrics from the exact renderer:
+  - baseline figure: **6.4 × 4.8 in**;
+  - bottom-band figure: **6.4 × 6.65 in**;
+  - baseline axes: **548.924 × 379.608 px**;
+  - current axes: **549.942 × 379.608 px** — not smaller;
+  - characteristic annotations: **12**;
+  - pairwise text-box overlaps: **0**;
+  - all dense labels below axes: **true**.
+- Visual inspection of the exported PNG: the plot itself retains its scale/width, so the user's shrink complaint is solved. However, the added lower band is visually oversized and the leader lines are long and cluttered. This variant is therefore **machine-correct but visually rejected** as the final presentation.
 
 ## Roadmap / active plan
 
@@ -85,7 +91,7 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 - **0.7.3 derivation traces:** RETIRED.
 - **Narrative text:** IMPLEMENTED + MACHINE GREEN + REAL-COLAB VISUALLY VALIDATED.
 - **Presentation polish:** IMPLEMENTED + REAL-COLAB VISUALLY VALIDATED; retained and not merged.
-- **Characteristic-point label deconfliction:** bottom callout band **482/482 MACHINE GREEN**; real-Colab visual QA pending.
+- **Characteristic-point label deconfliction:** still OPEN. Existing bottom-band implementation is machine-green but visually rejected; next design should be a compact dense characteristic summary/table while preserving sparse inline labels and full plot size.
 - **0.8.0 Piecewise:** DESIGN + SPEC + IMPLEMENTATION PLAN COMPLETE; implementation not started.
 - **0.8.1:** exact-first extrema, roots and intersections.
 - **0.8.2:** exact envelopes and governing intervals.
@@ -97,13 +103,12 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 
 ## Exact next step
 
-1. Run a fresh complete gate on the checkpointed HEAD containing production, tests and this context update.
-2. Pin that validated SHA in a one-shot Colab installer that clears stale EngCalc modules and re-registers `%%eng`.
-3. Render the same six-series dense moment fixture.
-4. Require visually: graph retains its former width/scale, dense labels live in the added bottom band, labels do not overlap, leader lines are readable without excessive clutter, title/axes/legend remain clean, and positive moment remains downward.
-5. If accepted, remove the temporary workflow and verify cleanup before requesting an explicit integration/merge decision.
-6. If not accepted, refine presentation only and rerun focused + full tests.
+1. Show the assistant-generated PNG and metrics to the user as evidence.
+2. Do **not** close the dense-label task based solely on the 482/482 machine gate.
+3. Recommended next iteration: TDD a compact characteristic-point summary/table below the unchanged-size plot for dense clusters, using series labels/colors for association and eliminating long leader lines; retain inline annotation for sparse clusters.
+4. After implementation, rerun focused + complete tests and generate the QA PNG automatically again before asking the user to inspect anything.
+5. Do not merge without explicit user approval.
 
 ## How to resume in a new conversation
 
-Read this file first. Released `main` remains EngCalc 0.7.2. Narrative and plot presentation polish are visually validated. Several in-axes dense-label approaches and then a lateral external-callout approach were machine-green but rejected by real-Colab QA. The lateral approach was rejected specifically because widening the figure caused Colab to scale the whole graphic down. The active strategy keeps the original figure width and original physical `Axes` size, adds height only, and places dense clusters in aligned bottom-band callouts with same-color leader lines. Production SHA `34b807ab24c3071b91f1a710f8152fbaeaa3b3ae` is **482/482 GREEN**; run one fresh checkpoint gate after this context commit, then perform real-Colab visual QA. Piecewise remains planned but unimplemented. Never invoke Codex without explicit authorization and never merge without explicit user approval.
+Read this file first. Released `main` remains EngCalc 0.7.2. Narrative and plot presentation polish are visually validated. Several dense-label strategies were attempted: scattered/aligned/increased-clearance in-axes layouts failed visual QA; lateral external callouts solved overlaps but caused Colab to shrink the whole plot; a bottom callout band preserved plot size and passed 482/482 tests, but assistant-run PNG QA shows excessive lower whitespace and long leader-line clutter. The dense-label task remains open. The recommended next architecture is a compact color-keyed characteristic-point summary/table below the full-size graph for dense cases, while sparse points remain inline. Never invoke Codex without explicit authorization and never merge without explicit user approval.
