@@ -7,18 +7,10 @@ from html import escape
 import sympy as sp
 from sympy.printing.latex import LatexPrinter
 
-from pint.errors import DimensionalityError
-
-from .matrix_numeric import QuantityMatrix
 from .models import (
-    EigenvalueSet,
-    EigenvectorSet,
     EvaluationResult,
-    MatrixShape,
     NumericAssignmentResult,
     NumericEvaluationResult,
-    NumericMatrixEvaluationResult,
-    PartialMatrixNumericEvaluationResult,
     PartialNumericEvaluationResult,
     TableResult,
 )
@@ -27,9 +19,7 @@ CalculationResult = (
     EvaluationResult
     | NumericAssignmentResult
     | NumericEvaluationResult
-    | NumericMatrixEvaluationResult
     | PartialNumericEvaluationResult
-    | PartialMatrixNumericEvaluationResult
 )
 
 
@@ -142,136 +132,6 @@ def _quantity_latex(quantity, precision: int | None = None, *, settings: RenderS
     return rf"{magnitude_latex}\,{unit_latex}"
 
 
-def _magnitude_latex(quantity, settings: RenderSettings) -> str:
-    magnitude = float(quantity.magnitude)
-    if abs(magnitude) < settings.zero_tolerance:
-        magnitude = 0.0
-    return f"{magnitude:.{settings.precision}f}"
-
-
-def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
-    body = r"\\".join(" & ".join(row) for row in rows)
-    return rf"\left[\begin{{matrix}}{body}\end{{matrix}}\right]"
-
-
-def _matrix_latex(matrix) -> str:
-    return _latex(sp.ImmutableMatrix(matrix))
-
-
-def _matrix_substitution_latex(
-    matrix,
-    substitutions: dict[str, object],
-    settings: RenderSettings,
-) -> str:
-    return _NumericSubstitutionLatexPrinter(substitutions, settings).doprint(
-        sp.ImmutableMatrix(matrix)
-    )
-
-
-def _quantity_matrix_common_unit(quantity_matrix: QuantityMatrix):
-    """Return one display unit when every physical cell is mutually convertible.
-
-    Exact dimensionless zero cells are neutral, which preserves Task 5 adaptable-zero
-    semantics. A nonzero dimensionless value mixed with physical entries makes the
-    matrix heterogeneous for display.
-    """
-    physical = [
-        quantity
-        for quantity in quantity_matrix
-        if not getattr(quantity, "dimensionless", False)
-    ]
-    if not physical:
-        return None, True
-
-    common_unit = physical[0].units
-    for quantity in physical[1:]:
-        try:
-            quantity.to(common_unit)
-        except DimensionalityError:
-            return None, False
-
-    for quantity in quantity_matrix:
-        if getattr(quantity, "dimensionless", False):
-            if abs(float(quantity.magnitude)) >= 1e-15:
-                return None, False
-    return common_unit, True
-
-
-def _quantity_matrix_latex(
-    quantity_matrix: QuantityMatrix,
-    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
-) -> str:
-    common_unit, homogeneous = _quantity_matrix_common_unit(quantity_matrix)
-    rows: list[list[str]] = []
-
-    for row in range(quantity_matrix.rows):
-        rendered_row: list[str] = []
-        for col in range(quantity_matrix.cols):
-            quantity = quantity_matrix.entry(row, col)
-            if homogeneous:
-                if common_unit is not None and not getattr(quantity, "dimensionless", False):
-                    quantity = quantity.to(common_unit)
-                rendered_row.append(_magnitude_latex(quantity, settings))
-            else:
-                rendered_row.append(_quantity_latex(quantity, settings=settings))
-        rows.append(rendered_row)
-
-    matrix_latex = _matrix_from_cells_latex(rows)
-    if homogeneous and common_unit is not None:
-        return rf"{matrix_latex}\,{format(common_unit, '~L')}"
-    return matrix_latex
-
-
-def _analysis_scalar_latex(value, settings: RenderSettings) -> str:
-    if hasattr(value, "magnitude") and hasattr(value, "units"):
-        return _quantity_latex(value, settings=settings)
-    return _latex(value)
-
-
-def _matrix_shape_latex(value: MatrixShape) -> str:
-    return rf"\left({value.rows}, {value.cols}\right)"
-
-
-def _eigenvalue_set_latex(value: EigenvalueSet, settings: RenderSettings) -> str:
-    entries = [
-        rf"\lambda={_analysis_scalar_latex(entry.value, settings)},\;m={entry.multiplicity}"
-        for entry in value.entries
-    ]
-    return r"\left\{" + r"\; ; \;".join(entries) + r"\right\}"
-
-
-def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> str:
-    entries: list[str] = []
-    for entry in value.entries:
-        vectors: list[str] = []
-        for index, vector in enumerate(entry.vectors, start=1):
-            if isinstance(vector, QuantityMatrix):
-                vector_latex = _quantity_matrix_latex(vector, settings)
-            else:
-                vector_latex = _matrix_latex(vector)
-            vectors.append(rf"\mathbf{{v}}_{{{index}}}={vector_latex}")
-        vector_block = r",\;".join(vectors)
-        entries.append(
-            rf"\lambda={_analysis_scalar_latex(entry.value, settings)},"
-            rf"\;m={entry.multiplicity},\;{vector_block}"
-        )
-    return r"\left\{" + r"\; ; \;".join(entries) + r"\right\}"
-
-
-def _value_latex(value, settings: RenderSettings) -> str:
-    if isinstance(value, MatrixShape):
-        return _matrix_shape_latex(value)
-    if isinstance(value, EigenvalueSet):
-        return _eigenvalue_set_latex(value, settings)
-    if isinstance(value, EigenvectorSet):
-        return _eigenvector_set_latex(value, settings)
-    if isinstance(value, QuantityMatrix):
-        return _quantity_matrix_latex(value, settings)
-    if isinstance(value, sp.MatrixBase):
-        return _matrix_latex(value)
-    return _latex(value)
-
-
 def _partial_polynomial_latex(evaluated_terms: tuple[tuple[int, object], ...] | None, variable: str, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> str | None:
     if evaluated_terms is None:
         return None
@@ -349,14 +209,7 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
     return r"\begin{cases} " + r" \\ ".join(rendered) + r" \end{cases}"
 
 
-def _display_lhs(
-    result: (
-        NumericEvaluationResult
-        | PartialNumericEvaluationResult
-        | NumericMatrixEvaluationResult
-        | PartialMatrixNumericEvaluationResult
-    ),
-) -> str | None:
+def _display_lhs(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> str | None:
     if result.display_name is None:
         return None
     if result.display_arguments is None:
@@ -364,14 +217,7 @@ def _display_lhs(
     return _render_function_call_lhs(result.display_name, result.display_arguments)
 
 
-def _shows_substitution(
-    result: (
-        NumericEvaluationResult
-        | PartialNumericEvaluationResult
-        | NumericMatrixEvaluationResult
-        | PartialMatrixNumericEvaluationResult
-    ),
-) -> bool:
+def _shows_substitution(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> bool:
     """Return False for the compact result(...) presentation alias."""
     return re.match(r"^result\s*\(", result.statement.source.strip()) is None
 
@@ -648,50 +494,6 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
     return rows
 
 
-def _matrix_stage_rows(lhs: str | None, stages: list[str]) -> list[str]:
-    if not stages:
-        return []
-    if lhs is None:
-        rows = [rf" & & \displaystyle {stages[0]}"]
-    else:
-        rows = [rf"\displaystyle {lhs} & = & \displaystyle {stages[0]}"]
-    rows.extend(rf" & = & \displaystyle {stage}" for stage in stages[1:])
-    return rows
-
-
-def _numeric_matrix_evaluation_rows(
-    result: NumericMatrixEvaluationResult,
-    settings: RenderSettings,
-) -> list[str]:
-    stages = [_matrix_latex(result.symbolic_matrix)]
-    if _shows_substitution(result):
-        stages.append(
-            _matrix_substitution_latex(
-                result.symbolic_matrix,
-                result.substitutions,
-                settings,
-            )
-        )
-    stages.append(_quantity_matrix_latex(result.quantity_matrix, settings))
-    return _matrix_stage_rows(_display_lhs(result), stages)
-
-
-def _partial_matrix_numeric_evaluation_rows(
-    result: PartialMatrixNumericEvaluationResult,
-    settings: RenderSettings,
-) -> list[str]:
-    stages = [_matrix_latex(result.symbolic_matrix)]
-    if _shows_substitution(result):
-        stages.append(
-            _matrix_substitution_latex(
-                result.symbolic_matrix,
-                result.substitutions,
-                settings,
-            )
-        )
-    return _matrix_stage_rows(_display_lhs(result), stages)
-
-
 def _standard_result_row(result: CalculationResult, settings: RenderSettings) -> str:
     rendered = render_result(result, settings=settings)
     if " = " in rendered:
@@ -716,12 +518,6 @@ def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -
 def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameters)
-    if isinstance(
-        result.value,
-        (sp.MatrixBase, MatrixShape, EigenvalueSet, EigenvectorSet, QuantityMatrix),
-    ):
-        return [_standard_result_row(result, settings)]
-
     value = sp.sympify(result.value)
     display_input = result.display_input
 
@@ -766,10 +562,6 @@ def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings
 
 
 def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[str]:
-    if isinstance(result, NumericMatrixEvaluationResult):
-        return _numeric_matrix_evaluation_rows(result, settings)
-    if isinstance(result, PartialMatrixNumericEvaluationResult):
-        return _partial_matrix_numeric_evaluation_rows(result, settings)
     if isinstance(result, NumericEvaluationResult):
         return _numeric_evaluation_rows(result, settings)
     if isinstance(result, PartialNumericEvaluationResult):
@@ -809,17 +601,7 @@ def _internal_row_spacings(
     if len(result_rows) <= 1:
         return []
 
-    if isinstance(result, NumericMatrixEvaluationResult):
-        stage_lengths = [1, 1]
-        if _shows_substitution(result):
-            stage_lengths.insert(1, 1)
-
-    elif isinstance(result, PartialMatrixNumericEvaluationResult):
-        stage_lengths = [1]
-        if _shows_substitution(result):
-            stage_lengths.append(1)
-
-    elif isinstance(result, NumericEvaluationResult):
+    if isinstance(result, NumericEvaluationResult):
         formula_rows = _bounded_expression_rows(
             result.symbolic_expression,
             settings=settings,
@@ -1018,35 +800,6 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         lhs = _render_lhs(result.statement.target, None)
         return rf"{lhs} = {_quantity_latex(result.quantity, settings=active_settings)}"
 
-    if isinstance(result, PartialMatrixNumericEvaluationResult):
-        stages = [_matrix_latex(result.symbolic_matrix)]
-        if _shows_substitution(result):
-            stages.append(
-                _matrix_substitution_latex(
-                    result.symbolic_matrix,
-                    result.substitutions,
-                    active_settings,
-                )
-            )
-        right = " = ".join(stages)
-        lhs = _display_lhs(result)
-        return rf"{lhs} = {right}" if lhs is not None else right
-
-    if isinstance(result, NumericMatrixEvaluationResult):
-        stages = [_matrix_latex(result.symbolic_matrix)]
-        if _shows_substitution(result):
-            stages.append(
-                _matrix_substitution_latex(
-                    result.symbolic_matrix,
-                    result.substitutions,
-                    active_settings,
-                )
-            )
-        stages.append(_quantity_matrix_latex(result.quantity_matrix, active_settings))
-        right = " = ".join(stages)
-        lhs = _display_lhs(result)
-        return rf"{lhs} = {right}" if lhs is not None else right
-
     if isinstance(result, PartialNumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
         evaluated_latex = None
@@ -1104,7 +857,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameters)
-    value_latex = _value_latex(result.value, active_settings)
+    value_latex = _latex(result.value)
 
     if lhs is None:
         if result.display_input is not None:
