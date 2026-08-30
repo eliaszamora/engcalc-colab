@@ -10,8 +10,14 @@ from engcalc_colab.plotting import render_plot
 from engcalc_colab.presentation import render_presented_plot
 
 
-_MIN_RAIL_VERTICAL_CLEARANCE_PX = 10.0
 _AXES_SIZE_TOLERANCE_PX = 1.0
+_SUMMARY_GIDS = {
+    "engcalc-summary-title",
+    "engcalc-summary-group-header",
+    "engcalc-summary-entry-label",
+    "engcalc-summary-entry-role",
+    "engcalc-summary-entry-value",
+}
 
 
 def _eval_cell(engine, source: str):
@@ -82,17 +88,8 @@ def _annotations(axis):
     return [item for item in axis.texts if isinstance(item, Annotation)]
 
 
-def _text_box(annotation, renderer):
-    return Text.get_window_extent(annotation, renderer)
-
-
-def _box_center_y(annotation, renderer):
-    box = _text_box(annotation, renderer)
-    return 0.5 * (box.y0 + box.y1)
-
-
-def _anchor_display_y(axis, annotation):
-    return float(axis.transData.transform(annotation.xy)[1])
+def _text_box(text, renderer):
+    return Text.get_window_extent(text, renderer)
 
 
 def _overlap_area(left, right):
@@ -101,38 +98,12 @@ def _overlap_area(left, right):
     return width * height
 
 
-def _assert_cluster_preserves_visual_order(axis, cluster, renderer):
-    ordered_by_anchor = sorted(cluster, key=lambda item: _anchor_display_y(axis, item))
-    label_centers = [_box_center_y(item, renderer) for item in ordered_by_anchor]
-    assert label_centers == sorted(label_centers), [
-        (item.get_text(), item.xy, center)
-        for item, center in zip(ordered_by_anchor, label_centers)
+def _summary_axes(figure):
+    return [
+        axis
+        for axis in figure.axes[1:]
+        if axis.get_gid() == "engcalc-characteristic-summary"
     ]
-
-
-def _assert_single_label_rail(cluster, renderer, *, tolerance_px: float = 3.0):
-    boxes = [_text_box(item, renderer) for item in cluster]
-    left_edges = [float(box.x0) for box in boxes]
-    right_edges = [float(box.x1) for box in boxes]
-    left_spread = max(left_edges) - min(left_edges)
-    right_spread = max(right_edges) - min(right_edges)
-    assert min(left_spread, right_spread) <= tolerance_px, {
-        "left_spread": left_spread,
-        "right_spread": right_spread,
-        "labels": [item.get_text() for item in cluster],
-    }
-
-
-def _assert_minimum_vertical_clearance(cluster, renderer):
-    boxes = sorted(
-        (_text_box(item, renderer) for item in cluster),
-        key=lambda box: float(box.y0),
-    )
-    clearances = [
-        float(upper.y0 - lower.y1)
-        for lower, upper in zip(boxes, boxes[1:])
-    ]
-    assert min(clearances) >= _MIN_RAIL_VERTICAL_CLEARANCE_PX, clearances
 
 
 def _render(result):
@@ -155,82 +126,76 @@ def _render_dense_case():
     return _render(_dense_six_series_moment_plot())
 
 
-def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
-    _, axis, items, renderer = _render_dense_case()
-    assert len(items) == 12
+def test_dense_characteristics_move_to_compact_summary():
+    figure, _axis, items, _renderer = _render_dense_case()
 
-    left_cluster = [item for item in items if abs(float(item.xy[0])) < 1e-9]
-    interior_cluster = [item for item in items if abs(float(item.xy[0]) - 2.5) < 0.03]
-    assert len(left_cluster) == 6
-    assert len(interior_cluster) == 6
+    assert len(items) == 0
+    assert len(_summary_axes(figure)) == 1
 
-    _assert_cluster_preserves_visual_order(axis, left_cluster, renderer)
-    _assert_cluster_preserves_visual_order(axis, interior_cluster, renderer)
-
-
-def test_dense_shared_x_groups_use_bottom_callout_band_with_leaders():
-    figure, axis, items, renderer = _render_dense_case()
-    axes_box = axis.get_window_extent(renderer)
-    figure_box = figure.bbox
-    left_cluster = [item for item in items if abs(float(item.xy[0])) < 1e-9]
-    interior_cluster = [item for item in items if abs(float(item.xy[0]) - 2.5) < 0.03]
-    assert len(left_cluster) == 6
-    assert len(interior_cluster) == 6
-
-    _assert_single_label_rail(left_cluster, renderer)
-    _assert_single_label_rail(interior_cluster, renderer)
-    assert all(item.arrow_patch is not None for item in left_cluster + interior_cluster)
-
-    boxes = [_text_box(item, renderer) for item in left_cluster + interior_cluster]
-    assert all(box.y1 < axes_box.y0 for box in boxes)
-    assert all(
-        box.x0 >= figure_box.x0
-        and box.x1 <= figure_box.x1
-        and box.y0 >= figure_box.y0
-        for box in boxes
-    )
+    summary = _summary_axes(figure)[0]
+    assert len(
+        [text for text in summary.texts if text.get_gid() == "engcalc-summary-group-header"]
+    ) == 2
+    assert len(
+        [text for text in summary.texts if text.get_gid() == "engcalc-summary-entry-label"]
+    ) == 12
+    assert len(
+        [text for text in summary.texts if text.get_gid() == "engcalc-summary-entry-role"]
+    ) == 12
+    assert len(
+        [text for text in summary.texts if text.get_gid() == "engcalc-summary-entry-value"]
+    ) == 12
 
 
-def test_dense_shared_x_groups_have_robust_vertical_clearance():
-    _, _, items, renderer = _render_dense_case()
-    left_cluster = [item for item in items if abs(float(item.xy[0])) < 1e-9]
-    interior_cluster = [item for item in items if abs(float(item.xy[0]) - 2.5) < 0.03]
-    assert len(left_cluster) == 6
-    assert len(interior_cluster) == 6
-
-    _assert_minimum_vertical_clearance(left_cluster, renderer)
-    _assert_minimum_vertical_clearance(interior_cluster, renderer)
-
-
-def test_dense_callout_band_adds_height_without_adding_width_or_shrinking_axes():
+def test_dense_summary_preserves_primary_plot_size_and_is_compact():
     result = _dense_six_series_moment_plot()
     baseline_figure, baseline_axis, baseline_renderer = _render_baseline(result)
-    baseline_axes_box = baseline_axis.get_window_extent(baseline_renderer)
+    baseline_box = baseline_axis.get_window_extent(baseline_renderer)
 
-    figure, axis, items, renderer = _render(result)
-    axes_box = axis.get_window_extent(renderer)
-    boxes = [_text_box(item, renderer) for item in items]
+    figure, axis, _items, renderer = _render(result)
+    box = axis.get_window_extent(renderer)
 
-    assert figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
-    assert figure.get_figheight() > matplotlib.rcParams["figure.figsize"][1]
-    assert abs(float(axes_box.width) - float(baseline_axes_box.width)) <= _AXES_SIZE_TOLERANCE_PX
-    assert abs(float(axes_box.height) - float(baseline_axes_box.height)) <= _AXES_SIZE_TOLERANCE_PX
+    assert figure.get_figwidth() == baseline_figure.get_figwidth()
+    assert abs(float(box.width) - float(baseline_box.width)) <= _AXES_SIZE_TOLERANCE_PX
+    assert abs(float(box.height) - float(baseline_box.height)) <= _AXES_SIZE_TOLERANCE_PX
+    added_height = figure.get_figheight() - baseline_figure.get_figheight()
+    assert 0.0 < added_height < 1.85
+
+
+def test_dense_summary_text_is_contained_and_collision_free():
+    figure, _axis, _items, renderer = _render_dense_case()
+    summaries = _summary_axes(figure)
+    assert len(summaries) == 1
+    summary = summaries[0]
+
+    texts = [text for text in summary.texts if text.get_gid() in _SUMMARY_GIDS]
+    assert len(texts) == 39
+
+    figure_box = figure.bbox
+    boxes = [_text_box(text, renderer) for text in texts]
+    for box in boxes:
+        assert box.x0 >= figure_box.x0
+        assert box.x1 <= figure_box.x1
+        assert box.y0 >= figure_box.y0
+        assert box.y1 <= figure_box.y1
 
     for index, left in enumerate(boxes):
         for right in boxes[index + 1:]:
             assert _overlap_area(left, right) == 0.0
 
-    assert baseline_figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
-
 
 def test_sparse_two_label_clusters_keep_existing_inline_annotations():
     figure, axis, items, renderer = _render(_sparse_two_series_plot())
     axes_box = axis.get_window_extent(renderer)
+
     assert len(items) == 4
+    assert len(_summary_axes(figure)) == 0
     assert all(item.arrow_patch is None for item in items)
     assert all(
         _text_box(item, renderer).x0 >= axes_box.x0
         and _text_box(item, renderer).x1 <= axes_box.x1
+        and _text_box(item, renderer).y0 >= axes_box.y0
+        and _text_box(item, renderer).y1 <= axes_box.y1
         for item in items
     )
     assert figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
