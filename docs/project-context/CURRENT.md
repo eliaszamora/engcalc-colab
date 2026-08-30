@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The approved 0.9.0 Matrix/CAS plan is executing inline on `feature/v0.9.0-matrix-cas`. Tasks 0–5 are complete with strict RED→GREEN evidence. Pint-backed numerical matrices now preserve per-entry dimensionality, homogeneous target-unit conversion, exact-zero adaptability and partial matrix evaluation. Task 6 — exact `solve(A,b)` plus dimensional structural solve acceptance — is the exact next step. Package/runtime version remains 0.8.0._
+_Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The approved 0.9.0 Matrix/CAS plan is executing inline on `feature/v0.9.0-matrix-cas`. Tasks 0–6 are complete with strict RED→GREEN evidence. Exact `solve(A,b)` now supports square linear systems, structural dimensional evaluation and stable matrix diagnostics while preserving scalar `solve(eq,x)`. Task 7 — exact matrix analysis plus common-scale numerical guards — is the exact next step. Package/runtime version remains 0.8.0._
 
 ## Current baseline
 
@@ -26,6 +26,10 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Task 5 RED workflow commit: **`7a595e9a0a3c2367b70e1ee169513d48ded749b2`**; RED workflow removed in **`dbb3e6f751426c76c7a15441370a96de0a3b9dff`**.
 - Task 5 GREEN product commit: **`68f8a23`** (`feat: evaluate matrices with Pint units`).
 - Task 5 final GREEN workflow removed in **`c104a6a29a7e533eee01d4261a88f551dfa2715d`**; implementation harness removed in **`d17c28fd87ae58567c75b92116389de2e713b431`**.
+- Task 6 accepted clean RED test head: **`ac7c1f354f6e0b559f8e602471e9953f8779da06`**.
+- Task 6 GREEN product commit: **`67b22d531955e8795e446afefc0ad0e698c9973d`** (`feat: solve exact linear matrix systems`).
+- Task 6 temporary RED workflows removed in **`2ba11fa2cee0adb38a7bf26b9f537858d48627c8`** and **`937914a807e02e4cd7c69816c7c026513ce95c9a`**; RED correction harness removed in **`3b8805ea9bd29dca39c564b537b0017072ed7a3b`**.
+- Task 6 final GREEN workflow removed in **`09d464f2e9f7882cb7d735e7b6654b818476cec8`**; implementation harness removed in **`13fc778f8078625b0dab2fec835d7c1ee873d70a`**.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge implementation work to `main` without explicit user approval.
 
@@ -64,7 +68,7 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Generalized structural eigenproblems, sparse/global FEM matrices, block matrices, slicing, least squares, pseudoinverse, SVD, NumPy-style broadcasting and matrix-valued `:=` remain deferred.
 - LU/QR/Cholesky are deferred from mandatory core 0.9.0.
 
-### Implemented 0.9.0 behavior through Task 5
+### Implemented 0.9.0 behavior through Task 6
 
 - Normal-expression matrix literals evaluate to immutable SymPy matrices with approved row/column/general orientation.
 - Matrix literal cells must remain scalar; nested matrices in a cell are rejected.
@@ -90,13 +94,18 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Matrix numeric failures identify the one-based failing coordinate, e.g. `[2,1]`, while `QuantityMatrix.entry(row,col)` remains internal zero-based storage.
 - Partial numerical matrices return `PartialMatrixNumericEvaluationResult` with deterministic unresolved-symbol ordering and known Pint substitutions; target-unit conversion remains blocked until fully numeric.
 - Matrix-valued user functions use the existing argument-binding/shadowing rules during `numeric(...)`; `result(A)` follows the same full/partial matrix evaluation route.
+- `solve(A,b)` now overloads the existing `solve` command by evaluated first-operand type: matrix first operands use exact linear-system solving, while nonmatrix first operands preserve the historical scalar `solve(eq,x)` route.
+- Matrix linear systems require square `A`, a column-vector RHS with matching rows and a unique solution; failures are translated to EngCalc diagnostics rather than leaking SymPy exceptions.
+- Exact matrix solutions are immutable SymPy column matrices; no float conversion occurs during symbolic solve.
+- Solved structural displacement vectors evaluate through `numeric(...)` to `QuantityMatrix` entries with Pint length dimensionality.
+- Mixed translational/rotational stiffness products remain valid heterogeneous numerical matrices, with force and moment result cells retaining distinct dimensions.
 
 ## Open issues / user feedback
 
-- Task 6 must add exact `solve(A,b)` for square linear systems while preserving existing scalar `solve(eq,x)` behavior and translating shape/singularity failures to EngCalc diagnostics.
+- Task 7 must add exact `rank`, `rref`, Frobenius `norm`, `eigenvals` and `eigenvects` plus provenance-aware numerical guards for operations that require a dimensionless or common-scale source matrix.
 - Matrix rendering/presentation has not yet been implemented; current work establishes symbolic and numeric truth before final presentation.
-- Exact matrix linear systems and dimensional structural solve acceptance are now the active next task in the approved 0.9.0 plan.
-- `rank`, `rref`, `norm`, `eigenvals` and `eigenvects` remain later exact/common-scale guarded tasks after `solve(A,b)`.
+- Exact/common-scale guarded matrix analysis is now the active next task in the approved 0.9.0 plan.
+- Matrix rendering/presentation remains Task 8 after Task 7 analysis semantics and guard provenance are stable.
 - `no_vertical_scroll()` remains outside Matrix/CAS.
 - Multiline ordinary non-matrix function-call parsing remains a separate ergonomics item.
 - Generalized eigenproblem `K phi = lambda M phi` needs a future dedicated design/API.
@@ -177,12 +186,24 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Temporary Task 5 RED/GREEN workflows and implementation harness were removed after evidence was preserved.
 - The only runner warning was GitHub Actions' Node 20 deprecation/forced Node 24 compatibility warning; it is not an EngCalc product failure.
 
+### 0.9.0 Task 6 RED/GREEN evidence
+
+- The accepted Task 6 RED contract head is **`ac7c1f354f6e0b559f8e602471e9953f8779da06`**. Earlier RED attempts were not accepted as evidence because the mixed-DOF hand reference was corrected before the clean gate.
+- Clean RED Actions **`33326041862`**, job **`99296222756`**, CPython **3.13.15**: **6 failed, 2 passed in 1.77 s**. The six failures were precisely the missing matrix `solve(A,b)` overload/diagnostics; the two passes proved mixed-DOF heterogeneous numerical multiplication and historical scalar `solve(eq,x)` remained intact.
+- Clean RED artifact **`9736251229`**, digest **`sha256:ab69156dcb60063bdc4d0cdf4f1b9ada5082cc4c273d7e81931f84e0d5fea806`**.
+- Final GREEN Actions **`33326265185`**, job **`99296815169`**, CPython **3.13.15**: compile check + `git diff --check` GREEN; **23/23 focused GREEN in 4.12 s**; **665/665 full GREEN in 111.51 s**.
+- Product commit **`67b22d531955e8795e446afefc0ad0e698c9973d`** (`feat: solve exact linear matrix systems`) changed exactly two production files: `src/engcalc_colab/engine.py` (+7) and new `src/engcalc_colab/matrix_solve.py` (+35).
+- GREEN logs artifact **`9736336536`**, digest **`sha256:e576126b0b7b730935ddd8e8b4244b6b7deee5454abc94fdce58358e95912e33`**.
+- The first GREEN run stopped before pytest because a harness validation used `git diff --name-only` for an untracked new file; no product commit occurred. The validation was corrected to distinguish tracked modifications from the untracked new module, after which the final GREEN run passed.
+- Temporary Task 6 workflows and implementation/correction harnesses were removed after preserving evidence.
+- The runner's Node 20 deprecation/forced Node 24 warning is infrastructure-only and not an EngCalc product failure.
+
 ## Roadmap / active plan
 
 - **0.7.2 engineering tables:** COMPLETE + merged.
 - **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
 - **0.8.0 Piecewise:** COMPLETE + merged.
-- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASKS 0–5 COMPLETE, TASK 6 NEXT**.
+- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASKS 0–6 COMPLETE, TASK 7 NEXT**.
   - Base design/spec/clarification/implementation plan: approved.
   - Task 0 isolated baseline: COMPLETE.
   - Task 1 matrix literal parser: COMPLETE, 569/569 GREEN.
@@ -190,23 +211,24 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
   - Task 3 constructors and core exact matrix functions: COMPLETE, 31/31 focused + 627/627 full GREEN.
   - Task 4 matrix-valued user functions and matrix-aware existing CAS transforms: COMPLETE, 15/15 focused + 642/642 full GREEN.
   - Task 5 Pint-backed numerical matrices and partial numeric matrices: COMPLETE, 27/27 focused + 657/657 full GREEN.
-  - Task 6 exact `solve(A,b)` and dimensional structural solve acceptance: NEXT.
+  - Task 6 exact `solve(A,b)` and dimensional structural solve acceptance: COMPLETE, 23/23 focused + 665/665 full GREEN.
+  - Task 7 rank/RREF/norm/eigen analysis and common-scale numeric guards: NEXT.
   - Package/runtime version remains 0.8.0 until the release-closing task.
 - Later roadmap: 0.9.1 exact-first extrema/roots/intersections → 0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization.
 
 ## Exact next step
 
-1. Add Task 6 RED tests in `tests/test_matrix_solve.py` for exact `solve(A,b)` using the two-DOF stiffness system from the approved plan.
-2. Verify `K*u-F` simplifies to the exact zero matrix and preserve existing scalar `solve(eq,x)` behavior.
-3. Add explicit EngCalc diagnostics for nonsquare `A`, row-vector RHS, wrong RHS length and singular/non-unique systems.
-4. Add dimensional acceptance: with `k1 := 20*kN/mm`, `k2 := 15*kN/mm`, `P := 30*kN`, `numeric(u)` must return a `2 x 1` `QuantityMatrix` whose entries have length dimensionality.
-5. Add a mixed translational/rotational DOF case whose symbolic stiffness multiplication evaluates numerically to heterogeneous force/moment result cells without imposing one matrix-wide unit.
-6. Run the new Task 6 tests RED before production.
-7. Implement `matrix_solve.py` and overload `solve` by evaluated first-argument type; keep the scalar `solve(eq,x)` route unchanged where possible.
-8. Run focused GREEN (`test_matrix_solve` + scalar solve regression) and then the complete suite; persist production only after both pass.
-9. Update this file with Task 6 RED/GREEN SHAs and counts before Task 7 matrix analysis.
+1. Add Task 7 RED tests in `tests/test_matrix_analysis.py` and `tests/test_matrix_analysis_units.py` for exact `rank`, `rref`, Frobenius `norm`, deterministic eigenvalue multiplicities/order and eigenvector result models.
+2. Add common-scale numerical acceptance for dimensionless and homogeneous matrices, including `numeric(norm(A))`, numerical RREF/eigen evaluation and homogeneous eigenvalue units where mathematically defined.
+3. Add heterogeneous rejection tests using the Task 5 beam stiffness matrix: numerical `rref`, `norm` and eigenanalysis must fail with operation-specific common-scale diagnostics rather than stripping units.
+4. Add guard-propagation RED tests so assigned guarded results and matrix-valued user functions retain provenance into later `numeric(...)`.
+5. Run Task 7 tests RED before production changes.
+6. Implement explicit analysis result models/functions and `MatrixNumericGuard` provenance without wrapping every SymPy expression in a second symbolic type.
+7. Validate common-scale source matrices through `QuantityMatrix`; accept dimensionless/common-unit sources and reject heterogeneous physical sources before guarded numerical results are accepted.
+8. Run focused GREEN and then the complete suite; persist product only after both gates pass.
+9. Update this file with Task 7 RED/GREEN SHAs and counts before Task 8 rendering.
 10. Do not invoke Codex and do not merge without explicit user authorization.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`. Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`. Tasks 0–5 are complete. Task 5 product commit `68f8a23` implements Pint-backed `QuantityMatrix`, per-entry dimensionality, homogeneous target-unit conversion, exact-zero adaptability, coordinate diagnostics, partial numerical matrices and `result(A)` parity; final verification was 27/27 focused plus 657/657 complete. The exact next action is Task 6 RED for exact `solve(A,b)`, shape/singularity diagnostics and dimensional structural solve acceptance. Never invoke Codex and never merge without explicit user approval.
+Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`. Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`. Tasks 0–6 are complete. Task 6 product commit `67b22d531955e8795e446afefc0ad0e698c9973d` adds exact `solve(A,b)` with square/column/matching-shape/unique-solution diagnostics while preserving scalar `solve(eq,x)`; final verification was 23/23 focused plus 665/665 complete. The exact next action is Task 7 RED for rank/RREF/Frobenius norm/eigen analysis and common-scale numerical guard provenance. Never invoke Codex and never merge without explicit user approval.
