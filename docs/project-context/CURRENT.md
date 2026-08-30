@@ -1,21 +1,20 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise is implemented, distribution-validated, cleaned, and proposed to `main` in PR #31. The authoritative release product is `7a3c4206002d26145ea3cd36a21d2dcfefe0914f`: 557/557 source GREEN, 557/557 installed-wheel/source-free GREEN, 557/557 source recheck GREEN, and clean `site-packages` smoke GREEN. The release PR is open and intentionally unmerged pending explicit user approval._
+_Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise is fully integrated into `main` through merged PR #31. The authoritative release product remains `7a3c4206002d26145ea3cd36a21d2dcfefe0914f`; the final pre-merge HEAD was freshly revalidated at 557/557 GREEN, and the merge commit tree was proven file-identical to that cleaned HEAD. The next milestone is the 0.9.0 vectors/matrices/linear-systems design/spec gate; no Matrix/CAS production work has started._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical integrated branch: `main` at **`79befeeb07364f4b6b78d2e6e55ad40258ef0da2`**.
-- Release branch: **`feature/v0.8.0-piecewise`**.
-- Validated 0.8.0 product commit: **`7a3c4206002d26145ea3cd36a21d2dcfefe0914f`** (`release: bump EngCalc to 0.8.0`).
-- Package/runtime version on the release branch: **0.8.0**.
-- Release PR: **#31 — `release: EngCalc 0.8.0 piecewise expressions`**, head `feature/v0.8.0-piecewise`, base `main`, open and not merged.
-- Approved spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.8.0-piecewise-design.md`.
-- Approved implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.8.0-piecewise-implementation.md`.
-- All temporary Piecewise release-validation workflows were removed after successful validation.
-- An accidentally-created auxiliary branch `noop` was immediately neutralized to point exactly at `main@79befeeb...`; it contains no unique commits. The available GitHub connector does not expose branch-ref deletion.
+- Canonical integrated branch: **`main`**.
+- EngCalc runtime/package version on `main`: **0.8.0**.
+- PR #31 — `release: EngCalc 0.8.0 piecewise expressions`: **MERGED**.
+- Merge commit: **`eca248c376128da16ff9526751790aebe2089646`**.
+- Final cleaned PR head merged into `main`: **`df11f1ecb7e8c1029f7ccdc0061722793b2a6b39`**.
+- Authoritative distribution-validated 0.8.0 product commit: **`7a3c4206002d26145ea3cd36a21d2dcfefe0914f`**.
+- Approved Piecewise spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.8.0-piecewise-design.md`.
+- Approved Piecewise implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.8.0-piecewise-implementation.md`.
+- No temporary Piecewise validation workflow remains in the integrated release tree.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
-- Never merge PR #31 without explicit user approval.
 
 ## Approved behavior
 
@@ -43,69 +42,48 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise is implemented, distributi
 - Supported Piecewise integral outputs containing internal `Piecewise`, `Min` or `Max` remain numerically evaluable.
 - Real `%%eng` acceptance preserves source order across MathJax groups, HTML tables and figures.
 
-### Approved roadmap reprioritization
-
-- After Piecewise integration, EngCalc prioritizes a calculator/CAS-style **vectors, matrices and linear-systems** milestone.
-- Matrix/CAS requires its own design/spec gate and must not be mixed into PR #31.
-- Roadmap: `0.8.0 Piecewise` → `0.9.0 vectors/matrices/linear systems` → `0.9.1 exact-first extrema/roots/intersections` → `0.9.2 exact envelopes/governing intervals` → `0.9.3 named response cases/combinations` → `0.10.x engineering verification` → `1.0.0` stabilization.
-
 ## Open issues / user feedback
 
 - Multiline ordinary function-call parsing remains a later ergonomics item.
 - `no_vertical_scroll()` Colab ergonomics remains outside Piecewise.
 - Piecewise 0.8.0 intentionally excludes arbitrary boolean conditions, endpoint glyphs/jump markers, `solve(piecewise(...))`, exact Piecewise roots/intersections, exact governing-interval envelopes, arbitrary Python and automatic differentiability proofs.
-- Matrix/CAS production work remains pending its own design/spec after Piecewise integration.
-- Auxiliary branch `noop` is harmless and has no unique history but may be deleted manually in GitHub UI if desired.
+- Matrix/CAS production work remains pending its own design/spec gate.
+- Auxiliary branch `noop` is non-product and contains no unique feature work; it may be removed manually from GitHub if desired.
 
 ## Validation evidence
 
 - Integrated pre-Piecewise `main`: **484/484 GREEN** on Actions `33298959230`; isolated Piecewise baseline `33299317560`: **484/484 GREEN**.
-- Task 1: `a935dd7d9c2bb786caede1bb28274fde28bb77f8`, **506/506 GREEN**.
-- Task 2: `3429f6d628a1ede348581e1d1d323680e5a50a39`, cleaned `6410219e55f35bf119500d3ac760898a566a89d4`, **518/518 GREEN**.
-- Task 3: `04b9770e317578e157cd715e836efc4e1cc10f72`, **526/526 GREEN**.
-- Task 4: `c0beb86cac875d272a91de01371330bf79a82569`, **530/530 GREEN**.
-- Task 5: `606e7ba`, **536/536 GREEN**.
-- Task 6: `ebef3b9a4d78695bf29d4530cc06488a0ce49836`, **542/542 GREEN**.
-- Task 7: `34358fd94e27e99180cdd49074df4e5c473d202b`, **547/547 GREEN**.
-- Task 8: `d0ff122b3f5f4681214fdbe6059c860c3bb11f54`; Actions `33315071844`: **14/14 acceptance**, **66/66 Piecewise**, **557/557 full GREEN in 113.99 s**.
-- Task 9 initial run `33315402367` correctly found one stale 0.7.2 parser-version assertion; no wheel was accepted from that failed run.
-- Task 9 v2 `33315620355` passed the product/distribution gates; its push failed only because the temporary commit attempted to modify a workflow without `workflows` permission.
-- **Authoritative Task 9 release gate:** Actions **`33316141809`**, job `99269839966`, Python **3.13.15**:
-  - version RED: **7 failed / 4 passed** as expected;
+- Task 1 through Task 7 progressed GREEN through 506, 518, 526, 530, 536, 542 and 547 tests respectively.
+- Task 8 product `d0ff122b3f5f4681214fdbe6059c860c3bb11f54`; Actions `33315071844`: **14/14 acceptance**, **66/66 Piecewise**, **557/557 full GREEN in 113.99 s**.
+- Authoritative Task 9 distribution gate: Actions **`33316141809`**, job `99269839966`, Python **3.13.15**:
   - release contracts: **23/23 GREEN**;
   - source before wheel: **557/557 GREEN in 77.13 s**;
   - wheel: **`engcalc_colab-0.8.0-py3-none-any.whl`**, metadata `Version: 0.8.0`;
-  - clean venv installation: GREEN;
-  - source-external `site-packages` smoke: GREEN;
+  - clean venv installation and source-external `site-packages` smoke: GREEN;
   - installed-wheel/source-free suite: **557/557 GREEN in 75.40 s**;
   - source recheck: **557/557 GREEN in 74.75 s**;
-  - validated product SHA: **`7a3c4206002d26145ea3cd36a21d2dcfefe0914f`**;
-  - committed-tree release contracts: **23/23 GREEN**;
   - wheel SHA-256: **`e200b45de358d8c2ee83f6a4fc945913cd0fc1709ce9ad5ffdfc1f727469055a`**;
   - artifact: **`engcalc-colab-0.8.0-release-v3`**, ID **`9733556162`**.
-- Post-validation compare from `7a3c420...` confirmed that cleanup changed only three temporary workflow files plus `CURRENT.md`; no `src/`, product-test, README or package-metadata changes occurred after validation.
-- Final feature-vs-main audit reports 28 changed files, all within approved Piecewise implementation/tests/docs/version scope and no Matrix/CAS production files or temporary workflows.
-- PR #31 was opened against the exact expected base `main@79befeeb...`; it remains unmerged.
+- Fresh pre-merge gate after all documentation/cleanup work: Actions **`33316786989`**, commit **`8628023f6654e9b5aeb9b1aaaf68dd43738fd353`**, Python 3.13.15: runtime version 0.8.0 GREEN and **557/557 GREEN in 116.63 s**.
+- The only change from that freshly tested SHA to final PR head `df11f1ec...` was deletion of `.github/workflows/pr31-premerge-validation.yml`; no product/source/test/docs change occurred in that cleanup commit.
+- Post-merge equality gate: compare `df11f1ec...` → merge commit `eca248c3...` reports **zero changed files**, proving the integrated merge tree is file-identical to the cleaned PR head.
+- `main/src/engcalc_colab/__init__.py` reports **`__version__ = "0.8.0"`** after merge.
 
 ## Roadmap / active plan
 
 - **0.7.2 engineering tables:** COMPLETE + merged.
 - **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
-- **0.8.0 Piecewise:** IMPLEMENTATION + RELEASE VALIDATION COMPLETE; **PR #31 OPEN**.
-  - Tasks 0–9: COMPLETE.
-  - Validated release product: `7a3c4206002d26145ea3cd36a21d2dcfefe0914f`.
-  - Release PR: #31.
-  - Merge: **BLOCKED pending explicit user approval**.
-- **0.9.0 vectors / matrices / linear systems:** next major milestone after Piecewise integration; design/spec gate required.
-- Later roadmap: 0.9.1 exact-first analysis → 0.9.2 exact envelopes → 0.9.3 response cases → 0.10.x verification → 1.0.0.
+- **0.8.0 Piecewise:** **COMPLETE + MERGED to `main` via PR #31**.
+- **0.9.0 vectors / matrices / linear systems:** NEXT MAJOR MILESTONE; design/spec gate required before production implementation.
+- Later roadmap: 0.9.1 exact-first extrema/roots/intersections → 0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization.
 
 ## Exact next step
 
-1. Stop at open PR #31.
-2. Await explicit user decision on whether to merge PR #31 into `main`.
-3. If merge is explicitly approved, verify PR head/base/check state immediately before merging, merge only the approved PR, then run/inspect the post-merge `main` validation before declaring 0.8.0 integrated.
-4. Only after Piecewise integration is closed may the 0.9.0 Matrix/CAS design/spec workflow begin.
+1. Treat EngCalc 0.8.0 Piecewise as closed and integrated.
+2. Start a dedicated 0.9.0 vectors/matrices/linear-systems design exploration and written spec.
+3. Do not begin Matrix/CAS production code until that spec is explicitly approved.
+4. Keep later exact-analysis milestones separate from the 0.9.0 matrix/CAS scope.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.8.0 Piecewise is fully implemented and distribution-validated on `feature/v0.8.0-piecewise`. Authoritative product: `7a3c4206002d26145ea3cd36a21d2dcfefe0914f`; Actions `33316141809` verified 557/557 source, 557/557 installed-wheel/source-free, 557/557 source recheck, and clean `site-packages` smoke. Wheel SHA-256: `e200b45de358d8c2ee83f6a4fc945913cd0fc1709ce9ad5ffdfc1f727469055a`; artifact ID `9733556162`. Temporary workflows are removed. PR #31 is open against `main` and must not be merged without explicit user approval. The auxiliary `noop` branch points exactly to `main` and has no unique commits.
+Read this file first. EngCalc 0.8.0 Piecewise is integrated into `main` via merged PR #31 at merge commit `eca248c376128da16ff9526751790aebe2089646`; runtime/package version is 0.8.0. The distribution-validated release product is `7a3c4206002d26145ea3cd36a21d2dcfefe0914f`, with wheel SHA-256 `e200b45de358d8c2ee83f6a4fc945913cd0fc1709ce9ad5ffdfc1f727469055a`. Fresh pre-merge Actions `33316786989` passed 557/557 on the final product tree, and the merge-tree equality audit found zero file differences versus the cleaned PR head. The next work is 0.9.0 vectors/matrices/linear systems at design/spec stage only; no production implementation until explicit approval.
