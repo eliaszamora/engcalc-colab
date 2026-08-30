@@ -1,0 +1,56 @@
+name: Apply Piecewise numeric GREEN
+
+on:
+  push:
+    branches:
+      - feature/v0.8.0-piecewise
+    paths:
+      - .github/workflows/apply-piecewise-numeric-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.8.0-piecewise
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Patch NumericContext exactly
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/engcalc_colab/numeric.py')
+          text = path.read_text()
+
+          old_helper_anchor = '''        return substitutions, quantity\n\n    def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):\n'''
+          new_helper_anchor = '''        return substitutions, quantity\n\n    def _is_exact_zero_quantity(self, value) -> bool:\n        quantity = self._as_quantity(value)\n        return float(quantity.magnitude) == 0.0\n\n    def _normalize_relation_operands(self, left, right):\n        left_quantity = self._as_quantity(left)\n        right_quantity = self._as_quantity(right)\n\n        if left_quantity.dimensionless and not right_quantity.dimensionless:\n            if not self._is_exact_zero_quantity(left_quantity):\n                raise EngEvaluationError(\n                    "piecewise comparison cannot mix a dimensional quantity with "\n                    "a nonzero dimensionless value"\n                )\n            left_quantity = self.ureg.Quantity(0, right_quantity.units)\n        elif right_quantity.dimensionless and not left_quantity.dimensionless:\n            if not self._is_exact_zero_quantity(right_quantity):\n                raise EngEvaluationError(\n                    "piecewise comparison cannot mix a dimensional quantity with "\n                    "a nonzero dimensionless value"\n                )\n            right_quantity = self.ureg.Quantity(0, left_quantity.units)\n\n        try:\n            right_quantity = right_quantity.to(left_quantity.units)\n        except DimensionalityError as exc:\n            raise EngEvaluationError(\n                "piecewise comparison has incompatible units"\n            ) from exc\n        return left_quantity, right_quantity\n\n    def _evaluate_relation(self, relation, substitutions: dict[str, Any]) -> bool:\n        left = self._evaluate_sympy(relation.lhs, substitutions)\n        right = self._evaluate_sympy(relation.rhs, substitutions)\n        left, right = self._normalize_relation_operands(left, right)\n\n        if relation.func == sp.StrictLessThan:\n            return left.magnitude < right.magnitude\n        if relation.func == sp.LessThan:\n            return left.magnitude <= right.magnitude\n        if relation.func == sp.StrictGreaterThan:\n            return left.magnitude > right.magnitude\n        if relation.func == sp.GreaterThan:\n            return left.magnitude >= right.magnitude\n        raise EngEvaluationError("unsupported piecewise relation")\n\n    def _normalize_quantity_group(self, values, context: str):\n        quantities = tuple(self._as_quantity(value) for value in values)\n        dimensional = next(\n            (quantity for quantity in quantities if not quantity.dimensionless),\n            None,\n        )\n        if dimensional is None:\n            return quantities\n\n        unit = dimensional.units\n        normalized = []\n        for quantity in quantities:\n            if quantity.dimensionless:\n                if self._is_exact_zero_quantity(quantity):\n                    normalized.append(self.ureg.Quantity(0, unit))\n                    continue\n                raise EngEvaluationError(\n                    f"{context} cannot mix dimensional quantities with "\n                    "a nonzero dimensionless value"\n                )\n            try:\n                normalized.append(quantity.to(unit))\n            except DimensionalityError as exc:\n                raise EngEvaluationError(f"{context} has incompatible units") from exc\n        return tuple(normalized)\n\n    def _infer_piecewise_zero_unit(self, expression, substitutions: dict[str, Any]):\n        canonical_unit = None\n        saw_nonzero_dimensionless = False\n\n        for branch_expression, _condition in expression.args:\n            try:\n                candidate = self._as_quantity(\n                    self._evaluate_sympy(branch_expression, substitutions)\n                )\n            except (\n                EngEvaluationError,\n                DimensionalityError,\n                PintError,\n                ValueError,\n                ZeroDivisionError,\n                OverflowError,\n            ):\n                continue\n\n            if candidate.dimensionless:\n                if self._is_exact_zero_quantity(candidate):\n                    continue\n                if canonical_unit is not None:\n                    raise EngEvaluationError(\n                        "piecewise has nonzero dimensionless branch incompatible "\n                        "with dimensional branch"\n                    )\n                saw_nonzero_dimensionless = True\n                continue\n\n            if saw_nonzero_dimensionless:\n                raise EngEvaluationError(\n                    "piecewise has nonzero dimensionless branch incompatible "\n                    "with dimensional branch"\n                )\n\n            if canonical_unit is None:\n                canonical_unit = candidate.units\n                continue\n\n            try:\n                candidate.to(canonical_unit)\n            except (DimensionalityError, PintError) as exc:\n                raise EngEvaluationError(\n                    "piecewise has incompatible branch units"\n                ) from exc\n\n        return canonical_unit\n\n    def _evaluate_piecewise(self, expression, substitutions: dict[str, Any]):\n        for branch_expression, condition in expression.args:\n            if condition == sp.true or self._evaluate_relation(condition, substitutions):\n                value = self._as_quantity(\n                    self._evaluate_sympy(branch_expression, substitutions)\n                )\n                if value.dimensionless and self._is_exact_zero_quantity(value):\n                    inferred_unit = self._infer_piecewise_zero_unit(\n                        expression,\n                        substitutions,\n                    )\n                    if inferred_unit is not None:\n                        return self.ureg.Quantity(0, inferred_unit)\n                return value\n        raise EngEvaluationError("piecewise has no governing branch")\n\n    def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):\n'''
+          assert text.count(old_helper_anchor) == 1, 'unexpected helper insertion point'
+          text = text.replace(old_helper_anchor, new_helper_anchor, 1)
+
+          old_dispatch = '''        if expr.is_Number:\n            if expr.is_Integer:\n                return int(expr)\n            if expr.is_Rational:\n                return int(expr.p) / int(expr.q)\n            return float(expr)\n\n        if expr.is_Add:\n'''
+          new_dispatch = '''        if expr.is_Number:\n            if expr.is_Integer:\n                return int(expr)\n            if expr.is_Rational:\n                return int(expr.p) / int(expr.q)\n            return float(expr)\n\n        if expr.func == sp.Piecewise:\n            return self._evaluate_piecewise(expr, substitutions)\n\n        if expr.func in {\n            sp.StrictLessThan,\n            sp.LessThan,\n            sp.StrictGreaterThan,\n            sp.GreaterThan,\n        }:\n            return self._evaluate_relation(expr, substitutions)\n\n        if expr.func in {sp.Min, sp.Max}:\n            values = self._normalize_quantity_group(\n                (self._evaluate_sympy(arg, substitutions) for arg in expr.args),\n                "numeric Min/Max",\n            )\n            selector = min if expr.func == sp.Min else max\n            return selector(values, key=lambda quantity: quantity.magnitude)\n\n        if expr.is_Add:\n'''
+          assert text.count(old_dispatch) == 1, 'unexpected symbolic dispatch point'
+          text = text.replace(old_dispatch, new_dispatch, 1)
+
+          path.write_text(text)
+          PY
+          git diff --check
+          git diff -- src/engcalc_colab/numeric.py
+      - name: Install package and test dependencies
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Run focused Piecewise numeric tests
+        run: python -m pytest tests/test_piecewise_numeric.py -q
+      - name: Commit numeric GREEN
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add src/engcalc_colab/numeric.py
+          git commit -m "feat: evaluate piecewise expressions with units"
+          git push origin HEAD:feature/v0.8.0-piecewise
