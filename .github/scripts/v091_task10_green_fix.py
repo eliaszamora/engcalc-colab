@@ -56,7 +56,7 @@ new = '''    def _plot_characteristics(
                 overrides=overrides,
                 source_label=source_label,
             )
-        except EngEvaluationError:
+        except (EngEvaluationError, TypeError, ValueError):
             return ()
         if unresolved:
             return ()
