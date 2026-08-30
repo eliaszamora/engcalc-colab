@@ -1,15 +1,18 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — compact dense-characteristic summary implementation is complete, machine-green, assistant-QA approved, and explicitly visually accepted by the user. Temporary QA tooling has been removed. The feature branch is stopped at the merge gate._
+_Last updated: 2026-08-30 — compact dense-characteristic summary implementation is complete, machine-green, assistant-QA approved, and explicitly visually accepted by the user. Pre-integration review is complete and Pull Request #30 is open against `main`, ready for review. The branch remains unmerged._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Canonical released branch: `main`; package/runtime version remains **0.7.2** during pre-release work.
 - Active branch: **`feature/v0.8.0-characteristic-label-layout`**. Do not merge without explicit user approval.
+- Open integration PR: **#30 — `feat: integrate EngCalc narrative and plot presentation polish`**, base `main`, ready for review, mergeable.
+- Pre-PR housekeeping checkpoint: `954025da22e3976b2f502b92fbbcd88b27a9e2fd`.
 - Product tree checkpoint: `a11b0946aad322cb30145a178eda4261f8f1e1de`.
-- Post-QA-cleanup checkpoint before this documentation update: `236760a8e35f9a60978e6197f28c468ef8709464`.
-- GitHub compare confirms `a11b0946...` and `236760a8...` have **zero file differences**; cleanup returned the branch exactly to the validated product tree.
+- Post-QA-cleanup checkpoint: `236760a8e35f9a60978e6197f28c468ef8709464`.
+- GitHub compare confirmed `a11b0946...` and `236760a8...` have **zero file differences**; QA cleanup returned the branch exactly to the validated product tree.
+- Before opening PR #30, the feature-only validation workflow was removed; compare from fresh-green SHA `f945a408...` to `954025da...` changed only `.github/workflows/characteristic-label-validation.yml`.
 - Dense-summary design: `docs/superpowers/specs/2026-08-30-engcalc-dense-characteristic-summary-design.md`.
 - Planning clarification: `docs/superpowers/specs/2026-08-30-engcalc-dense-characteristic-summary-planning-clarification.md`.
 - Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-dense-characteristic-summary-implementation.md`.
@@ -38,7 +41,7 @@ _Last updated: 2026-08-30 — compact dense-characteristic summary implementatio
 - x unit is shown once per group. A homogeneous y unit is shown once in the value heading; heterogeneous-unit fallback may include units per row.
 - Figure width does not grow. `figure.axes[0]` remains the main engineering axes and retains baseline physical width/height under Agg.
 - Canonical six-series summary adds **1.34 in** vertically, materially below the rejected **1.85 in** bottom-callout band.
-- No parser/model/public API change is included.
+- No parser/model/public API change is included by the dense-summary correction itself.
 
 ## Historical visual decisions
 
@@ -91,38 +94,38 @@ _Last updated: 2026-08-30 — compact dense-characteristic summary implementatio
 - Assistant visual QA: PASS.
 - User visual acceptance: **APPROVED on 2026-08-30**.
 
-### QA cleanup
+### QA cleanup and pre-integration gate
 
 - Temporary workflow artifact steps removed in commit `acd52d4589df71c160a3d9d56782f5891d32673c`.
 - Temporary `tools/render_dense_characteristic_summary_qa.py` removed in commit `236760a8e35f9a60978e6197f28c468ef8709464`.
-- `characteristic-label-validation.yml` is restored exactly to its pre-QA test-only content.
-- Compare `a11b0946aad322cb30145a178eda4261f8f1e1de...236760a8e35f9a60978e6197f28c468ef8709464`: **zero changed files**. Therefore cleanup changed no product source or product test tree.
+- Compare `a11b0946aad322cb30145a178eda4261f8f1e1de...236760a8e35f9a60978e6197f28c468ef8709464`: **zero changed files**. Therefore QA cleanup changed no product source or product test tree.
+- Fresh pre-integration rerun on SHA `f945a408bde8bd88511396609abb3f5e91c37937`: **484 passed in 66.74 s**.
+- Complete branch audit against `main` found the accumulated, previously validated narrative/presentation work plus dense-summary source/tests/docs; no dependency/build changes or unrelated product modules.
+- `main` is the merge base and direct ancestor of the feature branch: **0 commits behind**; no historical divergence/conflict is present.
+- Feature-only workflow `.github/workflows/characteristic-label-validation.yml` removed in commit `954025da22e3976b2f502b92fbbcd88b27a9e2fd` before PR creation.
+- Pull Request **#30** opened against `main` on 2026-08-30; GitHub recalculated it as **mergeable=true**, non-draft, still unmerged.
 
 ## Roadmap / active plan
 
 - **0.7.2 engineering tables:** COMPLETE, distribution-validated, merged.
 - **0.7.3 derivation traces:** RETIRED.
-- **Narrative text:** IMPLEMENTED + MACHINE GREEN + REAL-COLAB VISUALLY VALIDATED.
-- **Presentation polish:** IMPLEMENTED + REAL-COLAB VISUALLY VALIDATED; retained on feature history.
-- **Characteristic-point label deconfliction:** **IMPLEMENTED + 484/484 GREEN + AUTOMATED QA PASS + USER VISUALLY APPROVED**; stopped at merge gate.
-- Dense-summary implementation plan tasks:
-  1. centralize authoritative characteristic requests in `plotting.py` — COMPLETE;
-  2. build immutable dense-summary groups and remove presentation extrema duplication — COMPLETE;
-  3. replace rejected callout tests with compact-summary RED contracts — COMPLETE;
-  4. implement compact summary GREEN and run focused/full tests — COMPLETE;
-  5. generate GitHub Actions PNG + JSON metrics and perform assistant visual QA — COMPLETE;
-  6. after explicit user visual acceptance, remove temporary QA harness/workflow and stop at merge gate — COMPLETE.
+- **Narrative text:** IMPLEMENTED + MACHINE GREEN + REAL-COLAB VISUALLY VALIDATED; included in PR #30.
+- **Presentation polish:** IMPLEMENTED + REAL-COLAB VISUALLY VALIDATED; included in PR #30.
+- **Characteristic-point label deconfliction:** **IMPLEMENTED + 484/484 GREEN + AUTOMATED QA PASS + USER VISUALLY APPROVED**; included in PR #30.
+- Dense-summary implementation plan tasks 1–6: COMPLETE.
+- **Integration:** PR #30 OPEN + MERGEABLE; merge not yet authorized/executed.
 - **0.8.0 Piecewise:** design/spec/plan complete; production implementation not started.
 - Later roadmap remains 0.8.1 exact-first extrema/roots/intersections, 0.8.2 exact envelopes/governing intervals, 0.8.3 named response cases/combinations, 0.9.0 vectors/matrices/linear systems, 0.10.x verification, 1.0 stabilization.
 
 ## Exact next step
 
-1. **Stop at the merge/integration gate.**
-2. Do not merge `feature/v0.8.0-characteristic-label-layout` into `main` without a new explicit user instruction to do so.
-3. If merge is approved, perform a fresh pre-merge verification on the current branch, inspect the complete branch diff against `main`, merge using the repository's approved workflow, and verify the resulting `main` state.
-4. Do not begin Piecewise production implementation as part of this cleanup/merge gate.
-5. Do not invoke Codex unless explicitly authorized.
+1. Review Pull Request **#30** against `main`.
+2. Do not merge PR #30 without a new explicit user instruction to merge it.
+3. If merge is approved, verify the PR head has not moved unexpectedly, merge using the selected repository method, then verify the resulting `main` state with a fresh full test run/equivalent gate.
+4. Keep the feature branch available for PR feedback until the integration is complete.
+5. Do not begin Piecewise production implementation as part of this PR gate.
+6. Do not invoke Codex unless explicitly authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. Released `main` remains EngCalc 0.7.2. The dense characteristic-label work is no longer pending: the compact color-keyed summary below the unchanged-size engineering axes has been implemented with a centralized characteristic-request source, dense grouping, preserved sparse inline behavior, no dense leader lines, unchanged main axes geometry, and a 1.34 in vertical expansion in the canonical six-series case. Product SHA `a11b0946...` passed 484/484. Exact QA SHA `44d48065...` also passed 484/484 and generated artifact `9728003251`; assistant visual QA passed and the user explicitly approved the image on 2026-08-30. Temporary QA tooling was then removed, and compare against the product SHA confirmed zero file differences after cleanup. The branch is now intentionally stopped at the merge gate. Never merge without explicit user approval and never invoke Codex without explicit authorization.
+Read this file first. Released `main` remains EngCalc 0.7.2 at `72b0b1b...`. The accumulated narrative, presentation-polish, and dense characteristic-label work is now proposed for integration in Pull Request #30 from `feature/v0.8.0-characteristic-label-layout`. The compact color-keyed summary is implemented with a centralized characteristic-request source, preserved sparse inline behavior, no dense leader lines, unchanged main axes geometry, and 1.34 in vertical expansion in the canonical six-series case. Product SHA `a11b0946...` passed 484/484; exact QA SHA `44d48065...` passed 484/484 and generated artifact `9728003251`; assistant visual QA passed and the user explicitly approved the image. A fresh pre-integration rerun on `f945a408...` passed 484/484 in 66.74 s. The feature-only CI workflow was then removed, and PR #30 was opened against `main`; GitHub reports it mergeable. The PR remains unmerged and requires explicit user authorization before merge. Never invoke Codex without explicit authorization.
