@@ -98,15 +98,77 @@ class _CharacteristicRequest:
     inverted: bool
 
 
+def _nearest_sample_index(result: PlotResult, x_quantity) -> int:
+    unit = result.x_values[0].units
+    target = float(x_quantity.to(unit).magnitude)
+    return min(
+        range(len(result.x_values)),
+        key=lambda index: abs(float(result.x_values[index].to(unit).magnitude) - target),
+    )
+
+
 def _characteristic_requests(result: PlotResult) -> tuple[_CharacteristicRequest, ...]:
     inverted = all(series.is_moment for series in result.series)
     requests: list[_CharacteristicRequest] = []
 
     for series_index, series in enumerate(result.series):
+        response_label = _series_response_symbol(result, series)
+        if result.kind == "plot" and series.characteristics:
+            x_unit = result.x_values[0].units
+            y_unit = series.y_values[0].units
+            series_requests: list[_CharacteristicRequest] = []
+            for characteristic_role, request_role in (
+                ("global_max", "max"),
+                ("global_min", "min"),
+            ):
+                point = next(
+                    (
+                        item
+                        for item in series.characteristics
+                        if characteristic_role in item.roles
+                        and item.value_quantity is not None
+                    ),
+                    None,
+                )
+                if point is None:
+                    continue
+                x_quantity = point.x_quantity.to(x_unit)
+                y_quantity = point.value_quantity.to(y_unit)
+                x_magnitude = float(x_quantity.magnitude)
+                y_magnitude = float(y_quantity.magnitude)
+                if any(
+                    math.isclose(
+                        x_magnitude,
+                        float(existing.x_quantity.to(x_unit).magnitude),
+                        rel_tol=1e-12,
+                        abs_tol=1e-12,
+                    )
+                    and math.isclose(
+                        y_magnitude,
+                        float(existing.y_quantity.to(y_unit).magnitude),
+                        rel_tol=1e-12,
+                        abs_tol=1e-12,
+                    )
+                    for existing in series_requests
+                ):
+                    continue
+                series_requests.append(
+                    _CharacteristicRequest(
+                        series_index=series_index,
+                        series=series,
+                        sample_index=_nearest_sample_index(result, x_quantity),
+                        x_quantity=x_quantity,
+                        y_quantity=y_quantity,
+                        response_label=response_label,
+                        role=request_role,
+                        inverted=inverted,
+                    )
+                )
+            requests.extend(series_requests)
+            continue
+
         values = [float(value.magnitude) for value in series.y_values]
         maximum_index, minimum_index = _extreme_indices(values)
-        response_label = _series_response_symbol(result, series)
-
         requests.append(
             _CharacteristicRequest(
                 series_index=series_index,
@@ -442,14 +504,20 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
     )
     axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, zorder=2)
 
-    maximum_index, minimum_index = _extreme_indices(y_values)
-    extreme_indices = {maximum_index, minimum_index}
-    marker_indices = sorted({0, len(x_values) - 1} | extreme_indices)
-    marker_sizes = [32 if index in extreme_indices else 20 for index in marker_indices]
+    requests = _characteristic_requests(result)
+    marker_points: dict[tuple[float, float], tuple[float, float, int]] = {}
+    for index in (0, len(x_values) - 1):
+        key = (round(x_values[index], 12), round(y_values[index], 12))
+        marker_points[key] = (x_values[index], y_values[index], 20)
+    for request in requests:
+        x = float(request.x_quantity.magnitude)
+        y = float(request.y_quantity.magnitude)
+        key = (round(x, 12), round(y, 12))
+        marker_points[key] = (x, y, 32)
     axis.scatter(
-        [x_values[index] for index in marker_indices],
-        [y_values[index] for index in marker_indices],
-        s=marker_sizes,
+        [point[0] for point in marker_points.values()],
+        [point[1] for point in marker_points.values()],
+        s=[point[2] for point in marker_points.values()],
         color=line_color,
         zorder=4,
     )
@@ -464,43 +532,18 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)
     figure.tight_layout()
 
-    response_label = _series_response_symbol(result, series)
     occupied_boxes: list = []
-    maximum_value = y_values[maximum_index]
-    minimum_value = y_values[minimum_index]
-    if math.isclose(maximum_value, minimum_value, rel_tol=1e-12, abs_tol=1e-12):
+    for request in requests:
         _annotate_characteristic(
             axis,
-            result.x_values[maximum_index],
-            series.y_values[maximum_index],
-            response_label,
-            role="max",
-            inverted=inverted,
+            request.x_quantity,
+            request.y_quantity,
+            request.response_label,
+            role=request.role,
+            inverted=request.inverted,
             line_color=line_color,
             occupied_boxes=occupied_boxes,
         )
-    else:
-        _annotate_characteristic(
-            axis,
-            result.x_values[maximum_index],
-            series.y_values[maximum_index],
-            response_label,
-            role="max",
-            inverted=inverted,
-            line_color=line_color,
-            occupied_boxes=occupied_boxes,
-        )
-        _annotate_characteristic(
-            axis,
-            result.x_values[minimum_index],
-            series.y_values[minimum_index],
-            response_label,
-            role="min",
-            inverted=inverted,
-            line_color=line_color,
-            occupied_boxes=occupied_boxes,
-        )
-
 
 def _render_multi_series(figure, axis, result: PlotResult) -> None:
     x_values = [float(value.magnitude) for value in result.x_values]
@@ -518,10 +561,10 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
             label=series.display_label, zorder=3,
         )
         line_colors[series_index] = line.get_color()
-        marker_indices = sorted({item.sample_index for item in requests_by_series[series_index]})
+        series_requests = requests_by_series[series_index]
         axis.scatter(
-            [x_values[index] for index in marker_indices],
-            [y_values[index] for index in marker_indices],
+            [float(item.x_quantity.magnitude) for item in series_requests],
+            [float(item.y_quantity.magnitude) for item in series_requests],
             s=26,
             color=line_colors[series_index],
             zorder=4,

@@ -375,6 +375,12 @@ class PlotSeries:
     y_values: tuple[Any, ...]
     is_moment: bool
     segment_starts: tuple[int, ...] = ()
+    characteristics: tuple[CharacteristicPoint, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "y_values", tuple(self.y_values))
+        object.__setattr__(self, "segment_starts", tuple(self.segment_starts))
+        object.__setattr__(self, "characteristics", tuple(self.characteristics))
 
 
 @dataclass(frozen=True)

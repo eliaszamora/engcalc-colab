@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ast
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import sympy as sp
 from pint.errors import DimensionalityError
@@ -21,6 +21,7 @@ from .errors import (
     diagnostic_hint,
 )
 from .models import (
+    CharacteristicPoint,
     EigenvalueEntry,
     EigenvalueSet,
     EigenvectorEntry,
@@ -1443,6 +1444,35 @@ class _Evaluator(ast.NodeVisitor):
         )
         return resolved_responses[0].comparison_expression
 
+    def _plot_characteristics(
+        self,
+        expression,
+        variable: str,
+        domain,
+        *,
+        source_label: str,
+        overrides=None,
+    ) -> tuple[CharacteristicPoint, ...]:
+        try:
+            points, _intervals, _up, _down, unresolved = solve_extrema_exact(
+                expression,
+                self.engine.resolve_symbol(variable),
+                domain,
+                self.engine.numeric_context,
+                overrides=overrides,
+                source_label=source_label,
+            )
+        except (EngEvaluationError, TypeError, ValueError):
+            return ()
+        if unresolved:
+            return ()
+        return tuple(
+            point
+            for point in points
+            if point.value_quantity is not None
+            and any(role in {"global_max", "global_min"} for role in point.roles)
+        )
+
     def _evaluate_plot(self, node: ast.Call):
         resolved = self._resolve_response_series(node, call_name="plot")
         self.plot_evaluation = _PlotEvaluation(
@@ -1657,6 +1687,13 @@ class _Evaluator(ast.NodeVisitor):
             start_quantity,
             end_quantity,
         )
+        analysis_domain = None
+        if call_name == "plot":
+            analysis_domain = normalize_analysis_domain(
+                self.engine.numeric_context,
+                start_expression,
+                end_expression,
+            )
 
         resolved_expressions = [
             self._resolve_response_expression(item, variable)
@@ -1684,6 +1721,7 @@ class _Evaluator(ast.NodeVisitor):
                 preserve_signed_source=(
                     call_name == "envelope" and expression.is_absolute
                 ),
+                analysis_domain=analysis_domain,
             )
             source_labels = [item.display_label for item in raw_source_series]
             display_label = (
@@ -1722,12 +1760,21 @@ class _Evaluator(ast.NodeVisitor):
                 source_segment_starts = self.engine.numeric_context.piecewise_segment_starts(
                     expression.signed_expression, variable, x_values
                 )
+                characteristics = ()
+                if call_name == "plot":
+                    characteristics = self._plot_characteristics(
+                        expression.comparison_expression,
+                        variable,
+                        analysis_domain,
+                        source_label=expression.display_label,
+                    )
                 raw_series.append(
                     PlotSeries(
                         display_label=expression.display_label,
                         y_values=y_values,
                         is_moment=self._is_moment_label(expression.source_label),
                         segment_starts=segment_starts,
+                        characteristics=characteristics,
                     )
                 )
                 raw_source_series.append(
@@ -1789,6 +1836,7 @@ class _Evaluator(ast.NodeVisitor):
         *,
         call_name: str,
         preserve_signed_source: bool,
+        analysis_domain,
     ) -> tuple[list[PlotSeries], list[PlotSeries], tuple]:
         parameter_name = keyword_node.arg
         if parameter_name is None:
@@ -1866,12 +1914,22 @@ class _Evaluator(ast.NodeVisitor):
             source_segment_starts = self.engine.numeric_context.piecewise_segment_starts(
                 signed_expression, variable, x_values, overrides=overrides
             )
+            characteristics = ()
+            if call_name == "plot":
+                characteristics = self._plot_characteristics(
+                    comparison_expression,
+                    variable,
+                    analysis_domain,
+                    source_label=case_label,
+                    overrides=overrides,
+                )
             comparison_series.append(
                 PlotSeries(
                     display_label=case_label,
                     y_values=comparison_y_values,
                     is_moment=is_moment,
                     segment_starts=segment_starts,
+                    characteristics=characteristics,
                 )
             )
             source_series.append(
@@ -1920,6 +1978,17 @@ class _Evaluator(ast.NodeVisitor):
         for item in series:
             try:
                 y_values = tuple(value.to(target_unit) for value in item.y_values)
+                characteristics = tuple(
+                    replace(
+                        point,
+                        value_quantity=(
+                            None
+                            if point.value_quantity is None
+                            else point.value_quantity.to(target_unit)
+                        ),
+                    )
+                    for point in item.characteristics
+                )
             except DimensionalityError as exc:
                 raise EngEvaluationError(
                     f"{call_name} series have incompatible y dimensions"
@@ -1930,6 +1999,7 @@ class _Evaluator(ast.NodeVisitor):
                     y_values=y_values,
                     is_moment=item.is_moment,
                     segment_starts=item.segment_starts,
+                    characteristics=characteristics,
                 )
             )
         return tuple(normalized)
