@@ -23,6 +23,37 @@ class MatrixShape:
 
 
 @dataclass(frozen=True)
+class MatrixNumericGuard:
+    operation: str
+    source_matrix: Any
+
+
+@dataclass(frozen=True)
+class EigenvalueEntry:
+    value: Any
+    multiplicity: int
+
+
+@dataclass(frozen=True)
+class EigenvalueSet:
+    entries: tuple[EigenvalueEntry, ...]
+    source_matrix: Any
+
+
+@dataclass(frozen=True)
+class EigenvectorEntry:
+    value: Any
+    multiplicity: int
+    vectors: tuple[Any, ...]
+
+
+@dataclass(frozen=True)
+class EigenvectorSet:
+    entries: tuple[EigenvectorEntry, ...]
+    source_matrix: Any
+
+
+@dataclass(frozen=True)
 class ParsedStatement:
     line_no: int
     source: str
@@ -76,6 +107,7 @@ class UserFunction:
     expression: Any
     derivative_variable: str | None = None
     derivative_breakpoints: tuple[Any, ...] = ()
+    numeric_guards: tuple[MatrixNumericGuard, ...] = ()
 
     def __init__(
         self,
@@ -83,6 +115,7 @@ class UserFunction:
         expression: Any = None,
         derivative_variable: str | None = None,
         derivative_breakpoints: tuple[Any, ...] = (),
+        numeric_guards: tuple[MatrixNumericGuard, ...] = (),
         *,
         parameter: str | None = None,
     ) -> None:
@@ -101,6 +134,7 @@ class UserFunction:
         object.__setattr__(self, "expression", expression)
         object.__setattr__(self, "derivative_variable", derivative_variable)
         object.__setattr__(self, "derivative_breakpoints", tuple(derivative_breakpoints))
+        object.__setattr__(self, "numeric_guards", tuple(numeric_guards))
 
     @property
     def parameter(self) -> str | None:

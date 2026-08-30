@@ -15,7 +15,12 @@ from .errors import (
     diagnostic_hint,
 )
 from .models import (
+    EigenvalueEntry,
+    EigenvalueSet,
+    EigenvectorEntry,
+    EigenvectorSet,
     EvaluationResult,
+    MatrixNumericGuard,
     NumericAssignmentResult,
     NumericEvaluationResult,
     NumericMatrixEvaluationResult,
@@ -49,6 +54,14 @@ from .matrix_core import (
     matrix_transpose,
     matrix_zeros,
 )
+from .matrix_analysis import (
+    matrix_eigenvals,
+    matrix_eigenvects,
+    matrix_norm,
+    matrix_rank,
+    matrix_rref,
+)
+from .matrix_numeric import ensure_common_scale
 from .matrix_solve import solve_linear_system
 from .numeric import NumericContext
 from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
@@ -156,12 +169,14 @@ class EngineeringEngine:
         self.namespace: dict[str, object] = {}
         self.functions: dict[str, UserFunction] = {}
         self.symbols: dict[str, sp.Symbol] = {}
+        self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
         self.numeric_context = NumericContext()
 
     def reset(self) -> None:
         self.namespace.clear()
         self.functions.clear()
         self.symbols.clear()
+        self.numeric_guards.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -332,9 +347,14 @@ class EngineeringEngine:
                         expression=value,
                         derivative_variable=evaluator.derivative_variable,
                         derivative_breakpoints=evaluator.derivative_breakpoints,
+                        numeric_guards=tuple(evaluator.numeric_guards),
                     )
                 else:
                     self.namespace[statement.target] = value
+                    if evaluator.numeric_guards:
+                        self.numeric_guards[statement.target] = tuple(evaluator.numeric_guards)
+                    else:
+                        self.numeric_guards.pop(statement.target, None)
             return EvaluationResult(
                 statement=statement,
                 display_input=evaluator.display_input,
@@ -365,6 +385,95 @@ class _Evaluator(ast.NodeVisitor):
         self.symbol_overrides: dict[str, sp.Symbol] = {}
         self.derivative_variable: str | None = None
         self.derivative_breakpoints: tuple[object, ...] = ()
+        self.numeric_guards: list[MatrixNumericGuard] = []
+
+    def _add_numeric_guard(self, guard: MatrixNumericGuard) -> None:
+        if not any(existing == guard for existing in self.numeric_guards):
+            self.numeric_guards.append(guard)
+
+    def _add_numeric_guards(self, guards) -> None:
+        for guard in guards:
+            self._add_numeric_guard(guard)
+
+    def _substitute_numeric_guard(self, guard: MatrixNumericGuard, bindings) -> MatrixNumericGuard:
+        source = substitute_symbolic_value(guard.source_matrix, bindings) if bindings else guard.source_matrix
+        return MatrixNumericGuard(
+            operation=guard.operation,
+            source_matrix=sp.ImmutableMatrix(source),
+        )
+
+    def _validate_numeric_guards(
+        self,
+        guards=None,
+        *,
+        overrides=None,
+        allowed_unresolved=None,
+    ):
+        validations = []
+        for guard in tuple(self.numeric_guards if guards is None else guards):
+            _substitutions, unresolved, quantity_matrix = self.engine.numeric_context.evaluate_matrix(
+                guard.source_matrix,
+                overrides=overrides,
+                allowed_unresolved=allowed_unresolved,
+            )
+            if unresolved:
+                continue
+            scale = ensure_common_scale(quantity_matrix, guard.operation)
+            validations.append((guard, scale))
+        return tuple(validations)
+
+    @staticmethod
+    def _guard_scale(validations, operation: str, source_matrix):
+        for guard, scale in reversed(validations):
+            if guard.operation == operation and guard.source_matrix == source_matrix:
+                return scale
+        return None
+
+    def _numeric_eigenvalue_set(self, value: EigenvalueSet, validations, target_unit=None):
+        scale = self._guard_scale(validations, "eigenvals", value.source_matrix)
+        entries = []
+        for entry in value.entries:
+            _substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(entry.value)
+            if (
+                scale is not None
+                and quantity.dimensionless
+                and float(quantity.magnitude) == 0.0
+            ):
+                quantity = self.engine.numeric_context.ureg.Quantity(0, scale)
+            if target_unit is not None:
+                quantity = self.engine.numeric_context.convert_quantity(quantity, target_unit)
+            entries.append(EigenvalueEntry(value=quantity, multiplicity=entry.multiplicity))
+        return EigenvalueSet(entries=tuple(entries), source_matrix=value.source_matrix)
+
+    def _numeric_eigenvector_set(self, value: EigenvectorSet, validations, target_unit=None):
+        scale = self._guard_scale(validations, "eigenvects", value.source_matrix)
+        entries = []
+        for entry in value.entries:
+            _substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(entry.value)
+            if (
+                scale is not None
+                and quantity.dimensionless
+                and float(quantity.magnitude) == 0.0
+            ):
+                quantity = self.engine.numeric_context.ureg.Quantity(0, scale)
+            if target_unit is not None:
+                quantity = self.engine.numeric_context.convert_quantity(quantity, target_unit)
+            numeric_vectors = []
+            for vector in entry.vectors:
+                _subs, unresolved, quantity_matrix = self.engine.numeric_context.evaluate_matrix(vector)
+                if unresolved:
+                    raise EngEvaluationError(
+                        "numeric eigenvectors require fully numeric vector entries"
+                    )
+                numeric_vectors.append(quantity_matrix)
+            entries.append(
+                EigenvectorEntry(
+                    value=quantity,
+                    multiplicity=entry.multiplicity,
+                    vectors=tuple(numeric_vectors),
+                )
+            )
+        return EigenvectorSet(entries=tuple(entries), source_matrix=value.source_matrix)
 
     def visit_function_body(self, node: ast.AST, parameters: tuple[str, ...]):
         previous = dict(self.symbol_overrides)
@@ -449,6 +558,8 @@ class _Evaluator(ast.NodeVisitor):
             return self.symbol_overrides[node.id]
         if node.id == "pi":
             return sp.pi
+        if node.id in self.engine.namespace:
+            self._add_numeric_guards(self.engine.numeric_guards.get(node.id, ()))
         return self.engine.resolve_name(node.id)
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
@@ -609,6 +720,17 @@ class _Evaluator(ast.NodeVisitor):
                         bindings,
                     )
 
+                effective_guards = tuple(
+                    self._substitute_numeric_guard(guard, bindings)
+                    for guard in function.numeric_guards
+                )
+                self._add_numeric_guards(effective_guards)
+                self._validate_numeric_guards(
+                    effective_guards,
+                    overrides=overrides,
+                    allowed_unresolved=allowed_unresolved,
+                )
+
                 if is_matrix(symbolic_expression):
                     if (
                         not unresolved_arguments
@@ -736,6 +858,19 @@ class _Evaluator(ast.NodeVisitor):
                     ) from exc
             else:
                 symbolic_expression = self.visit(argument)
+                guard_validations = self._validate_numeric_guards()
+                if isinstance(symbolic_expression, EigenvalueSet):
+                    return self._numeric_eigenvalue_set(
+                        symbolic_expression,
+                        guard_validations,
+                        target_unit=target_unit,
+                    )
+                if isinstance(symbolic_expression, EigenvectorSet):
+                    return self._numeric_eigenvector_set(
+                        symbolic_expression,
+                        guard_validations,
+                        target_unit=target_unit,
+                    )
                 if is_matrix(symbolic_expression):
                     substitutions, unresolved_symbols, quantity_matrix = (
                         self.engine.numeric_context.evaluate_matrix(
@@ -848,6 +983,22 @@ class _Evaluator(ast.NodeVisitor):
             rows, cols = matrix_size(args[0])
             return MatrixShape(rows=rows, cols=cols)
 
+        if name in {"rank", "rref", "norm", "eigenvals", "eigenvects"}:
+            self._require_arity(name, args, 1, "matrix")
+            operations = {
+                "rank": matrix_rank,
+                "rref": matrix_rref,
+                "norm": matrix_norm,
+                "eigenvals": matrix_eigenvals,
+                "eigenvects": matrix_eigenvects,
+            }
+            result = operations[name](args[0])
+            source_matrix = sp.ImmutableMatrix(args[0])
+            self._add_numeric_guard(
+                MatrixNumericGuard(operation=name, source_matrix=source_matrix)
+            )
+            return result
+
         if name in self.engine.functions:
             function = self.engine.functions[name]
             self._require_user_function_arity(name, function, args)
@@ -856,6 +1007,10 @@ class _Evaluator(ast.NodeVisitor):
                 for parameter in function.parameters
             )
             bindings = dict(zip(parameters, args))
+            self._add_numeric_guards(
+                self._substitute_numeric_guard(guard, bindings)
+                for guard in function.numeric_guards
+            )
             return substitute_symbolic_value(function.expression, bindings)
 
         if name in _SCALAR_SYMBOLIC_FUNCTIONS:
