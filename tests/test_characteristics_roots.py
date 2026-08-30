@@ -174,7 +174,7 @@ def test_dimensional_response_root_preserves_zero_response_unit():
     assert unresolved is False
 
 
-def test_exact_solver_reports_unresolved_without_inventing_sampled_answer(monkeypatch):
+def test_exact_solver_unresolved_uses_validated_numeric_fallback(monkeypatch):
     context = NumericContext()
     x = sp.Symbol("x")
     domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
@@ -189,9 +189,14 @@ def test_exact_solver_reports_unresolved_without_inventing_sampled_answer(monkey
 
     points, intervals, unresolved = solve_roots_exact(sp.sin(x) - x / 2, x, domain, context)
 
-    assert points == ()
+    assert [point.x_quantity.magnitude for point in points] == pytest.approx(
+        [0.0, 1.895494267033981],
+        rel=1e-9,
+        abs=1e-10,
+    )
+    assert all(point.provenance == "numeric" for point in points)
     assert intervals == ()
-    assert unresolved is True
+    assert unresolved is False
 
 
 def test_piecewise_sign_jump_is_not_a_root():
@@ -305,16 +310,14 @@ def test_piecewise_zero_interval_is_clipped_to_requested_domain():
     assert unresolved is False
 
 
-def test_piecewise_unresolved_branch_preserves_exact_roots_from_other_regions(monkeypatch):
+def test_piecewise_unresolved_branch_adds_numeric_root_without_losing_exact_root(monkeypatch):
     context = NumericContext()
     x = sp.Symbol("x")
-    expression = sp.Piecewise((x - 1, x < 2), (sp.sin(x) - x / 2, True), evaluate=False)
+    expression = sp.Piecewise((x - 1, x < 2), (sp.sin(x - 3), True), evaluate=False)
     domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
-    real_solveset = sp.solveset
-    real_solve = sp.solve
     unresolved_set = sp.ConditionSet(
         x,
-        sp.Eq(sp.sin(x), x / 2, evaluate=False),
+        sp.Eq(sp.sin(x - 3), 0, evaluate=False),
         sp.S.Reals,
     )
 
@@ -333,9 +336,10 @@ def test_piecewise_unresolved_branch_preserves_exact_roots_from_other_regions(mo
 
     points, intervals, unresolved = solve_roots_exact(expression, x, domain, context)
 
-    monkeypatch.setattr(sp, "solveset", real_solveset)
-    monkeypatch.setattr(sp, "solve", real_solve)
-
-    assert [point.x_symbolic for point in points] == [sp.Integer(1)]
+    assert [point.x_quantity.magnitude for point in points] == pytest.approx(
+        [1.0, 3.0],
+        abs=1e-10,
+    )
+    assert [point.provenance for point in points] == ["exact", "numeric"]
     assert intervals == ()
-    assert unresolved is True
+    assert unresolved is False
