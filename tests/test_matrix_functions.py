@@ -3,7 +3,7 @@ import pytest
 
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.errors import EngEvaluationError, EngSyntaxError
-from engcalc_colab.models import MatrixShape
+from engcalc_colab import models
 from engcalc_colab.parser import parse_cell
 
 
@@ -109,8 +109,9 @@ def test_size_returns_immutable_matrix_shape_model():
     engine = EngineeringEngine()
     eval_cell(engine, "A = [a,b,c; d,e,f]")
     value = value_of(engine, "s = size(A)")
-    assert isinstance(value, MatrixShape)
-    assert value == MatrixShape(rows=2, cols=3)
+    assert hasattr(models, "MatrixShape")
+    assert isinstance(value, models.MatrixShape)
+    assert value == models.MatrixShape(rows=2, cols=3)
     with pytest.raises(Exception):
         value.rows = 4
 
