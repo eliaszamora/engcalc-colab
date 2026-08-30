@@ -180,7 +180,7 @@ def _classify_stationary_role(
     except DimensionalityError:
         return None
     scale = max(1.0, abs(left_mag), abs(center_mag), abs(right_mag))
-    tolerance = 1e-12 * scale
+    tolerance = 1e-14 * scale
     if center_mag > left_mag + tolerance and center_mag > right_mag + tolerance:
         return "local_max"
     if center_mag < left_mag - tolerance and center_mag < right_mag - tolerance:
