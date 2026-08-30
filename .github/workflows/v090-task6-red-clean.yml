@@ -1,0 +1,54 @@
+name: EngCalc 0.9.0 Task 6 Clean RED
+
+on:
+  push:
+    branches:
+      - feature/v0.9.0-matrix-cas
+    paths:
+      - .github/workflows/v090-task6-red-clean.yml
+
+permissions:
+  contents: write
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.9.0-matrix-cas
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Correct engineering reference
+        run: python .github/scripts/v090_task6_fix_reference.py
+      - name: Validate test-only patch
+        run: |
+          git diff --check
+          git diff --name-only | grep -Fx tests/test_matrix_solve.py
+          grep -q 'pytest.approx(630000.0)' tests/test_matrix_solve.py
+      - name: Commit corrected RED contract
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add tests/test_matrix_solve.py
+          git commit -m "test: fix mixed-DOF moment reference"
+          git push origin HEAD:feature/v0.9.0-matrix-cas
+      - name: Install
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Confirm clean Task 6 RED
+        shell: bash
+        run: |
+          set +e
+          python -m pytest tests/test_matrix_solve.py -q 2>&1 | tee task6-red-clean.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Task 6 unexpectedly passed before implementation"
+            exit 1
+          fi
+          grep -q '6 failed, 2 passed' task6-red-clean.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: task6-red-clean-log
+          path: task6-red-clean.log
