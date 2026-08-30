@@ -178,8 +178,13 @@ def test_exact_solver_reports_unresolved_without_inventing_sampled_answer(monkey
     context = NumericContext()
     x = sp.Symbol("x")
     domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+    unresolved_set = sp.ConditionSet(
+        x,
+        sp.Eq(sp.sin(x), x / 2, evaluate=False),
+        sp.S.Reals,
+    )
 
-    monkeypatch.setattr(sp, "solveset", lambda *args, **kwargs: sp.ConditionSet(x, sp.true, sp.S.Reals))
+    monkeypatch.setattr(sp, "solveset", lambda *args, **kwargs: unresolved_set)
     monkeypatch.setattr(sp, "solve", lambda *args, **kwargs: [])
 
     points, intervals, unresolved = solve_roots_exact(sp.sin(x) - x / 2, x, domain, context)
