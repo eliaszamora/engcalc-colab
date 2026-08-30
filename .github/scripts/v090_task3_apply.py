@@ -90,7 +90,7 @@ def matrix_size(value):
     matrix = _require_matrix(value, "size")
     return matrix.rows, matrix.cols
 '''
-matrix_core.write_text(text.rstrip() + append + "\n", encoding="utf-8")
+matrix_core.write_text(text.rstrip() + append.rstrip() + "\n", encoding="utf-8")
 
 engine = Path("src/engcalc_colab/engine.py")
 text = engine.read_text(encoding="utf-8")
