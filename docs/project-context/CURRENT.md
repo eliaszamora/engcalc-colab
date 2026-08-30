@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The approved 0.9.0 Matrix/CAS plan is executing inline on `feature/v0.9.0-matrix-cas`. Tasks 0–7 are complete with strict RED→GREEN evidence. Exact rank/RREF/Frobenius norm/eigen analysis now includes deterministic result models and provenance-aware common-scale numerical guards. Task 8 — native MathJax matrix rendering and numerical presentation — is the exact next step. Package/runtime version remains 0.8.0._
+_Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The approved 0.9.0 Matrix/CAS plan is executing inline on `feature/v0.9.0-matrix-cas`. Tasks 0–8 are complete with strict RED→GREEN evidence. Native MathJax now renders symbolic, partial and numerical matrices plus matrix-analysis result models through the existing EngCalc presentation path. Task 9 — Piecewise/table/plot integration and engineering diagnostics — is the exact next step. Package/runtime version remains 0.8.0._
 
 ## Current baseline
 
@@ -33,6 +33,9 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Task 7 RED tests were persisted before production at **`0fffcc691bccabcaecc4f3fb473297da289d0726`** and **`2bd1babad8639679895363936f317ab74696a562`**.
 - Task 7 GREEN product commit: **`29c8363804f6078371fb28f03dbb0dd3a7e80e18`** (`feat: add guarded matrix analysis operations`).
 - Task 7 temporary RED/GREEN workflows, implementation harness, residual Task 6 context script and self-cleanup workflow were removed in **`fdf9f6fcb3acac7f8c66f2a69ad9fdcbf595612c`**.
+- Task 8 accepted corrected RED test head: **`a24b38d87cb5268f4088f89813da03d9242c6a0a`**.
+- Task 8 GREEN product commit: **`37c0cdb79b2ae4c0b2a039082a50260fda668700`** (`feat: render matrix calculations with MathJax`).
+- Task 8 temporary RED/GREEN workflows and apply/escape harnesses were removed in cleanup commits **`40c17e47c3eec775c991618b801f326a48e524c1`**, **`37cfc0b2e9577c2354edfc5e667eb440e782e93d`**, **`2b34fca73b2e2db8d44978c28bbd042c4a1428d2`** and **`04669837755ff276a6e0ccaa1722a0aa73ac1f47`**.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge implementation work to `main` without explicit user approval.
 
@@ -71,7 +74,7 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Generalized structural eigenproblems, sparse/global FEM matrices, block matrices, slicing, least squares, pseudoinverse, SVD, NumPy-style broadcasting and matrix-valued `:=` remain deferred.
 - LU/QR/Cholesky are deferred from mandatory core 0.9.0.
 
-### Implemented 0.9.0 behavior through Task 7
+### Implemented 0.9.0 behavior through Task 8
 
 - Normal-expression matrix literals evaluate to immutable SymPy matrices with approved row/column/general orientation.
 - Matrix literal cells must remain scalar; nested matrices in a cell are rejected.
@@ -109,13 +112,19 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Engine assignments and matrix-valued user functions preserve and substitute guard provenance into later `numeric(...)` calls.
 - Dimensionless and homogeneous/common-scale source matrices are accepted for guarded numerical rank/RREF/norm/eigen analysis; homogeneous eigenvalues preserve their common physical unit.
 - Heterogeneous physical source matrices are rejected for numerical `rank`, `rref`, `norm`, `eigenvals` and `eigenvects` with operation-specific common-scale diagnostics; units are never silently stripped.
+- Symbolic row, column and general matrices render as native MathJax matrix structures through the existing engineering renderer; raw `Matrix([[...` representations are not exposed.
+- Homogeneous `QuantityMatrix` output factors one compatible common display unit outside the matrix while rendering per-cell magnitudes with active precision/zero tolerance; adaptable zeros remain neutral.
+- Heterogeneous numerical matrices retain the Pint unit of each cell and never fabricate one matrix-wide unit.
+- Matrix `numeric(...)` preserves formula → substitution → final numerical stages; `result(...)` omits the substitution stage; partial numerical matrices show formula/substitution only and never fabricate a final `QuantityMatrix`.
+- `MatrixShape`, eigenvalue multiplicities and eigenvector sets render deterministically; eigenvectors remain native matrices and homogeneous numerical eigenvalues retain physical units.
+- `%%eng` continues to use the same `render_aligned_results` source-order MathJax path for scalar and matrix results; no parallel matrix display system was introduced.
 
 ## Open issues / user feedback
 
-- Task 8 must add native MathJax rendering for symbolic, partial and numerical matrices plus deterministic rendering for shape/eigen result models.
-- Matrix rendering/presentation is now the active next task; symbolic and numeric matrix truth is established through Task 7.
-- Task 8 must extend the existing engineering renderer rather than introduce a parallel display system.
-- Task 9 Piecewise/table/plot integration and end-to-end structural acceptance remains after Task 8 rendering.
+- Task 9 must close Piecewise-in-matrix-cell integration, indexed scalar table/plot integration, whole-matrix scalar-API rejection and end-to-end structural worksheet acceptance.
+- Task 9 must audit mandatory matrix diagnostics so backend SymPy/Pint exceptions do not leak through the EngCalc DSL.
+- Whole-matrix `table`, `plot` and `envelope` remain deliberately out of scope; only indexed scalar matrix responses integrate with those scalar APIs.
+- Task 10 release/version/wheel validation remains after Task 9 acceptance.
 - `no_vertical_scroll()` remains outside Matrix/CAS.
 - Multiline ordinary non-matrix function-call parsing remains a separate ergonomics item.
 - Generalized eigenproblem `K phi = lambda M phi` needs a future dedicated design/API.
@@ -219,12 +228,24 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Cleanup Actions **`33327852770`** removed exactly the Task 7 RED/GREEN workflows, Task 7 implementation harness, residual Task 6 context script and its self-cleanup workflow; cleanup commit **`fdf9f6fcb3acac7f8c66f2a69ad9fdcbf595612c`**.
 - The runner's Node 20 deprecation/forced Node 24 warning is infrastructure-only and not an EngCalc product failure.
 
+### 0.9.0 Task 8 RED/GREEN evidence
+
+- Task 8 renderer/magic tests were written before accepted production code. The corrected clean RED head was **`a24b38d87cb5268f4088f89813da03d9242c6a0a`**.
+- Corrected RED Actions **`33330073653`**, job **`99306945957`**, CPython **3.13.15**: **13 failed, 3 passed in 4.36 s**. The three passes were pre-existing SymPy matrix-printing capability; the 13 failures were the missing matrix numeric/partial/shape/eigen/`%%eng` presentation paths.
+- Corrected RED artifact **`9737377959`**, digest **`sha256:a7c0508b5c17717c2d5b7cc87f8ba889f99e3a703920f671a309b128e481f9c5`**.
+- A prior candidate run (`33329742934`) exposed a CI harness defect: `pytest | tee` lacked `pipefail`, so pytest failures were swallowed and candidate commit `08f4906da33557ef66c66407cb411b90d80179f3` was created prematurely. That commit was explicitly invalidated and reverted in **`1b9aedebcdde0c598244178014e6d4fe799ce533`** before re-running RED/GREEN. Four assertions were then corrected where they overconstrained string substrings, canonical heterogeneous units, or a nonexistent partial-final numeric stage; test intent remained aligned with the approved spec.
+- Final GREEN Actions **`33330195507`**, job **`99307284768`**, CPython **3.13.15**, with `set -o pipefail`: compile check + `git diff --check` + exact renderer-only patch audit GREEN; **65/65 focused GREEN in 11.59 s**; **700/700 full GREEN in 117.35 s**.
+- Product commit **`37c0cdb79b2ae4c0b2a039082a50260fda668700`** (`feat: render matrix calculations with MathJax`) changed exactly one production file: `src/engcalc_colab/renderer.py` (**251 additions, 4 deletions**).
+- GREEN logs artifact **`9737440675`**, digest **`sha256:c0531c7c1bb334aeaa8264b82af11d6351bd64fa23b4a808ae6f4bac1cfe0d5d`**.
+- Task 8 RED/GREEN workflows and apply/escape harnesses were removed after evidence preservation; no product source changed during cleanup.
+- The runner's Node 20 deprecation/forced Node 24 warning remains infrastructure-only and is not an EngCalc product failure.
+
 ## Roadmap / active plan
 
 - **0.7.2 engineering tables:** COMPLETE + merged.
 - **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
 - **0.8.0 Piecewise:** COMPLETE + merged.
-- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASKS 0–7 COMPLETE, TASK 8 NEXT**.
+- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASKS 0–8 COMPLETE, TASK 9 NEXT**.
   - Base design/spec/clarification/implementation plan: approved.
   - Task 0 isolated baseline: COMPLETE.
   - Task 1 matrix literal parser: COMPLETE, 569/569 GREEN.
@@ -234,23 +255,24 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
   - Task 5 Pint-backed numerical matrices and partial numeric matrices: COMPLETE, 27/27 focused + 657/657 full GREEN.
   - Task 6 exact `solve(A,b)` and dimensional structural solve acceptance: COMPLETE, 23/23 focused + 665/665 full GREEN.
   - Task 7 rank/RREF/norm/eigen analysis and common-scale numeric guards: COMPLETE, 55/55 focused + 684/684 full GREEN.
-  - Task 8 native MathJax rendering for symbolic/partial/numerical matrices and analysis models: NEXT.
+  - Task 8 native MathJax rendering for symbolic/partial/numerical matrices and analysis models: COMPLETE, 65/65 focused + 700/700 full GREEN.
+  - Task 9 Piecewise/table/plot integration, diagnostics and end-to-end structural acceptance: NEXT.
   - Package/runtime version remains 0.8.0 until the release-closing task.
 - Later roadmap: 0.9.1 exact-first extrema/roots/intersections → 0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization.
 
 ## Exact next step
 
-1. Add Task 8 RED tests in `tests/test_matrix_renderer.py` and `tests/test_matrix_magic.py` before changing renderer production code.
-2. Require symbolic row/column/general matrices to render through the existing engineering MathJax path as matrix LaTeX, never raw `Matrix([[...` text.
-3. Define homogeneous numerical-matrix presentation with one common unit and per-cell magnitudes, including adaptable zero display under active precision/zero-tolerance settings.
-4. Define heterogeneous numerical-matrix presentation with the correct Pint unit in each cell and no fabricated matrix-wide unit.
-5. Preserve the existing `numeric(...)` versus `result(...)` stage semantics for matrices and partial matrix results.
-6. Render `MatrixShape`, eigenvalue multiplicities and eigenvectors deterministically using the existing renderer; Task 8 may add only minimal renderer-facing model metadata if required.
-7. Run Task 8 tests RED before production changes, then implement by extending `renderer.py`/`magic.py` rather than adding a parallel display system.
-8. Run focused GREEN across Task 8 plus renderer/magic regressions, then run the complete suite; persist product only after both gates pass.
-9. Perform user-facing/Colab presentation QA after machine GREEN because Task 8 is visual output.
-10. Update this file with Task 8 evidence before Task 9 integration. Do not invoke Codex and do not merge without explicit user authorization.
+1. Add Task 9 RED tests in `tests/test_matrix_acceptance.py`, `tests/test_matrix_integration.py` and `tests/test_matrix_diagnostics.py` before changing production.
+2. Verify Piecewise scalar expressions inside matrix cells evaluate entrywise, including dimensional-zero semantics.
+3. Verify indexed scalar matrix responses such as `K(x)[1,1]` flow through existing scalar `table(...)` and `plot(...)`; whole matrices passed to `table`, `plot` or `envelope` must fail with a concise scalar-response diagnostic.
+4. Add one canonical end-to-end structural `%%eng` worksheet with numerical material data, multiline stiffness matrix, load vector, `u = solve(K,F)`, `numeric(K)` and `numeric(u)`, preserving source-order MathJax and no traceback.
+5. Cover every mandatory diagnostic category: unclosed/inconsistent/nested literals, shape mismatch, invalid exponent/index, singular inverse, numeric coordinate incompatibility, heterogeneous target unit, non-unique solve and heterogeneous guarded analysis.
+6. Run the Task 9 tests RED before production changes, then implement only missing integration/diagnostic glue; do not broaden scalar table/plot/envelope APIs to whole matrices.
+7. Update README with approved Matrix/CAS syntax/current limitations while runtime version remains 0.8.0.
+8. Run the full 0.9.0 focused acceptance set from the implementation plan, then the complete suite; persist production only after both gates pass.
+9. Update this file with exact Task 9 RED/GREEN evidence before Task 10 release/version/wheel validation.
+10. Do not invoke Codex and do not merge without explicit user authorization.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`. Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`. Tasks 0–7 are complete. Task 7 product commit `29c8363804f6078371fb28f03dbb0dd3a7e80e18` adds exact rank/RREF/Frobenius norm/eigen analysis plus provenance-aware common-scale numerical guards; final verification was 55/55 focused and 684/684 complete. The exact next action is Task 8 RED for native MathJax rendering of symbolic, partial and numerical matrices and deterministic analysis-result presentation. Never invoke Codex and never merge without explicit user approval.
+Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`. Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`. Tasks 0–8 are complete. Task 8 product commit `37c0cdb79b2ae4c0b2a039082a50260fda668700` adds native MathJax rendering for symbolic, partial and numerical matrices plus deterministic shape/eigen presentation; final verification was 65/65 focused and 700/700 complete. The exact next action is Task 9 RED for Piecewise-cell integration, indexed scalar table/plot integration, whole-matrix scalar-API diagnostics and canonical structural worksheet acceptance. Never invoke Codex and never merge without explicit user approval.
