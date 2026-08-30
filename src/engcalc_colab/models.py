@@ -139,6 +139,20 @@ class NumericEvaluationResult:
         return None
 
 
+@dataclass(frozen=True)
+class PiecewisePartialBranch:
+    value: Any
+    operator: str | None
+    breakpoint: Any | None
+    evaluated_terms: tuple[tuple[int, Any], ...] | None = None
+
+
+@dataclass(frozen=True)
+class PiecewisePartialEvaluation:
+    interval_variable: str
+    branches: tuple[PiecewisePartialBranch, ...]
+
+
 @dataclass(frozen=True, init=False)
 class PartialNumericEvaluationResult:
     statement: ParsedStatement
@@ -148,6 +162,7 @@ class PartialNumericEvaluationResult:
     evaluated_terms: tuple[tuple[int, Any], ...] | None = None
     display_name: str | None = None
     display_arguments: tuple[Any, ...] | None = None
+    piecewise_evaluation: PiecewisePartialEvaluation | None = None
 
     def __init__(
         self,
@@ -158,6 +173,7 @@ class PartialNumericEvaluationResult:
         evaluated_terms: tuple[tuple[int, Any], ...] | None = None,
         display_name: str | None = None,
         display_arguments: tuple[Any, ...] | None = None,
+        piecewise_evaluation: PiecewisePartialEvaluation | None = None,
         *,
         display_argument: Any | None = None,
     ) -> None:
@@ -175,6 +191,7 @@ class PartialNumericEvaluationResult:
         object.__setattr__(self, "evaluated_terms", evaluated_terms)
         object.__setattr__(self, "display_name", display_name)
         object.__setattr__(self, "display_arguments", normalized)
+        object.__setattr__(self, "piecewise_evaluation", piecewise_evaluation)
 
     @property
     def display_argument(self) -> Any | None:

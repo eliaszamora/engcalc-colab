@@ -450,6 +450,97 @@ class NumericContext:
                 return value
         raise EngEvaluationError("piecewise has no governing branch")
 
+    def build_partial_piecewise_evaluation(
+        self,
+        expression,
+        variable: str,
+        overrides: dict[str, Any] | None = None,
+    ):
+        from .models import PiecewisePartialBranch, PiecewisePartialEvaluation
+
+        expression = sp.sympify(expression)
+        if not isinstance(expression, sp.Piecewise):
+            return None
+
+        symbol = sp.Symbol(variable)
+        overrides = dict(overrides or {})
+        operator_direct = {
+            sp.StrictLessThan: "<",
+            sp.LessThan: "<=",
+            sp.StrictGreaterThan: ">",
+            sp.GreaterThan: ">=",
+        }
+        operator_reverse = {
+            sp.StrictLessThan: ">",
+            sp.LessThan: ">=",
+            sp.StrictGreaterThan: "<",
+            sp.GreaterThan: "<=",
+        }
+
+        branches = []
+        resolved_indices = []
+        resolved_values = []
+        for branch_expression, condition in expression.args:
+            branch_expression = sp.sympify(branch_expression)
+            evaluated_terms = None
+            if symbol not in branch_expression.free_symbols:
+                _, value = self.evaluate_symbolic(
+                    branch_expression,
+                    overrides=overrides,
+                )
+                resolved_indices.append(len(branches))
+                resolved_values.append(value)
+            else:
+                value = branch_expression
+                evaluated_terms = self.evaluate_partial_polynomial(
+                    branch_expression,
+                    variable,
+                    overrides=overrides,
+                )
+
+            operator = None
+            breakpoint = None
+            if condition != sp.true:
+                if not isinstance(condition, sp.Rel):
+                    raise EngEvaluationError("piecewise condition must be relational")
+                if condition.lhs == symbol and symbol not in condition.rhs.free_symbols:
+                    operator = operator_direct.get(condition.func)
+                    breakpoint_expression = condition.rhs
+                elif condition.rhs == symbol and symbol not in condition.lhs.free_symbols:
+                    operator = operator_reverse.get(condition.func)
+                    breakpoint_expression = condition.lhs
+                else:
+                    raise EngEvaluationError(
+                        "piecewise condition must compare the interval variable directly "
+                        "with a breakpoint"
+                    )
+                if operator is None:
+                    raise EngEvaluationError("unsupported piecewise relation")
+                _, breakpoint = self.evaluate_symbolic(
+                    breakpoint_expression,
+                    overrides=overrides,
+                )
+
+            branches.append({
+                "value": value,
+                "operator": operator,
+                "breakpoint": breakpoint,
+                "evaluated_terms": evaluated_terms,
+            })
+
+        if resolved_values:
+            normalized = self._normalize_quantity_group(
+                resolved_values,
+                "piecewise branches",
+            )
+            for index, value in zip(resolved_indices, normalized):
+                branches[index]["value"] = value
+
+        return PiecewisePartialEvaluation(
+            interval_variable=variable,
+            branches=tuple(PiecewisePartialBranch(**branch) for branch in branches),
+        )
+
     def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):
         if isinstance(expr, sp.Symbol):
             return substitutions[expr.name]

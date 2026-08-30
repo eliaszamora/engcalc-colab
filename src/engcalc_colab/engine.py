@@ -217,6 +217,7 @@ class EngineeringEngine:
                     evaluated_terms,
                     display_name,
                     display_arguments,
+                    piecewise_evaluation,
                 ) = evaluator.partial_numeric_evaluation
                 return PartialNumericEvaluationResult(
                     statement=statement,
@@ -226,6 +227,7 @@ class EngineeringEngine:
                     evaluated_terms=evaluated_terms,
                     display_name=display_name,
                     display_arguments=display_arguments,
+                    piecewise_evaluation=piecewise_evaluation,
                 )
 
             if evaluator.numeric_evaluation is not None:
@@ -525,6 +527,19 @@ class _Evaluator(ast.NodeVisitor):
                                 )
                             )
 
+                        piecewise_evaluation = None
+                        if (
+                            len(unresolved_symbols) == 1
+                            and isinstance(symbolic_expression, sp.Piecewise)
+                        ):
+                            piecewise_evaluation = (
+                                self.engine.numeric_context.build_partial_piecewise_evaluation(
+                                    symbolic_expression,
+                                    unresolved_symbols[0],
+                                    overrides=overrides,
+                                )
+                            )
+
                         self.partial_numeric_evaluation = (
                             symbolic_expression,
                             substitutions,
@@ -532,6 +547,7 @@ class _Evaluator(ast.NodeVisitor):
                             evaluated_terms,
                             display_name,
                             display_arguments,
+                            piecewise_evaluation,
                         )
                         return symbolic_expression
                 else:
