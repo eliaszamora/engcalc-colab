@@ -1,0 +1,141 @@
+name: Execute Piecewise Task 4
+
+on:
+  push:
+    branches:
+      - feature/v0.8.0-piecewise
+    paths:
+      - .github/workflows/apply-piecewise-task4.yml
+
+permissions:
+  contents: write
+
+jobs:
+  task4:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.8.0-piecewise
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install baseline
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Write Task 4 tests
+        run: |
+          cat > tests/test_piecewise_table.py <<'PY'
+          import pytest
+
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.models import TableResult
+          from engcalc_colab.parser import parse_cell
+
+
+          def eval_cell(engine, source):
+              return [engine.evaluate(statement) for statement in parse_cell(source)]
+
+
+          def define_standard_piecewise(engine):
+              eval_cell(
+                  engine,
+                  "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\n"
+                  "q1 := 8*kN/m\n"
+                  "q2 := 4*kN/m\n"
+                  "a := 3*m\n"
+                  "L := 6*m",
+              )
+
+
+          def test_piecewise_uniform_table_keeps_exact_requested_row_count_and_endpoint_ownership():
+              engine = EngineeringEngine()
+              define_standard_piecewise(engine)
+
+              result = eval_cell(engine, "table(q(x), x, 0, L, 21)")[-1]
+
+              assert isinstance(result, TableResult)
+              assert len(result.point_values) == 21
+              assert len(result.columns[0].values) == 21
+              assert result.point_values[10].to("m").magnitude == pytest.approx(3.0)
+              assert result.columns[0].values[10].to("kN/m").magnitude == pytest.approx(4.0)
+              assert result.columns[0].values[-1].to("kN/m").magnitude == pytest.approx(4.0)
+
+
+          def test_piecewise_explicit_table_keeps_exact_points_without_breakpoint_insertion():
+              engine = EngineeringEngine()
+              define_standard_piecewise(engine)
+
+              result = eval_cell(engine, "table(q(x), x, [0, 3, 6, 8], m)")[-1]
+
+              assert len(result.point_values) == 4
+              assert [point.to("m").magnitude for point in result.point_values] == pytest.approx([0, 3, 6, 8])
+              assert [value.to("kN/m").magnitude for value in result.columns[0].values] == pytest.approx([8, 4, 4, 0])
+
+
+          def test_piecewise_table_leading_exact_zero_inherits_response_unit_from_later_rows():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "q(x) = piecewise(0, x < a, q2, x <= L, 0)\n"
+                  "q2 := 4*kN/m\n"
+                  "a := 3*m\n"
+                  "L := 6*m",
+              )
+
+              result = eval_cell(engine, "table(q(x), x, [0, 3, 8], m)")[-1]
+
+              assert str(result.columns[0].unit) != "dimensionless"
+              assert [value.to("kN/m").magnitude for value in result.columns[0].values] == pytest.approx([0, 4, 0])
+
+
+          def test_piecewise_table_rejects_incompatible_units_across_sampled_branches():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\n"
+                  "q1 := 8*kN\n"
+                  "q2 := 4*m\n"
+                  "a := 3*m\n"
+                  "L := 6*m",
+              )
+
+              with pytest.raises(Exception, match="incompatible units"):
+                  eval_cell(engine, "table(q(x), x, [0, 4], m)")
+          PY
+      - name: Verify Task 4 RED
+        run: |
+          set +e
+          python -m pytest tests/test_piecewise_table.py -q
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Task 4 tests unexpectedly passed before implementation"
+            exit 1
+          fi
+          echo "TASK4_RED_CONFIRMED exit=$status"
+      - name: Implement Task 4
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/engcalc_colab/engine.py')
+          text = path.read_text()
+          old = '''            if not values:\n                raise EngEvaluationError("table response produced no values")\n\n            if canonical_unit is None:\n                canonical_unit = values[0].units\n\n            try:\n                normalized = tuple(value.to(canonical_unit) for value in values)\n            except Exception as exc:\n                raise EngEvaluationError(\n                    "table response columns have incompatible units"\n                ) from exc\n'''
+          new = '''            if not values:\n                raise EngEvaluationError("table response produced no values")\n\n            try:\n                discovered = self.engine.numeric_context._normalize_quantity_group(\n                    values,\n                    "table response values",\n                )\n            except EngEvaluationError:\n                raise\n\n            if canonical_unit is None:\n                canonical_unit = discovered[0].units\n\n            try:\n                normalized = tuple(value.to(canonical_unit) for value in discovered)\n            except Exception as exc:\n                raise EngEvaluationError(\n                    "table response columns have incompatible units"\n                ) from exc\n'''
+          assert text.count(old) == 1, 'table unit block changed unexpectedly'
+          path.write_text(text.replace(old, new, 1))
+          PY
+          python -m py_compile src/engcalc_colab/engine.py
+          git diff --check
+      - name: Verify Task 4 focused GREEN
+        run: python -m pytest tests/test_piecewise_table.py tests/test_table_engine.py -q
+      - name: Verify Task 4 full GREEN
+        run: python -m pytest -q
+      - name: Commit Task 4
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add src/engcalc_colab/engine.py tests/test_piecewise_table.py
+          git commit -m "feat: evaluate piecewise tables with dimensional zero"
+          git push origin HEAD:feature/v0.8.0-piecewise
