@@ -4,7 +4,12 @@ import pytest
 import sympy as sp
 
 import engcalc_colab.characteristics as characteristics
-from engcalc_colab.characteristics import normalize_analysis_domain, solve_extrema_exact, solve_roots_exact
+from engcalc_colab.characteristics import (
+    normalize_analysis_domain,
+    solve_extrema_exact,
+    solve_intersections_exact,
+    solve_roots_exact,
+)
 from engcalc_colab.errors import EngEvaluationError
 from engcalc_colab.numeric import NumericContext
 
@@ -51,13 +56,25 @@ def test_numeric_fallback_is_deterministic(monkeypatch):
     domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
     _force_exact_solver_unresolved(monkeypatch)
 
-    first, _, first_unresolved = solve_roots_exact(sp.sin(x) - sp.Rational(1, 2), x, domain, context)
-    second, _, second_unresolved = solve_roots_exact(sp.sin(x) - sp.Rational(1, 2), x, domain, context)
+    first, _, first_unresolved = solve_roots_exact(
+        sp.sin(x) - sp.Rational(1, 2),
+        x,
+        domain,
+        context,
+    )
+    second, _, second_unresolved = solve_roots_exact(
+        sp.sin(x) - sp.Rational(1, 2),
+        x,
+        domain,
+        context,
+    )
 
     assert first_unresolved is False
     assert second_unresolved is False
     assert _x_magnitudes(first) == _x_magnitudes(second)
-    assert tuple(point.provenance for point in first) == tuple(point.provenance for point in second)
+    assert tuple(point.provenance for point in first) == tuple(
+        point.provenance for point in second
+    )
 
 
 def test_numeric_fallback_recovers_even_multiplicity_root(monkeypatch):
@@ -77,7 +94,11 @@ def test_numeric_fallback_recovers_even_multiplicity_root(monkeypatch):
     assert unresolved is False
     assert len(points) == 1
     assert points[0].provenance == "numeric"
-    assert float(points[0].x_quantity.magnitude) == pytest.approx(math.sqrt(2), rel=1e-9, abs=1e-10)
+    assert float(points[0].x_quantity.magnitude) == pytest.approx(
+        math.sqrt(2),
+        rel=1e-9,
+        abs=1e-10,
+    )
 
 
 def test_numeric_fallback_deduplicates_grid_seed_and_refined_root(monkeypatch):
@@ -131,7 +152,11 @@ def test_piecewise_exact_and_numeric_roots_can_coexist(monkeypatch):
             return (sp.Integer(1),), False
         return (), True
 
-    monkeypatch.setattr(characteristics, "_exact_real_solution_set", selective_exact_solver)
+    monkeypatch.setattr(
+        characteristics,
+        "_exact_real_solution_set",
+        selective_exact_solver,
+    )
 
     points, intervals, unresolved = solve_roots_exact(expr, x, domain, context)
 
@@ -148,17 +173,56 @@ def test_numeric_fallback_does_not_use_public_plot_sampling(monkeypatch):
     _force_exact_solver_unresolved(monkeypatch)
 
     def forbidden_plot_sampling(*args, **kwargs):
-        raise AssertionError("characteristic fallback must not use build_plot_sample_points")
+        raise AssertionError(
+            "characteristic fallback must not use build_plot_sample_points"
+        )
 
-    monkeypatch.setattr(NumericContext, "build_plot_sample_points", forbidden_plot_sampling)
+    monkeypatch.setattr(
+        NumericContext,
+        "build_plot_sample_points",
+        forbidden_plot_sampling,
+    )
 
-    points, _, unresolved = solve_roots_exact(sp.sin(x) - sp.Rational(1, 2), x, domain, context)
+    points, _, unresolved = solve_roots_exact(
+        sp.sin(x) - sp.Rational(1, 2),
+        x,
+        domain,
+        context,
+    )
 
     assert unresolved is False
     assert len(points) == 2
 
 
-def test_unresolved_region_without_validated_root_raises_instead_of_guessing(monkeypatch):
+def test_dimensional_numeric_fallback_preserves_physical_coordinate(monkeypatch):
+    context = NumericContext()
+    x = sp.Symbol("x")
+    L = sp.Symbol("L")
+    context.values["L"] = context.ureg.Quantity(6, "m")
+    domain = normalize_analysis_domain(context, sp.Integer(0), L)
+    _force_exact_solver_unresolved(monkeypatch)
+
+    points, intervals, unresolved = solve_roots_exact(
+        sp.sin(sp.pi * x / L) - sp.Rational(1, 2),
+        x,
+        domain,
+        context,
+    )
+
+    assert intervals == ()
+    assert unresolved is False
+    assert len(points) == 2
+    assert tuple(point.x_quantity.to("m").magnitude for point in points) == pytest.approx(
+        (1.0, 5.0),
+        rel=1e-9,
+        abs=1e-10,
+    )
+    assert all(point.provenance == "numeric" for point in points)
+
+
+def test_unresolved_region_without_validated_root_raises_instead_of_guessing(
+    monkeypatch,
+):
     context = NumericContext()
     x = sp.Symbol("x")
     domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
@@ -171,19 +235,56 @@ def test_unresolved_region_without_validated_root_raises_instead_of_guessing(mon
         solve_roots_exact(sp.exp(x) + 1, x, domain, context)
 
 
+def test_intersections_use_numeric_fallback_when_exact_solver_is_unresolved(monkeypatch):
+    context = NumericContext()
+    x = sp.Symbol("x")
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+    _force_exact_solver_unresolved(monkeypatch)
+
+    points, intervals, unresolved = solve_intersections_exact(
+        sp.sin(x),
+        sp.Rational(1, 2),
+        x,
+        domain,
+        context,
+    )
+
+    assert intervals == ()
+    assert unresolved is False
+    assert len(points) == 2
+    assert _x_magnitudes(points) == pytest.approx(
+        (math.pi / 6, 5 * math.pi / 6),
+        rel=1e-9,
+        abs=1e-10,
+    )
+    assert all(point.provenance == "numeric" for point in points)
+
+
 def test_extrema_uses_numeric_derivative_fallback_with_numeric_provenance(monkeypatch):
     context = NumericContext()
     x = sp.Symbol("x")
     domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
     _force_exact_solver_unresolved(monkeypatch)
 
-    points, intervals, up, down, unresolved = solve_extrema_exact(sp.sin(x), x, domain, context)
+    points, intervals, up, down, unresolved = solve_extrema_exact(
+        sp.sin(x),
+        x,
+        domain,
+        context,
+    )
 
     assert intervals == ()
     assert not up and not down
     assert unresolved is False
-    peak = min(points, key=lambda point: abs(float(point.x_quantity.magnitude) - math.pi / 2))
-    assert float(peak.x_quantity.magnitude) == pytest.approx(math.pi / 2, rel=1e-9, abs=1e-10)
+    peak = min(
+        points,
+        key=lambda point: abs(float(point.x_quantity.magnitude) - math.pi / 2),
+    )
+    assert float(peak.x_quantity.magnitude) == pytest.approx(
+        math.pi / 2,
+        rel=1e-9,
+        abs=1e-10,
+    )
     assert peak.provenance == "numeric"
     assert "local_max" in peak.roles
     assert "global_max" in peak.roles
