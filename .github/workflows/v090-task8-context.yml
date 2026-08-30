@@ -1,0 +1,39 @@
+name: EngCalc 0.9.0 Task 8 context
+
+on:
+  push:
+    branches:
+      - feature/v0.9.0-matrix-cas
+    paths:
+      - .github/workflows/v090-task8-context.yml
+
+permissions:
+  contents: write
+
+jobs:
+  context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.9.0-matrix-cas
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Apply context patch
+        run: python .github/scripts/v090_task8_context_patch.py
+      - name: Validate context patch
+        run: |
+          git diff --check
+          test "$(git diff --name-only)" = "docs/project-context/CURRENT.md"
+          grep -q "Tasks 0–8 are complete" docs/project-context/CURRENT.md
+          grep -q "700/700 full GREEN" docs/project-context/CURRENT.md
+          grep -q "Task 9 Piecewise/table/plot integration" docs/project-context/CURRENT.md
+          grep -q "33330195507" docs/project-context/CURRENT.md
+      - name: Commit context
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add docs/project-context/CURRENT.md
+          git commit -m "docs: record Matrix CAS Task 8 completion"
+          git push origin HEAD:feature/v0.9.0-matrix-cas
