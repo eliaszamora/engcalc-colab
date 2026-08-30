@@ -38,3 +38,5 @@ jobs:
         with:
           name: task6-red-log
           path: task6-red.log
+
+# rerun after correcting the mixed-DOF engineering reference values
