@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import math
 import re
+from dataclasses import dataclass
+from typing import Any
 
-from .models import PlotResult
+from .models import PlotResult, PlotSeries
 
 
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
@@ -82,6 +84,60 @@ def _series_response_symbol(result: PlotResult, series) -> str:
     if " = " in label:
         return _response_symbol(result.display_label)
     return _response_symbol(label)
+
+
+@dataclass(frozen=True)
+class _CharacteristicRequest:
+    series_index: int
+    series: PlotSeries
+    sample_index: int
+    x_quantity: Any
+    y_quantity: Any
+    response_label: str
+    role: str
+    inverted: bool
+
+
+def _characteristic_requests(result: PlotResult) -> tuple[_CharacteristicRequest, ...]:
+    inverted = all(series.is_moment for series in result.series)
+    requests: list[_CharacteristicRequest] = []
+
+    for series_index, series in enumerate(result.series):
+        values = [float(value.magnitude) for value in series.y_values]
+        maximum_index, minimum_index = _extreme_indices(values)
+        response_label = _series_response_symbol(result, series)
+
+        requests.append(
+            _CharacteristicRequest(
+                series_index=series_index,
+                series=series,
+                sample_index=maximum_index,
+                x_quantity=result.x_values[maximum_index],
+                y_quantity=series.y_values[maximum_index],
+                response_label=response_label,
+                role="max",
+                inverted=inverted,
+            )
+        )
+        if not math.isclose(
+            values[maximum_index],
+            values[minimum_index],
+            rel_tol=1e-12,
+            abs_tol=1e-12,
+        ):
+            requests.append(
+                _CharacteristicRequest(
+                    series_index=series_index,
+                    series=series,
+                    sample_index=minimum_index,
+                    x_quantity=result.x_values[minimum_index],
+                    y_quantity=series.y_values[minimum_index],
+                    response_label=response_label,
+                    role="min",
+                    inverted=inverted,
+                )
+            )
+    return tuple(requests)
 
 
 def _visual_above_for_role(role: str, inverted: bool) -> bool:
@@ -401,21 +457,25 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
 
 def _render_multi_series(figure, axis, result: PlotResult) -> None:
     x_values = [float(value.magnitude) for value in result.x_values]
-    characteristics = []
-    for series in result.series:
+    requests = _characteristic_requests(result)
+    requests_by_series = {
+        series_index: tuple(item for item in requests if item.series_index == series_index)
+        for series_index in range(len(result.series))
+    }
+    line_colors: dict[int, Any] = {}
+
+    for series_index, series in enumerate(result.series):
         y_values = [float(value.magnitude) for value in series.y_values]
         line = axis.plot(x_values, y_values, linewidth=2.0, label=series.display_label, zorder=3)[0]
-        line_color = line.get_color()
-        maximum_index, minimum_index = _extreme_indices(y_values)
-        marker_indices = sorted({maximum_index, minimum_index})
+        line_colors[series_index] = line.get_color()
+        marker_indices = sorted({item.sample_index for item in requests_by_series[series_index]})
         axis.scatter(
             [x_values[index] for index in marker_indices],
             [y_values[index] for index in marker_indices],
             s=26,
-            color=line_color,
+            color=line_colors[series_index],
             zorder=4,
         )
-        characteristics.append((series, line_color, maximum_index, minimum_index, y_values))
 
     axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, zorder=2)
     axis.legend(loc="upper right")
@@ -430,29 +490,17 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
     figure.tight_layout()
 
     occupied_boxes: list = []
-    for series, line_color, maximum_index, minimum_index, y_values in characteristics:
-        response_label = _series_response_symbol(result, series)
+    for request in requests:
         _annotate_characteristic(
             axis,
-            result.x_values[maximum_index],
-            series.y_values[maximum_index],
-            response_label,
-            role="max",
-            inverted=moment,
-            line_color=line_color,
+            request.x_quantity,
+            request.y_quantity,
+            request.response_label,
+            role=request.role,
+            inverted=request.inverted,
+            line_color=line_colors[request.series_index],
             occupied_boxes=occupied_boxes,
         )
-        if not math.isclose(y_values[maximum_index], y_values[minimum_index], rel_tol=1e-12, abs_tol=1e-12):
-            _annotate_characteristic(
-                axis,
-                result.x_values[minimum_index],
-                series.y_values[minimum_index],
-                response_label,
-                role="min",
-                inverted=moment,
-                line_color=line_color,
-                occupied_boxes=occupied_boxes,
-            )
 
 
 def _render_envelope_sources(axis, result: PlotResult, x_values):
