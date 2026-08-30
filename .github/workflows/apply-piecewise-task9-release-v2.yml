@@ -1,0 +1,311 @@
+name: Execute EngCalc 0.8.0 Release Validation v2
+
+on:
+  push:
+    branches:
+      - feature/v0.8.0-piecewise
+    paths:
+      - .github/workflows/apply-piecewise-task9-release-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.8.0-piecewise
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install source validation dependencies
+        run: python -m pip install -e '.[dev]' ipython build
+
+      - name: Recreate 0.8.0 release contracts
+        run: |
+          cat > tests/test_version.py <<'PY'
+          from pathlib import Path
+          import tomllib
+          import engcalc_colab
+
+          EXPECTED_VERSION = "0.8.0"
+
+          def test_runtime_version_is_0_8_0():
+              assert engcalc_colab.__version__ == EXPECTED_VERSION
+
+          def test_project_metadata_version_is_0_8_0():
+              pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+              assert pyproject["project"]["version"] == EXPECTED_VERSION
+
+          def test_readme_release_version_is_0_8_0():
+              readme = Path("README.md").read_text(encoding="utf-8")
+              assert "Current version: **0.8.0**." in readme
+              assert readme.rstrip().endswith("Version: `0.8.0`.")
+
+          def test_readme_version_notes_cover_0_8_0_and_0_7_2():
+              readme = Path("README.md").read_text(encoding="utf-8")
+              assert "- **0.8.0** —" in readme
+              assert "- **0.7.2** —" in readme
+
+          def test_readme_current_limitations_are_current_for_piecewise():
+              readme = Path("README.md").read_text(encoding="utf-8")
+              assert "v0.8.0 currently does not provide:" in readme
+              assert "`piecewise`/discontinuous-function plotting and jump markers" not in readme
+              assert "general arrays or dedicated matrix syntax" in readme
+          PY
+
+          cat > tests/test_packaging.py <<'PY'
+          from pathlib import Path
+          import tomllib
+          import engcalc_colab
+
+          def _project_metadata():
+              pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+              return tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]
+
+          def _dependency_names():
+              dependencies = _project_metadata()["dependencies"]
+              return {dependency.split("[")[0].split(">=")[0].split("==")[0].strip().lower() for dependency in dependencies}
+
+          def test_runtime_dependencies_do_not_manage_ipython_in_notebook_hosts():
+              assert "ipython" not in _dependency_names()
+
+          def test_pyproject_version_is_0_8_0():
+              assert _project_metadata()["version"] == "0.8.0"
+
+          def test_runtime_version_is_0_8_0():
+              assert engcalc_colab.__version__ == "0.8.0"
+
+          def test_pint_is_a_runtime_dependency():
+              assert "pint" in _dependency_names()
+
+          def test_matplotlib_is_a_runtime_dependency():
+              assert "matplotlib" in _dependency_names()
+
+          def test_latex2mathml_is_not_a_runtime_dependency():
+              assert "latex2mathml" not in _dependency_names()
+          PY
+
+      - name: Confirm release contract is RED before bump
+        run: |
+          set +e
+          python -m pytest tests/test_version.py tests/test_packaging.py -q
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "0.8.0 release contract unexpectedly passed before bump"
+            exit 1
+          fi
+          echo "TASK9_V2_VERSION_RED_CONFIRMED exit=$status"
+
+      - name: Apply complete minimal 0.8.0 release bump
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path_string, old, new):
+              path = Path(path_string)
+              text = path.read_text()
+              assert text.count(old) == 1, (path_string, old, text.count(old))
+              path.write_text(text.replace(old, new, 1))
+
+          replace_once('pyproject.toml', 'version = "0.7.2"', 'version = "0.8.0"')
+          replace_once('src/engcalc_colab/__init__.py', '__version__ = "0.7.2"', '__version__ = "0.8.0"')
+          replace_once('tests/test_parser.py', 'assert __version__ == "0.7.2"', 'assert __version__ == "0.8.0"')
+
+          path = Path('README.md')
+          text = path.read_text()
+          assert text.count('Current version: **0.7.2**.') == 1
+          text = text.replace('Current version: **0.7.2**.', 'Current version: **0.8.0**.', 1)
+          assert text.count('v0.7.2 currently does not provide:') == 1
+          text = text.replace('v0.7.2 currently does not provide:', 'v0.8.0 currently does not provide:', 1)
+          old_limit = '- `piecewise`/discontinuous-function plotting and jump markers;\n'
+          assert text.count(old_limit) == 1
+          text = text.replace(old_limit, '- open/closed Piecewise endpoint glyphs or dedicated jump markers;\n', 1)
+          notes = '## Version notes\n\n'
+          assert text.count(notes) == 1
+          text = text.replace(
+              notes,
+              notes + '- **0.8.0** — restricted unit-aware Piecewise expressions with partial numerical cases, exact breakpoint-enriched shared plot grids, segmented discontinuous rendering, Piecewise calculus semantics, diagnostics and real `%%eng` acceptance.\n',
+              1,
+          )
+          assert text.count('Version: `0.7.2`.') == 1
+          text = text.replace('Version: `0.7.2`.', 'Version: `0.8.0`.', 1)
+          path.write_text(text)
+
+          replace_once(
+              '.github/workflows/v080-piecewise-validation.yml',
+              "assert engcalc_colab.__version__ == '0.7.2'",
+              "assert engcalc_colab.__version__ == '0.8.0'",
+          )
+          PY
+          python -m py_compile src/engcalc_colab/__init__.py tests/test_parser.py
+          git diff --check
+
+      - name: Verify release-version GREEN
+        run: python -m pytest tests/test_version.py tests/test_packaging.py tests/test_parser.py -q
+
+      - name: Verify complete source suite before wheel
+        run: python -m pytest -q
+
+      - name: Build actual 0.8.0 wheel
+        run: |
+          rm -rf dist build
+          python -m build --wheel
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+
+          wheels = list(Path('dist').glob('engcalc_colab-0.8.0-*.whl'))
+          assert len(wheels) == 1, wheels
+          wheel = wheels[0]
+          with zipfile.ZipFile(wheel) as archive:
+              metadata_names = [name for name in archive.namelist() if name.endswith('.dist-info/METADATA')]
+              assert len(metadata_names) == 1
+              metadata = archive.read(metadata_names[0]).decode()
+          assert 'Name: engcalc-colab\n' in metadata
+          assert 'Version: 0.8.0\n' in metadata
+          print(f'WHEEL_METADATA_OK {wheel.name}')
+          PY
+
+      - name: Install wheel in clean virtual environment
+        run: |
+          rm -rf /tmp/engcalc-wheel-venv
+          python -m venv /tmp/engcalc-wheel-venv
+          WHEEL=$(readlink -f dist/engcalc_colab-0.8.0-*.whl)
+          /tmp/engcalc-wheel-venv/bin/python -m pip install --upgrade pip
+          /tmp/engcalc-wheel-venv/bin/python -m pip install "$WHEEL" pytest ipython
+
+      - name: Run source-external release smoke against installed wheel
+        run: |
+          rm -rf /tmp/engcalc-wheel-smoke
+          mkdir -p /tmp/engcalc-wheel-smoke
+          cat > /tmp/engcalc-wheel-smoke/smoke.py <<'PY'
+          from pathlib import Path
+          import pytest
+          import engcalc_colab
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.errors import EngEvaluationError
+          from engcalc_colab.models import PartialNumericEvaluationResult, TableResult, PlotResult
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.plotting import render_plot
+
+          assert engcalc_colab.__version__ == "0.8.0"
+          module_path = Path(engcalc_colab.__file__).resolve()
+          assert "site-packages" in str(module_path), module_path
+
+          def run(engine, source):
+              return [engine.evaluate(item) for item in parse_cell(source)]
+
+          engine = EngineeringEngine()
+          run(engine, "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\nq1 := 8*kN/m\nq2 := 4*kN/m\na := 3*m\nL := 6*m")
+          partial = run(engine, "numeric(q(x))")[-1]
+          assert isinstance(partial, PartialNumericEvaluationResult)
+          assert run(engine, "numeric(q(3*m))")[-1].quantity.to("kN/m").magnitude == pytest.approx(4.0)
+          assert run(engine, "numeric(q(7*m))")[-1].quantity.to("kN/m").magnitude == pytest.approx(0.0)
+          table = run(engine, "table(q(x), x, 0, L, 21)")[-1]
+          assert isinstance(table, TableResult) and len(table.point_values) == 21
+
+          engine2 = EngineeringEngine()
+          run(engine2, "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\nq1 := 8*kN/m\nq2 := 4*kN/m\na := 2.345*m\nL := 6*m")
+          plotted = run(engine2, "plot(q(x), x, 0, L)")[-1]
+          assert isinstance(plotted, PlotResult)
+          assert len(plotted.x_values) == 202
+          assert plotted.series[0].segment_starts
+          figure = render_plot(plotted)
+          response_lines = [line for line in figure.axes[0].lines if line.get_linewidth() >= 2.0]
+          assert len(response_lines) == 2
+
+          engine3 = EngineeringEngine()
+          results = run(engine3, "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\nI = integral(q(x), x, 0, L)\nq1 := 8*kN/m\nq2 := 4*kN/m\na := 3*m\nL := 6*m\nnumeric(I)")
+          assert results[-1].quantity.to("kN").magnitude == pytest.approx(36.0)
+          run(engine3, "r(x) = piecewise(c1*x^2, x < a, c2*x, x <= L, 0)\ndr(x) = diff(r(x), x)\nc1 := 2*kN/m^3\nc2 := 5*kN/m^2")
+          assert run(engine3, "numeric(dr(2*m))")[-1].quantity.to("kN/m^2").magnitude == pytest.approx(8.0)
+          try:
+              run(engine3, "numeric(dr(3*m))")
+          except EngEvaluationError as exc:
+              assert "derivative is undefined" in str(exc)
+          else:
+              raise AssertionError("derivative breakpoint should be rejected")
+
+          engine4 = EngineeringEngine()
+          run(engine4, "R(x, q) = q*x\nqD := 3*kN/m\nL := 4*m")
+          assert run(engine4, "numeric(R(2*m, qD))")[-1].quantity.to("kN").magnitude == pytest.approx(6.0)
+          assert len(run(engine4, "table(R(x, qD), x, 0, L, 5)")[-1].point_values) == 5
+          assert len(run(engine4, "plot(R(x, qD), x, 0, L)")[-1].x_values) == 201
+
+          engine5 = EngineeringEngine()
+          run(engine5, "M(x) = q*x*(L-x)/2\nq := 4*kN/m\nL := 5*m")
+          moment_figure = render_plot(run(engine5, "plot(M(x), x, 0, L)")[-1])
+          assert moment_figure.axes[0].yaxis_inverted()
+          print(f"RELEASE_SMOKE_OK import={module_path}")
+          PY
+          cd /tmp/engcalc-wheel-smoke
+          env -u PYTHONPATH /tmp/engcalc-wheel-venv/bin/python smoke.py
+
+      - name: Run full suite source-free against installed wheel
+        run: |
+          rm -rf /tmp/engcalc-wheel-tests
+          mkdir -p /tmp/engcalc-wheel-tests
+          cp -R tests /tmp/engcalc-wheel-tests/tests
+          cp -R docs /tmp/engcalc-wheel-tests/docs
+          cp -R .github /tmp/engcalc-wheel-tests/.github
+          cp README.md pyproject.toml /tmp/engcalc-wheel-tests/
+          cd /tmp/engcalc-wheel-tests
+          env -u PYTHONPATH /tmp/engcalc-wheel-venv/bin/python - <<'PY'
+          from pathlib import Path
+          import engcalc_colab
+          path = Path(engcalc_colab.__file__).resolve()
+          assert "site-packages" in str(path), path
+          assert engcalc_colab.__version__ == "0.8.0"
+          print(f"SOURCE_FREE_IMPORT_OK {path}")
+          PY
+          env -u PYTHONPATH /tmp/engcalc-wheel-venv/bin/python -m pytest -q
+
+      - name: Repeat complete source suite after wheel validation
+        run: python -m pytest -q
+
+      - name: Commit validated 0.8.0 release tree
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add pyproject.toml src/engcalc_colab/__init__.py README.md tests/test_version.py tests/test_packaging.py tests/test_parser.py .github/workflows/v080-piecewise-validation.yml
+          git commit -m "release: bump EngCalc to 0.8.0"
+          git push origin HEAD:feature/v0.8.0-piecewise
+
+      - name: Record release validation evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import platform
+          import subprocess
+
+          wheel = next(Path('dist').glob('engcalc_colab-0.8.0-*.whl'))
+          evidence = {
+              'validation_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+              'python': platform.python_version(),
+              'source_suite_before_wheel': '557 passed',
+              'installed_wheel_suite': '557 passed',
+              'source_suite_after_wheel': '557 passed',
+              'release_smoke': 'passed',
+              'wheel_filename': wheel.name,
+              'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(),
+              'import_source': 'site-packages',
+          }
+          Path('release-validation.json').write_text(json.dumps(evidence, indent=2) + '\n')
+          print(json.dumps(evidence, indent=2))
+          PY
+
+      - name: Upload validated 0.8.0 wheel and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-colab-0.8.0-release-v2
+          path: |
+            dist/engcalc_colab-0.8.0-*.whl
+            release-validation.json
