@@ -386,13 +386,60 @@ def _style_axes(axis) -> None:
     axis.grid(True, which="major", alpha=0.22)
 
 
+def _segment_slices(series: PlotSeries, count: int) -> tuple[tuple[int, int], ...]:
+    starts = (0, *series.segment_starts)
+    stops = (*series.segment_starts, count)
+    return tuple((start, stop) for start, stop in zip(starts, stops) if stop > start)
+
+
+def _plot_segmented_line(
+    axis, x_values, y_values, series: PlotSeries, *, linewidth: float,
+    zorder: int, label=None, alpha: float | None = None, color=None,
+):
+    first_line = None
+    line_color = color
+    for segment_index, (start, stop) in enumerate(_segment_slices(series, len(x_values))):
+        kwargs = {
+            "linewidth": linewidth,
+            "zorder": zorder,
+            "label": label if segment_index == 0 else "_nolegend_",
+        }
+        if alpha is not None:
+            kwargs["alpha"] = alpha
+        if line_color is not None:
+            kwargs["color"] = line_color
+        line = axis.plot(x_values[start:stop], y_values[start:stop], **kwargs)[0]
+        if first_line is None:
+            first_line = line
+            line_color = line.get_color()
+    return first_line
+
+
+def _fill_segmented_between(
+    axis, x_values, lower_values, upper_values, series: PlotSeries, *,
+    color, alpha: float, zorder: int,
+):
+    for start, stop in _segment_slices(series, len(x_values)):
+        axis.fill_between(
+            x_values[start:stop],
+            lower_values[start:stop] if hasattr(lower_values, "__getitem__") else lower_values,
+            upper_values[start:stop] if hasattr(upper_values, "__getitem__") else upper_values,
+            color=color, alpha=alpha, zorder=zorder,
+        )
+
+
 def _render_single_series(figure, axis, result: PlotResult) -> None:
     series = result.series[0]
     x_values = [float(value.magnitude) for value in result.x_values]
     y_values = [float(value.magnitude) for value in series.y_values]
-    line = axis.plot(x_values, y_values, linewidth=2.2, zorder=3)[0]
+    line = _plot_segmented_line(
+        axis, x_values, y_values, series, linewidth=2.2, zorder=3
+    )
     line_color = line.get_color()
-    axis.fill_between(x_values, y_values, 0.0, color=line_color, alpha=0.12, zorder=1)
+    _fill_segmented_between(
+        axis, x_values, y_values, 0.0, series,
+        color=line_color, alpha=0.12, zorder=1,
+    )
     axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, zorder=2)
 
     maximum_index, minimum_index = _extreme_indices(y_values)
@@ -466,7 +513,10 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
 
     for series_index, series in enumerate(result.series):
         y_values = [float(value.magnitude) for value in series.y_values]
-        line = axis.plot(x_values, y_values, linewidth=2.0, label=series.display_label, zorder=3)[0]
+        line = _plot_segmented_line(
+            axis, x_values, y_values, series, linewidth=2.0,
+            label=series.display_label, zorder=3,
+        )
         line_colors[series_index] = line.get_color()
         marker_indices = sorted({item.sample_index for item in requests_by_series[series_index]})
         axis.scatter(
@@ -506,7 +556,10 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
 def _render_envelope_sources(axis, result: PlotResult, x_values):
     for source_series in result.source_series:
         source_y = [float(value.magnitude) for value in source_series.y_values]
-        axis.plot(x_values, source_y, linewidth=1.0, alpha=0.22, label="_nolegend_", zorder=1)
+        _plot_segmented_line(
+            axis, x_values, source_y, source_series, linewidth=1.0,
+            alpha=0.22, label="_nolegend_", zorder=1,
+        )
 
 
 def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
@@ -515,23 +568,18 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
     maximum_series, minimum_series = result.series
     maximum_y = [float(value.magnitude) for value in maximum_series.y_values]
     minimum_y = [float(value.magnitude) for value in minimum_series.y_values]
-    maximum_line = axis.plot(
-        x_values,
-        maximum_y,
-        linewidth=2.5,
-        alpha=1.0,
-        label=maximum_series.display_label,
-        zorder=4,
-    )[0]
-    minimum_line = axis.plot(
-        x_values,
-        minimum_y,
-        linewidth=2.5,
-        alpha=1.0,
-        label=minimum_series.display_label,
-        zorder=4,
-    )[0]
-    axis.fill_between(x_values, minimum_y, maximum_y, color=maximum_line.get_color(), alpha=0.10, zorder=2)
+    maximum_line = _plot_segmented_line(
+        axis, x_values, maximum_y, maximum_series,
+        linewidth=2.5, alpha=1.0, label=maximum_series.display_label, zorder=4,
+    )
+    minimum_line = _plot_segmented_line(
+        axis, x_values, minimum_y, minimum_series,
+        linewidth=2.5, alpha=1.0, label=minimum_series.display_label, zorder=4,
+    )
+    _fill_segmented_between(
+        axis, x_values, minimum_y, maximum_y, maximum_series,
+        color=maximum_line.get_color(), alpha=0.10, zorder=2,
+    )
     axis.axhline(
         0.0,
         linewidth=1.0,
@@ -604,15 +652,14 @@ def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
     _render_envelope_sources(axis, result, x_values)
     magnitude_series = result.series[0]
     magnitude_y = [float(value.magnitude) for value in magnitude_series.y_values]
-    magnitude_line = axis.plot(
-        x_values,
-        magnitude_y,
-        linewidth=2.5,
-        alpha=1.0,
-        label=magnitude_series.display_label,
-        zorder=4,
-    )[0]
-    axis.fill_between(x_values, 0.0, magnitude_y, color=magnitude_line.get_color(), alpha=0.10, zorder=2)
+    magnitude_line = _plot_segmented_line(
+        axis, x_values, magnitude_y, magnitude_series,
+        linewidth=2.5, alpha=1.0, label=magnitude_series.display_label, zorder=4,
+    )
+    _fill_segmented_between(
+        axis, x_values, 0.0, magnitude_y, magnitude_series,
+        color=magnitude_line.get_color(), alpha=0.10, zorder=2,
+    )
     axis.axhline(
         0.0,
         linewidth=1.0,

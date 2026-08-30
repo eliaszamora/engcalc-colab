@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.7.2**.
+Current version: **0.8.0**.
 
 ## Install in Google Colab
 
@@ -16,6 +16,43 @@ If the extension is already loaded after an update, use:
 ```python
 %reload_ext engcalc_colab
 ```
+
+## v0.8.0 Piecewise expressions
+
+EngCalc 0.8.0 adds restricted, unit-aware Piecewise expressions for engineering response laws. The primary form is:
+
+```text
+q1 := 8*kN/m
+q2 := 4*kN/m
+a := 3*m
+L := 6*m
+q(x) = piecewise(q1, x < a, q2, x <= L, 0)
+```
+
+Every `piecewise(...)` requires ordered `value, condition` pairs followed by a **mandatory default** value. Conditions are intentionally restricted to one direct `<`, `<=`, `>` or `>=` comparison between the Piecewise interval variable and a breakpoint expression. Boolean combinations, chained inequalities and arbitrary condition logic are outside the public 0.8.0 grammar. Source branch order determines ownership at boundaries.
+
+The same definition works through full and partial numerical evaluation:
+
+```text
+numeric(q(2*m))
+numeric(q(x))
+```
+
+Fully numeric calls select the governing branch using Pint-aware comparisons. A partial call retains the interval variable and renders the evaluated Piecewise cases. Exact dimensionless zero branches inherit the compatible dimensional unit of the other branches; incompatible branch or comparison dimensions raise an engineering-facing error.
+
+Tables preserve their existing exact-count contract:
+
+```text
+table(q(x), x, 0, L, 21)
+```
+
+The example above returns exactly 21 rows. Piecewise does not add hidden table samples. Plotting is different by design: it retains the existing **201-point base grid** and adds any exact, numerically resolvable Piecewise breakpoints that are not already present. Multi-series plots, parameter sweeps and envelopes use the union of their breakpoints on one shared grid. Lines and fills are split at branch transitions, so a discontinuity is never shown with a fictitious connector. Positive structural moment remains plotted downward.
+
+Symbolic calculus continues to delegate to SymPy. `integral(...)` results containing supported `Piecewise`, `Min` or `Max` structures remain numerically evaluable. `diff(...)` returns branchwise derivatives without introducing a public `DiracDelta`; however, EngCalc treats a derivative as undefined at every explicit Piecewise breakpoint and `numeric(...)` raises a corrective diagnostic exactly at that point, regardless of endpoint ownership. Evaluate the derivative immediately to either side when one-sided values are needed.
+
+### 0.8.0 limitations
+
+The 0.8.0 scope does not add arbitrary boolean Piecewise logic, open/closed endpoint glyphs, `solve(piecewise(...))`, exact Piecewise roots/intersections, exact governing-interval envelopes, arbitrary Python execution, or automatic differentiability proofs. Breakpoints used for plotting must be numerically resolvable from the current EngCalc numerical context.
 
 ## v0.7.2 engineering tables
 
@@ -714,7 +751,7 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Current limitations
 
-v0.7.2 currently does not provide:
+v0.8.0 currently does not provide:
 
 - subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
@@ -722,7 +759,7 @@ v0.7.2 currently does not provide:
 - multi-parameter/cartesian sweeps;
 - dual y-axes for quantities with different dimensions;
 - explicit plot/envelope x/y target-unit conversion;
-- `piecewise`/discontinuous-function plotting and jump markers;
+- open/closed Piecewise endpoint glyphs or dedicated jump markers;
 - automatic scientific-notation policy for very large/small displayed values;
 - target-unit conversion of partially evaluated functions with a free independent variable;
 - automatic compact coefficient evaluation for non-polynomial partial functions;
@@ -735,6 +772,7 @@ v0.7.2 currently does not provide:
 
 ## Version notes
 
+- **0.8.0** — restricted unit-aware Piecewise expressions with partial numerical cases, exact breakpoint-enriched shared plot grids, segmented discontinuous rendering, Piecewise calculus semantics, diagnostics and real `%%eng` acceptance.
 - **0.7.2** — native engineering tables with automatic unit-aware discretization, unit-once and fully explicit point forms, compatible multi-response columns, native HTML rendering, and source-order `%%eng` integration.
 - **0.7.1** — multi-argument user functions and generalized partial numerical evaluation.
 - **0.7.0** — scalar engineering mathematics: `sqrt`, trig/inverse trig, `exp`, `log`, and `pi` with unit-aware numerical rules.
@@ -753,4 +791,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.7.2`.
+Version: `0.8.0`.

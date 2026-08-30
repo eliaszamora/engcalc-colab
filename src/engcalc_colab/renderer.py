@@ -162,6 +162,53 @@ def _partial_polynomial_latex(evaluated_terms: tuple[tuple[int, object], ...] | 
     return "".join(rendered) if rendered else zero_latex
 
 
+def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settings: RenderSettings) -> str:
+    variable_latex = _latex(sp.Symbol(piecewise.interval_variable))
+    operator_latex = {
+        "<": "<",
+        "<=": r"\leq",
+        ">": ">",
+        ">=": r"\geq",
+    }
+    rendered = []
+    for branch in piecewise.branches:
+        value = branch.value
+        if hasattr(value, "magnitude") and hasattr(value, "units"):
+            value_latex = _quantity_latex(value, settings=settings)
+        elif branch.evaluated_terms is not None:
+            value_latex = _partial_polynomial_latex(
+                branch.evaluated_terms,
+                piecewise.interval_variable,
+                settings,
+            )
+        else:
+            value_latex = _substitution_latex(
+                sp.sympify(value),
+                substitutions,
+                settings,
+            )
+
+        if branch.operator is None:
+            rendered.append(rf"{value_latex} & \text{{otherwise}}")
+            continue
+
+        breakpoint = branch.breakpoint
+        if hasattr(breakpoint, "magnitude") and hasattr(breakpoint, "units"):
+            breakpoint_latex = _quantity_latex(breakpoint, settings=settings)
+        else:
+            breakpoint_latex = _substitution_latex(
+                sp.sympify(breakpoint),
+                substitutions,
+                settings,
+            )
+        rendered.append(
+            rf"{value_latex} & \text{{for}}\: "
+            rf"{variable_latex} {operator_latex[branch.operator]} {breakpoint_latex}"
+        )
+
+    return r"\begin{cases} " + r" \\ ".join(rendered) + r" \end{cases}"
+
+
 def _display_lhs(result: NumericEvaluationResult | PartialNumericEvaluationResult) -> str | None:
     if result.display_name is None:
         return None
@@ -419,7 +466,13 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, settings: RenderSettings) -> list[str]:
     formula_rows = _bounded_expression_rows(result.symbolic_expression, settings=settings)
     evaluated_latex = None
-    if len(result.unresolved_symbols) == 1:
+    if result.piecewise_evaluation is not None:
+        evaluated_latex = _piecewise_partial_latex(
+            result.piecewise_evaluation,
+            result.substitutions,
+            settings,
+        )
+    elif len(result.unresolved_symbols) == 1:
         evaluated_latex = _partial_polynomial_latex(result.evaluated_terms, result.unresolved_symbols[0], settings)
     lhs = _display_lhs(result)
 
@@ -587,7 +640,13 @@ def _internal_row_spacings(
                 )
             )
         evaluated_latex = None
-        if len(result.unresolved_symbols) == 1:
+        if result.piecewise_evaluation is not None:
+            evaluated_latex = _piecewise_partial_latex(
+                result.piecewise_evaluation,
+                result.substitutions,
+                settings,
+            )
+        elif len(result.unresolved_symbols) == 1:
             evaluated_latex = _partial_polynomial_latex(
                 result.evaluated_terms,
                 result.unresolved_symbols[0],
@@ -744,7 +803,13 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
     if isinstance(result, PartialNumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
         evaluated_latex = None
-        if len(result.unresolved_symbols) == 1:
+        if result.piecewise_evaluation is not None:
+            evaluated_latex = _piecewise_partial_latex(
+                result.piecewise_evaluation,
+                result.substitutions,
+                active_settings,
+            )
+        elif len(result.unresolved_symbols) == 1:
             evaluated_latex = _partial_polynomial_latex(result.evaluated_terms, result.unresolved_symbols[0], active_settings)
 
         chain = [formula_latex]

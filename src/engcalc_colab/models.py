@@ -56,11 +56,15 @@ class ParsedNarrative:
 class UserFunction:
     parameters: tuple[str, ...]
     expression: Any
+    derivative_variable: str | None = None
+    derivative_breakpoints: tuple[Any, ...] = ()
 
     def __init__(
         self,
         parameters: tuple[str, ...] | str | None = None,
         expression: Any = None,
+        derivative_variable: str | None = None,
+        derivative_breakpoints: tuple[Any, ...] = (),
         *,
         parameter: str | None = None,
     ) -> None:
@@ -77,6 +81,8 @@ class UserFunction:
 
         object.__setattr__(self, "parameters", normalized)
         object.__setattr__(self, "expression", expression)
+        object.__setattr__(self, "derivative_variable", derivative_variable)
+        object.__setattr__(self, "derivative_breakpoints", tuple(derivative_breakpoints))
 
     @property
     def parameter(self) -> str | None:
@@ -139,6 +145,20 @@ class NumericEvaluationResult:
         return None
 
 
+@dataclass(frozen=True)
+class PiecewisePartialBranch:
+    value: Any
+    operator: str | None
+    breakpoint: Any | None
+    evaluated_terms: tuple[tuple[int, Any], ...] | None = None
+
+
+@dataclass(frozen=True)
+class PiecewisePartialEvaluation:
+    interval_variable: str
+    branches: tuple[PiecewisePartialBranch, ...]
+
+
 @dataclass(frozen=True, init=False)
 class PartialNumericEvaluationResult:
     statement: ParsedStatement
@@ -148,6 +168,7 @@ class PartialNumericEvaluationResult:
     evaluated_terms: tuple[tuple[int, Any], ...] | None = None
     display_name: str | None = None
     display_arguments: tuple[Any, ...] | None = None
+    piecewise_evaluation: PiecewisePartialEvaluation | None = None
 
     def __init__(
         self,
@@ -158,6 +179,7 @@ class PartialNumericEvaluationResult:
         evaluated_terms: tuple[tuple[int, Any], ...] | None = None,
         display_name: str | None = None,
         display_arguments: tuple[Any, ...] | None = None,
+        piecewise_evaluation: PiecewisePartialEvaluation | None = None,
         *,
         display_argument: Any | None = None,
     ) -> None:
@@ -175,6 +197,7 @@ class PartialNumericEvaluationResult:
         object.__setattr__(self, "evaluated_terms", evaluated_terms)
         object.__setattr__(self, "display_name", display_name)
         object.__setattr__(self, "display_arguments", normalized)
+        object.__setattr__(self, "piecewise_evaluation", piecewise_evaluation)
 
     @property
     def display_argument(self) -> Any | None:
@@ -188,6 +211,7 @@ class PlotSeries:
     display_label: str
     y_values: tuple[Any, ...]
     is_moment: bool
+    segment_starts: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)

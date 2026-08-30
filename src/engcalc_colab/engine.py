@@ -28,6 +28,7 @@ from .models import (
     UserFunction,
 )
 from .numeric import NumericContext
+from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
 from .tables import normalize_explicit_points, normalize_uniform_points
 
 
@@ -216,6 +217,7 @@ class EngineeringEngine:
                     evaluated_terms,
                     display_name,
                     display_arguments,
+                    piecewise_evaluation,
                 ) = evaluator.partial_numeric_evaluation
                 return PartialNumericEvaluationResult(
                     statement=statement,
@@ -225,6 +227,7 @@ class EngineeringEngine:
                     evaluated_terms=evaluated_terms,
                     display_name=display_name,
                     display_arguments=display_arguments,
+                    piecewise_evaluation=piecewise_evaluation,
                 )
 
             if evaluator.numeric_evaluation is not None:
@@ -251,6 +254,8 @@ class EngineeringEngine:
                     self.functions[statement.target] = UserFunction(
                         parameters=statement.parameters,
                         expression=value,
+                        derivative_variable=evaluator.derivative_variable,
+                        derivative_breakpoints=evaluator.derivative_breakpoints,
                     )
                 else:
                     self.namespace[statement.target] = value
@@ -279,6 +284,8 @@ class _Evaluator(ast.NodeVisitor):
         self.plot_evaluation: _PlotEvaluation | None = None
         self.table_evaluation: _TableEvaluation | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
+        self.derivative_variable: str | None = None
+        self.derivative_breakpoints: tuple[object, ...] = ()
 
     def visit_function_body(self, node: ast.AST, parameters: tuple[str, ...]):
         previous = dict(self.symbol_overrides)
@@ -362,10 +369,37 @@ class _Evaluator(ast.NodeVisitor):
         if isinstance(node.op, ast.Pow): return left ** right
         raise EngEvaluationError("unsupported operator")
 
+    def _evaluate_piecewise_condition(self, node: ast.AST):
+        if not isinstance(node, ast.Compare):
+            raise EngEvaluationError("piecewise condition must be a comparison")
+        if len(node.ops) != 1 or len(node.comparators) != 1:
+            raise EngEvaluationError("piecewise condition must be a binary comparison")
+        left = self.visit(node.left)
+        right = self.visit(node.comparators[0])
+        return build_relation(left, node.ops[0], right)
+
+    def _evaluate_piecewise(self, node: ast.Call):
+        if node.keywords or len(node.args) < 3 or len(node.args) % 2 == 0:
+            raise EngEvaluationError(
+                "piecewise expects value/condition pairs and a default"
+            )
+        branches = tuple(
+            (
+                self.visit(node.args[index]),
+                self._evaluate_piecewise_condition(node.args[index + 1]),
+            )
+            for index in range(0, len(node.args) - 1, 2)
+        )
+        default = self.visit(node.args[-1])
+        return build_piecewise(branches, default)
+
     def visit_Call(self, node: ast.Call):
         if not isinstance(node.func, ast.Name):
             raise EngSyntaxError(f"unsupported syntax '{type(node.func).__name__}'")
         name = node.func.id
+
+        if name == "piecewise":
+            return self._evaluate_piecewise(node)
 
         if name == "sum":
             self._require_arity(name, node.args, 4, "expression, index, lower, upper")
@@ -497,6 +531,19 @@ class _Evaluator(ast.NodeVisitor):
                                 )
                             )
 
+                        piecewise_evaluation = None
+                        if (
+                            len(unresolved_symbols) == 1
+                            and isinstance(symbolic_expression, sp.Piecewise)
+                        ):
+                            piecewise_evaluation = (
+                                self.engine.numeric_context.build_partial_piecewise_evaluation(
+                                    symbolic_expression,
+                                    unresolved_symbols[0],
+                                    overrides=overrides,
+                                )
+                            )
+
                         self.partial_numeric_evaluation = (
                             symbolic_expression,
                             substitutions,
@@ -504,17 +551,33 @@ class _Evaluator(ast.NodeVisitor):
                             evaluated_terms,
                             display_name,
                             display_arguments,
+                            piecewise_evaluation,
                         )
                         return symbolic_expression
                 else:
                     overrides = dict(zip(function.parameters, argument_values))
+                if (
+                    function.derivative_variable is not None
+                    and function.derivative_breakpoints
+                    and function.derivative_variable in function.parameters
+                ):
+                    derivative_index = function.parameters.index(function.derivative_variable)
+                    self.engine.numeric_context.ensure_not_derivative_breakpoint(
+                        function.derivative_variable,
+                        argument_values[derivative_index],
+                        function.derivative_breakpoints,
+                        overrides=overrides,
+                    )
                 try:
                     substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
                         symbolic_expression,
                         overrides=overrides,
                     )
                 except EngEvaluationError as exc:
-                    if "incompatible units" not in str(exc):
+                    message = str(exc)
+                    if message.startswith("piecewise "):
+                        raise
+                    if "incompatible units" not in message:
                         raise
                     hint = diagnostic_hint(
                         "incompatible_function_units",
@@ -617,6 +680,11 @@ class _Evaluator(ast.NodeVisitor):
             expr, var = args[:2]
             order = int(args[2]) if len(args) == 3 else 1
             self.display_input = sp.Derivative(expr, (var, order))
+            if isinstance(var, sp.Symbol):
+                breakpoints = extract_symbolic_breakpoints(expr, var.name)
+                if breakpoints:
+                    self.derivative_variable = var.name
+                    self.derivative_breakpoints = breakpoints
             return sp.diff(expr, var, order)
 
         if name == "eq":
@@ -760,6 +828,12 @@ class _Evaluator(ast.NodeVisitor):
                 "envelope cannot mix absolute and signed response series"
             )
 
+        envelope_segment_starts = tuple(sorted({
+            start
+            for series in (*resolved.series, *resolved.source_series)
+            for start in series.segment_starts
+        }))
+
         if resolved.envelope_mode == "magnitude":
             maximum_values = []
             governing_maximum = []
@@ -797,6 +871,7 @@ class _Evaluator(ast.NodeVisitor):
                     display_label=magnitude_label,
                     y_values=tuple(maximum_values),
                     is_moment=comparison_series[0].is_moment,
+                    segment_starts=envelope_segment_starts,
                 ),
             )
 
@@ -846,11 +921,13 @@ class _Evaluator(ast.NodeVisitor):
                 display_label=maximum_label,
                 y_values=tuple(maximum_values),
                 is_moment=is_moment,
+                segment_starts=envelope_segment_starts,
             ),
             PlotSeries(
                 display_label=minimum_label,
                 y_values=tuple(minimum_values),
                 is_moment=is_moment,
+                segment_starts=envelope_segment_starts,
             ),
         )
 
@@ -975,29 +1052,40 @@ class _Evaluator(ast.NodeVisitor):
         else:
             raw_series = []
             raw_source_series = []
-            x_values = None
+            expression_cases = tuple(
+                (expression.comparison_expression, None)
+                for expression in resolved_expressions
+            )
+            x_values = self.engine.numeric_context.build_plot_sample_points(
+                expression_cases,
+                variable,
+                start_quantity,
+                end_quantity,
+                count=201,
+            )
             for expression in resolved_expressions:
-                series_x, y_values = self.engine.numeric_context.sample_symbolic(
+                y_values = self.engine.numeric_context.sample_symbolic_points(
                     expression.comparison_expression,
                     variable,
-                    start_quantity,
-                    end_quantity,
-                    count=201,
+                    x_values,
                 )
-                source_x, source_y_values = self.engine.numeric_context.sample_symbolic(
+                source_y_values = self.engine.numeric_context.sample_symbolic_points(
                     expression.signed_expression,
                     variable,
-                    start_quantity,
-                    end_quantity,
-                    count=201,
+                    x_values,
                 )
-                if x_values is None:
-                    x_values = series_x
+                segment_starts = self.engine.numeric_context.piecewise_segment_starts(
+                    expression.comparison_expression, variable, x_values
+                )
+                source_segment_starts = self.engine.numeric_context.piecewise_segment_starts(
+                    expression.signed_expression, variable, x_values
+                )
                 raw_series.append(
                     PlotSeries(
                         display_label=expression.display_label,
                         y_values=y_values,
                         is_moment=self._is_moment_label(expression.source_label),
+                        segment_starts=segment_starts,
                     )
                 )
                 raw_source_series.append(
@@ -1005,6 +1093,7 @@ class _Evaluator(ast.NodeVisitor):
                         display_label=expression.source_label,
                         y_values=source_y_values,
                         is_moment=self._is_moment_label(expression.source_label),
+                        segment_starts=source_segment_starts,
                     )
                 )
             if call_name == "plot" and len(resolved_expressions) == 1:
@@ -1095,41 +1184,52 @@ class _Evaluator(ast.NodeVisitor):
         is_moment = self._is_moment_label(source_label)
         comparison_series: list[PlotSeries] = []
         source_series: list[PlotSeries] = []
-        x_values = None
-        for sweep_value in sweep_values:
-            overrides = {parameter_name: sweep_value}
-            series_x, comparison_y_values = (
-                self.engine.numeric_context.sample_symbolic(
-                    comparison_expression,
-                    variable,
-                    start_quantity,
-                    end_quantity,
-                    count=201,
-                    overrides=overrides,
-                )
+        case_overrides = tuple(
+            {parameter_name: sweep_value}
+            for sweep_value in sweep_values
+        )
+        x_values = self.engine.numeric_context.build_plot_sample_points(
+            tuple(
+                (comparison_expression, overrides)
+                for overrides in case_overrides
+            ),
+            variable,
+            start_quantity,
+            end_quantity,
+            count=201,
+        )
+        for sweep_value, overrides in zip(sweep_values, case_overrides):
+            comparison_y_values = self.engine.numeric_context.sample_symbolic_points(
+                comparison_expression,
+                variable,
+                x_values,
+                overrides=overrides,
             )
             if preserve_signed_source:
-                _, source_y_values = self.engine.numeric_context.sample_symbolic(
+                source_y_values = self.engine.numeric_context.sample_symbolic_points(
                     signed_expression,
                     variable,
-                    start_quantity,
-                    end_quantity,
-                    count=201,
+                    x_values,
                     overrides=overrides,
                 )
             else:
                 source_y_values = comparison_y_values
 
-            if x_values is None:
-                x_values = series_x
             case_label = (
                 f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"
+            )
+            segment_starts = self.engine.numeric_context.piecewise_segment_starts(
+                comparison_expression, variable, x_values, overrides=overrides
+            )
+            source_segment_starts = self.engine.numeric_context.piecewise_segment_starts(
+                signed_expression, variable, x_values, overrides=overrides
             )
             comparison_series.append(
                 PlotSeries(
                     display_label=case_label,
                     y_values=comparison_y_values,
                     is_moment=is_moment,
+                    segment_starts=segment_starts,
                 )
             )
             source_series.append(
@@ -1137,6 +1237,7 @@ class _Evaluator(ast.NodeVisitor):
                     display_label=case_label,
                     y_values=source_y_values,
                     is_moment=is_moment,
+                    segment_starts=source_segment_starts,
                 )
             )
 
@@ -1186,6 +1287,7 @@ class _Evaluator(ast.NodeVisitor):
                     display_label=item.display_label,
                     y_values=y_values,
                     is_moment=item.is_moment,
+                    segment_starts=item.segment_starts,
                 )
             )
         return tuple(normalized)

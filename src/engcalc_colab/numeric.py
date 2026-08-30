@@ -213,6 +213,179 @@ class NumericContext:
 
         return xs, tuple(ys)
 
+    def build_plot_sample_points(
+        self,
+        expression_cases,
+        variable,
+        start,
+        end,
+        count=201,
+    ):
+        from .piecewise import extract_symbolic_breakpoints
+
+        if count < 2:
+            raise EngEvaluationError("plot sampling requires at least 2 points")
+        start, end = self.normalize_plot_bounds(start, end)
+        delta = end - start
+        points = [
+            start + delta * (index / (count - 1))
+            for index in range(count)
+        ]
+
+        for expression, overrides in expression_cases:
+            for breakpoint_expression in extract_symbolic_breakpoints(
+                sp.sympify(expression),
+                variable,
+            ):
+                try:
+                    _, breakpoint = self.evaluate_symbolic(
+                        breakpoint_expression,
+                        overrides=dict(overrides or {}),
+                    )
+                except EngEvaluationError as exc:
+                    raise EngEvaluationError(
+                        "plot Piecewise breakpoint must be numerically resolvable: "
+                        + str(exc)
+                    ) from None
+
+                breakpoint = self._as_quantity(breakpoint)
+                if breakpoint.dimensionless and not start.dimensionless:
+                    if float(breakpoint.magnitude) != 0.0:
+                        raise EngEvaluationError(
+                            "plot Piecewise breakpoint has incompatible units"
+                        )
+                    breakpoint = self.ureg.Quantity(0, start.units)
+                try:
+                    breakpoint = breakpoint.to(start.units)
+                except DimensionalityError as exc:
+                    raise EngEvaluationError(
+                        "plot Piecewise breakpoint has incompatible units"
+                    ) from exc
+
+                magnitude = float(breakpoint.magnitude)
+                if float(start.magnitude) <= magnitude <= float(end.magnitude):
+                    points.append(breakpoint)
+
+        ordered = sorted(
+            points,
+            key=lambda quantity: float(quantity.to(start.units).magnitude),
+        )
+        unique = []
+        for point in ordered:
+            point = point.to(start.units)
+            if unique and math.isclose(
+                float(point.magnitude),
+                float(unique[-1].magnitude),
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            ):
+                continue
+            unique.append(point)
+        return tuple(unique)
+
+    def sample_symbolic_points(
+        self,
+        expression,
+        variable,
+        points,
+        overrides: dict[str, Any] | None = None,
+    ):
+        fixed_overrides = dict(overrides or {})
+        values = []
+        for point in points:
+            sample_overrides = dict(fixed_overrides)
+            sample_overrides[variable] = point
+            _, value = self.evaluate_symbolic(
+                expression,
+                overrides=sample_overrides,
+            )
+            values.append(value)
+        try:
+            return self._normalize_quantity_group(values, "plot samples")
+        except EngEvaluationError as exc:
+            raise EngEvaluationError("plot samples have incompatible result units") from exc
+
+    def _piecewise_branch_signature(
+        self,
+        expression,
+        substitutions: dict[str, Any],
+    ) -> tuple[int, ...]:
+        signature: list[int] = []
+
+        def visit(node):
+            node = sp.sympify(node)
+            if isinstance(node, sp.Piecewise):
+                for index, (branch_expression, condition) in enumerate(node.args):
+                    if condition == sp.true or self._evaluate_relation(
+                        condition, substitutions
+                    ):
+                        signature.append(index)
+                        visit(branch_expression)
+                        return
+                raise EngEvaluationError("piecewise has no governing branch")
+            for argument in node.args:
+                visit(argument)
+
+        visit(expression)
+        return tuple(signature)
+
+    def piecewise_segment_starts(
+        self,
+        expression,
+        variable: str,
+        points,
+        overrides: dict[str, Any] | None = None,
+    ) -> tuple[int, ...]:
+        expression = sp.sympify(expression)
+        fixed_overrides = dict(overrides or {})
+        names = sorted(symbol.name for symbol in expression.free_symbols)
+        previous = None
+        starts: list[int] = []
+        for index, point in enumerate(points):
+            sample_overrides = {**fixed_overrides, variable: point}
+            substitutions = {
+                name: (
+                    sample_overrides[name]
+                    if name in sample_overrides
+                    else self.values[name]
+                )
+                for name in names
+            }
+            signature = self._piecewise_branch_signature(
+                expression, substitutions
+            )
+            if index and signature != previous:
+                starts.append(index)
+            previous = signature
+        return tuple(starts)
+
+    def ensure_not_derivative_breakpoint(
+        self,
+        variable: str,
+        value,
+        breakpoints,
+        overrides: dict[str, Any] | None = None,
+    ) -> None:
+        overrides = dict(overrides or {})
+        value = self._as_quantity(value)
+        for breakpoint_expression in breakpoints:
+            _, breakpoint = self.evaluate_symbolic(
+                sp.sympify(breakpoint_expression),
+                overrides=overrides,
+            )
+            left, right = self._normalize_relation_operands(value, breakpoint)
+            if math.isclose(
+                float(left.magnitude),
+                float(right.magnitude),
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            ):
+                unit = f" {right.units:~P}" if not right.dimensionless else ""
+                raise EngEvaluationError(
+                    "derivative is undefined at explicit Piecewise breakpoint "
+                    f"{variable} = {float(right.magnitude):g}{unit}"
+                )
+
     def partial_substitutions(
         self,
         expression: sp.Expr,
@@ -313,6 +486,234 @@ class NumericContext:
             raise EngEvaluationError(f"numeric evaluation failed: {exc}") from exc
         return substitutions, quantity
 
+    def _is_exact_zero_quantity(self, value) -> bool:
+        quantity = self._as_quantity(value)
+        return float(quantity.magnitude) == 0.0
+
+    def _normalize_relation_operands(self, left, right):
+        left_quantity = self._as_quantity(left)
+        right_quantity = self._as_quantity(right)
+
+        if left_quantity.dimensionless and not right_quantity.dimensionless:
+            if not self._is_exact_zero_quantity(left_quantity):
+                raise EngEvaluationError(
+                    "piecewise comparison cannot mix a dimensional quantity with "
+                    "a nonzero dimensionless value"
+                )
+            left_quantity = self.ureg.Quantity(0, right_quantity.units)
+        elif right_quantity.dimensionless and not left_quantity.dimensionless:
+            if not self._is_exact_zero_quantity(right_quantity):
+                raise EngEvaluationError(
+                    "piecewise comparison cannot mix a dimensional quantity with "
+                    "a nonzero dimensionless value"
+                )
+            right_quantity = self.ureg.Quantity(0, left_quantity.units)
+
+        try:
+            right_quantity = right_quantity.to(left_quantity.units)
+        except DimensionalityError as exc:
+            raise EngEvaluationError(
+                "piecewise comparison has incompatible units"
+            ) from exc
+        return left_quantity, right_quantity
+
+    def _evaluate_relation(self, relation, substitutions: dict[str, Any]) -> bool:
+        left = self._evaluate_sympy(relation.lhs, substitutions)
+        right = self._evaluate_sympy(relation.rhs, substitutions)
+        left, right = self._normalize_relation_operands(left, right)
+
+        if relation.func == sp.StrictLessThan:
+            return left.magnitude < right.magnitude
+        if relation.func == sp.LessThan:
+            return left.magnitude <= right.magnitude
+        if relation.func == sp.StrictGreaterThan:
+            return left.magnitude > right.magnitude
+        if relation.func == sp.GreaterThan:
+            return left.magnitude >= right.magnitude
+        raise EngEvaluationError("unsupported piecewise relation")
+
+    def _normalize_quantity_group(self, values, context: str):
+        quantities = tuple(self._as_quantity(value) for value in values)
+        dimensional = next(
+            (quantity for quantity in quantities if not quantity.dimensionless),
+            None,
+        )
+        if dimensional is None:
+            return quantities
+
+        unit = dimensional.units
+        normalized = []
+        for quantity in quantities:
+            if quantity.dimensionless:
+                if self._is_exact_zero_quantity(quantity):
+                    normalized.append(self.ureg.Quantity(0, unit))
+                    continue
+                raise EngEvaluationError(
+                    f"{context} cannot mix dimensional quantities with "
+                    "a nonzero dimensionless value"
+                )
+            try:
+                normalized.append(quantity.to(unit))
+            except DimensionalityError as exc:
+                raise EngEvaluationError(f"{context} has incompatible units") from exc
+        return tuple(normalized)
+
+    def _infer_piecewise_zero_unit(self, expression, substitutions: dict[str, Any]):
+        canonical_unit = None
+        saw_nonzero_dimensionless = False
+
+        for branch_expression, _condition in expression.args:
+            try:
+                candidate = self._as_quantity(
+                    self._evaluate_sympy(branch_expression, substitutions)
+                )
+            except (
+                EngEvaluationError,
+                DimensionalityError,
+                PintError,
+                ValueError,
+                ZeroDivisionError,
+                OverflowError,
+            ):
+                continue
+
+            if candidate.dimensionless:
+                if self._is_exact_zero_quantity(candidate):
+                    continue
+                if canonical_unit is not None:
+                    raise EngEvaluationError(
+                        "piecewise has nonzero dimensionless branch incompatible "
+                        "with dimensional branch"
+                    )
+                saw_nonzero_dimensionless = True
+                continue
+
+            if saw_nonzero_dimensionless:
+                raise EngEvaluationError(
+                    "piecewise has nonzero dimensionless branch incompatible "
+                    "with dimensional branch"
+                )
+
+            if canonical_unit is None:
+                canonical_unit = candidate.units
+                continue
+
+            try:
+                candidate.to(canonical_unit)
+            except (DimensionalityError, PintError) as exc:
+                raise EngEvaluationError(
+                    "piecewise has incompatible branch units"
+                ) from exc
+
+        return canonical_unit
+
+    def _evaluate_piecewise(self, expression, substitutions: dict[str, Any]):
+        for branch_expression, condition in expression.args:
+            if condition == sp.true or self._evaluate_relation(condition, substitutions):
+                value = self._as_quantity(
+                    self._evaluate_sympy(branch_expression, substitutions)
+                )
+                if value.dimensionless and self._is_exact_zero_quantity(value):
+                    inferred_unit = self._infer_piecewise_zero_unit(
+                        expression,
+                        substitutions,
+                    )
+                    if inferred_unit is not None:
+                        return self.ureg.Quantity(0, inferred_unit)
+                return value
+        raise EngEvaluationError("piecewise has no governing branch")
+
+    def build_partial_piecewise_evaluation(
+        self,
+        expression,
+        variable: str,
+        overrides: dict[str, Any] | None = None,
+    ):
+        from .models import PiecewisePartialBranch, PiecewisePartialEvaluation
+
+        expression = sp.sympify(expression)
+        if not isinstance(expression, sp.Piecewise):
+            return None
+
+        symbol = sp.Symbol(variable)
+        overrides = dict(overrides or {})
+        operator_direct = {
+            sp.StrictLessThan: "<",
+            sp.LessThan: "<=",
+            sp.StrictGreaterThan: ">",
+            sp.GreaterThan: ">=",
+        }
+        operator_reverse = {
+            sp.StrictLessThan: ">",
+            sp.LessThan: ">=",
+            sp.StrictGreaterThan: "<",
+            sp.GreaterThan: "<=",
+        }
+
+        branches = []
+        resolved_indices = []
+        resolved_values = []
+        for branch_expression, condition in expression.args:
+            branch_expression = sp.sympify(branch_expression)
+            evaluated_terms = None
+            if symbol not in branch_expression.free_symbols:
+                _, value = self.evaluate_symbolic(
+                    branch_expression,
+                    overrides=overrides,
+                )
+                resolved_indices.append(len(branches))
+                resolved_values.append(value)
+            else:
+                value = branch_expression
+                evaluated_terms = self.evaluate_partial_polynomial(
+                    branch_expression,
+                    variable,
+                    overrides=overrides,
+                )
+
+            operator = None
+            breakpoint = None
+            if condition != sp.true:
+                if not isinstance(condition, sp.Rel):
+                    raise EngEvaluationError("piecewise condition must be relational")
+                if condition.lhs == symbol and symbol not in condition.rhs.free_symbols:
+                    operator = operator_direct.get(condition.func)
+                    breakpoint_expression = condition.rhs
+                elif condition.rhs == symbol and symbol not in condition.lhs.free_symbols:
+                    operator = operator_reverse.get(condition.func)
+                    breakpoint_expression = condition.lhs
+                else:
+                    raise EngEvaluationError(
+                        "piecewise condition must compare the interval variable directly "
+                        "with a breakpoint"
+                    )
+                if operator is None:
+                    raise EngEvaluationError("unsupported piecewise relation")
+                _, breakpoint = self.evaluate_symbolic(
+                    breakpoint_expression,
+                    overrides=overrides,
+                )
+
+            branches.append({
+                "value": value,
+                "operator": operator,
+                "breakpoint": breakpoint,
+                "evaluated_terms": evaluated_terms,
+            })
+
+        if resolved_values:
+            normalized = self._normalize_quantity_group(
+                resolved_values,
+                "piecewise branches",
+            )
+            for index, value in zip(resolved_indices, normalized):
+                branches[index]["value"] = value
+
+        return PiecewisePartialEvaluation(
+            interval_variable=variable,
+            branches=tuple(PiecewisePartialBranch(**branch) for branch in branches),
+        )
+
     def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):
         if isinstance(expr, sp.Symbol):
             return substitutions[expr.name]
@@ -326,6 +727,25 @@ class NumericContext:
             if expr.is_Rational:
                 return int(expr.p) / int(expr.q)
             return float(expr)
+
+        if expr.func == sp.Piecewise:
+            return self._evaluate_piecewise(expr, substitutions)
+
+        if expr.func in {
+            sp.StrictLessThan,
+            sp.LessThan,
+            sp.StrictGreaterThan,
+            sp.GreaterThan,
+        }:
+            return self._evaluate_relation(expr, substitutions)
+
+        if expr.func in {sp.Min, sp.Max}:
+            values = self._normalize_quantity_group(
+                (self._evaluate_sympy(arg, substitutions) for arg in expr.args),
+                "numeric Min/Max",
+            )
+            selector = min if expr.func == sp.Min else max
+            return selector(values, key=lambda quantity: quantity.magnitude)
 
         if expr.is_Add:
             values = [self._evaluate_sympy(arg, substitutions) for arg in expr.args]
