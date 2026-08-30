@@ -29,9 +29,10 @@ jobs:
         shell: bash
         run: |
           if grep -q 'characteristics: tuple\[CharacteristicPoint, \.\.\.\]' src/engcalc_colab/models.py; then
-            echo 'Task 10 exact plot characteristics already present; skipping patch.'
+            echo 'Task 10 exact plot characteristics already present; skipping base patch.'
           else
             python .github/scripts/v091_task10_green.py
+            python .github/scripts/v091_task10_green_fix.py
           fi
 
       - name: Check diff hygiene
