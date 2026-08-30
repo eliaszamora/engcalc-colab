@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated in `main`. The 0.9.0 Matrix/CAS implementation plan has been explicitly approved for inline execution. `feature/v0.9.0-matrix-cas` was created from exact `main@9b90014f...`, seeded only with the approved planning documents, and passed the fresh Task 0 baseline gate on Python 3.13. Production Matrix/CAS code has not started yet; Task 1 parser RED is the active next step._
+_Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The approved 0.9.0 Matrix/CAS plan is executing inline on `feature/v0.9.0-matrix-cas`. Task 0 baseline and Task 1 matrix-literal parser are complete with strict RED→GREEN evidence. Task 2 — immutable symbolic matrices, one-based indexing and matrix operators — is now the exact next step. Package/runtime version remains 0.8.0._
 
 ## Current baseline
 
@@ -14,12 +14,9 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated i
 - Formal 0.9.0 design: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-design.md`.
 - Normative numeric clarification: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-numeric-semantics-clarification.md`.
 - Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.0-matrix-cas-implementation.md`.
-- Planning design commit: `650d35b7992b780dae9e9795271a94c3083b9068`.
-- Numeric-semantics clarification commit: `dc3acd4b593e35bb11578f2a3ae54d252e846beb`.
-- Initial implementation-plan commit: `0013ccd8ef04a1efe31329613fbdc9f72efaa4e8`.
-- Plan self-review correction: `2e722ee7c64ab0eeb72f7614db05af42622e7576`.
-- Task 0 temporary baseline workflow commit: `965b8b716578d0414e3819cd1239b3219404daae`; workflow removed in `9dd2b1248decb9423134754d391bac8da843738c`.
-- No Matrix/CAS `src/` file or product test has been modified yet.
+- Task 1 test-only RED chain ends at `8b0f62c333756c24167426156a92fc118748b137` before any Task 1 production code.
+- Task 1 GREEN product commit: **`86ec35f3b5d20c517f794951e14fa7cd13af0121`** (`feat: parse EngCalc matrix literals`).
+- Task 1 GREEN workflow removed in `95162527dfee1a796f1c772a31ee5a5d3aed939c`.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge implementation work to `main` without explicit user approval.
 
@@ -61,9 +58,20 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated i
 - Generalized structural eigenproblems, sparse/global FEM matrices, block matrices, slicing, least squares, pseudoinverse, SVD, NumPy-style broadcasting and matrix-valued `:=` remain deferred.
 - LU/QR/Cholesky are explicitly deferred from the mandatory core 0.9.0 implementation plan so they cannot block the core release; they may be a later 0.9.x follow-up.
 
+### Implemented 0.9.0 behavior through Task 1
+
+- Normal-expression `[a,b,c]` is accepted as the parser representation for a future row matrix.
+- Semicolon literals `[a,b;c,d]` are scanned before the restricted Python AST and stored as immutable parser bindings.
+- Multiline matrix literals are consumed as one EngCalc statement while preserving the physical starting line.
+- Top-level commas/semicolons inside matrix literals are distinguished from commas inside scalar function calls.
+- Matrix cells continue through the existing restricted scalar validator, including Piecewise cells.
+- Empty literals/rows, inconsistent row widths, nested matrix literals and unclosed literals have EngCalc-facing syntax diagnostics.
+- `table(...,[...])` and plot/envelope sweep lists remain contextual collections, not matrix bindings.
+- Task 1 is parser/model transport only; it deliberately does **not** yet construct SymPy matrices or perform matrix algebra.
+
 ## Open issues / user feedback
 
-- Task 1 must deliberately migrate the three historical parser tests that rejected `A = [1,2]`; in 0.9.0 this becomes a valid row vector while table/plot/envelope list contexts remain collections.
+- Task 2 must turn parser matrix literals into `sympy.ImmutableMatrix`, add shape-aware algebra and implement one-based indexing without leaking raw SymPy exceptions.
 - `no_vertical_scroll()` remains outside Matrix/CAS.
 - Multiline ordinary non-matrix function-call parsing remains a separate ergonomics item; 0.9.0 adds only matrix-literal multiline continuation.
 - Generalized eigenproblem `K phi = lambda M phi` needs a future dedicated design/API.
@@ -80,50 +88,52 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated i
 - Fresh final pre-merge gate: Actions `33316786989`, **557/557 GREEN in 116.63 s**.
 - Post-merge compare `df11f1ec...` → `eca248c3...`: **zero changed files**.
 
-### 0.9.0 design/planning evidence
-
-- Planning branch was created from exact integrated `main@9b90014f...`.
-- Base architecture and syntax were explicitly approved before the written spec.
-- Written design + numeric clarification were explicitly approved.
-- Implementation plan was explicitly approved for inline execution on 2026-08-30.
-- Plan self-review found and corrected the historical `[1,2]` test-contract conflict.
-- Self-review correction workflow Actions `33319867712`, job `99279839857`: **success**; temporary workflow removed.
-
 ### 0.9.0 Task 0 execution evidence
 
 - `feature/v0.9.0-matrix-cas` created from exact current `main@9b90014f...`.
-- Feature seed commit `74d045f0...` contains only the approved design/spec/plan/context documents relative to main.
-- Fresh baseline workflow Actions **`33320306377`**, job **`99280984551`**, Python **3.13**: **success**.
-- Runtime check inside the baseline workflow confirmed **0.8.0**.
-- Complete source suite step completed successfully. Because the product/test tree is identical to the authoritative 0.8.0 baseline apart from planning docs and the temporary workflow, this is the same 557-test baseline with zero failures.
-- Temporary baseline workflow removed in `9dd2b124...` before Task 1.
+- Fresh baseline workflow Actions `33320306377`, job `99280984551`, Python 3.13: **success**.
+- Runtime check confirmed **0.8.0** and full baseline remained GREEN.
+- Temporary baseline workflow removed before Task 1.
+
+### 0.9.0 Task 1 RED evidence
+
+- New/migrated parser contracts were committed before Task 1 production code.
+- RED workflow Actions **`33320679249`**, job **`99281977939`**: harness **success**, meaning pytest failed for the explicitly required missing-feature reasons.
+- Exact RED result from artifact `9734793442` (`sha256:2f64721b6a7ebd24b17463d237cbac3ac6fbc8d7528dec56a107fe1a88f999f9`): **15 failed, 33 passed in 0.36 s**.
+- Failures were the expected absence of general List support, semicolon/multiline matrix syntax, matrix-specific diagnostics and `matrix_literals` transport.
+- The earlier malformed workflow `33320556349` created zero jobs and is explicitly not counted as TDD evidence.
+
+### 0.9.0 Task 1 GREEN evidence
+
+- GREEN workflow Actions **`33321037959`**, job **`99282936423`**, Python 3.13: **success**.
+- Focused parser/list-context suite: **48/48 GREEN in 0.13 s**.
+- Complete source suite: **569/569 GREEN in 114.64 s**.
+- GREEN product commit: **`86ec35f3b5d20c517f794951e14fa7cd13af0121`**.
+- Commit audit from workflow parent `a2876cec...` to product commit shows exactly three source files: new `matrix_syntax.py`, modified `models.py`, modified `parser.py`; no algebra/engine work was smuggled into Task 1.
+- Temporary GREEN workflow removed in `95162527...` after validation.
 
 ## Roadmap / active plan
 
 - **0.7.2 engineering tables:** COMPLETE + merged.
 - **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
 - **0.8.0 Piecewise:** COMPLETE + merged.
-- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASK 0 COMPLETE, TASK 1 NEXT**.
-  - Base design: approved.
-  - Formal written spec: approved.
-  - Numeric clarification: approved.
-  - Implementation plan: approved.
-  - Implementation branch: created and baseline-validated.
-  - Task 0 isolated baseline: complete.
-  - Task 1 parser/literal TDD: not started; next action is RED tests.
+- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASKS 0–1 COMPLETE, TASK 2 NEXT**.
+  - Base design/spec/clarification/implementation plan: approved.
+  - Task 0 isolated baseline: COMPLETE.
+  - Task 1 matrix literal parser: COMPLETE, 569/569 GREEN.
+  - Task 2 immutable symbolic matrices, one-based indexing and matrix operators: NEXT.
   - Package/runtime version remains 0.8.0 until the release-closing task.
 - Later roadmap: 0.9.1 exact-first extrema/roots/intersections → 0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization.
 
 ## Exact next step
 
-1. On `feature/v0.9.0-matrix-cas`, add Task 1 RED tests for row/column/general literals, multiline continuation, diagnostics, and contextual-list preservation.
-2. Deliberately migrate the three old `[1,2]` rejection tests to the approved row-vector contract.
-3. Run focused parser tests and confirm the expected RED for missing matrix syntax/multiline support.
-4. Only after observed RED, implement `matrix_syntax.py` plus the minimal `models.py`/`parser.py` changes.
-5. Run focused GREEN, parser regressions, then complete suite.
-6. Update this file with RED/GREEN SHAs and counts before advancing to Task 2.
-7. Do not invoke Codex and do not merge without explicit user authorization.
+1. Add Task 2 RED tests for immutable matrix construction/orientation, matrix/scalar operators, matrix multiplication shape contracts and one-based indexing/diagnostics.
+2. Run the focused Task 2 suite and observe failures caused by missing matrix evaluation/indexing support.
+3. Only after observed RED, create `matrix_core.py` and minimally modify parser/engine/models to construct immutable SymPy matrices and implement approved operators/indexing.
+4. Run focused GREEN, then complete suite; commit production only after both pass.
+5. Update this file with Task 2 RED/GREEN SHAs and counts before Task 3.
+6. Do not invoke Codex and do not merge without explicit user authorization.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`, runtime 0.8.0, authoritative baseline 557/557 GREEN. 0.9.0 Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`, created from that exact main SHA and seeded only with approved planning artifacts. Task 0 baseline workflow `33320306377` / job `99280984551` passed on Python 3.13 and its temporary workflow was removed. No Matrix/CAS production code/tests have been committed yet. The next action is Task 1 RED parser tests for `[a,b]`, `[a;b]`, `[a,b;c,d]`, multiline matrix literals and list-context preservation, followed by minimal parser implementation only after the RED is observed. Never invoke Codex and never merge without explicit user approval.
+Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`. 0.9.0 Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`. Task 0 baseline is complete. Task 1 parser/literal support is complete at product commit `86ec35f3b5d20c517f794951e14fa7cd13af0121`; its RED was 15 failed/33 passed and GREEN was 48/48 focused plus 569/569 full. Task 1 only transports matrix syntax; no SymPy matrix construction exists yet. The next action is Task 2 RED tests for actual immutable matrix values, shape-aware algebra and one-based indexing. Never invoke Codex and never merge without explicit user approval.
