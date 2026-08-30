@@ -1,0 +1,190 @@
+name: Execute Piecewise Task 5 v2
+
+on:
+  push:
+    branches:
+      - feature/v0.8.0-piecewise
+    paths:
+      - .github/workflows/apply-piecewise-task5-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  task5:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.8.0-piecewise
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install baseline
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Write corrected Task 5 tests
+        run: |
+          cat > tests/test_piecewise_plot_grid.py <<'PY'
+          import pytest
+
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.errors import EngEvaluationError
+          from engcalc_colab.models import PlotResult
+          from engcalc_colab.parser import parse_cell
+
+
+          def eval_cell(engine, source):
+              return [engine.evaluate(statement) for statement in parse_cell(source)]
+
+
+          def x_magnitudes(result):
+              return [point.to("m").magnitude for point in result.x_values]
+
+
+          def test_piecewise_plot_augments_201_point_grid_with_exact_breakpoint():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\n"
+                  "q1 := 8*kN/m\nq2 := 4*kN/m\na := 2.345*m\nL := 6*m",
+              )
+
+              result = eval_cell(engine, "plot(q(x), x, 0, L)")[-1]
+              xs = x_magnitudes(result)
+
+              assert isinstance(result, PlotResult)
+              assert len(xs) == 202
+              assert any(value == pytest.approx(2.345, abs=1e-12) for value in xs)
+              assert len(result.series[0].y_values) == len(result.x_values)
+
+
+          def test_piecewise_multi_series_uses_union_of_breakpoints_on_one_shared_grid():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "qA(x) = piecewise(q1, x < a, 0)\n"
+                  "qB(x) = piecewise(q2, x < b, 0)\n"
+                  "q1 := 8*kN/m\nq2 := 4*kN/m\n"
+                  "a := 2.345*m\nb := 4.567*m\nL := 6*m",
+              )
+
+              result = eval_cell(engine, "plot(qA(x), qB(x), x, 0, L)")[-1]
+              xs = x_magnitudes(result)
+
+              assert len(xs) == 203
+              assert any(value == pytest.approx(2.345, abs=1e-12) for value in xs)
+              assert any(value == pytest.approx(4.567, abs=1e-12) for value in xs)
+              assert all(len(series.y_values) == len(result.x_values) for series in result.series)
+
+
+          def test_piecewise_parameter_sweep_uses_union_of_case_breakpoints():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "q(x) = piecewise(q1, x < a, 0)\n"
+                  "q1 := 8*kN/m\nL := 6*m",
+              )
+
+              result = eval_cell(
+                  engine,
+                  "plot(q(x), x, 0, L, a=[2.345*m, 4.567*m])",
+              )[-1]
+              xs = x_magnitudes(result)
+
+              assert len(xs) == 203
+              assert len(result.series) == 2
+              assert any(value == pytest.approx(2.345, abs=1e-12) for value in xs)
+              assert any(value == pytest.approx(4.567, abs=1e-12) for value in xs)
+              assert all(len(series.y_values) == len(result.x_values) for series in result.series)
+
+
+          def test_piecewise_envelope_inherits_shared_enriched_grid():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "q(x) = piecewise(q1, x < a, 0)\n"
+                  "q1 := 8*kN/m\nL := 6*m",
+              )
+
+              result = eval_cell(
+                  engine,
+                  "envelope(q(x), x, 0, L, a=[2.345*m, 4.567*m])",
+              )[-1]
+              xs = x_magnitudes(result)
+
+              assert len(xs) == 203
+              assert any(value == pytest.approx(2.345, abs=1e-12) for value in xs)
+              assert any(value == pytest.approx(4.567, abs=1e-12) for value in xs)
+              assert all(len(series.y_values) == len(result.x_values) for series in result.series)
+
+
+          def test_piecewise_plot_rejects_unresolved_breakpoint_with_corrective_diagnostic():
+              engine = EngineeringEngine()
+              eval_cell(engine, "q(x) = piecewise(q1, x < a, 0)\nq1 := 8*kN/m\nL := 6*m")
+
+              with pytest.raises(EngEvaluationError, match=r"Piecewise breakpoint.*a"):
+                  eval_cell(engine, "plot(q(x), x, 0, L)")
+
+
+          def test_non_piecewise_plot_retains_exact_201_point_baseline():
+              engine = EngineeringEngine()
+              eval_cell(engine, "q(x) = q1*x/L\nq1 := 8*kN/m\nL := 6*m")
+
+              result = eval_cell(engine, "plot(q(x), x, 0, L)")[-1]
+
+              assert len(result.x_values) == 201
+          PY
+      - name: Verify corrected Task 5 RED
+        run: |
+          set +e
+          python -m pytest tests/test_piecewise_plot_grid.py -q
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Task 5 tests unexpectedly passed before implementation"
+            exit 1
+          fi
+          echo "TASK5_RED_CONFIRMED exit=$status"
+      - name: Implement Task 5 numeric shared-grid helpers
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/engcalc_colab/numeric.py')
+          text = path.read_text()
+          anchor = '''        return xs, tuple(ys)\n\n    def partial_substitutions(\n'''
+          insertion = '''        return xs, tuple(ys)\n\n    def build_plot_sample_points(\n        self,\n        expression_cases,\n        variable,\n        start,\n        end,\n        count=201,\n    ):\n        from .piecewise import extract_symbolic_breakpoints\n\n        if count < 2:\n            raise EngEvaluationError("plot sampling requires at least 2 points")\n        start, end = self.normalize_plot_bounds(start, end)\n        delta = end - start\n        points = [\n            start + delta * (index / (count - 1))\n            for index in range(count)\n        ]\n\n        for expression, overrides in expression_cases:\n            for breakpoint_expression in extract_symbolic_breakpoints(\n                sp.sympify(expression),\n                variable,\n            ):\n                try:\n                    _, breakpoint = self.evaluate_symbolic(\n                        breakpoint_expression,\n                        overrides=dict(overrides or {}),\n                    )\n                except EngEvaluationError as exc:\n                    raise EngEvaluationError(\n                        "plot Piecewise breakpoint must be numerically resolvable: "\n                        + str(exc)\n                    ) from None\n\n                breakpoint = self._as_quantity(breakpoint)\n                if breakpoint.dimensionless and not start.dimensionless:\n                    if float(breakpoint.magnitude) != 0.0:\n                        raise EngEvaluationError(\n                            "plot Piecewise breakpoint has incompatible units"\n                        )\n                    breakpoint = self.ureg.Quantity(0, start.units)\n                try:\n                    breakpoint = breakpoint.to(start.units)\n                except DimensionalityError as exc:\n                    raise EngEvaluationError(\n                        "plot Piecewise breakpoint has incompatible units"\n                    ) from exc\n\n                magnitude = float(breakpoint.magnitude)\n                if float(start.magnitude) <= magnitude <= float(end.magnitude):\n                    points.append(breakpoint)\n\n        ordered = sorted(\n            points,\n            key=lambda quantity: float(quantity.to(start.units).magnitude),\n        )\n        unique = []\n        for point in ordered:\n            point = point.to(start.units)\n            if unique and math.isclose(\n                float(point.magnitude),\n                float(unique[-1].magnitude),\n                rel_tol=1e-12,\n                abs_tol=1e-12,\n            ):\n                continue\n            unique.append(point)\n        return tuple(unique)\n\n    def sample_symbolic_points(\n        self,\n        expression,\n        variable,\n        points,\n        overrides: dict[str, Any] | None = None,\n    ):\n        fixed_overrides = dict(overrides or {})\n        values = []\n        for point in points:\n            sample_overrides = dict(fixed_overrides)\n            sample_overrides[variable] = point\n            _, value = self.evaluate_symbolic(\n                expression,\n                overrides=sample_overrides,\n            )\n            values.append(value)\n        try:\n            return self._normalize_quantity_group(values, "plot samples")\n        except EngEvaluationError as exc:\n            raise EngEvaluationError("plot samples have incompatible result units") from exc\n\n    def partial_substitutions(\n'''
+          assert text.count(anchor) == 1, 'numeric sample insertion point changed'
+          path.write_text(text.replace(anchor, insertion, 1))
+          PY
+      - name: Implement Task 5 engine shared-grid routing
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/engcalc_colab/engine.py')
+          text = path.read_text()
+          old = '''            raw_series = []\n            raw_source_series = []\n            x_values = None\n            for expression in resolved_expressions:\n                series_x, y_values = self.engine.numeric_context.sample_symbolic(\n                    expression.comparison_expression,\n                    variable,\n                    start_quantity,\n                    end_quantity,\n                    count=201,\n                )\n                source_x, source_y_values = self.engine.numeric_context.sample_symbolic(\n                    expression.signed_expression,\n                    variable,\n                    start_quantity,\n                    end_quantity,\n                    count=201,\n                )\n                if x_values is None:\n                    x_values = series_x\n                raw_series.append(\n'''
+          new = '''            raw_series = []\n            raw_source_series = []\n            expression_cases = tuple(\n                (expression.comparison_expression, None)\n                for expression in resolved_expressions\n            )\n            x_values = self.engine.numeric_context.build_plot_sample_points(\n                expression_cases,\n                variable,\n                start_quantity,\n                end_quantity,\n                count=201,\n            )\n            for expression in resolved_expressions:\n                y_values = self.engine.numeric_context.sample_symbolic_points(\n                    expression.comparison_expression,\n                    variable,\n                    x_values,\n                )\n                source_y_values = self.engine.numeric_context.sample_symbolic_points(\n                    expression.signed_expression,\n                    variable,\n                    x_values,\n                )\n                raw_series.append(\n'''
+          assert text.count(old) == 1, 'direct plot sampling block changed'
+          text = text.replace(old, new, 1)
+
+          old = '''        comparison_series: list[PlotSeries] = []\n        source_series: list[PlotSeries] = []\n        x_values = None\n        for sweep_value in sweep_values:\n            overrides = {parameter_name: sweep_value}\n            series_x, comparison_y_values = (\n                self.engine.numeric_context.sample_symbolic(\n                    comparison_expression,\n                    variable,\n                    start_quantity,\n                    end_quantity,\n                    count=201,\n                    overrides=overrides,\n                )\n            )\n            if preserve_signed_source:\n                _, source_y_values = self.engine.numeric_context.sample_symbolic(\n                    signed_expression,\n                    variable,\n                    start_quantity,\n                    end_quantity,\n                    count=201,\n                    overrides=overrides,\n                )\n            else:\n                source_y_values = comparison_y_values\n\n            if x_values is None:\n                x_values = series_x\n            case_label = (\n'''
+          new = '''        comparison_series: list[PlotSeries] = []\n        source_series: list[PlotSeries] = []\n        case_overrides = tuple(\n            {parameter_name: sweep_value}\n            for sweep_value in sweep_values\n        )\n        x_values = self.engine.numeric_context.build_plot_sample_points(\n            tuple(\n                (comparison_expression, overrides)\n                for overrides in case_overrides\n            ),\n            variable,\n            start_quantity,\n            end_quantity,\n            count=201,\n        )\n        for sweep_value, overrides in zip(sweep_values, case_overrides):\n            comparison_y_values = self.engine.numeric_context.sample_symbolic_points(\n                comparison_expression,\n                variable,\n                x_values,\n                overrides=overrides,\n            )\n            if preserve_signed_source:\n                source_y_values = self.engine.numeric_context.sample_symbolic_points(\n                    signed_expression,\n                    variable,\n                    x_values,\n                    overrides=overrides,\n                )\n            else:\n                source_y_values = comparison_y_values\n\n            case_label = (\n'''
+          assert text.count(old) == 1, 'sweep sampling block changed'
+          path.write_text(text.replace(old, new, 1))
+          PY
+          python -m py_compile src/engcalc_colab/numeric.py src/engcalc_colab/engine.py
+          git diff --check
+      - name: Verify Task 5 focused GREEN
+        run: python -m pytest tests/test_piecewise_plot_grid.py -q
+      - name: Verify Task 5 full GREEN
+        run: python -m pytest -q
+      - name: Commit Task 5
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add src/engcalc_colab/numeric.py src/engcalc_colab/engine.py tests/test_piecewise_plot_grid.py
+          git commit -m "feat: enrich piecewise plot sampling grids"
+          git push origin HEAD:feature/v0.8.0-piecewise
