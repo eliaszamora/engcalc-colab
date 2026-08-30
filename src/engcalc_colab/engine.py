@@ -28,6 +28,7 @@ from .models import (
     UserFunction,
 )
 from .numeric import NumericContext
+from .piecewise import build_piecewise, build_relation
 from .tables import normalize_explicit_points, normalize_uniform_points
 
 
@@ -362,10 +363,37 @@ class _Evaluator(ast.NodeVisitor):
         if isinstance(node.op, ast.Pow): return left ** right
         raise EngEvaluationError("unsupported operator")
 
+    def _evaluate_piecewise_condition(self, node: ast.AST):
+        if not isinstance(node, ast.Compare):
+            raise EngEvaluationError("piecewise condition must be a comparison")
+        if len(node.ops) != 1 or len(node.comparators) != 1:
+            raise EngEvaluationError("piecewise condition must be a binary comparison")
+        left = self.visit(node.left)
+        right = self.visit(node.comparators[0])
+        return build_relation(left, node.ops[0], right)
+
+    def _evaluate_piecewise(self, node: ast.Call):
+        if node.keywords or len(node.args) < 3 or len(node.args) % 2 == 0:
+            raise EngEvaluationError(
+                "piecewise expects value/condition pairs and a default"
+            )
+        branches = tuple(
+            (
+                self.visit(node.args[index]),
+                self._evaluate_piecewise_condition(node.args[index + 1]),
+            )
+            for index in range(0, len(node.args) - 1, 2)
+        )
+        default = self.visit(node.args[-1])
+        return build_piecewise(branches, default)
+
     def visit_Call(self, node: ast.Call):
         if not isinstance(node.func, ast.Name):
             raise EngSyntaxError(f"unsupported syntax '{type(node.func).__name__}'")
         name = node.func.id
+
+        if name == "piecewise":
+            return self._evaluate_piecewise(node)
 
         if name == "sum":
             self._require_arity(name, node.args, 4, "expression, index, lower, upper")
