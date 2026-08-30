@@ -1019,24 +1019,28 @@ class _Evaluator(ast.NodeVisitor):
         else:
             raw_series = []
             raw_source_series = []
-            x_values = None
+            expression_cases = tuple(
+                (expression.comparison_expression, None)
+                for expression in resolved_expressions
+            )
+            x_values = self.engine.numeric_context.build_plot_sample_points(
+                expression_cases,
+                variable,
+                start_quantity,
+                end_quantity,
+                count=201,
+            )
             for expression in resolved_expressions:
-                series_x, y_values = self.engine.numeric_context.sample_symbolic(
+                y_values = self.engine.numeric_context.sample_symbolic_points(
                     expression.comparison_expression,
                     variable,
-                    start_quantity,
-                    end_quantity,
-                    count=201,
+                    x_values,
                 )
-                source_x, source_y_values = self.engine.numeric_context.sample_symbolic(
+                source_y_values = self.engine.numeric_context.sample_symbolic_points(
                     expression.signed_expression,
                     variable,
-                    start_quantity,
-                    end_quantity,
-                    count=201,
+                    x_values,
                 )
-                if x_values is None:
-                    x_values = series_x
                 raw_series.append(
                     PlotSeries(
                         display_label=expression.display_label,
@@ -1139,33 +1143,37 @@ class _Evaluator(ast.NodeVisitor):
         is_moment = self._is_moment_label(source_label)
         comparison_series: list[PlotSeries] = []
         source_series: list[PlotSeries] = []
-        x_values = None
-        for sweep_value in sweep_values:
-            overrides = {parameter_name: sweep_value}
-            series_x, comparison_y_values = (
-                self.engine.numeric_context.sample_symbolic(
-                    comparison_expression,
-                    variable,
-                    start_quantity,
-                    end_quantity,
-                    count=201,
-                    overrides=overrides,
-                )
+        case_overrides = tuple(
+            {parameter_name: sweep_value}
+            for sweep_value in sweep_values
+        )
+        x_values = self.engine.numeric_context.build_plot_sample_points(
+            tuple(
+                (comparison_expression, overrides)
+                for overrides in case_overrides
+            ),
+            variable,
+            start_quantity,
+            end_quantity,
+            count=201,
+        )
+        for sweep_value, overrides in zip(sweep_values, case_overrides):
+            comparison_y_values = self.engine.numeric_context.sample_symbolic_points(
+                comparison_expression,
+                variable,
+                x_values,
+                overrides=overrides,
             )
             if preserve_signed_source:
-                _, source_y_values = self.engine.numeric_context.sample_symbolic(
+                source_y_values = self.engine.numeric_context.sample_symbolic_points(
                     signed_expression,
                     variable,
-                    start_quantity,
-                    end_quantity,
-                    count=201,
+                    x_values,
                     overrides=overrides,
                 )
             else:
                 source_y_values = comparison_y_values
 
-            if x_values is None:
-                x_values = series_x
             case_label = (
                 f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"
             )

@@ -213,6 +213,98 @@ class NumericContext:
 
         return xs, tuple(ys)
 
+    def build_plot_sample_points(
+        self,
+        expression_cases,
+        variable,
+        start,
+        end,
+        count=201,
+    ):
+        from .piecewise import extract_symbolic_breakpoints
+
+        if count < 2:
+            raise EngEvaluationError("plot sampling requires at least 2 points")
+        start, end = self.normalize_plot_bounds(start, end)
+        delta = end - start
+        points = [
+            start + delta * (index / (count - 1))
+            for index in range(count)
+        ]
+
+        for expression, overrides in expression_cases:
+            for breakpoint_expression in extract_symbolic_breakpoints(
+                sp.sympify(expression),
+                variable,
+            ):
+                try:
+                    _, breakpoint = self.evaluate_symbolic(
+                        breakpoint_expression,
+                        overrides=dict(overrides or {}),
+                    )
+                except EngEvaluationError as exc:
+                    raise EngEvaluationError(
+                        "plot Piecewise breakpoint must be numerically resolvable: "
+                        + str(exc)
+                    ) from None
+
+                breakpoint = self._as_quantity(breakpoint)
+                if breakpoint.dimensionless and not start.dimensionless:
+                    if float(breakpoint.magnitude) != 0.0:
+                        raise EngEvaluationError(
+                            "plot Piecewise breakpoint has incompatible units"
+                        )
+                    breakpoint = self.ureg.Quantity(0, start.units)
+                try:
+                    breakpoint = breakpoint.to(start.units)
+                except DimensionalityError as exc:
+                    raise EngEvaluationError(
+                        "plot Piecewise breakpoint has incompatible units"
+                    ) from exc
+
+                magnitude = float(breakpoint.magnitude)
+                if float(start.magnitude) <= magnitude <= float(end.magnitude):
+                    points.append(breakpoint)
+
+        ordered = sorted(
+            points,
+            key=lambda quantity: float(quantity.to(start.units).magnitude),
+        )
+        unique = []
+        for point in ordered:
+            point = point.to(start.units)
+            if unique and math.isclose(
+                float(point.magnitude),
+                float(unique[-1].magnitude),
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            ):
+                continue
+            unique.append(point)
+        return tuple(unique)
+
+    def sample_symbolic_points(
+        self,
+        expression,
+        variable,
+        points,
+        overrides: dict[str, Any] | None = None,
+    ):
+        fixed_overrides = dict(overrides or {})
+        values = []
+        for point in points:
+            sample_overrides = dict(fixed_overrides)
+            sample_overrides[variable] = point
+            _, value = self.evaluate_symbolic(
+                expression,
+                overrides=sample_overrides,
+            )
+            values.append(value)
+        try:
+            return self._normalize_quantity_group(values, "plot samples")
+        except EngEvaluationError as exc:
+            raise EngEvaluationError("plot samples have incompatible result units") from exc
+
     def partial_substitutions(
         self,
         expression: sp.Expr,
