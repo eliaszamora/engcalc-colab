@@ -122,14 +122,20 @@ def test_piecewise_breakpoint_global_maximum_uses_exact_breakpoint_location():
     )
 
     peak = _global_point(result.series[0], "global_max")
+    maximum = next(
+        request for request in _characteristic_requests(result)
+        if request.role == "max"
+    )
 
+    # Piecewise sampling may deliberately inject the breakpoint into the 201-point
+    # plotting grid. The authoritative contract is therefore the symbolic point and
+    # rendered request coordinate, not absence from the adaptive sample grid.
     assert peak.x_symbolic == sp.Rational(1, 3)
     assert peak.side == "at"
+    assert float(peak.x_quantity.magnitude) == pytest.approx(1 / 3)
     assert float(peak.value_quantity.magnitude) == pytest.approx(10.0)
-    assert all(
-        abs(float(quantity.magnitude) - 1 / 3) > 1e-12
-        for quantity in result.x_values
-    )
+    assert float(maximum.x_quantity.magnitude) == pytest.approx(1 / 3)
+    assert float(maximum.y_quantity.magnitude) == pytest.approx(10.0)
 
 
 def test_moment_characteristic_request_remains_visually_inverted_and_exact():
