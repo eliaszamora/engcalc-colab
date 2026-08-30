@@ -62,8 +62,8 @@ def test_keyword_arguments_remain_rejected_for_non_display_calls():
         parse_cell("simplify(x, q=[1, 2])")
 
 
-def test_general_list_and_dictionary_syntax_remains_disabled():
-    with pytest.raises(EngSyntaxError, match="unsupported syntax 'List'"):
-        parse_cell("A = [1, 2]")
+def test_simple_list_is_row_matrix_but_dictionary_remains_disabled():
+    stmt = parse_cell("A = [1, 2]")[0]
+    assert isinstance(stmt.expression.body, ast.List)
     with pytest.raises(EngSyntaxError, match="unsupported syntax 'Dict'"):
         parse_cell("A = {1: 2}")
