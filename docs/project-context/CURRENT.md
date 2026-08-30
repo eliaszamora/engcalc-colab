@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated in `main`. The user has approved the written 0.9.0 vectors/matrices/linear-systems design and numeric-semantics clarification. A complete RED→GREEN implementation plan is now written and self-reviewed on `planning/v0.9.0-matrix-cas`; no Matrix/CAS production code has started. The next gate is explicit approval of the implementation plan before creating `feature/v0.9.0-matrix-cas`._
+_Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated in `main`. The 0.9.0 Matrix/CAS implementation plan has been explicitly approved for inline execution. `feature/v0.9.0-matrix-cas` was created from exact `main@9b90014f...`, seeded only with the approved planning documents, and passed the fresh Task 0 baseline gate on Python 3.13. Production Matrix/CAS code has not started yet; Task 1 parser RED is the active next step._
 
 ## Current baseline
 
@@ -8,16 +8,18 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated i
 - Canonical integrated branch: **`main`** at **`9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`**.
 - Runtime/package version on `main`: **0.8.0**.
 - Piecewise PR #31: **MERGED**, merge commit `eca248c376128da16ff9526751790aebe2089646`.
-- Current planning branch: **`planning/v0.9.0-matrix-cas`**, created from `main@9b90014f...`.
+- Active implementation branch: **`feature/v0.9.0-matrix-cas`**.
+- Feature branch was created from exact `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`.
+- Approved planning artifacts were copied into the feature branch without carrying planning-branch source/history changes; seed commit: `74d045f079a4458ffb31d9db0f195ffab433d659`.
 - Formal 0.9.0 design: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-design.md`.
 - Normative numeric clarification: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-numeric-semantics-clarification.md`.
 - Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.0-matrix-cas-implementation.md`.
-- Design commit: `650d35b7992b780dae9e9795271a94c3083b9068`.
+- Planning design commit: `650d35b7992b780dae9e9795271a94c3083b9068`.
 - Numeric-semantics clarification commit: `dc3acd4b593e35bb11578f2a3ae54d252e846beb`.
 - Initial implementation-plan commit: `0013ccd8ef04a1efe31329613fbdc9f72efaa4e8`.
 - Plan self-review correction: `2e722ee7c64ab0eeb72f7614db05af42622e7576`.
-- Temporary self-review workflow removed in `5e7e2690ee53eb87d839e59fecee0ef23e5e5161`.
-- No Matrix/CAS `src/` file or product test has been modified.
+- Task 0 temporary baseline workflow commit: `965b8b716578d0414e3819cd1239b3219404daae`; workflow removed in `9dd2b1248decb9423134754d391bac8da843738c`.
+- No Matrix/CAS `src/` file or product test has been modified yet.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge implementation work to `main` without explicit user approval.
 
@@ -61,7 +63,7 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated i
 
 ## Open issues / user feedback
 
-- The complete implementation plan is written and awaits explicit user approval before execution.
+- Task 1 must deliberately migrate the three historical parser tests that rejected `A = [1,2]`; in 0.9.0 this becomes a valid row vector while table/plot/envelope list contexts remain collections.
 - `no_vertical_scroll()` remains outside Matrix/CAS.
 - Multiline ordinary non-matrix function-call parsing remains a separate ergonomics item; 0.9.0 adds only matrix-literal multiline continuation.
 - Generalized eigenproblem `K phi = lambda M phi` needs a future dedicated design/API.
@@ -82,38 +84,46 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise remains fully integrated i
 
 - Planning branch was created from exact integrated `main@9b90014f...`.
 - Base architecture and syntax were explicitly approved before the written spec.
-- Written design + numeric clarification were subsequently explicitly approved by the user's instruction to proceed to the implementation-planning step.
-- Formal spec: `650d35b7...`.
-- Numeric clarification: `dc3acd4b...`.
-- Implementation plan: `0013ccd8...`, covering Tasks 0–10 from isolated baseline through wheel validation and PR gate.
-- Required plan self-review found one real historical-contract conflict: three 0.8.0 parser tests explicitly rejected `[1,2]`. The corrected plan at `2e722ee7...` now requires those tests to migrate deliberately to the approved row-vector semantics while preserving table/sweep collection behavior and dictionary/comprehension/nested-list/unpacking restrictions.
-- Self-review correction workflow Actions `33319867712`, job `99279839857`: **success**. The temporary workflow was then removed.
-- No product/source validation is applicable yet because no Matrix/CAS production code has changed.
+- Written design + numeric clarification were explicitly approved.
+- Implementation plan was explicitly approved for inline execution on 2026-08-30.
+- Plan self-review found and corrected the historical `[1,2]` test-contract conflict.
+- Self-review correction workflow Actions `33319867712`, job `99279839857`: **success**; temporary workflow removed.
+
+### 0.9.0 Task 0 execution evidence
+
+- `feature/v0.9.0-matrix-cas` created from exact current `main@9b90014f...`.
+- Feature seed commit `74d045f0...` contains only the approved design/spec/plan/context documents relative to main.
+- Fresh baseline workflow Actions **`33320306377`**, job **`99280984551`**, Python **3.13**: **success**.
+- Runtime check inside the baseline workflow confirmed **0.8.0**.
+- Complete source suite step completed successfully. Because the product/test tree is identical to the authoritative 0.8.0 baseline apart from planning docs and the temporary workflow, this is the same 557-test baseline with zero failures.
+- Temporary baseline workflow removed in `9dd2b124...` before Task 1.
 
 ## Roadmap / active plan
 
 - **0.7.2 engineering tables:** COMPLETE + merged.
 - **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
 - **0.8.0 Piecewise:** COMPLETE + merged.
-- **0.9.0 vectors / matrices / linear systems:** **SPEC APPROVED; IMPLEMENTATION PLAN WRITTEN + SELF-REVIEWED; PLAN-APPROVAL GATE ACTIVE**.
+- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASK 0 COMPLETE, TASK 1 NEXT**.
   - Base design: approved.
   - Formal written spec: approved.
   - Numeric clarification: approved.
-  - Implementation plan: written and self-reviewed.
-  - Production branch: not created.
-  - Production code: not started.
+  - Implementation plan: approved.
+  - Implementation branch: created and baseline-validated.
+  - Task 0 isolated baseline: complete.
+  - Task 1 parser/literal TDD: not started; next action is RED tests.
+  - Package/runtime version remains 0.8.0 until the release-closing task.
 - Later roadmap: 0.9.1 exact-first extrema/roots/intersections → 0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization.
 
 ## Exact next step
 
-1. Present the completed implementation plan to the user for explicit approval.
-2. After approval, re-read this context plus both specs and the plan, then verify the current `main` SHA.
-3. Create `feature/v0.9.0-matrix-cas` from the exact current `main`; copy only the approved planning artifacts if needed.
-4. Execute Task 0: fresh full baseline and runtime-version check.
-5. Start Task 1 with parser tests RED before modifying production code.
-6. Continue RED→GREEN task-by-task, focused tests then full suite, updating `CURRENT.md` at every state change.
+1. On `feature/v0.9.0-matrix-cas`, add Task 1 RED tests for row/column/general literals, multiline continuation, diagnostics, and contextual-list preservation.
+2. Deliberately migrate the three old `[1,2]` rejection tests to the approved row-vector contract.
+3. Run focused parser tests and confirm the expected RED for missing matrix syntax/multiline support.
+4. Only after observed RED, implement `matrix_syntax.py` plus the minimal `models.py`/`parser.py` changes.
+5. Run focused GREEN, parser regressions, then complete suite.
+6. Update this file with RED/GREEN SHAs and counts before advancing to Task 2.
 7. Do not invoke Codex and do not merge without explicit user authorization.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`, runtime 0.8.0, baseline 557/557 GREEN. Active work is planning-only on `planning/v0.9.0-matrix-cas`. The user approved the 0.9.0 design/spec: MATLAB-style `[a,b; c,d]`, vectors as matrices, one-based indexing, immutable SymPy symbolic truth, per-entry Pint numerical truth, exact `solve(A,b)`, `QuantityMatrix` as output boundary, and contextual table/sweep lists preserved. The complete implementation plan is `docs/superpowers/plans/2026-08-30-engcalc-v0.9.0-matrix-cas-implementation.md`, initially committed at `0013ccd8...` and corrected after self-review at `2e722ee7...`. No Matrix/CAS production code exists yet. The next gate is explicit user approval of the implementation plan; only then create `feature/v0.9.0-matrix-cas` and execute Task 0/Task 1 TDD.
+Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`, runtime 0.8.0, authoritative baseline 557/557 GREEN. 0.9.0 Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`, created from that exact main SHA and seeded only with approved planning artifacts. Task 0 baseline workflow `33320306377` / job `99280984551` passed on Python 3.13 and its temporary workflow was removed. No Matrix/CAS production code/tests have been committed yet. The next action is Task 1 RED parser tests for `[a,b]`, `[a;b]`, `[a,b;c,d]`, multiline matrix literals and list-context preservation, followed by minimal parser implementation only after the RED is observed. Never invoke Codex and never merge without explicit user approval.
