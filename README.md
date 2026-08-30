@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.7.2**.
+Current version: **0.8.0**.
 
 ## Install in Google Colab
 
@@ -751,7 +751,7 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Current limitations
 
-v0.7.2 currently does not provide:
+v0.8.0 currently does not provide:
 
 - subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
@@ -759,7 +759,7 @@ v0.7.2 currently does not provide:
 - multi-parameter/cartesian sweeps;
 - dual y-axes for quantities with different dimensions;
 - explicit plot/envelope x/y target-unit conversion;
-- `piecewise`/discontinuous-function plotting and jump markers;
+- open/closed Piecewise endpoint glyphs or dedicated jump markers;
 - automatic scientific-notation policy for very large/small displayed values;
 - target-unit conversion of partially evaluated functions with a free independent variable;
 - automatic compact coefficient evaluation for non-polynomial partial functions;
@@ -772,6 +772,7 @@ v0.7.2 currently does not provide:
 
 ## Version notes
 
+- **0.8.0** — restricted unit-aware Piecewise expressions with partial numerical cases, exact breakpoint-enriched shared plot grids, segmented discontinuous rendering, Piecewise calculus semantics, diagnostics and real `%%eng` acceptance.
 - **0.7.2** — native engineering tables with automatic unit-aware discretization, unit-once and fully explicit point forms, compatible multi-response columns, native HTML rendering, and source-order `%%eng` integration.
 - **0.7.1** — multi-argument user functions and generalized partial numerical evaluation.
 - **0.7.0** — scalar engineering mathematics: `sqrt`, trig/inverse trig, `exp`, `log`, and `pi` with unit-aware numerical rules.
@@ -790,4 +791,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.7.2`.
+Version: `0.8.0`.
