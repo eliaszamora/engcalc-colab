@@ -56,11 +56,15 @@ class ParsedNarrative:
 class UserFunction:
     parameters: tuple[str, ...]
     expression: Any
+    derivative_variable: str | None = None
+    derivative_breakpoints: tuple[Any, ...] = ()
 
     def __init__(
         self,
         parameters: tuple[str, ...] | str | None = None,
         expression: Any = None,
+        derivative_variable: str | None = None,
+        derivative_breakpoints: tuple[Any, ...] = (),
         *,
         parameter: str | None = None,
     ) -> None:
@@ -77,6 +81,8 @@ class UserFunction:
 
         object.__setattr__(self, "parameters", normalized)
         object.__setattr__(self, "expression", expression)
+        object.__setattr__(self, "derivative_variable", derivative_variable)
+        object.__setattr__(self, "derivative_breakpoints", tuple(derivative_breakpoints))
 
     @property
     def parameter(self) -> str | None:

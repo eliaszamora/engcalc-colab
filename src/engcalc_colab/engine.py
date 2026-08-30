@@ -28,7 +28,7 @@ from .models import (
     UserFunction,
 )
 from .numeric import NumericContext
-from .piecewise import build_piecewise, build_relation
+from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
 from .tables import normalize_explicit_points, normalize_uniform_points
 
 
@@ -254,6 +254,8 @@ class EngineeringEngine:
                     self.functions[statement.target] = UserFunction(
                         parameters=statement.parameters,
                         expression=value,
+                        derivative_variable=evaluator.derivative_variable,
+                        derivative_breakpoints=evaluator.derivative_breakpoints,
                     )
                 else:
                     self.namespace[statement.target] = value
@@ -282,6 +284,8 @@ class _Evaluator(ast.NodeVisitor):
         self.plot_evaluation: _PlotEvaluation | None = None
         self.table_evaluation: _TableEvaluation | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
+        self.derivative_variable: str | None = None
+        self.derivative_breakpoints: tuple[object, ...] = ()
 
     def visit_function_body(self, node: ast.AST, parameters: tuple[str, ...]):
         previous = dict(self.symbol_overrides)
@@ -552,6 +556,18 @@ class _Evaluator(ast.NodeVisitor):
                         return symbolic_expression
                 else:
                     overrides = dict(zip(function.parameters, argument_values))
+                if (
+                    function.derivative_variable is not None
+                    and function.derivative_breakpoints
+                    and function.derivative_variable in function.parameters
+                ):
+                    derivative_index = function.parameters.index(function.derivative_variable)
+                    self.engine.numeric_context.ensure_not_derivative_breakpoint(
+                        function.derivative_variable,
+                        argument_values[derivative_index],
+                        function.derivative_breakpoints,
+                        overrides=overrides,
+                    )
                 try:
                     substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
                         symbolic_expression,
@@ -661,6 +677,11 @@ class _Evaluator(ast.NodeVisitor):
             expr, var = args[:2]
             order = int(args[2]) if len(args) == 3 else 1
             self.display_input = sp.Derivative(expr, (var, order))
+            if isinstance(var, sp.Symbol):
+                breakpoints = extract_symbolic_breakpoints(expr, var.name)
+                if breakpoints:
+                    self.derivative_variable = var.name
+                    self.derivative_breakpoints = breakpoints
             return sp.diff(expr, var, order)
 
         if name == "eq":

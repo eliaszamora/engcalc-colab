@@ -359,6 +359,33 @@ class NumericContext:
             previous = signature
         return tuple(starts)
 
+    def ensure_not_derivative_breakpoint(
+        self,
+        variable: str,
+        value,
+        breakpoints,
+        overrides: dict[str, Any] | None = None,
+    ) -> None:
+        overrides = dict(overrides or {})
+        value = self._as_quantity(value)
+        for breakpoint_expression in breakpoints:
+            _, breakpoint = self.evaluate_symbolic(
+                sp.sympify(breakpoint_expression),
+                overrides=overrides,
+            )
+            left, right = self._normalize_relation_operands(value, breakpoint)
+            if math.isclose(
+                float(left.magnitude),
+                float(right.magnitude),
+                rel_tol=1e-12,
+                abs_tol=1e-12,
+            ):
+                unit = f" {right.units:~P}" if not right.dimensionless else ""
+                raise EngEvaluationError(
+                    "derivative is undefined at explicit Piecewise breakpoint "
+                    f"{variable} = {float(right.magnitude):g}{unit}"
+                )
+
     def partial_substitutions(
         self,
         expression: sp.Expr,
