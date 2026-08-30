@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains canonical on `main`. EngCalc 0.9.1 exact characteristics is being implemented inline on `feature/v0.9.1-exact-characteristics`. Tasks 1–6 are complete and fully regression-tested. All temporary Task 6 validation infrastructure has been removed. The exact next step is Task 7 RED for deterministic numerical fallback and explicit approximate provenance._
+_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains canonical on `main`. EngCalc 0.9.1 exact characteristics is being implemented inline on `feature/v0.9.1-exact-characteristics`. Tasks 1–7 are complete and fully regression-tested. All temporary Task 7 validation infrastructure has been removed. The exact next step is Task 8 RED for engine dispatch, unit-aware response resolution, scalar/matrix guards and line-numbered diagnostics._
 
 ## Current baseline
 
@@ -12,8 +12,8 @@ _Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains canonical on `mai
 - Approved design spec: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.1-exact-characteristics-design.md`.
 - Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.1-exact-characteristics-implementation.md`.
 - User selected **inline execution / executing-plans**.
-- Task 6 product commit: **`84ca991d933c960137805db1980aa4d565d1cbed`**.
-- Task 6 cleanup head before this context update: **`5b2528cf5c6aeaf94eaef341584abac4f1e477b7`**.
+- Task 7 product commit: **`44401cd2ab3d89d10b861a45f873342756af8d41`**.
+- Task 7 cleanup head before this context update: **`d096cb06643e7d2f63f2743d1de94fb546d12161`**.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge 0.9.1 into `main` without explicit user approval.
 
@@ -42,11 +42,13 @@ intersections(response_1, response_2, variable, lower, upper)
 - One reusable exact-first core lives in `src/engcalc_colab/characteristics.py`.
 - Domains are finite closed real intervals with unit-compatible bounds and `lower < upper`.
 - Exact symbolic results are authoritative whenever finite usable exact results exist.
-- Numerical fallback is Task 7: it must run only after exact solving is unresolved, be deterministic, residual-validated, explicitly `provenance="numeric"`, independent of plot sampling and add no SciPy dependency.
+- Deterministic numerical fallback is active only after exact solving is unresolved for a continuous region. It uses **1025** internal physical-domain samples, residual tolerance **1e-9**, x de-duplication tolerance **1e-10**, never uses the public plot grid, carries `provenance="numeric"`, and adds no SciPy dependency.
+- Numerical fallback is shared by roots, intersections and extrema derivative solving. Exact results and fallback results may coexist across independent Piecewise regions.
+- If an unresolved region cannot yield a validated finite solution set, EngCalc raises `EngEvaluationError("characteristic numerical fallback could not validate a solution set")`; it never returns an authoritative sampled guess.
 - `roots(...)` preserves real in-domain roots, endpoints, exact symbolic locations, unit-aware evaluated coordinates, Piecewise topology and identically-zero interval loci.
 - Root/coincident intervals preserve open/closed endpoint topology.
-- `intersections(...)` requires compatible response dimensions, uses the union of both responses' Piecewise breakpoints, rejects jump-only crossings, preserves exact common values and represents coincident intervals explicitly.
-- Continuous `extrema(...)` uses exact derivative roots plus domain endpoints, preserves local/global roles, constant whole-domain loci, physical units and explicit unbounded directions.
+- `intersections(...)` requires compatible response dimensions, uses the union of both responses' Piecewise breakpoints, rejects jump-only crossings, preserves common values, supports numerical fallback and represents coincident intervals explicitly.
+- Continuous `extrema(...)` uses exact derivative roots plus domain endpoints, with numerical derivative fallback only when exact derivative solving is unresolved; it preserves local/global roles, constant whole-domain loci, physical units and explicit unbounded directions.
 - Piecewise `extrema(...)` solves each continuous region independently, preserves open/closed ownership, keeps distinct finite `left` / `at` / `right` breakpoint records, recomputes global roles only after merge, supports constant governing subinterval loci, and does not create stationary extrema by differentiating through jumps.
 - Standalone result models remain immutable/typed.
 - Exact envelope crossover/governing-interval mathematics remains deferred to **0.9.2**.
@@ -55,7 +57,7 @@ intersections(response_1, response_2, variable, lower, upper)
 ## Open issues / user feedback
 
 - No blocking 0.9.1 design ambiguity remains.
-- **Tasks 1–6 are complete. Task 7 is next.**
+- **Tasks 1–7 are complete. Task 8 is next.**
 - `no_vertical_scroll()` remains a separate ergonomics issue.
 - Multiline ordinary non-matrix function-call parsing remains separate.
 - Generalized structural eigenproblems remain deferred.
@@ -95,9 +97,29 @@ intersections(response_1, response_2, variable, lower, upper)
 - `git diff --check origin/main...HEAD`: PASS.
 - Complete characteristics + Piecewise + scalar-math regression gate: **173/173 PASS in 26.84 s**.
 - Complete source suite: **808/808 PASS in 152.40 s**.
-- Task 6 preserves exact regional solving, explicit `left` / `at` / `right` values, actual breakpoint governing extrema, local cusp extrema, dimensional breakpoint quantities, constant global-max/min subinterval loci, post-merge global classification and jump-safe semantics.
-- Four temporary Task 6 artifacts were removed after validation: `.github/workflows/v091-task6-tdd.yml`, `.github/workflows/v091-task6-full-gate.yml`, `.github/scripts/v091_task6_green.py`, and `.github/scripts/v091_task6_green_v2.py`.
-- Cleanup head before this context update: **`5b2528cf5c6aeaf94eaef341584abac4f1e477b7`**.
+- Four temporary Task 6 artifacts were removed after validation and the cleanup compare contained no `.github` files.
+
+### 0.9.1 Task 7 — deterministic numerical fallback + approximate provenance
+
+- Initial RED run **`33339388853`**, job **`99332134618`**: **10/10 failed in 2.52 s**, all because numerical fallback/contract constants were absent.
+- RED coverage was strengthened before production changes to include dimensional physical coordinates and numerical fallback for intersections, matching the approved design even though the Task 7 plan text explicitly named only roots/extrema.
+- Expanded RED run **`33339481771`**, job **`99332389859`**: **12/12 failed in 2.08 s**, again only for the missing fallback behavior; no fixture/import error.
+- First GREEN attempt run **`33339631063`**, job **`99332785424`**: **57 passed / 2 failed in 8.14 s**. All 12 new Task 7 contracts passed. The two failures were legacy Task 2/3 assertions that explicitly required the superseded pre-fallback behavior (`unresolved=True`, no numerical solution).
+- Root-cause review confirmed the product matched the approved Task 7 contract. The two legacy tests were migrated, without reducing coverage, to require validated fallback and exact+numeric Piecewise coexistence.
+- Regression-migration commit: **`81426242db40709dd60670e4b5be9b4f324206bc`** (`test: migrate root regressions to Task 7 fallback semantics`).
+- Product GREEN run **`33339733557`**, job **`99333065007`**: **59/59 PASS in 7.80 s**; `git diff --check` PASS.
+- Product commit: **`44401cd2ab3d89d10b861a45f873342756af8d41`** (`feat: add deterministic characteristic fallback`).
+- Idempotent recheck run **`33339788238`**, job **`99333217335`**: **59/59 PASS in 7.87 s**; log explicitly states `Task 7 fallback already present; skipping patch.` and `No product patch to commit.`
+- Authoritative full-gate SHA: **`8a6b695ba6b4064209aecb5db56c88c7d7c00dfa`**.
+- Full-gate run **`33339835753`**, job **`99333344632`**, Python **3.13.15**.
+- `compileall`: PASS.
+- `git diff --check origin/main...HEAD`: PASS.
+- Complete characteristics + Piecewise + scalar-math regression gate: **185/185 PASS in 30.96 s**.
+- Complete source suite: **820/820 PASS in 157.77 s**.
+- Task 7 adds fixed fallback constants (1025 / 1e-9 / 1e-10), direct physical-domain sampling, mpmath refinement, sign-change and even-multiplicity recovery, residual validation, deterministic de-duplication, exact-preferred mixed provenance, Piecewise region isolation, dimensional x preservation, intersection fallback and extrema derivative fallback.
+- Numerical fallback never calls `NumericContext.build_plot_sample_points`; the public 201-point plot grid remains presentation-only.
+- Three temporary Task 7 artifacts were removed after validation: `.github/workflows/v091-task7-tdd.yml`, `.github/workflows/v091-task7-full-gate.yml`, `.github/scripts/v091_task7_green.py`.
+- Cleanup head before this context update: **`d096cb06643e7d2f63f2743d1de94fb546d12161`**.
 - Fresh compare against canonical `main` after cleanup contains no `.github` files; only approved docs, product and tests remain.
 - No Codex review or Codex Cloud has been invoked.
 
@@ -113,23 +135,24 @@ intersections(response_1, response_2, variable, lower, upper)
 - **0.9.1 Task 4:** **COMPLETE — 794/794 full GREEN**.
 - **0.9.1 Task 5:** **COMPLETE — 800/800 full GREEN**.
 - **0.9.1 Task 6:** **COMPLETE — 808/808 full GREEN**.
-- **0.9.1 Task 7 deterministic numerical fallback + approximate provenance: NEXT**.
-- Then Tasks 8–12 per the approved implementation plan.
+- **0.9.1 Task 7:** **COMPLETE — 820/820 full GREEN**.
+- **0.9.1 Task 8 engine dispatch, unit-aware resolution, scalar/matrix guards + diagnostics: NEXT**.
+- Then Tasks 9–12 per the approved implementation plan.
 - Later: **0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization**.
 
 ## Exact next step
 
-1. Create `tests/test_characteristics_fallback.py` before modifying production code.
-2. RED must force `_exact_real_solution_set(...)` to report unresolved and prove that roots fall back numerically with `provenance="numeric"` rather than returning unresolved/no answer.
-3. Add RED coverage for deterministic repeated results, residual rejection, even-multiplicity roots, duplicate collapse, no bracketing across Piecewise jumps, coexistence of exact and numeric results across separate Piecewise regions, extrema derivative fallback, and independence from `NumericContext.build_plot_sample_points`.
-4. Implement `_fallback_roots(...)` with exactly `_FALLBACK_SCAN_COUNT = 1025`, `_FALLBACK_REL_RESIDUAL_TOL = 1e-9`, `_FALLBACK_X_DEDUP_REL_TOL = 1e-10`.
-5. Build fallback samples directly from `AnalysisDomain`; never use the public 201-point plot grid and never pass Pint quantities directly to mpmath.
-6. Validate every candidate by real/finite/domain/residual checks and de-duplicate in physical x, preferring exact provenance when exact and numeric candidates coincide.
-7. Wire fallback only for continuous regions whose exact solver reports unresolved. If fallback cannot validate a solution set, raise `EngEvaluationError("characteristic numerical fallback could not validate a solution set")` rather than returning sampled guesses.
-8. Run focused fallback + roots/extrema regressions, then the broad characteristic gate and complete source suite before closing Task 7.
-9. Keep version at 0.9.0 until Task 12.
-10. Do not merge without explicit user approval and do not invoke Codex unless explicitly authorized.
+1. Add Task 8 RED coverage through parsed DSL/`EngineeringEngine`, before modifying engine product code.
+2. RED must cover typed `RootsResult`, `IntersectionsResult` and `ExtremaResult`; dimensional bounds/results; indexed matrix scalar responses; whole-matrix rejection; incompatible intersection dimensions; unresolved bounds; and line-numbered operation-specific diagnostics.
+3. Add private immutable `_CharacteristicEvaluation` in `engine.py` and initialize `self.characteristic_evaluation = None` in `_Evaluator`.
+4. Dispatch `roots`, `extrema` and `intersections` in `visit_Call` before generic argument evaluation.
+5. Reuse `_resolve_response_expression(...)` for user functions, substitutions, `abs`, indexed matrix scalars and labels; do not expose arbitrary SymPy calls.
+6. Normalize lower/upper through `normalize_analysis_domain`, reject whole matrices with an actionable scalar-index diagnostic, and call the existing core solvers.
+7. Wrap the private descriptor into the existing immutable typed public result models in `EngineeringEngine.evaluate(...)` while preserving the original `ParsedStatement`, normalized domain quantities, labels and unbounded flags.
+8. Convert core/Pint errors to line-numbered operation-specific EngCalc diagnostics; never leak raw `ConditionSet`, Pint exception reprs or Python object reprs.
+9. Run the Task 8 focused engine/diagnostic/matrix gate and then the complete source suite before closure.
+10. Keep version at 0.9.0 until Task 12. Do not merge without explicit user approval and do not invoke Codex unless explicitly authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.9.0 remains canonical on `main@cdc454db7ea43e57e334d523afded8b4ef498ded`. Active work is `feature/v0.9.1-exact-characteristics`. Tasks 1–6 are complete. Task 6 product is `84ca991d933c960137805db1980aa4d565d1cbed`; authoritative run `33338829227`, job `99330564446`, with **173/173 characteristic+Piecewise+scalar tests** and **808/808 complete source tests in 152.40 s**. All four Task 6 temporary harness files are removed; cleanup head before this context update is `5b2528cf5c6aeaf94eaef341584abac4f1e477b7`. Resume with Task 7 RED for deterministic numerical fallback and explicit numeric provenance. Never merge without explicit user approval; never invoke Codex without explicit authorization.
+Read this file first. EngCalc 0.9.0 remains canonical on `main@cdc454db7ea43e57e334d523afded8b4ef498ded`. Active work is `feature/v0.9.1-exact-characteristics`. Tasks 1–7 are complete. Task 7 product is `44401cd2ab3d89d10b861a45f873342756af8d41`; authoritative run `33339835753`, job `99333344632`, with **185/185 characteristic+Piecewise+scalar tests** and **820/820 complete source tests in 157.77 s**. All Task 7 temporary harness files are removed; cleanup head before this context update is `d096cb06643e7d2f63f2743d1de94fb546d12161`. Resume with Task 8 RED for engine dispatch, unit-aware expression resolution, scalar/matrix guards and diagnostics. Never merge without explicit user approval; never invoke Codex without explicit authorization.
