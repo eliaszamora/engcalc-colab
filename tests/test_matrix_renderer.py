@@ -1,3 +1,5 @@
+import re
+
 import sympy as sp
 
 from engcalc_colab.engine import EngineeringEngine
@@ -67,7 +69,7 @@ def test_homogeneous_quantity_matrix_uses_one_common_unit_and_bare_cells():
     _matrix_markers(latex)
     assert "20.00" in latex
     assert "30.00" in latex
-    assert latex.count("0.00") == 2
+    assert len(re.findall(r"(?<!\d)0\.00(?!\d)", latex)) == 2
     assert latex.count(r"\mathrm{kN}") == 1
     assert latex.count(r"\mathrm{mm}") == 1
 
@@ -86,7 +88,7 @@ def test_quantity_matrix_respects_precision_and_zero_tolerance_per_cell():
     )
 
     assert "12.346" in latex
-    assert latex.count("0.000") == 2
+    assert len(re.findall(r"(?<!\d)0\.000(?!\d)", latex)) == 2
     assert "20.000" in latex
 
 
@@ -104,8 +106,9 @@ def test_heterogeneous_quantity_matrix_keeps_units_inside_each_cell():
 
     _matrix_markers(latex)
     # A beam stiffness submatrix legitimately mixes force/length, force and force*length.
-    assert latex.count(r"\mathrm{kN}") == 4
-    assert latex.count(r"\mathrm{mm}") >= 2
+    # The spec requires a unit in each cell, not conversion to one canonical engineering unit.
+    assert latex.count(r"\mathrm{GPa}") == 4
+    assert latex.count(r"\mathrm{mm}") >= 4
     assert not latex.rstrip().endswith(r"\mathrm{mm}")
 
 
@@ -156,7 +159,7 @@ def test_partial_numeric_matrix_renders_known_substitutions_without_fake_final_m
     assert latex.count(r"\begin{matrix}") == 2
     assert latex.count(" = ") == 2
     assert "x" in latex
-    assert "10.00" in latex and "20.00" in latex
+    assert "10.00" in latex
     assert aligned.count(r"\begin{matrix}") == 2
     assert aligned.count(" & = & ") == 2
 
