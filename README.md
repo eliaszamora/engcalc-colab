@@ -17,6 +17,43 @@ If the extension is already loaded after an update, use:
 %reload_ext engcalc_colab
 ```
 
+## v0.8.0 Piecewise expressions
+
+EngCalc 0.8.0 adds restricted, unit-aware Piecewise expressions for engineering response laws. The primary form is:
+
+```text
+q1 := 8*kN/m
+q2 := 4*kN/m
+a := 3*m
+L := 6*m
+q(x) = piecewise(q1, x < a, q2, x <= L, 0)
+```
+
+Every `piecewise(...)` requires ordered `value, condition` pairs followed by a **mandatory default** value. Conditions are intentionally restricted to one direct `<`, `<=`, `>` or `>=` comparison between the Piecewise interval variable and a breakpoint expression. Boolean combinations, chained inequalities and arbitrary condition logic are outside the public 0.8.0 grammar. Source branch order determines ownership at boundaries.
+
+The same definition works through full and partial numerical evaluation:
+
+```text
+numeric(q(2*m))
+numeric(q(x))
+```
+
+Fully numeric calls select the governing branch using Pint-aware comparisons. A partial call retains the interval variable and renders the evaluated Piecewise cases. Exact dimensionless zero branches inherit the compatible dimensional unit of the other branches; incompatible branch or comparison dimensions raise an engineering-facing error.
+
+Tables preserve their existing exact-count contract:
+
+```text
+table(q(x), x, 0, L, 21)
+```
+
+The example above returns exactly 21 rows. Piecewise does not add hidden table samples. Plotting is different by design: it retains the existing **201-point base grid** and adds any exact, numerically resolvable Piecewise breakpoints that are not already present. Multi-series plots, parameter sweeps and envelopes use the union of their breakpoints on one shared grid. Lines and fills are split at branch transitions, so a discontinuity is never shown with a fictitious connector. Positive structural moment remains plotted downward.
+
+Symbolic calculus continues to delegate to SymPy. `integral(...)` results containing supported `Piecewise`, `Min` or `Max` structures remain numerically evaluable. `diff(...)` returns branchwise derivatives without introducing a public `DiracDelta`; however, EngCalc treats a derivative as undefined at every explicit Piecewise breakpoint and `numeric(...)` raises a corrective diagnostic exactly at that point, regardless of endpoint ownership. Evaluate the derivative immediately to either side when one-sided values are needed.
+
+### 0.8.0 limitations
+
+The 0.8.0 scope does not add arbitrary boolean Piecewise logic, open/closed endpoint glyphs, `solve(piecewise(...))`, exact Piecewise roots/intersections, exact governing-interval envelopes, arbitrary Python execution, or automatic differentiability proofs. Breakpoints used for plotting must be numerically resolvable from the current EngCalc numerical context.
+
 ## v0.7.2 engineering tables
 
 v0.7.2 adds native pointwise engineering tables to the same restricted, unit-aware `%%eng` workflow used for calculations and plots. The normal form uses automatic discretization: give the response, independent variable, start, end, and number of points. Both endpoints are included.

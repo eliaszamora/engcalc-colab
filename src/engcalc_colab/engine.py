@@ -574,7 +574,10 @@ class _Evaluator(ast.NodeVisitor):
                         overrides=overrides,
                     )
                 except EngEvaluationError as exc:
-                    if "incompatible units" not in str(exc):
+                    message = str(exc)
+                    if message.startswith("piecewise "):
+                        raise
+                    if "incompatible units" not in message:
                         raise
                     hint = diagnostic_hint(
                         "incompatible_function_units",
