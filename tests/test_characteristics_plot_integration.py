@@ -4,7 +4,7 @@ import pytest
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import PlotResult
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.plotting import _characteristic_requests
+from engcalc_colab.plotting import _characteristic_requests, render_plot
 
 
 def evaluate_cell(engine: EngineeringEngine, source: str):
@@ -55,6 +55,24 @@ def test_characteristic_requests_use_authoritative_exact_plot_point():
     assert all(
         abs(float(quantity.magnitude) - float(maximum.x_quantity.magnitude)) > 1e-12
         for quantity in result.x_values
+    )
+
+
+def test_single_series_renderer_anchors_annotation_at_exact_characteristic():
+    engine = EngineeringEngine()
+    result = evaluate_cell(
+        engine,
+        "f(x) = -(x - 1/3)^2 + 2\n"
+        "plot(f(x), x, 0, 1)",
+    )
+
+    figure = render_plot(result)
+    annotations = figure.axes[0].texts
+
+    assert any(
+        abs(float(annotation.xy[0]) - 1 / 3) < 1e-12
+        and abs(float(annotation.xy[1]) - 2.0) < 1e-12
+        for annotation in annotations
     )
 
 
