@@ -18,7 +18,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install test environment
-        run: python -m pip install -e '.[dev]'
+        run: python -m pip install -e '.[dev]' ipython
 
       - name: Compile package
         run: python -m compileall -q src/engcalc_colab
