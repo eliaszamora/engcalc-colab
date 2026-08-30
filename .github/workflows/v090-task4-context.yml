@@ -1,0 +1,36 @@
+name: EngCalc 0.9.0 Task 4 Context
+
+on:
+  push:
+    branches:
+      - feature/v0.9.0-matrix-cas
+    paths:
+      - .github/workflows/v090-task4-context.yml
+
+permissions:
+  contents: write
+
+jobs:
+  update-context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.9.0-matrix-cas
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Apply context update
+        run: python .github/scripts/v090_task4_context.py
+      - name: Validate context patch
+        run: |
+          git diff --check
+          grep -q "TASKS 0–4 COMPLETE, TASK 5 NEXT" docs/project-context/CURRENT.md
+          grep -q "642/642" docs/project-context/CURRENT.md
+      - name: Commit context
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add docs/project-context/CURRENT.md
+          git commit -m "docs: close Matrix CAS Task 4 and start Task 5"
+          git push origin HEAD:feature/v0.9.0-matrix-cas
