@@ -23,8 +23,8 @@ jobs:
       - name: Run Task 1 focused tests when present
         shell: bash
         run: |
-          if [[ -f tests/test_characteristics_parser.py ]]; then
-            python -m pytest tests/test_characteristics_parser.py -q
-          else
-            echo 'Task 1 RED test file not present yet; harness ready.'
+          tests=(tests/test_characteristics_parser.py)
+          if [[ -f tests/test_characteristics_models.py ]]; then
+            tests+=(tests/test_characteristics_models.py)
           fi
+          python -m pytest "${tests[@]}" -q
