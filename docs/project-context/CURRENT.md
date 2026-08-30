@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains the canonical integrated release on `main`. EngCalc 0.9.1 exact characteristics is being implemented inline on its dedicated feature branch. Task 1 (public grammar + typed result models) is complete, fully regression-tested, and its temporary validation harness has been removed. The exact next step is Task 2 RED for finite unit-aware domains and exact continuous roots._
+_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains the canonical integrated release on `main`. EngCalc 0.9.1 exact characteristics is being implemented inline on its dedicated feature branch. Tasks 1 and 2 are complete and fully regression-tested. Task 2 temporary validation workflows have been removed. The exact next step is Task 3 RED for Piecewise roots, discontinuities, and infinite root intervals._
 
 ## Current baseline
 
@@ -13,7 +13,7 @@ _Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains the canonical int
 - Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.1-exact-characteristics-implementation.md`.
 - Plan refinement commit: **`eb9b5344d20dab950462c63e742ff8f17be8916d`**.
 - User selected **inline execution / executing-plans** for implementation.
-- Task 1 cleanup head before this context update: **`0e0f698490a024963d31bea2736ffde2886e8ad1`**.
+- Task 2 cleanup head before this context update: **`2e90014e2c1a5902e005e843f465c2cefb513f7d`**.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge 0.9.1 into `main` without explicit user approval.
 
@@ -39,7 +39,7 @@ intersections(response_1, response_2, variable, lower, upper)
 
 - Characteristic calls are standalone-only in 0.9.1: assignment, nesting and composition are rejected.
 - Their analysis variable must be a direct non-reserved symbolic identifier.
-- Introduce one reusable exact-first characteristic-analysis core in `src/engcalc_colab/characteristics.py`.
+- One reusable exact-first characteristic-analysis core lives in `src/engcalc_colab/characteristics.py`.
 - Exact symbolic results are authoritative whenever a finite usable exact result exists.
 - Deterministic numerical fallback runs only after unresolved exact solving, is residual-validated, visibly approximate and independent of the public 201-point plotting grid.
 - Domains are finite closed real intervals with unit-compatible bounds and `lower < upper`; dimensional-zero inheritance follows existing EngCalc semantics.
@@ -57,7 +57,7 @@ intersections(response_1, response_2, variable, lower, upper)
 ## Open issues / user feedback
 
 - No blocking 0.9.1 design ambiguity remains.
-- **Task 1 is complete.** Task 2 has not started yet.
+- **Tasks 1 and 2 are complete. Task 3 is next.**
 - `no_vertical_scroll()` remains a separate ergonomics issue.
 - Multiline ordinary non-matrix function-call parsing remains separate.
 - Generalized structural eigenproblems remain deferred to a dedicated future design.
@@ -74,37 +74,31 @@ intersections(response_1, response_2, variable, lower, upper)
 - Final source revalidation: **721/721 GREEN in 139.76 s**.
 - Post-merge Actions **`33333566096`**, job **`99316363602`**, verified exact merge SHA `d22d5e0a62ce13800de8476c28d86a6d9415f1bd` successfully.
 
-### 0.9.1 Task 1 — parser/API RED → GREEN
+### 0.9.1 Task 1 — parser/API + typed models
 
-- Parser RED SHA: **`512b9fc856fda338601f360ad7cde72481ad699f`**.
-- RED Actions: run **`33335156057`**, job **`99320642585`**.
-- RED result: **20 failed / 4 passed in 0.09 s**.
-- All 20 failures were the intended missing-contract failures: wrong arity, invalid/direct-variable rules, standalone-only rules, reserved characteristic names, `:=` assignment and matrix-literal nesting were still being accepted.
-- Parser GREEN Actions: run **`33335340109`**, job **`99321122672`**.
-- Focused parser GREEN: **65/65 PASS in 0.15 s**, plus `git diff --check` PASS.
-- Parser product commit: **`e7e92069d0858edef6684286c1c6f414d132e881`** (`feat: validate characteristic analysis syntax`).
-- Independent parser-only recheck: run **`33335404256`**, job **`99321295095`**: **24/24 PASS in 0.07 s**.
+- Parser RED: **20 failed / 4 passed** on run **`33335156057`**, job **`99320642585`**.
+- Parser GREEN: **65/65 PASS** on run **`33335340109`**, job **`99321122672`**; product commit **`e7e92069d0858edef6684286c1c6f414d132e881`**.
+- Typed-model RED: intended missing-type collection error on run **`33335416627`**, job **`99321328462`**.
+- Typed-model GREEN: **78/78 PASS** on run **`33335470514`**, job **`99321471976`**; product commit **`b12a573c51f6dc6856f6d3b3652d674ffa4e8846`**.
+- Authoritative Task 1 full gate: run **`33335640543`**, job **`99321927179`**, Python **3.13.15**; `compileall` PASS, `git diff --check` PASS, **758/758 PASS in 121.72 s**.
+- All Task 1 temporary validation harness files were removed.
 
-### 0.9.1 Task 1 — typed result models RED → GREEN
+### 0.9.1 Task 2 — finite unit-aware domain + exact continuous roots
 
-- Models RED SHA: **`7ac31fcb50cc51116df522b387d31d46046c495e`**.
-- RED Actions: run **`33335416627`**, job **`99321328462`**.
-- RED result: collection failed exactly because `CharacteristicInterval` and the new characteristic result types did not yet exist; **1 intended collection error in 0.20 s**.
-- Models GREEN Actions: run **`33335470514`**, job **`99321471976`**.
-- Focused models/parser GREEN: **78/78 PASS in 0.22 s**, plus `git diff --check` PASS.
-- Models product commit: **`b12a573c51f6dc6856f6d3b3652d674ffa4e8846`** (`feat: add typed characteristic result models`).
-- Added immutable `CharacteristicPoint`, `CharacteristicInterval`, `RootsResult`, `IntersectionsResult`, `ExtremaResult`; provenance is restricted to `exact|numeric`, side to `at|left|right`, result collections normalize to tuples, and extrema carry explicit unbounded-above/below flags.
-
-### 0.9.1 Task 1 — complete regression gate
-
-- First full-gate attempt reached `compileall` and `git diff --check` successfully but stopped during pytest collection with **14 `ModuleNotFoundError: IPython` errors** because the temporary Actions environment installed `.[dev]` without IPython. This was a harness dependency omission, not a product regression; no source correction was made for it.
-- Harness-only dependency fix commit: **`c5d8309923cb80922645064a80596a9a546d8259`**.
-- Authoritative Task 1 full gate: run **`33335640543`**, job **`99321927179`**, Python **3.13.15**.
+- Task 2 RED SHA: **`1a32d448d19969fda1f3b031826baa5e1adc73e6`**.
+- RED run **`33335920700`**, job **`99322671165`**: intended collection failure, `ModuleNotFoundError: engcalc_colab.characteristics`, **1 error in 0.49 s**.
+- Product implementation commit: **`e038b63332f2708c89faf85e5f099616747a529d`** (`feat: add exact continuous root analysis core`).
+- First GREEN run **`33335992284`**, job **`99322863102`**: **13 passed / 1 failed**. The sole failure was a test-fixture issue: `ConditionSet(x, True, Reals)` simplifies to `Reals`, so it did not represent an unresolved symbolic solve. No product change was needed.
+- Fixture-only correction commit: **`e0efefca06ea11a74ce52fd424b02fd78e4a9fa1`**.
+- Focused recheck run **`33336075965`**, job **`99323088081`**: **14/14 PASS in 3.36 s**.
+- Authoritative Task 2 full-gate SHA: **`fe0d0c8b591956ba32029bb216421eca628e1d09`**.
+- Full-gate run **`33336114509`**, job **`99323194537`**, Python **3.13.15**.
 - `compileall`: PASS.
 - `git diff --check`: PASS.
-- Complete suite: **758/758 PASS in 121.72 s**.
-- All temporary Task 1 workflows/scripts were removed afterward. Cleanup head before this context update: **`0e0f698490a024963d31bea2736ffde2886e8ad1`**.
-- Comparison from canonical `main` to the clean Task 1 tree contains only the approved spec/plan/context plus `parser.py`, `models.py`, `tests/test_characteristics_parser.py` and `tests/test_characteristics_models.py`; no temporary `.github` harness remains.
+- Focused roots + `NumericContext` + numeric-units regression gate: **30/30 PASS in 6.27 s**.
+- Complete source suite: **772/772 PASS in 144.49 s**.
+- Task 2 introduced `AnalysisDomain`, finite/unit-compatible closed-domain normalization, exact continuous root solving, exact symbolic coordinate preservation with evaluated Pint quantities, endpoint inclusion, repeated-root de-duplication, no-real-root handling, exact-domain filtering, dimensional response-zero preservation, and explicit unresolved signalling without inventing sampled answers.
+- Both temporary Task 2 workflows were removed after validation; cleanup head before this context update: **`2e90014e2c1a5902e005e843f465c2cefb513f7d`**.
 - No Codex review or Codex Cloud has been invoked.
 
 ## Roadmap / active plan
@@ -114,20 +108,22 @@ intersections(response_1, response_2, variable, lower, upper)
 - **0.8.0 Piecewise:** COMPLETE + merged.
 - **0.9.0 vectors / matrices / linear systems:** **COMPLETE + RELEASE-VALIDATED + MERGED**.
 - **0.9.1 Task 1 parser/API + typed result models:** **COMPLETE — 758/758 full GREEN**.
-- **0.9.1 Task 2 finite unit-aware domain + exact continuous roots:** **NEXT**.
-- Then Tasks 3–12 per the approved implementation plan.
+- **0.9.1 Task 2 finite unit-aware domain + exact continuous roots:** **COMPLETE — 772/772 full GREEN**.
+- **0.9.1 Task 3 Piecewise roots, discontinuities + infinite root intervals:** **NEXT**.
+- Then Tasks 4–12 per the approved implementation plan.
 - Later releases: **0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization**.
 
 ## Exact next step
 
-1. Start Task 2 by writing `tests/test_characteristics_roots.py` before creating the characteristic solver implementation.
-2. RED must cover exact rational/polynomial roots, repeated-root de-duplication, endpoint roots, no-real-root case, finite/reversed/zero-width domains, incompatible domain units, non-finite bounds, dimensional bounds with adaptable zero, and dimensional response roots.
-3. Confirm the RED on the exact branch SHA in GitHub Actions.
-4. Create `src/engcalc_colab/characteristics.py` with `AnalysisDomain`, `normalize_analysis_domain(...)`, and exact continuous `solve_roots_exact(...)` only; Piecewise partitioning remains Task 3.
-5. Run focused GREEN roots/domain tests, relevant numeric-context regressions, then a complete suite gate before Task 2 closure.
-6. Keep version at 0.9.0 until Task 12.
-7. Do not merge without explicit user approval and do not invoke Codex unless explicitly authorized.
+1. Start Task 3 by writing Piecewise-root tests before changing `characteristics.py`.
+2. RED must cover independent branch solving, branch open/closed endpoint topology, exact root at a defined breakpoint, no false root caused only by a jump sign-change, identically-zero Piecewise regions represented as `CharacteristicInterval` loci, interval clipping to the requested closed domain, de-duplication where branch endpoints coincide, and unresolved branch propagation without fabricated sampled roots.
+3. Reuse `extract_symbolic_breakpoints(...)` / existing Piecewise primitives rather than duplicating breakpoint discovery.
+4. Confirm Task 3 RED on an exact branch SHA in GitHub Actions.
+5. Implement the minimum Piecewise partition/root extension in `characteristics.py`; do not start intersections/extrema early.
+6. Run focused Task 3 GREEN + existing Piecewise regressions, then the full source suite before closing Task 3.
+7. Keep version at 0.9.0 until Task 12.
+8. Do not merge without explicit user approval and do not invoke Codex unless explicitly authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.9.0 remains canonical on `main@cdc454db7ea43e57e334d523afded8b4ef498ded`. Active 0.9.1 work is on `feature/v0.9.1-exact-characteristics`; the user approved the written design and selected inline execution. Task 1 is complete: parser RED **20 failed / 4 passed**, parser GREEN **65/65**, typed-model RED was the intended missing-import failure, typed-model GREEN **78/78**, and the authoritative complete Task 1 regression gate was **758/758 PASS in 121.72 s** (Actions `33335640543`, job `99321927179`). Temporary Task 1 harness files have been removed. Resume with Task 2 RED for finite unit-aware domains and exact continuous roots. Never merge without explicit user approval and never invoke Codex without explicit authorization.
+Read this file first. EngCalc 0.9.0 remains canonical on `main@cdc454db7ea43e57e334d523afded8b4ef498ded`. Active 0.9.1 work is on `feature/v0.9.1-exact-characteristics`; the user approved the written design and selected inline execution. Task 1 is complete with authoritative **758/758 PASS**. Task 2 is complete: RED was the intended missing `characteristics` module, focused GREEN **14/14**, expanded focused gate **30/30**, and authoritative full suite **772/772 PASS in 144.49 s** on Actions run `33336114509`, job `99323194537`; temporary Task 2 workflows were removed. Resume with Task 3 RED for Piecewise roots/discontinuities/infinite root intervals. Never merge without explicit user approval and never invoke Codex without explicit authorization.
