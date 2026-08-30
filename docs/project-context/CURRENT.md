@@ -1,115 +1,87 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — Pull Request #30 has been merged into `main`. Narrative text, plot presentation polish, and the compact dense-characteristic summary are now integrated. A fresh post-merge full-suite gate passed, temporary CI was removed, and the project is ready to move to the next roadmap milestone._
+_Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise execution has started on an isolated feature branch refreshed from the fully merged presentation baseline. The approved Piecewise spec/plan were imported without merging the stale planning branch. A fresh feature-branch baseline is GREEN. The user also approved moving the matrix/CAS milestone immediately after Piecewise._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical branch: **`main`**.
-- Package/runtime version remains **0.7.2** while the next pre-release milestone is developed.
-- PR #30 — `feat: integrate EngCalc narrative and plot presentation polish` — merged on 2026-08-30.
-- Merge commit: **`1bb1f63606c669605dcccaf011bcf6f20764b2cc`**.
-- Post-merge validation commit: `701bf6957754e1c0fd720082958c39508cd9956b`.
-- Post-merge validation run: **GitHub Actions `33298959230`, job `99223386831`: 484/484 passed in 99.80 s**.
-- Temporary post-merge workflow removed in `4dba31ce0ff0b2f6ce665539a28c3f50bd92207f`.
-- Compare between approved feature head `c3af207f...` and merge commit `1bb1f636...` showed **zero file differences**, so the merge itself did not alter the approved tree.
-- Retain existing feature/planning branches unless explicitly asked to delete them.
-- Piecewise planning branch: `planning/v0.8.0-piecewise`; approved Piecewise design/spec/implementation plan already exist, but production implementation has not started.
+- Canonical integrated branch: `main`.
+- Current implementation branch: **`feature/v0.8.0-piecewise`**.
+- Feature branch base: **`main@79befeeb07364f4b6b78d2e6e55ad40258ef0da2`**.
+- Package/runtime version remains **0.7.2** during Piecewise development.
+- Approved Piecewise spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.8.0-piecewise-design.md`.
+- Approved Piecewise implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.8.0-piecewise-implementation.md`.
+- The old `planning/v0.8.0-piecewise` branch is retained, but it is 84 commits behind the integrated `main`; it must not be merged into the implementation branch. Only its approved spec/plan blobs were copied.
+- Temporary branch CI: `.github/workflows/v080-piecewise-validation.yml`; remove before release closure unless intentionally retained.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 
 ## Approved behavior
 
-### Narrative and presentation
+### Existing baseline that Piecewise must preserve
 
-- `%%eng` supports visually validated narrative text blocks integrated with headings/equations/plots.
-- `plot(...)` / `envelope(...)` support optional `title`, `xlabel`, and `ylabel` presentation overrides.
-- Roomier heading/narrative spacing remains approved.
+- `%%eng` narrative and presentation polish are merged.
+- `plot(...)` / `envelope(...)` support approved `title`, `xlabel`, `ylabel` overrides.
+- Dense characteristic clusters use the accepted compact summary; sparse clusters remain inline.
 - Positive structural moment remains plotted downward.
+- Multi-argument functions, partial numeric evaluation, scalar math and engineering tables remain unchanged unless the approved Piecewise spec explicitly composes with them.
 
-### Dense characteristic summary
+### 0.8.0 Piecewise contract
 
-- Characteristic-point mathematics is owned by `plotting.py`; presentation does not independently recompute extrema.
-- A private `_CharacteristicRequest` / `_characteristic_requests(result)` sequence is the authoritative source consumed by plotting and presentation.
-- Multi-series clustering uses display-space x tolerance and dense threshold of **3** labels.
-- Sparse clusters with fewer than 3 labels remain inline and retain baseline figure size.
-- Dense clusters move to a compact secondary summary axes below the main plot.
-- Dense curve markers remain on the curves; dense inline text and leader lines are removed.
-- Summary groups are ordered by x. Rows preserve stable series order, exact display label, plotted color, `max`/`min`, and characteristic value.
-- x unit is shown once per group; homogeneous y unit is shown once in the value heading.
-- Figure width does not grow and the main axes retains its physical size under Agg.
-- Canonical six-series summary adds **1.34 in** vertically versus the rejected **1.85 in** bottom-callout band.
+- Primary form: `piecewise(value_1, condition_1, ..., default_value)` with a mandatory default.
+- Conditions are restricted to one direct interval variable compared with `<`, `<=`, `>`, or `>=` against a breakpoint expression that does not contain that variable.
+- General comparisons/booleans remain unavailable outside Piecewise condition positions.
+- SymPy `Piecewise`/relational objects are the symbolic source of truth; Pint remains the numeric/unit source of truth.
+- Exact dimensionless zero may inherit a compatible dimensional unit; nonzero dimensionless values may not silently mix with dimensional quantities.
+- Tables keep exactly the requested row count; Piecewise breakpoints do not add table rows.
+- Plot/envelope keeps the 201-point base grid and augments it with resolvable explicit Piecewise breakpoints.
+- Plot polylines split at Piecewise transitions; no fictitious connector across a jump.
+- `diff(...)` is branchwise with no automatic `DiracDelta`; explicit transitions are conservatively derivative-undefined for numeric evaluation.
+- Piecewise rendering should use native MathJax cases.
+
+### Approved roadmap reprioritization
+
+- After Piecewise, EngCalc will prioritize a **calculator/CAS-style vectors, matrices and linear-systems milestone** before the exact-analysis milestones.
+- That matrix milestone must have a dedicated design/spec before production work and must cover exact symbolic matrices, numerical/unit-aware matrices, rendering, matrix algebra and linear systems.
+- To keep version ordering coherent, the working roadmap is now: `0.8.0 Piecewise` → `0.9.0 vectors/matrices/linear systems` → `0.9.1 exact-first extrema/roots/intersections` → `0.9.2 exact envelopes/governing intervals` → `0.9.3 named response cases/combinations` → `0.10.x engineering verification` → `1.0.0` stabilization.
+- References to old `0.8.1`/`0.8.2` labels inside the already-approved Piecewise spec describe deferred functional scope; the functional boundary is unchanged even though roadmap numbering is reprioritized.
 
 ## Open issues / user feedback
 
 - Multiline ordinary function-call parsing remains a later ergonomics item.
-- `no_vertical_scroll()` Colab ergonomics remains outside the completed characteristic-label correction.
-- Piecewise syntax/evaluation is the next approved production milestone.
-- Vector/matrix/linear-system support is planned for **0.9.0**. The intended direction is calculator/CAS-style exact symbolic matrices plus numerical matrices, including engineering-aware unit handling; detailed matrix design has not yet been approved or implemented.
+- `no_vertical_scroll()` Colab ergonomics remains outside Piecewise.
+- Matrix/CAS production work must not be mixed into the Piecewise branch.
+- Matrix support is intended to approach a TI-Nspire CX CAS workflow while adding engineering-specific unit safety, including a later explicit design decision for heterogeneous-unit structural matrices.
 
 ## Validation evidence
 
-### Retained release baseline
-
-- EngCalc 0.7.2 engineering tables: distribution-validated and merged before this presentation work.
-- Narrative SHA `161bbaba36b93c3d7395790eb6e41284d36c231b`: **464/464 passed**, real-Colab visually validated.
-- Presentation-polish SHA `d6fd873e21d5a415a2787bf06fdeceaa1f013e41`: **477/477 passed**, real-Colab visually validated.
-
-### Dense-summary RED→GREEN
-
-- Pre-implementation baseline: **482 passed**.
-- Task 1 RED SHA `3117b80f...`: expected collection failure because `_characteristic_requests` did not exist.
-- Task 1 GREEN SHA `1c226298...`: **483 passed**.
-- Task 2 RED Actions `33297360032`, job `99219218711`: expected collection failure because `_build_dense_summary_groups` did not exist.
-- Task 2 GREEN SHA `6a4a9947...`: **484 passed**.
-- Visual-contract RED SHA `9559bd25...`: **3 failed, 480 passed**, exactly for retained callouts, rejected 1.85 in expansion, and missing summary axes.
-- Product GREEN SHA `a11b0946aad322cb30145a178eda4261f8f1e1de`: **484 passed**.
-
-### Dense-summary final QA
-
-- QA evidence SHA: `44d48065db4b6bad1b5ffbf0fa701478b93d6075`.
-- GitHub Actions run `33297891785`, job `99220581598`: **484 passed in 80.05 s**.
-- QA artifact ID `9728003251`, digest `sha256:17d512b5c6cf15ade0c5a9fe526c93d4e12f95486e8089684f53fc37401e9ee1`.
-- Baseline figure **6.4 × 4.8 in**; presented figure **6.4 × 6.14 in**.
-- Main axes unchanged at **548.924 × 379.608 px**.
-- 2 dense groups / 12 entries / 41 summary texts.
-- **0** text overlaps, **0** out-of-figure texts, **0** dense plot annotations, **0** leader lines.
-- Assistant visual QA: PASS.
-- User visual acceptance: APPROVED on 2026-08-30.
-
-### Integration and post-merge gate
-
-- Fresh pre-integration rerun on feature SHA `f945a408...`: **484 passed in 66.74 s**.
-- PR #30 final feature head before merge: `c3af207ff69067e944a3e5d1634525fb60b6869c`.
-- PR #30 merged with the repository's established merge-commit workflow into `main`: merge commit **`1bb1f63606c669605dcccaf011bcf6f20764b2cc`**.
-- GitHub compare `c3af207f...1bb1f636`: **zero changed files**.
-- A temporary main-only post-merge workflow was added solely for final verification.
-- Post-merge Actions `33298959230`, job `99223386831`: **484 passed in 99.80 s** on `main`.
-- Temporary post-merge workflow removed in `4dba31ce0ff0b2f6ce665539a28c3f50bd92207f`.
-- No product source or product test changes occurred after the post-merge validation tree; only CI cleanup and this context update follow it.
+- Integrated `main` post-PR-#30 gate: **484/484 passed in 99.80 s** on Actions `33298959230`.
+- Piecewise execution branch created exactly from `main@79befeeb07364f4b6b78d2e6e55ad40258ef0da2`.
+- Approved planning docs imported in commit `e0a677e95a2d5352fe2bbce8898573eb70f1d6fa` without merging planning history.
+- Baseline CI commit: `2ad58c9d20910894f13701a2e2207f0301488a4d`.
+- Baseline Actions run `33299317560`, job `99224326960`: package version check **0.7.2 PASS** and complete suite **484/484 passed in 85.83 s** on Python 3.13.15.
+- The implementation plan's old expected baseline of 454 tests is superseded by 484 because narrative/presentation/dense-summary tests were merged before Piecewise execution; this is an explained baseline update, not a regression.
 
 ## Roadmap / active plan
 
-- **0.7.2 engineering tables:** COMPLETE + DISTRIBUTION VALIDATED + MERGED.
-- **Narrative text:** COMPLETE + MACHINE GREEN + REAL-COLAB VISUALLY VALIDATED + MERGED.
-- **Presentation polish:** COMPLETE + REAL-COLAB VISUALLY VALIDATED + MERGED.
-- **Characteristic-point label deconfliction:** COMPLETE + 484/484 GREEN + AUTOMATED QA PASS + USER VISUALLY APPROVED + MERGED.
-- **0.8.0 Piecewise:** design/spec/implementation plan COMPLETE; production implementation NOT STARTED.
-- **0.8.1 exact-first extrema / roots / intersections:** planned after Piecewise.
-- **0.8.2 exact envelopes / governing intervals:** planned.
-- **0.8.3 named response cases / combinations:** planned.
-- **0.9.0 vectors / matrices / linear systems:** planned. This is the milestone for symbolic and numerical matrix capability approaching a TI-Nspire-CX-CAS-style workflow, subject to a dedicated design/spec gate.
-- **0.10.0 engineering verification** and **0.10.1 verification collections:** planned.
+- **0.7.2 engineering tables:** COMPLETE + merged.
+- **Narrative / presentation / characteristic-summary work:** COMPLETE + merged + 484-test baseline retained.
+- **0.8.0 Piecewise:** ACTIVE. Task 0 baseline/branch setup COMPLETE; production code NOT YET CHANGED.
+- Piecewise Task 1 next: restricted grammar + symbolic construction helpers, using strict RED → GREEN TDD.
+- **0.9.0 vectors / matrices / linear systems:** NEXT MAJOR MILESTONE AFTER PIECEWISE; design/spec gate required.
+- **0.9.1 exact-first extrema / roots / intersections:** planned after matrix/CAS core.
+- **0.9.2 exact envelopes / governing intervals:** planned.
+- **0.9.3 named response cases / combinations:** planned.
+- **0.10.0 / 0.10.1 engineering verification:** planned.
 - **1.0.0 API stabilization / release engineering:** planned.
 
 ## Exact next step
 
-1. Treat `main` as the new authoritative integrated baseline.
-2. Start the **0.8.0 Piecewise implementation workflow** from the already approved Piecewise design/spec/plan, but first refresh/create the implementation branch from current `main` so it contains the newly merged presentation work.
-3. Execute Piecewise using RED→GREEN TDD with focused tests first, then complete suite and user-facing validation.
-4. Do not start matrix production implementation inside Piecewise; matrices remain a separate 0.9.0 milestone unless the user explicitly approves roadmap reprioritization.
-5. When matrix work begins, create a dedicated design/spec covering exact symbolic matrices, numerical/unit-aware matrices, rendering, matrix algebra, and linear-system APIs before production changes.
-6. Do not invoke Codex unless explicitly authorized.
+1. Begin Piecewise Task 1 with **tests only** in `tests/test_piecewise_parser.py`.
+2. Run the focused parser tests and confirm the expected RED because Piecewise/`ast.Compare` are not yet supported.
+3. Only after that verified RED, minimally modify `parser.py` to whitelist comparisons exclusively inside Piecewise condition positions and reserve `piecewise`.
+4. Run focused parser GREEN before adding the symbolic-engine RED tests.
+5. Do not write matrix production code on this branch.
 
 ## How to resume in a new conversation
 
-Read this file first. `main` now contains the previously separate narrative, presentation-polish, and dense characteristic-summary work. PR #30 merged on 2026-08-30 at `1bb1f636...`; the merge tree exactly matched the approved feature head. A fresh main-only post-merge validation then passed **484/484 in 99.80 s** on Actions run `33298959230`, after which the temporary workflow was removed. The next production milestone is **0.8.0 Piecewise**, whose design/spec/implementation plan already exist but whose production implementation has not started. After Piecewise come exact-first analysis (0.8.1), exact envelope intervals (0.8.2), named cases/combinations (0.8.3), then **0.9.0 vectors/matrices/linear systems**, where EngCalc is intended to gain exact symbolic and numerical matrix workflows. Never invoke Codex without explicit authorization.
+Read this file first. `main` is integrated and machine-green. Active development is `feature/v0.8.0-piecewise`, based exactly on `main@79befeeb...`. The approved Piecewise spec/plan were copied from the stale planning branch without merging its history. Baseline Actions `33299317560` verified version 0.7.2 and **484/484 tests**. Production Piecewise code has not yet changed; the exact next action is Task 1 parser RED tests. The user also approved reprioritizing matrices/CAS immediately after Piecewise, with roadmap numbering updated to 0.9.0 matrices, then 0.9.1–0.9.3 exact-analysis/cases milestones. Never invoke Codex without explicit authorization.
