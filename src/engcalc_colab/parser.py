@@ -5,7 +5,7 @@ import keyword
 import re
 
 from .errors import EngSyntaxError
-from .models import ParsedHeading, ParsedNumericAssignment, ParsedStatement
+from .models import ParsedHeading, ParsedNarrative, ParsedNumericAssignment, ParsedStatement
 
 _ALLOWED_NODES = (
     ast.Expression, ast.BinOp, ast.UnaryOp, ast.Call, ast.Name,
@@ -18,6 +18,7 @@ _SWEEP_VALUE_NODES = (
     ast.UAdd, ast.USub, ast.Load,
 )
 _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
+_DISPLAY_TEXT_OPTIONS = {"title", "xlabel", "ylabel"}
 _SCALAR_CALLS = {
     "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"
 }
@@ -47,15 +48,112 @@ def normalize_expression(text: str) -> str:
     return _rewrite_solve_equality(text)
 
 
-def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | ParsedHeading]:
-    statements: list[ParsedStatement | ParsedNumericAssignment | ParsedHeading] = []
-    pending_blank = False
+def _normalize_narrative_paragraphs(content_lines: list[str]) -> tuple[str, ...]:
+    paragraphs: list[str] = []
+    current: list[str] = []
 
-    for line_no, raw_line in enumerate(cell.splitlines(), start=1):
+    for raw_line in content_lines:
+        text = raw_line.strip()
+        if not text:
+            if current:
+                paragraphs.append(" ".join(current))
+                current = []
+            continue
+        current.append(text)
+
+    if current:
+        paragraphs.append(" ".join(current))
+    return tuple(paragraphs)
+
+
+def _parse_narrative_block(
+    lines: list[str],
+    start_index: int,
+    blank_before: bool,
+) -> tuple[ParsedNarrative, int]:
+    start_line = start_index + 1
+    opening = lines[start_index].strip()
+    remainder = opening[3:]
+    content_lines: list[str] = []
+
+    if '"""' in remainder:
+        content, trailing = remainder.split('"""', 1)
+        if trailing.strip():
+            raise EngSyntaxError(
+                f"line {start_line}: unexpected content after narrative block"
+            )
+        content_lines.append(content)
+        paragraphs = _normalize_narrative_paragraphs(content_lines)
+        if not paragraphs:
+            raise EngSyntaxError(
+                f"line {start_line}: narrative block cannot be empty"
+            )
+        return (
+            ParsedNarrative(
+                line_no=start_line,
+                paragraphs=paragraphs,
+                blank_before=blank_before,
+            ),
+            start_index + 1,
+        )
+
+    content_lines.append(remainder)
+    index = start_index + 1
+    while index < len(lines):
+        raw_line = lines[index]
+        if '"""' in raw_line:
+            content, trailing = raw_line.split('"""', 1)
+            if trailing.strip():
+                raise EngSyntaxError(
+                    f"line {index + 1}: unexpected content after narrative block"
+                )
+            content_lines.append(content)
+            paragraphs = _normalize_narrative_paragraphs(content_lines)
+            if not paragraphs:
+                raise EngSyntaxError(
+                    f"line {start_line}: narrative block cannot be empty"
+                )
+            return (
+                ParsedNarrative(
+                    line_no=start_line,
+                    paragraphs=paragraphs,
+                    blank_before=blank_before,
+                ),
+                index + 1,
+            )
+        content_lines.append(raw_line)
+        index += 1
+
+    raise EngSyntaxError(f"line {start_line}: unterminated narrative block")
+
+
+def parse_cell(
+    cell: str,
+) -> list[ParsedStatement | ParsedNumericAssignment | ParsedHeading | ParsedNarrative]:
+    statements: list[
+        ParsedStatement | ParsedNumericAssignment | ParsedHeading | ParsedNarrative
+    ] = []
+    pending_blank = False
+    lines = cell.splitlines()
+    index = 0
+
+    while index < len(lines):
+        line_no = index + 1
+        raw_line = lines[index]
         source = raw_line.strip()
         if not source:
             if statements and not isinstance(statements[-1], ParsedHeading):
                 pending_blank = True
+            index += 1
+            continue
+        if source.startswith('"""'):
+            narrative, index = _parse_narrative_block(
+                lines,
+                index,
+                pending_blank,
+            )
+            statements.append(narrative)
+            pending_blank = False
             continue
         heading_match = _HEADING.fullmatch(source)
         if heading_match:
@@ -67,8 +165,10 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
                 blank_before=pending_blank,
             ))
             pending_blank = False
+            index += 1
             continue
         if source.startswith("#"):
+            index += 1
             continue
         try:
             numeric_assignment = _split_top_level_numeric_assignment(source)
@@ -94,6 +194,7 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
                     blank_before=pending_blank,
                 ))
                 pending_blank = False
+                index += 1
                 continue
 
             lhs, rhs = _split_top_level_assignment(source)
@@ -119,6 +220,7 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
             except SyntaxError as exc:
                 raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
             _validate_ast(expression, line_no)
+            display_options = _extract_display_options(expression)
             statements.append(ParsedStatement(
                 line_no=line_no,
                 source=source,
@@ -126,8 +228,10 @@ def parse_cell(cell: str) -> list[ParsedStatement | ParsedNumericAssignment | Pa
                 parameters=parameters,
                 expression=expression,
                 blank_before=pending_blank,
+                display_options=display_options,
             ))
             pending_blank = False
+            index += 1
         except EngSyntaxError as exc:
             message = str(exc)
             if message.startswith("line "):
@@ -303,16 +407,36 @@ def _validate_table_point_value(node: ast.AST, line_no: int) -> None:
 
 def _validate_display_sweep_keywords(node: ast.Call, line_no: int) -> None:
     call_name = node.func.id
-    if len(node.keywords) > 1:
+    sweep_keywords: list[ast.keyword] = []
+
+    for keyword_node in node.keywords:
+        if keyword_node.arg is None:
+            raise EngSyntaxError(
+                f"line {line_no}: {call_name} does not support keyword unpacking"
+            )
+
+        if keyword_node.arg in _DISPLAY_TEXT_OPTIONS:
+            value = keyword_node.value
+            if (
+                not isinstance(value, ast.Constant)
+                or not isinstance(value.value, str)
+                or not value.value.strip()
+            ):
+                raise EngSyntaxError(
+                    f"line {line_no}: {call_name} {keyword_node.arg} must be a non-empty string"
+                )
+            continue
+
+        sweep_keywords.append(keyword_node)
+
+    if len(sweep_keywords) > 1:
         raise EngSyntaxError(
             f"line {line_no}: {call_name} accepts at most one sweep parameter"
         )
+    if not sweep_keywords:
+        return
 
-    keyword_node = node.keywords[0]
-    if keyword_node.arg is None:
-        raise EngSyntaxError(
-            f"line {line_no}: {call_name} does not support keyword unpacking"
-        )
+    keyword_node = sweep_keywords[0]
     if (
         not _IDENTIFIER.fullmatch(keyword_node.arg)
         or keyword.iskeyword(keyword_node.arg)
@@ -342,6 +466,26 @@ def _validate_display_sweep_keywords(node: ast.Call, line_no: int) -> None:
 
     for element in sweep_value.elts:
         _validate_sweep_value(element, line_no, call_name)
+
+
+def _extract_display_options(expression: ast.Expression) -> tuple[tuple[str, str], ...]:
+    node = expression.body
+    if (
+        not isinstance(node, ast.Call)
+        or not isinstance(node.func, ast.Name)
+        or node.func.id not in _DISPLAY_SWEEP_CALLS
+    ):
+        return ()
+
+    display_options: list[tuple[str, str]] = []
+    evaluation_keywords: list[ast.keyword] = []
+    for keyword_node in node.keywords:
+        if keyword_node.arg in _DISPLAY_TEXT_OPTIONS:
+            display_options.append((keyword_node.arg, keyword_node.value.value.strip()))
+        else:
+            evaluation_keywords.append(keyword_node)
+    node.keywords = evaluation_keywords
+    return tuple(display_options)
 
 
 def _validate_sweep_value(node: ast.AST, line_no: int, call_name: str) -> None:
