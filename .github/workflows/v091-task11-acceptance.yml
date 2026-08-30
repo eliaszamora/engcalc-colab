@@ -25,6 +25,9 @@ jobs:
           python -m pip install -e '.[dev]'
           python -m pip install ipython
 
+      - name: Trace matrix-unit characteristic failure
+        run: python .github/scripts/v091_task11_matrix_unit_diag.py
+
       - name: Run focused characteristic acceptance set
         run: >-
           python -m pytest
