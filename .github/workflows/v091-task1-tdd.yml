@@ -1,0 +1,30 @@
+name: EngCalc 0.9.1 Task 1 TDD
+
+on:
+  push:
+    branches:
+      - feature/v0.9.1-exact-characteristics
+
+jobs:
+  task1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install test environment
+        run: python -m pip install -e '.[dev]'
+
+      - name: Run Task 1 focused tests when present
+        shell: bash
+        run: |
+          if [[ -f tests/test_characteristics_parser.py ]]; then
+            python -m pytest tests/test_characteristics_parser.py -q
+          else
+            echo 'Task 1 RED test file not present yet; harness ready.'
+          fi
