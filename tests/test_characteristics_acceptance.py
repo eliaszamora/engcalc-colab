@@ -93,3 +93,18 @@ def test_v091_characteristics_end_to_end_engineering_worksheet(monkeypatch):
         rel=1e-9,
         abs=1e-10,
     )
+
+
+def test_v091_user_facing_fallback_example_is_naturally_numeric():
+    engine = EngineeringEngine()
+    result = evaluate_cell(engine, "roots(cos(x) - x, x, 0, 1)")
+
+    assert isinstance(result, RootsResult)
+    assert len(result.points) == 1
+    point = result.points[0]
+    assert point.provenance == "numeric"
+    assert float(point.x_quantity.magnitude) == pytest.approx(
+        0.7390851332151607,
+        rel=1e-9,
+        abs=1e-10,
+    )
