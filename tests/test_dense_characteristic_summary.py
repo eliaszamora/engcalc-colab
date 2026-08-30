@@ -4,6 +4,7 @@ from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.label_layout import _build_dense_summary_groups
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.plotting import render_plot
+from engcalc_colab.presentation import render_presented_plot
 
 
 def _eval_cell(engine, source: str):
@@ -90,3 +91,30 @@ def test_dense_summary_groups_preserve_series_order_roles_and_colors():
         for entry in group.entries
     }
     assert len(keys) == 12
+
+
+def test_dense_summary_formats_shared_units_once():
+    figure = render_presented_plot(_dense_six_series_moment_plot())
+    summaries = [
+        axis
+        for axis in figure.axes[1:]
+        if axis.get_gid() == "engcalc-characteristic-summary"
+    ]
+    assert len(summaries) == 1
+    summary = summaries[0]
+
+    headers = [
+        text.get_text()
+        for text in summary.texts
+        if text.get_gid() == "engcalc-summary-group-header"
+    ]
+    assert headers == ["x = 0 m", "x = 2.5 m"]
+
+    values = [
+        text.get_text()
+        for text in summary.texts
+        if text.get_gid() == "engcalc-summary-entry-value"
+    ]
+    assert len(values) == 12
+    assert all("tonf" not in value for value in values)
+    assert sum(text.get_text() == "Value [tonf·m]" for text in summary.texts) == 2
