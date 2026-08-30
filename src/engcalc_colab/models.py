@@ -164,6 +164,26 @@ class NumericEvaluationResult:
 
 
 @dataclass(frozen=True)
+class NumericMatrixEvaluationResult:
+    statement: ParsedStatement
+    symbolic_matrix: Any
+    substitutions: dict[str, Any]
+    quantity_matrix: Any
+    display_name: str | None = None
+    display_arguments: tuple[Any, ...] | None = None
+
+
+@dataclass(frozen=True)
+class PartialMatrixNumericEvaluationResult:
+    statement: ParsedStatement
+    symbolic_matrix: Any
+    substitutions: dict[str, Any]
+    unresolved_symbols: tuple[str, ...]
+    display_name: str | None = None
+    display_arguments: tuple[Any, ...] | None = None
+
+
+@dataclass(frozen=True)
 class PiecewisePartialBranch:
     value: Any
     operator: str | None

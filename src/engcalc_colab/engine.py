@@ -18,6 +18,8 @@ from .models import (
     EvaluationResult,
     NumericAssignmentResult,
     NumericEvaluationResult,
+    NumericMatrixEvaluationResult,
+    PartialMatrixNumericEvaluationResult,
     MatrixShape,
     ParsedNumericAssignment,
     ParsedStatement,
@@ -178,7 +180,9 @@ class EngineeringEngine:
         EvaluationResult
         | NumericAssignmentResult
         | NumericEvaluationResult
+        | NumericMatrixEvaluationResult
         | PartialNumericEvaluationResult
+        | PartialMatrixNumericEvaluationResult
         | PlotResult
         | TableResult
     ):
@@ -244,6 +248,40 @@ class EngineeringEngine:
                     point_values=table_evaluation.point_values,
                     columns=table_evaluation.columns,
                     mode=table_evaluation.mode,
+                )
+
+            if evaluator.partial_matrix_numeric_evaluation is not None:
+                (
+                    symbolic_matrix,
+                    substitutions,
+                    unresolved_symbols,
+                    display_name,
+                    display_arguments,
+                ) = evaluator.partial_matrix_numeric_evaluation
+                return PartialMatrixNumericEvaluationResult(
+                    statement=statement,
+                    symbolic_matrix=symbolic_matrix,
+                    substitutions=substitutions,
+                    unresolved_symbols=unresolved_symbols,
+                    display_name=display_name,
+                    display_arguments=display_arguments,
+                )
+
+            if evaluator.numeric_matrix_evaluation is not None:
+                (
+                    symbolic_matrix,
+                    substitutions,
+                    quantity_matrix,
+                    display_name,
+                    display_arguments,
+                ) = evaluator.numeric_matrix_evaluation
+                return NumericMatrixEvaluationResult(
+                    statement=statement,
+                    symbolic_matrix=symbolic_matrix,
+                    substitutions=substitutions,
+                    quantity_matrix=quantity_matrix,
+                    display_name=display_name,
+                    display_arguments=display_arguments,
                 )
 
             if evaluator.partial_numeric_evaluation is not None:
@@ -319,6 +357,8 @@ class _Evaluator(ast.NodeVisitor):
         self.display_input = None
         self.numeric_evaluation = None
         self.partial_numeric_evaluation = None
+        self.numeric_matrix_evaluation = None
+        self.partial_matrix_numeric_evaluation = None
         self.plot_evaluation: _PlotEvaluation | None = None
         self.table_evaluation: _TableEvaluation | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
@@ -532,11 +572,11 @@ class _Evaluator(ast.NodeVisitor):
                     self._resolve_numeric_user_function_argument(argument_node)
                     for argument_node in argument.args
                 )
-                symbolic_expression = sp.sympify(function.expression)
+                symbolic_expression = function.expression
                 display_name = function_name
                 display_arguments = argument_expressions
 
-                unresolved = [
+                unresolved_arguments = [
                     (parameter, argument_expression, argument_value)
                     for parameter, argument_expression, argument_value in zip(
                         function.parameters,
@@ -545,30 +585,74 @@ class _Evaluator(ast.NodeVisitor):
                     )
                     if isinstance(argument_value, sp.Expr)
                 ]
-                if unresolved:
-                    overrides = {}
-                    bindings = {}
-                    allowed_unresolved = set()
-                    for parameter, argument_expression, argument_value in zip(
-                        function.parameters,
-                        argument_expressions,
-                        argument_values,
-                    ):
-                        if isinstance(argument_value, sp.Expr):
-                            symbolic_argument = sp.sympify(argument_expression)
-                            bindings[self.engine.resolve_symbol(parameter)] = symbolic_argument
-                            allowed_unresolved.update(
-                                symbol.name for symbol in symbolic_argument.free_symbols
-                            )
-                        else:
-                            overrides[parameter] = argument_value
+                overrides = {}
+                bindings = {}
+                allowed_unresolved: set[str] = set()
+                for parameter, argument_expression, argument_value in zip(
+                    function.parameters,
+                    argument_expressions,
+                    argument_values,
+                ):
+                    if isinstance(argument_value, sp.Expr):
+                        symbolic_argument = sp.sympify(argument_expression)
+                        bindings[self.engine.resolve_symbol(parameter)] = symbolic_argument
+                        allowed_unresolved.update(
+                            symbol.name for symbol in symbolic_argument.free_symbols
+                        )
+                    else:
+                        overrides[parameter] = argument_value
 
-                    if bindings:
-                        symbolic_expression = _substitute_preserving_inverse_trig(
-                            symbolic_expression,
-                            bindings,
+                if bindings:
+                    symbolic_expression = substitute_symbolic_value(
+                        symbolic_expression,
+                        bindings,
+                    )
+
+                if is_matrix(symbolic_expression):
+                    if (
+                        not unresolved_arguments
+                        and function.derivative_variable is not None
+                        and function.derivative_breakpoints
+                        and function.derivative_variable in function.parameters
+                    ):
+                        derivative_index = function.parameters.index(
+                            function.derivative_variable
+                        )
+                        self.engine.numeric_context.ensure_not_derivative_breakpoint(
+                            function.derivative_variable,
+                            argument_values[derivative_index],
+                            function.derivative_breakpoints,
+                            overrides=overrides,
                         )
 
+                    substitutions, unresolved_symbols, quantity_matrix = (
+                        self.engine.numeric_context.evaluate_matrix(
+                            symbolic_expression,
+                            overrides=overrides,
+                            target_unit=target_unit,
+                            allowed_unresolved=allowed_unresolved,
+                        )
+                    )
+                    if unresolved_symbols:
+                        self.partial_matrix_numeric_evaluation = (
+                            symbolic_expression,
+                            substitutions,
+                            unresolved_symbols,
+                            display_name,
+                            display_arguments,
+                        )
+                    else:
+                        self.numeric_matrix_evaluation = (
+                            symbolic_expression,
+                            substitutions,
+                            quantity_matrix,
+                            display_name,
+                            display_arguments,
+                        )
+                    return symbolic_expression
+
+                symbolic_expression = sp.sympify(symbolic_expression)
+                if unresolved_arguments:
                     substitutions, unresolved_symbols = (
                         self.engine.numeric_context.partial_substitutions(
                             symbolic_expression,
@@ -618,8 +702,7 @@ class _Evaluator(ast.NodeVisitor):
                             piecewise_evaluation,
                         )
                         return symbolic_expression
-                else:
-                    overrides = dict(zip(function.parameters, argument_values))
+
                 if (
                     function.derivative_variable is not None
                     and function.derivative_breakpoints
@@ -652,6 +735,31 @@ class _Evaluator(ast.NodeVisitor):
                     ) from exc
             else:
                 symbolic_expression = self.visit(argument)
+                if is_matrix(symbolic_expression):
+                    substitutions, unresolved_symbols, quantity_matrix = (
+                        self.engine.numeric_context.evaluate_matrix(
+                            symbolic_expression,
+                            target_unit=target_unit,
+                        )
+                    )
+                    if unresolved_symbols:
+                        self.partial_matrix_numeric_evaluation = (
+                            symbolic_expression,
+                            substitutions,
+                            unresolved_symbols,
+                            display_name,
+                            display_arguments,
+                        )
+                    else:
+                        self.numeric_matrix_evaluation = (
+                            symbolic_expression,
+                            substitutions,
+                            quantity_matrix,
+                            display_name,
+                            display_arguments,
+                        )
+                    return symbolic_expression
+
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
                     symbolic_expression
                 )
