@@ -1,0 +1,111 @@
+from pathlib import Path
+
+
+models = Path("src/engcalc_colab/models.py")
+text = models.read_text(encoding="utf-8")
+needle = """@dataclass(frozen=True)\nclass MatrixLiteralBinding:\n    name: str\n    literal: ParsedMatrixLiteral\n\n\n"""
+replacement = """@dataclass(frozen=True)\nclass MatrixLiteralBinding:\n    name: str\n    literal: ParsedMatrixLiteral\n\n\n@dataclass(frozen=True)\nclass MatrixShape:\n    rows: int\n    cols: int\n\n\n"""
+assert needle in text
+models.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+
+parser = Path("src/engcalc_colab/parser.py")
+text = parser.read_text(encoding="utf-8")
+needle = """    \"subs\", \"eq\", \"sum\", \"numeric\", \"result\", \"plot\", \"envelope\", \"table\", \"abs\",\n    \"piecewise\",\n"""
+replacement = """    \"subs\", \"eq\", \"sum\", \"numeric\", \"result\", \"plot\", \"envelope\", \"table\", \"abs\",\n    \"piecewise\", \"identity\", \"zeros\", \"diag\", \"transpose\", \"det\", \"inv\", \"trace\", \"size\",\n"""
+assert needle in text
+parser.write_text(text.replace(needle, replacement, 1), encoding="utf-8")
+
+matrix_core = Path("src/engcalc_colab/matrix_core.py")
+text = matrix_core.read_text(encoding="utf-8")
+append = r'''
+
+
+def _positive_dimension(value) -> int:
+    if not isinstance(value, sp.Integer) or value <= 0:
+        raise EngEvaluationError(
+            "matrix dimensions must be positive exact integers"
+        )
+    return int(value)
+
+
+def matrix_identity(dimension):
+    size = _positive_dimension(dimension)
+    return sp.ImmutableMatrix(sp.eye(size))
+
+
+def matrix_zeros(rows, cols):
+    row_count = _positive_dimension(rows)
+    col_count = _positive_dimension(cols)
+    return sp.ImmutableMatrix(sp.zeros(row_count, col_count))
+
+
+def matrix_diag(entries):
+    if not entries:
+        raise EngEvaluationError("diag expects at least one scalar entry")
+    if any(is_matrix(entry) for entry in entries):
+        raise EngEvaluationError("diag entries must be scalar")
+    return sp.ImmutableMatrix(sp.diag(*(sp.sympify(entry) for entry in entries)))
+
+
+def _require_matrix(value, name: str):
+    if not is_matrix(value):
+        raise EngEvaluationError(f"{name} requires a matrix")
+    return value
+
+
+def _require_square(value, name: str):
+    matrix = _require_matrix(value, name)
+    if matrix.rows != matrix.cols:
+        raise EngEvaluationError(f"{name} requires a square matrix")
+    return matrix
+
+
+def matrix_transpose(value):
+    matrix = _require_matrix(value, "transpose")
+    return _immutable(matrix.T)
+
+
+def matrix_det(value):
+    matrix = _require_square(value, "det")
+    return matrix.det()
+
+
+def matrix_inv(value):
+    matrix = _require_square(value, "inv")
+    try:
+        return _immutable(matrix.inv())
+    except Exception as exc:
+        message = str(exc).lower()
+        if "not invertible" in message or "det == 0" in message or "zero determinant" in message:
+            raise EngEvaluationError("inv requires a nonsingular matrix") from None
+        raise
+
+
+def matrix_trace(value):
+    matrix = _require_square(value, "trace")
+    return matrix.trace()
+
+
+def matrix_size(value):
+    matrix = _require_matrix(value, "size")
+    return matrix.rows, matrix.cols
+'''
+matrix_core.write_text(text.rstrip() + append + "\n", encoding="utf-8")
+
+engine = Path("src/engcalc_colab/engine.py")
+text = engine.read_text(encoding="utf-8")
+needle = """    NumericEvaluationResult,\n    ParsedNumericAssignment,\n"""
+replacement = """    NumericEvaluationResult,\n    MatrixShape,\n    ParsedNumericAssignment,\n"""
+assert needle in text
+text = text.replace(needle, replacement, 1)
+
+needle = """    matrix_add,\n    matrix_index,\n    matrix_multiply,\n    matrix_power,\n    matrix_scalar_divide,\n    matrix_subtract,\n"""
+replacement = """    matrix_add,\n    matrix_det,\n    matrix_diag,\n    matrix_identity,\n    matrix_index,\n    matrix_inv,\n    matrix_multiply,\n    matrix_power,\n    matrix_scalar_divide,\n    matrix_size,\n    matrix_subtract,\n    matrix_trace,\n    matrix_transpose,\n    matrix_zeros,\n"""
+assert needle in text
+text = text.replace(needle, replacement, 1)
+
+needle = """        args = [self.visit(arg) for arg in node.args]\n\n        if name in self.engine.functions:\n"""
+replacement = """        args = [self.visit(arg) for arg in node.args]\n\n        if name == \"identity\":\n            self._require_arity(name, args, 1, \"dimension\")\n            return matrix_identity(args[0])\n\n        if name == \"zeros\":\n            self._require_arity(name, args, 2, \"rows, cols\")\n            return matrix_zeros(args[0], args[1])\n\n        if name == \"diag\":\n            return matrix_diag(args)\n\n        if name == \"transpose\":\n            self._require_arity(name, args, 1, \"matrix\")\n            return matrix_transpose(args[0])\n\n        if name == \"det\":\n            self._require_arity(name, args, 1, \"matrix\")\n            return matrix_det(args[0])\n\n        if name == \"inv\":\n            self._require_arity(name, args, 1, \"matrix\")\n            return matrix_inv(args[0])\n\n        if name == \"trace\":\n            self._require_arity(name, args, 1, \"matrix\")\n            return matrix_trace(args[0])\n\n        if name == \"size\":\n            self._require_arity(name, args, 1, \"matrix\")\n            rows, cols = matrix_size(args[0])\n            return MatrixShape(rows=rows, cols=cols)\n\n        if name in self.engine.functions:\n"""
+assert needle in text
+text = text.replace(needle, replacement, 1)
+engine.write_text(text, encoding="utf-8")
