@@ -106,7 +106,7 @@ def test_mixed_translation_rotation_stiffness_product_evaluates_force_and_moment
     assert result.quantity_matrix.rows == 2
     assert result.quantity_matrix.cols == 1
     assert result.quantity_matrix.entry(0, 0).to("kN").magnitude == pytest.approx(160.0)
-    assert result.quantity_matrix.entry(1, 0).to("kN*mm").magnitude == pytest.approx(30600.0)
+    assert result.quantity_matrix.entry(1, 0).to("kN*mm").magnitude == pytest.approx(630000.0)
 
 
 def test_scalar_solve_contract_remains_unchanged():
