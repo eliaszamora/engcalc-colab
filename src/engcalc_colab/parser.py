@@ -24,7 +24,8 @@ _SCALAR_CALLS = {
 }
 _ALLOWED_CALLS = {
     "integral", "diff", "solve", "simplify", "expand", "factor",
-    "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs"
+    "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",
+    "piecewise",
 } | _SCALAR_CALLS
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
@@ -40,6 +41,7 @@ _TABLE_COLLECTION_NODES = (
     ast.GeneratorExp,
     ast.Tuple,
 )
+_PIECEWISE_COMPARATORS = (ast.Lt, ast.LtE, ast.Gt, ast.GtE)
 
 
 def normalize_expression(text: str) -> str:
@@ -219,7 +221,7 @@ def parse_cell(
                 expression = ast.parse(normalized, mode="eval")
             except SyntaxError as exc:
                 raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
-            _validate_ast(expression, line_no)
+            _validate_ast(expression, line_no, piecewise_parameters=parameters)
             display_options = _extract_display_options(expression)
             statements.append(ParsedStatement(
                 line_no=line_no,
@@ -282,11 +284,25 @@ def _validate_target(name: str, line_no: int) -> None:
         raise EngSyntaxError(f"line {line_no}: reserved identifier '{name}'")
 
 
-def _validate_ast(tree: ast.AST, line_no: int) -> None:
-    _validate_normal_node(tree, line_no)
+def _validate_ast(
+    tree: ast.AST,
+    line_no: int,
+    *,
+    piecewise_parameters: tuple[str, ...] | None = None,
+) -> None:
+    _validate_normal_node(
+        tree,
+        line_no,
+        piecewise_parameters=piecewise_parameters,
+    )
 
 
-def _validate_normal_node(node: ast.AST, line_no: int) -> None:
+def _validate_normal_node(
+    node: ast.AST,
+    line_no: int,
+    *,
+    piecewise_parameters: tuple[str, ...] | None = None,
+) -> None:
     if isinstance(node, ast.List):
         raise EngSyntaxError(f"line {line_no}: unsupported syntax 'List'")
     if isinstance(node, ast.keyword):
@@ -306,12 +322,24 @@ def _validate_normal_node(node: ast.AST, line_no: int) -> None:
                 f"line {line_no}: unsupported function '{node.func.id}'"
             )
 
+        if node.func.id == "piecewise":
+            _validate_piecewise_call(
+                node,
+                line_no,
+                piecewise_parameters=piecewise_parameters,
+            )
+            return
+
         if node.func.id == "table":
             _validate_table_call(node, line_no)
             return
 
         for arg in node.args:
-            _validate_normal_node(arg, line_no)
+            _validate_normal_node(
+                arg,
+                line_no,
+                piecewise_parameters=piecewise_parameters,
+            )
 
         if node.keywords:
             if node.func.id not in _DISPLAY_SWEEP_CALLS:
@@ -322,7 +350,108 @@ def _validate_normal_node(node: ast.AST, line_no: int) -> None:
         return
 
     for child in ast.iter_child_nodes(node):
-        _validate_normal_node(child, line_no)
+        _validate_normal_node(
+            child,
+            line_no,
+            piecewise_parameters=piecewise_parameters,
+        )
+
+
+def _validate_piecewise_call(
+    node: ast.Call,
+    line_no: int,
+    *,
+    piecewise_parameters: tuple[str, ...] | None,
+) -> None:
+    if node.keywords:
+        raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")
+    if len(node.args) < 3 or len(node.args) % 2 == 0:
+        raise EngSyntaxError(
+            f"line {line_no}: piecewise expects value/condition pairs and a default"
+        )
+
+    branch_values = node.args[:-1:2]
+    conditions = node.args[1:-1:2]
+    default_value = node.args[-1]
+
+    for value in (*branch_values, default_value):
+        _validate_normal_node(
+            value,
+            line_no,
+            piecewise_parameters=piecewise_parameters,
+        )
+
+    candidate_sets = [
+        _piecewise_condition_candidates(
+            condition,
+            line_no,
+            piecewise_parameters=piecewise_parameters,
+        )
+        for condition in conditions
+    ]
+    common_candidates = set.intersection(*candidate_sets)
+    if not common_candidates:
+        raise EngSyntaxError(
+            f"line {line_no}: piecewise conditions must use one interval variable"
+        )
+    if len(common_candidates) > 1:
+        raise EngSyntaxError(
+            f"line {line_no}: ambiguous piecewise interval variable"
+        )
+
+
+def _piecewise_condition_candidates(
+    node: ast.AST,
+    line_no: int,
+    *,
+    piecewise_parameters: tuple[str, ...] | None,
+) -> set[str]:
+    if not isinstance(node, ast.Compare):
+        raise EngSyntaxError(
+            f"line {line_no}: piecewise condition must be one direct comparison"
+        )
+    if len(node.ops) != 1 or len(node.comparators) != 1:
+        raise EngSyntaxError(
+            f"line {line_no}: chained piecewise comparisons are unsupported"
+        )
+    if not isinstance(node.ops[0], _PIECEWISE_COMPARATORS):
+        raise EngSyntaxError(
+            f"line {line_no}: unsupported piecewise comparator"
+        )
+
+    left = node.left
+    right = node.comparators[0]
+    candidates: set[str] = set()
+    if isinstance(left, ast.Name) and not _node_contains_name(right, left.id):
+        candidates.add(left.id)
+    if isinstance(right, ast.Name) and not _node_contains_name(left, right.id):
+        candidates.add(right.id)
+
+    if piecewise_parameters is not None:
+        candidates.intersection_update(piecewise_parameters)
+
+    if not candidates:
+        raise EngSyntaxError(
+            f"line {line_no}: piecewise must compare an interval variable directly "
+            "with a breakpoint expression"
+        )
+
+    for child in (left, right):
+        if isinstance(child, ast.Name) and child.id in candidates:
+            continue
+        _validate_normal_node(
+            child,
+            line_no,
+            piecewise_parameters=piecewise_parameters,
+        )
+    return candidates
+
+
+def _node_contains_name(node: ast.AST, name: str) -> bool:
+    return any(
+        isinstance(child, ast.Name) and child.id == name
+        for child in ast.walk(node)
+    )
 
 
 def _validate_table_call(node: ast.Call, line_no: int) -> None:
