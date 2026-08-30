@@ -1,7 +1,14 @@
+import ast
+
+import pytest
 import sympy as sp
 
 from engcalc_colab.characteristics import normalize_analysis_domain, solve_extrema_exact
 from engcalc_colab.numeric import NumericContext
+
+
+def _assign(context: NumericContext, name: str, source: str):
+    return context.assign(name, ast.parse(source, mode="eval"))
 
 
 def _points_at(points, expected):
@@ -151,5 +158,60 @@ def test_piecewise_regions_recompute_global_roles_after_merge():
     assert "global_max" not in first_peak.roles
     assert "local_max" in second_peak.roles
     assert "global_max" in second_peak.roles
+    assert intervals == ()
+    assert not up and not down and not unresolved
+
+
+def test_dimensional_piecewise_breakpoint_preserves_exact_location_and_force_units():
+    context = NumericContext()
+    _assign(context, "L", "4*m")
+    _assign(context, "q", "10*kN/m")
+    x, L, q = sp.symbols("x L q")
+    expr = sp.Piecewise(
+        (q * x, x < L / 2),
+        (2 * q * x, True),
+        evaluate=False,
+    )
+    domain = normalize_analysis_domain(context, sp.Integer(0), L)
+
+    points, intervals, up, down, unresolved = solve_extrema_exact(
+        expr,
+        x,
+        domain,
+        context,
+        source_label="V(x)",
+    )
+
+    at_break = _points_at(points, L / 2)
+    by_side = {point.side: point.value_quantity.to("kN").magnitude for point in at_break}
+    assert by_side["left"] == pytest.approx(20.0)
+    assert by_side["at"] == pytest.approx(40.0)
+    assert by_side["right"] == pytest.approx(40.0)
+    assert all(point.x_quantity.to("m").magnitude == pytest.approx(2.0) for point in at_break)
+    assert all(point.source_label == "V(x)" for point in at_break)
+    assert intervals == ()
+    assert not up and not down and not unresolved
+
+
+def test_continuous_piecewise_cusp_is_classified_from_same_region_neighbors():
+    context = NumericContext()
+    x = sp.Symbol("x")
+    expr = sp.Piecewise(
+        (-x, x < 0),
+        (x, True),
+        evaluate=False,
+    )
+    domain = normalize_analysis_domain(context, sp.Integer(-2), sp.Integer(2))
+
+    points, intervals, up, down, unresolved = solve_extrema_exact(
+        expr,
+        x,
+        domain,
+        context,
+    )
+
+    at_zero = next(point for point in _points_at(points, 0) if point.side == "at")
+    assert "local_min" in at_zero.roles
+    assert "global_min" in at_zero.roles
     assert intervals == ()
     assert not up and not down and not unresolved
