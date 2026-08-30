@@ -5,6 +5,7 @@ import keyword
 import re
 
 from .errors import EngSyntaxError
+from .matrix_syntax import consume_matrix_statement, rewrite_matrix_literals
 from .models import ParsedHeading, ParsedNarrative, ParsedNumericAssignment, ParsedStatement
 
 _ALLOWED_NODES = (
@@ -173,6 +174,8 @@ def parse_cell(
             index += 1
             continue
         try:
+            statement_source, next_index = consume_matrix_statement(lines, index)
+            source = statement_source.strip()
             numeric_assignment = _split_top_level_numeric_assignment(source)
             if numeric_assignment is not None:
                 numeric_lhs, numeric_rhs = numeric_assignment
@@ -196,7 +199,7 @@ def parse_cell(
                     blank_before=pending_blank,
                 ))
                 pending_blank = False
-                index += 1
+                index = next_index
                 continue
 
             lhs, rhs = _split_top_level_assignment(source)
@@ -217,11 +220,17 @@ def parse_cell(
                 rhs = source
 
             normalized = normalize_expression(rhs.strip())
+            rewritten, matrix_literals = rewrite_matrix_literals(normalized, line_no)
             try:
-                expression = ast.parse(normalized, mode="eval")
+                expression = ast.parse(rewritten, mode="eval")
             except SyntaxError as exc:
                 raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
             _validate_ast(expression, line_no, piecewise_parameters=parameters)
+            _validate_matrix_literal_bindings(
+                matrix_literals,
+                line_no,
+                piecewise_parameters=parameters,
+            )
             display_options = _extract_display_options(expression)
             statements.append(ParsedStatement(
                 line_no=line_no,
@@ -231,9 +240,10 @@ def parse_cell(
                 expression=expression,
                 blank_before=pending_blank,
                 display_options=display_options,
+                matrix_literals=matrix_literals,
             ))
             pending_blank = False
-            index += 1
+            index = next_index
         except EngSyntaxError as exc:
             message = str(exc)
             if message.startswith("line "):
@@ -297,6 +307,22 @@ def _validate_ast(
     )
 
 
+def _validate_matrix_literal_bindings(
+    bindings,
+    line_no: int,
+    *,
+    piecewise_parameters: tuple[str, ...] | None = None,
+) -> None:
+    for binding in bindings:
+        for row in binding.literal.rows:
+            for expression in row:
+                _validate_normal_node(
+                    expression,
+                    line_no,
+                    piecewise_parameters=piecewise_parameters,
+                )
+
+
 def _validate_normal_node(
     node: ast.AST,
     line_no: int,
@@ -304,7 +330,19 @@ def _validate_normal_node(
     piecewise_parameters: tuple[str, ...] | None = None,
 ) -> None:
     if isinstance(node, ast.List):
-        raise EngSyntaxError(f"line {line_no}: unsupported syntax 'List'")
+        if not node.elts:
+            raise EngSyntaxError(f"line {line_no}: matrix literal cannot be empty")
+        for element in node.elts:
+            if isinstance(element, ast.List):
+                raise EngSyntaxError(
+                    f"line {line_no}: nested matrix literals are unsupported"
+                )
+            _validate_normal_node(
+                element,
+                line_no,
+                piecewise_parameters=piecewise_parameters,
+            )
+        return
     if isinstance(node, ast.keyword):
         raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")
     if not isinstance(node, _ALLOWED_NODES):

@@ -6,6 +6,17 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class ParsedMatrixLiteral:
+    rows: tuple[tuple[ast.Expression, ...], ...]
+
+
+@dataclass(frozen=True)
+class MatrixLiteralBinding:
+    name: str
+    literal: ParsedMatrixLiteral
+
+
+@dataclass(frozen=True)
 class ParsedStatement:
     line_no: int
     source: str
@@ -14,6 +25,7 @@ class ParsedStatement:
     expression: ast.Expression
     blank_before: bool = False
     display_options: tuple[tuple[str, str], ...] = ()
+    matrix_literals: tuple[MatrixLiteralBinding, ...] = ()
 
     @property
     def parameter(self) -> str | None:
