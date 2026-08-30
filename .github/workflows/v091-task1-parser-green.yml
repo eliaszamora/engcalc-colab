@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   apply:
-    if: github.event.head_commit.message == 'ci: trigger EngCalc 0.9.1 Task 1 parser GREEN'
+    if: "github.event.head_commit.message == 'ci: trigger EngCalc 0.9.1 Task 1 parser GREEN'"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact trigger head
