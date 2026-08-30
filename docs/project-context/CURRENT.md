@@ -1,12 +1,14 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-29 — narrative/presentation polish are visually validated; all in-axes, lateral, and current bottom-band dense-label variants have now been visually reviewed. The bottom band fixes plot shrink but is not aesthetically accepted because it adds excessive vertical whitespace and long leader lines. Machine baseline remains 482/482._
+_Last updated: 2026-08-30 — dense characteristic-label task remains open; rejected bottom callout band is superseded by an approved compact summary-panel design. Written spec is persisted and self-reviewed; implementation planning waits for explicit user review of that written spec._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Canonical released branch: `main`; package/runtime version remains **0.7.2** during pre-release work.
 - Active branch: **`feature/v0.8.0-characteristic-label-layout`**. Do not merge without explicit user approval.
+- Current branch head after spec/context work is documentation-only; no production behavior has changed from the 482/482 machine-green bottom-band baseline.
+- Dense-summary written spec: `docs/superpowers/specs/2026-08-30-engcalc-dense-characteristic-summary-design.md`.
 - Retain existing feature/planning branches unless explicitly asked to delete them.
 - Piecewise planning branch: `planning/v0.8.0-piecewise`; approved spec and implementation plan exist, production implementation has not started.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
@@ -35,20 +37,24 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 ### Dense characteristic-point invariants
 
 - Characteristic-point mathematics remains owned by the plotting layer; presentation must never change coordinates, values, colors, units, curves, legend, extrema detection, or sign convention.
-- Multi-series annotations are clustered by nearby display-space x position.
-- Sparse clusters with fewer than **3** labels retain the existing inline behavior unless a later approved design changes this explicitly.
-- Any future dense-layout strategy must preserve the original visible plot width/scale in notebook rendering; widening the whole figure is prohibited because Colab scales it down.
+- Multi-series annotations are clustered by nearby display-space x position using the existing clustering contract.
+- Sparse clusters with fewer than **3** labels retain existing inline behavior.
+- Dense clusters with **3 or more** labels are now designed to use a compact summary panel below the plot instead of per-point callouts.
+- Dense curve markers remain visible; dense inline text is removed; no long leader lines are used.
+- Dense summary groups are ordered by x. Rows retain stable `PlotResult.series` order, exact `series.display_label`, curve color, literal `max`/`min` role, value, and required unit information.
+- The figure must never widen; the main engineering axes must preserve baseline physical width/height within ±1 px. Vertical growth is content-driven and must be materially smaller than the rejected +1.85 in bottom band for the canonical six-series fixture.
+- No parser/model/API syntax change is part of this task.
 
-## Open issues / visual QA history
+## Open issues / user feedback
 
 - User rejected the initial scattered in-axes labels.
 - User rejected aligned in-axes rails because labels remained visually crowded/overlapping.
 - User rejected the increased-clearance in-axes rail because curves and labels still competed for the same area.
-- User approved moving dense labels outside the plot, but the first **lateral** external-callout screenshot was rejected because Colab scaled the 9.7-inch-wide figure down and the graph visibly became smaller.
-- Root cause of lateral shrink: preserving the Matplotlib axes' physical size was insufficient when the whole raster exceeded Colab's display width; notebook scaling shrank the whole visual.
-- A **bottom callout band** was then implemented to keep figure width at 6.4 in and preserve the axes size. Machine geometry is correct, but assistant-run visual QA shows the band is too tall and the leader lines are long/visually dominant. Therefore this bottom-band presentation is **not accepted as the final dense-label design**.
-- Recommended next design direction: keep the full-size plot and replace dense per-point callout leaders with a compact characteristic-point summary/table below the plot, grouped by series or shared x and keyed by the same series colors. Sparse points can remain inline. This should preserve information while avoiding overlap, long leaders, and horizontal shrink.
+- User approved moving dense labels outside the plot, but the first lateral external-callout screenshot was rejected because Colab scaled the widened 9.7-inch figure down.
+- The bottom callout band preserved plot scale and passed machine geometry, but assistant-run PNG QA rejected it aesthetically because of excessive vertical whitespace and long leader lines.
+- The replacement compact-summary direction is approved conceptually and now specified in writing; production implementation has not started.
 - Multiline ordinary function-call parsing remains a later ergonomics item outside this task.
+- `no_vertical_scroll()` Colab ergonomics remains explicitly outside this graphics correction.
 
 ## Validation evidence
 
@@ -61,29 +67,29 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 
 - Child branch baseline: **477/477 passed**.
 - Multiple in-axes iterations reached 479/479, 480/480 and 481/481 but failed real-Colab visual QA.
-- Lateral external-callout implementation SHA `70c303d9c73d5027d0940778229fbdeb5a58a9fc` reached **482/482**, but real-Colab QA rejected the visible shrink caused by widening the figure from 6.4 in to 9.7 in.
+- Lateral external-callout implementation SHA `70c303d9c73d5027d0940778229fbdeb5a58a9fc` reached **482/482**, but real-Colab QA rejected visible shrink caused by widening the figure from 6.4 in to 9.7 in.
 
 ### Bottom callout band RED → GREEN
 
-- RED commit **`8fc9e516abf9d87b9d7ce4a901a10bbee8431504`** required a bottom band, original figure width, increased height, and preservation of baseline axes pixel width/height.
-- RED Actions `33283117813`, job `99181543314`, Python 3.13.15: **2 failed, 480 passed**. Expected failures: labels were not below the axes and figure width was still 9.7 in instead of 6.4 in.
-- Bottom-band implementation commit **`34b807ab24c3071b91f1a710f8152fbaeaa3b3ae`**.
-- GREEN Actions **`33283236424`**, job **`99181850054`**, Python 3.13.15: **482/482 passed**.
+- RED commit `8fc9e516abf9d87b9d7ce4a901a10bbee8431504`: expected **2 failed, 480 passed** on Actions `33283117813`.
+- Bottom-band implementation commit `34b807ab24c3071b91f1a710f8152fbaeaa3b3ae`.
+- GREEN Actions `33283236424`: **482/482 passed**.
 - Fresh checkpoint gate at `ac3cd1db4c5f75fe4e3533fcc49f703b63ad010f`: **482/482 passed**.
 
-### Assistant-run visual evidence
+### Assistant-run bottom-band visual evidence
 
-- To remove dependence on the user's computer, a temporary Actions QA harness rendered the exact six-series dense fixture and exported both PNG and metrics. The instrumentation was removed after capture; no production behavior was changed by the QA harness.
-- Evidence run: Actions **`33285562569`**, artifact `engcalc-bottom-band-qa`.
-- Metrics from the exact renderer:
-  - baseline figure: **6.4 × 4.8 in**;
-  - bottom-band figure: **6.4 × 6.65 in**;
-  - baseline axes: **548.924 × 379.608 px**;
-  - current axes: **549.942 × 379.608 px** — not smaller;
-  - characteristic annotations: **12**;
-  - pairwise text-box overlaps: **0**;
-  - all dense labels below axes: **true**.
-- Visual inspection of the exported PNG: the plot itself retains its scale/width, so the user's shrink complaint is solved. However, the added lower band is visually oversized and the leader lines are long and cluttered. This variant is therefore **machine-correct but visually rejected** as the final presentation.
+- Evidence Actions `33285562569`, artifact `engcalc-bottom-band-qa`.
+- Baseline figure: **6.4 × 4.8 in**; rejected bottom-band figure: **6.4 × 6.65 in**.
+- Baseline axes: **548.924 × 379.608 px**; bottom-band axes: **549.942 × 379.608 px**.
+- Characteristic annotations: **12**; pairwise text overlap: **0**; all dense labels below axes: **true**.
+- Machine geometry was correct, but visual inspection rejected the presentation because the lower band was oversized and leader lines were visually dominant.
+
+### Dense summary design checkpoint
+
+- Conceptual dense-summary direction was explicitly approved by the user on 2026-08-30.
+- Initial written-spec commit: `b7e1c6306c14a16e04f247bf21112eecf0e1031f`.
+- Self-review clarified deterministic row identity and unit presentation in commit `8a40d005d80e33fd3bbc1ffc10b9882ba39a7830`.
+- No production source or tests were changed by these documentation commits; the previous 482/482 product evidence therefore remains the current machine baseline, not evidence for the unimplemented summary design.
 
 ## Roadmap / active plan
 
@@ -91,7 +97,7 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 - **0.7.3 derivation traces:** RETIRED.
 - **Narrative text:** IMPLEMENTED + MACHINE GREEN + REAL-COLAB VISUALLY VALIDATED.
 - **Presentation polish:** IMPLEMENTED + REAL-COLAB VISUALLY VALIDATED; retained and not merged.
-- **Characteristic-point label deconfliction:** still OPEN. Existing bottom-band implementation is machine-green but visually rejected; next design should be a compact dense characteristic summary/table while preserving sparse inline labels and full plot size.
+- **Characteristic-point label deconfliction:** OPEN. Compact dense-summary design is approved conceptually, written and self-reviewed; implementation plan and RED→GREEN work are still pending.
 - **0.8.0 Piecewise:** DESIGN + SPEC + IMPLEMENTATION PLAN COMPLETE; implementation not started.
 - **0.8.1:** exact-first extrema, roots and intersections.
 - **0.8.2:** exact envelopes and governing intervals.
@@ -103,12 +109,12 @@ _Last updated: 2026-08-29 — narrative/presentation polish are visually validat
 
 ## Exact next step
 
-1. Show the assistant-generated PNG and metrics to the user as evidence.
-2. Do **not** close the dense-label task based solely on the 482/482 machine gate.
-3. Recommended next iteration: TDD a compact characteristic-point summary/table below the unchanged-size plot for dense clusters, using series labels/colors for association and eliminating long leader lines; retain inline annotation for sparse clusters.
-4. After implementation, rerun focused + complete tests and generate the QA PNG automatically again before asking the user to inspect anything.
+1. User reviews the written spec `docs/superpowers/specs/2026-08-30-engcalc-dense-characteristic-summary-design.md` and either approves it or requests changes.
+2. After explicit written-spec approval, create the dedicated implementation plan with the Superpowers planning workflow.
+3. Implementation plan must start by replacing rejected bottom-band tests with RED dense-summary contracts, then GREEN implementation, focused tests, full suite, automated PNG + metrics QA, visual self-review, temporary QA cleanup, and explicit user acceptance.
+4. Do not begin production implementation before the written-spec review gate is satisfied.
 5. Do not merge without explicit user approval.
 
 ## How to resume in a new conversation
 
-Read this file first. Released `main` remains EngCalc 0.7.2. Narrative and plot presentation polish are visually validated. Several dense-label strategies were attempted: scattered/aligned/increased-clearance in-axes layouts failed visual QA; lateral external callouts solved overlaps but caused Colab to shrink the whole plot; a bottom callout band preserved plot size and passed 482/482 tests, but assistant-run PNG QA shows excessive lower whitespace and long leader-line clutter. The dense-label task remains open. The recommended next architecture is a compact color-keyed characteristic-point summary/table below the full-size graph for dense cases, while sparse points remain inline. Never invoke Codex without explicit authorization and never merge without explicit user approval.
+Read this file first. Released `main` remains EngCalc 0.7.2. Narrative and plot presentation polish are visually validated. Dense-label attempts inside the axes, on lateral rails, and in a bottom callout band were machine-green at different stages but visually rejected. The latest rejected band preserved the full plot but added excessive lower whitespace and long leaders. The user approved replacing dense callouts with a compact color-keyed summary panel below the unchanged-size plot while sparse clusters remain inline. The written design is `docs/superpowers/specs/2026-08-30-engcalc-dense-characteristic-summary-design.md`, self-reviewed at commit `8a40d005d80e33fd3bbc1ffc10b9882ba39a7830`. Production implementation has not started. Next gate is explicit user review of the written spec, then implementation planning. Never invoke Codex without explicit authorization and never merge without explicit user approval.
