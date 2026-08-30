@@ -313,6 +313,143 @@ class NumericContext:
             raise EngEvaluationError(f"numeric evaluation failed: {exc}") from exc
         return substitutions, quantity
 
+    def _is_exact_zero_quantity(self, value) -> bool:
+        quantity = self._as_quantity(value)
+        return float(quantity.magnitude) == 0.0
+
+    def _normalize_relation_operands(self, left, right):
+        left_quantity = self._as_quantity(left)
+        right_quantity = self._as_quantity(right)
+
+        if left_quantity.dimensionless and not right_quantity.dimensionless:
+            if not self._is_exact_zero_quantity(left_quantity):
+                raise EngEvaluationError(
+                    "piecewise comparison cannot mix a dimensional quantity with "
+                    "a nonzero dimensionless value"
+                )
+            left_quantity = self.ureg.Quantity(0, right_quantity.units)
+        elif right_quantity.dimensionless and not left_quantity.dimensionless:
+            if not self._is_exact_zero_quantity(right_quantity):
+                raise EngEvaluationError(
+                    "piecewise comparison cannot mix a dimensional quantity with "
+                    "a nonzero dimensionless value"
+                )
+            right_quantity = self.ureg.Quantity(0, left_quantity.units)
+
+        try:
+            right_quantity = right_quantity.to(left_quantity.units)
+        except DimensionalityError as exc:
+            raise EngEvaluationError(
+                "piecewise comparison has incompatible units"
+            ) from exc
+        return left_quantity, right_quantity
+
+    def _evaluate_relation(self, relation, substitutions: dict[str, Any]) -> bool:
+        left = self._evaluate_sympy(relation.lhs, substitutions)
+        right = self._evaluate_sympy(relation.rhs, substitutions)
+        left, right = self._normalize_relation_operands(left, right)
+
+        if relation.func == sp.StrictLessThan:
+            return left.magnitude < right.magnitude
+        if relation.func == sp.LessThan:
+            return left.magnitude <= right.magnitude
+        if relation.func == sp.StrictGreaterThan:
+            return left.magnitude > right.magnitude
+        if relation.func == sp.GreaterThan:
+            return left.magnitude >= right.magnitude
+        raise EngEvaluationError("unsupported piecewise relation")
+
+    def _normalize_quantity_group(self, values, context: str):
+        quantities = tuple(self._as_quantity(value) for value in values)
+        dimensional = next(
+            (quantity for quantity in quantities if not quantity.dimensionless),
+            None,
+        )
+        if dimensional is None:
+            return quantities
+
+        unit = dimensional.units
+        normalized = []
+        for quantity in quantities:
+            if quantity.dimensionless:
+                if self._is_exact_zero_quantity(quantity):
+                    normalized.append(self.ureg.Quantity(0, unit))
+                    continue
+                raise EngEvaluationError(
+                    f"{context} cannot mix dimensional quantities with "
+                    "a nonzero dimensionless value"
+                )
+            try:
+                normalized.append(quantity.to(unit))
+            except DimensionalityError as exc:
+                raise EngEvaluationError(f"{context} has incompatible units") from exc
+        return tuple(normalized)
+
+    def _infer_piecewise_zero_unit(self, expression, substitutions: dict[str, Any]):
+        canonical_unit = None
+        saw_nonzero_dimensionless = False
+
+        for branch_expression, _condition in expression.args:
+            try:
+                candidate = self._as_quantity(
+                    self._evaluate_sympy(branch_expression, substitutions)
+                )
+            except (
+                EngEvaluationError,
+                DimensionalityError,
+                PintError,
+                ValueError,
+                ZeroDivisionError,
+                OverflowError,
+            ):
+                continue
+
+            if candidate.dimensionless:
+                if self._is_exact_zero_quantity(candidate):
+                    continue
+                if canonical_unit is not None:
+                    raise EngEvaluationError(
+                        "piecewise has nonzero dimensionless branch incompatible "
+                        "with dimensional branch"
+                    )
+                saw_nonzero_dimensionless = True
+                continue
+
+            if saw_nonzero_dimensionless:
+                raise EngEvaluationError(
+                    "piecewise has nonzero dimensionless branch incompatible "
+                    "with dimensional branch"
+                )
+
+            if canonical_unit is None:
+                canonical_unit = candidate.units
+                continue
+
+            try:
+                candidate.to(canonical_unit)
+            except (DimensionalityError, PintError) as exc:
+                raise EngEvaluationError(
+                    "piecewise has incompatible branch units"
+                ) from exc
+
+        return canonical_unit
+
+    def _evaluate_piecewise(self, expression, substitutions: dict[str, Any]):
+        for branch_expression, condition in expression.args:
+            if condition == sp.true or self._evaluate_relation(condition, substitutions):
+                value = self._as_quantity(
+                    self._evaluate_sympy(branch_expression, substitutions)
+                )
+                if value.dimensionless and self._is_exact_zero_quantity(value):
+                    inferred_unit = self._infer_piecewise_zero_unit(
+                        expression,
+                        substitutions,
+                    )
+                    if inferred_unit is not None:
+                        return self.ureg.Quantity(0, inferred_unit)
+                return value
+        raise EngEvaluationError("piecewise has no governing branch")
+
     def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):
         if isinstance(expr, sp.Symbol):
             return substitutions[expr.name]
@@ -326,6 +463,25 @@ class NumericContext:
             if expr.is_Rational:
                 return int(expr.p) / int(expr.q)
             return float(expr)
+
+        if expr.func == sp.Piecewise:
+            return self._evaluate_piecewise(expr, substitutions)
+
+        if expr.func in {
+            sp.StrictLessThan,
+            sp.LessThan,
+            sp.StrictGreaterThan,
+            sp.GreaterThan,
+        }:
+            return self._evaluate_relation(expr, substitutions)
+
+        if expr.func in {sp.Min, sp.Max}:
+            values = self._normalize_quantity_group(
+                (self._evaluate_sympy(arg, substitutions) for arg in expr.args),
+                "numeric Min/Max",
+            )
+            selector = min if expr.func == sp.Min else max
+            return selector(values, key=lambda quantity: quantity.magnitude)
 
         if expr.is_Add:
             values = [self._evaluate_sympy(arg, substitutions) for arg in expr.args]
