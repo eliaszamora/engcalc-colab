@@ -6,7 +6,7 @@ on:
       - feature/v0.9.1-exact-characteristics
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   task10:
@@ -25,7 +25,19 @@ jobs:
           python -m pip install -e '.[dev]'
           python -m pip install ipython
 
-      - name: Run Task 10 exact-plot RED tests
+      - name: Apply guarded Task 10 GREEN patch when needed
+        shell: bash
+        run: |
+          if grep -q 'characteristics: tuple\[CharacteristicPoint, \.\.\.\]' src/engcalc_colab/models.py; then
+            echo 'Task 10 exact plot characteristics already present; skipping patch.'
+          else
+            python .github/scripts/v091_task10_green.py
+          fi
+
+      - name: Check diff hygiene
+        run: git diff --check
+
+      - name: Run Task 10 focused regression gate
         run: >-
           python -m pytest
           tests/test_characteristics_plot_integration.py
@@ -37,3 +49,16 @@ jobs:
           tests/test_dense_characteristic_label_layout.py
           tests/test_compact_characteristic_labels_v061.py
           -q
+
+      - name: Commit verified Task 10 product patch
+        shell: bash
+        run: |
+          if git diff --quiet -- src/engcalc_colab/models.py src/engcalc_colab/engine.py src/engcalc_colab/plotting.py; then
+            echo 'No product patch to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/engcalc_colab/models.py src/engcalc_colab/engine.py src/engcalc_colab/plotting.py
+          git commit -m 'feat: use exact characteristics in ordinary plots'
+          git push origin HEAD:feature/v0.9.1-exact-characteristics
