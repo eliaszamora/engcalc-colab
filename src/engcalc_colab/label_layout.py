@@ -5,21 +5,26 @@ from dataclasses import dataclass
 from typing import Any
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
-from matplotlib.text import Annotation, Text
+from matplotlib.text import Annotation
 
 from .models import PlotResult
-from .plotting import _CharacteristicRequest, _characteristic_requests, _coordinate_label
+from .plotting import (
+    _CharacteristicRequest,
+    _characteristic_requests,
+    _compact_number,
+    _quantity_label,
+    _unit_label,
+)
 
 
 _CLUSTER_X_TOLERANCE_PX = 14.0
 _DENSE_CLUSTER_SIZE = 3
-_MIN_BOTTOM_SPACE_IN = 1.65
-_BOTTOM_SPACE_PER_LABEL_IN = 0.25
-_BOTTOM_SPACE_PADDING_IN = 0.35
-_BAND_EDGE_MARGIN_PX = 8.0
-_RAIL_VERTICAL_GAP_PX = 12.0
-_LEADER_LINEWIDTH = 0.75
-_LEADER_ALPHA = 0.44
+_SUMMARY_MAX_COLUMNS = 2
+_SUMMARY_TITLE_HEIGHT_IN = 0.18
+_SUMMARY_GROUP_HEADER_HEIGHT_IN = 0.16
+_SUMMARY_ROW_HEIGHT_IN = 0.14
+_SUMMARY_PANEL_PADDING_IN = 0.08
+_SUMMARY_GROUP_GAP_FRACTION = 0.05
 
 
 @dataclass(frozen=True)
@@ -39,28 +44,6 @@ def _series_color(axis, display_label: str):
         if line.get_label() == display_label:
             return line.get_color()
     return None
-
-
-def _cluster_requests(axis, requests):
-    positioned = []
-    for request in requests:
-        x = float(request.x_quantity.magnitude)
-        y = float(request.y_quantity.magnitude)
-        display_x, display_y = axis.transData.transform((x, y))
-        positioned.append((float(display_x), float(display_y), request))
-
-    positioned.sort(key=lambda item: (item[0], item[1]))
-    clusters = []
-    for item in positioned:
-        if not clusters:
-            clusters.append([item])
-            continue
-        previous_x = clusters[-1][-1][0]
-        if abs(item[0] - previous_x) <= _CLUSTER_X_TOLERANCE_PX:
-            clusters[-1].append(item)
-        else:
-            clusters.append([item])
-    return clusters
 
 
 def _build_dense_summary_groups(
@@ -115,10 +98,6 @@ def _build_dense_summary_groups(
     return tuple(groups)
 
 
-def _text_box(annotation: Annotation, renderer):
-    return Text.get_window_extent(annotation, renderer)
-
-
 def _request_matches_annotation(
     request: _CharacteristicRequest,
     annotation: Annotation,
@@ -148,15 +127,8 @@ def _remove_dense_inline_annotations(axis, dense_requests) -> None:
             item.remove()
 
 
-def _bottom_space_inches(max_cluster_size: int) -> float:
-    return max(
-        _MIN_BOTTOM_SPACE_IN,
-        _BOTTOM_SPACE_PER_LABEL_IN * max_cluster_size + _BOTTOM_SPACE_PADDING_IN,
-    )
-
-
-def _reserve_bottom_space(figure, axis, bottom_space_in: float) -> None:
-    """Add vertical callout room while preserving the axes' physical size."""
+def _reserve_summary_space(figure, axis, summary_height_in: float) -> None:
+    """Add vertical summary room while preserving the axes' physical size."""
     old_width, old_height = (float(value) for value in figure.get_size_inches())
     position = axis.get_position()
 
@@ -165,201 +137,262 @@ def _reserve_bottom_space(figure, axis, bottom_space_in: float) -> None:
     axes_width_in = float(position.width) * old_width
     axes_height_in = float(position.height) * old_height
 
-    new_height = old_height + bottom_space_in
+    new_height = old_height + summary_height_in
     figure.set_size_inches(old_width, new_height, forward=False)
     axis.set_position(
         [
             axes_left_in / old_width,
-            (axes_bottom_in + bottom_space_in) / new_height,
+            (axes_bottom_in + summary_height_in) / new_height,
             axes_width_in / old_width,
             axes_height_in / new_height,
         ]
     )
 
 
-def _stack_vertical_centers(
-    heights: list[float],
+def _summary_height_inches(groups: tuple[_DenseSummaryGroup, ...]) -> float:
+    grid_rows = [
+        groups[index:index + _SUMMARY_MAX_COLUMNS]
+        for index in range(0, len(groups), _SUMMARY_MAX_COLUMNS)
+    ]
+    body_height = sum(
+        _SUMMARY_GROUP_HEADER_HEIGHT_IN
+        + _SUMMARY_ROW_HEIGHT_IN * max(len(group.entries) for group in grid_row)
+        for grid_row in grid_rows
+    )
+    return (
+        2 * _SUMMARY_PANEL_PADDING_IN
+        + _SUMMARY_TITLE_HEIGHT_IN
+        + body_height
+    )
+
+
+def _group_x_header(group: _DenseSummaryGroup) -> str:
+    quantity = group.x_quantity
+    value = _compact_number(float(quantity.magnitude))
+    unit = _unit_label(quantity)
+    return f"x = {value}" if not unit else f"x = {value} {unit}"
+
+
+def _common_y_unit(
+    groups: tuple[_DenseSummaryGroup, ...],
     *,
-    lower: float,
-    upper: float,
-) -> list[float]:
-    if not heights:
-        return []
-
-    total_height = sum(heights) + _RAIL_VERTICAL_GAP_PX * max(0, len(heights) - 1)
-    available = upper - lower
-    start = lower + max(0.0, 0.5 * (available - total_height))
-
-    centers = []
-    cursor = start
-    for height in heights:
-        centers.append(cursor + 0.5 * height)
-        cursor += height + _RAIL_VERTICAL_GAP_PX
-    return centers
+    moment: bool,
+) -> str | None:
+    units = {
+        _unit_label(entry.request.y_quantity, moment=moment)
+        for group in groups
+        for entry in group.entries
+    }
+    return next(iter(units)) if len(units) == 1 else None
 
 
-def _create_bottom_callout(
+def _entry_value_text(
+    entry: _DenseSummaryEntry,
+    *,
+    moment: bool,
+    common_unit: str | None,
+) -> str:
+    if common_unit is not None:
+        return _compact_number(float(entry.request.y_quantity.magnitude))
+    return _quantity_label(entry.request.y_quantity, moment=moment)
+
+
+def _render_summary_panel(
     figure,
     axis,
-    request: _CharacteristicRequest,
+    groups: tuple[_DenseSummaryGroup, ...],
     *,
-    x_fraction: float,
-    y_fraction: float,
-):
-    x = float(request.x_quantity.magnitude)
-    y = float(request.y_quantity.magnitude)
-    line_color = _series_color(axis, request.series.display_label)
-    annotation = axis.annotate(
-        _coordinate_label(x, y),
-        xy=(x, y),
-        xycoords="data",
-        xytext=(x_fraction, y_fraction),
-        textcoords=figure.transFigure,
+    summary_height_in: float,
+    moment: bool,
+) -> None:
+    _figure_width, figure_height = (
+        float(value) for value in figure.get_size_inches()
+    )
+    main_position = axis.get_position()
+    panel_bottom_in = _SUMMARY_PANEL_PADDING_IN
+    panel_height_in = summary_height_in - 2 * _SUMMARY_PANEL_PADDING_IN
+
+    summary = figure.add_axes(
+        [
+            float(main_position.x0),
+            panel_bottom_in / figure_height,
+            float(main_position.width),
+            panel_height_in / figure_height,
+        ]
+    )
+    summary.set_gid("engcalc-characteristic-summary")
+    summary.set_xlim(0.0, 1.0)
+    summary.set_ylim(0.0, 1.0)
+    summary.set_axis_off()
+
+    common_unit = _common_y_unit(groups, moment=moment)
+    title_fraction = _SUMMARY_TITLE_HEIGHT_IN / panel_height_in
+    group_header_fraction = _SUMMARY_GROUP_HEADER_HEIGHT_IN / panel_height_in
+    row_fraction = _SUMMARY_ROW_HEIGHT_IN / panel_height_in
+
+    title = summary.text(
+        0.0,
+        0.98,
+        "Characteristic points",
+        transform=summary.transAxes,
         ha="left",
-        va="center",
+        va="top",
         fontsize=8.5,
-        color=line_color,
-        zorder=7,
-        annotation_clip=False,
-        arrowprops={
-            "arrowstyle": "-",
-            "color": line_color,
-            "linewidth": _LEADER_LINEWIDTH,
-            "alpha": _LEADER_ALPHA,
-            "shrinkA": 4.0,
-            "shrinkB": 4.0,
-        },
+        fontweight="semibold",
     )
-    annotation.set_clip_on(False)
-    if annotation.arrow_patch is not None:
-        annotation.arrow_patch.set_clip_on(False)
-        annotation.arrow_patch.set_zorder(2.4)
-    return annotation
+    title.set_gid("engcalc-summary-title")
 
+    cursor_y = 1.0 - title_fraction
+    grid_rows = tuple(
+        groups[index:index + _SUMMARY_MAX_COLUMNS]
+        for index in range(0, len(groups), _SUMMARY_MAX_COLUMNS)
+    )
 
-def _layout_bottom_cluster(
-    figure,
-    axis,
-    cluster,
-    *,
-    bottom_space_in: float,
-) -> list[Annotation]:
-    requests = [item[2] for item in cluster]
-    requests.sort(
-        key=lambda request: float(
-            axis.transData.transform(
-                (
-                    float(request.x_quantity.magnitude),
-                    float(request.y_quantity.magnitude),
+    for grid_row in grid_rows:
+        column_count = len(grid_row)
+        cell_width = (
+            1.0 - _SUMMARY_GROUP_GAP_FRACTION * (column_count - 1)
+        ) / column_count
+        max_entries = max(len(group.entries) for group in grid_row)
+
+        for column_index, group in enumerate(grid_row):
+            cell_left = column_index * (
+                cell_width + _SUMMARY_GROUP_GAP_FRACTION
+            )
+            cell_right = cell_left + cell_width
+
+            header = summary.text(
+                cell_left,
+                cursor_y,
+                _group_x_header(group),
+                transform=summary.transAxes,
+                ha="left",
+                va="top",
+                fontsize=8.2,
+                fontweight="semibold",
+            )
+            header.set_gid("engcalc-summary-group-header")
+
+            value_header_text = (
+                "Value"
+                if common_unit is None
+                else f"Value [{common_unit}]"
+            )
+            summary.text(
+                cell_right,
+                cursor_y,
+                value_header_text,
+                transform=summary.transAxes,
+                ha="right",
+                va="top",
+                fontsize=7.8,
+            )
+
+            separator_y = cursor_y - 0.72 * group_header_fraction
+            summary.plot(
+                [cell_left, cell_right],
+                [separator_y, separator_y],
+                linewidth=0.6,
+                alpha=0.35,
+                transform=summary.transAxes,
+            )
+
+        rows_top = cursor_y - group_header_fraction
+
+        for column_index, group in enumerate(grid_row):
+            cell_left = column_index * (
+                cell_width + _SUMMARY_GROUP_GAP_FRACTION
+            )
+            cell_right = cell_left + cell_width
+            marker_x = cell_left + 0.015 * cell_width
+            label_x = cell_left + 0.055 * cell_width
+            role_x = cell_left + 0.57 * cell_width
+            value_x = cell_right
+
+            for row_index, entry in enumerate(group.entries):
+                row_y = rows_top - (row_index + 0.5) * row_fraction
+                summary.plot(
+                    [marker_x],
+                    [row_y],
+                    marker="o",
+                    markersize=4.0,
+                    linestyle="None",
+                    color=entry.color,
+                    transform=summary.transAxes,
+                    clip_on=False,
                 )
-            )[1]
-        )
-    )
 
-    figure_height_px = float(figure.bbox.height)
-    figure_width_px = float(figure.bbox.width)
-    band_upper_px = bottom_space_in * float(figure.dpi) - _BAND_EDGE_MARGIN_PX
-    band_lower_px = _BAND_EDGE_MARGIN_PX
-
-    provisional_centers = [
-        band_lower_px + (index + 1) * (band_upper_px - band_lower_px) / (len(requests) + 1)
-        for index in range(len(requests))
-    ]
-    annotations = [
-        _create_bottom_callout(
-            figure,
-            axis,
-            request,
-            x_fraction=0.5,
-            y_fraction=center / figure_height_px,
-        )
-        for request, center in zip(requests, provisional_centers)
-    ]
-
-    figure.canvas.draw()
-    renderer = figure.canvas.get_renderer()
-    boxes = [_text_box(annotation, renderer) for annotation in annotations]
-    heights = [float(box.height) for box in boxes]
-    max_width = max(float(box.width) for box in boxes)
-
-    target_centers = _stack_vertical_centers(
-        heights,
-        lower=band_lower_px,
-        upper=band_upper_px,
-    )
-
-    anchor_x_values = [
-        float(
-            axis.transData.transform(
-                (
-                    float(request.x_quantity.magnitude),
-                    float(request.y_quantity.magnitude),
+                label = summary.text(
+                    label_x,
+                    row_y,
+                    entry.request.series.display_label,
+                    transform=summary.transAxes,
+                    ha="left",
+                    va="center",
+                    fontsize=8.0,
+                    color=entry.color,
                 )
-            )[0]
-        )
-        for request in requests
-    ]
-    anchor_x = sum(anchor_x_values) / len(anchor_x_values)
-    rail_left_px = min(
-        max(anchor_x - 0.5 * max_width, _BAND_EDGE_MARGIN_PX),
-        figure_width_px - _BAND_EDGE_MARGIN_PX - max_width,
-    )
-    rail_x_fraction = rail_left_px / figure_width_px
+                label.set_gid("engcalc-summary-entry-label")
 
-    for annotation, target_y in zip(annotations, target_centers):
-        annotation.set_position((rail_x_fraction, target_y / figure_height_px))
-        annotation.set_ha("left")
-        annotation.set_va("center")
+                role = summary.text(
+                    role_x,
+                    row_y,
+                    entry.request.role,
+                    transform=summary.transAxes,
+                    ha="left",
+                    va="center",
+                    fontsize=7.8,
+                )
+                role.set_gid("engcalc-summary-entry-role")
 
-    figure.canvas.draw()
-    return annotations
+                value = summary.text(
+                    value_x,
+                    row_y,
+                    _entry_value_text(
+                        entry,
+                        moment=moment,
+                        common_unit=common_unit,
+                    ),
+                    transform=summary.transAxes,
+                    ha="right",
+                    va="center",
+                    fontsize=8.0,
+                )
+                value.set_gid("engcalc-summary-entry-value")
+
+        cursor_y = rows_top - max_entries * row_fraction
 
 
 def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
-    """Move only dense multi-series characteristic clusters to a bottom band.
-
-    Characteristic-point mathematics remains owned by the plotting layer.
-    Clusters with fewer than three labels retain the existing inline layout.
-    Dense clusters receive aligned callouts below the axes with leader lines.
-    The figure grows only vertically so the plot keeps its original visible size.
-    """
+    """Move dense multi-series characteristic text to a compact summary panel."""
     if result.kind != "plot" or len(result.series) < 2:
         return
 
     axis = figure.axes[0]
-    requests = _characteristic_requests(result)
-    if len(requests) < _DENSE_CLUSTER_SIZE:
-        return
-
     original_canvas = figure.canvas
     FigureCanvasAgg(figure)
     try:
         figure.canvas.draw()
-        clusters = _cluster_requests(axis, requests)
-        dense_clusters = [
-            cluster for cluster in clusters if len(cluster) >= _DENSE_CLUSTER_SIZE
-        ]
-        if not dense_clusters:
+        groups = _build_dense_summary_groups(axis, result)
+        if not groups:
             return
 
-        dense_requests = [
-            item[2]
-            for cluster in dense_clusters
-            for item in cluster
-        ]
+        dense_requests = tuple(
+            entry.request
+            for group in groups
+            for entry in group.entries
+        )
         _remove_dense_inline_annotations(axis, dense_requests)
 
-        max_cluster_size = max(len(cluster) for cluster in dense_clusters)
-        bottom_space_in = _bottom_space_inches(max_cluster_size)
-        _reserve_bottom_space(figure, axis, bottom_space_in)
+        summary_height_in = _summary_height_inches(groups)
+        _reserve_summary_space(figure, axis, summary_height_in)
+        _render_summary_panel(
+            figure,
+            axis,
+            groups,
+            summary_height_in=summary_height_in,
+            moment=all(series.is_moment for series in result.series),
+        )
         figure.canvas.draw()
-
-        for cluster in dense_clusters:
-            _layout_bottom_cluster(
-                figure,
-                axis,
-                cluster,
-                bottom_space_in=bottom_space_in,
-            )
     finally:
         figure.set_canvas(original_canvas)
