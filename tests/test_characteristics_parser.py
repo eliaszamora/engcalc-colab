@@ -62,10 +62,12 @@ def test_characteristic_calls_require_direct_symbolic_variable(source):
     "source",
     [
         "R = roots(V(x), x, 0, L)",
+        "R := roots(V(x), x, 0, L)",
         "R(x) = extrema(M(x), x, 0, L)",
         "numeric(roots(V(x), x, 0, L))",
         "abs(extrema(M(x), x, 0, L))",
         "table(roots(V(x), x, 0, L), x, 0, L, 5)",
+        "A = [roots(V(x), x, 0, L), 0]",
     ],
 )
 def test_characteristic_calls_reject_assignment_and_nesting(source):
