@@ -1,7 +1,7 @@
 # EngCalc Dense Characteristic Summary — Design
 
 _Date: 2026-08-30_
-_Status: approved in conversation; specification checkpoint before implementation planning_
+_Status: design direction approved in conversation; written specification pending user review before implementation planning_
 _Active branch: `feature/v0.8.0-characteristic-label-layout`_
 
 ## 1. Purpose
@@ -55,13 +55,14 @@ For a dense six-series moment plot with two shared-x characteristic groups, the 
 Characteristic points
 
 x = 0.00 m                         x = 2.50 m
-─────────────────                  ─────────────────
-● M_C1   min   -6.00               ● M_C1   max    3.38
-● M_C2   min  -22.40               ● M_C2   max    8.85
-● M_S1   min   -8.00               ● M_S1   max    4.50
-● M_S2   min  -19.20               ● M_S2   max   10.80
-● M_S3   min  -14.00               ● M_S3   max     ...
-● M_S4   min  -16.00               ● M_S4   max     ...
+Series   Role   M [tonf·m]         Series   Role   M [tonf·m]
+──────────────────────────         ──────────────────────────
+● M_C1   min       -6.00           ● M_C1   max        3.38
+● M_C2   min      -22.40           ● M_C2   max        8.85
+● M_S1   min       -8.00           ● M_S1   max        4.50
+● M_S2   min      -19.20           ● M_S2   max       10.80
+● M_S3   min      -14.00           ● M_S3   max         ...
+● M_S4   min      -16.00           ● M_S4   max         ...
 ```
 
 This is conceptual layout, not a literal ASCII rendering contract.
@@ -78,17 +79,20 @@ Within each group, entries follow stable series order from `PlotResult.series`. 
 
 This deliberately avoids sorting rows by numeric value because stable series order makes comparison against the legend and plotted curves easier.
 
-### 4.3 Entry content
+### 4.3 Entry identity and content
 
 Each dense summary entry contains:
 
 - a compact color key using the corresponding plotted series color;
-- the response/series label;
-- the extremum role (`max` or `min` in the internal contract; user-facing wording may be compact and localized consistently with existing EngCalc presentation);
-- the characteristic y value;
-- units where necessary to make the panel self-contained.
+- the exact `series.display_label` used by the plotted series/legend as the row identity;
+- the literal extremum role `max` or `min`;
+- the characteristic y value.
 
-The x coordinate is shown once in the group header rather than repeated on every row.
+The row identity must not substitute a different response symbol when doing so would differ from the legend identity. This keeps the summary-to-curve mapping deterministic.
+
+The x coordinate is shown once in the group header rather than repeated on every row. The x header includes the evaluated x unit, for example `x = 2.50 m`.
+
+When all summary rows share one compatible evaluated y unit, that unit is shown once in the value-column heading, for example `M [tonf·m]`, rather than repeated on every row. If a future supported plot legitimately contains non-common y display units, the implementation falls back to displaying the evaluated unit in each affected row instead of dropping unit information.
 
 The panel must not silently drop or merge characteristic requests. Every request removed from dense inline annotation must appear exactly once in the summary.
 
@@ -115,7 +119,7 @@ The new design must not reimplement engineering extrema mathematics independentl
 
 `src/engcalc_colab/label_layout.py` remains the isolated implementation boundary for dense characteristic presentation. It may be refactored internally from callout-band logic to summary-panel logic, but its responsibility remains presentation-only.
 
-The main plot axes must remain `figure.axes[0]` so existing consumers and tests continue to address the engineering plot consistently. Any summary axes are secondary axes added after the main one.
+The main plot axes must remain `figure.axes[0]` so existing consumers and tests continue to address the engineering plot consistently. Any summary axes are secondary axes added after the main one and are presentation-only.
 
 ### 5.3 No parser or model API change
 
@@ -203,7 +207,7 @@ The first RED commit must establish all of the following:
 6. The summary contains exactly one entry for every dense request: no omission and no duplication.
 7. Dense groups are ordered by x coordinate.
 8. Rows inside each group follow stable `PlotResult.series` order.
-9. Each row preserves the plotted series color and exposes response label, role, and characteristic value.
+9. Each row preserves the plotted series color, exact `series.display_label`, literal role, characteristic value, and required unit information.
 10. Summary text boxes are contained in the figure and do not overlap each other.
 11. The figure width equals baseline width.
 12. The primary axes width and height remain within ±1 px of the baseline rendering.
