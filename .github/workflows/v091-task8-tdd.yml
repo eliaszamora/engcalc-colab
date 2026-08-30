@@ -23,6 +23,7 @@ jobs:
       - name: Install test environment
         run: python -m pip install -e '.[dev]'
 
+      # Re-run idempotently after the verified engine product commit.
       - name: Apply guarded Task 8 GREEN patch when needed
         shell: bash
         run: |
