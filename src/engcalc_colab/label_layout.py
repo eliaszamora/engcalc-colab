@@ -11,13 +11,13 @@ from .plotting import _coordinate_label, _series_response_symbol
 
 _CLUSTER_X_TOLERANCE_PX = 14.0
 _DENSE_CLUSTER_SIZE = 3
-_SIDE_SPACE_IN = 1.65
-_LEFT_RAIL_OFFSET_IN = 1.00
-_RIGHT_RAIL_OFFSET_IN = 0.28
-_RAIL_EDGE_MARGIN_PX = 7.0
+_MIN_BOTTOM_SPACE_IN = 1.65
+_BOTTOM_SPACE_PER_LABEL_IN = 0.25
+_BOTTOM_SPACE_PADDING_IN = 0.35
+_BAND_EDGE_MARGIN_PX = 8.0
 _RAIL_VERTICAL_GAP_PX = 12.0
 _LEADER_LINEWIDTH = 0.75
-_LEADER_ALPHA = 0.52
+_LEADER_ALPHA = 0.44
 
 
 def _extreme_indices(values: list[float]) -> tuple[int, int]:
@@ -98,79 +98,6 @@ def _cluster_requests(axis, requests):
     return clusters
 
 
-def _spread_vertical_centers(
-    desired_centers: list[float],
-    heights: list[float],
-    *,
-    lower: float,
-    upper: float,
-) -> list[float]:
-    """Preserve reading order while enforcing robust vertical clearance."""
-    if not desired_centers:
-        return []
-
-    centers = list(desired_centers)
-    for index in range(1, len(centers)):
-        minimum_separation = (
-            0.5 * heights[index - 1]
-            + 0.5 * heights[index]
-            + _RAIL_VERTICAL_GAP_PX
-        )
-        centers[index] = max(centers[index], centers[index - 1] + minimum_separation)
-
-    preferred_shift = sum(
-        desired - current for desired, current in zip(desired_centers, centers)
-    ) / len(centers)
-    minimum_shift = lower + 0.5 * heights[0] - centers[0]
-    maximum_shift = upper - 0.5 * heights[-1] - centers[-1]
-    shift = min(max(preferred_shift, minimum_shift), maximum_shift)
-    return [center + shift for center in centers]
-
-
-def _cluster_side(axis, cluster) -> str:
-    x_values = [float(item[2][0].magnitude) for item in cluster]
-    anchor_x = sum(x_values) / len(x_values)
-    x0, x1 = axis.get_xlim()
-    if math.isclose(x0, x1, rel_tol=0.0, abs_tol=1e-15):
-        return "right"
-    fraction = (anchor_x - x0) / (x1 - x0)
-    return "left" if fraction < 0.5 else "right"
-
-
-def _reserve_side_space(figure, axis, *, use_left: bool, use_right: bool) -> None:
-    """Add external rail room while preserving the axes' physical size."""
-    if not use_left and not use_right:
-        return
-
-    old_width, old_height = (float(value) for value in figure.get_size_inches())
-    position = axis.get_position()
-    axes_left_in = float(position.x0) * old_width
-    axes_bottom_fraction = float(position.y0)
-    axes_width_in = float(position.width) * old_width
-    axes_height_fraction = float(position.height)
-
-    extra_left = _SIDE_SPACE_IN if use_left else 0.0
-    extra_right = _SIDE_SPACE_IN if use_right else 0.0
-    new_width = old_width + extra_left + extra_right
-    figure.set_size_inches(new_width, old_height, forward=False)
-    axis.set_position(
-        [
-            (axes_left_in + extra_left) / new_width,
-            axes_bottom_fraction,
-            axes_width_in / new_width,
-            axes_height_fraction,
-        ]
-    )
-
-
-def _rail_x_fraction(figure, axis, side: str) -> float:
-    width = float(figure.get_figwidth())
-    position = axis.get_position()
-    if side == "left":
-        return float(position.x0) - _LEFT_RAIL_OFFSET_IN / width
-    return float(position.x1) + _RIGHT_RAIL_OFFSET_IN / width
-
-
 def _text_box(annotation: Annotation, renderer):
     return Text.get_window_extent(annotation, renderer)
 
@@ -197,7 +124,52 @@ def _remove_dense_inline_annotations(axis, dense_requests) -> None:
             item.remove()
 
 
-def _create_external_callout(figure, axis, request, *, side: str, rail_x: float, y_fraction: float):
+def _bottom_space_inches(max_cluster_size: int) -> float:
+    return max(
+        _MIN_BOTTOM_SPACE_IN,
+        _BOTTOM_SPACE_PER_LABEL_IN * max_cluster_size + _BOTTOM_SPACE_PADDING_IN,
+    )
+
+
+def _reserve_bottom_space(figure, axis, bottom_space_in: float) -> None:
+    """Add vertical callout room while preserving the axes' physical size."""
+    old_width, old_height = (float(value) for value in figure.get_size_inches())
+    position = axis.get_position()
+
+    axes_left_in = float(position.x0) * old_width
+    axes_bottom_in = float(position.y0) * old_height
+    axes_width_in = float(position.width) * old_width
+    axes_height_in = float(position.height) * old_height
+
+    new_height = old_height + bottom_space_in
+    figure.set_size_inches(old_width, new_height, forward=False)
+    axis.set_position(
+        [
+            axes_left_in / old_width,
+            (axes_bottom_in + bottom_space_in) / new_height,
+            axes_width_in / old_width,
+            axes_height_in / new_height,
+        ]
+    )
+
+
+def _stack_vertical_centers(heights: list[float], *, lower: float, upper: float) -> list[float]:
+    if not heights:
+        return []
+
+    total_height = sum(heights) + _RAIL_VERTICAL_GAP_PX * max(0, len(heights) - 1)
+    available = upper - lower
+    start = lower + max(0.0, 0.5 * (available - total_height))
+
+    centers = []
+    cursor = start
+    for height in heights:
+        centers.append(cursor + 0.5 * height)
+        cursor += height + _RAIL_VERTICAL_GAP_PX
+    return centers
+
+
+def _create_bottom_callout(figure, axis, request, *, x_fraction: float, y_fraction: float):
     x_quantity, y_quantity, _response_label, _role, _inverted, line_color = request
     x = float(x_quantity.magnitude)
     y = float(y_quantity.magnitude)
@@ -205,9 +177,9 @@ def _create_external_callout(figure, axis, request, *, side: str, rail_x: float,
         _coordinate_label(x, y),
         xy=(x, y),
         xycoords="data",
-        xytext=(rail_x, y_fraction),
+        xytext=(x_fraction, y_fraction),
         textcoords=figure.transFigure,
-        ha="right" if side == "left" else "left",
+        ha="left",
         va="center",
         fontsize=8.5,
         color=line_color,
@@ -229,68 +201,79 @@ def _create_external_callout(figure, axis, request, *, side: str, rail_x: float,
     return annotation
 
 
-def _layout_external_side(figure, axis, entries, *, side: str) -> list[Annotation]:
-    """Lay one side's dense requests on a single external aligned rail."""
-    if not entries:
-        return []
-
-    figure.canvas.draw()
-    renderer = figure.canvas.get_renderer()
-    axes_box = axis.get_window_extent(renderer)
-    rail_x = _rail_x_fraction(figure, axis, side)
-    figure_height_px = float(figure.bbox.height)
-
-    ordered = sorted(
-        entries,
+def _layout_bottom_cluster(figure, axis, cluster, *, bottom_space_in: float) -> list[Annotation]:
+    requests = [item[2] for item in cluster]
+    requests.sort(
         key=lambda request: float(
             axis.transData.transform(
                 (float(request[0].magnitude), float(request[1].magnitude))
             )[1]
-        ),
-    )
-    desired_centers = [
-        float(
-            axis.transData.transform(
-                (float(request[0].magnitude), float(request[1].magnitude))
-            )[1]
         )
-        for request in ordered
-    ]
+    )
 
+    figure_height_px = float(figure.bbox.height)
+    figure_width_px = float(figure.bbox.width)
+    band_upper_px = bottom_space_in * float(figure.dpi) - _BAND_EDGE_MARGIN_PX
+    band_lower_px = _BAND_EDGE_MARGIN_PX
+
+    provisional_centers = [
+        band_lower_px + (index + 1) * (band_upper_px - band_lower_px) / (len(requests) + 1)
+        for index in range(len(requests))
+    ]
     annotations = [
-        _create_external_callout(
+        _create_bottom_callout(
             figure,
             axis,
             request,
-            side=side,
-            rail_x=rail_x,
-            y_fraction=desired_y / figure_height_px,
+            x_fraction=0.5,
+            y_fraction=center / figure_height_px,
         )
-        for request, desired_y in zip(ordered, desired_centers)
+        for request, center in zip(requests, provisional_centers)
     ]
 
     figure.canvas.draw()
     renderer = figure.canvas.get_renderer()
-    heights = [float(_text_box(annotation, renderer).height) for annotation in annotations]
-    target_centers = _spread_vertical_centers(
-        desired_centers,
+    boxes = [_text_box(annotation, renderer) for annotation in annotations]
+    heights = [float(box.height) for box in boxes]
+    max_width = max(float(box.width) for box in boxes)
+
+    target_centers = _stack_vertical_centers(
         heights,
-        lower=float(axes_box.y0 + _RAIL_EDGE_MARGIN_PX),
-        upper=float(axes_box.y1 - _RAIL_EDGE_MARGIN_PX),
+        lower=band_lower_px,
+        upper=band_upper_px,
     )
+
+    anchor_x_values = [
+        float(
+            axis.transData.transform(
+                (float(request[0].magnitude), float(request[1].magnitude))
+            )[0]
+        )
+        for request in requests
+    ]
+    anchor_x = sum(anchor_x_values) / len(anchor_x_values)
+    rail_left_px = min(
+        max(anchor_x - 0.5 * max_width, _BAND_EDGE_MARGIN_PX),
+        figure_width_px - _BAND_EDGE_MARGIN_PX - max_width,
+    )
+    rail_x_fraction = rail_left_px / figure_width_px
+
     for annotation, target_y in zip(annotations, target_centers):
-        annotation.set_position((rail_x, target_y / figure_height_px))
+        annotation.set_position((rail_x_fraction, target_y / figure_height_px))
+        annotation.set_ha("left")
+        annotation.set_va("center")
 
     figure.canvas.draw()
     return annotations
 
 
 def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
-    """Move only dense multi-series characteristic clusters to external rails.
+    """Move only dense multi-series characteristic clusters to a bottom band.
 
     Characteristic-point mathematics remains owned by the plotting layer.
     Clusters with fewer than three labels retain the existing inline layout.
-    Dense clusters receive external aligned callouts with leader lines.
+    Dense clusters receive aligned callouts below the axes with leader lines.
+    The figure grows only vertically so the plot keeps its original visible size.
     """
     if result.kind != "plot" or len(result.series) < 2:
         return
@@ -309,24 +292,20 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
         if not dense_clusters:
             return
 
-        side_entries = {"left": [], "right": []}
-        dense_requests = []
-        for cluster in dense_clusters:
-            side = _cluster_side(axis, cluster)
-            for _, _, request in cluster:
-                side_entries[side].append(request)
-                dense_requests.append(request)
-
+        dense_requests = [item[2] for cluster in dense_clusters for item in cluster]
         _remove_dense_inline_annotations(axis, dense_requests)
-        _reserve_side_space(
-            figure,
-            axis,
-            use_left=bool(side_entries["left"]),
-            use_right=bool(side_entries["right"]),
-        )
+
+        max_cluster_size = max(len(cluster) for cluster in dense_clusters)
+        bottom_space_in = _bottom_space_inches(max_cluster_size)
+        _reserve_bottom_space(figure, axis, bottom_space_in)
         figure.canvas.draw()
 
-        _layout_external_side(figure, axis, side_entries["left"], side="left")
-        _layout_external_side(figure, axis, side_entries["right"], side="right")
+        for cluster in dense_clusters:
+            _layout_bottom_cluster(
+                figure,
+                axis,
+                cluster,
+                bottom_space_in=bottom_space_in,
+            )
     finally:
         figure.set_canvas(original_canvas)
