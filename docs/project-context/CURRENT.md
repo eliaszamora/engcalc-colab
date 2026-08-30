@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains the canonical integrated release on `main`. EngCalc 0.9.1 exact characteristics is being implemented inline on its dedicated feature branch. Tasks 1 and 2 are complete and fully regression-tested. Task 2 temporary validation workflows have been removed. The exact next step is Task 3 RED for Piecewise roots, discontinuities, and infinite root intervals._
+_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains the canonical integrated release on `main`. EngCalc 0.9.1 exact characteristics is being implemented inline on its dedicated feature branch. Tasks 1–3 are complete and fully regression-tested. All temporary Task 3 validation infrastructure has been removed. The exact next step is Task 4 RED for exact intersections, unit compatibility, coincident intervals, Piecewise discontinuities, and indexed matrix scalars._
 
 ## Current baseline
 
@@ -13,7 +13,7 @@ _Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains the canonical int
 - Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.1-exact-characteristics-implementation.md`.
 - Plan refinement commit: **`eb9b5344d20dab950462c63e742ff8f17be8916d`**.
 - User selected **inline execution / executing-plans** for implementation.
-- Task 2 cleanup head before this context update: **`2e90014e2c1a5902e005e843f465c2cefb513f7d`**.
+- Task 3 temporary-workflow/script cleanup head before this context update: **`087416e28111b22b982f058d85d696b694de76a5`**.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge 0.9.1 into `main` without explicit user approval.
 
@@ -45,6 +45,7 @@ intersections(response_1, response_2, variable, lower, upper)
 - Domains are finite closed real intervals with unit-compatible bounds and `lower < upper`; dimensional-zero inheritance follows existing EngCalc semantics.
 - Whole matrices are rejected; indexed scalar matrix responses such as `K(x)[1,1]` are valid.
 - `roots(...)` keeps real in-domain roots, endpoints and repeated-root de-duplication; identically-zero regions are interval loci.
+- Root/coincident intervals preserve open/closed boundary topology explicitly through immutable interval metadata.
 - `intersections(...)` requires dimensionally compatible responses, respects Piecewise discontinuities and represents coincident intervals explicitly.
 - `extrema(...)` considers stationary points, endpoints, Piecewise breakpoints and finite one-sided values; local/global roles, constant loci and unbounded directions are explicit.
 - Piecewise regions are solved independently; a sign change/crossing through a jump is not a root/intersection unless equality holds at a defined point.
@@ -57,7 +58,7 @@ intersections(response_1, response_2, variable, lower, upper)
 ## Open issues / user feedback
 
 - No blocking 0.9.1 design ambiguity remains.
-- **Tasks 1 and 2 are complete. Task 3 is next.**
+- **Tasks 1–3 are complete. Task 4 is next.**
 - `no_vertical_scroll()` remains a separate ergonomics issue.
 - Multiline ordinary non-matrix function-call parsing remains separate.
 - Generalized structural eigenproblems remain deferred to a dedicated future design.
@@ -98,7 +99,25 @@ intersections(response_1, response_2, variable, lower, upper)
 - Focused roots + `NumericContext` + numeric-units regression gate: **30/30 PASS in 6.27 s**.
 - Complete source suite: **772/772 PASS in 144.49 s**.
 - Task 2 introduced `AnalysisDomain`, finite/unit-compatible closed-domain normalization, exact continuous root solving, exact symbolic coordinate preservation with evaluated Pint quantities, endpoint inclusion, repeated-root de-duplication, no-real-root handling, exact-domain filtering, dimensional response-zero preservation, and explicit unresolved signalling without inventing sampled answers.
-- Both temporary Task 2 workflows were removed after validation; cleanup head before this context update: **`2e90014e2c1a5902e005e843f465c2cefb513f7d`**.
+- Both temporary Task 2 workflows were removed after validation.
+
+### 0.9.1 Task 3 — Piecewise roots, discontinuities + infinite root loci
+
+- Initial Task 3 RED run **`33336461687`**, job **`99324121038`**: **4 failed / 18 passed in 5.01 s**. Failures were exactly interval-zero loci and unresolved-branch preservation.
+- Expanded topology RED run **`33336560664`**, job **`99324414653`**: **6 failed / 18 passed in 5.57 s**, adding the required `[a,b)` versus `[a,b]` distinction.
+- Product GREEN commit: **`324e4990be3c95c19422b6a58804e1b104653d79`** (`feat: make root analysis Piecewise aware`).
+- Focused GREEN run **`33336765363`**, job **`99324970310`**: **60/60 PASS in 8.50 s**; `git diff --check` PASS.
+- Additional dimensional Piecewise contract commit: **`f524f8bf6545bed4669afa228aee22b14cb7c268`**.
+- Idempotent dimensional recheck run **`33336853323`**, job **`99325200843`**: **61/61 PASS in 8.61 s** and explicitly `No product patch to commit.`
+- Authoritative Task 3 full-gate SHA: **`452815344ac483af7af8966eee58e3096ab8c9b4`**.
+- Full-gate run **`33336900776`**, job **`99325325413`**, Python **3.13.15**.
+- `compileall`: PASS.
+- Branch-wide `git diff --check origin/main...HEAD`: PASS.
+- Complete `test_characteristics_*` + `test_piecewise_*` regression gate: **128/128 PASS in 17.88 s**.
+- Complete source suite: **783/783 PASS in 144.99 s**.
+- Task 3 added deterministic Piecewise region partitioning using the existing symbolic breakpoint extractor, branch-by-branch exact root solving, explicit breakpoint evaluation, jump-safe root semantics, identically-zero `CharacteristicInterval(role="roots")` loci, unit-aware symbolic breakpoints, unresolved-branch propagation without discarding exact roots from resolved regions, and immutable `lower_closed` / `upper_closed` interval topology.
+- Dimensional Piecewise validation confirmed a symbolic breakpoint at `L/2`, exact root at `2*L/3`, physical metre coordinates and an inferred kN zero-response unit.
+- All temporary Task 3 workflows and the guarded patch script were removed; cleanup head before this context update: **`087416e28111b22b982f058d85d696b694de76a5`**.
 - No Codex review or Codex Cloud has been invoked.
 
 ## Roadmap / active plan
@@ -109,21 +128,22 @@ intersections(response_1, response_2, variable, lower, upper)
 - **0.9.0 vectors / matrices / linear systems:** **COMPLETE + RELEASE-VALIDATED + MERGED**.
 - **0.9.1 Task 1 parser/API + typed result models:** **COMPLETE — 758/758 full GREEN**.
 - **0.9.1 Task 2 finite unit-aware domain + exact continuous roots:** **COMPLETE — 772/772 full GREEN**.
-- **0.9.1 Task 3 Piecewise roots, discontinuities + infinite root intervals:** **NEXT**.
-- Then Tasks 4–12 per the approved implementation plan.
+- **0.9.1 Task 3 Piecewise roots, discontinuities + infinite root intervals:** **COMPLETE — 783/783 full GREEN**.
+- **0.9.1 Task 4 exact intersections, unit compatibility + coincident intervals:** **NEXT**.
+- Then Tasks 5–12 per the approved implementation plan.
 - Later releases: **0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization**.
 
 ## Exact next step
 
-1. Start Task 3 by writing Piecewise-root tests before changing `characteristics.py`.
-2. RED must cover independent branch solving, branch open/closed endpoint topology, exact root at a defined breakpoint, no false root caused only by a jump sign-change, identically-zero Piecewise regions represented as `CharacteristicInterval` loci, interval clipping to the requested closed domain, de-duplication where branch endpoints coincide, and unresolved branch propagation without fabricated sampled roots.
-3. Reuse `extract_symbolic_breakpoints(...)` / existing Piecewise primitives rather than duplicating breakpoint discovery.
-4. Confirm Task 3 RED on an exact branch SHA in GitHub Actions.
-5. Implement the minimum Piecewise partition/root extension in `characteristics.py`; do not start intersections/extrema early.
-6. Run focused Task 3 GREEN + existing Piecewise regressions, then the full source suite before closing Task 3.
+1. Start Task 4 by creating `tests/test_characteristics_intersections.py` before changing product code.
+2. RED must cover exact polynomial intersections, endpoint equality, no intersection, compatible dimensional responses, incompatible physical dimensions, Piecewise intersections, a sign/crossing jump with no actual equality, coincident full-domain and Piecewise subinterval loci, and an indexed immutable-matrix scalar response.
+3. Reuse the root/Piecewise-region engine; do not create an independent general equation solver.
+4. Implement `solve_intersections_exact(left_expression, right_expression, variable, domain, context, *, overrides=None, left_label=None, right_label=None)` with physical compatibility preflight and candidate revalidation.
+5. Represent exact coincident regions as `CharacteristicInterval(role="coincident")`, preserving open/closed topology.
+6. Run focused intersections + matrix regressions and then the full source suite before closing Task 4.
 7. Keep version at 0.9.0 until Task 12.
 8. Do not merge without explicit user approval and do not invoke Codex unless explicitly authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.9.0 remains canonical on `main@cdc454db7ea43e57e334d523afded8b4ef498ded`. Active 0.9.1 work is on `feature/v0.9.1-exact-characteristics`; the user approved the written design and selected inline execution. Task 1 is complete with authoritative **758/758 PASS**. Task 2 is complete: RED was the intended missing `characteristics` module, focused GREEN **14/14**, expanded focused gate **30/30**, and authoritative full suite **772/772 PASS in 144.49 s** on Actions run `33336114509`, job `99323194537`; temporary Task 2 workflows were removed. Resume with Task 3 RED for Piecewise roots/discontinuities/infinite root intervals. Never merge without explicit user approval and never invoke Codex without explicit authorization.
+Read this file first. EngCalc 0.9.0 remains canonical on `main@cdc454db7ea43e57e334d523afded8b4ef498ded`. Active 0.9.1 work is on `feature/v0.9.1-exact-characteristics`; the user approved the written design and selected inline execution. Tasks 1–3 are complete. Task 1 closed at 758/758, Task 2 at 772/772, and Task 3 at **783/783 PASS in 144.99 s** on Actions run `33336900776`, job `99325325413`. Task 3 temporary workflows/scripts are removed. Resume with Task 4 RED for exact intersections, dimensional compatibility, coincident intervals, Piecewise discontinuities and indexed matrix scalars. Never merge without explicit user approval and never invoke Codex without explicit authorization.
