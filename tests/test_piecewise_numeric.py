@@ -1,8 +1,10 @@
 import pytest
+import sympy as sp
 
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.errors import EngEvaluationError
 from engcalc_colab.models import NumericEvaluationResult
+from engcalc_colab.numeric import NumericContext
 from engcalc_colab.parser import parse_cell
 
 
@@ -133,3 +135,28 @@ def test_piecewise_zero_unit_inference_rejects_nonzero_dimensionless_branch_mixt
 
     with pytest.raises(EngEvaluationError, match=r"line 1: .*nonzero dimensionless.*branch"):
         run(engine, "numeric(q(8*m))")
+
+
+def test_piecewise_numeric_supports_restricted_min_max_with_compatible_units():
+    context = NumericContext()
+    q1, q2 = sp.symbols("q1 q2")
+    context.values["q1"] = 8 * context.ureg.kN / context.ureg.m
+    context.values["q2"] = 4000 * context.ureg.N / context.ureg.m
+
+    _, minimum = context.evaluate_symbolic(sp.Min(q1, q2, evaluate=False))
+    _, maximum = context.evaluate_symbolic(sp.Max(q1, q2, evaluate=False))
+
+    assert minimum.to("kN/m").magnitude == pytest.approx(4.0)
+    assert maximum.to("kN/m").magnitude == pytest.approx(8.0)
+
+
+def test_piecewise_numeric_min_max_normalize_exact_zero_to_dimensional_unit():
+    context = NumericContext()
+    q = sp.Symbol("q")
+    context.values["q"] = 4 * context.ureg.kN / context.ureg.m
+
+    _, minimum = context.evaluate_symbolic(sp.Min(q, sp.Integer(0), evaluate=False))
+    _, maximum = context.evaluate_symbolic(sp.Max(q, sp.Integer(0), evaluate=False))
+
+    assert minimum.to("kN/m").magnitude == pytest.approx(0.0)
+    assert maximum.to("kN/m").magnitude == pytest.approx(4.0)
