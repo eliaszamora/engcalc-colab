@@ -6,6 +6,54 @@ from typing import Any
 
 
 @dataclass(frozen=True)
+class ParsedMatrixLiteral:
+    rows: tuple[tuple[ast.Expression, ...], ...]
+
+
+@dataclass(frozen=True)
+class MatrixLiteralBinding:
+    name: str
+    literal: ParsedMatrixLiteral
+
+
+@dataclass(frozen=True)
+class MatrixShape:
+    rows: int
+    cols: int
+
+
+@dataclass(frozen=True)
+class MatrixNumericGuard:
+    operation: str
+    source_matrix: Any
+
+
+@dataclass(frozen=True)
+class EigenvalueEntry:
+    value: Any
+    multiplicity: int
+
+
+@dataclass(frozen=True)
+class EigenvalueSet:
+    entries: tuple[EigenvalueEntry, ...]
+    source_matrix: Any
+
+
+@dataclass(frozen=True)
+class EigenvectorEntry:
+    value: Any
+    multiplicity: int
+    vectors: tuple[Any, ...]
+
+
+@dataclass(frozen=True)
+class EigenvectorSet:
+    entries: tuple[EigenvectorEntry, ...]
+    source_matrix: Any
+
+
+@dataclass(frozen=True)
 class ParsedStatement:
     line_no: int
     source: str
@@ -14,6 +62,7 @@ class ParsedStatement:
     expression: ast.Expression
     blank_before: bool = False
     display_options: tuple[tuple[str, str], ...] = ()
+    matrix_literals: tuple[MatrixLiteralBinding, ...] = ()
 
     @property
     def parameter(self) -> str | None:
@@ -58,6 +107,7 @@ class UserFunction:
     expression: Any
     derivative_variable: str | None = None
     derivative_breakpoints: tuple[Any, ...] = ()
+    numeric_guards: tuple[MatrixNumericGuard, ...] = ()
 
     def __init__(
         self,
@@ -65,6 +115,7 @@ class UserFunction:
         expression: Any = None,
         derivative_variable: str | None = None,
         derivative_breakpoints: tuple[Any, ...] = (),
+        numeric_guards: tuple[MatrixNumericGuard, ...] = (),
         *,
         parameter: str | None = None,
     ) -> None:
@@ -83,6 +134,7 @@ class UserFunction:
         object.__setattr__(self, "expression", expression)
         object.__setattr__(self, "derivative_variable", derivative_variable)
         object.__setattr__(self, "derivative_breakpoints", tuple(derivative_breakpoints))
+        object.__setattr__(self, "numeric_guards", tuple(numeric_guards))
 
     @property
     def parameter(self) -> str | None:
@@ -143,6 +195,26 @@ class NumericEvaluationResult:
         if self.display_arguments is not None and len(self.display_arguments) == 1:
             return self.display_arguments[0]
         return None
+
+
+@dataclass(frozen=True)
+class NumericMatrixEvaluationResult:
+    statement: ParsedStatement
+    symbolic_matrix: Any
+    substitutions: dict[str, Any]
+    quantity_matrix: Any
+    display_name: str | None = None
+    display_arguments: tuple[Any, ...] | None = None
+
+
+@dataclass(frozen=True)
+class PartialMatrixNumericEvaluationResult:
+    statement: ParsedStatement
+    symbolic_matrix: Any
+    substitutions: dict[str, Any]
+    unresolved_symbols: tuple[str, ...]
+    display_name: str | None = None
+    display_arguments: tuple[Any, ...] | None = None
 
 
 @dataclass(frozen=True)

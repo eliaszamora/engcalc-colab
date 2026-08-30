@@ -15,9 +15,17 @@ from .errors import (
     diagnostic_hint,
 )
 from .models import (
+    EigenvalueEntry,
+    EigenvalueSet,
+    EigenvectorEntry,
+    EigenvectorSet,
     EvaluationResult,
+    MatrixNumericGuard,
     NumericAssignmentResult,
     NumericEvaluationResult,
+    NumericMatrixEvaluationResult,
+    PartialMatrixNumericEvaluationResult,
+    MatrixShape,
     ParsedNumericAssignment,
     ParsedStatement,
     PartialNumericEvaluationResult,
@@ -27,6 +35,34 @@ from .models import (
     TableResult,
     UserFunction,
 )
+from .matrix_core import (
+    build_matrix,
+    is_matrix,
+    map_matrix_entries,
+    matrix_add,
+    matrix_det,
+    matrix_diag,
+    matrix_identity,
+    matrix_index,
+    matrix_inv,
+    matrix_multiply,
+    matrix_power,
+    matrix_scalar_divide,
+    matrix_size,
+    matrix_subtract,
+    matrix_trace,
+    matrix_transpose,
+    matrix_zeros,
+)
+from .matrix_analysis import (
+    matrix_eigenvals,
+    matrix_eigenvects,
+    matrix_norm,
+    matrix_rank,
+    matrix_rref,
+)
+from .matrix_numeric import ensure_common_scale
+from .matrix_solve import solve_linear_system
 from .numeric import NumericContext
 from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
 from .tables import normalize_explicit_points, normalize_uniform_points
@@ -61,6 +97,23 @@ def _substitute_preserving_inverse_trig(expr, bindings):
     if expr.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS:
         return expr.func(*rebuilt_args, evaluate=False)
     return expr.func(*rebuilt_args)
+
+
+def substitute_symbolic_value(value, bindings):
+    """Substitute one scalar or immutable matrix while preserving scalar CAS semantics."""
+    if is_matrix(value):
+        return map_matrix_entries(
+            value,
+            lambda entry: substitute_symbolic_value(entry, bindings),
+        )
+
+    expression = sp.sympify(value)
+    if any(
+        item.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS
+        for item in sp.preorder_traversal(expression)
+    ):
+        return _substitute_preserving_inverse_trig(expression, bindings)
+    return expression.xreplace(bindings)
 
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 
@@ -113,15 +166,17 @@ class _TableEvaluation:
 
 class EngineeringEngine:
     def __init__(self) -> None:
-        self.namespace: dict[str, sp.Expr] = {}
+        self.namespace: dict[str, object] = {}
         self.functions: dict[str, UserFunction] = {}
         self.symbols: dict[str, sp.Symbol] = {}
+        self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
         self.numeric_context = NumericContext()
 
     def reset(self) -> None:
         self.namespace.clear()
         self.functions.clear()
         self.symbols.clear()
+        self.numeric_guards.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -141,11 +196,13 @@ class EngineeringEngine:
         EvaluationResult
         | NumericAssignmentResult
         | NumericEvaluationResult
+        | NumericMatrixEvaluationResult
         | PartialNumericEvaluationResult
+        | PartialMatrixNumericEvaluationResult
         | PlotResult
         | TableResult
     ):
-        evaluator = _Evaluator(self)
+        evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))
         try:
             if isinstance(statement, ParsedNumericAssignment):
                 quantity = self.numeric_context.assign(
@@ -209,6 +266,40 @@ class EngineeringEngine:
                     mode=table_evaluation.mode,
                 )
 
+            if evaluator.partial_matrix_numeric_evaluation is not None:
+                (
+                    symbolic_matrix,
+                    substitutions,
+                    unresolved_symbols,
+                    display_name,
+                    display_arguments,
+                ) = evaluator.partial_matrix_numeric_evaluation
+                return PartialMatrixNumericEvaluationResult(
+                    statement=statement,
+                    symbolic_matrix=symbolic_matrix,
+                    substitutions=substitutions,
+                    unresolved_symbols=unresolved_symbols,
+                    display_name=display_name,
+                    display_arguments=display_arguments,
+                )
+
+            if evaluator.numeric_matrix_evaluation is not None:
+                (
+                    symbolic_matrix,
+                    substitutions,
+                    quantity_matrix,
+                    display_name,
+                    display_arguments,
+                ) = evaluator.numeric_matrix_evaluation
+                return NumericMatrixEvaluationResult(
+                    statement=statement,
+                    symbolic_matrix=symbolic_matrix,
+                    substitutions=substitutions,
+                    quantity_matrix=quantity_matrix,
+                    display_name=display_name,
+                    display_arguments=display_arguments,
+                )
+
             if evaluator.partial_numeric_evaluation is not None:
                 (
                     symbolic_expression,
@@ -256,9 +347,14 @@ class EngineeringEngine:
                         expression=value,
                         derivative_variable=evaluator.derivative_variable,
                         derivative_breakpoints=evaluator.derivative_breakpoints,
+                        numeric_guards=tuple(evaluator.numeric_guards),
                     )
                 else:
                     self.namespace[statement.target] = value
+                    if evaluator.numeric_guards:
+                        self.numeric_guards[statement.target] = tuple(evaluator.numeric_guards)
+                    else:
+                        self.numeric_guards.pop(statement.target, None)
             return EvaluationResult(
                 statement=statement,
                 display_input=evaluator.display_input,
@@ -276,16 +372,108 @@ class EngineeringEngine:
 
 
 class _Evaluator(ast.NodeVisitor):
-    def __init__(self, engine: EngineeringEngine) -> None:
+    def __init__(self, engine: EngineeringEngine, matrix_literals=()) -> None:
         self.engine = engine
+        self.matrix_literals = {binding.name: binding.literal for binding in matrix_literals}
         self.display_input = None
         self.numeric_evaluation = None
         self.partial_numeric_evaluation = None
+        self.numeric_matrix_evaluation = None
+        self.partial_matrix_numeric_evaluation = None
         self.plot_evaluation: _PlotEvaluation | None = None
         self.table_evaluation: _TableEvaluation | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
         self.derivative_variable: str | None = None
         self.derivative_breakpoints: tuple[object, ...] = ()
+        self.numeric_guards: list[MatrixNumericGuard] = []
+
+    def _add_numeric_guard(self, guard: MatrixNumericGuard) -> None:
+        if not any(existing == guard for existing in self.numeric_guards):
+            self.numeric_guards.append(guard)
+
+    def _add_numeric_guards(self, guards) -> None:
+        for guard in guards:
+            self._add_numeric_guard(guard)
+
+    def _substitute_numeric_guard(self, guard: MatrixNumericGuard, bindings) -> MatrixNumericGuard:
+        source = substitute_symbolic_value(guard.source_matrix, bindings) if bindings else guard.source_matrix
+        return MatrixNumericGuard(
+            operation=guard.operation,
+            source_matrix=sp.ImmutableMatrix(source),
+        )
+
+    def _validate_numeric_guards(
+        self,
+        guards=None,
+        *,
+        overrides=None,
+        allowed_unresolved=None,
+    ):
+        validations = []
+        for guard in tuple(self.numeric_guards if guards is None else guards):
+            _substitutions, unresolved, quantity_matrix = self.engine.numeric_context.evaluate_matrix(
+                guard.source_matrix,
+                overrides=overrides,
+                allowed_unresolved=allowed_unresolved,
+            )
+            if unresolved:
+                continue
+            scale = ensure_common_scale(quantity_matrix, guard.operation)
+            validations.append((guard, scale))
+        return tuple(validations)
+
+    @staticmethod
+    def _guard_scale(validations, operation: str, source_matrix):
+        for guard, scale in reversed(validations):
+            if guard.operation == operation and guard.source_matrix == source_matrix:
+                return scale
+        return None
+
+    def _numeric_eigenvalue_set(self, value: EigenvalueSet, validations, target_unit=None):
+        scale = self._guard_scale(validations, "eigenvals", value.source_matrix)
+        entries = []
+        for entry in value.entries:
+            _substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(entry.value)
+            if (
+                scale is not None
+                and quantity.dimensionless
+                and float(quantity.magnitude) == 0.0
+            ):
+                quantity = self.engine.numeric_context.ureg.Quantity(0, scale)
+            if target_unit is not None:
+                quantity = self.engine.numeric_context.convert_quantity(quantity, target_unit)
+            entries.append(EigenvalueEntry(value=quantity, multiplicity=entry.multiplicity))
+        return EigenvalueSet(entries=tuple(entries), source_matrix=value.source_matrix)
+
+    def _numeric_eigenvector_set(self, value: EigenvectorSet, validations, target_unit=None):
+        scale = self._guard_scale(validations, "eigenvects", value.source_matrix)
+        entries = []
+        for entry in value.entries:
+            _substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(entry.value)
+            if (
+                scale is not None
+                and quantity.dimensionless
+                and float(quantity.magnitude) == 0.0
+            ):
+                quantity = self.engine.numeric_context.ureg.Quantity(0, scale)
+            if target_unit is not None:
+                quantity = self.engine.numeric_context.convert_quantity(quantity, target_unit)
+            numeric_vectors = []
+            for vector in entry.vectors:
+                _subs, unresolved, quantity_matrix = self.engine.numeric_context.evaluate_matrix(vector)
+                if unresolved:
+                    raise EngEvaluationError(
+                        "numeric eigenvectors require fully numeric vector entries"
+                    )
+                numeric_vectors.append(quantity_matrix)
+            entries.append(
+                EigenvectorEntry(
+                    value=quantity,
+                    multiplicity=entry.multiplicity,
+                    vectors=tuple(numeric_vectors),
+                )
+            )
+        return EigenvectorSet(entries=tuple(entries), source_matrix=value.source_matrix)
 
     def visit_function_body(self, node: ast.AST, parameters: tuple[str, ...]):
         previous = dict(self.symbol_overrides)
@@ -335,6 +523,25 @@ class _Evaluator(ast.NodeVisitor):
                 raise
             return quantity
 
+    def _evaluate_matrix_literal(self, literal):
+        rows = tuple(
+            tuple(self.visit(expression.body) for expression in row)
+            for row in literal.rows
+        )
+        return build_matrix(rows)
+
+    def visit_List(self, node: ast.List):
+        return build_matrix((tuple(self.visit(element) for element in node.elts),))
+
+    def visit_Subscript(self, node: ast.Subscript):
+        value = self.visit(node.value)
+        if isinstance(node.slice, ast.Tuple):
+            index_nodes = tuple(node.slice.elts)
+        else:
+            index_nodes = (node.slice,)
+        indices = tuple(self.visit(item) for item in index_nodes)
+        return matrix_index(value, indices)
+
     def visit_Constant(self, node: ast.Constant):
         if isinstance(node.value, bool) or node.value is None:
             raise EngEvaluationError("only numeric constants are supported")
@@ -345,10 +552,14 @@ class _Evaluator(ast.NodeVisitor):
         raise EngEvaluationError("only numeric constants are supported")
 
     def visit_Name(self, node: ast.Name):
+        if node.id in self.matrix_literals:
+            return self._evaluate_matrix_literal(self.matrix_literals[node.id])
         if node.id in self.symbol_overrides:
             return self.symbol_overrides[node.id]
         if node.id == "pi":
             return sp.pi
+        if node.id in self.engine.namespace:
+            self._add_numeric_guards(self.engine.numeric_guards.get(node.id, ()))
         return self.engine.resolve_name(node.id)
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
@@ -362,11 +573,16 @@ class _Evaluator(ast.NodeVisitor):
     def visit_BinOp(self, node: ast.BinOp):
         left = self.visit(node.left)
         right = self.visit(node.right)
-        if isinstance(node.op, ast.Add): return left + right
-        if isinstance(node.op, ast.Sub): return left - right
-        if isinstance(node.op, ast.Mult): return left * right
-        if isinstance(node.op, ast.Div): return left / right
-        if isinstance(node.op, ast.Pow): return left ** right
+        if isinstance(node.op, ast.Add):
+            return matrix_add(left, right)
+        if isinstance(node.op, ast.Sub):
+            return matrix_subtract(left, right)
+        if isinstance(node.op, ast.Mult):
+            return matrix_multiply(left, right)
+        if isinstance(node.op, ast.Div):
+            return matrix_scalar_divide(left, right)
+        if isinstance(node.op, ast.Pow):
+            return matrix_power(left, right)
         raise EngEvaluationError("unsupported operator")
 
     def _evaluate_piecewise_condition(self, node: ast.AST):
@@ -468,11 +684,11 @@ class _Evaluator(ast.NodeVisitor):
                     self._resolve_numeric_user_function_argument(argument_node)
                     for argument_node in argument.args
                 )
-                symbolic_expression = sp.sympify(function.expression)
+                symbolic_expression = function.expression
                 display_name = function_name
                 display_arguments = argument_expressions
 
-                unresolved = [
+                unresolved_arguments = [
                     (parameter, argument_expression, argument_value)
                     for parameter, argument_expression, argument_value in zip(
                         function.parameters,
@@ -481,30 +697,85 @@ class _Evaluator(ast.NodeVisitor):
                     )
                     if isinstance(argument_value, sp.Expr)
                 ]
-                if unresolved:
-                    overrides = {}
-                    bindings = {}
-                    allowed_unresolved = set()
-                    for parameter, argument_expression, argument_value in zip(
-                        function.parameters,
-                        argument_expressions,
-                        argument_values,
-                    ):
-                        if isinstance(argument_value, sp.Expr):
-                            symbolic_argument = sp.sympify(argument_expression)
-                            bindings[self.engine.resolve_symbol(parameter)] = symbolic_argument
-                            allowed_unresolved.update(
-                                symbol.name for symbol in symbolic_argument.free_symbols
-                            )
-                        else:
-                            overrides[parameter] = argument_value
+                overrides = {}
+                bindings = {}
+                allowed_unresolved: set[str] = set()
+                for parameter, argument_expression, argument_value in zip(
+                    function.parameters,
+                    argument_expressions,
+                    argument_values,
+                ):
+                    if isinstance(argument_value, sp.Expr):
+                        symbolic_argument = sp.sympify(argument_expression)
+                        bindings[self.engine.resolve_symbol(parameter)] = symbolic_argument
+                        allowed_unresolved.update(
+                            symbol.name for symbol in symbolic_argument.free_symbols
+                        )
+                    else:
+                        overrides[parameter] = argument_value
 
-                    if bindings:
-                        symbolic_expression = _substitute_preserving_inverse_trig(
-                            symbolic_expression,
-                            bindings,
+                if bindings:
+                    symbolic_expression = substitute_symbolic_value(
+                        symbolic_expression,
+                        bindings,
+                    )
+
+                effective_guards = tuple(
+                    self._substitute_numeric_guard(guard, bindings)
+                    for guard in function.numeric_guards
+                )
+                self._add_numeric_guards(effective_guards)
+                self._validate_numeric_guards(
+                    effective_guards,
+                    overrides=overrides,
+                    allowed_unresolved=allowed_unresolved,
+                )
+
+                if is_matrix(symbolic_expression):
+                    if (
+                        not unresolved_arguments
+                        and function.derivative_variable is not None
+                        and function.derivative_breakpoints
+                        and function.derivative_variable in function.parameters
+                    ):
+                        derivative_index = function.parameters.index(
+                            function.derivative_variable
+                        )
+                        self.engine.numeric_context.ensure_not_derivative_breakpoint(
+                            function.derivative_variable,
+                            argument_values[derivative_index],
+                            function.derivative_breakpoints,
+                            overrides=overrides,
                         )
 
+                    substitutions, unresolved_symbols, quantity_matrix = (
+                        self.engine.numeric_context.evaluate_matrix(
+                            symbolic_expression,
+                            overrides=overrides,
+                            target_unit=target_unit,
+                            allowed_unresolved=allowed_unresolved,
+                        )
+                    )
+                    if unresolved_symbols:
+                        self.partial_matrix_numeric_evaluation = (
+                            symbolic_expression,
+                            substitutions,
+                            unresolved_symbols,
+                            display_name,
+                            display_arguments,
+                        )
+                    else:
+                        self.numeric_matrix_evaluation = (
+                            symbolic_expression,
+                            substitutions,
+                            quantity_matrix,
+                            display_name,
+                            display_arguments,
+                        )
+                    return symbolic_expression
+
+                symbolic_expression = sp.sympify(symbolic_expression)
+                if unresolved_arguments:
                     substitutions, unresolved_symbols = (
                         self.engine.numeric_context.partial_substitutions(
                             symbolic_expression,
@@ -554,8 +825,7 @@ class _Evaluator(ast.NodeVisitor):
                             piecewise_evaluation,
                         )
                         return symbolic_expression
-                else:
-                    overrides = dict(zip(function.parameters, argument_values))
+
                 if (
                     function.derivative_variable is not None
                     and function.derivative_breakpoints
@@ -588,6 +858,44 @@ class _Evaluator(ast.NodeVisitor):
                     ) from exc
             else:
                 symbolic_expression = self.visit(argument)
+                guard_validations = self._validate_numeric_guards()
+                if isinstance(symbolic_expression, EigenvalueSet):
+                    return self._numeric_eigenvalue_set(
+                        symbolic_expression,
+                        guard_validations,
+                        target_unit=target_unit,
+                    )
+                if isinstance(symbolic_expression, EigenvectorSet):
+                    return self._numeric_eigenvector_set(
+                        symbolic_expression,
+                        guard_validations,
+                        target_unit=target_unit,
+                    )
+                if is_matrix(symbolic_expression):
+                    substitutions, unresolved_symbols, quantity_matrix = (
+                        self.engine.numeric_context.evaluate_matrix(
+                            symbolic_expression,
+                            target_unit=target_unit,
+                        )
+                    )
+                    if unresolved_symbols:
+                        self.partial_matrix_numeric_evaluation = (
+                            symbolic_expression,
+                            substitutions,
+                            unresolved_symbols,
+                            display_name,
+                            display_arguments,
+                        )
+                    else:
+                        self.numeric_matrix_evaluation = (
+                            symbolic_expression,
+                            substitutions,
+                            quantity_matrix,
+                            display_name,
+                            display_arguments,
+                        )
+                    return symbolic_expression
+
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
                     symbolic_expression
                 )
@@ -609,6 +917,12 @@ class _Evaluator(ast.NodeVisitor):
 
         if name == "solve":
             self._require_arity(name, node.args, 2, "equation, unknown")
+
+            first_value = self.visit(node.args[0])
+            if is_matrix(first_value):
+                rhs_value = self.visit(node.args[1])
+                return solve_linear_system(first_value, rhs_value)
+
             unknown_node = node.args[1]
             if not isinstance(unknown_node, ast.Name):
                 raise EngEvaluationError("solve unknown must be a symbolic identifier")
@@ -637,6 +951,54 @@ class _Evaluator(ast.NodeVisitor):
 
         args = [self.visit(arg) for arg in node.args]
 
+        if name == "identity":
+            self._require_arity(name, args, 1, "dimension")
+            return matrix_identity(args[0])
+
+        if name == "zeros":
+            self._require_arity(name, args, 2, "rows, cols")
+            return matrix_zeros(args[0], args[1])
+
+        if name == "diag":
+            return matrix_diag(args)
+
+        if name == "transpose":
+            self._require_arity(name, args, 1, "matrix")
+            return matrix_transpose(args[0])
+
+        if name == "det":
+            self._require_arity(name, args, 1, "matrix")
+            return matrix_det(args[0])
+
+        if name == "inv":
+            self._require_arity(name, args, 1, "matrix")
+            return matrix_inv(args[0])
+
+        if name == "trace":
+            self._require_arity(name, args, 1, "matrix")
+            return matrix_trace(args[0])
+
+        if name == "size":
+            self._require_arity(name, args, 1, "matrix")
+            rows, cols = matrix_size(args[0])
+            return MatrixShape(rows=rows, cols=cols)
+
+        if name in {"rank", "rref", "norm", "eigenvals", "eigenvects"}:
+            self._require_arity(name, args, 1, "matrix")
+            operations = {
+                "rank": matrix_rank,
+                "rref": matrix_rref,
+                "norm": matrix_norm,
+                "eigenvals": matrix_eigenvals,
+                "eigenvects": matrix_eigenvects,
+            }
+            result = operations[name](args[0])
+            source_matrix = sp.ImmutableMatrix(args[0])
+            self._add_numeric_guard(
+                MatrixNumericGuard(operation=name, source_matrix=source_matrix)
+            )
+            return result
+
         if name in self.engine.functions:
             function = self.engine.functions[name]
             self._require_user_function_arity(name, function, args)
@@ -645,19 +1007,18 @@ class _Evaluator(ast.NodeVisitor):
                 for parameter in function.parameters
             )
             bindings = dict(zip(parameters, args))
-            expression = sp.sympify(function.expression)
-            if any(
-                item.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS
-                for item in sp.preorder_traversal(expression)
-            ):
-                return _substitute_preserving_inverse_trig(
-                    expression,
-                    bindings,
-                )
-            return expression.xreplace(bindings)
+            self._add_numeric_guards(
+                self._substitute_numeric_guard(guard, bindings)
+                for guard in function.numeric_guards
+            )
+            return substitute_symbolic_value(function.expression, bindings)
 
         if name in _SCALAR_SYMBOLIC_FUNCTIONS:
             self._require_arity(name, args, 1, "expression")
+            if is_matrix(args[0]):
+                raise EngEvaluationError(
+                    f"{name} requires a scalar expression, not a matrix"
+                )
             if name in {"asin", "acos", "atan"}:
                 return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0], evaluate=False)
             return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0])
@@ -669,6 +1030,15 @@ class _Evaluator(ast.NodeVisitor):
         if name == "integral":
             self._require_arity(name, args, 4, "expression, variable, lower, upper")
             expr, var, lower, upper = args
+            if is_matrix(expr):
+                self.display_input = map_matrix_entries(
+                    expr,
+                    lambda entry: sp.Integral(entry, (var, lower, upper)),
+                )
+                return map_matrix_entries(
+                    expr,
+                    lambda entry: sp.integrate(entry, (var, lower, upper)),
+                )
             self.display_input = sp.Integral(expr, (var, lower, upper))
             return sp.integrate(expr, (var, lower, upper))
 
@@ -679,6 +1049,25 @@ class _Evaluator(ast.NodeVisitor):
                 )
             expr, var = args[:2]
             order = int(args[2]) if len(args) == 3 else 1
+            if is_matrix(expr):
+                self.display_input = map_matrix_entries(
+                    expr,
+                    lambda entry: sp.Derivative(entry, (var, order)),
+                )
+                if isinstance(var, sp.Symbol):
+                    breakpoints = []
+                    for entry in expr:
+                        for breakpoint in extract_symbolic_breakpoints(entry, var.name):
+                            if breakpoint not in breakpoints:
+                                breakpoints.append(breakpoint)
+                    if breakpoints:
+                        self.derivative_variable = var.name
+                        self.derivative_breakpoints = tuple(breakpoints)
+                return map_matrix_entries(
+                    expr,
+                    lambda entry: sp.diff(entry, var, order),
+                )
+
             self.display_input = sp.Derivative(expr, (var, order))
             if isinstance(var, sp.Symbol):
                 breakpoints = extract_symbolic_breakpoints(expr, var.name)
@@ -698,10 +1087,17 @@ class _Evaluator(ast.NodeVisitor):
                 "expand": sp.expand,
                 "factor": sp.factor,
             }[name]
+            if is_matrix(args[0]):
+                return map_matrix_entries(args[0], operation)
             return operation(args[0])
 
         if name == "subs":
             self._require_arity(name, args, 3, "expression, variable, value")
+            if is_matrix(args[0]):
+                return map_matrix_entries(
+                    args[0],
+                    lambda entry: sp.sympify(entry).subs(args[1], args[2]),
+                )
             return sp.sympify(args[0]).subs(args[1], args[2])
 
         raise EngSyntaxError(f"unsupported function '{name}'")
@@ -765,6 +1161,12 @@ class _Evaluator(ast.NodeVisitor):
             self._resolve_response_expression(item, variable)
             for item in response_nodes
         ]
+        if any(
+            is_matrix(response.signed_expression)
+            or is_matrix(response.comparison_expression)
+            for response in resolved_responses
+        ):
+            raise EngEvaluationError("table response must be scalar")
 
         columns = []
         canonical_unit = None
@@ -1026,6 +1428,12 @@ class _Evaluator(ast.NodeVisitor):
             self._resolve_response_expression(item, variable)
             for item in expression_nodes
         ]
+        if any(
+            is_matrix(expression.signed_expression)
+            or is_matrix(expression.comparison_expression)
+            for expression in resolved_expressions
+        ):
+            raise EngEvaluationError(f"{call_name} response must be scalar")
         source_labels = [item.source_label for item in resolved_expressions]
 
         if node.keywords:

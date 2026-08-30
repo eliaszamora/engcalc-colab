@@ -59,9 +59,9 @@ def test_plot_rejects_empty_or_non_list_sweep_values():
         parse_cell("plot(M(x), x, 0, L, q=5*kN/m)")
 
 
-def test_list_syntax_is_not_enabled_outside_plot_sweep():
-    with pytest.raises(EngSyntaxError, match="unsupported syntax 'List'"):
-        parse_cell("A = [1, 2]")
+def test_simple_list_literal_is_row_matrix_outside_plot_sweep():
+    stmt = parse_cell("A = [1, 2]")[0]
+    assert isinstance(stmt.expression.body, ast.List)
 
 
 def test_plot_sweep_rejects_comprehensions_nested_lists_and_unpacking():

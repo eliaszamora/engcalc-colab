@@ -13,6 +13,7 @@ from pint.errors import DimensionalityError, PintError
 from sympy.polys.polyerrors import PolynomialError
 
 from .errors import EngEvaluationError, diagnostic_hint
+from .matrix_numeric import QuantityMatrix
 
 
 _UNIT_ALIASES = {
@@ -485,6 +486,120 @@ class NumericContext:
         except Exception as exc:
             raise EngEvaluationError(f"numeric evaluation failed: {exc}") from exc
         return substitutions, quantity
+
+    def evaluate_matrix(
+        self,
+        matrix,
+        overrides: dict[str, Any] | None = None,
+        target_unit=None,
+        *,
+        allowed_unresolved: set[str] | None = None,
+    ):
+        if not isinstance(matrix, sp.MatrixBase):
+            raise EngEvaluationError("matrix numeric evaluation requires a symbolic matrix")
+
+        overrides = dict(overrides or {})
+        names = sorted({
+            symbol.name
+            for entry in matrix
+            for symbol in sp.sympify(entry).free_symbols
+        })
+        substitutions = {
+            name: overrides[name] if name in overrides else self.values[name]
+            for name in names
+            if name in overrides or name in self.values
+        }
+        unresolved = tuple(name for name in names if name not in substitutions)
+
+        if allowed_unresolved is not None:
+            unexpected = tuple(
+                name for name in unresolved if name not in allowed_unresolved
+            )
+            if unexpected:
+                hint = diagnostic_hint("unresolved_numeric_symbols", names=unexpected)
+                raise EngEvaluationError(
+                    "numeric evaluation requires values for: "
+                    + ", ".join(unexpected)
+                    + f". {hint}"
+                )
+
+        if unresolved:
+            if target_unit is not None:
+                raise EngEvaluationError(
+                    "target-unit conversion requires a fully numeric result: "
+                    + ", ".join(unresolved)
+                )
+            return substitutions, unresolved, None
+
+        entries = []
+        adaptable_zeros: set[tuple[int, int]] = set()
+        for row in range(matrix.rows):
+            for col in range(matrix.cols):
+                expression = sp.sympify(matrix[row, col])
+                if expression.is_zero is True:
+                    adaptable_zeros.add((row, col))
+                try:
+                    value = self._evaluate_sympy(expression, substitutions)
+                    quantity = self._as_quantity(value)
+                except DimensionalityError as exc:
+                    raise EngEvaluationError(
+                        "matrix numeric evaluation has incompatible units at "
+                        f"[{row + 1},{col + 1}]"
+                    ) from exc
+                except EngEvaluationError as exc:
+                    if "incompatible" in str(exc).lower() and "unit" in str(exc).lower():
+                        raise EngEvaluationError(
+                            "matrix numeric evaluation has incompatible units at "
+                            f"[{row + 1},{col + 1}]"
+                        ) from exc
+                    raise EngEvaluationError(
+                        f"matrix numeric evaluation failed at [{row + 1},{col + 1}]: {exc}"
+                    ) from exc
+                except PintError as exc:
+                    raise EngEvaluationError(
+                        f"matrix numeric unit evaluation failed at [{row + 1},{col + 1}]: {exc}"
+                    ) from exc
+                except Exception as exc:
+                    raise EngEvaluationError(
+                        f"matrix numeric evaluation failed at [{row + 1},{col + 1}]: {exc}"
+                    ) from exc
+                entries.append(quantity)
+
+        quantity_matrix = QuantityMatrix(
+            rows=matrix.rows,
+            cols=matrix.cols,
+            entries=tuple(entries),
+            adaptable_zeros=frozenset(adaptable_zeros),
+        )
+
+        if target_unit is not None:
+            converted = []
+            for row in range(matrix.rows):
+                for col in range(matrix.cols):
+                    quantity = quantity_matrix.entry(row, col)
+                    coordinate = (row, col)
+                    if (
+                        coordinate in quantity_matrix.adaptable_zeros
+                        and quantity.dimensionless
+                        and self._is_exact_zero_quantity(quantity)
+                    ):
+                        converted.append(self.ureg.Quantity(0, target_unit))
+                        continue
+                    try:
+                        converted.append(quantity.to(target_unit))
+                    except DimensionalityError as exc:
+                        raise EngEvaluationError(
+                            "target unit is incompatible with matrix entry at "
+                            f"[{row + 1},{col + 1}]"
+                        ) from exc
+            quantity_matrix = QuantityMatrix(
+                rows=matrix.rows,
+                cols=matrix.cols,
+                entries=tuple(converted),
+                adaptable_zeros=quantity_matrix.adaptable_zeros,
+            )
+
+        return substitutions, (), quantity_matrix
 
     def _is_exact_zero_quantity(self, value) -> bool:
         quantity = self._as_quantity(value)
