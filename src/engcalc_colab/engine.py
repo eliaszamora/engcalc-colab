@@ -49,6 +49,7 @@ from .matrix_core import (
     matrix_transpose,
     matrix_zeros,
 )
+from .matrix_solve import solve_linear_system
 from .numeric import NumericContext
 from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
 from .tables import normalize_explicit_points, normalize_uniform_points
@@ -781,6 +782,12 @@ class _Evaluator(ast.NodeVisitor):
 
         if name == "solve":
             self._require_arity(name, node.args, 2, "equation, unknown")
+
+            first_value = self.visit(node.args[0])
+            if is_matrix(first_value):
+                rhs_value = self.visit(node.args[1])
+                return solve_linear_system(first_value, rhs_value)
+
             unknown_node = node.args[1]
             if not isinstance(unknown_node, ast.Name):
                 raise EngEvaluationError("solve unknown must be a symbolic identifier")
