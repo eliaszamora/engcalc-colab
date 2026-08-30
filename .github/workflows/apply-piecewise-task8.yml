@@ -1,0 +1,242 @@
+name: Execute Piecewise Task 8
+
+on:
+  push:
+    branches:
+      - feature/v0.8.0-piecewise
+    paths:
+      - .github/workflows/apply-piecewise-task8.yml
+
+permissions:
+  contents: write
+
+jobs:
+  task8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.8.0-piecewise
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install baseline
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Write Task 8 acceptance tests
+        run: |
+          cat > tests/test_piecewise_acceptance.py <<'PY'
+          from pathlib import Path
+
+          import pytest
+
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.models import (
+              EvaluationResult,
+              NumericAssignmentResult,
+              NumericEvaluationResult,
+              PartialNumericEvaluationResult,
+              PlotResult,
+              TableResult,
+          )
+          from engcalc_colab.parser import parse_cell
+
+
+          def test_realistic_piecewise_workflow_preserves_result_order_and_contracts():
+              engine = EngineeringEngine()
+              source = (
+                  "q1 := 8*kN/m\n"
+                  "q2 := 4*kN/m\n"
+                  "a := 3*m\n"
+                  "L := 6*m\n"
+                  "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\n"
+                  "numeric(q(x))\n"
+                  "numeric(q(2*m))\n"
+                  "table(q(x), x, 0, L, 21)\n"
+                  "plot(q(x), x, 0, L)"
+              )
+              results = [engine.evaluate(item) for item in parse_cell(source)]
+              assert [type(item) for item in results] == [
+                  NumericAssignmentResult,
+                  NumericAssignmentResult,
+                  NumericAssignmentResult,
+                  NumericAssignmentResult,
+                  EvaluationResult,
+                  PartialNumericEvaluationResult,
+                  NumericEvaluationResult,
+                  TableResult,
+                  PlotResult,
+              ]
+              assert results[6].quantity.to("kN/m").magnitude == pytest.approx(8.0)
+              assert len(results[7].point_values) == 21
+              assert len(results[8].x_values) == 201
+              breakpoint = results[8].series[0].segment_starts
+              assert breakpoint
+
+
+          def test_readme_documents_the_executable_piecewise_contract():
+              readme = Path("README.md").read_text()
+              required = [
+                  "## v0.8.0 Piecewise expressions",
+                  "piecewise(q1, x < a, q2, x <= L, 0)",
+                  "mandatory default",
+                  "numeric(q(x))",
+                  "table(q(x), x, 0, L, 21)",
+                  "201-point base grid",
+                  "derivative",
+                  "breakpoint",
+                  "0.8.0 limitations",
+              ]
+              for text in required:
+                  assert text in readme
+          PY
+
+          cat > tests/test_piecewise_magic.py <<'PY'
+          from IPython.display import HTML, Math
+          from matplotlib.figure import Figure
+
+          import engcalc_colab.magic as magic_module
+          from engcalc_colab.magic import EngMagics
+
+
+          def test_eng_magic_displays_equations_then_table_then_plot_in_source_order(monkeypatch):
+              displayed = []
+              monkeypatch.setattr(magic_module, "display", displayed.append)
+              magic = EngMagics(shell=None)
+              cell = (
+                  "q1 := 8*kN/m\nq2 := 4*kN/m\na := 3*m\nL := 6*m\n"
+                  "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\n"
+                  "numeric(q(x))\nnumeric(q(2*m))\n"
+                  "table(q(x), x, 0, L, 21)\n"
+                  "plot(q(x), x, 0, L)"
+              )
+              assert magic.eng("", cell) is None
+              assert len(displayed) == 3
+              assert isinstance(displayed[0], Math)
+              assert isinstance(displayed[1], HTML)
+              assert isinstance(displayed[2], Figure)
+          PY
+
+          cat >> tests/test_diagnostics.py <<'PY'
+
+
+          def test_piecewise_missing_default_diagnostic():
+              from engcalc_colab.errors import EngSyntaxError
+              from engcalc_colab.parser import parse_cell
+              import pytest
+              with pytest.raises(EngSyntaxError, match=r"piecewise.*default"):
+                  parse_cell("q(x) = piecewise(q1, x < a)")
+
+
+          def test_piecewise_boolean_and_chained_conditions_are_rejected():
+              from engcalc_colab.errors import EngSyntaxError
+              from engcalc_colab.parser import parse_cell
+              import pytest
+              with pytest.raises(EngSyntaxError, match=r"piecewise condition.*direct comparison"):
+                  parse_cell("q(x) = piecewise(q1, x < a and x < L, 0)")
+              with pytest.raises(EngSyntaxError, match=r"chained piecewise comparisons"):
+                  parse_cell("q(x) = piecewise(q1, 0 < x < a, 0)")
+
+
+          def test_piecewise_condition_must_compare_interval_variable_directly():
+              from engcalc_colab.errors import EngSyntaxError
+              from engcalc_colab.parser import parse_cell
+              import pytest
+              with pytest.raises(EngSyntaxError, match=r"interval variable directly"):
+                  parse_cell("q(x) = piecewise(q1, x + 1 < a, 0)")
+
+
+          def test_piecewise_unresolved_plot_breakpoint_is_corrective():
+              from engcalc_colab.engine import EngineeringEngine
+              from engcalc_colab.errors import EngEvaluationError
+              from engcalc_colab.parser import parse_cell
+              import pytest
+              engine = EngineeringEngine()
+              for item in parse_cell("q(x) = piecewise(q1, x < a, 0)\nq1 := 8*kN/m\nL := 6*m"):
+                  engine.evaluate(item)
+              with pytest.raises(EngEvaluationError, match=r"Piecewise breakpoint.*a"):
+                  engine.evaluate(parse_cell("plot(q(x), x, 0, L)")[0])
+
+
+          def test_piecewise_incompatible_condition_units_are_identified():
+              from engcalc_colab.engine import EngineeringEngine
+              from engcalc_colab.errors import EngEvaluationError
+              from engcalc_colab.parser import parse_cell
+              import pytest
+              engine = EngineeringEngine()
+              source = "q(x) = piecewise(q1, x < a, 0)\nq1 := 8*kN/m\na := 3*m"
+              for item in parse_cell(source):
+                  engine.evaluate(item)
+              with pytest.raises(EngEvaluationError, match=r"comparison.*incompatible units"):
+                  engine.evaluate(parse_cell("numeric(q(2*s))")[0])
+
+
+          def test_piecewise_incompatible_branch_units_are_identified():
+              from engcalc_colab.engine import EngineeringEngine
+              from engcalc_colab.errors import EngEvaluationError
+              from engcalc_colab.parser import parse_cell
+              import pytest
+              engine = EngineeringEngine()
+              source = (
+                  "q(x) = piecewise(q1, x < a, d, x <= L, 0)\n"
+                  "q1 := 8*kN/m\nd := 2*m\na := 3*m\nL := 6*m"
+              )
+              for item in parse_cell(source):
+                  engine.evaluate(item)
+              with pytest.raises(EngEvaluationError, match=r"piecewise branches.*incompatible"):
+                  engine.evaluate(parse_cell("numeric(q(x))")[0])
+
+
+          def test_piecewise_derivative_breakpoint_diagnostic_is_explicit():
+              from engcalc_colab.engine import EngineeringEngine
+              from engcalc_colab.errors import EngEvaluationError
+              from engcalc_colab.parser import parse_cell
+              import pytest
+              engine = EngineeringEngine()
+              source = (
+                  "q(x) = piecewise(c1*x^2, x < a, c2*x, x <= L, 0)\n"
+                  "dq(x) = diff(q(x), x)\n"
+                  "c1 := 2*kN/m^3\nc2 := 5*kN/m^2\na := 3*m\nL := 6*m"
+              )
+              for item in parse_cell(source):
+                  engine.evaluate(item)
+              with pytest.raises(EngEvaluationError, match=r"derivative.*undefined.*Piecewise breakpoint"):
+                  engine.evaluate(parse_cell("numeric(dq(3*m))")[0])
+          PY
+      - name: Verify Task 8 RED
+        run: |
+          set +e
+          python -m pytest tests/test_piecewise_acceptance.py tests/test_piecewise_magic.py tests/test_diagnostics.py -q
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Task 8 tests unexpectedly passed before README documentation"
+            exit 1
+          fi
+          echo "TASK8_RED_CONFIRMED exit=$status"
+      - name: Document Piecewise workflows
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('README.md')
+          text = path.read_text()
+          anchor = '## v0.7.2 engineering tables\n'
+          section = '''## v0.8.0 Piecewise expressions\n\nEngCalc 0.8.0 adds restricted, unit-aware Piecewise expressions for engineering response laws. The primary form is:\n\n```text\nq1 := 8*kN/m\nq2 := 4*kN/m\na := 3*m\nL := 6*m\nq(x) = piecewise(q1, x < a, q2, x <= L, 0)\n```\n\nEvery `piecewise(...)` requires ordered `value, condition` pairs followed by a **mandatory default** value. Conditions are intentionally restricted to one direct `<`, `<=`, `>` or `>=` comparison between the Piecewise interval variable and a breakpoint expression. Boolean combinations, chained inequalities and arbitrary condition logic are outside the public 0.8.0 grammar. Source branch order determines ownership at boundaries.\n\nThe same definition works through full and partial numerical evaluation:\n\n```text\nnumeric(q(2*m))\nnumeric(q(x))\n```\n\nFully numeric calls select the governing branch using Pint-aware comparisons. A partial call retains the interval variable and renders the evaluated Piecewise cases. Exact dimensionless zero branches inherit the compatible dimensional unit of the other branches; incompatible branch or comparison dimensions raise an engineering-facing error.\n\nTables preserve their existing exact-count contract:\n\n```text\ntable(q(x), x, 0, L, 21)\n```\n\nThe example above returns exactly 21 rows. Piecewise does not add hidden table samples. Plotting is different by design: it retains the existing **201-point base grid** and adds any exact, numerically resolvable Piecewise breakpoints that are not already present. Multi-series plots, parameter sweeps and envelopes use the union of their breakpoints on one shared grid. Lines and fills are split at branch transitions, so a discontinuity is never shown with a fictitious connector. Positive structural moment remains plotted downward.\n\nSymbolic calculus continues to delegate to SymPy. `integral(...)` results containing supported `Piecewise`, `Min` or `Max` structures remain numerically evaluable. `diff(...)` returns branchwise derivatives without introducing a public `DiracDelta`; however, EngCalc treats a derivative as undefined at every explicit Piecewise breakpoint and `numeric(...)` raises a corrective diagnostic exactly at that point, regardless of endpoint ownership. Evaluate the derivative immediately to either side when one-sided values are needed.\n\n### 0.8.0 limitations\n\nThe 0.8.0 scope does not add arbitrary boolean Piecewise logic, open/closed endpoint glyphs, `solve(piecewise(...))`, exact Piecewise roots/intersections, exact governing-interval envelopes, arbitrary Python execution, or automatic differentiability proofs. Breakpoints used for plotting must be numerically resolvable from the current EngCalc numerical context.\n\n'''
+          assert text.count(anchor) == 1
+          path.write_text(text.replace(anchor, section + anchor, 1))
+          PY
+          git diff --check
+      - name: Verify Task 8 focused GREEN
+        run: python -m pytest tests/test_piecewise_acceptance.py tests/test_piecewise_magic.py tests/test_diagnostics.py -q
+      - name: Verify complete Piecewise GREEN
+        run: |
+          python -m pytest tests/test_piecewise_parser.py tests/test_piecewise_symbolic.py tests/test_piecewise_numeric.py tests/test_piecewise_partial_numeric.py tests/test_piecewise_renderer.py tests/test_piecewise_table.py tests/test_piecewise_plot_grid.py tests/test_piecewise_plotting.py tests/test_piecewise_calculus.py tests/test_piecewise_acceptance.py tests/test_piecewise_magic.py -q
+      - name: Verify full GREEN
+        run: python -m pytest -q
+      - name: Commit Task 8
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add README.md tests/test_piecewise_acceptance.py tests/test_piecewise_magic.py tests/test_diagnostics.py
+          git commit -m "docs: document EngCalc piecewise workflows"
+          git push origin HEAD:feature/v0.8.0-piecewise
