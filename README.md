@@ -4,6 +4,22 @@
 
 Current version: **0.8.0**.
 
+## Matrix/CAS — 0.9.0 development scope
+
+EngCalc's Matrix/CAS layer is currently being completed on the 0.9.0 development branch while the released runtime version remains 0.8.0. Matrix literals use mathematical/MATLAB-inspired syntax with mandatory commas between columns and semicolons between rows:
+
+```text
+A = [a, b; c, d]
+r = [a, b, c]
+v = [a; b; c]
+```
+
+Matrices use **1-based indexing**, so `A[1, 1]` is the upper-left scalar entry. Row and column vectors additionally accept one-index shorthand. Matrix algebra is exact and SymPy-backed: `A*B` is mathematical matrix multiplication, with constructors and operations such as `identity`, `zeros`, `diag`, `transpose`, `det`, `inv`, `trace`, `rank`, `rref`, `norm`, `size`, `eigenvals` and `eigenvects`. Exact linear systems use `solve(A, b)`.
+
+Numerical evaluation remains Pint-backed. `numeric(A)` evaluates a symbolic matrix cell by cell. Homogeneous matrices can share a compatible display/target unit, while heterogeneous engineering matrices preserve the physical dimensionality of each entry instead of inventing one matrix-wide unit. Matrix-valued functions, Piecewise scalar cells and exact `solve(A, b)` results can all flow into `numeric(...)`.
+
+Existing engineering table/plot APIs remain scalar-response APIs by design. An indexed matrix entry such as `K(x)[1, 1]` may be used in `table(...)`, `plot(...)` or `envelope(...)`; **whole-matrix** responses are rejected with a concise scalar-response diagnostic. Whole-matrix tables, plots and envelopes are outside the 0.9.0 core scope.
+
 ## Install in Google Colab
 
 ```python

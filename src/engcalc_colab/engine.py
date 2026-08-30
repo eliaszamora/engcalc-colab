@@ -1161,6 +1161,12 @@ class _Evaluator(ast.NodeVisitor):
             self._resolve_response_expression(item, variable)
             for item in response_nodes
         ]
+        if any(
+            is_matrix(response.signed_expression)
+            or is_matrix(response.comparison_expression)
+            for response in resolved_responses
+        ):
+            raise EngEvaluationError("table response must be scalar")
 
         columns = []
         canonical_unit = None
@@ -1422,6 +1428,12 @@ class _Evaluator(ast.NodeVisitor):
             self._resolve_response_expression(item, variable)
             for item in expression_nodes
         ]
+        if any(
+            is_matrix(expression.signed_expression)
+            or is_matrix(expression.comparison_expression)
+            for expression in resolved_expressions
+        ):
+            raise EngEvaluationError(f"{call_name} response must be scalar")
         source_labels = [item.source_label for item in resolved_expressions]
 
         if node.keywords:
