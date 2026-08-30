@@ -25,6 +25,7 @@ jobs:
           python -m pip install -e '.[dev]'
           python -m pip install ipython
 
+      # Idempotent recheck after the verified Task 10 product commit.
       - name: Apply guarded Task 10 GREEN patch when needed
         shell: bash
         run: |
