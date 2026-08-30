@@ -47,7 +47,7 @@ def test_row_and_column_vectors_keep_their_orientation():
     _matrix_markers(row)
     _matrix_markers(column)
     assert "a & b & c" in row
-    assert r"a \\ b \\ c" in column
+    assert r"a\\b\\c" in column
 
 
 def test_homogeneous_quantity_matrix_uses_one_common_unit_and_bare_cells():
