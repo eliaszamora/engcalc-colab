@@ -1,89 +1,107 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise is fully integrated into `main` through merged PR #31. The authoritative release product remains `7a3c4206002d26145ea3cd36a21d2dcfefe0914f`; the final pre-merge HEAD was freshly revalidated at 557/557 GREEN, and the merge commit tree was proven file-identical to that cleaned HEAD. The next milestone is the 0.9.0 vectors/matrices/linear-systems design/spec gate; no Matrix/CAS production work has started._
+_Last updated: 2026-08-30 — EngCalc 0.8.0 Piecewise is fully integrated in `main`. The 0.9.0 vectors/matrices/linear-systems milestone is now in formal design review on `planning/v0.9.0-matrix-cas`. The user approved the base architecture and syntax decisions; the written spec and its numeric-semantics clarification are committed and awaiting explicit written-spec approval before an implementation plan is created. No Matrix/CAS production code has started._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical integrated branch: **`main`**.
-- EngCalc runtime/package version on `main`: **0.8.0**.
-- PR #31 — `release: EngCalc 0.8.0 piecewise expressions`: **MERGED**.
-- Merge commit: **`eca248c376128da16ff9526751790aebe2089646`**.
-- Final cleaned PR head merged into `main`: **`df11f1ecb7e8c1029f7ccdc0061722793b2a6b39`**.
-- Authoritative distribution-validated 0.8.0 product commit: **`7a3c4206002d26145ea3cd36a21d2dcfefe0914f`**.
-- Approved Piecewise spec: `docs/superpowers/specs/2026-08-29-engcalc-v0.8.0-piecewise-design.md`.
-- Approved Piecewise implementation plan: `docs/superpowers/plans/2026-08-29-engcalc-v0.8.0-piecewise-implementation.md`.
-- No temporary Piecewise validation workflow remains in the integrated release tree.
+- Canonical integrated branch: **`main`** at **`9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`**.
+- Runtime/package version on `main`: **0.8.0**.
+- Piecewise PR #31: **MERGED** at merge commit `eca248c376128da16ff9526751790aebe2089646`.
+- Current planning branch: **`planning/v0.9.0-matrix-cas`**, created exactly from `main@9b90014f...`.
+- 0.9.0 formal design spec: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-design.md`.
+- Normative numeric-semantics clarification: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-numeric-semantics-clarification.md`.
+- Main design commit: `650d35b7992b780dae9e9795271a94c3083b9068`.
+- Numeric-semantics clarification commit: `dc3acd4b593e35bb11578f2a3ae54d252e846beb`.
+- No Matrix/CAS source or product-test files have been modified.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
+- Never merge planning or implementation work to `main` without explicit user approval.
 
 ## Approved behavior
 
-### Existing behavior preserved
+### Existing integrated behavior
 
-- `%%eng` narrative and presentation polish remain integrated.
-- `plot(...)` / `envelope(...)` retain approved `title`, `xlabel`, `ylabel` overrides.
-- Dense characteristic clusters use the accepted compact summary; sparse clusters remain inline.
-- Positive structural moment remains plotted downward.
-- Multi-argument functions, partial numeric evaluation, scalar math and engineering tables remain compatible.
+- EngCalc 0.8.0 Piecewise remains closed and integrated.
+- `%%eng` remains a restricted EngCalc DSL; ordinary notebook cells remain Python.
+- Narrative, tables, plots, envelopes, multi-argument functions, Piecewise, numeric evaluation, presentation polish and positive-moment-downward convention remain regression requirements.
 
-### 0.8.0 Piecewise contract
+### Approved 0.9.0 base design decisions
 
-- Public form: `piecewise(value_1, condition_1, ..., default_value)` with a mandatory default.
-- Conditions use one direct interval-variable `<`, `<=`, `>` or `>=` comparison against a breakpoint expression that does not contain that variable.
-- SymPy `Piecewise`/relational objects are symbolic truth; Pint is numerical/unit truth.
-- Compatible comparison units normalize; incompatible dimensions produce Piecewise-specific diagnostics.
-- Fully numeric evaluation visits branches in source order and evaluates only the governing branch.
-- Exact dimensionless zero can inherit a compatible dimensional response unit.
-- Partial `numeric(q(x))` retains the interval variable and renders native Piecewise cases; `result(...)` uses the same final representation without the substitution stage.
-- Tables preserve exactly the requested row count and do not add hidden breakpoint rows.
-- Plot/envelope keeps the 201-point base grid and augments it with exact numerically resolvable breakpoints; multi-series/sweeps/envelopes use a shared union grid.
-- Lines/fills split at actual Piecewise branch transitions, preserving endpoint ownership and avoiding fictitious jump connectors.
-- `diff(...)` remains branchwise without public `DiracDelta`; derivative-origin functions reject numeric evaluation exactly at explicit Piecewise breakpoints.
-- Supported Piecewise integral outputs containing internal `Piecewise`, `Min` or `Max` remain numerically evaluable.
-- Real `%%eng` acceptance preserves source order across MathJax groups, HTML tables and figures.
+- Matrix syntax is mathematical/MATLAB-inspired and intentionally need not be valid Python.
+- Canonical literals:
+  - row vector: `[a, b, c]` -> `1 x n` matrix;
+  - column vector: `[a; b; c]` -> `n x 1` matrix;
+  - matrix: `[a, b; c, d]`.
+- Commas separate columns; semicolons separate rows.
+- Physical newlines inside an open matrix literal are presentation whitespace only.
+- Vectors are matrices; there are no mandatory `vector()` / `row()` constructors.
+- Matrix indexing is **1-based**.
+- Symbolic matrices use immutable SymPy matrix semantics.
+- `A*B` is matrix multiplication, not element-wise multiplication.
+- `identity(n)`, `zeros(m,n)` and `diag(...)` are the initial special constructors.
+- `transpose`, `det`, `inv`, `trace`, `rank`, `rref`, `norm`, `size`, `eigenvals`, `eigenvects` form the intended core matrix function family.
+- Existing scalar CAS transforms such as `simplify`, `expand`, `factor`, `subs`, `diff`, and definite `integral` become matrix-aware where mathematically unambiguous.
+- Matrix-valued user functions are supported.
+- `solve(A,b)` is the canonical linear-system API while scalar `solve(eq,x)` remains unchanged.
+- Exact symbolic solving precedes dimensional numerical evaluation.
+- `numeric(A)` is the canonical numerical matrix evaluation path.
+- Numerical matrix results preserve **per-entry Pint dimensionality**; a heterogeneous engineering matrix is first-class and must not be flattened to one fake unit.
+- `QuantityMatrix` is a final numerical result boundary, not a second public matrix algebra language.
+- Public matrix expressions remain symbolic-first; Pint validates resulting scalar cells when `numeric(...)` is requested.
+- `rank`, `rref`, `norm`, and numerical eigenanalysis require a dimensionless or common-scale numerical matrix; heterogeneous dimensional matrices must be rejected for those numerical algorithms.
+- Existing `table(...,[...])` point lists and plot/envelope sweep lists retain their contextual collection semantics and must not be reinterpreted as row vectors.
+- Matrix-valued persistent `:=` assignment, generalized eigenproblems, sparse/FEM workflows, NumPy-style broadcasting and element-wise array operators are deferred.
 
 ## Open issues / user feedback
 
-- Multiline ordinary function-call parsing remains a later ergonomics item.
-- `no_vertical_scroll()` Colab ergonomics remains outside Piecewise.
-- Piecewise 0.8.0 intentionally excludes arbitrary boolean conditions, endpoint glyphs/jump markers, `solve(piecewise(...))`, exact Piecewise roots/intersections, exact governing-interval envelopes, arbitrary Python and automatic differentiability proofs.
-- Matrix/CAS production work remains pending its own design/spec gate.
-- Auxiliary branch `noop` is non-product and contains no unique feature work; it may be removed manually from GitHub if desired.
+- Written 0.9.0 spec is awaiting explicit user review/approval.
+- Detailed implementation dataclass boundaries for eigen/decomposition results must be chosen in the implementation plan, not ad hoc during coding.
+- Optional LU/QR/Cholesky are lower priority than core matrix semantics and may move to a later 0.9.x if they threaten the core milestone.
+- Multiline ordinary non-matrix function-call parsing remains a separate ergonomics item.
+- `no_vertical_scroll()` remains outside Matrix/CAS.
+- Auxiliary branch `noop` remains non-product and has no unique feature work.
 
 ## Validation evidence
 
-- Integrated pre-Piecewise `main`: **484/484 GREEN** on Actions `33298959230`; isolated Piecewise baseline `33299317560`: **484/484 GREEN**.
-- Task 1 through Task 7 progressed GREEN through 506, 518, 526, 530, 536, 542 and 547 tests respectively.
-- Task 8 product `d0ff122b3f5f4681214fdbe6059c860c3bb11f54`; Actions `33315071844`: **14/14 acceptance**, **66/66 Piecewise**, **557/557 full GREEN in 113.99 s**.
-- Authoritative Task 9 distribution gate: Actions **`33316141809`**, job `99269839966`, Python **3.13.15**:
-  - release contracts: **23/23 GREEN**;
-  - source before wheel: **557/557 GREEN in 77.13 s**;
-  - wheel: **`engcalc_colab-0.8.0-py3-none-any.whl`**, metadata `Version: 0.8.0`;
-  - clean venv installation and source-external `site-packages` smoke: GREEN;
-  - installed-wheel/source-free suite: **557/557 GREEN in 75.40 s**;
-  - source recheck: **557/557 GREEN in 74.75 s**;
-  - wheel SHA-256: **`e200b45de358d8c2ee83f6a4fc945913cd0fc1709ce9ad5ffdfc1f727469055a`**;
-  - artifact: **`engcalc-colab-0.8.0-release-v3`**, ID **`9733556162`**.
-- Fresh pre-merge gate after all documentation/cleanup work: Actions **`33316786989`**, commit **`8628023f6654e9b5aeb9b1aaaf68dd43738fd353`**, Python 3.13.15: runtime version 0.8.0 GREEN and **557/557 GREEN in 116.63 s**.
-- The only change from that freshly tested SHA to final PR head `df11f1ec...` was deletion of `.github/workflows/pr31-premerge-validation.yml`; no product/source/test/docs change occurred in that cleanup commit.
-- Post-merge equality gate: compare `df11f1ec...` → merge commit `eca248c3...` reports **zero changed files**, proving the integrated merge tree is file-identical to the cleaned PR head.
-- `main/src/engcalc_colab/__init__.py` reports **`__version__ = "0.8.0"`** after merge.
+### 0.8.0 integrated baseline
+
+- Authoritative distribution gate: Actions `33316141809`, Python 3.13.15.
+- Source before wheel: **557/557 GREEN**.
+- Installed-wheel/source-free suite: **557/557 GREEN**.
+- Source recheck: **557/557 GREEN**.
+- Fresh final pre-merge gate: Actions `33316786989`, **557/557 GREEN in 116.63 s**.
+- Post-merge compare `df11f1ec...` -> `eca248c3...`: **zero changed files**.
+
+### 0.9.0 design evidence
+
+- Planning branch created from exact current integrated baseline `main@9b90014f...`.
+- Base architecture and syntax were explicitly approved by the user before the spec was written.
+- Formal spec committed at `650d35b7...`.
+- Design self-review found and resolved two dimensional-semantics ambiguities in normative clarification `dc3acd4b...`:
+  1. `QuantityMatrix` is output-only/private numerical infrastructure rather than a parallel public CAS;
+  2. numerical `rank`/`rref`/`norm`/eigen operations require dimensionless or common-scale matrices and must reject arbitrary heterogeneous physical matrices.
+- No production validation is applicable yet because no product code has changed.
 
 ## Roadmap / active plan
 
 - **0.7.2 engineering tables:** COMPLETE + merged.
 - **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
-- **0.8.0 Piecewise:** **COMPLETE + MERGED to `main` via PR #31**.
-- **0.9.0 vectors / matrices / linear systems:** NEXT MAJOR MILESTONE; design/spec gate required before production implementation.
-- Later roadmap: 0.9.1 exact-first extrema/roots/intersections → 0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization.
+- **0.8.0 Piecewise:** COMPLETE + merged.
+- **0.9.0 vectors / matrices / linear systems:** **DESIGN SPEC WRITTEN; USER SPEC-REVIEW GATE ACTIVE**.
+  - Base design: approved.
+  - Formal spec: written.
+  - Numeric clarification: written.
+  - Implementation plan: not started; blocked on written-spec approval.
+  - Production code: not started.
+- Later roadmap: 0.9.1 exact-first extrema/roots/intersections -> 0.9.2 exact envelopes/governing intervals -> 0.9.3 named response cases/combinations -> 0.10.x engineering verification -> 1.0.0 stabilization.
 
 ## Exact next step
 
-1. Treat EngCalc 0.8.0 Piecewise as closed and integrated.
-2. Start a dedicated 0.9.0 vectors/matrices/linear-systems design exploration and written spec.
-3. Do not begin Matrix/CAS production code until that spec is explicitly approved.
-4. Keep later exact-analysis milestones separate from the 0.9.0 matrix/CAS scope.
+1. Present the committed 0.9.0 matrix/CAS spec and normative numeric clarification to the user for review.
+2. Do **not** write or execute a production implementation plan until the user explicitly approves the written spec.
+3. After written-spec approval, invoke the planning workflow and create a RED->GREEN implementation plan from current `main`.
+4. Only after that plan is approved may a dedicated implementation feature branch be created and production TDD begin.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.8.0 Piecewise is integrated into `main` via merged PR #31 at merge commit `eca248c376128da16ff9526751790aebe2089646`; runtime/package version is 0.8.0. The distribution-validated release product is `7a3c4206002d26145ea3cd36a21d2dcfefe0914f`, with wheel SHA-256 `e200b45de358d8c2ee83f6a4fc945913cd0fc1709ce9ad5ffdfc1f727469055a`. Fresh pre-merge Actions `33316786989` passed 557/557 on the final product tree, and the merge-tree equality audit found zero file differences versus the cleaned PR head. The next work is 0.9.0 vectors/matrices/linear systems at design/spec stage only; no production implementation until explicit approval.
+Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`. The active work is planning-only on `planning/v0.9.0-matrix-cas`. The user approved the matrix/CAS base design: `%%eng` remains a DSL; literals use `[a,b; c,d]`; vectors are row/column matrices; indexing is 1-based; SymPy is symbolic truth; Pint is numerical/unit truth per entry; `solve(A,b)` is the linear-system API; `QuantityMatrix` is an output boundary rather than a public parallel algebra. Read both `2026-08-30-engcalc-v0.9.0-matrix-cas-design.md` and `2026-08-30-engcalc-v0.9.0-matrix-cas-numeric-semantics-clarification.md`. The next action is the user's written-spec review gate. Do not start production code or an implementation plan before explicit approval.
