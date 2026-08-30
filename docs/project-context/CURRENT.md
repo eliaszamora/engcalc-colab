@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The approved 0.9.0 Matrix/CAS plan is executing inline on `feature/v0.9.0-matrix-cas`. Task 0 baseline and Task 1 matrix-literal parser are complete with strict RED→GREEN evidence. Task 2 — immutable symbolic matrices, one-based indexing and matrix operators — is now the exact next step. Package/runtime version remains 0.8.0._
+_Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The approved 0.9.0 Matrix/CAS plan is executing inline on `feature/v0.9.0-matrix-cas`. Tasks 0–2 are complete with strict RED→GREEN evidence. Immutable symbolic matrices, mathematical matrix operators and one-based indexing are now implemented and fully regression-tested. Task 3 — constructors and core exact matrix functions — is the exact next step. Package/runtime version remains 0.8.0._
 
 ## Current baseline
 
@@ -14,9 +14,10 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Formal 0.9.0 design: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-design.md`.
 - Normative numeric clarification: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-numeric-semantics-clarification.md`.
 - Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.0-matrix-cas-implementation.md`.
-- Task 1 test-only RED chain ends at `8b0f62c333756c24167426156a92fc118748b137` before any Task 1 production code.
 - Task 1 GREEN product commit: **`86ec35f3b5d20c517f794951e14fa7cd13af0121`** (`feat: parse EngCalc matrix literals`).
-- Task 1 GREEN workflow removed in `95162527dfee1a796f1c772a31ee5a5d3aed939c`.
+- Task 2 test-only RED chain ends at **`2181531f20b1b25170ceccf5a5cff9994cd9a867`** before any Task 2 production code.
+- Task 2 GREEN product commit: **`06bab76f06fc2a057ecdaab844eeb5717598fcd0`** (`feat: add symbolic matrix algebra and indexing`).
+- Task 2 GREEN workflow removed in **`3dd98ab3189f32045248527e6fcee58a026a4f03`**.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge implementation work to `main` without explicit user approval.
 
@@ -58,20 +59,27 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Generalized structural eigenproblems, sparse/global FEM matrices, block matrices, slicing, least squares, pseudoinverse, SVD, NumPy-style broadcasting and matrix-valued `:=` remain deferred.
 - LU/QR/Cholesky are explicitly deferred from the mandatory core 0.9.0 implementation plan so they cannot block the core release; they may be a later 0.9.x follow-up.
 
-### Implemented 0.9.0 behavior through Task 1
+### Implemented 0.9.0 behavior through Task 2
 
-- Normal-expression `[a,b,c]` is accepted as the parser representation for a future row matrix.
-- Semicolon literals `[a,b;c,d]` are scanned before the restricted Python AST and stored as immutable parser bindings.
-- Multiline matrix literals are consumed as one EngCalc statement while preserving the physical starting line.
-- Top-level commas/semicolons inside matrix literals are distinguished from commas inside scalar function calls.
-- Matrix cells continue through the existing restricted scalar validator, including Piecewise cells.
-- Empty literals/rows, inconsistent row widths, nested matrix literals and unclosed literals have EngCalc-facing syntax diagnostics.
-- `table(...,[...])` and plot/envelope sweep lists remain contextual collections, not matrix bindings.
-- Task 1 is parser/model transport only; it deliberately does **not** yet construct SymPy matrices or perform matrix algebra.
+- Normal-expression `[a,b,c]` evaluates to an immutable `1 x n` SymPy row matrix.
+- Semicolon literals such as `[a;b;c]` and `[a,b;c,d]` evaluate to immutable column/general matrices while preserving Task 1 parsing and multiline behavior.
+- Matrix literal cells must remain scalar; nested matrices in a cell are rejected.
+- `A+B` and `A-B` require two matrices of equal shape; scalar/matrix mixed addition/subtraction is rejected with EngCalc diagnostics.
+- `2*A` and `A*2` perform scalar multiplication; `A*B` performs mathematical matrix multiplication, never element-wise broadcasting.
+- `A/2` is supported; matrix/matrix division and scalar/matrix division are rejected.
+- Matrix powers accept exact integer exponents only, require a square matrix, and preserve immutable exact symbolic output. `A^0`, positive powers and negative integer powers are supported.
+- Row-by-column multiplication remains a `1 x 1` matrix and column-by-row multiplication remains the corresponding outer-product matrix.
+- Matrix indexing is 1-based. General matrices require two indices; row/column vectors additionally accept one-index shorthand. Two-index access also works on vectors.
+- Matrix indices must be positive exact integers; zero, negative, float and symbolic indices are rejected. Out-of-range diagnostics report the attempted index and matrix shape.
+- Python/NumPy slicing syntax remains unsupported and is rejected at parser level.
+- `EngineeringEngine.namespace` can now hold scalar symbolic values or immutable matrix values.
+- Existing scalar behavior remains routed through the same operator paths and passed the complete regression suite.
 
 ## Open issues / user feedback
 
-- Task 2 must turn parser matrix literals into `sympy.ImmutableMatrix`, add shape-aware algebra and implement one-based indexing without leaking raw SymPy exceptions.
+- Task 3 must add exact constructors `identity`, `zeros`, `diag` and core exact functions `transpose`, `det`, `inv`, `trace`, `size`, including stable diagnostics and immutable matrix returns.
+- Matrix rendering/presentation has not yet been implemented; current work through Task 2 establishes symbolic truth and algebra semantics first.
+- Numerical/unit-aware matrices (`QuantityMatrix`) remain a later task in this same approved 0.9.0 plan.
 - `no_vertical_scroll()` remains outside Matrix/CAS.
 - Multiline ordinary non-matrix function-call parsing remains a separate ergonomics item; 0.9.0 adds only matrix-literal multiline continuation.
 - Generalized eigenproblem `K phi = lambda M phi` needs a future dedicated design/API.
@@ -95,45 +103,58 @@ _Last updated: 2026-08-30 — EngCalc 0.8.0 remains integrated in `main`. The ap
 - Runtime check confirmed **0.8.0** and full baseline remained GREEN.
 - Temporary baseline workflow removed before Task 1.
 
-### 0.9.0 Task 1 RED evidence
+### 0.9.0 Task 1 RED/GREEN evidence
 
-- New/migrated parser contracts were committed before Task 1 production code.
-- RED workflow Actions **`33320679249`**, job **`99281977939`**: harness **success**, meaning pytest failed for the explicitly required missing-feature reasons.
-- Exact RED result from artifact `9734793442` (`sha256:2f64721b6a7ebd24b17463d237cbac3ac6fbc8d7528dec56a107fe1a88f999f9`): **15 failed, 33 passed in 0.36 s**.
-- Failures were the expected absence of general List support, semicolon/multiline matrix syntax, matrix-specific diagnostics and `matrix_literals` transport.
-- The earlier malformed workflow `33320556349` created zero jobs and is explicitly not counted as TDD evidence.
+- Task 1 test-only RED chain ended at `8b0f62c333756c24167426156a92fc118748b137` before production code.
+- RED Actions `33320679249`, job `99281977939`: **15 failed, 33 passed in 0.36 s**; artifact `9734793442`, digest `sha256:2f64721b6a7ebd24b17463d237cbac3ac6fbc8d7528dec56a107fe1a88f999f9`.
+- GREEN Actions `33321037959`, job `99282936423`, Python 3.13: **48/48 focused GREEN in 0.13 s** and **569/569 full GREEN in 114.64 s**.
+- Product commit `86ec35f3b5d20c517f794951e14fa7cd13af0121`; audit showed exactly new `matrix_syntax.py`, modified `models.py`, modified `parser.py`.
+- Temporary GREEN workflow removed in `95162527dfee1a796f1c772a31ee5a5d3aed939c`.
 
-### 0.9.0 Task 1 GREEN evidence
+### 0.9.0 Task 2 RED evidence
 
-- GREEN workflow Actions **`33321037959`**, job **`99282936423`**, Python 3.13: **success**.
-- Focused parser/list-context suite: **48/48 GREEN in 0.13 s**.
-- Complete source suite: **569/569 GREEN in 114.64 s**.
-- GREEN product commit: **`86ec35f3b5d20c517f794951e14fa7cd13af0121`**.
-- Commit audit from workflow parent `a2876cec...` to product commit shows exactly three source files: new `matrix_syntax.py`, modified `models.py`, modified `parser.py`; no algebra/engine work was smuggled into Task 1.
-- Temporary GREEN workflow removed in `95162527...` after validation.
+- Task 2 matrix-algebra/indexing tests were committed before any Task 2 production code; test-only chain ended at **`2181531f20b1b25170ceccf5a5cff9994cd9a867`**.
+- RED workflow Actions **`33321376876`**, job **`99283827183`**, CPython **3.13.15**: harness **success**, confirming the expected missing-feature failures.
+- Exact RED result: **27 failed in 3.77 s**.
+- Failures were the expected absence of immutable matrix materialization, evaluator support for row-list matrices, parser/evaluator `Subscript`, matrix shape diagnostics, scalar/matrix operation restrictions and matrix-power contracts.
+- RED artifact **`9734978830`**, digest **`sha256:a3eca9188d5f1ac9ac65897bd694b02cc553d0b7d6c9d09af1ee029f14c2042c`**.
+- Temporary RED workflow removed in **`91ff7b6837cbcb504ab831cca5158c0ea5cd84be`**.
+
+### 0.9.0 Task 2 GREEN evidence
+
+- GREEN workflow Actions **`33322956670`**, job **`99288034638`**, CPython **3.13.15**: **success**.
+- Focused Task 2 suite: **27/27 GREEN in 5.36 s**.
+- Complete source suite: **596/596 GREEN in 119.52 s**.
+- Product commit: **`06bab76f06fc2a057ecdaab844eeb5717598fcd0`**.
+- Product commit audit from workflow parent `f4a5805d6cb6f684d8198350afc092aa7ebe1dc3` shows exactly three source changes: new `src/engcalc_colab/matrix_core.py`, modified `src/engcalc_colab/engine.py`, modified `src/engcalc_colab/parser.py`; no unrelated product files changed.
+- GREEN logs artifact **`9735440722`**, digest **`sha256:2811524d746f422f30ea20df558786a30a978a74be3ee4ccbc78306e668d9dbf`**.
+- Temporary GREEN workflow removed in **`3dd98ab3189f32045248527e6fcee58a026a4f03`** after validation.
+- The only runner warning was GitHub Actions' Node 20 deprecation/forced Node 24 compatibility warning; it is not an EngCalc product failure.
 
 ## Roadmap / active plan
 
 - **0.7.2 engineering tables:** COMPLETE + merged.
 - **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
 - **0.8.0 Piecewise:** COMPLETE + merged.
-- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASKS 0–1 COMPLETE, TASK 2 NEXT**.
+- **0.9.0 vectors / matrices / linear systems:** **IMPLEMENTATION ACTIVE — TASKS 0–2 COMPLETE, TASK 3 NEXT**.
   - Base design/spec/clarification/implementation plan: approved.
   - Task 0 isolated baseline: COMPLETE.
   - Task 1 matrix literal parser: COMPLETE, 569/569 GREEN.
-  - Task 2 immutable symbolic matrices, one-based indexing and matrix operators: NEXT.
+  - Task 2 immutable symbolic matrices, matrix operators and one-based indexing: COMPLETE, 596/596 GREEN.
+  - Task 3 constructors and core exact matrix functions: NEXT.
   - Package/runtime version remains 0.8.0 until the release-closing task.
 - Later roadmap: 0.9.1 exact-first extrema/roots/intersections → 0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization.
 
 ## Exact next step
 
-1. Add Task 2 RED tests for immutable matrix construction/orientation, matrix/scalar operators, matrix multiplication shape contracts and one-based indexing/diagnostics.
-2. Run the focused Task 2 suite and observe failures caused by missing matrix evaluation/indexing support.
-3. Only after observed RED, create `matrix_core.py` and minimally modify parser/engine/models to construct immutable SymPy matrices and implement approved operators/indexing.
-4. Run focused GREEN, then complete suite; commit production only after both pass.
-5. Update this file with Task 2 RED/GREEN SHAs and counts before Task 3.
-6. Do not invoke Codex and do not merge without explicit user authorization.
+1. Add Task 3 RED tests for `identity(n)`, `zeros(m,n)`, `diag(...)`, `transpose`, `det`, `inv`, `trace` and immutable `size(A)` transport.
+2. Include invalid-dimension diagnostics for constructors plus nonsquare/singular matrix diagnostics for exact functions.
+3. Run focused Task 3 tests and observe failures caused by unreserved/unimplemented matrix functions.
+4. Only after observed RED, add the approved names to the restricted parser and implement the minimal exact helpers in `matrix_core.py`, `engine.py` and the `MatrixShape` result model.
+5. Run focused GREEN, then the complete suite; commit production only after both pass.
+6. Update this file with Task 3 RED/GREEN SHAs and counts before Task 4.
+7. Do not invoke Codex and do not merge without explicit user authorization.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`. 0.9.0 Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`. Task 0 baseline is complete. Task 1 parser/literal support is complete at product commit `86ec35f3b5d20c517f794951e14fa7cd13af0121`; its RED was 15 failed/33 passed and GREEN was 48/48 focused plus 569/569 full. Task 1 only transports matrix syntax; no SymPy matrix construction exists yet. The next action is Task 2 RED tests for actual immutable matrix values, shape-aware algebra and one-based indexing. Never invoke Codex and never merge without explicit user approval.
+Read this file first. EngCalc 0.8.0 is integrated on `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d`. Matrix/CAS implementation is active on `feature/v0.9.0-matrix-cas`. Tasks 0–2 are complete. Task 1 introduced matrix literal transport at `86ec35f3...`. Task 2 introduced immutable SymPy matrices, mathematical matrix operators and one-based indexing at `06bab76f06fc2a057ecdaab844eeb5717598fcd0`; its RED was 27 failures and its GREEN was 27/27 focused plus 596/596 complete. The next action is Task 3 RED for constructors `identity/zeros/diag` and exact functions `transpose/det/inv/trace/size`, followed by minimal implementation only after RED is observed. Never invoke Codex and never merge without explicit user approval.
