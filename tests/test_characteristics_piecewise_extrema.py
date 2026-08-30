@@ -91,7 +91,7 @@ def test_non_governing_constant_piecewise_region_is_not_reported_as_extremum_loc
     context = NumericContext()
     x = sp.Symbol("x")
     expr = sp.Piecewise(
-        (2, x < 2),
+        (sp.Rational(1, 2), x < 2),
         ((x - 3) ** 2, True),
         evaluate=False,
     )
