@@ -33,9 +33,15 @@ jobs:
           test "$(git diff --name-only)" = "src/engcalc_colab/renderer.py"
           test -z "$(git ls-files --others --exclude-standard)"
       - name: Focused GREEN
-        run: python -m pytest tests/test_matrix_renderer.py tests/test_matrix_magic.py tests/test_renderer.py tests/test_numeric_renderer.py tests/test_magic.py tests/test_matrix_analysis.py tests/test_matrix_analysis_units.py -q 2>&1 | tee task8-focused.log
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest tests/test_matrix_renderer.py tests/test_matrix_magic.py tests/test_renderer.py tests/test_numeric_renderer.py tests/test_magic.py tests/test_matrix_analysis.py tests/test_matrix_analysis_units.py -q 2>&1 | tee task8-focused.log
       - name: Full regression
-        run: python -m pytest -q 2>&1 | tee task8-full.log
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q 2>&1 | tee task8-full.log
       - name: Commit implementation
         run: |
           git config user.name "eliaszamora"
