@@ -1,0 +1,41 @@
+name: EngCalc 0.9.0 Task 1 RED run
+
+on:
+  push:
+    branches:
+      - feature/v0.9.0-matrix-cas
+    paths:
+      - .github/workflows/v090-task1-red-run.yml
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.9.0-matrix-cas
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Confirm expected parser RED
+        shell: bash
+        run: |
+          set +e
+          python -m pytest tests/test_matrix_parser.py tests/test_table_parser.py tests/test_plot_parser.py tests/test_envelope_parser.py -q 2>&1 | tee task1-red.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Task 1 unexpectedly passed before implementation"
+            exit 1
+          fi
+          grep -Eq "unsupported syntax 'List'|invalid syntax|unbalanced parentheses|matrix_literals" task1-red.log
+          grep -Eq "failed" task1-red.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: task1-red-log
+          path: task1-red.log
