@@ -39,9 +39,9 @@ def test_table_fully_explicit_compatible_quantities_are_accepted():
     assert len(call.args[-1].elts) == 3
 
 
-def test_arbitrary_list_literal_remains_rejected_outside_table():
-    with pytest.raises(EngSyntaxError, match="unsupported syntax 'List'"):
-        parse_cell("A = [0, 1, 2]")
+def test_simple_list_literal_is_row_matrix_outside_table():
+    stmt = parse_cell("A = [0, 1, 2]")[0]
+    assert isinstance(stmt.expression.body, ast.List)
 
 
 def test_table_is_reserved_as_scalar_assignment_target():
