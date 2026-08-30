@@ -1,19 +1,19 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains the canonical integrated release on `main`. EngCalc 0.9.1 exact characteristics is being implemented inline on its dedicated feature branch. Tasks 1–4 are complete and fully regression-tested. All temporary Task 4 validation infrastructure has been removed. The exact next step is Task 5 RED for continuous extrema, global/local roles, constant loci, dimensional responses and unbounded detection._
+_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains canonical on `main`. EngCalc 0.9.1 exact characteristics is being implemented inline on `feature/v0.9.1-exact-characteristics`. Tasks 1–5 are complete and fully regression-tested. Task 5 temporary validation infrastructure has been removed. The exact next step is Task 6 RED for Piecewise extrema, one-sided breakpoint values and constant extremum loci by subinterval._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Canonical integrated release: **EngCalc 0.9.0 Matrix/CAS**.
 - Canonical 0.9.1 base: **`main@cdc454db7ea43e57e334d523afded8b4ef498ded`**.
-- Runtime/package version remains **0.9.0** until the release-closing Task 12.
+- Runtime/package version remains **0.9.0** until release-closing Task 12.
 - Active branch: **`feature/v0.9.1-exact-characteristics`**.
 - Approved design spec: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.1-exact-characteristics-design.md`.
 - Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.1-exact-characteristics-implementation.md`.
-- Plan refinement commit: **`eb9b5344d20dab950462c63e742ff8f17be8916d`**.
-- User selected **inline execution / executing-plans** for implementation.
-- Task 4 temporary-workflow/script cleanup head before this context update: **`8720413773aa13dfd107834559116138ae8b65ed`**.
+- User selected **inline execution / executing-plans**.
+- Task 5 product commit: **`bf731e03163c60850a5f3532e750735a764f7e4d`**.
+- Task 5 temporary-workflow/script cleanup head before this context update: **`0d02a8dcc1e906f8932cbc316337a63d0f312021`**.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 - Never merge 0.9.1 into `main` without explicit user approval.
 
@@ -23,11 +23,11 @@ _Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS remains the canonical int
 
 - `%%eng` remains a restricted EngCalc DSL; ordinary notebook cells remain Python.
 - Numeric/Pint semantics, `numeric(...)`, `result(...)`, Piecewise, tables, plots, envelopes, multi-argument functions and Matrix/CAS behavior remain regression requirements.
-- Whole matrices remain invalid scalar analysis/plot/table/envelope responses; indexed scalar matrix expressions remain supported.
+- Whole matrices remain invalid scalar characteristic/plot/table/envelope responses; indexed scalar matrix expressions remain supported.
 - Positive structural moment remains plotted **downward**.
-- The 201-point plot grid remains a rendering policy, not an authoritative mathematical solver.
+- The 201-point plot grid remains a rendering policy, never an authoritative characteristic solver.
 
-### Approved 0.9.1 contract
+### Approved 0.9.1 characteristic contract
 
 Public standalone calls:
 
@@ -38,102 +38,64 @@ intersections(response_1, response_2, variable, lower, upper)
 ```
 
 - Characteristic calls are standalone-only in 0.9.1: assignment, nesting and composition are rejected.
-- Their analysis variable must be a direct non-reserved symbolic identifier.
-- One reusable exact-first characteristic-analysis core lives in `src/engcalc_colab/characteristics.py`.
-- Exact symbolic results are authoritative whenever a finite usable exact result exists.
-- Deterministic numerical fallback runs only after unresolved exact solving, is residual-validated, visibly approximate and independent of the public 201-point plotting grid.
-- Domains are finite closed real intervals with unit-compatible bounds and `lower < upper`; dimensional-zero inheritance follows existing EngCalc semantics.
-- Whole matrices are rejected; indexed scalar matrix responses such as `K(x)[1,1]` are valid.
-- `roots(...)` keeps real in-domain roots, endpoints and repeated-root de-duplication; identically-zero regions are interval loci.
-- Root/coincident intervals preserve open/closed boundary topology explicitly through immutable interval metadata.
-- `intersections(...)` requires dimensionally compatible responses, respects Piecewise discontinuities, uses the union of breakpoints from both responses, preserves exact common response values and represents coincident intervals explicitly.
-- `extrema(...)` considers stationary points, endpoints, Piecewise breakpoints and finite one-sided values; local/global roles, constant loci and unbounded directions are explicit.
-- Piecewise regions are solved independently; a sign change/crossing through a jump is not a root/intersection unless equality holds at a defined point.
-- Characteristic points preserve exact/numeric provenance and `at`/`left`/`right` topology.
-- Standalone result models are immutable/typed and render as engineering output, never raw SymPy set/dataclass reprs.
-- Ordinary/multi-series `plot(...)` migrates characteristic extrema to the exact-first core while retaining existing 201-point curve sampling and visual conventions.
+- Analysis variables are direct non-reserved symbolic identifiers.
+- One reusable exact-first core lives in `src/engcalc_colab/characteristics.py`.
+- Domains are finite closed real intervals with unit-compatible bounds and `lower < upper`.
+- Exact symbolic results are authoritative whenever finite usable exact results exist.
+- Numerical fallback, when later enabled by the approved plan, must be deterministic, residual-validated, explicitly approximate and independent of the 201-point plotting grid.
+- `roots(...)` preserves real in-domain roots, endpoints, exact symbolic locations, unit-aware evaluated coordinates, Piecewise topology and identically-zero interval loci.
+- Root/coincident intervals preserve open/closed endpoint topology.
+- `intersections(...)` requires compatible response dimensions, uses the union of both responses' Piecewise breakpoints, rejects jump-only crossings, preserves exact common values and represents coincident intervals explicitly.
+- Continuous `extrema(...)` now uses exact derivative roots plus domain endpoints, preserves local/global roles, constant whole-domain loci, physical units and explicit unbounded-above/below directions.
+- For a symbolic stationary point whose second-derivative sign is unresolved, local classification uses deterministic same-region neighboring evaluation rather than plot sampling.
+- Piecewise extrema must solve continuous regions independently and preserve distinct finite `left` / `at` / `right` values at breakpoints; this is Task 6.
+- Standalone result models remain immutable/typed.
 - Exact envelope crossover/governing-interval mathematics remains deferred to **0.9.2**.
 - No SciPy/new runtime dependency.
 
 ## Open issues / user feedback
 
 - No blocking 0.9.1 design ambiguity remains.
-- **Tasks 1–4 are complete. Task 5 is next.**
+- **Tasks 1–5 are complete. Task 6 is next.**
 - `no_vertical_scroll()` remains a separate ergonomics issue.
 - Multiline ordinary non-matrix function-call parsing remains separate.
-- Generalized structural eigenproblems remain deferred to a dedicated future design.
+- Generalized structural eigenproblems remain deferred.
 
 ## Validation evidence
 
-### Canonical 0.9.0 release evidence
+### Canonical 0.9.0 release
 
-- Authoritative 0.9.0 release Actions: **`33332233490`**, job **`99312713507`**.
-- Release contract: **23/23 GREEN**.
-- Source suite before wheel: **721/721 GREEN in 142.99 s**.
-- Wheel: `engcalc_colab-0.9.0-py3-none-any.whl`; SHA-256 **`ea66fa231b5657695e2c38cefb324da220070a2f7c86557dddef19d2017a0719`**.
-- Installed-wheel/source-free suite: **721/721 GREEN in 141.38 s**.
-- Final source revalidation: **721/721 GREEN in 139.76 s**.
-- Post-merge Actions **`33333566096`**, job **`99316363602`**, verified exact merge SHA `d22d5e0a62ce13800de8476c28d86a6d9415f1bd` successfully.
+- Release Actions **`33332233490`**, job **`99312713507`**.
+- Release contract **23/23 GREEN**.
+- Source suite before wheel **721/721 GREEN in 142.99 s**.
+- Wheel `engcalc_colab-0.9.0-py3-none-any.whl`; SHA-256 **`ea66fa231b5657695e2c38cefb324da220070a2f7c86557dddef19d2017a0719`**.
+- Installed-wheel/source-free suite **721/721 GREEN in 141.38 s**.
+- Final source revalidation **721/721 GREEN in 139.76 s**.
 
-### 0.9.1 Task 1 — parser/API + typed models
+### 0.9.1 Tasks 1–4
 
-- Parser RED: **20 failed / 4 passed** on run **`33335156057`**, job **`99320642585`**.
-- Parser GREEN: **65/65 PASS** on run **`33335340109`**, job **`99321122672`**; product commit **`e7e92069d0858edef6684286c1c6f414d132e881`**.
-- Typed-model RED: intended missing-type collection error on run **`33335416627`**, job **`99321328462`**.
-- Typed-model GREEN: **78/78 PASS** on run **`33335470514`**, job **`99321471976`**; product commit **`b12a573c51f6dc6856f6d3b3652d674ffa4e8846`**.
-- Authoritative Task 1 full gate: run **`33335640543`**, job **`99321927179`**, Python **3.13.15**; `compileall` PASS, `git diff --check` PASS, **758/758 PASS in 121.72 s**.
-- All Task 1 temporary validation harness files were removed.
+- **Task 1 parser/API + typed models:** authoritative run **`33335640543`**, job **`99321927179`** — `compileall`/hygiene PASS, **758/758 PASS in 121.72 s**.
+- **Task 2 finite unit-aware domain + exact continuous roots:** authoritative run **`33336114509`**, job **`99323194537`** — focused **30/30**, complete **772/772 PASS in 144.49 s**.
+- **Task 3 Piecewise roots/discontinuities/infinite root loci:** product **`324e4990be3c95c19422b6a58804e1b104653d79`** plus dimensional contract; authoritative run **`33336900776`**, job **`99325325413`** — characteristics+Piecewise **128/128**, complete **783/783 PASS in 144.99 s**.
+- **Task 4 exact intersections/unit compatibility/coincident intervals:** product **`335ea3978ec75ee6037856b8ec49a475016ff8a2`**; authoritative run **`33337417458`**, job **`99326713114`** — broad gate **158/158**, complete **794/794 PASS in 126.41 s**.
+- Temporary validation infrastructure for Tasks 1–4 was removed after each closure.
 
-### 0.9.1 Task 2 — finite unit-aware domain + exact continuous roots
+### 0.9.1 Task 5 — continuous extrema, local/global roles, constants + unbounded detection
 
-- Task 2 RED SHA: **`1a32d448d19969fda1f3b031826baa5e1adc73e6`**.
-- RED run **`33335920700`**, job **`99322671165`**: intended collection failure, `ModuleNotFoundError: engcalc_colab.characteristics`, **1 error in 0.49 s**.
-- Product implementation commit: **`e038b63332f2708c89faf85e5f099616747a529d`** (`feat: add exact continuous root analysis core`).
-- First GREEN run **`33335992284`**, job **`99322863102`**: **13 passed / 1 failed**. The sole failure was a test-fixture issue: `ConditionSet(x, True, Reals)` simplifies to `Reals`, so it did not represent an unresolved symbolic solve. No product change was needed.
-- Fixture-only correction commit: **`e0efefca06ea11a74ce52fd424b02fd78e4a9fa1`**.
-- Focused recheck run **`33336075965`**, job **`99323088081`**: **14/14 PASS in 3.36 s**.
-- Authoritative Task 2 full-gate SHA: **`fe0d0c8b591956ba32029bb216421eca628e1d09`**.
-- Full-gate run **`33336114509`**, job **`99323194537`**, Python **3.13.15**.
+- RED test commit: **`e7f2b35fc8ced87ee87e48a00df2438a8ff92633`**; RED harness SHA **`0248e9fc088037b7be40c47d59198bf10f616b12`**.
+- RED run **`33337842652`**, job **`99327896512`**: intended collection failure, `ImportError: cannot import name 'solve_extrema_exact'`, **1 error in 0.69 s**.
+- First GREEN attempt run **`33337937283`**, job **`99328156883`**: **58 passed / 1 failed in 7.25 s**. The only failure was missing `local_max` on a dimensional quadratic; exact `L/2`, `qL^2/4`, 40 kN·m and `global_max` were already correct. No product commit was allowed.
+- Root cause: symbolic second derivative `-2*q` has unknown SymPy sign, so fallback neighboring comparison was used. With a required `1e-6` spatial offset, the quadratic value difference is order `1e-12`, equal to the original local-role comparison tolerance. The local-classification tolerance was narrowed only for that fallback; global comparison tolerance remained unchanged.
+- Product GREEN run **`33338015312`**, job **`99328361908`**: **59/59 PASS in 7.87 s**; `git diff --check` PASS; product commit **`bf731e03163c60850a5f3532e750735a764f7e4d`** (`feat: add exact continuous extrema analysis`).
+- Idempotent recheck run **`33338081632`**, job **`99328536729`**: patch explicitly skipped, **59/59 PASS in 12.21 s**, `No product patch to commit.`
+- Authoritative full-gate SHA: **`6d15e6a1183f5991bf46590f201d8fda01bb6158`**.
+- Full-gate run **`33338129266`**, job **`99328658714`**, Python **3.13.15**.
 - `compileall`: PASS.
-- `git diff --check`: PASS.
-- Focused roots + `NumericContext` + numeric-units regression gate: **30/30 PASS in 6.27 s**.
-- Complete source suite: **772/772 PASS in 144.49 s**.
-- Task 2 introduced `AnalysisDomain`, finite/unit-compatible closed-domain normalization, exact continuous root solving, exact symbolic coordinate preservation with evaluated Pint quantities, endpoint inclusion, repeated-root de-duplication, no-real-root handling, exact-domain filtering, dimensional response-zero preservation, and explicit unresolved signalling without inventing sampled answers.
-- Both temporary Task 2 workflows were removed after validation.
-
-### 0.9.1 Task 3 — Piecewise roots, discontinuities + infinite root loci
-
-- Initial Task 3 RED run **`33336461687`**, job **`99324121038`**: **4 failed / 18 passed in 5.01 s**. Failures were exactly interval-zero loci and unresolved-branch preservation.
-- Expanded topology RED run **`33336560664`**, job **`99324414653`**: **6 failed / 18 passed in 5.57 s**, adding the required `[a,b)` versus `[a,b]` distinction.
-- Product GREEN commit: **`324e4990be3c95c19422b6a58804e1b104653d79`** (`feat: make root analysis Piecewise aware`).
-- Focused GREEN run **`33336765363`**, job **`99324970310`**: **60/60 PASS in 8.50 s**; `git diff --check` PASS.
-- Additional dimensional Piecewise contract commit: **`f524f8bf6545bed4669afa228aee22b14cb7c268`**.
-- Idempotent dimensional recheck run **`33336853323`**, job **`99325200843`**: **61/61 PASS in 8.61 s** and explicitly `No product patch to commit.`
-- Authoritative Task 3 full-gate SHA: **`452815344ac483af7af8966eee58e3096ab8c9b4`**.
-- Full-gate run **`33336900776`**, job **`99325325413`**, Python **3.13.15**.
-- `compileall`: PASS.
-- Branch-wide `git diff --check origin/main...HEAD`: PASS.
-- Complete `test_characteristics_*` + `test_piecewise_*` regression gate: **128/128 PASS in 17.88 s**.
-- Complete source suite: **783/783 PASS in 144.99 s**.
-- Task 3 added deterministic Piecewise region partitioning using the existing symbolic breakpoint extractor, branch-by-branch exact root solving, explicit breakpoint evaluation, jump-safe root semantics, identically-zero `CharacteristicInterval(role="roots")` loci, unit-aware symbolic breakpoints, unresolved-branch propagation without discarding exact roots from resolved regions, and immutable `lower_closed` / `upper_closed` interval topology.
-- Dimensional Piecewise validation confirmed a symbolic breakpoint at `L/2`, exact root at `2*L/3`, physical metre coordinates and an inferred kN zero-response unit.
-- All temporary Task 3 workflows and the guarded patch script were removed.
-
-### 0.9.1 Task 4 — exact intersections, dimensional compatibility + coincident intervals
-
-- Task 4 RED SHA: **`75dc1a3584a377cc4d98ad43a223900aa2c3e175`**.
-- RED run **`33337205001`**, job **`99326137071`**: intended collection failure, `ImportError: cannot import name 'solve_intersections_exact'`, **1 error in 0.61 s**.
-- Product GREEN commit: **`335ea3978ec75ee6037856b8ec49a475016ff8a2`** (`feat: add exact intersection analysis`).
-- Focused GREEN run **`33337313747`**, job **`99326429026`**: **55/55 PASS in 10.98 s**; `git diff --check` PASS.
-- Idempotent recheck run **`33337378718`**, job **`99326608634`**: **55/55 PASS in 9.21 s**, patch skipped because the solver was already present, and explicitly `No product patch to commit.`
-- Authoritative Task 4 full-gate SHA: **`7a89da4a581780af832894e46bf33ebca6162a27`**.
-- Full-gate run **`33337417458`**, job **`99326713114`**, Python **3.13.15**.
-- `compileall`: PASS.
-- Branch-wide `git diff --check origin/main...HEAD`: PASS.
-- Complete characteristics + Piecewise + indexed-matrix/user-function regression gate: **158/158 PASS in 19.57 s**.
-- Complete source suite: **794/794 PASS in 126.41 s**.
-- Task 4 added exact intersections by reusing the root/Piecewise engine, response-dimension compatibility preflight and candidate validation, exact common response preservation, endpoint intersections, jump-safe Piecewise semantics, coincident `CharacteristicInterval(role="coincident")` loci, open/closed coincident topology, union-of-breakpoints partitioning across both responses and indexed immutable-matrix scalar support.
-- All temporary Task 4 workflows and the guarded patch script were removed; cleanup head before this context update: **`8720413773aa13dfd107834559116138ae8b65ed`**.
+- `git diff --check origin/main...HEAD`: PASS.
+- Complete `test_characteristics_*` + scalar-math regression gate: **99/99 PASS in 10.17 s**.
+- Complete source suite: **800/800 PASS in 119.62 s**.
+- Task 5 added exact continuous stationary-point analysis, endpoint boundary candidates, local/global role classification, dimensional exact locations/values, constant `CharacteristicInterval(role="global_max_min")` loci, finite-domain singularity inspection and explicit unbounded-above/below flags without creating finite points at undefined poles.
+- All Task 5 temporary workflows and guarded patch script were removed; cleanup head **`0d02a8dcc1e906f8932cbc316337a63d0f312021`**.
 - No Codex review or Codex Cloud has been invoked.
 
 ## Roadmap / active plan
@@ -141,28 +103,28 @@ intersections(response_1, response_2, variable, lower, upper)
 - **0.7.2 engineering tables:** COMPLETE + merged.
 - **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
 - **0.8.0 Piecewise:** COMPLETE + merged.
-- **0.9.0 vectors / matrices / linear systems:** **COMPLETE + RELEASE-VALIDATED + MERGED**.
-- **0.9.1 Task 1 parser/API + typed result models:** **COMPLETE — 758/758 full GREEN**.
-- **0.9.1 Task 2 finite unit-aware domain + exact continuous roots:** **COMPLETE — 772/772 full GREEN**.
-- **0.9.1 Task 3 Piecewise roots, discontinuities + infinite root intervals:** **COMPLETE — 783/783 full GREEN**.
-- **0.9.1 Task 4 exact intersections, unit compatibility + coincident intervals:** **COMPLETE — 794/794 full GREEN**.
-- **0.9.1 Task 5 continuous extrema, local/global roles, constant loci + unbounded detection:** **NEXT**.
-- Then Tasks 6–12 per the approved implementation plan.
-- Later releases: **0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization**.
+- **0.9.0 Matrix/CAS:** **COMPLETE + RELEASE-VALIDATED + MERGED**.
+- **0.9.1 Task 1:** **COMPLETE — 758/758 full GREEN**.
+- **0.9.1 Task 2:** **COMPLETE — 772/772 full GREEN**.
+- **0.9.1 Task 3:** **COMPLETE — 783/783 full GREEN**.
+- **0.9.1 Task 4:** **COMPLETE — 794/794 full GREEN**.
+- **0.9.1 Task 5 continuous extrema:** **COMPLETE — 800/800 full GREEN**.
+- **0.9.1 Task 6 Piecewise extrema + `left/at/right`: NEXT**.
+- Then Tasks 7–12 per the approved implementation plan.
+- Later: **0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization**.
 
 ## Exact next step
 
-1. Start Task 5 by creating `tests/test_characteristics_extrema.py` before changing product code.
-2. RED must cover an interior exact global maximum, endpoint-governed extrema, multiple local extrema, a constant complete-domain locus, dimensional domain/response behavior and an interior singularity such as `1/(x-2)` with explicit unbounded-above/below flags.
-3. Build the continuous candidate set from exact derivative roots plus defined domain endpoints; do not use the 201-point plot grid as an extremum solver.
-4. Classify local roles symbolically where possible, with a deterministic same-region finite comparison only when the exact second-derivative test is undecidable.
-5. Compare global values in one compatible response scale while preserving exact symbolic value/location metadata.
-6. Represent a constant complete-domain response as one `CharacteristicInterval(role="global_max_min")` locus instead of arbitrary samples.
-7. Detect reachable finite-domain singularities and explicit ±∞ one-sided limits; never fabricate a finite extremum at an undefined singularity.
-8. Run focused extrema + scalar-math regressions and then the full source suite before closing Task 5.
-9. Keep version at 0.9.0 until Task 12.
-10. Do not merge without explicit user approval and do not invoke Codex unless explicitly authorized.
+1. Create Task 6 RED tests before modifying `characteristics.py`.
+2. RED must cover a discontinuous Piecewise breakpoint with distinct finite `left`, `at`, `right` records, a breakpoint governing a global maximum/minimum, a constant Piecewise subinterval that is a global extremum locus, and a jump that must not become a fake stationary point.
+3. Reuse `_partition_piecewise_regions(...)` and the continuous extrema machinery from Task 5; never differentiate the full Piecewise expression through a jump.
+4. Solve each continuous region independently, preserving its open/closed boundary ownership.
+5. Add explicit finite one-sided breakpoint values and the actual defined breakpoint value.
+6. Recompute global roles only after merging all regional points, one-sided values and constant loci.
+7. Run focused Piecewise-extrema + existing continuous-extrema + Piecewise calculus/plotting regressions, then the complete source suite before closing Task 6.
+8. Keep version at 0.9.0 until Task 12.
+9. Do not merge without explicit user approval and do not invoke Codex unless explicitly authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.9.0 remains canonical on `main@cdc454db7ea43e57e334d523afded8b4ef498ded`. Active 0.9.1 work is on `feature/v0.9.1-exact-characteristics`; the user approved the written design and selected inline execution. Tasks 1–4 are complete. Task 1 closed at 758/758, Task 2 at 772/772, Task 3 at 783/783, and Task 4 at **794/794 PASS in 126.41 s** on Actions run `33337417458`, job `99326713114`. Task 4 temporary workflows/scripts are removed. Resume with Task 5 RED for continuous extrema, local/global roles, constant loci, dimensional behavior and unbounded detection. Never merge without explicit user approval and never invoke Codex without explicit authorization.
+Read this file first. EngCalc 0.9.0 remains canonical on `main@cdc454db7ea43e57e334d523afded8b4ef498ded`. Active work is `feature/v0.9.1-exact-characteristics`. Tasks 1–5 are complete; Task 5 product is `bf731e03163c60850a5f3532e750735a764f7e4d`, authoritative run `33338129266`, job `99328658714`, with **99/99 characteristic+scalar regression tests** and **800/800 complete source tests in 119.62 s**. Task 5 temporary infrastructure is removed. Resume with Task 6 RED for Piecewise extrema and distinct finite `left/at/right` breakpoint values. Never merge without explicit user approval; never invoke Codex without explicit authorization.
