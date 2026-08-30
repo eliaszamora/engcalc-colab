@@ -6,7 +6,7 @@ on:
       - feature/v0.9.1-exact-characteristics
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   task9:
@@ -25,7 +25,19 @@ jobs:
           python -m pip install -e '.[dev]'
           python -m pip install ipython
 
-      - name: Run Task 9 rendering and magic RED tests
+      - name: Apply guarded Task 9 GREEN patch when needed
+        shell: bash
+        run: |
+          if grep -q '^def render_characteristic_result(' src/engcalc_colab/renderer.py; then
+            echo 'Task 9 characteristic renderer already present; skipping patch.'
+          else
+            python .github/scripts/v091_task9_green.py
+          fi
+
+      - name: Check diff hygiene
+        run: git diff --check
+
+      - name: Run Task 9 focused regression gate
         run: >-
           python -m pytest
           tests/test_characteristics_rendering.py
@@ -34,3 +46,16 @@ jobs:
           tests/test_renderer.py
           tests/test_matrix_renderer.py
           -q
+
+      - name: Commit verified Task 9 product patch
+        shell: bash
+        run: |
+          if git diff --quiet -- src/engcalc_colab/renderer.py src/engcalc_colab/magic.py; then
+            echo 'No product patch to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/engcalc_colab/renderer.py src/engcalc_colab/magic.py
+          git commit -m 'feat: render characteristic analysis in eng magic'
+          git push origin HEAD:feature/v0.9.1-exact-characteristics
