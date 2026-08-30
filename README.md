@@ -2,11 +2,11 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.8.0**.
+Current version: **0.9.0**.
 
-## Matrix/CAS — 0.9.0 development scope
+## v0.9.0 Matrix/CAS
 
-EngCalc's Matrix/CAS layer is currently being completed on the 0.9.0 development branch while the released runtime version remains 0.8.0. Matrix literals use mathematical/MATLAB-inspired syntax with mandatory commas between columns and semicolons between rows:
+EngCalc 0.9.0 adds a native Matrix/CAS layer to the same restricted `%%eng` workflow. Matrix literals use mathematical/MATLAB-inspired syntax with mandatory commas between columns and semicolons between rows:
 
 ```text
 A = [a, b; c, d]
@@ -767,7 +767,7 @@ EngCalc ignores the directive because it begins with a single `#`. Numerical equ
 
 ## Current limitations
 
-v0.8.0 currently does not provide:
+v0.9.0 currently does not provide:
 
 - subplots or multiple axes in one `plot(...)` or `envelope(...)` statement;
 - arbitrary plot styling/options from EngCalc syntax;
@@ -781,13 +781,13 @@ v0.8.0 currently does not provide:
 - automatic compact coefficient evaluation for non-polynomial partial functions;
 - exact browser-pixel-aware MathJax line wrapping;
 - general keyword arguments or general list/dictionary syntax outside the restricted plot/envelope sweep slot;
-- general arrays or dedicated matrix syntax;
 - arbitrary Python execution or arbitrary library functions;
 - multi-solution `solve(...)`;
 - full LaTeX parsing.
 
 ## Version notes
 
+- **0.9.0** — native exact symbolic matrices/vectors, one-based indexing, matrix-valued CAS functions, Pint-backed per-entry numerical matrices, exact `solve(A, b)`, guarded rank/RREF/norm/eigen analysis, native MathJax matrix presentation, Piecewise-cell integration and indexed scalar table/plot/envelope workflows.
 - **0.8.0** — restricted unit-aware Piecewise expressions with partial numerical cases, exact breakpoint-enriched shared plot grids, segmented discontinuous rendering, Piecewise calculus semantics, diagnostics and real `%%eng` acceptance.
 - **0.7.2** — native engineering tables with automatic unit-aware discretization, unit-once and fully explicit point forms, compatible multi-response columns, native HTML rendering, and source-order `%%eng` integration.
 - **0.7.1** — multi-argument user functions and generalized partial numerical evaluation.
@@ -807,4 +807,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.8.0`.
+Version: `0.9.0`.
