@@ -311,10 +311,14 @@ class CharacteristicInterval:
     provenance: str = "exact"
     value_symbolic: Any | None = None
     value_quantity: Any | None = None
+    lower_closed: bool = True
+    upper_closed: bool = True
 
     def __post_init__(self) -> None:
         if self.provenance not in _CHARACTERISTIC_PROVENANCE:
             raise ValueError("characteristic provenance must be 'exact' or 'numeric'")
+        if not isinstance(self.lower_closed, bool) or not isinstance(self.upper_closed, bool):
+            raise ValueError("characteristic interval closure flags must be boolean")
 
 
 @dataclass(frozen=True)
