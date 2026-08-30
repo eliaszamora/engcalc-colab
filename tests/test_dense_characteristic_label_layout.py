@@ -6,10 +6,12 @@ from matplotlib.text import Annotation, Text
 
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
+from engcalc_colab.plotting import render_plot
 from engcalc_colab.presentation import render_presented_plot
 
 
 _MIN_RAIL_VERTICAL_CLEARANCE_PX = 10.0
+_AXES_SIZE_TOLERANCE_PX = 1.0
 
 
 def _eval_cell(engine, source: str):
@@ -141,6 +143,14 @@ def _render(result):
     return figure, axis, _annotations(axis), canvas.get_renderer()
 
 
+def _render_baseline(result):
+    figure = render_plot(result)
+    axis = figure.axes[0]
+    canvas = FigureCanvasAgg(figure)
+    canvas.draw()
+    return figure, axis, canvas.get_renderer()
+
+
 def _render_dense_case():
     return _render(_dense_six_series_moment_plot())
 
@@ -158,7 +168,7 @@ def test_dense_shared_x_characteristic_labels_follow_anchor_visual_order():
     _assert_cluster_preserves_visual_order(axis, interior_cluster, renderer)
 
 
-def test_dense_shared_x_groups_use_external_callout_rails_with_leaders():
+def test_dense_shared_x_groups_use_bottom_callout_band_with_leaders():
     figure, axis, items, renderer = _render_dense_case()
     axes_box = axis.get_window_extent(renderer)
     figure_box = figure.bbox
@@ -171,11 +181,14 @@ def test_dense_shared_x_groups_use_external_callout_rails_with_leaders():
     _assert_single_label_rail(interior_cluster, renderer)
     assert all(item.arrow_patch is not None for item in left_cluster + interior_cluster)
 
-    left_boxes = [_text_box(item, renderer) for item in left_cluster]
-    right_boxes = [_text_box(item, renderer) for item in interior_cluster]
-    assert all(box.x1 < axes_box.x0 for box in left_boxes)
-    assert all(box.x0 > axes_box.x1 for box in right_boxes)
-    assert all(box.x0 >= figure_box.x0 and box.x1 <= figure_box.x1 for box in left_boxes + right_boxes)
+    boxes = [_text_box(item, renderer) for item in left_cluster + interior_cluster]
+    assert all(box.y1 < axes_box.y0 for box in boxes)
+    assert all(
+        box.x0 >= figure_box.x0
+        and box.x1 <= figure_box.x1
+        and box.y0 >= figure_box.y0
+        for box in boxes
+    )
 
 
 def test_dense_shared_x_groups_have_robust_vertical_clearance():
@@ -189,14 +202,25 @@ def test_dense_shared_x_groups_have_robust_vertical_clearance():
     _assert_minimum_vertical_clearance(interior_cluster, renderer)
 
 
-def test_dense_callouts_are_non_overlapping_and_figure_reserves_side_space():
-    figure, _, items, renderer = _render_dense_case()
+def test_dense_callout_band_adds_height_without_adding_width_or_shrinking_axes():
+    result = _dense_six_series_moment_plot()
+    baseline_figure, baseline_axis, baseline_renderer = _render_baseline(result)
+    baseline_axes_box = baseline_axis.get_window_extent(baseline_renderer)
+
+    figure, axis, items, renderer = _render(result)
+    axes_box = axis.get_window_extent(renderer)
     boxes = [_text_box(item, renderer) for item in items]
 
-    assert figure.get_figwidth() > matplotlib.rcParams["figure.figsize"][0]
+    assert figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
+    assert figure.get_figheight() > matplotlib.rcParams["figure.figsize"][1]
+    assert abs(float(axes_box.width) - float(baseline_axes_box.width)) <= _AXES_SIZE_TOLERANCE_PX
+    assert abs(float(axes_box.height) - float(baseline_axes_box.height)) <= _AXES_SIZE_TOLERANCE_PX
+
     for index, left in enumerate(boxes):
         for right in boxes[index + 1:]:
             assert _overlap_area(left, right) == 0.0
+
+    assert baseline_figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
 
 
 def test_sparse_two_label_clusters_keep_existing_inline_annotations():
@@ -210,3 +234,4 @@ def test_sparse_two_label_clusters_keep_existing_inline_annotations():
         for item in items
     )
     assert figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
+    assert figure.get_figheight() == matplotlib.rcParams["figure.figsize"][1]
