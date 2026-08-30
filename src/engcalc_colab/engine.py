@@ -27,6 +27,15 @@ from .models import (
     TableResult,
     UserFunction,
 )
+from .matrix_core import (
+    build_matrix,
+    matrix_add,
+    matrix_index,
+    matrix_multiply,
+    matrix_power,
+    matrix_scalar_divide,
+    matrix_subtract,
+)
 from .numeric import NumericContext
 from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
 from .tables import normalize_explicit_points, normalize_uniform_points
@@ -113,7 +122,7 @@ class _TableEvaluation:
 
 class EngineeringEngine:
     def __init__(self) -> None:
-        self.namespace: dict[str, sp.Expr] = {}
+        self.namespace: dict[str, object] = {}
         self.functions: dict[str, UserFunction] = {}
         self.symbols: dict[str, sp.Symbol] = {}
         self.numeric_context = NumericContext()
@@ -145,7 +154,7 @@ class EngineeringEngine:
         | PlotResult
         | TableResult
     ):
-        evaluator = _Evaluator(self)
+        evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))
         try:
             if isinstance(statement, ParsedNumericAssignment):
                 quantity = self.numeric_context.assign(
@@ -276,8 +285,9 @@ class EngineeringEngine:
 
 
 class _Evaluator(ast.NodeVisitor):
-    def __init__(self, engine: EngineeringEngine) -> None:
+    def __init__(self, engine: EngineeringEngine, matrix_literals=()) -> None:
         self.engine = engine
+        self.matrix_literals = {binding.name: binding.literal for binding in matrix_literals}
         self.display_input = None
         self.numeric_evaluation = None
         self.partial_numeric_evaluation = None
@@ -335,6 +345,25 @@ class _Evaluator(ast.NodeVisitor):
                 raise
             return quantity
 
+    def _evaluate_matrix_literal(self, literal):
+        rows = tuple(
+            tuple(self.visit(expression.body) for expression in row)
+            for row in literal.rows
+        )
+        return build_matrix(rows)
+
+    def visit_List(self, node: ast.List):
+        return build_matrix((tuple(self.visit(element) for element in node.elts),))
+
+    def visit_Subscript(self, node: ast.Subscript):
+        value = self.visit(node.value)
+        if isinstance(node.slice, ast.Tuple):
+            index_nodes = tuple(node.slice.elts)
+        else:
+            index_nodes = (node.slice,)
+        indices = tuple(self.visit(item) for item in index_nodes)
+        return matrix_index(value, indices)
+
     def visit_Constant(self, node: ast.Constant):
         if isinstance(node.value, bool) or node.value is None:
             raise EngEvaluationError("only numeric constants are supported")
@@ -345,6 +374,8 @@ class _Evaluator(ast.NodeVisitor):
         raise EngEvaluationError("only numeric constants are supported")
 
     def visit_Name(self, node: ast.Name):
+        if node.id in self.matrix_literals:
+            return self._evaluate_matrix_literal(self.matrix_literals[node.id])
         if node.id in self.symbol_overrides:
             return self.symbol_overrides[node.id]
         if node.id == "pi":
@@ -362,11 +393,16 @@ class _Evaluator(ast.NodeVisitor):
     def visit_BinOp(self, node: ast.BinOp):
         left = self.visit(node.left)
         right = self.visit(node.right)
-        if isinstance(node.op, ast.Add): return left + right
-        if isinstance(node.op, ast.Sub): return left - right
-        if isinstance(node.op, ast.Mult): return left * right
-        if isinstance(node.op, ast.Div): return left / right
-        if isinstance(node.op, ast.Pow): return left ** right
+        if isinstance(node.op, ast.Add):
+            return matrix_add(left, right)
+        if isinstance(node.op, ast.Sub):
+            return matrix_subtract(left, right)
+        if isinstance(node.op, ast.Mult):
+            return matrix_multiply(left, right)
+        if isinstance(node.op, ast.Div):
+            return matrix_scalar_divide(left, right)
+        if isinstance(node.op, ast.Pow):
+            return matrix_power(left, right)
         raise EngEvaluationError("unsupported operator")
 
     def _evaluate_piecewise_condition(self, node: ast.AST):

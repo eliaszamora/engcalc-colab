@@ -343,6 +343,31 @@ def _validate_normal_node(
                 piecewise_parameters=piecewise_parameters,
             )
         return
+    if isinstance(node, ast.Subscript):
+        _validate_normal_node(
+            node.value,
+            line_no,
+            piecewise_parameters=piecewise_parameters,
+        )
+        index_node = node.slice
+        if isinstance(index_node, ast.Slice) or any(
+            isinstance(child, ast.Slice) for child in ast.walk(index_node)
+        ):
+            raise EngSyntaxError(f"line {line_no}: matrix slicing is unsupported")
+        if isinstance(index_node, ast.Tuple):
+            for element in index_node.elts:
+                _validate_normal_node(
+                    element,
+                    line_no,
+                    piecewise_parameters=piecewise_parameters,
+                )
+        else:
+            _validate_normal_node(
+                index_node,
+                line_no,
+                piecewise_parameters=piecewise_parameters,
+            )
+        return
     if isinstance(node, ast.keyword):
         raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")
     if not isinstance(node, _ALLOWED_NODES):
