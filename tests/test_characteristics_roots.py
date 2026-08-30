@@ -192,3 +192,150 @@ def test_exact_solver_reports_unresolved_without_inventing_sampled_answer(monkey
     assert points == ()
     assert intervals == ()
     assert unresolved is True
+
+
+def test_piecewise_sign_jump_is_not_a_root():
+    context = NumericContext()
+    x = sp.Symbol("x")
+    expression = sp.Piecewise((-1, x < 2), (1, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    points, intervals, unresolved = solve_roots_exact(expression, x, domain, context)
+
+    assert points == ()
+    assert intervals == ()
+    assert unresolved is False
+
+
+def test_piecewise_identically_zero_subinterval_is_interval_locus():
+    context = NumericContext()
+    x = sp.Symbol("x")
+    expression = sp.Piecewise((0, x <= 2), (x - 3, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    points, intervals, unresolved = solve_roots_exact(expression, x, domain, context)
+
+    assert [point.x_symbolic for point in points] == [sp.Integer(3)]
+    assert len(intervals) == 1
+    interval = intervals[0]
+    assert interval.role == "roots"
+    assert interval.lower_quantity.magnitude == pytest.approx(0.0)
+    assert interval.upper_quantity.magnitude == pytest.approx(2.0)
+    assert unresolved is False
+
+
+def test_identically_zero_complete_domain_is_interval_locus():
+    context = NumericContext()
+    x = sp.Symbol("x")
+    domain = normalize_analysis_domain(context, sp.Integer(-2), sp.Integer(4))
+
+    points, intervals, unresolved = solve_roots_exact(sp.Integer(0), x, domain, context)
+
+    assert points == ()
+    assert len(intervals) == 1
+    interval = intervals[0]
+    assert interval.role == "roots"
+    assert interval.lower_symbolic == -2
+    assert interval.upper_symbolic == 4
+    assert interval.lower_quantity.magnitude == pytest.approx(-2.0)
+    assert interval.upper_quantity.magnitude == pytest.approx(4.0)
+    assert unresolved is False
+
+
+def test_piecewise_solves_roots_inside_each_branch():
+    context = NumericContext()
+    x = sp.Symbol("x")
+    expression = sp.Piecewise((x - 1, x < 2), (x - 3, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    points, intervals, unresolved = solve_roots_exact(expression, x, domain, context)
+
+    assert [point.x_symbolic for point in points] == [sp.Integer(1), sp.Integer(3)]
+    assert intervals == ()
+    assert unresolved is False
+
+
+def test_piecewise_root_at_defined_breakpoint_is_kept_once():
+    context = NumericContext()
+    x = sp.Symbol("x")
+    expression = sp.Piecewise((x - 2, x <= 2), (x - 2, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    points, intervals, unresolved = solve_roots_exact(expression, x, domain, context)
+
+    assert [point.x_symbolic for point in points] == [sp.Integer(2)]
+    assert intervals == ()
+    assert unresolved is False
+
+
+def test_piecewise_undefined_breakpoint_does_not_create_root():
+    context = NumericContext()
+    x = sp.Symbol("x")
+    expression = sp.Piecewise(
+        (x - 1, x < 2),
+        (x - 3, x > 2),
+        (sp.nan, True),
+        evaluate=False,
+    )
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    points, intervals, unresolved = solve_roots_exact(expression, x, domain, context)
+
+    assert [point.x_symbolic for point in points] == [sp.Integer(1), sp.Integer(3)]
+    assert all(point.x_symbolic != 2 for point in points)
+    assert intervals == ()
+    assert unresolved is False
+
+
+def test_piecewise_zero_interval_is_clipped_to_requested_domain():
+    context = NumericContext()
+    x = sp.Symbol("x")
+    expression = sp.Piecewise((0, x < 5), (x - 6, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(2), sp.Integer(4))
+
+    points, intervals, unresolved = solve_roots_exact(expression, x, domain, context)
+
+    assert points == ()
+    assert len(intervals) == 1
+    interval = intervals[0]
+    assert interval.lower_symbolic == 2
+    assert interval.upper_symbolic == 4
+    assert interval.lower_quantity.magnitude == pytest.approx(2.0)
+    assert interval.upper_quantity.magnitude == pytest.approx(4.0)
+    assert unresolved is False
+
+
+def test_piecewise_unresolved_branch_preserves_exact_roots_from_other_regions(monkeypatch):
+    context = NumericContext()
+    x = sp.Symbol("x")
+    expression = sp.Piecewise((x - 1, x < 2), (sp.sin(x) - x / 2, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+    real_solveset = sp.solveset
+    real_solve = sp.solve
+    unresolved_set = sp.ConditionSet(
+        x,
+        sp.Eq(sp.sin(x), x / 2, evaluate=False),
+        sp.S.Reals,
+    )
+
+    def controlled_solveset(equation, variable, domain):
+        if sp.simplify(equation.lhs - (x - 1)) == 0:
+            return sp.FiniteSet(1)
+        return unresolved_set
+
+    def controlled_solve(equation, variable):
+        if sp.simplify(equation.lhs - (x - 1)) == 0:
+            return [sp.Integer(1)]
+        return []
+
+    monkeypatch.setattr(sp, "solveset", controlled_solveset)
+    monkeypatch.setattr(sp, "solve", controlled_solve)
+
+    points, intervals, unresolved = solve_roots_exact(expression, x, domain, context)
+
+    monkeypatch.setattr(sp, "solveset", real_solveset)
+    monkeypatch.setattr(sp, "solve", real_solve)
+
+    assert [point.x_symbolic for point in points] == [sp.Integer(1)]
+    assert intervals == ()
+    assert unresolved is True
