@@ -1,0 +1,251 @@
+name: EngCalc 0.9.0 Task 2 GREEN
+
+on:
+  push:
+    branches:
+      - feature/v0.9.0-matrix-cas
+    paths:
+      - .github/workflows/v090-task2-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.9.0-matrix-cas
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Apply minimal Task 2 implementation
+        shell: bash
+        run: |
+          cat > src/engcalc_colab/matrix_core.py <<'PY'
+          from __future__ import annotations
+
+          import sympy as sp
+
+          from .errors import EngEvaluationError
+
+
+          def is_matrix(value: object) -> bool:
+              return isinstance(value, sp.MatrixBase)
+
+
+          def _immutable(value):
+              if isinstance(value, sp.MatrixBase):
+                  return sp.ImmutableMatrix(value)
+              return value
+
+
+          def _shape(value: sp.MatrixBase) -> str:
+              return f"{value.rows}x{value.cols}"
+
+
+          def build_matrix(rows) -> sp.ImmutableMatrix:
+              normalized = []
+              for row in rows:
+                  normalized_row = []
+                  for cell in row:
+                      if is_matrix(cell):
+                          raise EngEvaluationError("matrix literal cells must be scalar")
+                      normalized_row.append(sp.sympify(cell))
+                  normalized.append(normalized_row)
+              return sp.ImmutableMatrix(normalized)
+
+
+          def matrix_add(left, right):
+              left_matrix = is_matrix(left)
+              right_matrix = is_matrix(right)
+              if not left_matrix and not right_matrix:
+                  return left + right
+              if not (left_matrix and right_matrix):
+                  raise EngEvaluationError(
+                      "matrix addition requires two matrices with the same shape"
+                  )
+              if left.shape != right.shape:
+                  raise EngEvaluationError(
+                      "matrix addition dimension mismatch: "
+                      f"left is {_shape(left)}, right is {_shape(right)}"
+                  )
+              return _immutable(left + right)
+
+
+          def matrix_subtract(left, right):
+              left_matrix = is_matrix(left)
+              right_matrix = is_matrix(right)
+              if not left_matrix and not right_matrix:
+                  return left - right
+              if not (left_matrix and right_matrix):
+                  raise EngEvaluationError(
+                      "matrix subtraction requires two matrices with the same shape"
+                  )
+              if left.shape != right.shape:
+                  raise EngEvaluationError(
+                      "matrix subtraction dimension mismatch: "
+                      f"left is {_shape(left)}, right is {_shape(right)}"
+                  )
+              return _immutable(left - right)
+
+
+          def matrix_multiply(left, right):
+              left_matrix = is_matrix(left)
+              right_matrix = is_matrix(right)
+              if not left_matrix and not right_matrix:
+                  return left * right
+              if left_matrix and right_matrix:
+                  if left.cols != right.rows:
+                      raise EngEvaluationError(
+                          "matrix multiplication dimension mismatch: "
+                          f"left is {_shape(left)}, right is {_shape(right)}"
+                      )
+                  return _immutable(left * right)
+              return _immutable(left * right)
+
+
+          def matrix_scalar_divide(left, right):
+              left_matrix = is_matrix(left)
+              right_matrix = is_matrix(right)
+              if not left_matrix and not right_matrix:
+                  return left / right
+              if left_matrix and right_matrix:
+                  raise EngEvaluationError("matrix division requires a scalar denominator")
+              if right_matrix:
+                  raise EngEvaluationError("division by a matrix is unsupported")
+              return _immutable(left / right)
+
+
+          def matrix_power(base, exponent):
+              if not is_matrix(base):
+                  if is_matrix(exponent):
+                      raise EngEvaluationError("matrix exponent must be an exact integer")
+                  return base ** exponent
+              if base.rows != base.cols:
+                  raise EngEvaluationError("matrix power requires a square matrix")
+              if not isinstance(exponent, sp.Integer):
+                  raise EngEvaluationError("matrix exponent must be an exact integer")
+              try:
+                  return _immutable(base ** int(exponent))
+              except Exception as exc:
+                  raise EngEvaluationError(f"matrix power failed: {exc}") from None
+
+
+          def _positive_index(value) -> int:
+              if not isinstance(value, sp.Integer) or value <= 0:
+                  raise EngEvaluationError("matrix indices must be positive integers")
+              return int(value)
+
+
+          def matrix_index(value, indices: tuple[object, ...]):
+              if not is_matrix(value):
+                  raise EngEvaluationError("matrix indexing requires a matrix")
+              if len(indices) not in (1, 2):
+                  raise EngEvaluationError(
+                      "matrix indexing expects one vector index or two matrix indices"
+                  )
+
+              if len(indices) == 1:
+                  index = _positive_index(indices[0])
+                  if value.rows == 1:
+                      if index > value.cols:
+                          raise EngEvaluationError(
+                              f"matrix index [{index}] is out of range for shape {_shape(value)}"
+                          )
+                      return value[0, index - 1]
+                  if value.cols == 1:
+                      if index > value.rows:
+                          raise EngEvaluationError(
+                              f"matrix index [{index}] is out of range for shape {_shape(value)}"
+                          )
+                      return value[index - 1, 0]
+                  raise EngEvaluationError(
+                      "general matrix indexing requires two indices"
+                  )
+
+              row = _positive_index(indices[0])
+              col = _positive_index(indices[1])
+              if row > value.rows or col > value.cols:
+                  raise EngEvaluationError(
+                      f"matrix index [{row},{col}] is out of range for shape {_shape(value)}"
+                  )
+              return value[row - 1, col - 1]
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+
+          parser = Path('src/engcalc_colab/parser.py')
+          text = parser.read_text(encoding='utf-8')
+          needle = '''    if isinstance(node, ast.keyword):\n        raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")\n'''
+          replacement = '''    if isinstance(node, ast.Subscript):\n        _validate_normal_node(\n            node.value,\n            line_no,\n            piecewise_parameters=piecewise_parameters,\n        )\n        index_node = node.slice\n        if isinstance(index_node, ast.Slice) or any(\n            isinstance(child, ast.Slice) for child in ast.walk(index_node)\n        ):\n            raise EngSyntaxError(f"line {line_no}: matrix slicing is unsupported")\n        if isinstance(index_node, ast.Tuple):\n            for element in index_node.elts:\n                _validate_normal_node(\n                    element,\n                    line_no,\n                    piecewise_parameters=piecewise_parameters,\n                )\n        else:\n            _validate_normal_node(\n                index_node,\n                line_no,\n                piecewise_parameters=piecewise_parameters,\n            )\n        return\n    if isinstance(node, ast.keyword):\n        raise EngSyntaxError(f"line {line_no}: keyword arguments are unsupported")\n'''
+          assert needle in text
+          parser.write_text(text.replace(needle, replacement, 1), encoding='utf-8')
+
+          engine = Path('src/engcalc_colab/engine.py')
+          text = engine.read_text(encoding='utf-8')
+          needle = 'from .numeric import NumericContext\n'
+          replacement = '''from .matrix_core import (\n    build_matrix,\n    matrix_add,\n    matrix_index,\n    matrix_multiply,\n    matrix_power,\n    matrix_scalar_divide,\n    matrix_subtract,\n)\nfrom .numeric import NumericContext\n'''
+          assert needle in text
+          text = text.replace(needle, replacement, 1)
+
+          text = text.replace(
+              '        self.namespace: dict[str, sp.Expr] = {}\n',
+              '        self.namespace: dict[str, object] = {}\n',
+              1,
+          )
+          text = text.replace(
+              '        evaluator = _Evaluator(self)\n',
+              '        evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))\n',
+              1,
+          )
+
+          needle = '''class _Evaluator(ast.NodeVisitor):\n    def __init__(self, engine: EngineeringEngine) -> None:\n        self.engine = engine\n        self.display_input = None\n'''
+          replacement = '''class _Evaluator(ast.NodeVisitor):\n    def __init__(self, engine: EngineeringEngine, matrix_literals=()) -> None:\n        self.engine = engine\n        self.matrix_literals = {binding.name: binding.literal for binding in matrix_literals}\n        self.display_input = None\n'''
+          assert needle in text
+          text = text.replace(needle, replacement, 1)
+
+          needle = '''    def visit_Constant(self, node: ast.Constant):\n'''
+          replacement = '''    def _evaluate_matrix_literal(self, literal):\n        rows = tuple(\n            tuple(self.visit(expression.body) for expression in row)\n            for row in literal.rows\n        )\n        return build_matrix(rows)\n\n    def visit_List(self, node: ast.List):\n        return build_matrix((tuple(self.visit(element) for element in node.elts),))\n\n    def visit_Subscript(self, node: ast.Subscript):\n        value = self.visit(node.value)\n        if isinstance(node.slice, ast.Tuple):\n            index_nodes = tuple(node.slice.elts)\n        else:\n            index_nodes = (node.slice,)\n        indices = tuple(self.visit(item) for item in index_nodes)\n        return matrix_index(value, indices)\n\n    def visit_Constant(self, node: ast.Constant):\n'''
+          assert needle in text
+          text = text.replace(needle, replacement, 1)
+
+          needle = '''    def visit_Name(self, node: ast.Name):\n        if node.id in self.symbol_overrides:\n            return self.symbol_overrides[node.id]\n        if node.id == "pi":\n            return sp.pi\n        return self.engine.resolve_name(node.id)\n'''
+          replacement = '''    def visit_Name(self, node: ast.Name):\n        if node.id in self.matrix_literals:\n            return self._evaluate_matrix_literal(self.matrix_literals[node.id])\n        if node.id in self.symbol_overrides:\n            return self.symbol_overrides[node.id]\n        if node.id == "pi":\n            return sp.pi\n        return self.engine.resolve_name(node.id)\n'''
+          assert needle in text
+          text = text.replace(needle, replacement, 1)
+
+          needle = '''    def visit_BinOp(self, node: ast.BinOp):\n        left = self.visit(node.left)\n        right = self.visit(node.right)\n        if isinstance(node.op, ast.Add): return left + right\n        if isinstance(node.op, ast.Sub): return left - right\n        if isinstance(node.op, ast.Mult): return left * right\n        if isinstance(node.op, ast.Div): return left / right\n        if isinstance(node.op, ast.Pow): return left ** right\n        raise EngEvaluationError("unsupported operator")\n'''
+          replacement = '''    def visit_BinOp(self, node: ast.BinOp):\n        left = self.visit(node.left)\n        right = self.visit(node.right)\n        if isinstance(node.op, ast.Add):\n            return matrix_add(left, right)\n        if isinstance(node.op, ast.Sub):\n            return matrix_subtract(left, right)\n        if isinstance(node.op, ast.Mult):\n            return matrix_multiply(left, right)\n        if isinstance(node.op, ast.Div):\n            return matrix_scalar_divide(left, right)\n        if isinstance(node.op, ast.Pow):\n            return matrix_power(left, right)\n        raise EngEvaluationError("unsupported operator")\n'''
+          assert needle in text
+          text = text.replace(needle, replacement, 1)
+          engine.write_text(text, encoding='utf-8')
+          PY
+
+          python -m compileall -q src/engcalc_colab
+          git diff --check
+      - name: Focused GREEN
+        shell: bash
+        run: |
+          python -m pytest tests/test_matrix_symbolic.py tests/test_matrix_indexing.py tests/test_matrix_diagnostics.py -q 2>&1 | tee task2-focused.log
+      - name: Full regression
+        shell: bash
+        run: |
+          python -m pytest -q 2>&1 | tee task2-full.log
+      - name: Commit GREEN implementation
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add src/engcalc_colab/matrix_core.py src/engcalc_colab/parser.py src/engcalc_colab/engine.py
+          git commit -m "feat: add symbolic matrix algebra and indexing"
+          git push origin HEAD:feature/v0.9.0-matrix-cas
+      - uses: actions/upload-artifact@v4
+        with:
+          name: task2-green-logs
+          path: |
+            task2-focused.log
+            task2-full.log
