@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+from typing import Any
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.text import Annotation, Text
 
 from .models import PlotResult
-from .plotting import _coordinate_label, _series_response_symbol
+from .plotting import _CharacteristicRequest, _characteristic_requests, _coordinate_label
 
 
 _CLUSTER_X_TOLERANCE_PX = 14.0
@@ -20,10 +22,16 @@ _LEADER_LINEWIDTH = 0.75
 _LEADER_ALPHA = 0.44
 
 
-def _extreme_indices(values: list[float]) -> tuple[int, int]:
-    maximum = max(range(len(values)), key=values.__getitem__)
-    minimum = min(range(len(values)), key=values.__getitem__)
-    return maximum, minimum
+@dataclass(frozen=True)
+class _DenseSummaryEntry:
+    request: _CharacteristicRequest
+    color: Any
+
+
+@dataclass(frozen=True)
+class _DenseSummaryGroup:
+    x_quantity: Any
+    entries: tuple[_DenseSummaryEntry, ...]
 
 
 def _series_color(axis, display_label: str):
@@ -33,54 +41,11 @@ def _series_color(axis, display_label: str):
     return None
 
 
-def _characteristic_requests(axis, result: PlotResult):
-    requests = []
-    inverted = all(series.is_moment for series in result.series)
-
-    for series in result.series:
-        y_values = [float(value.magnitude) for value in series.y_values]
-        maximum_index, minimum_index = _extreme_indices(y_values)
-        line_color = _series_color(axis, series.display_label)
-        if line_color is None:
-            continue
-
-        response_label = _series_response_symbol(result, series)
-        requests.append(
-            (
-                result.x_values[maximum_index],
-                series.y_values[maximum_index],
-                response_label,
-                "max",
-                inverted,
-                line_color,
-            )
-        )
-        if not math.isclose(
-            y_values[maximum_index],
-            y_values[minimum_index],
-            rel_tol=1e-12,
-            abs_tol=1e-12,
-        ):
-            requests.append(
-                (
-                    result.x_values[minimum_index],
-                    series.y_values[minimum_index],
-                    response_label,
-                    "min",
-                    inverted,
-                    line_color,
-                )
-            )
-
-    return requests
-
-
 def _cluster_requests(axis, requests):
     positioned = []
     for request in requests:
-        x_quantity, y_quantity, *_ = request
-        x = float(x_quantity.magnitude)
-        y = float(y_quantity.magnitude)
+        x = float(request.x_quantity.magnitude)
+        y = float(request.y_quantity.magnitude)
         display_x, display_y = axis.transData.transform((x, y))
         positioned.append((float(display_x), float(display_y), request))
 
@@ -98,17 +63,76 @@ def _cluster_requests(axis, requests):
     return clusters
 
 
+def _build_dense_summary_groups(
+    axis,
+    result: PlotResult,
+) -> tuple[_DenseSummaryGroup, ...]:
+    requests = _characteristic_requests(result)
+    positioned: list[tuple[float, _CharacteristicRequest]] = []
+
+    for request in requests:
+        x = float(request.x_quantity.magnitude)
+        y = float(request.y_quantity.magnitude)
+        display_x, _display_y = axis.transData.transform((x, y))
+        positioned.append((float(display_x), request))
+
+    positioned.sort(key=lambda item: item[0])
+    clusters: list[list[tuple[float, _CharacteristicRequest]]] = []
+    for item in positioned:
+        if (
+            not clusters
+            or abs(item[0] - clusters[-1][-1][0]) > _CLUSTER_X_TOLERANCE_PX
+        ):
+            clusters.append([item])
+        else:
+            clusters[-1].append(item)
+
+    role_order = {"max": 0, "min": 1}
+    groups: list[_DenseSummaryGroup] = []
+    for cluster in clusters:
+        if len(cluster) < _DENSE_CLUSTER_SIZE:
+            continue
+
+        cluster_requests = [item[1] for item in cluster]
+        cluster_requests.sort(
+            key=lambda request: (request.series_index, role_order[request.role])
+        )
+        entries: list[_DenseSummaryEntry] = []
+        for request in cluster_requests:
+            color = _series_color(axis, request.series.display_label)
+            if color is not None:
+                entries.append(_DenseSummaryEntry(request=request, color=color))
+
+        if len(entries) >= _DENSE_CLUSTER_SIZE:
+            groups.append(
+                _DenseSummaryGroup(
+                    x_quantity=entries[0].request.x_quantity,
+                    entries=tuple(entries),
+                )
+            )
+
+    groups.sort(key=lambda group: float(group.x_quantity.magnitude))
+    return tuple(groups)
+
+
 def _text_box(annotation: Annotation, renderer):
     return Text.get_window_extent(annotation, renderer)
 
 
-def _request_matches_annotation(request, annotation: Annotation) -> bool:
-    x_quantity, y_quantity, *_ = request
-    request_x = float(x_quantity.magnitude)
-    request_y = float(y_quantity.magnitude)
+def _request_matches_annotation(
+    request: _CharacteristicRequest,
+    annotation: Annotation,
+) -> bool:
+    request_x = float(request.x_quantity.magnitude)
+    request_y = float(request.y_quantity.magnitude)
     annotation_x = float(annotation.xy[0])
     annotation_y = float(annotation.xy[1])
-    return math.isclose(request_x, annotation_x, rel_tol=1e-10, abs_tol=1e-10) and math.isclose(
+    return math.isclose(
+        request_x,
+        annotation_x,
+        rel_tol=1e-10,
+        abs_tol=1e-10,
+    ) and math.isclose(
         request_y,
         annotation_y,
         rel_tol=1e-10,
@@ -153,7 +177,12 @@ def _reserve_bottom_space(figure, axis, bottom_space_in: float) -> None:
     )
 
 
-def _stack_vertical_centers(heights: list[float], *, lower: float, upper: float) -> list[float]:
+def _stack_vertical_centers(
+    heights: list[float],
+    *,
+    lower: float,
+    upper: float,
+) -> list[float]:
     if not heights:
         return []
 
@@ -169,10 +198,17 @@ def _stack_vertical_centers(heights: list[float], *, lower: float, upper: float)
     return centers
 
 
-def _create_bottom_callout(figure, axis, request, *, x_fraction: float, y_fraction: float):
-    x_quantity, y_quantity, _response_label, _role, _inverted, line_color = request
-    x = float(x_quantity.magnitude)
-    y = float(y_quantity.magnitude)
+def _create_bottom_callout(
+    figure,
+    axis,
+    request: _CharacteristicRequest,
+    *,
+    x_fraction: float,
+    y_fraction: float,
+):
+    x = float(request.x_quantity.magnitude)
+    y = float(request.y_quantity.magnitude)
+    line_color = _series_color(axis, request.series.display_label)
     annotation = axis.annotate(
         _coordinate_label(x, y),
         xy=(x, y),
@@ -201,12 +237,21 @@ def _create_bottom_callout(figure, axis, request, *, x_fraction: float, y_fracti
     return annotation
 
 
-def _layout_bottom_cluster(figure, axis, cluster, *, bottom_space_in: float) -> list[Annotation]:
+def _layout_bottom_cluster(
+    figure,
+    axis,
+    cluster,
+    *,
+    bottom_space_in: float,
+) -> list[Annotation]:
     requests = [item[2] for item in cluster]
     requests.sort(
         key=lambda request: float(
             axis.transData.transform(
-                (float(request[0].magnitude), float(request[1].magnitude))
+                (
+                    float(request.x_quantity.magnitude),
+                    float(request.y_quantity.magnitude),
+                )
             )[1]
         )
     )
@@ -246,7 +291,10 @@ def _layout_bottom_cluster(figure, axis, cluster, *, bottom_space_in: float) -> 
     anchor_x_values = [
         float(
             axis.transData.transform(
-                (float(request[0].magnitude), float(request[1].magnitude))
+                (
+                    float(request.x_quantity.magnitude),
+                    float(request.y_quantity.magnitude),
+                )
             )[0]
         )
         for request in requests
@@ -279,7 +327,7 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
         return
 
     axis = figure.axes[0]
-    requests = _characteristic_requests(axis, result)
+    requests = _characteristic_requests(result)
     if len(requests) < _DENSE_CLUSTER_SIZE:
         return
 
@@ -288,11 +336,17 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
     try:
         figure.canvas.draw()
         clusters = _cluster_requests(axis, requests)
-        dense_clusters = [cluster for cluster in clusters if len(cluster) >= _DENSE_CLUSTER_SIZE]
+        dense_clusters = [
+            cluster for cluster in clusters if len(cluster) >= _DENSE_CLUSTER_SIZE
+        ]
         if not dense_clusters:
             return
 
-        dense_requests = [item[2] for cluster in dense_clusters for item in cluster]
+        dense_requests = [
+            item[2]
+            for cluster in dense_clusters
+            for item in cluster
+        ]
         _remove_dense_inline_annotations(axis, dense_requests)
 
         max_cluster_size = max(len(cluster) for cluster in dense_clusters)
