@@ -21,8 +21,8 @@ jobs:
       - name: Render dense QA evidence
         shell: bash
         run: |
+          mkdir -p qa
           python - <<'PY'
-          import base64
           import json
           import matplotlib
           matplotlib.use('Agg')
@@ -90,28 +90,27 @@ jobs:
               height = max(0.0, min(left.y1, right.y1) - max(left.y0, right.y0))
               return width * height
 
-          overlaps = int(sum(
-              bool(overlap_area(left, right) > 0.0)
-              for i, left in enumerate(text_boxes)
-              for right in text_boxes[i + 1:]
-          ))
-
           metrics = {
               'baseline_fig_inches': [float(v) for v in baseline.get_size_inches()],
               'current_fig_inches': [float(v) for v in figure.get_size_inches()],
               'baseline_axes_px': [float(baseline_box.width), float(baseline_box.height)],
               'current_axes_px': [float(axes_box.width), float(axes_box.height)],
               'annotation_count': int(len(annotations)),
-              'pairwise_text_overlaps': overlaps,
+              'pairwise_text_overlaps': int(sum(
+                  bool(overlap_area(left, right) > 0.0)
+                  for i, left in enumerate(text_boxes)
+                  for right in text_boxes[i + 1:]
+              )),
               'all_labels_below_axes': bool(all(box.y1 < axes_box.y0 for box in text_boxes)),
           }
           print('QA_METRICS=' + json.dumps(metrics, sort_keys=True))
-
-          output = '/tmp/engcalc_bottom_band_qa.png'
-          figure.savefig(output, dpi=120, facecolor='white')
-          with open(output, 'rb') as handle:
-              encoded = base64.b64encode(handle.read()).decode('ascii')
-          print('QA_PNG_BASE64_BEGIN')
-          print(encoded)
-          print('QA_PNG_BASE64_END')
+          with open('qa/metrics.json', 'w', encoding='utf-8') as handle:
+              json.dump(metrics, handle, indent=2, sort_keys=True)
+          figure.savefig('qa/engcalc_bottom_band_qa.png', dpi=120, facecolor='white')
           PY
+      - name: Upload dense QA evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-bottom-band-qa
+          path: qa/
+          if-no-files-found: error
