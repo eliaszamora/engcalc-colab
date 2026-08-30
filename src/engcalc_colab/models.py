@@ -17,6 +17,12 @@ class MatrixLiteralBinding:
 
 
 @dataclass(frozen=True)
+class MatrixShape:
+    rows: int
+    cols: int
+
+
+@dataclass(frozen=True)
 class ParsedStatement:
     line_no: int
     source: str

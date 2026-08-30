@@ -146,3 +146,74 @@ def matrix_index(value, indices: tuple[object, ...]):
             f"matrix index [{row},{col}] is out of range for shape {_shape(value)}"
         )
     return value[row - 1, col - 1]
+
+
+def _positive_dimension(value) -> int:
+    if not isinstance(value, sp.Integer) or value <= 0:
+        raise EngEvaluationError(
+            "matrix dimensions must be positive exact integers"
+        )
+    return int(value)
+
+
+def matrix_identity(dimension):
+    size = _positive_dimension(dimension)
+    return sp.ImmutableMatrix(sp.eye(size))
+
+
+def matrix_zeros(rows, cols):
+    row_count = _positive_dimension(rows)
+    col_count = _positive_dimension(cols)
+    return sp.ImmutableMatrix(sp.zeros(row_count, col_count))
+
+
+def matrix_diag(entries):
+    if not entries:
+        raise EngEvaluationError("diag expects at least one scalar entry")
+    if any(is_matrix(entry) for entry in entries):
+        raise EngEvaluationError("diag entries must be scalar")
+    return sp.ImmutableMatrix(sp.diag(*(sp.sympify(entry) for entry in entries)))
+
+
+def _require_matrix(value, name: str):
+    if not is_matrix(value):
+        raise EngEvaluationError(f"{name} requires a matrix")
+    return value
+
+
+def _require_square(value, name: str):
+    matrix = _require_matrix(value, name)
+    if matrix.rows != matrix.cols:
+        raise EngEvaluationError(f"{name} requires a square matrix")
+    return matrix
+
+
+def matrix_transpose(value):
+    matrix = _require_matrix(value, "transpose")
+    return _immutable(matrix.T)
+
+
+def matrix_det(value):
+    matrix = _require_square(value, "det")
+    return matrix.det()
+
+
+def matrix_inv(value):
+    matrix = _require_square(value, "inv")
+    try:
+        return _immutable(matrix.inv())
+    except Exception as exc:
+        message = str(exc).lower()
+        if "not invertible" in message or "det == 0" in message or "zero determinant" in message:
+            raise EngEvaluationError("inv requires a nonsingular matrix") from None
+        raise
+
+
+def matrix_trace(value):
+    matrix = _require_square(value, "trace")
+    return matrix.trace()
+
+
+def matrix_size(value):
+    matrix = _require_matrix(value, "size")
+    return matrix.rows, matrix.cols

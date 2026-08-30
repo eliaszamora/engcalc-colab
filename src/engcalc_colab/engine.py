@@ -18,6 +18,7 @@ from .models import (
     EvaluationResult,
     NumericAssignmentResult,
     NumericEvaluationResult,
+    MatrixShape,
     ParsedNumericAssignment,
     ParsedStatement,
     PartialNumericEvaluationResult,
@@ -30,11 +31,19 @@ from .models import (
 from .matrix_core import (
     build_matrix,
     matrix_add,
+    matrix_det,
+    matrix_diag,
+    matrix_identity,
     matrix_index,
+    matrix_inv,
     matrix_multiply,
     matrix_power,
     matrix_scalar_divide,
+    matrix_size,
     matrix_subtract,
+    matrix_trace,
+    matrix_transpose,
+    matrix_zeros,
 )
 from .numeric import NumericContext
 from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
@@ -672,6 +681,38 @@ class _Evaluator(ast.NodeVisitor):
             return solutions[0]
 
         args = [self.visit(arg) for arg in node.args]
+
+        if name == "identity":
+            self._require_arity(name, args, 1, "dimension")
+            return matrix_identity(args[0])
+
+        if name == "zeros":
+            self._require_arity(name, args, 2, "rows, cols")
+            return matrix_zeros(args[0], args[1])
+
+        if name == "diag":
+            return matrix_diag(args)
+
+        if name == "transpose":
+            self._require_arity(name, args, 1, "matrix")
+            return matrix_transpose(args[0])
+
+        if name == "det":
+            self._require_arity(name, args, 1, "matrix")
+            return matrix_det(args[0])
+
+        if name == "inv":
+            self._require_arity(name, args, 1, "matrix")
+            return matrix_inv(args[0])
+
+        if name == "trace":
+            self._require_arity(name, args, 1, "matrix")
+            return matrix_trace(args[0])
+
+        if name == "size":
+            self._require_arity(name, args, 1, "matrix")
+            rows, cols = matrix_size(args[0])
+            return MatrixShape(rows=rows, cols=cols)
 
         if name in self.engine.functions:
             function = self.engine.functions[name]

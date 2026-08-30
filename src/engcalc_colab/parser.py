@@ -26,7 +26,7 @@ _SCALAR_CALLS = {
 _ALLOWED_CALLS = {
     "integral", "diff", "solve", "simplify", "expand", "factor",
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",
-    "piecewise",
+    "piecewise", "identity", "zeros", "diag", "transpose", "det", "inv", "trace", "size",
 } | _SCALAR_CALLS
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
