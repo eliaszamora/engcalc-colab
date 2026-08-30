@@ -1,0 +1,106 @@
+name: Matrix plan self-review correction
+
+on:
+  push:
+    branches:
+      - planning/v0.9.0-matrix-cas
+    paths:
+      - .github/workflows/plan090-selfreview-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: planning/v0.9.0-matrix-cas
+      - name: Apply exact self-review corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('docs/superpowers/plans/2026-08-30-engcalc-v0.9.0-matrix-cas-implementation.md')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''**Files:**
+          - Create: `src/engcalc_colab/matrix_syntax.py`
+          - Modify: `src/engcalc_colab/models.py`
+          - Modify: `src/engcalc_colab/parser.py`
+          - Test: `tests/test_matrix_parser.py`
+          - Regression: existing parser/table/sweep tests
+          '''.replace('          ', '')
+          new = '''**Files:**
+          - Create: `src/engcalc_colab/matrix_syntax.py`
+          - Modify: `src/engcalc_colab/models.py`
+          - Modify: `src/engcalc_colab/parser.py`
+          - Modify: `tests/test_table_parser.py`
+          - Modify: `tests/test_plot_parser.py`
+          - Modify: `tests/test_envelope_parser.py`
+          - Test: `tests/test_matrix_parser.py`
+          - Regression: existing parser/table/sweep behavior not intentionally changed by matrix literals
+          '''.replace('          ', '')
+          assert old in text
+          text = text.replace(old, new, 1)
+
+          old = '''- [ ] **Step 3: Write RED compatibility tests for existing list contexts**
+
+          ```python
+          def test_table_point_list_remains_collection():
+              parse_cell("table(M(x), x, [0*m, 1*m, 2*m])")
+
+
+          def test_plot_sweep_list_remains_collection():
+              parse_cell("plot(M(x), x, 0*m, L, q=[5*kN/m, 10*kN/m])")
+          ```
+
+          Assert these statements do not create matrix literal bindings.
+          '''.replace('          ', '')
+          new = '''- [ ] **Step 3: Write RED compatibility tests and migrate the intentional bracket contract**
+
+          ```python
+          def test_table_point_list_remains_collection():
+              stmt = parse_cell("table(M(x), x, [0*m, 1*m, 2*m])")[0]
+              assert stmt.matrix_literals == ()
+
+
+          def test_plot_sweep_list_remains_collection():
+              stmt = parse_cell("plot(M(x), x, 0*m, L, q=[5*kN/m, 10*kN/m])")[0]
+              assert stmt.matrix_literals == ()
+          ```
+
+          Three 0.8.0 tests intentionally encode the old rule that `A = [1, 2]` is invalid outside `table`/sweeps. Replace that obsolete expectation in `tests/test_table_parser.py`, `tests/test_plot_parser.py`, and `tests/test_envelope_parser.py`: a simple list in a normal expression is now a valid `1 x n` row-matrix literal. Preserve the contextual collection assertions for `table(...)` and plot/envelope sweeps. Preserve rejection of dictionaries, comprehensions, nested collection lists, and unpacking in those restricted collection contexts.
+          '''.replace('          ', '')
+          assert old in text
+          text = text.replace(old, new, 1)
+
+          old = '''Expected: matrix parser GREEN and all previous tests GREEN.'''
+          new = '''Expected: matrix parser GREEN, all unchanged 0.8.0 regressions GREEN, and the three deliberately migrated bracket-contract tests GREEN under the new row-vector semantics.'''
+          assert old in text
+          text = text.replace(old, new, 1)
+
+          old = '''git add src/engcalc_colab/matrix_syntax.py src/engcalc_colab/models.py src/engcalc_colab/parser.py tests/test_matrix_parser.py
+          git commit -m "feat: parse EngCalc matrix literals"'''.replace('          ', '')
+          new = '''git add src/engcalc_colab/matrix_syntax.py src/engcalc_colab/models.py src/engcalc_colab/parser.py tests/test_matrix_parser.py tests/test_table_parser.py tests/test_plot_parser.py tests/test_envelope_parser.py
+          git commit -m "feat: parse EngCalc matrix literals"'''.replace('          ', '')
+          assert old in text
+          text = text.replace(old, new, 1)
+
+          old = '''- Spec coverage: canonical literals, vectors, multiline matrix statements, contextual lists, one-based indexing, exact algebra, constructors, matrix-valued functions, CAS transforms, per-cell Pint evaluation, exact-zero rules, target units, exact linear solve, mixed-DOF dimensional behavior, rank/RREF/norm/eigen guards, MathJax rendering, Piecewise/table/plot integration, diagnostics and distribution validation all map to explicit tasks above.'''
+          new = '''- Spec coverage: canonical literals, vectors, multiline matrix statements, contextual lists, one-based indexing, exact algebra, constructors, matrix-valued functions, CAS transforms, per-cell Pint evaluation, exact-zero rules, target units, exact linear solve, mixed-DOF dimensional behavior, rank/RREF/norm/eigen guards, MathJax rendering, Piecewise/table/plot integration, diagnostics and distribution validation all map to explicit tasks above. The self-review explicitly migrates the three historical tests that rejected `[1,2]` so they now encode the approved row-vector contract while preserving table/sweep collection semantics.'''
+          assert old in text
+          text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          git diff -- docs/superpowers/plans/2026-08-30-engcalc-v0.9.0-matrix-cas-implementation.md
+      - name: Commit corrected plan
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add docs/superpowers/plans/2026-08-30-engcalc-v0.9.0-matrix-cas-implementation.md
+          git commit -m "docs: correct matrix parser migration plan"
+          git push origin HEAD:planning/v0.9.0-matrix-cas
