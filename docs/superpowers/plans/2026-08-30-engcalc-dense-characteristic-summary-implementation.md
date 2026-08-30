@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace visually rejected dense characteristic callouts with a compact, color-keyed characteristic summary below an unchanged-size EngCalc plot while preserving all engineering values and sparse inline behavior.
+**Goal:** Replace visually rejected dense characteristic callouts with a compact, color-keyed summary below an unchanged-size EngCalc plot while preserving all engineering values and sparse inline behavior.
 
-**Architecture:** `plotting.py` remains the engineering authority and gains one private characteristic-request sequence consumed by both rendering and presentation. `label_layout.py` remains presentation-only and converts only dense clusters into a compact secondary Matplotlib axes below the primary plot. The primary engineering axes stays `figure.axes[0]`, keeps its physical width/height, and no dense per-point leader lines remain.
+**Architecture:** `plotting.py` remains the engineering authority and owns one private characteristic-request sequence. `label_layout.py` consumes that sequence, detects dense clusters, removes only their inline text, and renders one compact secondary Matplotlib axes below the primary plot. `figure.axes[0]` remains the engineering axes and keeps its physical width and height.
 
 **Tech Stack:** Python 3.13, Matplotlib/Agg, Pint quantities already used by EngCalc, pytest, GitHub Actions.
 
@@ -34,9 +34,9 @@
 
 - `src/engcalc_colab/plotting.py`: private authoritative characteristic requests; multi-series renderer consumes them.
 - `src/engcalc_colab/label_layout.py`: dense grouping and compact summary rendering; no extrema recomputation.
-- `src/engcalc_colab/presentation.py`: unchanged public presentation entry point unless a private helper rename is required.
+- `src/engcalc_colab/presentation.py`: public presentation entry point remains unchanged unless a private helper rename requires an import-only adjustment.
 - `tests/test_characteristic_requests.py`: authoritative extrema/request regression.
-- `tests/test_dense_characteristic_summary.py`: dense grouping semantics, ordering, colors, units.
+- `tests/test_dense_characteristic_summary.py`: grouping semantics, ordering, colors, and unit formatting.
 - `tests/test_dense_characteristic_label_layout.py`: compact-summary geometry plus sparse regression.
 - `tools/render_dense_characteristic_summary_qa.py`: temporary PNG/metrics harness.
 - `.github/workflows/characteristic-label-validation.yml`: temporary full-suite + artifact workflow.
@@ -51,30 +51,11 @@
 - Modify: `src/engcalc_colab/plotting.py`
 - Modify: `docs/project-context/CURRENT.md`
 
-**Interfaces:**
-
-```python
-@dataclass(frozen=True)
-class _CharacteristicRequest:
-    series_index: int
-    series: PlotSeries
-    sample_index: int
-    x_quantity: Any
-    y_quantity: Any
-    response_label: str
-    role: str
-    inverted: bool
-
-
-def _characteristic_requests(result: PlotResult) -> tuple[_CharacteristicRequest, ...]:
-    ...
-```
-
-The body is specified in Step 3. `label_layout.py` consumes these private interfaces in Task 2.
+**Produces:** private `_CharacteristicRequest` and `_characteristic_requests(result: PlotResult)` consumed by rendering and Task 2.
 
 - [ ] **Step 1: Write the failing authoritative-request test**
 
-Create `tests/test_characteristic_requests.py` with imports:
+Create `tests/test_characteristic_requests.py`:
 
 ```python
 import pytest
@@ -82,11 +63,8 @@ import pytest
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.plotting import _characteristic_requests
-```
 
-Use this exact fixture:
 
-```python
 def _eval_cell(engine, source: str):
     return [engine.evaluate(statement) for statement in parse_cell(source)]
 
@@ -124,11 +102,8 @@ def _dense_six_series_moment_plot():
         engine,
         "plot(M_C1(x), M_C2(x), M_S1(x), M_S2(x), M_S3(x), M_S4(x), x, 0, L)",
     )[-1]
-```
 
-Add:
 
-```python
 def test_characteristic_requests_are_single_authoritative_sequence():
     requests = _characteristic_requests(_dense_six_series_moment_plot())
 
@@ -163,13 +138,34 @@ Run:
 python -m pytest tests/test_characteristic_requests.py -q
 ```
 
-Expected: import/collection failure because `_characteristic_requests` does not exist in `plotting.py`.
+Expected: import/collection failure because `_characteristic_requests` does not yet exist in `plotting.py`.
 
-- [ ] **Step 3: Implement the authoritative private request sequence**
+- [ ] **Step 3: Implement the authoritative request type and function**
 
-In `plotting.py`, import `dataclass`, `Any`, and `PlotSeries`, add the dataclass above, then implement:
+Add imports in `plotting.py`:
 
 ```python
+from dataclasses import dataclass
+from typing import Any
+
+from .models import PlotResult, PlotSeries
+```
+
+Preserve any other existing model imports. Add:
+
+```python
+@dataclass(frozen=True)
+class _CharacteristicRequest:
+    series_index: int
+    series: PlotSeries
+    sample_index: int
+    x_quantity: Any
+    y_quantity: Any
+    response_label: str
+    role: str
+    inverted: bool
+
+
 def _characteristic_requests(result: PlotResult) -> tuple[_CharacteristicRequest, ...]:
     inverted = all(series.is_moment for series in result.series)
     requests: list[_CharacteristicRequest] = []
@@ -209,7 +205,7 @@ def _characteristic_requests(result: PlotResult) -> tuple[_CharacteristicRequest
     return tuple(requests)
 ```
 
-- [ ] **Step 4: Refactor `_render_multi_series()` to use that sequence without changing presentation**
+- [ ] **Step 4: Refactor `_render_multi_series()` to consume the same sequence**
 
 At the start of `_render_multi_series()`:
 
@@ -222,7 +218,7 @@ requests_by_series = {
 line_colors: dict[int, Any] = {}
 ```
 
-Change the series loop to `for series_index, series in enumerate(result.series):`. After creating the line:
+Change the line loop to `for series_index, series in enumerate(result.series):`. After creating each line:
 
 ```python
 line_colors[series_index] = line.get_color()
@@ -230,7 +226,7 @@ series_requests = requests_by_series[series_index]
 marker_indices = sorted({item.sample_index for item in series_requests})
 ```
 
-Use the existing scatter call with those `marker_indices`. Remove the old `characteristics` tuple accumulation and the second extrema computation. After layout:
+Use the existing scatter call with those marker indices. Delete the old `characteristics` accumulation and its independent extrema pass. After axes layout:
 
 ```python
 occupied_boxes: list = []
@@ -258,7 +254,7 @@ python -m pytest tests/test_characteristic_requests.py tests/test_plotting.py te
 python -m pytest -q
 ```
 
-Expected: all PASS. Record exact count/duration in `CURRENT.md`.
+Expected: all PASS. Record exact count and duration in `CURRENT.md`.
 
 - [ ] **Step 6: Commit**
 
@@ -276,50 +272,36 @@ git commit -m "refactor: centralize characteristic requests"
 - Modify: `src/engcalc_colab/label_layout.py`
 - Modify: `docs/project-context/CURRENT.md`
 
-**Interfaces:**
-
-```python
-@dataclass(frozen=True)
-class _DenseSummaryEntry:
-    request: _CharacteristicRequest
-    color: Any
-
-
-@dataclass(frozen=True)
-class _DenseSummaryGroup:
-    x_quantity: Any
-    entries: tuple[_DenseSummaryEntry, ...]
-```
-
-Produces `_build_dense_summary_groups(axis, result: PlotResult) -> tuple[_DenseSummaryGroup, ...]`.
+**Produces:** `_DenseSummaryEntry`, `_DenseSummaryGroup`, and `_build_dense_summary_groups(axis, result)`.
 
 - [ ] **Step 1: Write semantic RED tests**
 
-Create `tests/test_dense_characteristic_summary.py`, repeat the exact fixture from Task 1 in this test file, and add:
+Create `tests/test_dense_characteristic_summary.py` with the same imports and literal engineering definitions used in Task 1, plus:
 
 ```python
 import pytest
 
 from engcalc_colab.label_layout import _build_dense_summary_groups
 from engcalc_colab.plotting import render_plot
+```
 
+Add:
 
+```python
 def test_dense_summary_groups_preserve_series_order_roles_and_colors():
     result = _dense_six_series_moment_plot()
     figure = render_plot(result)
     axis = figure.axes[0]
     groups = _build_dense_summary_groups(axis, result)
 
+    expected_labels = ["M_C1(x)", "M_C2(x)", "M_S1(x)", "M_S2(x)", "M_S3(x)", "M_S4(x)"]
     assert len(groups) == 2
     assert [float(group.x_quantity.magnitude) for group in groups] == pytest.approx([0.0, 2.5])
     assert [len(group.entries) for group in groups] == [6, 6]
-
-    left, interior = groups
-    expected_labels = ["M_C1(x)", "M_C2(x)", "M_S1(x)", "M_S2(x)", "M_S3(x)", "M_S4(x)"]
-    assert [entry.request.series.display_label for entry in left.entries] == expected_labels
-    assert [entry.request.series.display_label for entry in interior.entries] == expected_labels
-    assert [entry.request.role for entry in left.entries] == ["min"] * 6
-    assert [entry.request.role for entry in interior.entries] == ["max"] * 6
+    assert [entry.request.series.display_label for entry in groups[0].entries] == expected_labels
+    assert [entry.request.series.display_label for entry in groups[1].entries] == expected_labels
+    assert [entry.request.role for entry in groups[0].entries] == ["min"] * 6
+    assert [entry.request.role for entry in groups[1].entries] == ["max"] * 6
 
     line_colors = {line.get_label(): line.get_color() for line in axis.lines}
     for group in groups:
@@ -344,7 +326,7 @@ python -m pytest tests/test_dense_characteristic_summary.py -q
 
 Expected: import/collection failure because `_build_dense_summary_groups` does not exist.
 
-- [ ] **Step 3: Remove presentation-layer extrema duplication and add immutable summary types**
+- [ ] **Step 3: Remove presentation-layer extrema duplication and add immutable types**
 
 In `label_layout.py`:
 
@@ -355,9 +337,22 @@ from typing import Any
 from .plotting import _CharacteristicRequest, _characteristic_requests
 ```
 
-Delete the local `_extreme_indices()` and local `_characteristic_requests()`. Add the two dataclasses exactly as specified above.
+Delete local `_extreme_indices()` and local `_characteristic_requests()`. Add:
 
-- [ ] **Step 4: Implement `_build_dense_summary_groups()` completely**
+```python
+@dataclass(frozen=True)
+class _DenseSummaryEntry:
+    request: _CharacteristicRequest
+    color: Any
+
+
+@dataclass(frozen=True)
+class _DenseSummaryGroup:
+    x_quantity: Any
+    entries: tuple[_DenseSummaryEntry, ...]
+```
+
+- [ ] **Step 4: Implement dense grouping completely**
 
 ```python
 def _build_dense_summary_groups(axis, result: PlotResult) -> tuple[_DenseSummaryGroup, ...]:
@@ -367,7 +362,7 @@ def _build_dense_summary_groups(axis, result: PlotResult) -> tuple[_DenseSummary
     for request in requests:
         x = float(request.x_quantity.magnitude)
         y = float(request.y_quantity.magnitude)
-        display_x, _ = axis.transData.transform((x, y))
+        display_x, _display_y = axis.transData.transform((x, y))
         positioned.append((float(display_x), request))
 
     positioned.sort(key=lambda item: item[0])
@@ -391,9 +386,8 @@ def _build_dense_summary_groups(axis, result: PlotResult) -> tuple[_DenseSummary
         entries: list[_DenseSummaryEntry] = []
         for request in cluster_requests:
             color = _series_color(axis, request.series.display_label)
-            if color is None:
-                continue
-            entries.append(_DenseSummaryEntry(request=request, color=color))
+            if color is not None:
+                entries.append(_DenseSummaryEntry(request=request, color=color))
 
         if len(entries) >= _DENSE_CLUSTER_SIZE:
             groups.append(
@@ -407,13 +401,11 @@ def _build_dense_summary_groups(axis, result: PlotResult) -> tuple[_DenseSummary
     return tuple(groups)
 ```
 
-This preserves current display-space clustering while restoring series order inside each dense group.
+- [ ] **Step 5: Keep the old bottom renderer compatible only until Task 4**
 
-- [ ] **Step 5: Keep the old bottom renderer temporarily compatible**
+Change old callout code from tuple indexing/unpacking to `request.x_quantity`, `request.y_quantity`, `request.role`, and `request.inverted`. Resolve callout color through `_series_color(axis, request.series.display_label)`. Do not change visible layout yet.
 
-Until Task 4, adapt callout functions to access `request.x_quantity`, `request.y_quantity`, `request.role`, and `request.inverted`. Obtain the leader color through `_series_color(axis, request.series.display_label)`. The visible output remains the rejected bottom band at this checkpoint.
-
-- [ ] **Step 6: Verify semantic GREEN plus old visual regression**
+- [ ] **Step 6: Verify semantic GREEN plus existing layout regression**
 
 Run:
 
@@ -440,7 +432,6 @@ git commit -m "refactor: model dense characteristic groups"
 - Modify: `docs/project-context/CURRENT.md`
 
 **Renderer identifiers:**
-
 - summary axes: `engcalc-characteristic-summary`
 - title: `engcalc-summary-title`
 - group header: `engcalc-summary-group-header`
@@ -448,9 +439,9 @@ git commit -m "refactor: model dense characteristic groups"
 - entry role: `engcalc-summary-entry-role`
 - entry value: `engcalc-summary-entry-value`
 
-- [ ] **Step 1: Remove rejected bottom-callout contracts**
+- [ ] **Step 1: Remove rejected contracts**
 
-Delete rail-alignment, vertical-rail-clearance, leader-presence, and “all labels below axes” assertions. Keep the six-series fixture, sparse two-series fixture, baseline renderer, annotation collector, overlap helper, and ±1 px primary-axes tolerance.
+Delete rail-alignment, rail-clearance, leader-presence, and “all labels below axes” tests. Keep the six-series fixture, sparse fixture, baseline renderer, annotation collector, overlap helper, and ±1 px axes-size tolerance.
 
 - [ ] **Step 2: Add RED summary-surface contract**
 
@@ -482,7 +473,7 @@ def test_dense_summary_preserves_primary_plot_size_and_is_compact():
     baseline_figure, baseline_axis, baseline_renderer = _render_baseline(result)
     baseline_box = baseline_axis.get_window_extent(baseline_renderer)
 
-    figure, axis, _, renderer = _render(result)
+    figure, axis, _items, renderer = _render(result)
     box = axis.get_window_extent(renderer)
 
     assert figure.get_figwidth() == baseline_figure.get_figwidth()
@@ -492,9 +483,7 @@ def test_dense_summary_preserves_primary_plot_size_and_is_compact():
     assert 0.0 < added_height < 1.85
 ```
 
-- [ ] **Step 4: Add RED containment/collision contract**
-
-Collect texts whose gid starts with `engcalc-summary-`. Assert every bbox lies inside `figure.bbox`. For different logical rows, assert pairwise rectangle intersection area equals zero. Exclude comparisons among label/role/value texts belonging to the same row by grouping them in creation order: 12 labels, 12 roles, 12 values; row `i` consists of index `i` from each list.
+- [ ] **Step 4: Add RED containment and collision contract**
 
 Use:
 
@@ -505,9 +494,9 @@ def _overlap_area(left, right):
     return width * height
 ```
 
-- [ ] **Step 5: Preserve sparse regression**
+Collect all summary texts by gid. Assert every bbox lies inside `figure.bbox`. Build logical rows by matching label/role/value lists by index. Do not compare three texts within the same row against each other; compare every text against texts belonging to other rows and against group headers/title. Every such overlap area must be zero.
 
-The sparse fixture must still assert:
+- [ ] **Step 5: Preserve sparse regression**
 
 ```python
 assert len(items) == 4
@@ -517,7 +506,7 @@ assert figure.get_figwidth() == matplotlib.rcParams["figure.figsize"][0]
 assert figure.get_figheight() == matplotlib.rcParams["figure.figsize"][1]
 ```
 
-Keep the existing within-main-axes bbox assertion for those four annotations.
+Keep the existing assertion that all four sparse annotation bboxes remain inside the primary axes.
 
 - [ ] **Step 6: Verify intentional RED and commit tests only**
 
@@ -527,7 +516,7 @@ Run:
 python -m pytest tests/test_dense_characteristic_label_layout.py -q
 ```
 
-Expected: compact-summary dense tests FAIL against the old bottom band; sparse test PASS. Record exact failures/count in `CURRENT.md`.
+Expected: dense compact-summary tests FAIL against the old bottom band; sparse regression PASS. Record exact failures/count in `CURRENT.md`.
 
 Commit:
 
@@ -542,19 +531,17 @@ git commit -m "test: specify compact characteristic summary"
 
 **Files:**
 - Modify: `src/engcalc_colab/label_layout.py`
-- Modify: `src/engcalc_colab/presentation.py` only if private integration naming changes.
-- Modify: `tests/test_dense_characteristic_summary.py` for unit-format assertions.
+- Modify: `src/engcalc_colab/presentation.py` only when a private integration import/name changes.
+- Modify: `tests/test_dense_characteristic_summary.py`
 - Modify: `docs/project-context/CURRENT.md`
 
-**Interfaces:** one secondary axes with `gid="engcalc-characteristic-summary"`; `render_presented_plot(result)` signature unchanged.
+**Produces:** one secondary axes with `gid="engcalc-characteristic-summary"`; `render_presented_plot(result)` remains unchanged publicly.
 
 - [ ] **Step 1: Delete rejected callout-only implementation**
 
-Remove `_MIN_BOTTOM_SPACE_IN`, `_BOTTOM_SPACE_PER_LABEL_IN`, `_BOTTOM_SPACE_PADDING_IN`, `_BAND_EDGE_MARGIN_PX`, `_RAIL_VERTICAL_GAP_PX`, `_LEADER_LINEWIDTH`, `_LEADER_ALPHA`, `_stack_vertical_centers()`, `_create_bottom_callout()`, and `_layout_bottom_cluster()`. Remove `_text_box()` if no production caller remains.
+Remove `_MIN_BOTTOM_SPACE_IN`, `_BOTTOM_SPACE_PER_LABEL_IN`, `_BOTTOM_SPACE_PADDING_IN`, `_BAND_EDGE_MARGIN_PX`, `_RAIL_VERTICAL_GAP_PX`, `_LEADER_LINEWIDTH`, `_LEADER_ALPHA`, `_stack_vertical_centers()`, `_create_bottom_callout()`, and `_layout_bottom_cluster()`. Remove `_text_box()` when no production caller remains. Rename `_reserve_bottom_space()` to `_reserve_summary_space()` while preserving its existing physical-axis-size formula.
 
-Rename `_reserve_bottom_space()` to `_reserve_summary_space()` without changing its proven physical-axis preservation formula.
-
-- [ ] **Step 2: Add compact sizing constants and a complete height function**
+- [ ] **Step 2: Add compact sizing**
 
 ```python
 _SUMMARY_MAX_COLUMNS = 2
@@ -575,16 +562,12 @@ def _summary_height_inches(groups: tuple[_DenseSummaryGroup, ...]) -> float:
         + _SUMMARY_ROW_HEIGHT_IN * max(len(group.entries) for group in grid_row)
         for grid_row in grid_rows
     )
-    return (
-        2 * _SUMMARY_PANEL_PADDING_IN
-        + _SUMMARY_TITLE_HEIGHT_IN
-        + body_height
-    )
+    return 2 * _SUMMARY_PANEL_PADDING_IN + _SUMMARY_TITLE_HEIGHT_IN + body_height
 ```
 
 The canonical two-group/six-row fixture computes to 1.18 in.
 
-- [ ] **Step 3: Add exact x/y unit formatting helpers**
+- [ ] **Step 3: Add exact formatting helpers**
 
 Import `_compact_number`, `_quantity_label`, and `_unit_label` from `.plotting`.
 
@@ -607,18 +590,20 @@ def _common_y_unit(
     return next(iter(units)) if len(units) == 1 else None
 
 
-def _entry_value_text(entry: _DenseSummaryEntry, *, moment: bool, common_unit: str | None) -> str:
+def _entry_value_text(
+    entry: _DenseSummaryEntry, *, moment: bool, common_unit: str | None
+) -> str:
     if common_unit is not None:
         return _compact_number(float(entry.request.y_quantity.magnitude))
     return _quantity_label(entry.request.y_quantity, moment=moment)
 ```
 
-- [ ] **Step 4: Add a secondary axes in the newly reserved vertical space**
+- [ ] **Step 4: Add the secondary axes inside newly reserved vertical space**
 
-After `_reserve_summary_space()`, compute:
+After `_reserve_summary_space()`:
 
 ```python
-figure_width, figure_height = (float(value) for value in figure.get_size_inches())
+_figure_width, figure_height = (float(value) for value in figure.get_size_inches())
 main_position = axis.get_position()
 panel_bottom_in = _SUMMARY_PANEL_PADDING_IN
 panel_height_in = summary_height_in - 2 * _SUMMARY_PANEL_PADDING_IN
@@ -636,28 +621,9 @@ summary.set_ylim(0.0, 1.0)
 summary.set_axis_off()
 ```
 
-Because figure width is unchanged and `main_position.x0/width` are retained by `_reserve_summary_space()`, the panel aligns with the engineering plot without shrinking it.
+- [ ] **Step 5: Implement deterministic group/row coordinates and text**
 
-- [ ] **Step 5: Implement deterministic summary coordinates**
-
-Use two columns maximum. Define:
-
-```python
-def _summary_grid_rows(groups: tuple[_DenseSummaryGroup, ...]):
-    return tuple(
-        groups[index:index + _SUMMARY_MAX_COLUMNS]
-        for index in range(0, len(groups), _SUMMARY_MAX_COLUMNS)
-    )
-```
-
-Inside `_render_summary_panel()`:
-
-```python
-def _render_summary_panel(figure, axis, groups, *, summary_height_in: float):
-    moment = all(series.is_moment for series in groups[0].entries[0].request.series.__class__.__mro__[:0])
-```
-
-Do **not** use that line; compute `moment` from the plot result at the call site and pass it as a keyword argument. The actual signature must be:
+Use this signature:
 
 ```python
 def _render_summary_panel(
@@ -670,24 +636,38 @@ def _render_summary_panel(
 ) -> None:
 ```
 
-Create the axes exactly as Step 4 specifies. Then render the title:
+The function creates the secondary axes exactly as Step 4. Then:
 
 ```python
+common_unit = _common_y_unit(groups, moment=moment)
+panel_height_in = summary_height_in - 2 * _SUMMARY_PANEL_PADDING_IN
+title_fraction = _SUMMARY_TITLE_HEIGHT_IN / panel_height_in
+group_header_fraction = _SUMMARY_GROUP_HEADER_HEIGHT_IN / panel_height_in
+row_fraction = _SUMMARY_ROW_HEIGHT_IN / panel_height_in
+
 title = summary.text(
     0.0, 0.98, "Characteristic points",
     transform=summary.transAxes,
     ha="left", va="top", fontsize=8.5, fontweight="semibold",
 )
 title.set_gid("engcalc-summary-title")
+
+cursor_y = 1.0 - title_fraction
+grid_rows = tuple(
+    groups[index:index + _SUMMARY_MAX_COLUMNS]
+    for index in range(0, len(groups), _SUMMARY_MAX_COLUMNS)
+)
 ```
 
-For each grid row, allocate equal-width cells. With `column_count = len(grid_row)`:
+For each `grid_row`, set:
 
 ```python
+column_count = len(grid_row)
 cell_width = (1.0 - _SUMMARY_GROUP_GAP_FRACTION * (column_count - 1)) / column_count
+max_entries = max(len(group.entries) for group in grid_row)
 ```
 
-For each group at `column_index`, compute:
+For each group at `column_index`:
 
 ```python
 cell_left = column_index * (cell_width + _SUMMARY_GROUP_GAP_FRACTION)
@@ -696,35 +676,30 @@ marker_x = cell_left + 0.015 * cell_width
 label_x = cell_left + 0.055 * cell_width
 role_x = cell_left + 0.57 * cell_width
 value_x = cell_right
-```
 
-Use physical row heights converted to panel fractions:
-
-```python
-panel_height_in = summary_height_in - 2 * _SUMMARY_PANEL_PADDING_IN
-title_fraction = _SUMMARY_TITLE_HEIGHT_IN / panel_height_in
-group_header_fraction = _SUMMARY_GROUP_HEADER_HEIGHT_IN / panel_height_in
-row_fraction = _SUMMARY_ROW_HEIGHT_IN / panel_height_in
-```
-
-Initialize `cursor_y = 1.0 - title_fraction`. For each grid row, render all group headers at `cursor_y`, then decrement by `group_header_fraction`. Render row index `row_index` at `cursor_y - (row_index + 0.5) * row_fraction`. After the maximum entry count in that grid row, decrement `cursor_y` by `max_entries * row_fraction`.
-
-For each group header:
-
-```python
 header = summary.text(
     cell_left, cursor_y, _group_x_header(group),
     transform=summary.transAxes,
     ha="left", va="top", fontsize=8.2, fontweight="semibold",
 )
 header.set_gid("engcalc-summary-group-header")
+value_header_text = "Value" if common_unit is None else f"Value [{common_unit}]"
+summary.text(
+    cell_right, cursor_y, value_header_text,
+    transform=summary.transAxes,
+    ha="right", va="top", fontsize=7.8,
+)
+separator_y = cursor_y - 0.72 * group_header_fraction
+summary.plot(
+    [cell_left, cell_right], [separator_y, separator_y],
+    linewidth=0.6, alpha=0.35, transform=summary.transAxes,
+)
 ```
 
-If `common_unit` is not `None`, render `f"Value [{common_unit}]"` at `cell_right`, right-aligned, with fontsize 7.8. If it is `None`, render `"Value"`.
-
-For each entry row:
+After rendering all headers in the grid row, set `rows_top = cursor_y - group_header_fraction`. For each group entry at `row_index`:
 
 ```python
+row_y = rows_top - (row_index + 0.5) * row_fraction
 summary.plot(
     [marker_x], [row_y],
     marker="o", markersize=4.0, linestyle="None",
@@ -751,9 +726,15 @@ value = summary.text(
 value.set_gid("engcalc-summary-entry-value")
 ```
 
-Draw only one light separator below each group header using `summary.plot([cell_left, cell_right], [separator_y, separator_y], linewidth=0.6, alpha=0.35, transform=summary.transAxes)`. Do not draw a cell grid.
+After each grid row:
 
-- [ ] **Step 6: Rewrite dense reflow around the summary groups**
+```python
+cursor_y = rows_top - max_entries * row_fraction
+```
+
+Do not draw cell boxes or leader lines.
+
+- [ ] **Step 6: Rewrite dense reflow around summary groups**
 
 ```python
 def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
@@ -780,13 +761,21 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
     )
 ```
 
-Update `_request_matches_annotation()` to use `request.x_quantity` and `request.y_quantity`. No dense summary path may create an `Annotation` or `arrow_patch`.
+Update `_request_matches_annotation()` to use `request.x_quantity` and `request.y_quantity`. No dense summary path may create `Annotation` or `arrow_patch` objects.
 
-- [ ] **Step 7: Add formatting assertions**
+- [ ] **Step 7: Add unit-format assertions**
 
-In `tests/test_dense_characteristic_summary.py`, after rendering `render_presented_plot(result)`, assert group headers contain `x = 0 m` and `x = 2.5 m` (allow the exact compact numeric formatting already used by `_compact_number`). Assert no entry value string contains `tonf` when the common unit header contains `tonf·m`.
+In `tests/test_dense_characteristic_summary.py`, render `render_presented_plot(result)`, locate the summary axes by gid, and assert:
 
-- [ ] **Step 8: Verify focused GREEN and complete GREEN**
+```python
+headers = [text.get_text() for text in summary.texts if text.get_gid() == "engcalc-summary-group-header"]
+assert headers == ["x = 0 m", "x = 2.5 m"]
+values = [text.get_text() for text in summary.texts if text.get_gid() == "engcalc-summary-entry-value"]
+assert all("tonf" not in value for value in values)
+assert any("Value [tonf·m]" == text.get_text() for text in summary.texts)
+```
+
+- [ ] **Step 8: Verify focused and complete GREEN**
 
 Run:
 
@@ -795,17 +784,16 @@ python -m pytest tests/test_characteristic_requests.py tests/test_dense_characte
 python -m pytest -q
 ```
 
-Expected: all PASS. Record exact count/duration in `CURRENT.md`.
+Expected: all PASS. Record exact count and duration in `CURRENT.md`.
 
 - [ ] **Step 9: Commit**
 
 ```bash
 git add src/engcalc_colab/label_layout.py tests/test_dense_characteristic_summary.py docs/project-context/CURRENT.md
-git add src/engcalc_colab/presentation.py  # only when actually changed
 git commit -m "feat: render compact characteristic summary"
 ```
 
-If `presentation.py` did not change, do not stage it.
+If `presentation.py` changed, stage it in the same commit; otherwise leave it untouched.
 
 ---
 
@@ -818,20 +806,15 @@ If `presentation.py` did not change, do not stage it.
 
 **Artifact:** `engcalc-characteristic-summary-qa` containing `dense_characteristic_summary.png` and `dense_characteristic_summary_metrics.json`.
 
-- [ ] **Step 1: Create the deterministic QA script**
+- [ ] **Step 1: Create deterministic QA script**
 
-The script must:
+The script must call `matplotlib.use("Agg")` before importing renderer modules, rebuild the literal six-series fixture from Task 1, render `render_plot(result)` and `render_presented_plot(result)`, attach `FigureCanvasAgg` to both, call `draw()`, and save:
 
-1. call `matplotlib.use("Agg")` before importing pyplot/backend consumers;
-2. rebuild the exact six-series definitions from Task 1 verbatim;
-3. render `baseline_figure = render_plot(result)` and `figure = render_presented_plot(result)`;
-4. create `FigureCanvasAgg` for both and call `draw()`;
-5. identify the summary axes by gid;
-6. collect summary text bboxes and count pairwise overlaps only across different logical rows/headers;
-7. save `dense_characteristic_summary.png` with `figure.savefig(..., dpi=160, bbox_inches=None)`;
-8. write JSON using only Python `float`, `int`, and `bool` values; never emit Base64/image bytes to logs.
+```python
+figure.savefig("dense_characteristic_summary.png", dpi=160, bbox_inches=None)
+```
 
-Use this metric schema:
+Collect summary texts by gid, compute pairwise overlap across different logical rows/headers, and serialize only built-in Python types:
 
 ```python
 metrics = {
@@ -848,7 +831,16 @@ metrics = {
 }
 ```
 
-Hard assertions:
+Write with:
+
+```python
+with open("dense_characteristic_summary_metrics.json", "w", encoding="utf-8") as handle:
+    json.dump(metrics, handle, indent=2)
+```
+
+Never print image bytes or Base64.
+
+- [ ] **Step 2: Add hard assertions to the QA script**
 
 ```python
 assert metrics["dense_group_count"] == 2
@@ -864,9 +856,9 @@ added_height = metrics["presented_figure_inches"][1] - metrics["baseline_figure_
 assert 0.0 < added_height < 1.85
 ```
 
-- [ ] **Step 2: Extend the temporary branch workflow after the full-suite step**
+- [ ] **Step 3: Extend the branch workflow after the existing full-suite step**
 
-Append exactly:
+Append:
 
 ```yaml
       - name: Render dense characteristic summary QA
@@ -880,22 +872,20 @@ Append exactly:
             dense_characteristic_summary_metrics.json
 ```
 
-Keep the existing Python 3.13 setup and `python -m pytest -q` gate unchanged.
+Keep Python 3.13 and `python -m pytest -q` unchanged.
 
-- [ ] **Step 3: Commit temporary QA harness**
+- [ ] **Step 4: Commit the temporary QA harness**
 
 ```bash
 git add tools/render_dense_characteristic_summary_qa.py .github/workflows/characteristic-label-validation.yml docs/project-context/CURRENT.md
 git commit -m "ci: capture characteristic summary visual qa"
 ```
 
-The push triggers the workflow.
+- [ ] **Step 5: Require machine evidence**
 
-- [ ] **Step 4: Require machine evidence before visual inspection**
+Require full suite PASS, QA render PASS, artifact present, and every hard assertion PASS. Record exact validated SHA, workflow run/job/artifact IDs, test count, and duration in `CURRENT.md`.
 
-Require full suite PASS, render step PASS, artifact present, and every hard metric assertion PASS. Record the workflow run/job/artifact IDs and validated SHA in `CURRENT.md`.
-
-- [ ] **Step 5: Inspect the actual PNG before showing it to the user**
+- [ ] **Step 6: Inspect the actual PNG before showing it to the user**
 
 Assistant visual checklist:
 
@@ -903,16 +893,15 @@ Assistant visual checklist:
 - positive moment remains downward;
 - legend/title/axis labels are untouched;
 - summary is materially more compact than the rejected 6.65 in figure;
-- two groups are visually distinct;
-- six rows in each group are aligned;
+- two groups are distinct and six rows per group align cleanly;
 - series identity through color/label is immediate;
-- no clipping, collision, leader lines, or spreadsheet-like heavy grid appears.
+- no clipping, collision, leader lines, or heavy table grid appears.
 
-If any item fails, return to Task 4, modify presentation only, rerun focused/full tests, then regenerate the artifact. Do not ask the user to approve a PNG that fails assistant inspection.
+If any item fails, return to Task 4, change presentation only, rerun focused/full tests, and regenerate the artifact. Do not ask the user to approve a failed assistant inspection.
 
-- [ ] **Step 6: Present validated evidence to the user**
+- [ ] **Step 7: Present evidence to the user**
 
-Report validated SHA, full-suite count/duration, figure dimensions, main-axes pixel dimensions, 2 groups, 12 entries, overlap count, containment status, and leader count. Show the PNG and request visual acceptance. Do not merge or remove QA evidence before acceptance.
+Report validated SHA, full-suite count/duration, figure dimensions, primary-axes pixel dimensions, 2 groups, 12 entries, overlap count, containment status, and zero leader lines. Show the PNG and request visual acceptance. Do not merge or clean the QA harness before acceptance.
 
 ---
 
@@ -943,7 +932,7 @@ git commit -m "chore: remove characteristic summary qa harness"
 
 - [ ] **Step 4: Prove cleanup changed no product/test code**
 
-Compare the accepted validated SHA to cleanup HEAD. The changed paths must be exactly:
+Compare accepted validated SHA to cleanup HEAD. Changed paths must be exactly:
 
 - `.github/workflows/characteristic-label-validation.yml` deletion;
 - `tools/render_dense_characteristic_summary_qa.py` deletion;
@@ -951,7 +940,7 @@ Compare the accepted validated SHA to cleanup HEAD. The changed paths must be ex
 
 If `src/` or `tests/` appears, investigate before claiming closure.
 
-- [ ] **Step 5: Request explicit integration/merge decision**
+- [ ] **Step 5: Request explicit integration decision**
 
 Report the clean feature-branch checkpoint. Do not merge. Piecewise remains unimplemented until this graphics branch is explicitly integrated or otherwise dispositioned.
 
