@@ -1,0 +1,263 @@
+name: Execute Piecewise Task 6 v2
+
+on:
+  push:
+    branches:
+      - feature/v0.8.0-piecewise
+    paths:
+      - .github/workflows/apply-piecewise-task6-v2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  task6:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.8.0-piecewise
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Install baseline
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Write Task 6 tests
+        run: |
+          cat > tests/test_piecewise_plotting.py <<'PY'
+          import pytest
+          from matplotlib.collections import PolyCollection
+
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.plotting import render_plot
+
+
+          def eval_cell(engine, source):
+              return [engine.evaluate(statement) for statement in parse_cell(source)]
+
+
+          def define_jump(engine, operator="<"):
+              eval_cell(
+                  engine,
+                  f"q(x) = piecewise(q1, x {operator} a, q2, x <= L, 0)\n"
+                  "q1 := 8*kN/m\nq2 := 4*kN/m\na := 2.345*m\nL := 6*m",
+              )
+
+
+          def response_lines(axis):
+              return [line for line in axis.lines if line.get_linewidth() >= 1.9]
+
+
+          def test_piecewise_jump_is_split_without_polyline_bridge_for_right_owned_breakpoint():
+              engine = EngineeringEngine()
+              define_jump(engine, "<")
+              result = eval_cell(engine, "plot(q(x), x, 0, L)")[-1]
+              breakpoint_index = next(
+                  index for index, point in enumerate(result.x_values)
+                  if point.to("m").magnitude == pytest.approx(2.345, abs=1e-12)
+              )
+              assert result.series[0].segment_starts == (breakpoint_index,)
+              figure = render_plot(result)
+              axis = figure.axes[0]
+              lines = response_lines(axis)
+              assert len(lines) == 2
+              assert max(lines[0].get_xdata()) < 2.345
+              assert min(lines[1].get_xdata()) == pytest.approx(2.345)
+              assert len([item for item in axis.collections if isinstance(item, PolyCollection)]) == 2
+
+
+          def test_piecewise_left_owned_breakpoint_splits_after_exact_endpoint():
+              engine = EngineeringEngine()
+              define_jump(engine, "<=")
+              result = eval_cell(engine, "plot(q(x), x, 0, L)")[-1]
+              breakpoint_index = next(
+                  index for index, point in enumerate(result.x_values)
+                  if point.to("m").magnitude == pytest.approx(2.345, abs=1e-12)
+              )
+              assert result.series[0].segment_starts == (breakpoint_index + 1,)
+              figure = render_plot(result)
+              lines = response_lines(figure.axes[0])
+              assert max(lines[0].get_xdata()) == pytest.approx(2.345)
+              assert min(lines[1].get_xdata()) > 2.345
+
+
+          def test_piecewise_continuous_transition_is_still_segmented_without_changing_extrema():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "q(x) = piecewise(q1*x/a, x < a, q1, x <= L, 0)\n"
+                  "q1 := 8*kN/m\na := 2.345*m\nL := 6*m",
+              )
+              result = eval_cell(engine, "plot(q(x), x, 0, L)")[-1]
+              figure = render_plot(result)
+              assert len(result.series[0].segment_starts) >= 1
+              assert len(response_lines(figure.axes[0])) >= 2
+              assert len(figure.axes[0].texts) >= 1
+
+
+          def test_piecewise_moment_remains_positive_downward_and_characteristics_survive():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "M(x) = piecewise(M1, x < a, M2, x <= L, 0)\n"
+                  "M1 := 8*kN*m\nM2 := -4*kN*m\na := 2.345*m\nL := 6*m",
+              )
+              result = eval_cell(engine, "plot(M(x), x, 0, L)")[-1]
+              figure = render_plot(result)
+              axis = figure.axes[0]
+              assert axis.yaxis_inverted()
+              assert len(axis.texts) >= 2
+              assert len(response_lines(axis)) >= 2
+
+
+          def test_piecewise_multi_series_segments_keep_one_legend_identity_per_series():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "qA(x) = piecewise(q1, x < a, 0)\n"
+                  "qB(x) = piecewise(q2, x < b, 0)\n"
+                  "q1 := 8*kN/m\nq2 := 4*kN/m\n"
+                  "a := 2.345*m\nb := 4.567*m\nL := 6*m",
+              )
+              result = eval_cell(engine, "plot(qA(x), qB(x), x, 0, L)")[-1]
+              figure = render_plot(result)
+              legend = figure.axes[0].get_legend()
+              labels = [text.get_text() for text in legend.get_texts()]
+              assert labels == ["qA(x)", "qB(x)"]
+              assert len(response_lines(figure.axes[0])) == 4
+
+
+          def test_piecewise_envelope_sources_and_fill_are_segmented_at_union_breakpoints():
+              engine = EngineeringEngine()
+              eval_cell(
+                  engine,
+                  "q(x) = piecewise(q1, x < a, 0)\n"
+                  "q1 := 8*kN/m\nL := 6*m",
+              )
+              result = eval_cell(
+                  engine,
+                  "envelope(q(x), x, 0, L, a=[2.345*m, 4.567*m])",
+              )[-1]
+              figure = render_plot(result)
+              fills = [item for item in figure.axes[0].collections if isinstance(item, PolyCollection)]
+              assert result.series[0].segment_starts
+              assert len(fills) >= 3
+          PY
+      - name: Verify Task 6 RED
+        run: |
+          set +e
+          python -m pytest tests/test_piecewise_plotting.py -q
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Task 6 tests unexpectedly passed before implementation"
+            exit 1
+          fi
+          echo "TASK6_RED_CONFIRMED exit=$status"
+      - name: Implement segment metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/engcalc_colab/models.py')
+          text = path.read_text()
+          old = '''class PlotSeries:\n    display_label: str\n    y_values: tuple[Any, ...]\n    is_moment: bool\n'''
+          new = '''class PlotSeries:\n    display_label: str\n    y_values: tuple[Any, ...]\n    is_moment: bool\n    segment_starts: tuple[int, ...] = ()\n'''
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, new, 1))
+
+          path = Path('src/engcalc_colab/numeric.py')
+          text = path.read_text()
+          anchor = '''    def partial_substitutions(\n'''
+          helper = '''    def _piecewise_branch_signature(\n        self,\n        expression,\n        substitutions: dict[str, Any],\n    ) -> tuple[int, ...]:\n        signature: list[int] = []\n\n        def visit(node):\n            node = sp.sympify(node)\n            if isinstance(node, sp.Piecewise):\n                for index, (branch_expression, condition) in enumerate(node.args):\n                    if condition == sp.true or self._evaluate_relation(\n                        condition, substitutions\n                    ):\n                        signature.append(index)\n                        visit(branch_expression)\n                        return\n                raise EngEvaluationError("piecewise has no governing branch")\n            for argument in node.args:\n                visit(argument)\n\n        visit(expression)\n        return tuple(signature)\n\n    def piecewise_segment_starts(\n        self,\n        expression,\n        variable: str,\n        points,\n        overrides: dict[str, Any] | None = None,\n    ) -> tuple[int, ...]:\n        expression = sp.sympify(expression)\n        fixed_overrides = dict(overrides or {})\n        names = sorted(symbol.name for symbol in expression.free_symbols)\n        previous = None\n        starts: list[int] = []\n        for index, point in enumerate(points):\n            sample_overrides = {**fixed_overrides, variable: point}\n            substitutions = {\n                name: (\n                    sample_overrides[name]\n                    if name in sample_overrides\n                    else self.values[name]\n                )\n                for name in names\n            }\n            signature = self._piecewise_branch_signature(\n                expression, substitutions\n            )\n            if index and signature != previous:\n                starts.append(index)\n            previous = signature\n        return tuple(starts)\n\n'''
+          assert text.count(anchor) == 1
+          path.write_text(text.replace(anchor, helper + anchor, 1))
+          PY
+      - name: Route segment metadata through engine
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/engcalc_colab/engine.py')
+          text = path.read_text()
+
+          old = '''                raw_series.append(\n                    PlotSeries(\n                        display_label=expression.display_label,\n                        y_values=y_values,\n                        is_moment=self._is_moment_label(expression.source_label),\n                    )\n                )\n                raw_source_series.append(\n                    PlotSeries(\n                        display_label=expression.source_label,\n                        y_values=source_y_values,\n                        is_moment=self._is_moment_label(expression.source_label),\n                    )\n                )\n'''
+          new = '''                segment_starts = self.engine.numeric_context.piecewise_segment_starts(\n                    expression.comparison_expression, variable, x_values\n                )\n                source_segment_starts = self.engine.numeric_context.piecewise_segment_starts(\n                    expression.signed_expression, variable, x_values\n                )\n                raw_series.append(\n                    PlotSeries(\n                        display_label=expression.display_label,\n                        y_values=y_values,\n                        is_moment=self._is_moment_label(expression.source_label),\n                        segment_starts=segment_starts,\n                    )\n                )\n                raw_source_series.append(\n                    PlotSeries(\n                        display_label=expression.source_label,\n                        y_values=source_y_values,\n                        is_moment=self._is_moment_label(expression.source_label),\n                        segment_starts=source_segment_starts,\n                    )\n                )\n'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''            comparison_series.append(\n                PlotSeries(\n                    display_label=case_label,\n                    y_values=comparison_y_values,\n                    is_moment=is_moment,\n                )\n            )\n            source_series.append(\n                PlotSeries(\n                    display_label=case_label,\n                    y_values=source_y_values,\n                    is_moment=is_moment,\n                )\n            )\n'''
+          new = '''            segment_starts = self.engine.numeric_context.piecewise_segment_starts(\n                comparison_expression, variable, x_values, overrides=overrides\n            )\n            source_segment_starts = self.engine.numeric_context.piecewise_segment_starts(\n                signed_expression, variable, x_values, overrides=overrides\n            )\n            comparison_series.append(\n                PlotSeries(\n                    display_label=case_label,\n                    y_values=comparison_y_values,\n                    is_moment=is_moment,\n                    segment_starts=segment_starts,\n                )\n            )\n            source_series.append(\n                PlotSeries(\n                    display_label=case_label,\n                    y_values=source_y_values,\n                    is_moment=is_moment,\n                    segment_starts=source_segment_starts,\n                )\n            )\n'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''                PlotSeries(\n                    display_label=item.display_label,\n                    y_values=y_values,\n                    is_moment=item.is_moment,\n                )\n'''
+          new = '''                PlotSeries(\n                    display_label=item.display_label,\n                    y_values=y_values,\n                    is_moment=item.is_moment,\n                    segment_starts=item.segment_starts,\n                )\n'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          marker = '''        if resolved.envelope_mode == "magnitude":\n'''
+          replacement = '''        envelope_segment_starts = tuple(sorted({\n            start\n            for series in (*resolved.series, *resolved.source_series)\n            for start in series.segment_starts\n        }))\n\n        if resolved.envelope_mode == "magnitude":\n'''
+          assert text.count(marker) == 1
+          text = text.replace(marker, replacement, 1)
+
+          old = '''                    display_label=magnitude_label,\n                    y_values=tuple(maximum_values),\n                    is_moment=comparison_series[0].is_moment,\n                ),\n'''
+          new = '''                    display_label=magnitude_label,\n                    y_values=tuple(maximum_values),\n                    is_moment=comparison_series[0].is_moment,\n                    segment_starts=envelope_segment_starts,\n                ),\n'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''                display_label=maximum_label,\n                y_values=tuple(maximum_values),\n                is_moment=is_moment,\n            ),\n            PlotSeries(\n                display_label=minimum_label,\n                y_values=tuple(minimum_values),\n                is_moment=is_moment,\n            ),\n'''
+          new = '''                display_label=maximum_label,\n                y_values=tuple(maximum_values),\n                is_moment=is_moment,\n                segment_starts=envelope_segment_starts,\n            ),\n            PlotSeries(\n                display_label=minimum_label,\n                y_values=tuple(minimum_values),\n                is_moment=is_moment,\n                segment_starts=envelope_segment_starts,\n            ),\n'''
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Implement segmented plotting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/engcalc_colab/plotting.py')
+          text = path.read_text()
+          anchor = '''def _render_single_series(figure, axis, result: PlotResult) -> None:\n'''
+          helper = '''def _segment_slices(series: PlotSeries, count: int) -> tuple[tuple[int, int], ...]:\n    starts = (0, *series.segment_starts)\n    stops = (*series.segment_starts, count)\n    return tuple((start, stop) for start, stop in zip(starts, stops) if stop > start)\n\n\ndef _plot_segmented_line(\n    axis, x_values, y_values, series: PlotSeries, *, linewidth: float,\n    zorder: int, label=None, alpha: float | None = None, color=None,\n):\n    first_line = None\n    line_color = color\n    for segment_index, (start, stop) in enumerate(_segment_slices(series, len(x_values))):\n        kwargs = {\n            "linewidth": linewidth,\n            "zorder": zorder,\n            "label": label if segment_index == 0 else "_nolegend_",\n        }\n        if alpha is not None:\n            kwargs["alpha"] = alpha\n        if line_color is not None:\n            kwargs["color"] = line_color\n        line = axis.plot(x_values[start:stop], y_values[start:stop], **kwargs)[0]\n        if first_line is None:\n            first_line = line\n            line_color = line.get_color()\n    return first_line\n\n\ndef _fill_segmented_between(\n    axis, x_values, lower_values, upper_values, series: PlotSeries, *,\n    color, alpha: float, zorder: int,\n):\n    for start, stop in _segment_slices(series, len(x_values)):\n        axis.fill_between(\n            x_values[start:stop],\n            lower_values[start:stop] if hasattr(lower_values, "__getitem__") else lower_values,\n            upper_values[start:stop] if hasattr(upper_values, "__getitem__") else upper_values,\n            color=color, alpha=alpha, zorder=zorder,\n        )\n\n\n'''
+          assert text.count(anchor) == 1
+          text = text.replace(anchor, helper + anchor, 1)
+
+          old = '''    line = axis.plot(x_values, y_values, linewidth=2.2, zorder=3)[0]\n    line_color = line.get_color()\n    axis.fill_between(x_values, y_values, 0.0, color=line_color, alpha=0.12, zorder=1)\n'''
+          new = '''    line = _plot_segmented_line(\n        axis, x_values, y_values, series, linewidth=2.2, zorder=3\n    )\n    line_color = line.get_color()\n    _fill_segmented_between(\n        axis, x_values, y_values, 0.0, series,\n        color=line_color, alpha=0.12, zorder=1,\n    )\n'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''        line = axis.plot(x_values, y_values, linewidth=2.0, label=series.display_label, zorder=3)[0]\n        line_colors[series_index] = line.get_color()\n'''
+          new = '''        line = _plot_segmented_line(\n            axis, x_values, y_values, series, linewidth=2.0,\n            label=series.display_label, zorder=3,\n        )\n        line_colors[series_index] = line.get_color()\n'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''        axis.plot(x_values, source_y, linewidth=1.0, alpha=0.22, label="_nolegend_", zorder=1)\n'''
+          new = '''        _plot_segmented_line(\n            axis, x_values, source_y, source_series, linewidth=1.0,\n            alpha=0.22, label="_nolegend_", zorder=1,\n        )\n'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''    maximum_line = axis.plot(\n        x_values,\n        maximum_y,\n        linewidth=2.5,\n        alpha=1.0,\n        label=maximum_series.display_label,\n        zorder=4,\n    )[0]\n    minimum_line = axis.plot(\n        x_values,\n        minimum_y,\n        linewidth=2.5,\n        alpha=1.0,\n        label=minimum_series.display_label,\n        zorder=4,\n    )[0]\n    axis.fill_between(x_values, minimum_y, maximum_y, color=maximum_line.get_color(), alpha=0.10, zorder=2)\n'''
+          new = '''    maximum_line = _plot_segmented_line(\n        axis, x_values, maximum_y, maximum_series,\n        linewidth=2.5, alpha=1.0, label=maximum_series.display_label, zorder=4,\n    )\n    minimum_line = _plot_segmented_line(\n        axis, x_values, minimum_y, minimum_series,\n        linewidth=2.5, alpha=1.0, label=minimum_series.display_label, zorder=4,\n    )\n    _fill_segmented_between(\n        axis, x_values, minimum_y, maximum_y, maximum_series,\n        color=maximum_line.get_color(), alpha=0.10, zorder=2,\n    )\n'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+
+          old = '''    magnitude_line = axis.plot(\n        x_values,\n        magnitude_y,\n        linewidth=2.5,\n        alpha=1.0,\n        label=magnitude_series.display_label,\n        zorder=4,\n    )[0]\n    axis.fill_between(x_values, 0.0, magnitude_y, color=magnitude_line.get_color(), alpha=0.10, zorder=2)\n'''
+          new = '''    magnitude_line = _plot_segmented_line(\n        axis, x_values, magnitude_y, magnitude_series,\n        linewidth=2.5, alpha=1.0, label=magnitude_series.display_label, zorder=4,\n    )\n    _fill_segmented_between(\n        axis, x_values, 0.0, magnitude_y, magnitude_series,\n        color=magnitude_line.get_color(), alpha=0.10, zorder=2,\n    )\n'''
+          assert text.count(old) == 1
+          path.write_text(text.replace(old, new, 1))
+          PY
+          python -m py_compile src/engcalc_colab/models.py src/engcalc_colab/numeric.py src/engcalc_colab/engine.py src/engcalc_colab/plotting.py
+          git diff --check
+      - name: Verify Task 6 focused GREEN
+        run: python -m pytest tests/test_piecewise_plotting.py -q
+      - name: Verify Task 6 full GREEN
+        run: python -m pytest -q
+      - name: Commit Task 6
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add src/engcalc_colab/models.py src/engcalc_colab/numeric.py src/engcalc_colab/engine.py src/engcalc_colab/plotting.py tests/test_piecewise_plotting.py
+          git commit -m "feat: split plot lines at piecewise transitions"
+          git push origin HEAD:feature/v0.8.0-piecewise
