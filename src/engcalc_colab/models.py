@@ -205,6 +205,7 @@ class PlotSeries:
     display_label: str
     y_values: tuple[Any, ...]
     is_moment: bool
+    segment_starts: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)

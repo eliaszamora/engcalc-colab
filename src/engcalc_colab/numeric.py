@@ -305,6 +305,60 @@ class NumericContext:
         except EngEvaluationError as exc:
             raise EngEvaluationError("plot samples have incompatible result units") from exc
 
+    def _piecewise_branch_signature(
+        self,
+        expression,
+        substitutions: dict[str, Any],
+    ) -> tuple[int, ...]:
+        signature: list[int] = []
+
+        def visit(node):
+            node = sp.sympify(node)
+            if isinstance(node, sp.Piecewise):
+                for index, (branch_expression, condition) in enumerate(node.args):
+                    if condition == sp.true or self._evaluate_relation(
+                        condition, substitutions
+                    ):
+                        signature.append(index)
+                        visit(branch_expression)
+                        return
+                raise EngEvaluationError("piecewise has no governing branch")
+            for argument in node.args:
+                visit(argument)
+
+        visit(expression)
+        return tuple(signature)
+
+    def piecewise_segment_starts(
+        self,
+        expression,
+        variable: str,
+        points,
+        overrides: dict[str, Any] | None = None,
+    ) -> tuple[int, ...]:
+        expression = sp.sympify(expression)
+        fixed_overrides = dict(overrides or {})
+        names = sorted(symbol.name for symbol in expression.free_symbols)
+        previous = None
+        starts: list[int] = []
+        for index, point in enumerate(points):
+            sample_overrides = {**fixed_overrides, variable: point}
+            substitutions = {
+                name: (
+                    sample_overrides[name]
+                    if name in sample_overrides
+                    else self.values[name]
+                )
+                for name in names
+            }
+            signature = self._piecewise_branch_signature(
+                expression, substitutions
+            )
+            if index and signature != previous:
+                starts.append(index)
+            previous = signature
+        return tuple(starts)
+
     def partial_substitutions(
         self,
         expression: sp.Expr,

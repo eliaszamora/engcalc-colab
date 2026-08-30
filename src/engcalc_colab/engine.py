@@ -804,6 +804,12 @@ class _Evaluator(ast.NodeVisitor):
                 "envelope cannot mix absolute and signed response series"
             )
 
+        envelope_segment_starts = tuple(sorted({
+            start
+            for series in (*resolved.series, *resolved.source_series)
+            for start in series.segment_starts
+        }))
+
         if resolved.envelope_mode == "magnitude":
             maximum_values = []
             governing_maximum = []
@@ -841,6 +847,7 @@ class _Evaluator(ast.NodeVisitor):
                     display_label=magnitude_label,
                     y_values=tuple(maximum_values),
                     is_moment=comparison_series[0].is_moment,
+                    segment_starts=envelope_segment_starts,
                 ),
             )
 
@@ -890,11 +897,13 @@ class _Evaluator(ast.NodeVisitor):
                 display_label=maximum_label,
                 y_values=tuple(maximum_values),
                 is_moment=is_moment,
+                segment_starts=envelope_segment_starts,
             ),
             PlotSeries(
                 display_label=minimum_label,
                 y_values=tuple(minimum_values),
                 is_moment=is_moment,
+                segment_starts=envelope_segment_starts,
             ),
         )
 
@@ -1041,11 +1050,18 @@ class _Evaluator(ast.NodeVisitor):
                     variable,
                     x_values,
                 )
+                segment_starts = self.engine.numeric_context.piecewise_segment_starts(
+                    expression.comparison_expression, variable, x_values
+                )
+                source_segment_starts = self.engine.numeric_context.piecewise_segment_starts(
+                    expression.signed_expression, variable, x_values
+                )
                 raw_series.append(
                     PlotSeries(
                         display_label=expression.display_label,
                         y_values=y_values,
                         is_moment=self._is_moment_label(expression.source_label),
+                        segment_starts=segment_starts,
                     )
                 )
                 raw_source_series.append(
@@ -1053,6 +1069,7 @@ class _Evaluator(ast.NodeVisitor):
                         display_label=expression.source_label,
                         y_values=source_y_values,
                         is_moment=self._is_moment_label(expression.source_label),
+                        segment_starts=source_segment_starts,
                     )
                 )
             if call_name == "plot" and len(resolved_expressions) == 1:
@@ -1177,11 +1194,18 @@ class _Evaluator(ast.NodeVisitor):
             case_label = (
                 f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"
             )
+            segment_starts = self.engine.numeric_context.piecewise_segment_starts(
+                comparison_expression, variable, x_values, overrides=overrides
+            )
+            source_segment_starts = self.engine.numeric_context.piecewise_segment_starts(
+                signed_expression, variable, x_values, overrides=overrides
+            )
             comparison_series.append(
                 PlotSeries(
                     display_label=case_label,
                     y_values=comparison_y_values,
                     is_moment=is_moment,
+                    segment_starts=segment_starts,
                 )
             )
             source_series.append(
@@ -1189,6 +1213,7 @@ class _Evaluator(ast.NodeVisitor):
                     display_label=case_label,
                     y_values=source_y_values,
                     is_moment=is_moment,
+                    segment_starts=source_segment_starts,
                 )
             )
 
@@ -1238,6 +1263,7 @@ class _Evaluator(ast.NodeVisitor):
                     display_label=item.display_label,
                     y_values=y_values,
                     is_moment=item.is_moment,
+                    segment_starts=item.segment_starts,
                 )
             )
         return tuple(normalized)
