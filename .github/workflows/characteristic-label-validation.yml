@@ -18,3 +18,100 @@ jobs:
         run: python -m pip install -e '.[dev]' ipython
       - name: Run full test suite
         run: python -m pytest -q
+      - name: Render dense QA evidence
+        shell: bash
+        run: |
+          python - <<'PY'
+          import base64
+          import json
+          import matplotlib
+          matplotlib.use('Agg')
+          from matplotlib.backends.backend_agg import FigureCanvasAgg
+          from matplotlib.text import Annotation, Text
+
+          from engcalc_colab.engine import EngineeringEngine
+          from engcalc_colab.parser import parse_cell
+          from engcalc_colab.plotting import render_plot
+          from engcalc_colab.presentation import render_presented_plot
+
+          def eval_cell(engine, source):
+              return [engine.evaluate(statement) for statement in parse_cell(source)]
+
+          engine = EngineeringEngine()
+          eval_cell(engine, '''
+          L := 4*m
+          A1 := -6*tonf*m
+          C1 := 1.50*tonf/m
+          B1 := 7.50*tonf
+          A2 := -22.4*tonf*m
+          C2 := 5.00*tonf/m
+          B2 := 25.00*tonf
+          A3 := -8*tonf*m
+          C3 := 2.00*tonf/m
+          B3 := 10.00*tonf
+          A4 := -19.2*tonf*m
+          C4 := 4.80*tonf/m
+          B4 := 24.00*tonf
+          A5 := -14*tonf*m
+          C5 := 3.50*tonf/m
+          B5 := 17.50*tonf
+          A6 := -16*tonf*m
+          C6 := 4.20*tonf/m
+          B6 := 21.00*tonf
+          M_C1(x) = A1 + B1*x - C1*x^2
+          M_C2(x) = A2 + B2*x - C2*x^2
+          M_S1(x) = A3 + B3*x - C3*x^2
+          M_S2(x) = A4 + B4*x - C4*x^2
+          M_S3(x) = A5 + B5*x - C5*x^2
+          M_S4(x) = A6 + B6*x - C6*x^2
+          ''')
+          result = eval_cell(
+              engine,
+              'plot(M_C1(x), M_C2(x), M_S1(x), M_S2(x), M_S3(x), M_S4(x), x, 0, L, title="M(x)", xlabel="x", ylabel="M(x)")',
+          )[-1]
+
+          baseline = render_plot(result)
+          baseline_canvas = FigureCanvasAgg(baseline)
+          baseline_canvas.draw()
+          baseline_axis = baseline.axes[0]
+          baseline_box = baseline_axis.get_window_extent(baseline_canvas.get_renderer())
+
+          figure = render_presented_plot(result)
+          canvas = FigureCanvasAgg(figure)
+          canvas.draw()
+          axis = figure.axes[0]
+          renderer = canvas.get_renderer()
+          axes_box = axis.get_window_extent(renderer)
+          annotations = [item for item in axis.texts if isinstance(item, Annotation)]
+          text_boxes = [Text.get_window_extent(item, renderer) for item in annotations]
+
+          def overlap_area(left, right):
+              width = max(0.0, min(left.x1, right.x1) - max(left.x0, right.x0))
+              height = max(0.0, min(left.y1, right.y1) - max(left.y0, right.y0))
+              return width * height
+
+          overlaps = sum(
+              overlap_area(left, right) > 0.0
+              for i, left in enumerate(text_boxes)
+              for right in text_boxes[i + 1:]
+          )
+
+          metrics = {
+              'baseline_fig_inches': [float(v) for v in baseline.get_size_inches()],
+              'current_fig_inches': [float(v) for v in figure.get_size_inches()],
+              'baseline_axes_px': [float(baseline_box.width), float(baseline_box.height)],
+              'current_axes_px': [float(axes_box.width), float(axes_box.height)],
+              'annotation_count': len(annotations),
+              'pairwise_text_overlaps': overlaps,
+              'all_labels_below_axes': all(box.y1 < axes_box.y0 for box in text_boxes),
+          }
+          print('QA_METRICS=' + json.dumps(metrics, sort_keys=True))
+
+          output = '/tmp/engcalc_bottom_band_qa.png'
+          figure.savefig(output, dpi=120, facecolor='white')
+          with open(output, 'rb') as handle:
+              encoded = base64.b64encode(handle.read()).decode('ascii')
+          print('QA_PNG_BASE64_BEGIN')
+          print(encoded)
+          print('QA_PNG_BASE64_END')
+          PY
