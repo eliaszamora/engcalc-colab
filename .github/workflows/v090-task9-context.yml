@@ -1,0 +1,39 @@
+name: EngCalc 0.9.0 Task 9 context
+
+on:
+  push:
+    branches:
+      - feature/v0.9.0-matrix-cas
+    paths:
+      - .github/workflows/v090-task9-context.yml
+
+permissions:
+  contents: write
+
+jobs:
+  context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v0.9.0-matrix-cas
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Apply context patch
+        run: python .github/scripts/v090_task9_context_patch.py
+      - name: Validate context patch
+        run: |
+          git diff --check
+          test "$(git diff --name-only)" = "docs/project-context/CURRENT.md"
+          grep -q "Tasks 0–9 are complete" docs/project-context/CURRENT.md
+          grep -q "721/721 complete" docs/project-context/CURRENT.md
+          grep -q "Task 10 release" docs/project-context/CURRENT.md
+          grep -q "33331638868" docs/project-context/CURRENT.md
+      - name: Commit context
+        run: |
+          git config user.name "eliaszamora"
+          git config user.email "37598447+eliaszamora@users.noreply.github.com"
+          git add docs/project-context/CURRENT.md
+          git commit -m "docs: record Matrix CAS Task 9 completion"
+          git push origin HEAD:feature/v0.9.0-matrix-cas
