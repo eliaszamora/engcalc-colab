@@ -160,6 +160,30 @@ def _candidate_in_domain(quantity, domain: AnalysisDomain) -> bool:
     return lower - tolerance <= magnitude <= upper + tolerance
 
 
+def _characteristic_literal_unit_overrides(
+    context,
+    expression: sp.Expr,
+    overrides: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Resolve unit aliases that remain symbolic inside characteristic expressions.
+
+    Symbolic formulas intentionally keep names such as ``m`` as SymPy symbols.
+    During physical validation of a characteristic point, however, a unit literal
+    such as ``7*m`` must be interpreted through the same Pint unit registry as
+    numeric input. Explicit overrides and stored numeric values always win.
+    """
+    fixed = dict(overrides or {})
+    for symbol in sp.sympify(expression).free_symbols:
+        name = symbol.name
+        if name in fixed or name in context.values:
+            continue
+        try:
+            fixed[name] = context.resolve_target_unit_name(name)
+        except EngEvaluationError:
+            continue
+    return fixed
+
+
 def _evaluate_root_candidate(
     expression: sp.Expr,
     variable: sp.Symbol,
@@ -170,7 +194,11 @@ def _evaluate_root_candidate(
     overrides: dict[str, Any] | None,
     source_label: str | None,
 ) -> CharacteristicPoint | None:
-    fixed_overrides = dict(overrides or {})
+    fixed_overrides = _characteristic_literal_unit_overrides(
+        context,
+        expression,
+        overrides,
+    )
     try:
         _, x_quantity = context.evaluate_symbolic(candidate, overrides=fixed_overrides)
     except EngEvaluationError:
