@@ -18,3 +18,12 @@ jobs:
         run: python -m pip install -e '.[dev]' ipython
       - name: Run full test suite
         run: python -m pytest -q
+      - name: Render dense characteristic summary QA
+        run: python tools/render_dense_characteristic_summary_qa.py
+      - name: Upload dense characteristic summary QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-characteristic-summary-qa
+          path: |
+            dense_characteristic_summary.png
+            dense_characteristic_summary_metrics.json
