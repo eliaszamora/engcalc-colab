@@ -217,3 +217,14 @@ def matrix_trace(value):
 def matrix_size(value):
     matrix = _require_matrix(value, "size")
     return matrix.rows, matrix.cols
+
+
+def map_matrix_entries(matrix, operation) -> sp.ImmutableMatrix:
+    """Apply one scalar operation entrywise and preserve immutable matrix truth."""
+    if not is_matrix(matrix):
+        raise EngEvaluationError("matrix entry mapping requires a matrix")
+    return sp.ImmutableMatrix(
+        matrix.rows,
+        matrix.cols,
+        lambda row, col: sp.sympify(operation(matrix[row, col])),
+    )

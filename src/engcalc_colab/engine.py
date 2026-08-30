@@ -30,6 +30,8 @@ from .models import (
 )
 from .matrix_core import (
     build_matrix,
+    is_matrix,
+    map_matrix_entries,
     matrix_add,
     matrix_det,
     matrix_diag,
@@ -79,6 +81,23 @@ def _substitute_preserving_inverse_trig(expr, bindings):
     if expr.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS:
         return expr.func(*rebuilt_args, evaluate=False)
     return expr.func(*rebuilt_args)
+
+
+def substitute_symbolic_value(value, bindings):
+    """Substitute one scalar or immutable matrix while preserving scalar CAS semantics."""
+    if is_matrix(value):
+        return map_matrix_entries(
+            value,
+            lambda entry: substitute_symbolic_value(entry, bindings),
+        )
+
+    expression = sp.sympify(value)
+    if any(
+        item.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS
+        for item in sp.preorder_traversal(expression)
+    ):
+        return _substitute_preserving_inverse_trig(expression, bindings)
+    return expression.xreplace(bindings)
 
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
 
@@ -722,19 +741,14 @@ class _Evaluator(ast.NodeVisitor):
                 for parameter in function.parameters
             )
             bindings = dict(zip(parameters, args))
-            expression = sp.sympify(function.expression)
-            if any(
-                item.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS
-                for item in sp.preorder_traversal(expression)
-            ):
-                return _substitute_preserving_inverse_trig(
-                    expression,
-                    bindings,
-                )
-            return expression.xreplace(bindings)
+            return substitute_symbolic_value(function.expression, bindings)
 
         if name in _SCALAR_SYMBOLIC_FUNCTIONS:
             self._require_arity(name, args, 1, "expression")
+            if is_matrix(args[0]):
+                raise EngEvaluationError(
+                    f"{name} requires a scalar expression, not a matrix"
+                )
             if name in {"asin", "acos", "atan"}:
                 return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0], evaluate=False)
             return _SCALAR_SYMBOLIC_FUNCTIONS[name](args[0])
@@ -746,6 +760,15 @@ class _Evaluator(ast.NodeVisitor):
         if name == "integral":
             self._require_arity(name, args, 4, "expression, variable, lower, upper")
             expr, var, lower, upper = args
+            if is_matrix(expr):
+                self.display_input = map_matrix_entries(
+                    expr,
+                    lambda entry: sp.Integral(entry, (var, lower, upper)),
+                )
+                return map_matrix_entries(
+                    expr,
+                    lambda entry: sp.integrate(entry, (var, lower, upper)),
+                )
             self.display_input = sp.Integral(expr, (var, lower, upper))
             return sp.integrate(expr, (var, lower, upper))
 
@@ -756,6 +779,25 @@ class _Evaluator(ast.NodeVisitor):
                 )
             expr, var = args[:2]
             order = int(args[2]) if len(args) == 3 else 1
+            if is_matrix(expr):
+                self.display_input = map_matrix_entries(
+                    expr,
+                    lambda entry: sp.Derivative(entry, (var, order)),
+                )
+                if isinstance(var, sp.Symbol):
+                    breakpoints = []
+                    for entry in expr:
+                        for breakpoint in extract_symbolic_breakpoints(entry, var.name):
+                            if breakpoint not in breakpoints:
+                                breakpoints.append(breakpoint)
+                    if breakpoints:
+                        self.derivative_variable = var.name
+                        self.derivative_breakpoints = tuple(breakpoints)
+                return map_matrix_entries(
+                    expr,
+                    lambda entry: sp.diff(entry, var, order),
+                )
+
             self.display_input = sp.Derivative(expr, (var, order))
             if isinstance(var, sp.Symbol):
                 breakpoints = extract_symbolic_breakpoints(expr, var.name)
@@ -775,10 +817,17 @@ class _Evaluator(ast.NodeVisitor):
                 "expand": sp.expand,
                 "factor": sp.factor,
             }[name]
+            if is_matrix(args[0]):
+                return map_matrix_entries(args[0], operation)
             return operation(args[0])
 
         if name == "subs":
             self._require_arity(name, args, 3, "expression, variable, value")
+            if is_matrix(args[0]):
+                return map_matrix_entries(
+                    args[0],
+                    lambda entry: sp.sympify(entry).subs(args[1], args[2]),
+                )
             return sp.sympify(args[0]).subs(args[1], args[2])
 
         raise EngSyntaxError(f"unsupported function '{name}'")
