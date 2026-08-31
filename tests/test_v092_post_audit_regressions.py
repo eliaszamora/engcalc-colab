@@ -71,20 +71,39 @@ def test_n1_decimal_quadratic_family_preserves_known_roots(a, r1, r2):
     )
 
 
-def test_n1_float_empty_exact_discovery_is_not_authoritative():
+def test_n1_decimal_exact_candidates_survive_roundoff_validation():
+    context = NumericContext()
     x = sp.Symbol("x", real=True)
     expression = (
         sp.Float("2.87") * x**2
         - sp.Float("12.50459") * x
         + sp.Float("6.4876637")
     )
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(5))
 
     discovery = candidates._coerce_exact_discovery(
         candidates._exact_real_solution_set(expression, x)
     )
+    outcomes = tuple(
+        candidates._evaluate_root_candidate(
+            expression,
+            x,
+            candidate,
+            domain,
+            context,
+            overrides=None,
+            source_label="f(x)",
+        )
+        for candidate in discovery.candidates
+    )
 
-    assert discovery.candidates == ()
-    assert discovery.complete is False
+    assert discovery.complete is True
+    assert tuple(float(candidate) for candidate in discovery.candidates) == pytest.approx(
+        (0.602, 3.755),
+        rel=1e-12,
+        abs=1e-12,
+    )
+    assert all(outcome.point is not None for outcome in outcomes)
 
 
 @pytest.mark.parametrize(
