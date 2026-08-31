@@ -1,0 +1,63 @@
+name: v0.9.2 Task 2 GREEN
+
+on:
+  push:
+    branches:
+      - feature/v0.9.2-audit-reliability
+
+permissions:
+  contents: write
+
+jobs:
+  task2-green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Apply minimal closed SymPy numeric patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/engcalc_colab/numeric.py')
+          text = path.read_text()
+          old = '''        if expr.is_Number:\n            if expr.is_Integer:\n                return int(expr)\n            if expr.is_Rational:\n                return int(expr.p) / int(expr.q)\n            return float(expr)\n\n        if expr.func == sp.Piecewise:\n'''
+          new = '''        if expr.is_Number:\n            if expr.is_real is not True or expr.is_finite is not True:\n                raise EngEvaluationError(\n                    "symbolic numeric value must be real and finite"\n                )\n            if expr.is_Integer:\n                return int(expr)\n            if expr.is_Rational:\n                return int(expr.p) / int(expr.q)\n            return float(expr)\n\n        if not expr.free_symbols and expr.is_number is True:\n            evaluated = sp.N(expr, 50)\n            if evaluated.is_real is not True or evaluated.is_finite is not True:\n                raise EngEvaluationError(\n                    "symbolic numeric value must be real and finite"\n                )\n            try:\n                return float(evaluated)\n            except (TypeError, ValueError, OverflowError) as exc:\n                raise EngEvaluationError(\n                    f"unsupported closed symbolic numeric value '{sp.sstr(expr)}'"\n                ) from exc\n\n        if expr.func == sp.Piecewise:\n'''
+          if new in text:
+              print('Task 2 product patch already present; skipping patch.')
+          elif old in text:
+              path.write_text(text.replace(old, new, 1))
+              print('Applied Task 2 product patch.')
+          else:
+              raise SystemExit('Expected Task 2 numeric.py anchor not found.')
+      - name: Run Task 2 focused GREEN
+        run: python -m pytest tests/test_numeric_context.py -q
+      - name: Show known Task 1 RED remains isolated
+        shell: bash
+        run: |
+          set +e
+          python -m pytest tests/test_v092_audit_regressions.py -q
+          status=$?
+          set -e
+          if [ "$status" -ne 1 ]; then
+            echo "Expected Task 1 audit regressions to remain RED before Tasks 3/5; got status $status"
+            exit 1
+          fi
+      - name: Commit product patch when changed
+        shell: bash
+        run: |
+          if git diff --quiet -- src/engcalc_colab/numeric.py; then
+            echo 'No Task 2 product patch to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/engcalc_colab/numeric.py
+          git commit -m 'fix: evaluate closed real SymPy numbers'
+          git push origin HEAD:feature/v0.9.2-audit-reliability
