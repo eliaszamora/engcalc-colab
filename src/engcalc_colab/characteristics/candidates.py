@@ -56,6 +56,27 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
     if solution_set is sp.S.Reals:
         return _ExactDiscovery((), complete=True)
 
+    # SymPy can express a finite exhaustive candidate family as an intersection
+    # with Reals when parameter values decide whether individual candidates are
+    # real, e.g. Intersection({-sqrt(-a), sqrt(-a)}, Reals).  That shape is still
+    # complete: evaluate each finite candidate against the registered numeric
+    # context and discard the ones that become complex.  Do not generalize this
+    # to arbitrary polynomial solve() output: a Union containing a ConditionSet
+    # can coexist with a finite factor, so solve() may expose only a partial hint.
+    if isinstance(solution_set, sp.Intersection):
+        finite_parts = [
+            part for part in solution_set.args if isinstance(part, sp.FiniteSet)
+        ]
+        remaining_parts = [
+            part for part in solution_set.args if not isinstance(part, sp.FiniteSet)
+        ]
+        if (
+            len(finite_parts) == 1
+            and remaining_parts
+            and all(part is sp.S.Reals for part in remaining_parts)
+        ):
+            return _ExactDiscovery(tuple(finite_parts[0]), complete=True)
+
     # An unresolved solveset means any result from solve() is only a candidate
     # hint. It can improve exact provenance, but it cannot prove completeness.
     try:
@@ -80,12 +101,7 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         if candidate.is_real is False:
             continue
         candidates.append(candidate)
-    # solve() is a complete solver for polynomials: it returns every root, so a
-    # polynomial response needs no numerical confirmation even when solveset was
-    # unresolved. Candidates that turn out to be complex once their parameters
-    # are substituted are then a proven absence of real roots, not a gap.
-    complete = bool(sp.sympify(expression).is_polynomial(variable))
-    return _ExactDiscovery(tuple(candidates), complete=complete)
+    return _ExactDiscovery(tuple(candidates), complete=False)
 
 
 def _normalize_candidate_quantity(context, quantity, domain: AnalysisDomain):
