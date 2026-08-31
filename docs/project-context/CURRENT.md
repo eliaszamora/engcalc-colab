@@ -1,123 +1,117 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.9.0 Matrix/CAS is fully integrated in `main`. PR #32 (`release: EngCalc 0.9.0 matrix CAS`) was merged after explicit user approval, and the resulting merge commit passed a fresh complete post-merge verification. The next release on the roadmap is 0.9.1 exact-first extrema/roots/intersections._
+_Last updated: 2026-08-30 — EngCalc 0.9.1 exact characteristics is fully release-validated. Tasks 1–12, wheel/source-free validation and the final clean pre-PR gate are complete. All temporary validation infrastructure is removed. Release PR #33 is open against `main`. Work is intentionally STOPPED before merge pending explicit user approval._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical integrated release: **EngCalc 0.9.0 Matrix/CAS**.
-- PR #32: **MERGED**.
-- 0.9.0 merge commit: **`d22d5e0a62ce13800de8476c28d86a6d9415f1bd`** (`Merge pull request #32 ... release: EngCalc 0.9.0 matrix CAS`).
-- Merge parents: previous `main@9b90014fa59014eb9e831c71c7f7f2a35dfeb86d` and final release-branch head `7cbc6bc9150b16a1ead9861cf837f5aee0039c51`.
-- Authoritative validated release commit before administrative cleanup: **`fb1be9e2e854f66f95414b9597dabceabaeb6470`** (`release: bump EngCalc to 0.9.0`).
-- Runtime/package version integrated in `main`: **0.9.0**.
-- Release branch `feature/v0.9.0-matrix-cas` is historical after merge; temporary pre/post-merge validation workflows were removed from it after evidence was captured.
-- Formal design: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-design.md`.
-- Numeric-semantics clarification: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.0-matrix-cas-numeric-semantics-clarification.md`.
-- Implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.0-matrix-cas-implementation.md`.
+- Canonical released branch: `main@cdc454db7ea43e57e334d523afded8b4ef498ded` — EngCalc 0.9.0 Matrix/CAS.
+- Active release branch: `feature/v0.9.1-exact-characteristics`.
+- Runtime/package version on release branch: **0.9.1**.
+- Verified release metadata commit: `e997d93a69d1ba3589dc48a9ce945b1037476967`.
+- Authoritative wheel-validation SHA: `2628186afd409cf2a1ec898a39a6e8c5ed5f6f2b`.
+- Final pre-PR gate SHA: `50581b6ab8fdf46b072577bd1b2e189711761a73`.
+- Final gate cleanup commit: `03c56a89d1e42a107d34fe078e80ba63da4adf0a`.
+- Release PR: **#33 — `release: EngCalc 0.9.1 exact characteristics`**, head `feature/v0.9.1-exact-characteristics`, base `main`, open and not merged.
+- Approved spec: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.1-exact-characteristics-design.md`.
+- Approved plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.1-exact-characteristics-implementation.md`.
+- User selected inline execution.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
+- Never merge PR #33 without explicit user approval.
 
 ## Approved behavior
 
-### Existing behavior preserved
+Public standalone characteristic calls in 0.9.1:
 
-- `%%eng` remains a restricted EngCalc DSL; ordinary notebook cells remain Python.
-- Narrative, tables, plots, envelopes, multi-argument functions, Piecewise, numeric evaluation, precision/zero tolerance and presentation behavior remain regression requirements.
-- Positive structural moment is plotted **downward**.
-- Historical scalar `solve(eq, x)` remains supported.
+```text
+extrema(response, variable, lower, upper)
+roots(response, variable, lower, upper)
+intersections(response_1, response_2, variable, lower, upper)
+```
 
-### Integrated 0.9.0 Matrix/CAS contract
-
-- Matrix literals use `[a, b, c]` for a row, `[a; b; c]` for a column and `[a, b; c, d]` for a general matrix. Commas separate columns and semicolons separate rows; multiline matrix literals are supported as presentation whitespace.
-- Vectors are matrices; no mandatory public `vector()` / `row()` constructors were introduced.
-- Symbolic matrices use immutable SymPy semantics. Matrix indexing is **1-based**; row/column vectors support one-index shorthand; slicing remains deferred.
-- `A*B` is mathematical matrix multiplication; NumPy broadcasting or element-wise matrix semantics were not introduced.
-- Core constructors/functions include `identity`, `zeros`, `diag`, `transpose`, `det`, `inv`, `trace`, `size`, `rank`, `rref`, `norm`, `eigenvals` and `eigenvects`.
-- `simplify`, `expand`, `factor`, `subs`, `diff` and definite `integral` are matrix-aware entrywise where mathematically unambiguous. Scalar trig/log/exp functions reject whole-matrix inputs rather than inventing matrix-function semantics.
-- Matrix-valued user functions preserve exact positional arity, simultaneous substitution and local-parameter shadowing.
-- `solve(A,b)` is the exact linear-system API. Matrix systems require square `A`, matching column-vector RHS and a unique solution; exact symbolic algebra happens before numerical evaluation.
-- `numeric(A)` evaluates matrices entry by entry through the existing unit-aware numeric context and returns an immutable `QuantityMatrix` boundary with Pint dimensionality preserved per entry.
-- Heterogeneous engineering matrices are first-class; EngCalc never fabricates one fake matrix-wide unit. Exact zero may inherit a physical unit only when context makes that inheritance unambiguous.
-- Matrix multiplication validates dimensional compatibility among terms contributing to each result cell while permitting different result cells to have different dimensions.
-- Numerical `rank`, `rref`, `norm` and ordinary eigenanalysis require dimensionless or common-scale matrices; heterogeneous physical matrices are rejected rather than silently stripping units.
-- Piecewise scalar expressions are supported inside matrix cells, including breakpoint and dimensional-zero behavior.
-- Indexed scalar responses such as `K(x)[1,1]` work through the existing scalar `table`, `plot` and `envelope` APIs. Whole-matrix table/plot/envelope remains intentionally unsupported and is rejected with operation-specific scalar-response diagnostics.
-- Symbolic, partial-numeric, homogeneous-numeric and heterogeneous-numeric matrices render through the existing source-order MathJax path; no parallel matrix display subsystem was introduced.
-- The canonical structural worksheet supports numerical material data, multiline stiffness/load matrices, exact `solve(K,F)`, `numeric(K)` and `numeric(u)` in one `%%eng` flow.
-
-### Deliberately deferred beyond 0.9.0
-
-- Generalized structural eigenproblems `K phi = lambda M phi`.
-- Sparse/global FEM matrices and block matrices.
-- Slicing, least squares, pseudoinverse, SVD and NumPy-style broadcasting.
-- Matrix-valued persistent `:=`.
-- Mandatory LU/QR/Cholesky APIs.
-- Whole-matrix `table`, `plot` and `envelope`.
+- Characteristic calls are standalone-only in 0.9.1; assignment, nesting and unsupported composition are rejected.
+- Core solving is exact-first, unit-aware, Piecewise-safe, deterministic on fallback, scalar-only and provenance-preserving.
+- Whole matrices remain invalid characteristic responses; indexed matrix scalars are valid.
+- Standalone rendering distinguishes exact `=` from numerical fallback `≈`.
+- Ordinary `plot(...)` retains its 201-point drawing grid while carrying authoritative exact global-extremum metadata independently of that grid.
+- Positive structural moment remains plotted downward.
+- Existing Numeric/Pint, Piecewise, tables, plots, envelopes, multi-argument functions and Matrix/CAS behavior remain regression requirements.
+- `envelope(...)` deliberately remains sampled in 0.9.1; exact governing intervals/crossovers are deferred to 0.9.2.
 
 ## Open issues / user feedback
 
-- `no_vertical_scroll()` remains outside Matrix/CAS scope.
-- Multiline ordinary non-matrix function-call parsing remains a separate ergonomics item.
-- Generalized structural eigenproblems need a future dedicated design/API.
-- Auxiliary branch `noop` is non-product and contains no unique feature work.
+- No blocking 0.9.1 product, packaging, wheel, source-free or pre-PR validation issue remains.
+- Tasks 1–12 are complete.
+- PR #33 is open; the only release-blocking checkpoint is **explicit user approval to merge**.
+- `no_vertical_scroll()` remains a separate ergonomics issue.
+- Multiline ordinary non-matrix function-call parsing remains separate.
+- Generalized structural eigenproblems remain deferred.
 
 ## Validation evidence
 
-### 0.9.0 implementation milestones
+### 0.9.1 progression
 
-- Task 1 parser: `86ec35f3b5d20c517f794951e14fa7cd13af0121` — matrix literals.
-- Task 2 symbolic core: `06bab76f06fc2a057ecdaab844eeb5717598fcd0` — immutable matrix algebra and 1-based indexing.
-- Task 3 exact constructors/functions: `1b8ae5143d62dea1124411ef2e28bd61ef60db6e` — final full suite **627/627 GREEN**.
-- Task 4 matrix-aware CAS/user functions: `501b6af2ef9eb228f7e69fb560479caa05f9dfb7` — final full suite **642/642 GREEN**.
-- Task 5 Pint numerical matrices: `68f8a23` — final full suite **657/657 GREEN**.
-- Task 6 exact matrix solve: `67b22d531955e8795e446afefc0ad0e698c9973d` — final full suite **665/665 GREEN**.
-- Task 7 guarded matrix analysis: `29c8363804f6078371fb28f03dbb0dd3a7e80e18` — final full suite **684/684 GREEN**.
-- Task 8 MathJax matrix rendering: `37c0cdb79b2ae4c0b2a039082a50260fda668700` — final full suite **700/700 GREEN**.
-- Task 9 end-to-end Matrix/CAS integration: `6bd29dbb8fb417667f1fb1e264d9cbd146a2bbe0` — **29/29 focused**, **164/164 Matrix/CAS acceptance**, **721/721 complete GREEN**.
+- Task 1 full suite: 758/758 GREEN.
+- Task 2: 772/772 GREEN.
+- Task 3: 783/783 GREEN.
+- Task 4: 794/794 GREEN.
+- Task 5: 800/800 GREEN.
+- Task 6: 808/808 GREEN.
+- Task 7: 820/820 GREEN.
+- Task 8 run `33340983117`, job `99336452342`: 828/828 full GREEN in 104.51 s.
+- Task 9 run `33341538689`, job `99337950723`: 835/835 full GREEN in 117.02 s.
+- Task 10 run `33342633493`, job `99340916954`: `compileall` PASS, diff hygiene PASS, 844/844 full GREEN in 142.78 s.
+- Task 11 authoritative run `33343511326`, job `99343282200`: `compileall` PASS, diff hygiene PASS, acceptance 2/2 PASS, 846/846 full source PASS in 98.43 s.
 
-### 0.9.0 authoritative release gate
+### Task 12 release validation
 
-- Version-contract RED Actions **`33332122781`**, job **`99312355766`**: **8 failed / 15 passed**, exclusively the intentional pre-release 0.8.0 version/documentation state.
-- RED artifact **`9737944074`**, digest `sha256:cadaa10ecdd683189e18418697586f9c46a20e2190654f58604c67a43b98b9fd`.
-- Release GREEN Actions **`33332233490`**, job **`99312713507`**, Python 3.13.
-- Release contract: **23/23 GREEN**.
-- Complete source suite before wheel: **721/721 GREEN in 142.99 s**.
-- Wheel: **`engcalc_colab-0.9.0-py3-none-any.whl`**; metadata **Version 0.9.0**.
-- Wheel SHA-256: **`ea66fa231b5657695e2c38cefb324da220070a2f7c86557dddef19d2017a0719`**.
-- External clean-environment/site-packages smoke: **PASS**.
-- Complete installed-wheel/source-free suite: **721/721 GREEN in 141.38 s** with imports proven to come from `site-packages` and `src/` excluded.
-- Final repository source revalidation: **721/721 GREEN in 139.76 s**.
-- Authoritative validated release commit: **`fb1be9e2e854f66f95414b9597dabceabaeb6470`**.
-- Release artifact **`9738071240`**, digest `sha256:7f8971526a78de96fe7cf175ca133e4f664cfe67036028d705835e97070c12f1`.
-- Post-validation product audit found no changes to `src/`, tests, README or package metadata after the authoritative release tree; subsequent differences before merge were validation-harness cleanup plus project-context documentation only.
+- Intentional version RED: 6 failed / 5 passed in 0.08 s, exclusively expected 0.9.0 → 0.9.1 mismatches.
+- First GREEN run `33343868704`, job `99344237909`: one stale historical parser version assertion remained; 845 passed / 1 failed in 175.29 s. Release bump was not committed from that failed run.
+- Effective stale-version correction: `a358ed15910b6393399d86f3c9ce8383d0e82040`; no product behavior change.
+- Successful metadata GREEN run `33344172956`, job `99345049612`: release contract 11/11 PASS in 0.05 s; full source 846/846 PASS in 172.60 s.
+- Release metadata commit: `e997d93a69d1ba3589dc48a9ce945b1037476967`.
+- Authoritative wheel run `33344486134`, job `99345919150`: SUCCESS.
+- Committed release contract including parser: 23/23 PASS in 0.05 s.
+- Real wheel: `engcalc_colab-0.9.1-py3-none-any.whl`.
+- Wheel metadata version: 0.9.1.
+- Wheel SHA-256: `f993599186f4e93cd79b2fc64b84df646499140c6625addad38d2f29f36af0ab`.
+- External clean-venv/site-packages smoke: PASS.
+- Installed-wheel source-free suite: 846/846 PASS in 90.59 s.
+- Post-wheel source suite: 846/846 PASS in 89.52 s.
+- Evidence artifact: `engcalc-0.9.1-release-validation`, artifact ID `9741591634`, ZIP SHA-256 `39453d375a3148fb27b3944d398f48381665f17edb0a17f4c9c09fa8fee9b4c0`.
 
-### Final pre-merge and post-merge gates
+### Final clean pre-PR gate
 
-- Fresh final pre-merge Actions **`33333349074`**, job **`99315783415`**, tested branch commit `49ea6c96d91d9dbaacb91ab240b0676664dd2c31`: installation, `compileall`, `git diff --check` and complete `pytest -q` all **success**.
-- The sole commit after that tested tree and before merge removed `.github/workflows/v090-final-premerge.yml`; no product/test/documentation semantics changed.
-- User explicitly approved the merge.
-- PR #32 merged with expected head guard `7cbc6bc9150b16a1ead9861cf837f5aee0039c51`; GitHub returned merge commit **`d22d5e0a62ce13800de8476c28d86a6d9415f1bd`**.
-- Post-merge Actions **`33333566096`**, job **`99316363602`** checked out **exactly `d22d5e0a62ce13800de8476c28d86a6d9415f1bd`**, asserted that SHA, then ran installation, `compileall`, `git diff --check` and complete `pytest -q`: **success**.
-- The post-merge validation workflow was hosted temporarily on the historical feature branch and removed afterward; it never modified `main`.
-- No Codex review or Codex Cloud was invoked during release or merge closure.
+- Gate SHA: `50581b6ab8fdf46b072577bd1b2e189711761a73`.
+- Run `33345708275`, job `99349296928`: SUCCESS on Python 3.13.15.
+- Confirmed all prior Task 12 harness files absent and version metadata/README at 0.9.1.
+- `python -m compileall -q src/engcalc_colab`: PASS.
+- `git diff --check origin/main...HEAD`: PASS.
+- Release contract: 23/23 PASS in 0.07 s.
+- Complete source suite: **846/846 PASS in 111.56 s**.
+- Temporary final-gate workflow removed immediately after success in `03c56a89d1e42a107d34fe078e80ba63da4adf0a`.
+- Final compare before PR creation: branch 178 commits ahead / 0 behind `main`; 29 changed files; **no `.github` validation file present**.
+- `main` remained exactly `cdc454db7ea43e57e334d523afded8b4ef498ded`.
+- PR #33 created from the validated release branch; no pre-existing duplicate PR was found.
+- No Codex review or Codex Cloud has been invoked.
 
 ## Roadmap / active plan
 
-- **0.7.2 engineering tables:** COMPLETE + merged.
-- **Narrative / presentation / characteristic-summary:** COMPLETE + merged.
-- **0.8.0 Piecewise:** COMPLETE + merged.
-- **0.9.0 vectors / matrices / linear systems:** **COMPLETE + RELEASE-VALIDATED + MERGED**.
-- **0.9.1 exact-first extrema / roots / intersections:** NEXT DESIGN/IMPLEMENTATION RELEASE.
-- Later roadmap: **0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization**.
+- 0.9.0 Matrix/CAS: COMPLETE + RELEASE-VALIDATED + MERGED.
+- 0.9.1 Tasks 1–12: COMPLETE.
+- 0.9.1 wheel/source-free/final pre-PR validation: COMPLETE.
+- 0.9.1 PR #33: **OPEN — AWAITING EXPLICIT MERGE APPROVAL**.
+- Later: 0.9.2 exact envelopes/governing intervals → 0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization.
 
 ## Exact next step
 
-1. Treat `main` with EngCalc 0.9.0 as the new canonical baseline.
-2. Before implementing 0.9.1, design/spec exact-first extrema, roots and intersections and define their interaction with units, Piecewise, matrices/indexed scalar responses, tables/plots/envelopes and engineering diagnostics.
-3. Start 0.9.1 from the current integrated `main` only after the design/spec is approved.
-4. Continue RED → GREEN TDD, focused tests before full suite, and the same real-wheel/source-free release discipline.
-5. Do not invoke Codex unless explicitly authorized by the user.
+1. STOP now; do not merge PR #33 automatically.
+2. Obtain explicit user approval to merge PR #33.
+3. After approval, re-read PR #33 and verify its current head/base/state immediately before merge.
+4. Merge only if the PR still corresponds to the validated 0.9.1 release branch and `main` has not changed unexpectedly.
+5. Perform post-merge verification/update of `CURRENT.md` as required by the project workflow.
+6. Never invoke Codex unless separately authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.9.0 Matrix/CAS is fully integrated and validated in `main`. PR #32 was merged with merge commit `d22d5e0a62ce13800de8476c28d86a6d9415f1bd`; a complete post-merge gate against that exact SHA succeeded. The 0.9.0 authoritative wheel/release evidence remains attached to Actions `33332233490` / artifact `9738071240`. The next roadmap item is 0.9.1 exact-first extrema/roots/intersections; begin with design/spec from the integrated `main`, and never invoke Codex without explicit authorization.
+Read this file first. EngCalc 0.9.1 exact characteristics is release-validated and PR #33 is open against `main`. Final gate run `33345708275`, job `99349296928` passed `compileall`, diff hygiene, 23/23 release contract and 846/846 full source tests in 111.56 s. The real 0.9.1 wheel passed external smoke and 846/846 source-free tests; its SHA-256 is `f993599186f4e93cd79b2fc64b84df646499140c6625addad38d2f29f36af0ab`. All temporary validation infrastructure is removed. STOP before merge until the user explicitly approves PR #33. After approval, verify PR state/head/base, merge, then perform post-merge closure. Never invoke Codex without explicit authorization.

@@ -20,6 +20,7 @@ _SWEEP_VALUE_NODES = (
 )
 _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
 _DISPLAY_TEXT_OPTIONS = {"title", "xlabel", "ylabel"}
+_CHARACTERISTIC_CALLS = {"roots", "extrema", "intersections"}
 _SCALAR_CALLS = {
     "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"
 }
@@ -28,7 +29,7 @@ _ALLOWED_CALLS = {
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",
     "piecewise", "identity", "zeros", "diag", "transpose", "det", "inv", "trace", "size",
     "rank", "rref", "norm", "eigenvals", "eigenvects",
-} | _SCALAR_CALLS
+} | _SCALAR_CALLS | _CHARACTERISTIC_CALLS
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _FUNCTION_TARGET_HEAD = re.compile(r"^([A-Za-z_]\w*)\s*\((.*)\)$")
@@ -192,6 +193,11 @@ def parse_cell(
                 except SyntaxError as exc:
                     raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
                 _validate_ast(expression, line_no)
+                _validate_characteristic_statement_context(
+                    expression,
+                    target,
+                    line_no,
+                )
                 statements.append(ParsedNumericAssignment(
                     line_no=line_no,
                     source=source,
@@ -231,6 +237,12 @@ def parse_cell(
                 matrix_literals,
                 line_no,
                 piecewise_parameters=parameters,
+            )
+            _validate_characteristic_statement_context(
+                expression,
+                target,
+                line_no,
+                matrix_literals=matrix_literals,
             )
             display_options = _extract_display_options(expression)
             statements.append(ParsedStatement(
@@ -386,6 +398,14 @@ def _validate_normal_node(
                 f"line {line_no}: unsupported function '{node.func.id}'"
             )
 
+        if node.func.id in _CHARACTERISTIC_CALLS:
+            _validate_characteristic_call(
+                node,
+                line_no,
+                piecewise_parameters=piecewise_parameters,
+            )
+            return
+
         if node.func.id == "piecewise":
             _validate_piecewise_call(
                 node,
@@ -418,6 +438,91 @@ def _validate_normal_node(
             child,
             line_no,
             piecewise_parameters=piecewise_parameters,
+        )
+
+
+
+def _validate_characteristic_call(
+    node: ast.Call,
+    line_no: int,
+    *,
+    piecewise_parameters: tuple[str, ...] | None,
+) -> None:
+    name = node.func.id
+    expected = 5 if name == "intersections" else 4
+    if node.keywords:
+        raise EngSyntaxError(
+            f"line {line_no}: {name} keyword arguments are unsupported"
+        )
+    if len(node.args) != expected:
+        raise EngSyntaxError(
+            f"line {line_no}: {name} expects {expected} positional arguments"
+        )
+
+    variable_index = 2 if name == "intersections" else 1
+    variable_node = node.args[variable_index]
+    if (
+        not isinstance(variable_node, ast.Name)
+        or keyword.iskeyword(variable_node.id)
+        or variable_node.id in _RESERVED
+    ):
+        raise EngSyntaxError(
+            f"line {line_no}: {name} variable must be a symbolic identifier"
+        )
+
+    for index, argument in enumerate(node.args):
+        if index == variable_index:
+            continue
+        _validate_normal_node(
+            argument,
+            line_no,
+            piecewise_parameters=piecewise_parameters,
+        )
+
+
+def _characteristic_calls(node: ast.AST) -> list[ast.Call]:
+    return [
+        child
+        for child in ast.walk(node)
+        if isinstance(child, ast.Call)
+        and isinstance(child.func, ast.Name)
+        and child.func.id in _CHARACTERISTIC_CALLS
+    ]
+
+
+def _validate_characteristic_statement_context(
+    expression: ast.Expression,
+    target: str | None,
+    line_no: int,
+    *,
+    matrix_literals=(),
+) -> None:
+    expression_calls = _characteristic_calls(expression)
+    matrix_calls = [
+        call
+        for binding in matrix_literals
+        for row in binding.literal.rows
+        for cell in row
+        for call in _characteristic_calls(cell)
+    ]
+    calls = [*expression_calls, *matrix_calls]
+    if not calls:
+        return
+
+    root = expression.body
+    root_is_characteristic = (
+        isinstance(root, ast.Call)
+        and isinstance(root.func, ast.Name)
+        and root.func.id in _CHARACTERISTIC_CALLS
+    )
+    if (
+        target is not None
+        or not root_is_characteristic
+        or len(calls) != 1
+        or matrix_calls
+    ):
+        raise EngSyntaxError(
+            f"line {line_no}: characteristic analysis must be a standalone statement"
         )
 
 

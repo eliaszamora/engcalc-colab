@@ -11,15 +11,20 @@ from pint.errors import DimensionalityError
 
 from .matrix_numeric import QuantityMatrix
 from .models import (
+    CharacteristicInterval,
+    CharacteristicPoint,
     EigenvalueSet,
     EigenvectorSet,
     EvaluationResult,
+    ExtremaResult,
+    IntersectionsResult,
     MatrixShape,
     NumericAssignmentResult,
     NumericEvaluationResult,
     NumericMatrixEvaluationResult,
     PartialMatrixNumericEvaluationResult,
     PartialNumericEvaluationResult,
+    RootsResult,
     TableResult,
 )
 
@@ -1010,6 +1015,159 @@ def render_table(
         '</table></div>'
     )
 
+
+
+CharacteristicResult = RootsResult | IntersectionsResult | ExtremaResult
+
+
+def _characteristic_role_text(role: str) -> str:
+    return role.replace("_", " ")
+
+
+def _characteristic_math(latex: str) -> str:
+    return rf"\({latex}\)"
+
+
+def _characteristic_quantity_math(quantity, settings: RenderSettings) -> str:
+    return _characteristic_math(_quantity_latex(quantity, settings=settings))
+
+
+def _characteristic_symbolic_math(value) -> str:
+    return _characteristic_math(_latex(value))
+
+
+def _characteristic_point_coordinate(
+    point: CharacteristicPoint,
+    variable: str,
+    settings: RenderSettings,
+) -> str:
+    variable_html = _characteristic_symbolic_math(sp.Symbol(variable))
+    if point.provenance == "numeric":
+        return (
+            f"{variable_html} ≈ "
+            f"{_characteristic_quantity_math(point.x_quantity, settings)}"
+        )
+
+    symbolic = _characteristic_symbolic_math(point.x_symbolic)
+    evaluated = _characteristic_quantity_math(point.x_quantity, settings)
+    return f"{variable_html} = {symbolic} ({evaluated})"
+
+
+def _characteristic_point_value(
+    point: CharacteristicPoint,
+    settings: RenderSettings,
+) -> str | None:
+    if point.value_symbolic is None and point.value_quantity is None:
+        return None
+    if point.provenance == "numeric" or point.value_symbolic is None:
+        if point.value_quantity is None:
+            return None
+        return "value ≈ " + _characteristic_quantity_math(point.value_quantity, settings)
+
+    symbolic = _characteristic_symbolic_math(point.value_symbolic)
+    if point.value_quantity is None:
+        return "value = " + symbolic
+    evaluated = _characteristic_quantity_math(point.value_quantity, settings)
+    return f"value = {symbolic} ({evaluated})"
+
+
+def _characteristic_interval_text(
+    interval: CharacteristicInterval,
+    settings: RenderSettings,
+) -> str:
+    left = "[" if interval.lower_closed else "("
+    right = "]" if interval.upper_closed else ")"
+    lower = _quantity_latex(interval.lower_quantity, settings=settings)
+    upper = _quantity_latex(interval.upper_quantity, settings=settings)
+    return _characteristic_math(rf"{left}{lower},\;{upper}{right}")
+
+
+def _characteristic_heading(result: CharacteristicResult) -> str:
+    if isinstance(result, RootsResult):
+        return f"Roots — {escape(result.display_label)}"
+    if isinstance(result, IntersectionsResult):
+        return (
+            "Intersections — "
+            f"{escape(result.left_label)} / {escape(result.right_label)}"
+        )
+    return f"Extrema — {escape(result.display_label)}"
+
+
+def render_characteristic_result(
+    result: CharacteristicResult,
+    *,
+    settings: RenderSettings | None = None,
+) -> str:
+    """Render one standalone exact-characteristic result as compact HTML/MathJax."""
+    active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    domain = (
+        _characteristic_quantity_math(result.lower_quantity, active_settings)
+        + " to "
+        + _characteristic_quantity_math(result.upper_quantity, active_settings)
+    )
+
+    rows: list[str] = []
+    for point in result.points:
+        parts = [
+            _characteristic_point_coordinate(
+                point,
+                result.variable,
+                active_settings,
+            )
+        ]
+        value_text = _characteristic_point_value(point, active_settings)
+        if value_text is not None and not isinstance(result, RootsResult):
+            parts.append(value_text)
+        if point.roles:
+            parts.append(
+                ", ".join(_characteristic_role_text(role) for role in point.roles)
+            )
+        if point.side != "at":
+            parts.append(escape(point.side))
+        rows.append("<div class=\"engcalc-characteristic-row\">" + " · ".join(parts) + "</div>")
+
+    for interval in result.intervals:
+        interval_text = _characteristic_interval_text(interval, active_settings)
+        if isinstance(result, RootsResult) or interval.role == "roots":
+            text = f"all x in {interval_text}"
+        elif isinstance(result, IntersectionsResult) or interval.role == "coincident":
+            text = f"coincident on {interval_text}"
+        else:
+            role = escape(_characteristic_role_text(interval.role))
+            text = f"{role} on {interval_text}"
+            if interval.value_quantity is not None:
+                text += (
+                    " · value = "
+                    + _characteristic_quantity_math(
+                        interval.value_quantity,
+                        active_settings,
+                    )
+                )
+        rows.append(f'<div class="engcalc-characteristic-row">{text}</div>')
+
+    if isinstance(result, ExtremaResult):
+        if result.unbounded_above:
+            rows.append('<div class="engcalc-characteristic-row">unbounded above</div>')
+        if result.unbounded_below:
+            rows.append('<div class="engcalc-characteristic-row">unbounded below</div>')
+
+    if not rows:
+        rows.append('<div class="engcalc-characteristic-row">no finite characteristic points</div>')
+
+    return (
+        '<style>'
+        '.engcalc-characteristics{margin:0.35rem 0 0.55rem 0;'
+        'font-size:0.94rem;line-height:1.45;}'
+        '.engcalc-characteristics-title{font-weight:600;margin-bottom:0.15rem;}'
+        '.engcalc-characteristics-domain{opacity:0.78;margin-bottom:0.18rem;}'
+        '.engcalc-characteristic-row{margin:0.08rem 0;}'
+        '</style>'
+        '<div class="engcalc-characteristics">'
+        f'<div class="engcalc-characteristics-title">{_characteristic_heading(result)}</div>'
+        f'<div class="engcalc-characteristics-domain">Domain: {domain}</div>'
+        + "".join(rows)
+        + '</div>'
+    )
 
 def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:
     active_settings = settings or _DEFAULT_RENDER_SETTINGS

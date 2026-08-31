@@ -10,17 +10,25 @@ from .engine import EngineeringEngine
 from .errors import EngCalcError
 from .models import (
     EvaluationResult,
+    ExtremaResult,
+    IntersectionsResult,
     NumericAssignmentResult,
     NumericEvaluationResult,
     ParsedHeading,
     ParsedNarrative,
     PartialNumericEvaluationResult,
     PlotResult,
+    RootsResult,
     TableResult,
 )
 from .parser import parse_cell
 from .presentation import render_presented_plot
-from .renderer import RenderSettings, render_aligned_results, render_table
+from .renderer import (
+    RenderSettings,
+    render_aligned_results,
+    render_characteristic_result,
+    render_table,
+)
 
 _HEADING_STYLE = {
     2: (
@@ -124,6 +132,22 @@ class EngMagics(Magics):
                     display(
                         HTML(
                             render_table(
+                                result,
+                                settings=self.render_settings,
+                            )
+                        )
+                    )
+                    continue
+
+                if isinstance(result, (RootsResult, IntersectionsResult, ExtremaResult)):
+                    _display_equation_group(
+                        pending_results,
+                        self.render_settings,
+                    )
+                    pending_results.clear()
+                    display(
+                        HTML(
+                            render_characteristic_result(
                                 result,
                                 settings=self.render_settings,
                             )
