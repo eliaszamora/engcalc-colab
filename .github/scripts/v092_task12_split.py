@@ -366,10 +366,24 @@ fallback_test = fallback_test.replace(
 )
 fallback_test_path.write_text(fallback_test, encoding="utf-8")
 
+acceptance_test_path = ROOT / "tests" / "test_characteristics_acceptance.py"
+acceptance_test = acceptance_test_path.read_text(encoding="utf-8")
+acceptance_test = acceptance_test.replace(
+    "import engcalc_colab.characteristics as characteristics\n",
+    "import engcalc_colab.characteristics.candidates as candidates\n",
+)
+acceptance_test = acceptance_test.replace(
+    "characteristics,\n        \"_exact_real_solution_set\"",
+    "candidates,\n        \"_exact_real_solution_set\"",
+)
+acceptance_test_path.write_text(acceptance_test, encoding="utf-8")
+
 remaining_private_targets: list[str] = []
 for path in sorted((ROOT / "tests").glob("test_*.py")):
     text = path.read_text(encoding="utf-8")
-    if "characteristics._" in text or "monkeypatch.setattr(characteristics," in text:
+    if "characteristics._" in text or (
+        "monkeypatch.setattr(" in text and "characteristics," in text
+    ):
         remaining_private_targets.append(path.name)
 if remaining_private_targets:
     raise SystemExit(
