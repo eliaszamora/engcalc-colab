@@ -1,25 +1,24 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.9.1 exact characteristics is complete, release-validated, merged into `main`, and post-merge validated. All temporary validation infrastructure has been removed. The next planned release is 0.9.2 exact envelopes/governing intervals._
+_Last updated: 2026-08-30 — EngCalc 0.9.1 remains the canonical released baseline. A new 0.9.2 Audit Remediation & Reliability design has been written on `feature/v0.9.2-audit-reliability` in response to the independent Claude audit. No 0.9.2 product code has been changed yet; implementation is blocked on explicit user approval of the written spec._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Canonical released version: **EngCalc 0.9.1 Exact Characteristics**.
-- Release PR: **#33 — `release: EngCalc 0.9.1 exact characteristics`**.
-- PR #33 merge commit: **`25edd1e652081f31c16ffed05d24f4d00eaa8950`**.
-- Post-merge validation workflow commit: `1ef76411277968924b07e3090ccc92d3ab4756f7`.
-- Post-merge workflow cleanup commit: **`27bb27cdd3fde13e27d70eafb55a958a493b57ce`**.
-- Runtime/package version on `main`: **0.9.1**.
-- Real release wheel: `engcalc_colab-0.9.1-py3-none-any.whl`.
-- Wheel SHA-256: **`f993599186f4e93cd79b2fc64b84df646499140c6625addad38d2f29f36af0ab`**.
-- Approved 0.9.1 spec: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.1-exact-characteristics-design.md`.
-- Approved 0.9.1 plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.1-exact-characteristics-implementation.md`.
+- Canonical `main`: **`698696bb8854fa197851cdbb2f5e4c08ef22178b`**.
+- 0.9.1 PR #33 merge commit: `25edd1e652081f31c16ffed05d24f4d00eaa8950`.
+- Runtime/package version remains **0.9.1**.
+- Real 0.9.1 wheel SHA-256: `f993599186f4e93cd79b2fc64b84df646499140c6625addad38d2f29f36af0ab`.
+- Active branch: **`feature/v0.9.2-audit-reliability`**.
+- 0.9.2 design spec: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.2-audit-remediation-reliability-design.md`.
+- Current spec commit: **`f21a4917da996d62a69477ecdad88305109a0078`**.
+- No 0.9.2 implementation plan exists yet.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 
 ## Approved behavior
 
-Public standalone characteristic calls released in 0.9.1:
+Released 0.9.1 public characteristic calls remain:
 
 ```text
 extrema(response, variable, lower, upper)
@@ -27,91 +26,97 @@ roots(response, variable, lower, upper)
 intersections(response_1, response_2, variable, lower, upper)
 ```
 
-- Characteristic solving is exact-first, unit-aware, Piecewise-safe, scalar-only and provenance-preserving.
-- Deterministic residual-validated numeric fallback is used only when exact symbolic resolution is unresolved.
-- Whole matrices remain invalid characteristic responses; indexed matrix scalars are valid.
-- Standalone rendering distinguishes exact `=` from numerical fallback `≈`.
-- Ordinary `plot(...)` retains its 201-point drawing grid while carrying authoritative exact global-extremum metadata independently of that grid.
+- Characteristic solving remains exact-first, unit-aware, Piecewise-safe, scalar-only and provenance-preserving.
+- Deterministic numeric fallback supplements exact solving when exact resolution is incomplete/unresolved.
+- Whole matrices remain invalid scalar characteristic responses; indexed matrix scalars remain valid.
+- Ordinary `plot(...)` retains a 201-point drawing grid with exact characteristic metadata independent of that grid.
 - Positive structural moment remains plotted downward.
 - Existing Numeric/Pint, Piecewise, tables, plots, envelopes, multi-argument functions and Matrix/CAS behavior remain regression requirements.
-- `envelope(...)` remains sampled in 0.9.1; exact crossovers/governing intervals are intentionally deferred to **0.9.2**.
+- `envelope(...)` remains sampled through 0.9.2.
+- The proposed 0.9.2 design changes user-created SymPy engineering symbols to `real=True`, after an identity-sensitive source audit and RED tests.
+- The proposed 0.9.2 design makes compatible direct unit literals valid in table/plot/roots/intersections/extrema bounds.
+- The proposed Piecewise rule is: a continuous breakpoint emits one meaningful `at` value; real discontinuities retain side topology.
 
 ## Open issues / user feedback
 
-- No blocking 0.9.1 product, packaging, wheel, source-free, merge or post-merge validation issue remains.
-- `no_vertical_scroll()` remains a separate ergonomics issue.
-- Multiline ordinary non-matrix function-call parsing remains separate.
-- Generalized structural eigenproblems remain deferred.
-- Next planned product scope: **0.9.2 exact envelopes/governing intervals**.
+Independent Claude audit of `main@698696bb` reported 846/846 existing tests green plus 38 adversarial probes and classified:
+
+- **C-1 critical:** `roots()` / `intersections()` can silently return zero results for real roots when `sp.solve` returns exact objects such as `E`, `LambertW` or `CRootOf` that EngCalc cannot numerically validate, while the fallback is incorrectly suppressed.
+- **H-1 high:** `extrema(abs(...))` fails because engine symbols have no `real=True` assumption.
+- **M-1:** direct unit literals are inconsistent between table and plot/characteristic bounds.
+- **M-2:** Piecewise extrema boundary `value_symbolic` can retain an unresolved outer Piecewise despite a numerically decidable branch.
+- **M-3:** continuous Piecewise breakpoints can emit unnecessary `left/at/right`, with dimensional-zero inconsistency.
+- **L-1…L-4:** renderer characteristic misuse crashes accidentally; matplotlib `semibold` warning; weaker Piecewise diagnostics; negative zero / exact-coordinate label polish.
+- **I-1…I-3:** no permanent CI; IPython undeclared in project metadata; declared Python >=3.10 not continuously validated across 3.10–3.14.
+
+These audit claims are **not yet EngCalc-confirmed defects**. The 0.9.2 spec requires independent RED reproduction before each product correction.
+
+Audit potential risks without a confirmed reproduction remain investigation-only: residual equality tolerance, tri-state `is_real`, and unbounded `sp.simplify` cost.
+
+Separate existing issues remain deferred: `no_vertical_scroll()`, multiline ordinary non-matrix function-call parsing, generalized structural eigenproblems.
 
 ## Validation evidence
 
-### 0.9.1 implementation progression
+### Canonical 0.9.1 release
 
-- Task 1: 758/758 full GREEN.
-- Task 2: 772/772 full GREEN.
-- Task 3: 783/783 full GREEN.
-- Task 4: 794/794 full GREEN.
-- Task 5: 800/800 full GREEN.
-- Task 6: 808/808 full GREEN.
-- Task 7: 820/820 full GREEN.
-- Task 8 run `33340983117`, job `99336452342`: 828/828 full GREEN in 104.51 s.
-- Task 9 run `33341538689`, job `99337950723`: 835/835 full GREEN in 117.02 s.
-- Task 10 run `33342633493`, job `99340916954`: `compileall` PASS, diff hygiene PASS, 844/844 full GREEN in 142.78 s.
-- Task 11 run `33343511326`, job `99343282200`: acceptance 2/2 PASS and 846/846 full source PASS in 98.43 s.
+- Final pre-PR run `33345708275`, job `99349296928`: 23/23 release contract PASS; 846/846 full source PASS in 111.56 s.
+- Real wheel: `engcalc_colab-0.9.1-py3-none-any.whl`.
+- External wheel smoke: PASS.
+- Installed-wheel source-free suite: 846/846 PASS in 90.59 s.
+- Post-wheel source suite: 846/846 PASS in 89.52 s.
+- Post-merge run `33346335859`, job `99351086733`: 23/23 release contract PASS; 846/846 full source PASS in 133.55 s.
 
-### Task 12 release validation
+### External 0.9.1 audit input
 
-- Intentional version RED: 6 failed / 5 passed in 0.08 s, exclusively the expected 0.9.0 → 0.9.1 mismatch.
-- Effective stale-version test correction: `a358ed15910b6393399d86f3c9ce8383d0e82040`; product behavior unchanged.
-- Successful metadata GREEN run `33344172956`, job `99345049612`: 11/11 focused release contract PASS; 846/846 full source PASS in 172.60 s.
-- Verified release metadata commit: `e997d93a69d1ba3589dc48a9ce945b1037476967`.
-- Authoritative wheel run `33344486134`, job `99345919150`: SUCCESS.
-- Committed release contract including parser: 23/23 PASS.
-- External clean-venv/site-packages smoke: PASS.
-- Installed-wheel source-free suite: **846/846 PASS in 90.59 s**.
-- Post-wheel source suite: **846/846 PASS in 89.52 s**.
-- Release evidence artifact: `engcalc-0.9.1-release-validation`, artifact ID `9741591634`, ZIP SHA-256 `39453d375a3148fb27b3944d398f48381665f17edb0a17f4c9c09fa8fee9b4c0`.
+- Audited commit: `698696bb`.
+- Audit environment: Python 3.14.3.
+- Existing suite observed by auditor: 846/846 GREEN.
+- Independent adversarial probes: 38.
+- External audit reported C-1/H-1/M-1/M-2/M-3/L-1…L-4 and infrastructure observations.
+- The auditor’s verified-good behaviors included canonical beam characteristics, no false Piecewise jump root, correct discontinuous Piecewise topology, even-multiplicity roots, dimensional guards, indexed matrix scalar roots, deterministic fallback where activated, close roots, and exact off-grid plot coordinates.
+- No 0.9.2 RED/GREEN product validation has run yet.
 
-### Final pre-PR validation
+### 0.9.2 design state
 
-- Gate SHA `50581b6ab8fdf46b072577bd1b2e189711761a73`.
-- Run `33345708275`, job `99349296928`: SUCCESS on Python 3.13.15.
-- `compileall`: PASS.
-- `git diff --check origin/main...HEAD`: PASS.
-- Release contract: **23/23 PASS in 0.07 s**.
-- Complete source suite: **846/846 PASS in 111.56 s**.
-- All temporary pre-PR validation files removed before PR creation.
-
-### Merge and post-merge validation
-
-- User explicitly approved merge of PR #33.
-- Immediately before merge, PR #33 was open, mergeable, base `main@cdc454db7ea43e57e334d523afded8b4ef498ded`, head `6aff1791742eddf9ea2f61e00f176cd123da6c63`.
-- PR #33 merged successfully as **`25edd1e652081f31c16ffed05d24f4d00eaa8950`**.
-- Post-merge run **`33346335859`**, job **`99351086733`**: SUCCESS on `main`.
-- Post-merge version checks: PASS.
-- Post-merge `compileall`: PASS.
-- Post-merge diff hygiene: PASS.
-- Post-merge release contract: **23/23 PASS in 0.08 s**.
-- Post-merge complete source suite: **846/846 PASS in 133.55 s**.
-- Temporary post-merge workflow removed in cleanup commit **`27bb27cdd3fde13e27d70eafb55a958a493b57ce`**.
-- No Codex review or Codex Cloud was invoked.
+- Branch created from `main@698696bb`.
+- Written spec committed and self-reviewed at `f21a4917da996d62a69477ecdad88305109a0078`.
+- No production source file has been modified for 0.9.2.
+- No test has yet been added for 0.9.2.
+- Version remains 0.9.1.
 
 ## Roadmap / active plan
 
 - **0.9.0 Matrix/CAS:** COMPLETE + RELEASE-VALIDATED + MERGED.
-- **0.9.1 Exact Characteristics:** **COMPLETE + RELEASE-VALIDATED + MERGED + POST-MERGE VALIDATED**.
-- Next planned release: **0.9.2 exact envelopes/governing intervals**.
-- Later: **0.9.3 named response cases/combinations → 0.10.x engineering verification → 1.0.0 stabilization**.
+- **0.9.1 Exact Characteristics:** COMPLETE + RELEASE-VALIDATED + MERGED + POST-MERGE VALIDATED.
+- **0.9.2 Audit Remediation & Reliability:** DESIGN WRITTEN — AWAITING USER SPEC APPROVAL.
+- **0.9.3:** Exact Envelopes / Governing Intervals.
+- **0.9.4:** Named Response Cases / Combinations.
+- Later: **0.10.x engineering operations/verification → 1.0.0 stabilization**.
+
+0.9.2 proposed sequence after spec approval:
+
+1. write detailed implementation plan;
+2. independently reproduce audit C/H/M findings in RED tests;
+3. fix C-1 exact candidate evaluation + incomplete `solve` fallback/merge;
+4. migrate engineering symbols to real assumptions with identity audit;
+5. unify direct unit literals in bounds;
+6. correct Piecewise symbolic/continuity topology;
+7. close L-1…L-4;
+8. investigate audit potential risks without speculative fixes;
+9. split `characteristics.py` into the approved package layout without behavior change;
+10. add permanent Python 3.10–3.14 CI and declared IPython dependency;
+11. full acceptance + wheel/source-free release validation;
+12. release PR, explicit merge approval, post-merge validation.
 
 ## Exact next step
 
-1. Treat `main` with EngCalc 0.9.1 as the new canonical baseline.
-2. Before starting 0.9.2, create/approve its design spec and implementation plan.
-3. Implement 0.9.2 exact envelope crossovers/governing intervals with the same RED→GREEN and release-validation discipline.
-4. Preserve all released 0.9.1 behavior as regression requirements.
-5. Never invoke Codex unless separately authorized.
+1. **STOP before implementation.**
+2. User reviews `docs/superpowers/specs/2026-08-30-engcalc-v0.9.2-audit-remediation-reliability-design.md`.
+3. If the user approves the spec, invoke the Superpowers `writing-plans` workflow and write the detailed 0.9.2 implementation plan.
+4. Ask for/confirm inline execution choice as required by the plan workflow.
+5. Only after the plan is approved/selected, begin Task 1 RED reproduction.
+6. Never invoke Codex unless separately authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. EngCalc 0.9.1 Exact Characteristics is now the canonical released baseline on `main`. PR #33 merged as `25edd1e652081f31c16ffed05d24f4d00eaa8950`. The real wheel SHA-256 is `f993599186f4e93cd79b2fc64b84df646499140c6625addad38d2f29f36af0ab`; external wheel smoke and the source-free suite passed. Final pre-PR validation was 846/846 GREEN, and post-merge run `33346335859`, job `99351086733`, also passed 23/23 release-contract tests and 846/846 full source tests in 133.55 s. All temporary validation workflows/scripts are removed. The next planned release is 0.9.2 exact envelopes/governing intervals. Never invoke Codex without explicit authorization.
+Read this file first. `main@698696bb8854fa197851cdbb2f5e4c08ef22178b` is the canonical EngCalc 0.9.1 baseline. The external Claude audit motivated a reliability release before exact envelopes. Active branch is `feature/v0.9.2-audit-reliability`; version is still 0.9.1; no product/test implementation has begun. The 0.9.2 design spec is committed at `f21a4917da996d62a69477ecdad88305109a0078` and awaits explicit user approval. After approval, write the implementation plan before touching product code. Exact envelopes are deferred to 0.9.3; named cases/combinations to 0.9.4. Never invoke Codex without explicit authorization.
