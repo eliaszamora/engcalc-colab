@@ -3,7 +3,7 @@ import math
 import pytest
 import sympy as sp
 
-import engcalc_colab.characteristics as characteristics
+import engcalc_colab.characteristics.candidates as candidates
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import ExtremaResult, IntersectionsResult, RootsResult
 from engcalc_colab.parser import parse_cell
@@ -76,7 +76,7 @@ def test_v091_characteristics_end_to_end_engineering_worksheet(monkeypatch):
     assert jump.intervals == ()
 
     monkeypatch.setattr(
-        characteristics,
+        candidates,
         "_exact_real_solution_set",
         lambda expression, variable: ((), True),
     )
