@@ -39,6 +39,31 @@ class ContinuousRegion:
     upper_closed: bool
 
 
+
+@dataclass(frozen=True)
+class _ExactDiscovery:
+    candidates: tuple[sp.Expr, ...]
+    complete: bool
+
+    def __iter__(self):
+        # Backward-compatible internal unpacking: (candidates, unresolved).
+        yield self.candidates
+        yield not self.complete
+
+
+@dataclass(frozen=True)
+class _CandidateEvaluation:
+    point: CharacteristicPoint | None
+    needs_fallback: bool = False
+
+
+def _coerce_exact_discovery(result) -> _ExactDiscovery:
+    if isinstance(result, _ExactDiscovery):
+        return result
+    candidates, unresolved = result
+    return _ExactDiscovery(tuple(candidates), complete=not bool(unresolved))
+
+
 def _has_explicit_nonfinite_value(expression: sp.Expr) -> bool:
     expression = sp.sympify(expression)
     return expression.has(sp.oo, -sp.oo, sp.zoo, sp.nan) or expression.is_finite is False
@@ -110,35 +135,37 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         solution_set = None
 
     if solution_set is sp.S.EmptySet:
-        return (), False
+        return _ExactDiscovery((), complete=True)
     if isinstance(solution_set, sp.FiniteSet):
-        return tuple(solution_set), False
+        return _ExactDiscovery(tuple(solution_set), complete=True)
     if solution_set is sp.S.Reals:
-        return (), False
+        return _ExactDiscovery((), complete=True)
 
+    # An unresolved solveset means any result from solve() is only a candidate
+    # hint. It can improve exact provenance, but it cannot prove completeness.
     try:
         solutions = sp.solve(equation, variable)
     except (NotImplementedError, ValueError, TypeError):
-        return (), True
+        return _ExactDiscovery((), complete=False)
 
     if not solutions:
-        return (), True
+        return _ExactDiscovery((), complete=False)
     if isinstance(solutions, dict):
         solutions = [solutions.get(variable)]
     if not isinstance(solutions, (list, tuple, set, sp.FiniteSet)):
         solutions = [solutions]
 
-    candidates = []
+    candidates: list[sp.Expr] = []
     for candidate in solutions:
         if candidate is None:
             continue
         candidate = sp.sympify(candidate)
         if variable in candidate.free_symbols:
-            return (), True
+            continue
         if candidate.is_real is False:
             continue
         candidates.append(candidate)
-    return tuple(candidates), False
+    return _ExactDiscovery(tuple(candidates), complete=False)
 
 
 def _normalize_candidate_quantity(context, quantity, domain: AnalysisDomain):
@@ -193,7 +220,7 @@ def _evaluate_root_candidate(
     *,
     overrides: dict[str, Any] | None,
     source_label: str | None,
-) -> CharacteristicPoint | None:
+) -> _CandidateEvaluation:
     fixed_overrides = _characteristic_literal_unit_overrides(
         context,
         expression,
@@ -202,10 +229,18 @@ def _evaluate_root_candidate(
     try:
         _, x_quantity = context.evaluate_symbolic(candidate, overrides=fixed_overrides)
     except EngEvaluationError:
-        return None
-    x_quantity = _normalize_candidate_quantity(context, x_quantity, domain)
+        # A plausible exact candidate that EngCalc cannot physically evaluate is
+        # not evidence that no root exists. The deterministic fallback must run.
+        return _CandidateEvaluation(point=None, needs_fallback=True)
+
+    try:
+        x_quantity = _normalize_candidate_quantity(context, x_quantity, domain)
+    except EngEvaluationError:
+        # Dimensional incompatibility is a mathematical rejection, not an
+        # incomplete-evaluation signal.
+        return _CandidateEvaluation(point=None)
     if not _candidate_in_domain(x_quantity, domain):
-        return None
+        return _CandidateEvaluation(point=None)
 
     symbolic_value = sp.simplify(expression.subs(variable, candidate))
     exact_zero = symbolic_value == 0 or symbolic_value.is_zero is True
@@ -218,7 +253,7 @@ def _evaluate_root_candidate(
             overrides=sample_overrides,
         )
     except EngEvaluationError:
-        return None
+        return _CandidateEvaluation(point=None, needs_fallback=True)
 
     if not exact_zero:
         try:
@@ -226,17 +261,19 @@ def _evaluate_root_candidate(
         except (TypeError, ValueError, OverflowError):
             numeric_zero = False
         if not numeric_zero:
-            return None
+            return _CandidateEvaluation(point=None)
 
-    return CharacteristicPoint(
-        x_symbolic=candidate,
-        x_quantity=x_quantity,
-        value_symbolic=sp.Integer(0) if exact_zero else symbolic_value,
-        value_quantity=value_quantity,
-        provenance="exact",
-        side="at",
-        roles=("root",),
-        source_label=source_label,
+    return _CandidateEvaluation(
+        point=CharacteristicPoint(
+            x_symbolic=candidate,
+            x_quantity=x_quantity,
+            value_symbolic=sp.Integer(0) if exact_zero else symbolic_value,
+            value_quantity=value_quantity,
+            provenance="exact",
+            side="at",
+            roles=("root",),
+            source_label=source_label,
+        )
     )
 
 
@@ -916,24 +953,14 @@ def solve_roots_exact(
         return (), (interval,), False
 
     if not expression.has(sp.Piecewise):
-        candidates, unresolved = _exact_real_solution_set(expression, variable)
-        if unresolved:
-            return (
-                _fallback_roots(
-                    expression,
-                    variable,
-                    domain,
-                    context,
-                    overrides=overrides,
-                    source_label=source_label,
-                ),
-                (),
-                False,
-            )
-
+        discovery = _coerce_exact_discovery(
+            _exact_real_solution_set(expression, variable)
+        )
         points: list[CharacteristicPoint] = []
-        for candidate in candidates:
-            point = _evaluate_root_candidate(
+        needs_fallback = not discovery.complete
+
+        for candidate in discovery.candidates:
+            outcome = _evaluate_root_candidate(
                 expression,
                 variable,
                 sp.sympify(candidate),
@@ -942,9 +969,23 @@ def solve_roots_exact(
                 overrides=overrides,
                 source_label=source_label,
             )
-            if point is not None:
-                points.append(point)
+            needs_fallback = needs_fallback or outcome.needs_fallback
+            if outcome.point is not None:
+                points.append(outcome.point)
+
+        if needs_fallback:
+            points.extend(
+                _fallback_roots(
+                    expression,
+                    variable,
+                    domain,
+                    context,
+                    overrides=overrides,
+                    source_label=source_label,
+                )
+            )
         return _deduplicate_root_points(points, domain), (), False
+
 
     regions = _partition_piecewise_regions(
         expression,
@@ -971,8 +1012,29 @@ def solve_roots_exact(
             )
             continue
 
-        candidates, unresolved = _exact_real_solution_set(branch_expression, variable)
-        if unresolved:
+        discovery = _coerce_exact_discovery(
+            _exact_real_solution_set(branch_expression, variable)
+        )
+        needs_fallback = not discovery.complete
+        for candidate in discovery.candidates:
+            outcome = _evaluate_root_candidate(
+                branch_expression,
+                variable,
+                sp.sympify(candidate),
+                domain,
+                context,
+                overrides=overrides,
+                source_label=source_label,
+            )
+            needs_fallback = needs_fallback or outcome.needs_fallback
+            if outcome.point is not None and _candidate_in_region(
+                outcome.point.x_quantity,
+                region,
+                domain,
+            ):
+                points.append(outcome.point)
+
+        if needs_fallback:
             region_domain = AnalysisDomain(
                 lower_symbolic=region.lower_symbolic,
                 upper_symbolic=region.upper_symbolic,
@@ -991,23 +1053,7 @@ def solve_roots_exact(
             for point in fallback_points:
                 if _candidate_in_region(point.x_quantity, region, domain):
                     points.append(point)
-            continue
-        for candidate in candidates:
-            point = _evaluate_root_candidate(
-                branch_expression,
-                variable,
-                sp.sympify(candidate),
-                domain,
-                context,
-                overrides=overrides,
-                source_label=source_label,
-            )
-            if point is not None and _candidate_in_region(
-                point.x_quantity,
-                region,
-                domain,
-            ):
-                points.append(point)
+
 
     for candidate in _piecewise_boundary_candidates(
         expression,
@@ -1016,7 +1062,7 @@ def solve_roots_exact(
         context,
         overrides=overrides,
     ):
-        point = _evaluate_root_candidate(
+        outcome = _evaluate_root_candidate(
             expression,
             variable,
             candidate,
@@ -1025,8 +1071,10 @@ def solve_roots_exact(
             overrides=overrides,
             source_label=source_label,
         )
-        if point is not None:
-            points.append(point)
+        # Boundary probes are topology checks, not exact solver candidates. An
+        # undefined Piecewise boundary remains a normal non-root as in 0.9.1.
+        if outcome.point is not None:
+            points.append(outcome.point)
 
     ordered_points = _deduplicate_root_points(points, domain)
     visible_points = tuple(
