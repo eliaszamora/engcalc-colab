@@ -1,5 +1,10 @@
 from pathlib import Path
-import tomllib
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
+
 import engcalc_colab
 
 
@@ -13,8 +18,8 @@ def _dependency_names():
     return {dependency.split("[")[0].split(">=")[0].split("==")[0].strip().lower() for dependency in dependencies}
 
 
-def test_runtime_dependencies_do_not_manage_ipython_in_notebook_hosts():
-    assert "ipython" not in _dependency_names()
+def test_ipython_is_a_runtime_dependency():
+    assert "ipython" in _dependency_names()
 
 
 def test_pyproject_version_is_0_9_1():
