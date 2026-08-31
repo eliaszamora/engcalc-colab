@@ -1,0 +1,39 @@
+name: v0.9.2 Task 10 Risk Probes
+
+on:
+  push:
+    branches:
+      - feature/v0.9.2-audit-reliability
+    paths:
+      - tests/test_v092_risk_probes.py
+
+jobs:
+  task10-probes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Compile
+        run: python -m compileall -q src/engcalc_colab
+      - name: Run Task 10 risk probes and focused regression
+        run: |
+          python -m pytest \
+            tests/test_v092_risk_probes.py \
+            tests/test_characteristics_roots.py \
+            tests/test_characteristics_fallback.py -q
+      - name: Run complete source suite
+        run: python -m pytest -q
+      - name: Verify investigation changed no product source
+        shell: bash
+        run: |
+          if git diff --quiet -- src/engcalc_colab; then
+            echo 'No Task 10 product patch exists.'
+          else
+            echo 'Unexpected Task 10 product diff.'
+            git diff -- src/engcalc_colab
+            exit 1
+          fi
