@@ -29,6 +29,38 @@ from .piecewise_analysis import (
 from .roots import solve_roots_exact
 
 
+
+def _simplify_decidable_abs(
+    expression: sp.Expr,
+    context,
+    *,
+    overrides: dict[str, Any] | None,
+) -> sp.Expr:
+    simplified = sp.simplify(sp.sympify(expression))
+    replacements: dict[sp.Expr, sp.Expr] = {}
+    for absolute in simplified.atoms(sp.Abs):
+        argument = sp.sympify(absolute.args[0])
+        fixed_overrides = context.unit_literal_overrides(argument, overrides)
+        try:
+            _, quantity = context.evaluate_symbolic(
+                argument,
+                overrides=fixed_overrides,
+            )
+            magnitude = float(quantity.magnitude)
+        except (EngEvaluationError, TypeError, ValueError, OverflowError):
+            continue
+        if not math.isfinite(magnitude):
+            continue
+        if magnitude > 0.0:
+            replacements[absolute] = argument
+        elif magnitude < 0.0:
+            replacements[absolute] = -argument
+        else:
+            replacements[absolute] = sp.Integer(0)
+    if replacements:
+        simplified = simplified.xreplace(replacements)
+    return sp.simplify(simplified)
+
 def _extrema_quantity_is_finite(quantity) -> bool:
     try:
         return math.isfinite(float(quantity.magnitude))
@@ -81,7 +113,11 @@ def _evaluate_extrema_candidate(
     if not _candidate_in_domain(x_quantity, domain):
         return None
 
-    symbolic_value = sp.simplify(expression.subs(variable, candidate))
+    symbolic_value = _simplify_decidable_abs(
+        expression.subs(variable, candidate),
+        context,
+        overrides=fixed_overrides,
+    )
     if _has_explicit_nonfinite_value(symbolic_value):
         return None
 
@@ -299,7 +335,9 @@ def _constant_extrema_interval(
         upper_quantity=domain.upper_quantity,
         role="global_max_min",
         provenance="exact",
-        value_symbolic=expression,
+        value_symbolic=_simplify_decidable_abs(
+            expression, context, overrides=overrides
+        ),
         value_quantity=value_quantity,
         lower_closed=True,
         upper_closed=True,
@@ -547,7 +585,9 @@ def _constant_piecewise_region_interval(
         upper_quantity=region.upper_quantity,
         role="constant",
         provenance="exact",
-        value_symbolic=expression,
+        value_symbolic=_simplify_decidable_abs(
+            expression, context, overrides=overrides
+        ),
         value_quantity=value_quantity,
         lower_closed=region.lower_closed,
         upper_closed=region.upper_closed,
@@ -596,7 +636,9 @@ def _piecewise_one_sided_point(
     point = CharacteristicPoint(
         x_symbolic=sp.sympify(breakpoint_symbolic),
         x_quantity=breakpoint_quantity,
-        value_symbolic=sp.simplify(value_symbolic),
+        value_symbolic=_simplify_decidable_abs(
+            value_symbolic, context, overrides=overrides
+        ),
         value_quantity=value_quantity,
         provenance="exact",
         side=side,
