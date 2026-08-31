@@ -159,7 +159,7 @@ from pint.errors import DimensionalityError
 from ..errors import EngEvaluationError
 from ..models import CharacteristicPoint
 from .domain import AnalysisDomain
-from .fallback import _fallback_roots
+from .fallback import _FALLBACK_X_DEDUP_REL_TOL, _fallback_roots
 ''',
     (
         "_ExactDiscovery",
