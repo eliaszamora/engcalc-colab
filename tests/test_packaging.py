@@ -17,12 +17,12 @@ def test_runtime_dependencies_do_not_manage_ipython_in_notebook_hosts():
     assert "ipython" not in _dependency_names()
 
 
-def test_pyproject_version_is_0_9_0():
-    assert _project_metadata()["version"] == "0.9.0"
+def test_pyproject_version_is_0_9_1():
+    assert _project_metadata()["version"] == "0.9.1"
 
 
-def test_runtime_version_is_0_9_0():
-    assert engcalc_colab.__version__ == "0.9.0"
+def test_runtime_version_is_0_9_1():
+    assert engcalc_colab.__version__ == "0.9.1"
 
 
 def test_pint_is_a_runtime_dependency():
