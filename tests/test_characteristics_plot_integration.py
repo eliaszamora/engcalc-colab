@@ -103,11 +103,12 @@ def test_parameter_sweep_passes_override_into_exact_characteristics():
     )
 
     peaks = [_global_point(series, "global_max") for series in result.series]
+    q_symbol = engine.resolve_symbol("q")
 
     assert [float(point.x_quantity.magnitude) for point in peaks] == pytest.approx(
         [1 / 3, 2 / 3]
     )
-    assert [point.x_symbolic for point in peaks] == [sp.Symbol("q"), sp.Symbol("q")]
+    assert [point.x_symbolic for point in peaks] == [q_symbol, q_symbol]
     assert [float(point.value_quantity.magnitude) for point in peaks] == pytest.approx(
         [2.0, 2.0]
     )
