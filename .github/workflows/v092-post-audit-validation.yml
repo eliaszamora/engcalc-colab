@@ -42,7 +42,7 @@ jobs:
 
           expect_fail n1_public tests/test_v092_post_audit_regressions.py::test_n1_decimal_quadratic_roots_do_not_silently_disappear
           expect_fail n1_family tests/test_v092_post_audit_regressions.py::test_n1_decimal_quadratic_family_preserves_known_roots
-          expect_fail n1_complete tests/test_v092_post_audit_regressions.py::test_n1_float_empty_exact_discovery_is_not_authoritative
+          expect_fail n1_candidate_validation tests/test_v092_post_audit_regressions.py::test_n1_decimal_exact_candidates_survive_roundoff_validation
           expect_fail n2_roundoff tests/test_v092_post_audit_regressions.py::test_n2_float_exact_candidates_accept_numerical_roundoff
           expect_pass n2_negative tests/test_v092_post_audit_regressions.py::test_n2_materially_wrong_exact_candidate_is_rejected
           expect_fail n3_roots tests/test_v092_post_audit_regressions.py::test_n3_roots_resolve_unit_literals_in_response_expression
