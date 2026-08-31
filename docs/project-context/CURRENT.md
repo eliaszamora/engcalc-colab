@@ -1,17 +1,18 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.9.1 remains the canonical released baseline. The approved 0.9.2 Audit Remediation & Reliability plan is active on `feature/v0.9.2-audit-reliability`. Tasks 1–5 are complete and Task 6 is next._
+_Last updated: 2026-08-31 — EngCalc 0.9.1 remains the canonical released baseline. The approved 0.9.2 Audit Remediation & Reliability plan is active on `feature/v0.9.2-audit-reliability`. Tasks 1–6 are complete and Task 7 is next._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Canonical released version: **EngCalc 0.9.1 Exact Characteristics**.
-- Canonical `main`: **`698696bb8854fa197851cdbb2f5e4c08ef22178b`**, re-verified unchanged after Task 5.
+- Canonical `main`: **`698696bb8854fa197851cdbb2f5e4c08ef22178b`**, re-verified unchanged after Task 6.
 - Runtime/package version remains **0.9.1**; the 0.9.2 version bump is deferred to Task 14.
 - Active branch: **`feature/v0.9.2-audit-reliability`**.
 - Task 5 product commit: **`2b6be7d22817cee3c1267495e58635d3bb06fc9d`** — `fix: make engineering symbols explicitly real`.
-- Task 5 idempotent verification trigger: **`c8f2b15d3cb806be7c07d5ab49e0e49ba11cdf58`**.
-- Task 5 temporary validation infrastructure fully removed; final cleanup head before this context update: **`6a75cde5719cd740b7301efb25783c38206906ed`**.
+- Task 6 product commit: **`c115bc9d810e8552a8d5138c88bfffcb3f55cb76`** — `fix: centralize direct unit literal bounds`.
+- Task 6 idempotent verification trigger: **`743967f538b5806e4ab01729ae0b4c9666c9abbb`**.
+- Task 6 temporary validation infrastructure fully removed; cleanup head before this context update: **`06d2e66155f6b8ce55c6501dd4a50458455a3742`**.
 - Approved spec: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.2-audit-remediation-reliability-design.md`.
 - Approved/refined plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.2-audit-remediation-reliability-implementation.md`.
 - Persistent natural audit regressions: `tests/test_v092_audit_regressions.py`.
@@ -37,7 +38,7 @@ Reliability contract:
 - Engine-created engineering symbols are `sp.Symbol(name, real=True)`.
 - Identity-sensitive reconstruction reuses the exact matching free symbol when present; only otherwise creates a `real=True` fallback.
 - Renderer-only symbol construction remains display-only and is not rewritten solely for assumptions.
-- Direct supported unit literals become consistent across roots/intersections/extrema/plot/table in Task 6.
+- Direct supported unit literals are now consistent across roots/intersections/extrema/plot/table.
 - Piecewise boundary/topology normalization remains Task 7.
 - Ordinary plots retain 201 drawing samples and exact metadata; positive structural moment remains plotted downward.
 - `envelope(...)` remains sampled in 0.9.2; exact envelopes are deferred to 0.9.3.
@@ -45,7 +46,7 @@ Reliability contract:
 - Permanent Python 3.10–3.14 CI and declared IPython dependency remain Task 11.
 - Release PR must stop before merge pending explicit user approval.
 
-## Fixed through Task 5
+## Fixed through Task 6
 
 ### Tasks 2–4
 
@@ -58,66 +59,80 @@ Reliability contract:
 
 ### Task 5 — real symbols, identity-safe reconstruction, and `abs` extrema
 
-- Canonical engine symbols are now explicitly real.
-- Identity-sensitive symbol reconstruction in numeric helpers, Piecewise breakpoint extraction, and characteristic string adapters now reuses matching expression symbols before creating a `real=True` fallback.
-- Renderer-only constructions were intentionally left unchanged.
-- Dimensionless `extrema(abs(x-2), x, 0, 4)` now includes the cusp/global minimum.
-- Dimensional scaled-`Abs` extrema now preserve units and the cusp minimum, including `L := 4*m`, `q := 2*kN/m`, `M(x)=q*(x-L/2)`, with global minimum at `x=2 m`, `0 kN`.
-- The Task 2 closed-number path no longer intercepts `asin`, `acos`, or `atan`; inverse-trig physical angle evaluation therefore preserves `radian` semantics.
-- Existing identity-sensitive tests were migrated to compare against `engine.resolve_symbol(...)`, rather than weakening exact SymPy equality.
+- Canonical engine symbols are explicitly real.
+- Identity-sensitive numeric/Piecewise/characteristic reconstruction reuses matching expression symbols before creating a `real=True` fallback.
+- Dimensionless and dimensional scaled-`Abs` extrema preserve cusp/global minima.
+- The Task 2 closed-number path excludes `asin`, `acos`, and `atan`, preserving inverse-trig `radian` semantics.
+- Existing identity-sensitive tests compare against `engine.resolve_symbol(...)` rather than weakening exact SymPy equality.
+- Final Task 5 product gate: **7/7 + 122/122 + 69/69 + 862/862 PASS**.
+- Idempotent Task 5 rerun: **7/7 + 122/122 + 69/69 + 862/862 PASS**, with no second product/test patch.
 
-## Task 5 validation evidence
+### Task 6 — centralized direct unit-literal bounds
 
-### Pre-change audit
+- Added `NumericContext.unit_literal_overrides(expression, overrides=None)`.
+- Precedence contract is **explicit override > stored numeric value > unit alias**.
+- Characteristic-domain bounds, exact/boundary candidates, plot bounds, and table symbolic fallback share the same unit-literal policy.
+- Domain quantities can be resolved directly from the original AST before SymPy simplification; this preserves the physical unit of zero-valued bounds such as `0*m` instead of allowing `0*m -> 0` to erase dimensionality.
+- Direct literals now work consistently for:
+  - `roots(V(x), x, 0*m, 6*m)`;
+  - `extrema(M(x), x, 0*m, 6000*mm)`;
+  - `intersections(M(x), M2(x), x, 0*m, 6*m)`;
+  - `plot(M(x), x, 0*m, 6*m)` and mixed `0*m ... 6000*mm`;
+  - `table(M(x), x, 0*m, 6*m, 5)`.
+- Incompatible domains such as `roots(V(x), x, 0*m, 2*s)` now reach dimensional validation and raise an incompatible-domain error rather than failing earlier on an unresolved unit symbol.
+- Existing operation-specific characteristic diagnostics such as `roots domain bound must be numerically resolvable` remain preserved.
+- Table’s already-correct ordinary numeric AST route was retained; the shared resolver is used without redesigning table semantics.
 
-- Symbol audit run **`33351254275`**, job **`99364950249`**: SUCCESS.
-- Identity-sensitive sites were classified before product modification: engine symbol creation, two numeric helpers, Piecewise breakpoint extraction, and four characteristic string adapters.
-- Renderer constructions were classified as display-only.
+## Task 6 validation evidence
 
 ### Authoritative RED
 
-- RED run **`33351512415`**, job **`99365687086`**, CPython 3.13.15.
-- Focused RED gate: **3 failed / 4 deselected**.
-- The three intentional failures were exactly:
-  1. existing dimensionless `abs` extrema cusp handling;
-  2. `EngineeringEngine.resolve_symbol("x").is_real is True`;
-  3. dimensional scaled-`Abs` extrema with units.
+- RED run **`33352962308`**, job **`99369683201`**.
+- Public RED contracts: **2/2 failed**, as intended.
+- Probe classification before product changes:
+  - `roots`: unresolved direct unit literal;
+  - `extrema`: unresolved direct unit literal;
+  - `intersections`: unresolved direct unit literal;
+  - `plot`: unresolved direct unit literal;
+  - `table`: already accepted `0*m ... 6*m`;
+  - incompatible `0*m ... 2*s`: failed too early on unresolved `s`, before dimensional compatibility validation.
 
-### Migration diagnostic before final GREEN
+### Corrective diagnostics during GREEN development
 
-- Run **`33351895742`**, job **`99366762764`**.
-- Task 5 contracts: **7/7 PASS**.
-- Broad regression: **69/69 PASS**.
-- Full suite: **820 PASS / 42 FAIL**.
-- Failure classification: **40** stale tests constructing `sp.Symbol(...)` without `real=True`, plus **2** genuine inverse-trig `radian` regressions (`atan(1)` and equivalent user function).
-- The inverse-trig cause was the generic closed-SymPy-number path preceding specialized scalar-function evaluation.
+- First GREEN contract run exposed two real edge conditions:
+  1. SymPy could simplify `0*m` to dimensionless zero before characteristic normalization;
+  2. exact/boundary candidates containing unit literals needed the shared alias policy as well.
+- A later focused regression found one diagnostic-only regression: unresolved characteristic bounds still failed correctly, but the generic numeric message escaped instead of the existing operation-specific `roots domain bound must be numerically resolvable` contract. That diagnostic mapping was restored.
+- One subsequent gate failure was harness-only: it referenced nonexistent `tests/test_engineering_tables.py`. No product change was made; the gate was corrected to the actual table suites.
 
 ### Validated product GREEN
 
-- Final product gate run **`33352336155`**, job **`99367974536`**: SUCCESS.
-- Task 5 contracts: **7/7 PASS**.
-- Focused identity/angle migration regression: **122/122 PASS**.
-- Broad Task 5 regression: **69/69 PASS**.
-- Full source suite: **862/862 PASS**.
-- Product commit produced by that gate: **`2b6be7d22817cee3c1267495e58635d3bb06fc9d`**.
-- Product commit touches source/tests only; no renderer behavior was changed for Task 5.
+- Authoritative run **`33353557535`**, job **`99371326028`**: SUCCESS.
+- Task 6 public contracts: **3/3 PASS in 1.60 s**.
+- Focused Task 6 regression: **83/83 PASS in 27.79 s**.
+- Table regression: **62/62 PASS in 9.59 s**.
+- Full source suite: **866/866 PASS in 181.58 s**.
+- Product commit produced by that gate: **`c115bc9d810e8552a8d5138c88bfffcb3f55cb76`**.
+- Product commit changed six source/test files only: `numeric.py`, `characteristics.py`, `engine.py`, and three persistent test modules.
 
 ### Idempotent re-verification
 
-- Explicit rerun commit: **`c8f2b15d3cb806be7c07d5ab49e0e49ba11cdf58`**; the only difference from the product commit was a one-line workflow comment used to trigger the gate.
-- Idempotent run **`33352587955`**, job **`99368675579`**: SUCCESS.
-- Task 5 contracts: **7/7 PASS in 2.62 s**.
-- Focused migration regression: **122/122 PASS in 22.47 s**.
-- Broad Task 5 regression: **69/69 PASS in 16.67 s**.
-- Full source suite: **862/862 PASS in 175.82 s**.
-- Final workflow output: **`No Task 5 product or test patch to commit.`**
-- Therefore the Task 5 product patch is idempotent on its validated product tree.
-- Temporary Task 5 workflow and both temporary patcher scripts were removed after this evidence was captured. The `.github` directory is absent on the branch after cleanup, so no Task 5 harness remains.
+- Explicit verification trigger: **`743967f538b5806e4ab01729ae0b4c9666c9abbb`**.
+- Idempotent run **`33353821187`**, job **`99372068989`**: SUCCESS.
+- Product-tree materialization check: PASS.
+- Task 6 public contracts: **3/3 PASS in 1.56 s**.
+- Focused Task 6 regression: **83/83 PASS in 27.42 s**.
+- Table regression: **62/62 PASS in 9.38 s**.
+- Full source suite: **866/866 PASS in 181.88 s**.
+- Final output: **`No Task 6 product or test patch to commit.`**
+- Therefore Task 6 is reproducibly idempotent on the validated product tree.
+- After evidence capture, the workflow plus all four Task 6 patcher/corrective scripts were deleted.
+- Comparison `c115bc9...06d2e661` contains only removal of those five `.github` files; no source/test modifications occurred after the validated product commit.
+- `.github` is absent on the active branch after cleanup.
 
 ## Still open
 
-- **M-1:** direct unit-literal bound inconsistency — **Task 6, next**.
-- **M-2/M-3:** Piecewise boundary value/topology/zero-unit normalization — Task 7.
+- **M-2/M-3:** Piecewise boundary value/topology/zero-unit normalization — **Task 7, next**.
 - **L-1…L-4:** renderer misuse diagnostics and plot presentation polish — Tasks 8–9.
 - Investigation-only audit risks remain Task 10.
 - **I-1…I-3:** permanent CI/Python matrix/IPython metadata — Task 11.
@@ -126,6 +141,7 @@ Reliability contract:
 ## Canonical 0.9.1 evidence
 
 - `main@698696bb8854fa197851cdbb2f5e4c08ef22178b` remains unchanged.
+- Runtime/package metadata on the active branch remains **0.9.1**.
 - 0.9.1 final pre-PR: **23/23 release contract; 846/846 full source**.
 - Real wheel SHA-256: `f993599186f4e93cd79b2fc64b84df646499140c6625addad38d2f29f36af0ab`.
 - Post-merge source validation: **846/846 PASS**.
@@ -134,7 +150,7 @@ Reliability contract:
 
 - **0.9.0 Matrix/CAS:** COMPLETE + MERGED.
 - **0.9.1 Exact Characteristics:** COMPLETE + RELEASE-VALIDATED + MERGED.
-- **0.9.2 Audit Remediation & Reliability:** **Tasks 1–5 COMPLETE; Task 6 NEXT**.
+- **0.9.2 Audit Remediation & Reliability:** **Tasks 1–6 COMPLETE; Task 7 NEXT**.
 - **0.9.3:** Exact Envelopes / Governing Intervals.
 - **0.9.4:** Named Response Cases / Combinations.
 
@@ -144,9 +160,9 @@ Reliability contract:
 2. COMPLETE — closed real finite SymPy evaluation;
 3. COMPLETE — complete/non-silent roots + exact/numeric merge;
 4. COMPLETE — intersections share zero-set semantics;
-5. **COMPLETE — explicit real engineering symbols, identity-safe reconstruction, scaled-`Abs` extrema, inverse-trig unit preservation, full/idempotent GREEN**;
-6. **NEXT — centralized direct unit-literal bounds**;
-7. Piecewise branch/continuity/zero-unit normalization;
+5. COMPLETE — explicit real engineering symbols, identity-safe reconstruction, scaled-`Abs` extrema, inverse-trig unit preservation, full/idempotent GREEN;
+6. **COMPLETE — centralized unit-literal bounds, zero-bound physical-unit preservation, incompatible-domain validation, full/idempotent GREEN**;
+7. **NEXT — Piecewise branch/continuity/zero-unit normalization**;
 8. renderer misuse + actionable Piecewise diagnostics;
 9. plot warning/negative-zero/exact-label polish;
 10. investigation-only risk probes;
@@ -155,25 +171,25 @@ Reliability contract:
 13. acceptance/docs/full regression;
 14. 0.9.2 version/release validation/PR, STOP before merge.
 
-## Exact next step — Task 6
+## Exact next step — Task 7
 
-Follow the approved Task 6 order; do not skip the RED:
+Follow the approved Task 7 order; do not skip the RED:
 
-1. Add a public engine-level RED matrix covering direct unit-literal bounds across all five domain-bearing APIs:
-   - `roots(V(x), x, 0*m, 6*m)`;
-   - `extrema(M(x), x, 0*m, 6000*mm)`;
-   - `intersections(M(x), M2(x), x, 0*m, 6*m)`;
-   - `plot(M(x), x, 0*m, 6*m)`;
-   - `table(M(x), x, 0*m, 6*m, 5)`.
-2. Add an incompatible-domain contract such as `roots(V(x), x, 0*m, 2*s)` and require an incompatible-domain error.
-3. Observe the RED before touching product code.
-4. Add `NumericContext.unit_literal_overrides(expression, overrides=None)` with precedence **explicit override > stored numeric value > unit alias**.
-5. Replace characteristic-only literal-unit handling with the shared helper.
-6. Wire the same helper into plot/table lower and upper bound evaluation.
-7. Run the focused Task 6 gate from the approved plan, then `python -m pytest -q`.
-8. Do not begin Task 7 until Task 6 is fully GREEN and its temporary validation infrastructure has been removed.
-9. Never invoke Codex unless separately authorized.
+1. Add M-2 RED: Piecewise physical domain boundaries must store `value_symbolic` from the **selected governing branch**, not from substituting the whole Piecewise expression in a way that loses the intended branch semantics.
+2. Add M-3 RED: for a continuous breakpoint such as `Piecewise((x-a, x<a), (2*(x-a), True))`, `x=a` must emit only one `side="at"` record with a dimensional zero response.
+3. Preserve existing discontinuous tests: meaningful `left/at/right` records must remain.
+4. After observing RED, select the actual Piecewise branch at physical boundary quantities via `_select_piecewise_branch()`, then substitute only the symbolic x location into that branch while keeping parameters symbolic.
+5. Normalize exact dimensionless zero to the established physical response unit before side-value topology comparisons and result construction.
+6. Collapse only mathematically redundant side records:
+   - `left == at == right` -> one `at` record;
+   - `left != right` -> retain meaningful `left/right`, plus `at` if distinct/defined;
+   - distinct `at` -> retain `at` plus each distinct side value.
+7. Focused gate:
+   `python -m pytest tests/test_characteristics_piecewise_extrema.py tests/test_characteristics_extrema.py -q`
+8. Then run `python -m pytest -q`.
+9. Commit only if all gates are GREEN; remove temporary Task 7 validation infrastructure and verify `.github` clean before Task 8.
+10. Never invoke Codex unless separately authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. Canonical released baseline is `main@698696bb8854fa197851cdbb2f5e4c08ef22178b`, EngCalc 0.9.1. Active branch is `feature/v0.9.2-audit-reliability`, version remains 0.9.1. Tasks 1–5 are complete. Task 5 product is `2b6be7d22817cee3c1267495e58635d3bb06fc9d`; its explicit idempotent run `33352587955` / job `99368675579` finished 7/7 + 122/122 + 69/69 + 862/862 GREEN and produced no second product/test patch. All three temporary Task 5 harness files were removed; cleanup head before this context update is `6a75cde5719cd740b7301efb25783c38206906ed`. Task 6 is the next authorized plan step: RED first for direct unit literals across roots/intersections/extrema/plot/table, then centralized `NumericContext.unit_literal_overrides(...)`, focused/full GREEN, cleanup, and context update. Exact envelopes remain deferred to 0.9.3; named cases/combinations to 0.9.4. Never invoke Codex without explicit authorization.
+Read this file first. Canonical released baseline is `main@698696bb8854fa197851cdbb2f5e4c08ef22178b`, EngCalc 0.9.1. Active branch is `feature/v0.9.2-audit-reliability`; runtime/package version remains 0.9.1. Tasks 1–6 are complete. Task 6 product is `c115bc9d810e8552a8d5138c88bfffcb3f55cb76`. Its authoritative GREEN run `33353557535` / job `99371326028` finished 3/3 + 83/83 + 62/62 + 866/866 PASS. Its idempotent run `33353821187` / job `99372068989` repeated 3/3 + 83/83 + 62/62 + 866/866 PASS and produced no second product/test patch. All five temporary Task 6 harness files were removed; cleanup head before this context update is `06d2e66155f6b8ce55c6501dd4a50458455a3742`, and `.github` is absent. Task 7 is the next authorized plan step: RED first for Piecewise governing branch boundary values and continuous-breakpoint topology, then narrow Piecewise normalization, focused/full GREEN, idempotence, cleanup, and context update. Exact envelopes remain deferred to 0.9.3; named cases/combinations to 0.9.4. Never invoke Codex without explicit authorization.
