@@ -213,11 +213,10 @@ def test_presented_plot_title_does_not_emit_font_weight_warning(capsys):
     )[-1]
     render_presented_plot(result)
     captured = capsys.readouterr()
-    assert "font weight semibold" not in captured.err
-    assert "Failed to find font weight semibold" not in captured.err
+    assert "Failed to find font weight" not in captured.err
 
 
-def test_presented_plot_title_uses_numeric_weight_600():
+def test_presented_plot_title_uses_supported_numeric_weight_700():
     from engcalc_colab.presentation import render_presented_plot
 
     engine = EngineeringEngine()
@@ -226,7 +225,7 @@ def test_presented_plot_title_uses_numeric_weight_600():
         'f(x)=x\nplot(f(x), x, 0, 1, title="Test")',
     )[-1]
     axis = render_presented_plot(result).axes[0]
-    assert axis.title.get_fontweight() == 600
+    assert axis.title.get_fontweight() == 700
 
 
 def test_exact_rational_characteristic_label_uses_symbolic_x_coordinate():
