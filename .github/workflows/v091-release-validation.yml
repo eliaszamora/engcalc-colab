@@ -6,51 +6,85 @@ on:
       - feature/v0.9.1-exact-characteristics
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release-green:
+  wheel-validation:
     runs-on: ubuntu-latest
+    env:
+      MPLBACKEND: Agg
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Set up Python 3.13
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
 
-      - name: Install test environment
-        run: |
-          python -m pip install -e '.[dev]'
-          python -m pip install ipython
+      - name: Install source and build tooling
+        run: python -m pip install -e '.[dev]' ipython build
 
-      - name: Apply guarded 0.9.1 release bump
-        run: python .github/scripts/v091_release_bump.py
-
-      - name: Check diff hygiene
-        run: git diff --check
-
-      - name: Run 0.9.1 release contract
-        run: python -m pytest tests/test_version.py tests/test_packaging.py -q
-
-      - name: Compile package
-        run: python -m compileall -q src/engcalc_colab
-
-      - name: Run complete source suite before wheel
-        run: python -m pytest -q
-
-      - name: Commit verified release metadata
+      - name: Verify committed release contract
         shell: bash
         run: |
-          if git diff --quiet -- pyproject.toml src/engcalc_colab/__init__.py README.md; then
-            echo 'No release metadata patch to commit.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add pyproject.toml src/engcalc_colab/__init__.py README.md
-          git commit -m 'release: bump EngCalc to 0.9.1'
-          git push origin HEAD:feature/v0.9.1-exact-characteristics
+          set -o pipefail
+          python -m compileall -q src/engcalc_colab
+          git diff --check
+          python -m pytest tests/test_version.py tests/test_packaging.py tests/test_parser.py -q 2>&1 | tee v091-release-contract.log
+
+      - name: Build and inspect real wheel
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf dist build
+          python -m build --wheel 2>&1 | tee v091-build.log
+          WHEEL="$(find dist -maxdepth 1 -type f -name 'engcalc_colab-0.9.1-py3-none-any.whl' -print -quit)"
+          test -n "$WHEEL"
+          test "$(find dist -maxdepth 1 -type f -name '*.whl' | wc -l)" -eq 1
+          echo "WHEEL=$WHEEL" >> "$GITHUB_ENV"
+          python .github/scripts/v091_verify_wheel.py "$WHEEL"
+          sha256sum "$WHEEL" | tee v091-wheel-sha256.log
+
+      - name: Install wheel in external clean venv
+        shell: bash
+        run: |
+          VENV=/tmp/engcalc-v091-wheel-venv
+          rm -rf "$VENV"
+          python -m venv "$VENV"
+          "$VENV/bin/python" -m pip install --upgrade pip
+          "$VENV/bin/python" -m pip install "$WHEEL" pytest ipython
+
+      - name: External installed-wheel smoke
+        shell: bash
+        run: |
+          mkdir -p /tmp/engcalc-v091-wheel-smoke
+          cd /tmp/engcalc-v091-wheel-smoke
+          env -u PYTHONPATH /tmp/engcalc-v091-wheel-venv/bin/python "$GITHUB_WORKSPACE/.github/scripts/v091_wheel_smoke.py" 2>&1 | tee "$GITHUB_WORKSPACE/v091-wheel-smoke.log"
+
+      - name: Complete source-free installed-wheel suite
+        shell: bash
+        run: |
+          set -o pipefail
+          printf '[pytest]\n' > /tmp/engcalc-v091-source-free.ini
+          env -u PYTHONPATH /tmp/engcalc-v091-wheel-venv/bin/python -c "import engcalc_colab,os,sys; p=os.path.realpath(engcalc_colab.__file__).replace('\\\\','/'); assert engcalc_colab.__version__=='0.9.1'; assert 'site-packages' in p and '/src/engcalc_colab/' not in p; assert not any(x.replace('\\\\','/').endswith('/src') for x in sys.path); print('SOURCE_FREE_MODULE_PATH='+p)"
+          env -u PYTHONPATH /tmp/engcalc-v091-wheel-venv/bin/python -m pytest -c /tmp/engcalc-v091-source-free.ini tests -q 2>&1 | tee v091-source-free.log
+
+      - name: Complete source suite after wheel validation
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q 2>&1 | tee v091-source-after-wheel.log
+
+      - name: Upload release-validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: engcalc-0.9.1-release-validation
+          path: |
+            dist/engcalc_colab-0.9.1-py3-none-any.whl
+            v091-release-contract.log
+            v091-build.log
+            v091-wheel-sha256.log
+            v091-wheel-smoke.log
+            v091-source-free.log
+            v091-source-after-wheel.log
