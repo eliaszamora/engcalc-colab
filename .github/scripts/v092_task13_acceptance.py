@@ -99,7 +99,10 @@ def test_v092_continuous_piecewise_extrema_preserve_selected_boundary_value():
     assert lower.value_quantity.to("m").magnitude == pytest.approx(-3.0)
     assert upper.value_quantity.to("m").magnitude == pytest.approx(6.0)
 '''
-    ACCEPTANCE.write_text(text.rstrip() + block + "\n", encoding="utf-8")
+    ACCEPTANCE.write_text(
+        text.rstrip() + block.rstrip() + "\n",
+        encoding="utf-8",
+    )
 
 
 def update_plot_acceptance() -> None:
