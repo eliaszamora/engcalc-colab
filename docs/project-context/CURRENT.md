@@ -1,191 +1,164 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-31 — EngCalc 0.9.1 remains the canonical released baseline. The approved 0.9.2 Audit Remediation & Reliability plan is active on `feature/v0.9.2-audit-reliability`. Tasks 1–13 are complete; Task 14 is next._
+_Last updated: 2026-08-31 — EngCalc 0.9.1 is still the canonical released baseline. The approved 0.9.2 Audit Remediation & Reliability plan is active on `feature/v0.9.2-audit-reliability`. Tasks 1–13 are COMPLETE; Task 14 is NEXT._
 
-## Current baseline
+## Canonical state
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical released version: **EngCalc 0.9.1 Exact Characteristics**.
-- Canonical `main`: **`698696bb8854fa197851cdbb2f5e4c08ef22178b`**, re-verified unchanged through Task 13.
+- Canonical `main`: **`698696bb8854fa197851cdbb2f5e4c08ef22178b`** — re-verified unchanged after Task 13.
 - Active branch: **`feature/v0.9.2-audit-reliability`**.
-- Runtime/package version remains **0.9.1**; the 0.9.2 version bump is deferred to Task 14.
-- `requires-python` remains **`>=3.10`**.
-- Runtime dependencies include **`ipython>=8.18`**.
-- Dev/test compatibility includes **`tomli>=2.0; python_version < '3.11'`**.
-- Permanent CI: `.github/workflows/ci.yml`, PR + push-to-`main`, Python **3.10–3.14** matrix.
+- Runtime/package version: **0.9.1**. Version bump occurs only in Task 14.
+- `requires-python = ">=3.10"`.
+- Runtime dependency includes **`ipython>=8.18`**.
+- Permanent CI: `.github/workflows/ci.yml`, Python **3.10–3.14**.
 - Approved spec: `docs/superpowers/specs/2026-08-30-engcalc-v0.9.2-audit-remediation-reliability-design.md`.
 - Approved plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.2-audit-remediation-reliability-implementation.md`.
 - Persistent audit regressions: `tests/test_v092_audit_regressions.py`.
-- Persistent audit-risk evidence: `tests/test_v092_risk_probes.py`.
+- Persistent risk probes: `tests/test_v092_risk_probes.py`.
 - Never invoke Codex / Codex Cloud without explicit user authorization.
-- Never merge the release PR without explicit user approval.
+- Never merge the 0.9.2 release PR without explicit user approval.
 
-## 0.9.2 task status
+## Task status
 
 1. **COMPLETE** — independent C-1/H-1 natural RED.
 2. **COMPLETE** — closed real finite SymPy evaluation.
-3. **COMPLETE** — complete/non-silent roots + exact/numeric merge.
+3. **COMPLETE** — non-silent roots + exact/numeric merge.
 4. **COMPLETE** — intersections share zero-set semantics.
-5. **COMPLETE** — explicit-real engineering symbols, identity-safe reconstruction, scaled-`Abs` extrema, inverse-trig unit preservation.
+5. **COMPLETE** — explicit-real engineering symbols and identity-safe reconstruction.
 6. **COMPLETE** — centralized direct unit-literal bounds and dimensional-zero preservation.
-7. **COMPLETE** — selected Piecewise boundary branches, dimensional-zero normalization, continuous/discontinuous topology.
-8. **COMPLETE** — explicit characteristic renderer misuse diagnostics + actionable unresolved Piecewise-symbol guidance.
-9. **COMPLETE** — numeric Matplotlib title weight, exact rational x-coordinate labels, negative-zero presentation regression.
-10. **COMPLETE** — residual, tri-state-realness and simplify-cost audit risks investigated; all **not reproduced; no product change**.
-11. **COMPLETE** — permanent Python 3.10–3.14 CI + declared IPython runtime dependency + Python 3.10 TOML-test compatibility.
-12. **COMPLETE** — behavior-preserving `characteristics.py` package decomposition behind stable public imports.
-13. **COMPLETE** — natural audit-remediation acceptance, 0.9.3 envelope deferral naming, README reliability documentation, full regression + hygiene.
-14. **NEXT** — 0.9.2 version/release validation/PR; **STOP before merge**.
+7. **COMPLETE** — Piecewise boundary selection/topology normalization.
+8. **COMPLETE** — explicit renderer/Piecewise diagnostics.
+9. **COMPLETE** — plot warning, exact rational coordinates and negative-zero presentation.
+10. **COMPLETE** — residual/realness/simplify audit risks investigated; all **not reproduced; no product change**.
+11. **COMPLETE** — permanent Python 3.10–3.14 CI + declared IPython dependency.
+12. **COMPLETE** — behavior-preserving `characteristics.py` decomposition behind stable public imports.
+13. **COMPLETE** — natural acceptance, README reliability documentation, v0.9.3 envelope deferral naming, complete regression + hygiene.
+14. **NEXT** — release EngCalc **0.9.2**, validate real wheel/source-free installation, open release PR, then **STOP before merge**.
 
-## Product/evidence commits
+## Key product/evidence commits
 
-- Task 5: **`2b6be7d22817cee3c1267495e58635d3bb06fc9d`** — `fix: make engineering symbols explicitly real`.
-- Task 6: **`c115bc9d810e8552a8d5138c88bfffcb3f55cb76`** — `fix: centralize direct unit literal bounds`.
-- Task 7: **`d2ae961bf3be34c2b52b1afbc54b4963f7ceb156`** — `fix: normalize Piecewise extrema topology`.
-- Task 8: **`833009fedcf257c18e84e8ea0992e4f613a5d52d`** — `fix: make characteristic diagnostics explicit`.
-- Task 9: **`5363bfc54a5f4d27a2f1b79f309e6a383eb17a2e`** — `fix: polish exact characteristic presentation`.
-- Task 10: no product commit; persistent evidence **`87ee04cf13fd86993245a9f62f1e55c64a6d2f8b`** — `test: investigate characteristic audit risks`.
-- Task 11 product/infrastructure: **`c8c2dd9be63df5c3b7925bbfafe32d607c2372a7`** — `ci: validate EngCalc across Python 3.10 to 3.14`.
-- Task 11 cleanup: **`93c271d47b087d6b1a9dfe59b7253f3d7b920ebe`**, **`4473788e4d3bffdbd2f917357e09fc19bf44ff56`**.
-- Task 12 product: **`cee4b39e19d2f6f2c49595d8a46efcdd6f1d58ce`** — `refactor: split characteristic solver by responsibility`.
-- Task 12 cleanup: **`6ccf182cef34fc3874793e2b8c5bf0816b13a92d`** — `test: clean task12 validation infrastructure`.
+- Task 5: `2b6be7d22817cee3c1267495e58635d3bb06fc9d` — `fix: make engineering symbols explicitly real`.
+- Task 6: `c115bc9d810e8552a8d5138c88bfffcb3f55cb76` — `fix: centralize direct unit literal bounds`.
+- Task 7: `d2ae961bf3be34c2b52b1afbc54b4963f7ceb156` — `fix: normalize Piecewise extrema topology`.
+- Task 8: `833009fedcf257c18e84e8ea0992e4f613a5d52d` — `fix: make characteristic diagnostics explicit`.
+- Task 9: `5363bfc54a5f4d27a2f1b79f309e6a383eb17a2e` — `fix: polish exact characteristic presentation`.
+- Task 10 evidence: `87ee04cf13fd86993245a9f62f1e55c64a6d2f8b` — `test: investigate characteristic audit risks`.
+- Task 11 permanent CI/product: `c8c2dd9be63df5c3b7925bbfafe32d607c2372a7`.
+- Task 12 product: `cee4b39e19d2f6f2c49595d8a46efcdd6f1d58ce` — `refactor: split characteristic solver by responsibility`.
+- Task 12 cleanup: `6ccf182cef34fc3874793e2b8c5bf0816b13a92d`.
+- Task 13 acceptance/docs: **`cce0bd768872a8bc31910435f9b29936e348c027`** — `docs: complete 0.9.2 reliability acceptance`.
+- Task 13 cleanup: `1265e7ceff9325485e9cc59894020f2b46d9d52b`, `037f6e6416d446a9e8629557fad240776f24196d`, `52cea79f4ee408128b841445311440e7b84ea64a`.
 
-Tasks 1–4 remain complete in branch history and covered by persistent audit/root/intersection regressions.
+## Reliability contract after Task 13
 
-## Reliability contract established through Task 13
-
-- External audit findings receive EngCalc-owned RED reproduction before correction.
-- Exact-first remains authoritative; deterministic fallback supplements incomplete exact discovery.
-- Exact provenance wins when exact and numeric candidates represent the same physical location.
-- Plausible exact-candidate evaluation failure never silently becomes “no solution.”
-- `roots()` and `intersections()` share one continuous zero-set discovery/validation/fallback/merge policy.
-- Engine-created engineering symbols are explicitly real.
-- Identity-sensitive reconstruction reuses matching free-symbol identity whenever available.
-- Supported unit literals work consistently across roots/intersections/extrema/plot/table.
-- Original AST numeric-bound evaluation preserves dimensional-zero bounds such as `0*m` before SymPy simplification.
-- Piecewise physical boundaries preserve the selected governing branch symbolically.
-- Continuous Piecewise breakpoints collapse redundant `left/at/right` records only when physically equivalent; discontinuities remain explicit.
-- `render_result()` explicitly rejects characteristic results and routes to `render_characteristic_result()`.
-- Missing Piecewise characteristic numeric values reuse stable actionable unresolved-symbol hints.
-- Matplotlib plot-title weight uses numeric **600**.
-- Exact ordinary-plot characteristic requests retain `point.x_symbolic`; sampled/envelope requests retain `x_symbolic=None`.
-- Non-integer exact SymPy rationals use compact `p/q` x labels while marker coordinates remain physical numeric coordinates.
-- Characteristic HTML near-zero normalization remains governed by `RenderSettings.zero_tolerance`.
-- Ordinary plots retain 201 drawing samples and exact metadata; positive structural moment remains plotted downward.
-- `envelope(...)` remains sampled in 0.9.2; exact envelopes are deferred to 0.9.3.
+- Exact-first remains authoritative; deterministic numeric fallback supplements incomplete exact discovery.
+- Exact provenance wins when exact and numeric candidates deduplicate to one physical point.
+- Plausible candidate evaluation failure never silently becomes an empty solution set.
+- `roots()` and `intersections()` share continuous zero-set discovery/validation/fallback/merge semantics.
+- Engine-created engineering symbols are explicitly real and identity-sensitive reconstruction is protected.
+- Supported direct unit literals work consistently in roots/intersections/extrema/plot/table domains.
+- Dimensional zero bounds such as `0*m` are preserved before symbolic simplification erases units.
+- Piecewise boundaries use the actually selected governing branch; continuous redundant side records collapse to `at`, while discontinuities retain meaningful sides.
+- Ordinary plots retain 201 drawing samples while exact characteristic metadata/coordinates remain authoritative.
+- Positive structural moment remains plotted downward.
+- `envelope(...)` remains sampled in 0.9.2; exact crossovers/governing intervals are deferred to **0.9.3**.
 - No SciPy dependency.
-- IPython is a declared runtime dependency rather than an assumed notebook-host dependency.
-- Advertised Python support is permanently CI-validated from 3.10 through 3.14.
-- Characteristic solver internals are now decomposed by responsibility under `src/engcalc_colab/characteristics/`; stable public imports are preserved by `characteristics/__init__.py`.
+- IPython is declared rather than assumed from the notebook host.
+- Advertised Python support is CI-validated from 3.10 through 3.14.
+- Characteristic internals live under `src/engcalc_colab/characteristics/` with stable facade imports from `characteristics/__init__.py`.
 
-## Validation evidence — Task 10
+## Task 10 evidence
 
-- Persistent probes cover residual/near-zero behavior, tri-state `is_real is None`, and simplify-cost regression.
-- Classification for all three: **not reproduced; no product change**.
-- Run **`33358168465`**, job **`99384201915`**: **39/39 focused + 880/880 full PASS**.
-- Idempotent job **`99384850174`** repeated **39/39 + 880/880** with no product diff.
-- Temporary Task 10 workflow removed in **`4e9f73c94f426e11a3c0b81d9a3598c3d6163da3`**.
+- Run `33358168465`, job `99384201915`: **39/39 focused + 880/880 full PASS**.
+- Idempotent job `99384850174`: same GREEN counts and no product diff.
+- Residual, tri-state-realness and simplify-cost observations: **not reproduced; no product change**.
 
-## Validation evidence — Task 11
+## Task 11 evidence
 
-- Initial RED confirmed advertised Python support was already `>=3.10` but IPython was undeclared.
-- First matrix exposed test-infrastructure incompatibility on Python 3.10 (`tomllib`); corrected with conditional `tomli` and test fallback, without changing product semantics.
-- Authoritative run **`33358958365`**: Python 3.10, 3.11, 3.12, 3.13 and 3.14 each passed **881/881** after installing only `.[dev]`.
-- Jobs: **`99386459903`**, **`99386460066`**, **`99386460051`**, **`99386460059`**, **`99386460063`**.
-- Idempotent run **`33359297689`** repeated all five versions GREEN; commit job **`99388058367`** reported **`No Task 11 product or test patch to commit.`**
-- Permanent `.github/workflows/ci.yml` remains; only Task 11 temporary infrastructure was removed.
+- Authoritative matrix run `33358958365`.
+- Python 3.10 job `99386459903`: **881/881**.
+- Python 3.11 job `99386460066`: **881/881**.
+- Python 3.12 job `99386460051`: **881/881**.
+- Python 3.13 job `99386460059`: **881/881**.
+- Python 3.14 job `99386460063`: **881/881**.
+- Idempotent run `33359297689`, commit job `99388058367`: `No Task 11 product or test patch to commit.`
+- Permanent `.github/workflows/ci.yml` remains.
 
-## Validation evidence — Task 12
+## Task 12 evidence
 
-### Pre-refactor baseline
+- Monolithic pre-refactor baseline: run `33359923576`, job `99389160145`, **881/881 in 200.90 s**.
+- Mechanical splitter failures were isolated before persistence; no failing candidate product was committed.
+- Authoritative GREEN candidate run `33361626996`: **881/881 in 206.46 s**, focused **347/347 in 80.68 s**, public imports/compile/package shape PASS.
+- Product commit: `cee4b39e19d2f6f2c49595d8a46efcdd6f1d58ce`.
+- Final idempotent run `33362287774`, test job `99395831492`: **881/881 in 172.04 s**, **347/347 in 67.15 s**.
+- Commit job `99396580569`: `No Task 12 product or test patch to commit.`
+- Task 12 temporary harness removed; permanent CI retained.
 
-- Baseline commit **`e249cfc7c3180e08a434cf5cab3a0fc0b1fb041c`**.
-- Run **`33359923576`**, job **`99389160145`**.
-- `compileall` PASS and monolithic full suite **881/881 PASS in 200.90 s**.
+## Task 13 evidence
 
-### Mechanical candidate failures — no product persisted
+### Authoritative acceptance/persistence
 
-1. Run **`33360284005`**, job **`99390172266`**: **13 failed / 868 passed**. Generated `intersections.py` omitted the `_fallback_roots` import. Classified as splitter wiring defect; no product commit.
-2. Run **`33360499583`**, job **`99390769603`**: generated `candidates.py` used `_FALLBACK_X_DEDUP_REL_TOL` without importing it from `fallback.py`. Classified as splitter dependency-wiring defect; no product commit.
-3. Run **`33361479616`**, job **`99393547819`**: `tests/test_characteristics_acceptance.py` still monkeypatched the old monolithic private target `characteristics._exact_real_solution_set`. Per plan, the test was retargeted to `characteristics.candidates`; no private facade alias was added and no product candidate was persisted from the failing run.
-
-### Authoritative GREEN and product persistence
-
-- Successful candidate run **`33361626996`** on the corrected splitter/private-test wiring.
-- Stable public imports PASS.
+- Run: **`33364523103`**.
+- Validation job: **`99402323373`** SUCCESS.
 - `compileall` PASS.
-- Full suite **881/881 PASS in 206.46 s**.
-- Focused characteristic/plot/magic/matrix regression **347/347 PASS in 80.68 s**.
-- Decomposition shape/private-target gate PASS.
-- Product commit **`cee4b39e19d2f6f2c49595d8a46efcdd6f1d58ce`** contains exactly:
-  - removal of monolithic `src/engcalc_colab/characteristics.py`;
-  - package modules `__init__.py`, `domain.py`, `candidates.py`, `fallback.py`, `roots.py`, `intersections.py`, `extrema.py`, `piecewise_analysis.py`;
-  - private monkeypatch retargets in `tests/test_characteristics_acceptance.py` and `tests/test_characteristics_fallback.py`.
-- No unrelated product file changed.
+- Natural acceptance + persistent audit regressions: **12/12 PASS in 4.82 s**.
+- Characteristic plot/envelope integration: **10/10 PASS in 4.41 s**.
+- Complete source suite: **884/884 PASS in 177.25 s**.
+- `git diff --check` PASS.
+- Scope gate PASS: Task 13 changed no `src/engcalc_colab` file.
+- Commit job: **`99403039773`** SUCCESS.
+- Persistent commit: **`cce0bd768872a8bc31910435f9b29936e348c027`**, exactly README + `tests/test_characteristics_acceptance.py` + `tests/test_characteristics_plot_integration.py` + this context file.
+- README current-version label intentionally remained **0.9.1**.
+- Envelope sampled-path test renamed only from `...until_v092` to `...until_v093`; assertions unchanged.
 
-### Idempotence and cleanup
+### Idempotence
 
-- A first post-product rerun (`33362037335`) had GREEN product tests but its auxiliary commit job failed only because the temporary harness tried to `git add` the already-deleted monolith path. The splitter correctly reported `Task 12 decomposition already materialized.` This was harness-only and caused no product patch.
-- Final path-safe idempotent run **`33362287774`**:
-  - test job **`99395831492`** SUCCESS;
-  - full suite **881/881 PASS in 172.04 s**;
-  - focused regression **347/347 PASS in 67.15 s**;
-  - public-import, `compileall`, package-shape and private-target gates PASS;
-  - commit job **`99396580569`** SUCCESS with exact output **`No Task 12 product or test patch to commit.`**
-- Cleanup commit **`6ccf182cef34fc3874793e2b8c5bf0816b13a92d`** removes only `.github/scripts/v092_task12_split.py` and `.github/workflows/v092-task12-validation.yml`.
-- Compact compare `cee4b39...6ccf182` confirms no product changes after the authoritative refactor commit other than deletion of temporary Task 12 infrastructure.
-- Permanent `.github/workflows/ci.yml` remains intact.
-- `main` remains **`698696bb8854fa197851cdbb2f5e4c08ef22178b`**.
-- Runtime/package version remains **0.9.1**.
+- GitHub does not recursively trigger workflows from the `GITHUB_TOKEN` product commit, so a temporary workflow-only trigger commit was used.
+- Idempotent run: **`33365110693`**.
+- Validation job: **`99404040721`** SUCCESS.
+- Repeated **12/12 PASS in 4.99 s**.
+- Repeated **10/10 PASS in 4.42 s**.
+- Repeated complete suite: **884/884 PASS in 179.90 s**.
+- Hygiene/scope PASS again.
+- Commit job: **`99404761219`** SUCCESS.
+- Context materializer: `Task 13 closure context already materialized.`
+- Exact commit-gate output: **`No Task 13 acceptance/docs patch to commit.`**
 
-## Validation evidence — Task 13
+### Cleanup/final audit
 
-- Authoritative pre-persistence acceptance run: **`33364523103`**.
-- `compileall` PASS.
-- Natural acceptance + persistent audit regressions: **12/12 PASS**.
-- Characteristic plot/envelope integration: **10/10 PASS**; the sampled-envelope deferral test is now named `...until_v093` with assertions unchanged.
-- Complete source suite: **884/884 PASS**.
-- `git diff --check` PASS; no `src/engcalc_colab` modification is permitted or present in Task 13.
-- `.github/workflows/ci.yml` remains the only intentionally permanent workflow added relative to canonical `main`; the Task 13 workflow/scripts are temporary validation infrastructure.
-- README documents exact-first + deterministic fallback, natural unit-literal bounds, continuous Piecewise boundary semantics, exact ordinary-plot characteristic coordinates, Python 3.10–3.14 CI, declared IPython dependency, the `characteristics` package split, and exact-envelope deferral to 0.9.3 while the released-version label remains 0.9.1.
-- C-1 **COMPLETE** — `log`, incomplete transcendental discovery, quintic roots and log intersections no longer silently false-negative.
-- H-1 **COMPLETE** — engine engineering symbols are explicitly real; identity-sensitive reconstruction and `abs` extrema remain covered.
-- M-1 **COMPLETE** — direct supported unit literals are resolved consistently in domain-bearing APIs with dimensional-zero preservation.
-- M-2 **COMPLETE** — Piecewise boundary `value_symbolic` comes from the selected governing branch while parameters stay symbolic.
-- M-3 **COMPLETE** — continuous redundant sides collapse to `at`; discontinuities retain meaningful side topology after unit normalization.
-- L-series **COMPLETE** — renderer misuse, unresolved Piecewise diagnostics, Matplotlib title weight, exact rational annotation coordinates and negative-zero presentation are regression-covered.
-- Task 10 risk probes remain classified **not reproduced; no product change**.
-- Task 11 permanent Python 3.10–3.14 CI remains GREEN evidence with jobs `99386459903`, `99386460066`, `99386460051`, `99386460059`, `99386460063`.
-- Task 12 decomposition remains complete at product commit `cee4b39e19d2f6f2c49595d8a46efcdd6f1d58ce`, with stable public imports and no behavior change.
-- Runtime/package version remains **0.9.1**. No Task 13 product/solver source change exists.
+- Temporary files removed:
+  - `.github/scripts/v092_task13_acceptance.py`
+  - `.github/scripts/v092_task13_context.py`
+  - `.github/workflows/v092-task13-validation.yml`
+- Cleanup commits: `1265e7ceff9325485e9cc59894020f2b46d9d52b`, `037f6e6416d446a9e8629557fad240776f24196d`, `52cea79f4ee408128b841445311440e7b84ea64a`.
+- Compare `cce0bd768872a8bc31910435f9b29936e348c027...52cea79f4ee408128b841445311440e7b84ea64a` shows **only those three temporary files removed**; no product/test/docs behavior changed after the authoritative Task 13 commit.
+- `main` re-verified unchanged at `698696bb8854fa197851cdbb2f5e4c08ef22178b`.
+- `pyproject.toml` still reports version **0.9.1**, `requires-python >=3.10`, and `ipython>=8.18`.
+- Task 13 is fully closed.
 
 ## Exact next step — Task 14
 
-Task 14 is the **0.9.2 release task**. Execute the approved plan in order: prove intentional version RED; bump every release surface to 0.9.2; run pre-wheel source gates; build and inspect the real wheel; record wheel SHA-256; run an external clean-environment smoke; run the complete installed-wheel suite with repository source unavailable; repeat the complete source suite; remove release-only temporary infrastructure while retaining permanent `ci.yml`; update this handoff with authoritative release evidence; open the release PR titled `release: EngCalc 0.9.2 audit remediation and reliability`; then **STOP before merge and request explicit user approval**.
+Execute the approved Task 14 release sequence and do not skip gates:
 
-## Still deferred / open
+1. Update only version expectations to 0.9.2 while product metadata/runtime still say 0.9.1; run focused version tests and prove every failure is an intentional version mismatch.
+2. Bump all release surfaces to **0.9.2** (`pyproject.toml`, `src/engcalc_colab/__init__.py`, README current version and version assertions).
+3. Run `compileall`, `git diff --check`, release-contract tests and complete source suite.
+4. Build the real **0.9.2 wheel**, inspect METADATA for version/IPython, record exact filename and SHA-256.
+5. Run a clean external installed-wheel smoke verifying version, IPython import, log/transcendental/quintic roots, log intersection, abs cusp extrema, direct unit bounds, continuous/discontinuous Piecewise semantics, exact 1/3 plot label and positive-moment-down convention.
+6. Run the **complete installed-wheel suite source-free** with `engcalc_colab.__file__` proven to resolve under `site-packages`.
+7. Repeat the complete source suite.
+8. Remove only release-specific temporary infrastructure; retain permanent `.github/workflows/ci.yml`.
+9. Update this file with release-contract/full/wheel/hash/smoke/source-free/repeated-source evidence and current branch SHA.
+10. Open PR titled exactly **`release: EngCalc 0.9.2 audit remediation and reliability`**.
+11. Verify PR base/head/mergeability and record the PR number here.
+12. **STOP BEFORE MERGE and request explicit user approval.**
 
-- Task 14: 0.9.2 version/release validation/PR; STOP before merge.
-- Separate deferred issues: `no_vertical_scroll()`, multiline ordinary non-matrix call parsing, generalized structural eigenproblems.
+## Deferred/open after 0.9.2
+
 - 0.9.3: Exact Envelopes / Governing Intervals.
 - 0.9.4: Named Response Cases / Combinations.
-
-## Canonical 0.9.1 evidence
-
-- `main@698696bb8854fa197851cdbb2f5e4c08ef22178b` remains unchanged.
-- Runtime/package metadata on the active branch remains **0.9.1**.
-- 0.9.1 final pre-PR: **23/23 release contract; 846/846 full source**.
-- Real wheel SHA-256: `f993599186f4e93cd79b2fc64b84df646499140c6625addad38d2f29f36af0ab`.
-- Post-merge source validation: **846/846 PASS**.
-
-## Roadmap
-
-- **0.9.0 Matrix/CAS:** COMPLETE + MERGED.
-- **0.9.1 Exact Characteristics:** COMPLETE + RELEASE-VALIDATED + MERGED.
-- **0.9.2 Audit Remediation & Reliability:** **Tasks 1–13 COMPLETE; Task 14 NEXT**.
-- **0.9.3:** Exact Envelopes / Governing Intervals.
-- **0.9.4:** Named Response Cases / Combinations.
+- Separate deferred issues: `no_vertical_scroll()`, multiline ordinary non-matrix call parsing, generalized structural eigenproblems.
 
 ## How to resume in a new conversation
 
-Read this file first. Canonical released baseline remains `main@698696bb8854fa197851cdbb2f5e4c08ef22178b`, EngCalc 0.9.1. Active branch is `feature/v0.9.2-audit-reliability`; runtime/package version is still 0.9.1. Tasks 1–13 are complete. Task 13 authoritative acceptance run is `33364523103` with 12/12 natural/audit acceptance, 10/10 plot integration and 884/884 complete source tests; no `src/` product change is part of Task 13. Permanent Python 3.10–3.14 CI remains. Task 14 is next and must perform real-wheel release validation and open the 0.9.2 PR, then STOP before merge for explicit user approval. Never invoke Codex without explicit authorization.
+Read this file first. Canonical released baseline is still `main@698696bb8854fa197851cdbb2f5e4c08ef22178b`, EngCalc 0.9.1. Active branch is `feature/v0.9.2-audit-reliability`. **Tasks 1–13 are COMPLETE and Task 14 is NEXT.** Task 13 persistent commit is `cce0bd768872a8bc31910435f9b29936e348c027`; its authoritative run was `33364523103` (12/12 + 10/10 + 884/884), idempotent run `33365110693` repeated the same counts and produced no second patch, and temporary Task 13 harness files were removed through `52cea79f4ee408128b841445311440e7b84ea64a`. Runtime/package version is still 0.9.1. Task 14 must build/validate a real 0.9.2 wheel, run source-free installed-wheel validation, open the release PR, and **STOP before merge for explicit user approval**. Never invoke Codex without explicit authorization.
