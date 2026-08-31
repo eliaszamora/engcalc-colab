@@ -473,13 +473,18 @@ def solve_intersections_exact(
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("intersections variable must be a symbolic identifier")
 
+    resolved_overrides = context.unit_literal_overrides(left_expression, overrides)
+    resolved_overrides = context.unit_literal_overrides(
+        right_expression, resolved_overrides
+    )
+
     regions = _partition_intersection_regions(
         left_expression,
         right_expression,
         variable,
         domain,
         context,
-        overrides=overrides,
+        overrides=resolved_overrides,
     )
 
     points: list[CharacteristicPoint] = []
@@ -499,7 +504,7 @@ def solve_intersections_exact(
                     region,
                     domain,
                     context,
-                    overrides=overrides,
+                    overrides=resolved_overrides,
                     left_label=left_label,
                     right_label=right_label,
                 )
@@ -518,7 +523,7 @@ def solve_intersections_exact(
             variable,
             region_domain,
             context,
-            overrides=overrides,
+            overrides=resolved_overrides,
             source_label=None,
         )
         for root_point in zero_points:
@@ -536,7 +541,7 @@ def solve_intersections_exact(
                     root_point.x_symbolic,
                     domain,
                     context,
-                    overrides=overrides,
+                    overrides=resolved_overrides,
                     left_label=left_label,
                     right_label=right_label,
                 )
@@ -547,7 +552,7 @@ def solve_intersections_exact(
                     variable,
                     root_point,
                     context,
-                    overrides=overrides,
+                    overrides=resolved_overrides,
                     left_label=left_label,
                     right_label=right_label,
                 )
@@ -560,7 +565,7 @@ def solve_intersections_exact(
         variable,
         domain,
         context,
-        overrides=overrides,
+        overrides=resolved_overrides,
     )
     for candidate, _ in boundaries:
         point = _evaluate_intersection_candidate(
@@ -570,7 +575,7 @@ def solve_intersections_exact(
             candidate,
             domain,
             context,
-            overrides=overrides,
+            overrides=resolved_overrides,
             left_label=left_label,
             right_label=right_label,
         )
