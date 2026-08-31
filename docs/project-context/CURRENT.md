@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-30 — EngCalc 0.9.1 remains the canonical released baseline. The user approved the 0.9.2 Audit Remediation & Reliability spec, and the detailed 14-task implementation plan is written/self-reviewed on `feature/v0.9.2-audit-reliability`. No 0.9.2 product code or RED tests have been implemented yet._
+_Last updated: 2026-08-30 — EngCalc 0.9.1 remains the canonical released baseline. The 0.9.2 Audit Remediation & Reliability spec and 14-task implementation plan are approved. Task 1 is now complete at the RED stage: EngCalc independently reproduced all five natural C-1/H-1 audit contracts on Python 3.13.15. No 0.9.2 product source code has been modified yet._
 
 ## Current baseline
 
@@ -15,6 +15,7 @@ _Last updated: 2026-08-30 — EngCalc 0.9.1 remains the canonical released basel
 - Spec approval/status commit: **`e32a6d9b86fe6e248a4974d1bcf4ffd53ae172ee`**.
 - 0.9.2 implementation plan: `docs/superpowers/plans/2026-08-30-engcalc-v0.9.2-audit-remediation-reliability-implementation.md`.
 - Refined/self-reviewed plan commit: **`75fbace4326ba866a728677924d02295629327fe`**.
+- Persistent Task 1 regression tests: `tests/test_v092_audit_regressions.py`, created at **`507857cce52292b22a44fed4ba23b3f56ff40cb5`**.
 - Never invoke Codex / `@codex review` / Codex Cloud without explicit user authorization.
 
 ## Approved behavior
@@ -47,17 +48,23 @@ intersections(response_1, response_2, variable, lower, upper)
 
 ## Open issues / user feedback
 
-Independent Claude audit of `main@698696bb` reported 846/846 existing tests green plus 38 adversarial probes and identified:
+The independent audit findings are now split into EngCalc-confirmed versus still-unconfirmed items.
 
-- **C-1 critical:** roots/intersections can silently miss valid real roots when exact candidates (`E`, `LambertW`, `CRootOf`) cannot be physically evaluated and incomplete `sp.solve` suppresses fallback.
-- **H-1 high:** `extrema(abs(...))` fails because engine symbols are not explicitly real.
+### EngCalc-confirmed by Task 1 RED
+
+- **C-1 critical:** `roots(log(x)-1, x, 1, 10)`, `roots(exp(x)-3*x, x, 0, 3)` and `roots(x^5-x-1, x, 0, 2)` each returned **zero points** instead of their real roots.
+- **C-1 intersections:** `intersections(log(x), 1+0*x, x, 1, 10)` returned **zero points** instead of the real intersection at `x=e`.
+- **H-1 high:** `extrema(abs(x-2), x, 0, 4)` failed with `EngEvaluationError: line 2: unsupported piecewise relation` rather than returning the cusp minimum at `x=2`.
+
+### Still awaiting their own focused RED tasks
+
 - **M-1:** direct unit-literal bounds are inconsistent between table and plot/characteristic APIs.
 - **M-2:** Piecewise extrema boundary `value_symbolic` can retain a resolvable outer Piecewise.
 - **M-3:** continuous Piecewise breakpoints can emit unnecessary side triples with zero-unit inconsistency.
 - **L-1…L-4:** renderer misuse crash, matplotlib `semibold` warning, weaker Piecewise diagnostics, negative-zero/exact-coordinate label polish.
 - **I-1…I-3:** no permanent CI, IPython undeclared, advertised Python 3.10–3.14 range not continuously tested.
-
-These remain external findings until Task 1 and subsequent focused RED tests independently reproduce them. Separate deferred issues remain `no_vertical_scroll()`, multiline ordinary non-matrix call parsing and generalized structural eigenproblems.
+- Potential risks (residual equality, tri-state `is_real`, simplify cost) remain investigation-only until Task 10.
+- Separate deferred issues remain `no_vertical_scroll()`, multiline ordinary non-matrix call parsing and generalized structural eigenproblems.
 
 ## Validation evidence
 
@@ -76,24 +83,38 @@ These remain external findings until Task 1 and subsequent focused RED tests ind
 - External audit source: `main@698696bb`, Python 3.14.3, 846/846 existing tests plus 38 independent adversarial probes.
 - Spec written, self-reviewed and explicitly approved by the user; approved status commit `e32a6d9b86fe6e248a4974d1bcf4ffd53ae172ee`.
 - Detailed implementation plan has **14 tasks**, was self-reviewed for scope/placeholders/type/interface consistency, and refined at `75fbace4326ba866a728677924d02295629327fe`.
-- The plan uses RED→GREEN for confirmed audit defects, full source gates after cross-cutting changes, permanent Python 3.10–3.14 CI, behavior-preserving characteristic decomposition, and full wheel/source-free release validation.
-- No 0.9.2 product source file has been modified yet.
-- No 0.9.2 RED test has run yet.
 - Version remains 0.9.1.
+
+### 0.9.2 Task 1 — authoritative RED
+
+- Temporary runner-only RED workflow commit: `2c9e44b26ab0b027f0a16a803f9c43d5e5b0dbfd`.
+- GitHub Actions run **`33349614143`**, job **`99360260965`**.
+- Environment: Ubuntu 24.04, CPython **3.13.15**, SymPy 1.14.0, Pint 0.25.3.
+- Command: `python -m pytest tests/test_v092_audit_regressions.py -q`.
+- Result: **5 failed / 0 passed in 2.41 s**.
+- `roots(log(x)-1, x, 1, 10)`: expected one root near `e`; actual `points=()`.
+- `roots(exp(x)-3*x, x, 0, 3)`: expected two real roots; actual `points=()`.
+- `roots(x^5-x-1, x, 0, 2)`: expected one real root; actual `points=()`.
+- `intersections(log(x), 1+0*x, x, 1, 10)`: expected one point; actual `points=()`.
+- `extrema(abs(x-2), x, 0, 4)`: raised `EngEvaluationError: line 2: unsupported piecewise relation`.
+- The workflow materialized the tests only inside the runner before the RED, so no product/test implementation preceded the observed failure.
+- Temporary workflow removed at `f2806962a8a06af5b11ebff60549963cbbe88152`.
+- The exact RED tests were then persisted at `507857cce52292b22a44fed4ba23b3f56ff40cb5`.
+- **No product source file has been modified yet.**
 
 ## Roadmap / active plan
 
 - **0.9.0 Matrix/CAS:** COMPLETE + RELEASE-VALIDATED + MERGED.
 - **0.9.1 Exact Characteristics:** COMPLETE + RELEASE-VALIDATED + MERGED + POST-MERGE VALIDATED.
-- **0.9.2 Audit Remediation & Reliability:** **SPEC APPROVED + IMPLEMENTATION PLAN COMPLETE — READY FOR EXECUTION CHOICE**.
+- **0.9.2 Audit Remediation & Reliability:** **Task 1 RED COMPLETE; Task 2 NEXT**.
 - **0.9.3:** Exact Envelopes / Governing Intervals.
 - **0.9.4:** Named Response Cases / Combinations.
 - Later: **0.10.x engineering operations/verification → 1.0.0 stabilization**.
 
 0.9.2 implementation plan:
 
-1. independent C-1/H-1 natural RED reproduction;
-2. closed real finite SymPy number evaluation;
+1. **COMPLETE — independent C-1/H-1 natural RED reproduction: 5/5 confirmed failing**;
+2. **NEXT — closed real finite SymPy number evaluation**;
 3. complete/non-silent root discovery and exact/numeric merge;
 4. intersections reuse shared zero-set semantics;
 5. safe `real=True` symbol migration + identity audit;
@@ -109,13 +130,13 @@ These remain external findings until Task 1 and subsequent focused RED tests ind
 
 ## Exact next step
 
-1. Select execution mode for the approved plan.
-2. Preferred/current project mode is **Inline Execution** with `superpowers:executing-plans`; no Codex.
-3. After execution mode is confirmed, read the approved spec and plan, then execute **Task 1 only far enough to obtain authoritative RED evidence** before any product patch.
-4. Update this file with exact RED run/count/failure evidence in the same branch.
-5. Continue tasks in plan order with focused GREEN then required broad/full gates.
-6. Do not merge a future 0.9.2 PR without explicit user approval.
+1. Execute **Task 2** with TDD.
+2. Add focused RED tests in `tests/test_numeric_context.py` for closed real finite SymPy values (`E`, real `LambertW`, real `CRootOf`) plus rejection of non-real/non-finite values.
+3. Observe the focused RED before touching `src/engcalc_colab/numeric.py`.
+4. Implement only the narrow closed-number fallback in `_evaluate_sympy()`.
+5. Re-run `tests/test_numeric_context.py` plus `tests/test_v092_audit_regressions.py`; closed-number tests must be GREEN while C-1/H-1 may legitimately remain RED until Tasks 3/5.
+6. Never invoke Codex unless separately authorized.
 
 ## How to resume in a new conversation
 
-Read this file first. Canonical released baseline is `main@698696bb8854fa197851cdbb2f5e4c08ef22178b`, EngCalc 0.9.1. Active branch is `feature/v0.9.2-audit-reliability`; version remains 0.9.1. The user approved the 0.9.2 Audit Remediation & Reliability spec, now marked approved at commit `e32a6d9b86fe6e248a4974d1bcf4ffd53ae172ee`. The detailed 14-task plan is `docs/superpowers/plans/2026-08-30-engcalc-v0.9.2-audit-remediation-reliability-implementation.md`, refined at `75fbace4326ba866a728677924d02295629327fe`. No product patch or RED test has begun. Next action is execution-mode confirmation, then Task 1 independent C-1/H-1 RED reproduction. Exact envelopes are deferred to 0.9.3; named cases/combinations to 0.9.4. Never invoke Codex without explicit authorization.
+Read this file first. Canonical released baseline is `main@698696bb8854fa197851cdbb2f5e4c08ef22178b`, EngCalc 0.9.1. Active branch is `feature/v0.9.2-audit-reliability`; version remains 0.9.1. The 0.9.2 spec is approved and the 14-task plan is active. Task 1 is complete at RED: run `33349614143`, job `99360260965`, Python 3.13.15, **5/5 failed in 2.41 s** exactly as documented above. Persistent tests are `tests/test_v092_audit_regressions.py` from commit `507857cce52292b22a44fed4ba23b3f56ff40cb5`. No product source code has been modified yet. Next action is Task 2 closed real finite SymPy numeric evaluation with test-first RED. Exact envelopes remain deferred to 0.9.3; named cases/combinations to 0.9.4. Never invoke Codex without explicit authorization.
