@@ -1,0 +1,68 @@
+name: v0.9.2 Task 8 RED
+
+on:
+  push:
+    branches:
+      - feature/v0.9.2-audit-reliability
+
+jobs:
+  task8-red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        run: python -m pip install -e '.[dev]' ipython
+      - name: Materialize runner-only Task 8 RED contracts
+        shell: bash
+        run: |
+          cat >> tests/test_renderer.py <<'PY'
+
+          import pytest
+
+
+          @pytest.mark.parametrize(
+              "source",
+              [
+                  "roots(x-1, x, 0, 2)",
+                  "intersections(x, 2-x, x, 0, 2)",
+                  "extrema(-(x-1)^2, x, 0, 2)",
+              ],
+          )
+          def test_render_result_rejects_characteristic_results_with_targeted_guidance(source):
+              engine = EngineeringEngine()
+              result = engine.evaluate(parse_cell(source)[0])
+              with pytest.raises(
+                  TypeError,
+                  match=(
+                      "render_result does not support characteristic results; "
+                      "use render_characteristic_result"
+                  ),
+              ):
+                  render_result(result)
+          PY
+
+          cat >> tests/test_characteristics_piecewise_extrema.py <<'PY'
+
+          def test_piecewise_characteristic_missing_value_has_actionable_hint():
+              from engcalc_colab.errors import EngEvaluationError
+
+              context = NumericContext()
+              x, a = sp.symbols("x a", real=True)
+              expr = sp.Piecewise((x, x < a), (2*x, True), evaluate=False)
+              domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+              with pytest.raises(EngEvaluationError) as exc_info:
+                  solve_extrema_exact(expr, x, domain, context)
+              message = str(exc_info.value)
+              assert "a" in message
+              assert "a := <value>*<unit>" in message
+          PY
+      - name: Run Task 8 RED contracts
+        run: |
+          python -m pytest \
+            tests/test_renderer.py \
+            tests/test_characteristics_piecewise_extrema.py -q \
+            -k 'render_result_rejects_characteristic_results_with_targeted_guidance or piecewise_characteristic_missing_value_has_actionable_hint'
