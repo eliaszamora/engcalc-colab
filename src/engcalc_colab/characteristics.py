@@ -2249,6 +2249,43 @@ def _piecewise_one_sided_point(
     return point, False, False, False
 
 
+def _piecewise_selected_boundary_point(
+    expression: sp.Expr,
+    variable: sp.Symbol,
+    boundary_symbolic: sp.Expr,
+    boundary_quantity,
+    domain: AnalysisDomain,
+    context,
+    *,
+    overrides: dict[str, Any] | None,
+    source_label: str | None,
+) -> CharacteristicPoint | None:
+    folded = sp.piecewise_fold(sp.sympify(expression))
+    branch_expression = folded
+    if isinstance(folded, sp.Piecewise):
+        try:
+            _, branch_expression = _select_piecewise_branch(
+                folded,
+                variable,
+                boundary_quantity,
+                context,
+                overrides=overrides,
+            )
+        except EngEvaluationError:
+            return None
+    return _evaluate_extrema_candidate(
+        sp.sympify(branch_expression),
+        variable,
+        sp.sympify(boundary_symbolic),
+        domain,
+        context,
+        overrides=overrides,
+        source_label=source_label,
+        roles=("boundary",),
+        candidate_quantity=boundary_quantity,
+    )
+
+
 def _piecewise_local_role_at_breakpoint(
     expression: sp.Expr,
     variable: sp.Symbol,
@@ -2326,6 +2363,91 @@ def _same_extrema_value(
         return False
     scale = max(1.0, abs(left), abs(right))
     return math.isclose(left, right, rel_tol=1e-12, abs_tol=1e-12 * scale)
+
+
+def _extrema_point_with_value_quantity(
+    point: CharacteristicPoint,
+    value_quantity,
+) -> CharacteristicPoint:
+    return CharacteristicPoint(
+        x_symbolic=point.x_symbolic,
+        x_quantity=point.x_quantity,
+        value_symbolic=point.value_symbolic,
+        value_quantity=value_quantity,
+        provenance=point.provenance,
+        side=point.side,
+        roles=point.roles,
+        source_label=point.source_label,
+    )
+
+
+def _normalize_piecewise_zero_units(
+    records: tuple[CharacteristicPoint | None, ...],
+    context,
+) -> tuple[CharacteristicPoint | None, ...]:
+    canonical_unit = next(
+        (
+            point.value_quantity.units
+            for point in records
+            if point is not None
+            and point.value_quantity is not None
+            and not point.value_quantity.dimensionless
+        ),
+        None,
+    )
+    if canonical_unit is None:
+        return records
+
+    normalized: list[CharacteristicPoint | None] = []
+    for point in records:
+        if point is None or point.value_quantity is None:
+            normalized.append(point)
+            continue
+        quantity = point.value_quantity
+        if (
+            quantity.dimensionless
+            and _quantity_is_zero(quantity)
+            and sp.simplify(point.value_symbolic) == 0
+        ):
+            point = _extrema_point_with_value_quantity(
+                point,
+                context.ureg.Quantity(0, canonical_unit),
+            )
+        normalized.append(point)
+    return tuple(normalized)
+
+
+def _piecewise_breakpoint_records(
+    left_point: CharacteristicPoint | None,
+    at_point: CharacteristicPoint | None,
+    right_point: CharacteristicPoint | None,
+    context,
+) -> tuple[CharacteristicPoint, ...]:
+    left_point, at_point, right_point = _normalize_piecewise_zero_units(
+        (left_point, at_point, right_point),
+        context,
+    )
+    if (
+        left_point is not None
+        and at_point is not None
+        and right_point is not None
+        and _same_extrema_value(
+            left_point.value_quantity,
+            at_point.value_quantity,
+            context,
+        )
+        and _same_extrema_value(
+            at_point.value_quantity,
+            right_point.value_quantity,
+            context,
+        )
+    ):
+        return (at_point,)
+    return tuple(
+        point
+        for point in (left_point, at_point, right_point)
+        if point is not None
+    )
 
 
 def _ordered_unique_extrema_points(
@@ -2555,16 +2677,19 @@ def _solve_piecewise_extrema_exact(
             if _quantity_strictly_inside_domain(point.x_quantity, region_domain):
                 points.append(_point_without_global_roles(point))
 
-    for endpoint in (domain.lower_symbolic, domain.upper_symbolic):
-        point = _evaluate_extrema_candidate(
+    for endpoint_symbolic, endpoint_quantity in (
+        (domain.lower_symbolic, domain.lower_quantity),
+        (domain.upper_symbolic, domain.upper_quantity),
+    ):
+        point = _piecewise_selected_boundary_point(
             expression,
             variable,
-            endpoint,
+            endpoint_symbolic,
+            endpoint_quantity,
             domain,
             context,
             overrides=overrides,
             source_label=source_label,
-            roles=("boundary",),
         )
         if point is not None:
             points.append(point)
@@ -2598,18 +2723,16 @@ def _solve_piecewise_extrema_exact(
         unbounded_above = unbounded_above or left_up or right_up
         unbounded_below = unbounded_below or left_down or right_down
         unresolved = unresolved or left_unresolved or right_unresolved
-        if left_point is not None:
-            points.append(left_point)
 
-        at_point = _evaluate_extrema_candidate(
+        at_point = _piecewise_selected_boundary_point(
             expression,
             variable,
             breakpoint_symbolic,
+            breakpoint_quantity,
             domain,
             context,
             overrides=overrides,
             source_label=source_label,
-            roles=("boundary",),
         )
         if at_point is not None:
             local_role = _piecewise_local_role_at_breakpoint(
@@ -2627,9 +2750,15 @@ def _solve_piecewise_extrema_exact(
                     at_point,
                     tuple(dict.fromkeys((*at_point.roles, local_role))),
                 )
-            points.append(at_point)
-        if right_point is not None:
-            points.append(right_point)
+
+        points.extend(
+            _piecewise_breakpoint_records(
+                left_point,
+                at_point,
+                right_point,
+                context,
+            )
+        )
 
     return (*_piecewise_global_roles(
         points,
