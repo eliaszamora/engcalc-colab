@@ -16,7 +16,7 @@ def render_presented_plot(result: PlotResult):
         or result.ylabel is not None
     )
     if result.title is not None:
-        axis.set_title(result.title, pad=10, fontweight="semibold")
+        axis.set_title(result.title, pad=10, fontweight=700)
     if result.xlabel is not None:
         axis.set_xlabel(_axis_label(result.xlabel, result.x_values[0]))
     if result.ylabel is not None:

@@ -17,22 +17,22 @@ def value_of(engine, source):
 def test_general_matrix_uses_one_based_two_index_lookup():
     engine = EngineeringEngine()
     eval_cell(engine, "A = [a, b; c, d]")
-    assert value_of(engine, "x = A[2,1]") == sp.Symbol("c")
-    assert value_of(engine, "y = A[1,2]") == sp.Symbol("b")
+    assert value_of(engine, "x = A[2,1]") == engine.resolve_symbol("c")
+    assert value_of(engine, "y = A[1,2]") == engine.resolve_symbol("b")
 
 
 def test_row_and_column_vectors_accept_one_based_single_index_lookup():
     engine = EngineeringEngine()
     eval_cell(engine, "r = [a, b, c]\nv = [x; y; z]")
-    assert value_of(engine, "p = r[2]") == sp.Symbol("b")
-    assert value_of(engine, "q = v[3]") == sp.Symbol("z")
+    assert value_of(engine, "p = r[2]") == engine.resolve_symbol("b")
+    assert value_of(engine, "q = v[3]") == engine.resolve_symbol("z")
 
 
 def test_two_indices_are_also_valid_for_row_and_column_vectors():
     engine = EngineeringEngine()
     eval_cell(engine, "r = [a, b, c]\nv = [x; y; z]")
-    assert value_of(engine, "p = r[1,3]") == sp.Symbol("c")
-    assert value_of(engine, "q = v[2,1]") == sp.Symbol("y")
+    assert value_of(engine, "p = r[1,3]") == engine.resolve_symbol("c")
+    assert value_of(engine, "q = v[2,1]") == engine.resolve_symbol("y")
 
 
 @pytest.mark.parametrize("source", [

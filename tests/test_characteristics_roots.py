@@ -343,3 +343,56 @@ def test_piecewise_unresolved_branch_adds_numeric_root_without_losing_exact_root
     assert [point.provenance for point in points] == ["exact", "numeric"]
     assert intervals == ()
     assert unresolved is False
+
+
+def test_solve_candidates_do_not_suppress_fallback_when_solveset_is_unresolved(monkeypatch):
+    context = NumericContext()
+    x = sp.Symbol("x")
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(3))
+    unresolved_set = sp.ConditionSet(
+        x,
+        sp.Eq(sp.exp(x) - 3*x, 0, evaluate=False),
+        sp.S.Reals,
+    )
+
+    monkeypatch.setattr(sp, "solveset", lambda *args, **kwargs: unresolved_set)
+    monkeypatch.setattr(
+        sp,
+        "solve",
+        lambda *args, **kwargs: [-sp.LambertW(-sp.Rational(1, 3))],
+    )
+
+    points, intervals, unresolved = solve_roots_exact(
+        sp.exp(x) - 3*x,
+        x,
+        domain,
+        context,
+    )
+    assert intervals == ()
+    assert unresolved is False
+    assert tuple(float(point.x_quantity.magnitude) for point in points) == pytest.approx(
+        (0.619061286735945, 1.512134551657842),
+        rel=1e-9,
+        abs=1e-10,
+    )
+    assert tuple(point.provenance for point in points) == ("exact", "numeric")
+
+
+def test_unevaluable_exact_candidate_forces_fallback_instead_of_confident_empty(monkeypatch):
+    context = NumericContext()
+    x = sp.Symbol("x")
+    u = sp.Symbol("u")
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(2))
+
+    monkeypatch.setattr(
+        sp,
+        "solveset",
+        lambda *args, **kwargs: sp.FiniteSet(u),
+    )
+
+    points, intervals, unresolved = solve_roots_exact(x - 1, x, domain, context)
+    assert intervals == ()
+    assert unresolved is False
+    assert len(points) == 1
+    assert float(points[0].x_quantity.magnitude) == pytest.approx(1.0, abs=1e-10)
+    assert points[0].provenance == "numeric"

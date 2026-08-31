@@ -139,3 +139,44 @@ def test_numeric_context_reset_clears_values():
     ctx.reset()
 
     assert ctx.get("L") is None
+
+
+def test_closed_real_sympy_numbers_evaluate_to_dimensionless_quantities():
+    ctx = NumericContext()
+    z = sp.Symbol("z")
+    values = (
+        sp.E,
+        -sp.LambertW(-sp.Rational(1, 3)),
+        sp.CRootOf(z**5 - z - 1, 0),
+    )
+    for value in values:
+        _, quantity = ctx.evaluate_symbolic(value)
+        assert quantity.dimensionless
+        assert float(quantity.magnitude) == pytest.approx(
+            float(sp.N(value, 30)), rel=1e-12, abs=1e-12
+        )
+
+
+@pytest.mark.parametrize("value", [sp.I, sp.oo, -sp.oo, sp.zoo, sp.nan])
+def test_closed_nonreal_or_nonfinite_sympy_values_are_rejected(value):
+    ctx = NumericContext()
+    with pytest.raises(EngEvaluationError):
+        ctx.evaluate_symbolic(value)
+
+
+def test_unit_literal_overrides_respects_explicit_and_stored_precedence():
+    ctx = NumericContext()
+    meter_symbol = sp.Symbol("m", real=True)
+
+    inferred = ctx.unit_literal_overrides(6 * meter_symbol)
+    assert inferred["m"] == ctx.ureg.Unit("meter")
+
+    explicit = ctx.ureg.Unit("centimeter")
+    assert ctx.unit_literal_overrides(
+        6 * meter_symbol, {"m": explicit}
+    )["m"] == explicit
+
+    ctx.values["m"] = ctx.ureg.Quantity(2, "second")
+    assert "m" not in ctx.unit_literal_overrides(6 * meter_symbol)
+    _, stored = ctx.evaluate_symbolic(6 * meter_symbol)
+    assert stored.to("second").magnitude == pytest.approx(12.0)

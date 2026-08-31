@@ -71,10 +71,14 @@ def extract_symbolic_breakpoints(
     variable: str,
 ) -> tuple[sp.Expr, ...]:
     """Return explicit direct breakpoints for ``variable`` in source traversal order."""
-    symbol = sp.Symbol(variable)
+    expression = sp.sympify(expression)
+    symbol = next(
+        (item for item in expression.free_symbols if item.name == variable),
+        sp.Symbol(variable, real=True),
+    )
     breakpoints: list[sp.Expr] = []
 
-    for piecewise in sp.preorder_traversal(sp.sympify(expression)):
+    for piecewise in sp.preorder_traversal(expression):
         if not isinstance(piecewise, sp.Piecewise):
             continue
         for _, condition in piecewise.args:

@@ -16,7 +16,7 @@ def test_simplify_maps_over_matrix_entries():
 
     result = run(engine, "B = simplify(A)")
 
-    x = sp.Symbol("x")
+    x = engine.resolve_symbol("x")
     assert isinstance(result.value, sp.ImmutableMatrix)
     assert result.value == sp.ImmutableMatrix([[x + 1, x - 1]])
 
@@ -27,7 +27,7 @@ def test_expand_maps_over_matrix_entries():
 
     result = run(engine, "B = expand(A)")
 
-    x = sp.Symbol("x")
+    x = engine.resolve_symbol("x")
     assert result.value == sp.ImmutableMatrix(
         [[x**2 + 2*x + 1, x**2 - 1]]
     )
@@ -39,7 +39,7 @@ def test_factor_maps_over_matrix_entries():
 
     result = run(engine, "B = factor(A)")
 
-    x = sp.Symbol("x")
+    x = engine.resolve_symbol("x")
     assert result.value == sp.ImmutableMatrix(
         [[(x - 1)*(x + 1), (x + 1)**2]]
     )
@@ -60,7 +60,7 @@ def test_diff_maps_over_matrix_entries_and_returns_immutable_matrix():
 
     result = run(engine, "B = diff(A, x)")
 
-    x = sp.Symbol("x")
+    x = engine.resolve_symbol("x")
     assert isinstance(result.value, sp.ImmutableMatrix)
     assert result.value == sp.ImmutableMatrix(
         [[2*x, sp.cos(x)], [3*x**2, 2]]
@@ -73,7 +73,7 @@ def test_definite_integral_maps_over_matrix_entries():
 
     result = run(engine, "B = integral(A, x, 0, L)")
 
-    L = sp.Symbol("L")
+    L = engine.resolve_symbol("L")
     assert isinstance(result.value, sp.ImmutableMatrix)
     assert result.value == sp.ImmutableMatrix(
         [[L**2 / 2, L**3 / 3], [L, L**2]]
@@ -96,9 +96,9 @@ def test_matrix_piecewise_derivative_is_entrywise_and_preserves_breakpoint_union
     function = engine.functions["dq"]
     assert function.derivative_variable == "x"
     assert set(function.derivative_breakpoints) == {
-        sp.Symbol("a"),
-        sp.Symbol("b"),
-        sp.Symbol("L"),
+        engine.resolve_symbol("a"),
+        engine.resolve_symbol("b"),
+        engine.resolve_symbol("L"),
     }
 
 

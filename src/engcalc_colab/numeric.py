@@ -131,6 +131,25 @@ class NumericContext:
             return self.ureg.Unit(_UNIT_ALIASES[name])
         raise EngEvaluationError(f"unknown target unit '{name}'")
 
+    def unit_literal_overrides(
+        self,
+        expression,
+        overrides: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Resolve free symbols that are direct supported unit literals.
+
+        Explicit overrides take precedence over stored numeric values, and stored
+        numeric values take precedence over interpreting a name as a unit alias.
+        """
+        fixed = dict(overrides or {})
+        for symbol in sp.sympify(expression).free_symbols:
+            name = symbol.name
+            if name in fixed or name in self.values:
+                continue
+            if name in _UNIT_ALIASES:
+                fixed[name] = self.resolve_target_unit_name(name)
+        return fixed
+
     def evaluate_unit_expression(self, expression: ast.Expression):
         """Evaluate a restricted target-unit expression without consulting numeric values."""
         try:
@@ -434,7 +453,10 @@ class NumericContext:
     ) -> tuple[tuple[int, Any], ...] | None:
         """Evaluate known coefficients of a polynomial while leaving its variable free."""
         expr = sp.sympify(expression)
-        symbol = sp.Symbol(variable)
+        symbol = next(
+            (item for item in expr.free_symbols if item.name == variable),
+            sp.Symbol(variable, real=True),
+        )
         try:
             polynomial = sp.Poly(expr, symbol)
         except PolynomialError:
@@ -750,7 +772,10 @@ class NumericContext:
         if not isinstance(expression, sp.Piecewise):
             return None
 
-        symbol = sp.Symbol(variable)
+        symbol = next(
+            (item for item in expression.free_symbols if item.name == variable),
+            sp.Symbol(variable, real=True),
+        )
         overrides = dict(overrides or {})
         operator_direct = {
             sp.StrictLessThan: "<",
@@ -837,11 +862,32 @@ class NumericContext:
             return math.pi
 
         if expr.is_Number:
+            if expr.is_real is not True or expr.is_finite is not True:
+                raise EngEvaluationError(
+                    "symbolic numeric value must be real and finite"
+                )
             if expr.is_Integer:
                 return int(expr)
             if expr.is_Rational:
                 return int(expr.p) / int(expr.q)
             return float(expr)
+
+        if (
+            not expr.free_symbols
+            and expr.is_number is True
+            and expr.func not in {sp.asin, sp.acos, sp.atan}
+        ):
+            evaluated = sp.N(expr, 50)
+            if evaluated.is_real is not True or evaluated.is_finite is not True:
+                raise EngEvaluationError(
+                    "symbolic numeric value must be real and finite"
+                )
+            try:
+                return float(evaluated)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise EngEvaluationError(
+                    f"unsupported closed symbolic numeric value '{sp.sstr(expr)}'"
+                ) from exc
 
         if expr.func == sp.Piecewise:
             return self._evaluate_piecewise(expr, substitutions)

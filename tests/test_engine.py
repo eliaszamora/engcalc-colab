@@ -16,7 +16,7 @@ M_0 = -q/2*(L-x)^2
 m_B = L-x
 Delta_B = integral(M_0*m_B/(E*I), x, 0, L)
 """)
-    q, L, E, I = sp.symbols("q L E I")
+    q, L, E, I = tuple(engine.resolve_symbol(name) for name in "q L E I".split())
     assert sp.simplify(results[-1].value + q*L**4/(8*E*I)) == 0
 
 
@@ -24,7 +24,7 @@ def test_function_assignment_and_call():
     engine = EngineeringEngine()
     eval_cell(engine, "V(x) = R_A - q*x")
     result = eval_cell(engine, "x_crit = solve(V(x) = 0, x)")[-1]
-    R_A, q = sp.symbols("R_A q")
+    R_A, q = tuple(engine.resolve_symbol(name) for name in "R_A q".split())
     assert sp.simplify(result.value - R_A/q) == 0
 
 
@@ -41,7 +41,7 @@ def test_supported_symbolic_operations():
 def test_abs_builds_sympy_absolute_value():
     engine = EngineeringEngine()
     result = eval_cell(engine, "A = abs(x - 3)")[-1]
-    x = sp.Symbol("x")
+    x = engine.resolve_symbol("x")
     assert result.value == sp.Abs(x - 3)
 
 
@@ -82,7 +82,7 @@ Delta_B = integral(M_0*m_B/(E*I), x, 0, L)
 f_BB = integral(m_B^2/(E*I), x, 0, L)
 R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
 """)
-    q, L, E, I = sp.symbols("q L E I")
+    q, L, E, I = tuple(engine.resolve_symbol(name) for name in "q L E I".split())
     values = {r.statement.target: r.value for r in results}
     assert sp.simplify(values["Delta_B"] + q*L**4/(8*E*I)) == 0
     assert sp.simplify(values["f_BB"] - L**3/(3*E*I)) == 0
@@ -137,7 +137,7 @@ R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
 """
     first = eval_cell(engine, cell)[-1].value
     second = eval_cell(engine, cell)[-1].value
-    q, L = sp.symbols("q L")
+    q, L = tuple(engine.resolve_symbol(name) for name in "q L".split())
     assert sp.simplify(first - 3*q*L/8) == 0
     assert sp.simplify(second - first) == 0
 
@@ -145,7 +145,7 @@ R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
 def test_sum_builds_unevaluated_symbolic_sum():
     engine = EngineeringEngine()
     result = eval_cell(engine, "S = sum(F_i, i, 0, n)")[-1]
-    F_i, i, n = sp.symbols("F_i i n")
+    F_i, i, n = tuple(engine.resolve_symbol(name) for name in "F_i i n".split())
     assert result.value == sp.Sum(F_i, (i, 0, n))
 
 

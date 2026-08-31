@@ -215,3 +215,66 @@ def test_continuous_piecewise_cusp_is_classified_from_same_region_neighbors():
     assert "global_min" in at_zero.roles
     assert intervals == ()
     assert not up and not down and not unresolved
+
+
+def test_piecewise_boundary_value_symbolic_is_selected_governing_branch():
+    context = NumericContext()
+    _assign(context, "a", "3*m")
+    _assign(context, "L", "6*m")
+    x, a, L = sp.symbols("x a L", real=True)
+    expr = sp.Piecewise((x-a, x < a), (2*(x-a), True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), L)
+
+    points, _, _, _, unresolved = solve_extrema_exact(expr, x, domain, context)
+    lower = next(point for point in points if sp.simplify(point.x_symbolic) == 0)
+    upper = next(point for point in points if sp.simplify(point.x_symbolic-L) == 0)
+    assert sp.simplify(lower.value_symbolic + a) == 0
+    assert sp.simplify(upper.value_symbolic - 2*(L-a)) == 0
+    assert lower.value_quantity.to("m").magnitude == pytest.approx(-3.0)
+    assert upper.value_quantity.to("m").magnitude == pytest.approx(6.0)
+    assert unresolved is False
+
+
+def test_continuous_piecewise_breakpoint_emits_only_at_with_dimensional_zero():
+    context = NumericContext()
+    _assign(context, "a", "3*m")
+    _assign(context, "L", "6*m")
+    x, a, L = sp.symbols("x a L", real=True)
+    expr = sp.Piecewise((x-a, x < a), (2*(x-a), True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), L)
+
+    points, _, _, _, unresolved = solve_extrema_exact(expr, x, domain, context)
+    at_a = [point for point in points if sp.simplify(point.x_symbolic-a) == 0]
+    assert [point.side for point in at_a] == ["at"]
+    assert at_a[0].value_quantity.to("m").magnitude == pytest.approx(0.0)
+    assert unresolved is False
+
+
+def test_piecewise_characteristic_missing_value_has_actionable_hint():
+    from engcalc_colab.errors import EngEvaluationError
+
+    context = NumericContext()
+    x, a = sp.symbols("x a", real=True)
+    expr = sp.Piecewise((x, x < a), (2*x, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    with pytest.raises(EngEvaluationError) as exc_info:
+        solve_extrema_exact(expr, x, domain, context)
+    message = str(exc_info.value)
+    assert "a" in message
+    assert "a := <value>*<unit>" in message
+
+
+def test_piecewise_substitution_missing_branch_symbol_has_actionable_hint():
+    from engcalc_colab.errors import EngEvaluationError
+
+    context = NumericContext()
+    x, q = sp.symbols("x q", real=True)
+    expr = sp.Piecewise((q*x, x < 2), (x, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    with pytest.raises(EngEvaluationError) as exc_info:
+        solve_extrema_exact(expr, x, domain, context)
+    message = str(exc_info.value)
+    assert "q" in message
+    assert "q := <value>*<unit>" in message

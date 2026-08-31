@@ -3,7 +3,8 @@ import math
 import pytest
 import sympy as sp
 
-import engcalc_colab.characteristics as characteristics
+import engcalc_colab.characteristics.candidates as candidates
+import engcalc_colab.characteristics.fallback as fallback
 from engcalc_colab.characteristics import (
     normalize_analysis_domain,
     solve_extrema_exact,
@@ -16,7 +17,7 @@ from engcalc_colab.numeric import NumericContext
 
 def _force_exact_solver_unresolved(monkeypatch):
     monkeypatch.setattr(
-        characteristics,
+        candidates,
         "_exact_real_solution_set",
         lambda expression, variable: ((), True),
     )
@@ -153,7 +154,7 @@ def test_piecewise_exact_and_numeric_roots_can_coexist(monkeypatch):
         return (), True
 
     monkeypatch.setattr(
-        characteristics,
+        candidates,
         "_exact_real_solution_set",
         selective_exact_solver,
     )
@@ -291,6 +292,6 @@ def test_extrema_uses_numeric_derivative_fallback_with_numeric_provenance(monkey
 
 
 def test_fallback_contract_constants_are_fixed():
-    assert characteristics._FALLBACK_SCAN_COUNT == 1025
-    assert characteristics._FALLBACK_REL_RESIDUAL_TOL == pytest.approx(1e-9)
-    assert characteristics._FALLBACK_X_DEDUP_REL_TOL == pytest.approx(1e-10)
+    assert fallback._FALLBACK_SCAN_COUNT == 1025
+    assert fallback._FALLBACK_REL_RESIDUAL_TOL == pytest.approx(1e-9)
+    assert fallback._FALLBACK_X_DEDUP_REL_TOL == pytest.approx(1e-10)

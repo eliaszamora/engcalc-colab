@@ -1,3 +1,5 @@
+import pytest
+
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.renderer import render_result
@@ -52,3 +54,24 @@ def test_engineering_factor_order_does_not_reorder_polynomial_terms():
     engine = EngineeringEngine()
     result = engine.evaluate(parse_cell("P = x^2 + 2*x + 1")[0])
     assert render_result(result) == r"P = x^{2} + 2 x + 1"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "roots(x-1, x, 0, 2)",
+        "intersections(x, 2-x, x, 0, 2)",
+        "extrema(-(x-1)^2, x, 0, 2)",
+    ],
+)
+def test_render_result_rejects_characteristic_results_with_targeted_guidance(source):
+    engine = EngineeringEngine()
+    result = engine.evaluate(parse_cell(source)[0])
+    with pytest.raises(
+        TypeError,
+        match=(
+            "render_result does not support characteristic results; "
+            "use render_characteristic_result"
+        ),
+    ):
+        render_result(result)

@@ -103,11 +103,12 @@ def test_parameter_sweep_passes_override_into_exact_characteristics():
     )
 
     peaks = [_global_point(series, "global_max") for series in result.series]
+    q_symbol = engine.resolve_symbol("q")
 
     assert [float(point.x_quantity.magnitude) for point in peaks] == pytest.approx(
         [1 / 3, 2 / 3]
     )
-    assert [point.x_symbolic for point in peaks] == [sp.Symbol("q"), sp.Symbol("q")]
+    assert [point.x_symbolic for point in peaks] == [q_symbol, q_symbol]
     assert [float(point.value_quantity.magnitude) for point in peaks] == pytest.approx(
         [2.0, 2.0]
     )
@@ -164,7 +165,7 @@ def test_constant_plot_does_not_expand_extremum_interval_into_duplicate_markers(
     assert len(_characteristic_requests(result)) == 1
 
 
-def test_envelope_deliberately_keeps_sampled_characteristic_path_until_v092():
+def test_envelope_deliberately_keeps_sampled_characteristic_path_until_v093():
     engine = EngineeringEngine()
     result = evaluate_cell(
         engine,
@@ -181,3 +182,20 @@ def test_envelope_deliberately_keeps_sampled_characteristic_path_until_v092():
         any(request.x_quantity is sample for sample in result.x_values)
         for request in requests
     )
+
+
+def test_plot_accepts_direct_unit_literal_bounds():
+    engine = EngineeringEngine()
+    result = evaluate_cell(
+        engine,
+        "L := 6*m\n"
+        "q := 12*kN/m\n"
+        "M(x) = q*x*(L-x)/2\n"
+        "plot(M(x), x, 0*m, 6000*mm)",
+    )
+
+    assert isinstance(result, PlotResult)
+    assert result.x_values[0].to("m").magnitude == pytest.approx(0.0)
+    assert result.x_values[-1].to("m").magnitude == pytest.approx(6.0)
+    peak = _global_point(result.series[0], "global_max")
+    assert peak.x_quantity.to("mm").magnitude == pytest.approx(3000.0)
