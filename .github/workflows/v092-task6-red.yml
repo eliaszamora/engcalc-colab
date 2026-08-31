@@ -24,6 +24,8 @@ jobs:
         run: python .github/scripts/v092_task6_green.py
       - name: Apply Task 6 structural zero-bound corrective
         run: python .github/scripts/v092_task6_corrective2.py
+      - name: Restore Task 6 characteristic diagnostics
+        run: python .github/scripts/v092_task6_diagnostic_corrective.py
       - name: Compile
         run: python -m compileall -q src/engcalc_colab
       - name: Run Task 6 public contracts
