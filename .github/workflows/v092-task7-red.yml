@@ -1,63 +1,55 @@
-name: v0.9.2 Task 7 RED
+name: v0.9.2 Task 7 GREEN
 
 on:
   push:
     branches:
       - feature/v0.9.2-audit-reliability
 
+permissions:
+  contents: write
+
 jobs:
-  task7-red:
+  task7-green:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
       - name: Install test dependencies
         run: python -m pip install -e '.[dev]' ipython
-      - name: Materialize runner-only Task 7 RED contracts
-        shell: bash
-        run: |
-          cat >> tests/test_characteristics_piecewise_extrema.py <<'PY'
-
-          def test_piecewise_boundary_value_symbolic_is_selected_governing_branch():
-              context = NumericContext()
-              _assign(context, "a", "3*m")
-              _assign(context, "L", "6*m")
-              x, a, L = sp.symbols("x a L", real=True)
-              expr = sp.Piecewise((x-a, x < a), (2*(x-a), True), evaluate=False)
-              domain = normalize_analysis_domain(context, sp.Integer(0), L)
-
-              points, _, _, _, unresolved = solve_extrema_exact(expr, x, domain, context)
-              lower = next(point for point in points if sp.simplify(point.x_symbolic) == 0)
-              upper = next(point for point in points if sp.simplify(point.x_symbolic-L) == 0)
-              assert sp.simplify(lower.value_symbolic + a) == 0
-              assert sp.simplify(upper.value_symbolic - 2*(L-a)) == 0
-              assert lower.value_quantity.to("m").magnitude == pytest.approx(-3.0)
-              assert upper.value_quantity.to("m").magnitude == pytest.approx(6.0)
-              assert unresolved is False
-
-
-          def test_continuous_piecewise_breakpoint_emits_only_at_with_dimensional_zero():
-              context = NumericContext()
-              _assign(context, "a", "3*m")
-              _assign(context, "L", "6*m")
-              x, a, L = sp.symbols("x a L", real=True)
-              expr = sp.Piecewise((x-a, x < a), (2*(x-a), True), evaluate=False)
-              domain = normalize_analysis_domain(context, sp.Integer(0), L)
-
-              points, _, _, _, unresolved = solve_extrema_exact(expr, x, domain, context)
-              at_a = [point for point in points if sp.simplify(point.x_symbolic-a) == 0]
-              assert [point.side for point in at_a] == ["at"]
-              assert at_a[0].value_quantity.to("m").magnitude == pytest.approx(0.0)
-              assert unresolved is False
-          PY
-      - name: Run Task 7 RED contracts only
+      - name: Apply Task 7 product and persistent tests
+        run: python .github/scripts/v092_task7_green.py
+      - name: Compile
+        run: python -m compileall -q src/engcalc_colab
+      - name: Run Task 7 contracts
         run: |
           python -m pytest tests/test_characteristics_piecewise_extrema.py -q \
             -k 'piecewise_boundary_value_symbolic_is_selected_governing_branch or continuous_piecewise_breakpoint_emits_only_at_with_dimensional_zero'
-      - name: Confirm existing discontinuous Piecewise contract remains GREEN
-        if: failure()
+      - name: Run discontinuous topology preservation contracts
         run: |
           python -m pytest tests/test_characteristics_piecewise_extrema.py -q \
             -k 'discontinuous_piecewise_preserves_left_at_right_values or dimensional_piecewise_breakpoint_preserves_exact_location_and_force_units'
+      - name: Run focused Task 7 regression
+        run: |
+          python -m pytest \
+            tests/test_characteristics_piecewise_extrema.py \
+            tests/test_characteristics_extrema.py -q
+      - name: Run complete source suite
+        run: python -m pytest -q
+      - name: Commit Task 7 patch
+        shell: bash
+        run: |
+          if git diff --quiet -- src/engcalc_colab tests; then
+            echo 'No Task 7 product or test patch to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/engcalc_colab/characteristics.py \
+            tests/test_characteristics_piecewise_extrema.py
+          git commit -m 'fix: normalize Piecewise extrema topology'
+          git push origin HEAD:feature/v0.9.2-audit-reliability
