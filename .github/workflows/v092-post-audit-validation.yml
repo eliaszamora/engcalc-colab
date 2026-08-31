@@ -117,14 +117,20 @@ jobs:
           /tmp/engcalc-wheel-venv/bin/python -m pip install "$wheel" 'pytest>=8'
           mkdir -p /tmp/engcalc-wheel-tests
           cp -a tests /tmp/engcalc-wheel-tests/tests
+          cp README.md pyproject.toml /tmp/engcalc-wheel-tests/
+          test ! -e /tmp/engcalc-wheel-tests/src
+          test ! -e /tmp/engcalc-wheel-tests/engcalc_colab
           cd /tmp/engcalc-wheel-tests
           /tmp/engcalc-wheel-venv/bin/python - <<'PY'
           import engcalc_colab
           from pathlib import Path
           package_path = Path(engcalc_colab.__file__).resolve()
           print(f'WHEEL_IMPORT_PATH={package_path}')
+          print('SOURCE_FREE_SUPPORT_FILES=README.md,pyproject.toml')
           assert 'site-packages' in package_path.parts
           assert '/home/runner/work/engcalc-colab/engcalc-colab' not in str(package_path)
+          assert not Path('src').exists()
+          assert not Path('engcalc_colab').exists()
           print('SOURCE_FREE_IMPORT=PASS')
           PY
           /tmp/engcalc-wheel-venv/bin/python -m pytest -q tests
