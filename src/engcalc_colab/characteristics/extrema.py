@@ -932,8 +932,18 @@ def _piecewise_global_roles(
     ]
     maximum = max(magnitudes)
     minimum = min(magnitudes)
-    scale = max(1.0, *(abs(value) for value in magnitudes))
+    # One-sided limits are values the response approaches without reaching. They
+    # never earn a global role themselves, but a limit beyond every attained
+    # value proves the corresponding extreme is not attained by any point.
+    side_magnitudes = [
+        _extrema_magnitude_in_unit(point.value_quantity, canonical_unit, context)
+        for point in points
+        if point.side != "at" and point.value_quantity is not None
+    ]
+    scale = max(1.0, *(abs(value) for value in (*magnitudes, *side_magnitudes)))
     tolerance = 1e-12 * scale
+    unattained_above = any(value > maximum + tolerance for value in side_magnitudes)
+    unattained_below = any(value < minimum - tolerance for value in side_magnitudes)
 
     classified_points: list[CharacteristicPoint] = []
     for point in points:
@@ -946,12 +956,16 @@ def _piecewise_global_roles(
                 canonical_unit,
                 context,
             )
-            if not unbounded_above and math.isclose(
-                magnitude, maximum, rel_tol=1e-12, abs_tol=tolerance
+            if (
+                not unbounded_above
+                and not unattained_above
+                and math.isclose(magnitude, maximum, rel_tol=1e-12, abs_tol=tolerance)
             ):
                 roles.append("global_max")
-            if not unbounded_below and math.isclose(
-                magnitude, minimum, rel_tol=1e-12, abs_tol=tolerance
+            if (
+                not unbounded_below
+                and not unattained_below
+                and math.isclose(magnitude, minimum, rel_tol=1e-12, abs_tol=tolerance)
             ):
                 roles.append("global_min")
         classified_points.append(_extrema_point_with_roles(point, tuple(dict.fromkeys(roles))))
@@ -1158,6 +1172,44 @@ def _solve_piecewise_extrema_exact(
                 context,
             )
         )
+
+    # A region edge that is open *and* coincides with an analysis-domain bound has
+    # no neighbouring region to pair with, so the loop above never reaches it. Its
+    # one-sided limit is still the only description of how the response behaves
+    # there, and without it an unattained supremum is invisible to role assignment.
+    for region, side, edge_symbolic, edge_quantity, is_closed in (
+        (
+            regions[0],
+            "right",
+            regions[0].lower_symbolic,
+            regions[0].lower_quantity,
+            regions[0].lower_closed,
+        ),
+        (
+            regions[-1],
+            "left",
+            regions[-1].upper_symbolic,
+            regions[-1].upper_quantity,
+            regions[-1].upper_closed,
+        ),
+    ):
+        if is_closed:
+            continue
+        edge_point, edge_up, edge_down, edge_unresolved = _piecewise_one_sided_point(
+            region,
+            variable,
+            sp.sympify(edge_symbolic),
+            edge_quantity,
+            context,
+            side=side,
+            overrides=overrides,
+            source_label=source_label,
+        )
+        unbounded_above = unbounded_above or edge_up
+        unbounded_below = unbounded_below or edge_down
+        unresolved = unresolved or edge_unresolved
+        if edge_point is not None:
+            points.append(edge_point)
 
     return (*_piecewise_global_roles(
         points,

@@ -56,6 +56,27 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
     if solution_set is sp.S.Reals:
         return _ExactDiscovery((), complete=True)
 
+    # SymPy can express a finite exhaustive candidate family as an intersection
+    # with Reals when parameter values decide whether individual candidates are
+    # real, e.g. Intersection({-sqrt(-a), sqrt(-a)}, Reals).  That shape is still
+    # complete: evaluate each finite candidate against the registered numeric
+    # context and discard the ones that become complex.  Do not generalize this
+    # to arbitrary polynomial solve() output: a Union containing a ConditionSet
+    # can coexist with a finite factor, so solve() may expose only a partial hint.
+    if isinstance(solution_set, sp.Intersection):
+        finite_parts = [
+            part for part in solution_set.args if isinstance(part, sp.FiniteSet)
+        ]
+        remaining_parts = [
+            part for part in solution_set.args if not isinstance(part, sp.FiniteSet)
+        ]
+        if (
+            len(finite_parts) == 1
+            and remaining_parts
+            and all(part is sp.S.Reals for part in remaining_parts)
+        ):
+            return _ExactDiscovery(tuple(finite_parts[0]), complete=True)
+
     # An unresolved solveset means any result from solve() is only a candidate
     # hint. It can improve exact provenance, but it cannot prove completeness.
     try:
@@ -95,7 +116,13 @@ def _normalize_candidate_quantity(context, quantity, domain: AnalysisDomain):
 
 
 def _candidate_in_domain(quantity, domain: AnalysisDomain) -> bool:
-    magnitude = float(quantity.to(domain.unit).magnitude)
+    try:
+        magnitude = float(quantity.to(domain.unit).magnitude)
+    except TypeError:
+        # A complex candidate location never lies inside a real analysis domain.
+        # solve() can return such candidates when a registered parameter leaves
+        # the sign of a radicand undetermined, e.g. sqrt(-a) for x**2 + a.
+        return False
     lower = float(domain.lower_quantity.magnitude)
     upper = float(domain.upper_quantity.magnitude)
     tolerance = 1e-12 * max(1.0, abs(lower), abs(upper), abs(upper - lower))
