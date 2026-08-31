@@ -59,10 +59,25 @@ jobs:
               message = str(exc_info.value)
               assert "a" in message
               assert "a := <value>*<unit>" in message
+
+
+          def test_piecewise_substitution_missing_branch_symbol_has_actionable_hint():
+              from engcalc_colab.errors import EngEvaluationError
+
+              context = NumericContext()
+              x, q = sp.symbols("x q", real=True)
+              expr = sp.Piecewise((q*x, x < 2), (x, True), evaluate=False)
+              domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+              with pytest.raises(EngEvaluationError) as exc_info:
+                  solve_extrema_exact(expr, x, domain, context)
+              message = str(exc_info.value)
+              assert "q" in message
+              assert "q := <value>*<unit>" in message
           PY
       - name: Run Task 8 RED contracts
         run: |
           python -m pytest \
             tests/test_renderer.py \
             tests/test_characteristics_piecewise_extrema.py -q \
-            -k 'render_result_rejects_characteristic_results_with_targeted_guidance or piecewise_characteristic_missing_value_has_actionable_hint'
+            -k 'render_result_rejects_characteristic_results_with_targeted_guidance or piecewise_characteristic_missing_value_has_actionable_hint or piecewise_substitution_missing_branch_symbol_has_actionable_hint'
