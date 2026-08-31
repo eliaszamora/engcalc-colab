@@ -52,3 +52,14 @@ jobs:
           expect_fail n4_symbolic_abs tests/test_v092_post_audit_regressions.py::test_n4_extrema_simplifies_decidable_abs_symbolic_boundary_values
           git diff --check
           echo "POST_AUDIT_RED_CONTRACT=PASS"
+
+  n1-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev]'
+      - run: python .github/scripts/v092_post_audit_n1_diagnostic.py
