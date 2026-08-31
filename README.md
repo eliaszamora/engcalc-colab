@@ -2,12 +2,12 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.9.1**.
+Current version: **0.9.2**.
 
 
 ## v0.9.2 reliability work
 
-The 0.9.2 reliability work hardens exact characteristic analysis without changing the released-version label yet. Characteristic solving remains exact-first; when exact discovery is incomplete, EngCalc supplements it with a deterministic numerical fallback instead of silently returning an empty result. Engine-created engineering symbols are explicitly real, and accepted exact candidates keep exact provenance when exact and numerical candidates coincide.
+EngCalc 0.9.2 hardens exact characteristic analysis and packages the completed audit-remediation reliability work as the current release. Characteristic solving remains exact-first; when exact discovery is incomplete, EngCalc supplements it with a deterministic numerical fallback instead of silently returning an empty result. Engine-created engineering symbols are explicitly real, and accepted exact candidates keep exact provenance when exact and numerical candidates coincide.
 
 Previously fragile transcendental and non-elementary cases are covered end to end with normal EngCalc syntax:
 
@@ -897,6 +897,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.9.2** — audit remediation and reliability: resilient exact-first characteristic discovery with deterministic fallback, explicit-real engineering symbols, consistent direct unit bounds, normalized Piecewise topology, exact characteristic presentation polish, declared IPython runtime support, and permanent Python 3.10–3.14 CI.
 - **0.9.1** — exact-first roots, intersections and extrema with unit-aware Piecewise semantics, deterministic numerical fallback, and authoritative ordinary-plot extrema metadata.
 - **0.9.0** — native exact symbolic matrices/vectors, one-based indexing, matrix-valued CAS functions, Pint-backed per-entry numerical matrices, exact `solve(A, b)`, guarded rank/RREF/norm/eigen analysis, native MathJax matrix presentation, Piecewise-cell integration and indexed scalar table/plot/envelope workflows.
 - **0.8.0** — restricted unit-aware Piecewise expressions with partial numerical cases, exact breakpoint-enriched shared plot grids, segmented discontinuous rendering, Piecewise calculus semantics, diagnostics and real `%%eng` acceptance.
@@ -918,4 +919,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.9.1`.
+Version: `0.9.2`.
