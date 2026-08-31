@@ -1,27 +1,46 @@
-name: v0.9.2 Task 9 GREEN
+name: v0.9.2 Task 9 IDEMPOTENT
 
 on:
   push:
     branches:
       - feature/v0.9.2-audit-reliability
 
-permissions:
-  contents: write
-
 jobs:
-  task9-green:
+  task9-idempotent:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
       - name: Install test dependencies
         run: python -m pip install -e '.[dev]' ipython
-      - name: Apply Task 9 product and persistent tests
-        run: python .github/scripts/v092_task9_green.py
+      - name: Verify Task 9 product is already materialized
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          presentation = Path('src/engcalc_colab/presentation.py').read_text()
+          plotting = Path('src/engcalc_colab/plotting.py').read_text()
+          plotting_tests = Path('tests/test_plotting.py').read_text()
+          rendering_tests = Path('tests/test_characteristics_rendering.py').read_text()
+
+          assert 'fontweight="semibold"' not in presentation
+          assert 'fontweight="semibold"' not in plotting
+          assert 'fontweight=600' in presentation
+          assert plotting.count('fontweight=600') >= 4
+          assert 'import sympy as sp' in plotting
+          assert 'def _compact_exact_x_label(' in plotting
+          assert 'x_symbolic: Any | None = None' in plotting
+          assert 'x_symbolic=point.x_symbolic' in plotting
+          assert 'x_symbolic=request.x_symbolic' in plotting
+          assert 'def test_presented_plot_title_does_not_emit_font_weight_warning' in plotting_tests
+          assert 'def test_presented_plot_title_uses_numeric_weight_600' in plotting_tests
+          assert 'def test_exact_rational_characteristic_label_uses_symbolic_x_coordinate' in plotting_tests
+          assert 'def test_characteristic_rendering_normalizes_negative_zero_with_tolerance' in rendering_tests
+          print('Task 9 product/test markers already materialized.')
+          PY
       - name: Compile
         run: python -m compileall -q src/engcalc_colab
       - name: Run Task 9 contracts
@@ -39,19 +58,13 @@ jobs:
             tests/test_characteristic_requests.py -q
       - name: Run complete source suite
         run: python -m pytest -q
-      - name: Commit Task 9 patch
+      - name: Verify no second Task 9 product patch
         shell: bash
         run: |
           if git diff --quiet -- src/engcalc_colab tests; then
             echo 'No Task 9 product or test patch to commit.'
-            exit 0
+          else
+            echo 'Unexpected Task 9 product/test diff after validation.'
+            git diff -- src/engcalc_colab tests
+            exit 1
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            src/engcalc_colab/presentation.py \
-            src/engcalc_colab/plotting.py \
-            tests/test_plotting.py \
-            tests/test_characteristics_rendering.py
-          git commit -m 'fix: polish exact characteristic presentation'
-          git push origin HEAD:feature/v0.9.2-audit-reliability
