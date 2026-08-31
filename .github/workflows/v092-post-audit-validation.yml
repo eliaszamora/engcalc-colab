@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   task3-green:
+    # Task 3 idempotence rerun on the materialized product commit.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
