@@ -1,12 +1,13 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is REQUALIFIED on `fix/v0.9.2-post-audit-remediation`. Tasks 1–4 are COMPLETE; Task 5 requalification, wheel validation, idempotence and cleanup are COMPLETE. PR creation + permanent PR CI + explicit merge approval gate are NEXT. Released `main` remains untouched._
+_Last updated: 2026-08-31 — PR #35 (post-audit remediation of N-1…N-4) is MERGED into `main`. A follow-up independent audit of the merged result found two further defects, A-1 and A-2, both preexisting rather than PR #35 regressions. Their correction is COMPLETE on `fix/v0.9.2-audit-a1-a2` at 911/911 GREEN and awaits PR review and explicit merge approval._
 
 ## Canonical baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical released `main`: **`a1dc97b40df64a1e351f1957bd910cde0232a38e`** — `docs: close EngCalc 0.9.2 integration`.
+- Canonical released `main`: **`e073320ba988b5956187932b4fb33fa4015a1e80`** — merge of PR #35.
 - 0.9.2 release merge: PR #34, merge commit `a42b6bcd18c54794f02d032e8b376747c35bba87`.
+- Post-audit remediation merge: PR #35, merge commit `e073320ba988b5956187932b4fb33fa4015a1e80`; suite at that commit: **901/901 GREEN**.
 - Runtime/package version: **0.9.2**.
 - `requires-python = ">=3.10"`.
 - Runtime dependency includes `ipython>=8.18`.
@@ -301,13 +302,73 @@ No temporary harness, version bump, exact-envelope work, or unrelated refactor r
 - IPython remains declared.
 - Python 3.10–3.14 remains the advertised and requalified range.
 
+## Follow-up audit of merged PR #35 — findings A-1 and A-2
+
+An independent adversarial audit of `e073320` confirmed that N-1…N-4 are genuinely
+resolved and that PR #35 introduced no regressions. It then demonstrated two further
+defects. Both were verified against the pre-PR#35 tree `a1dc97b` and reproduce there
+identically, so **both are preexisting, not PR #35 regressions**.
+
+### A-1 — complex exact candidates surfaced an internal `TypeError`
+
+- Reproduction: `a := 1` / `f(x) = x^2 + a` / `roots(f(x), x, -2, 2)`.
+- Was: `EngEvaluationError: symbolic evaluation failed: float() argument must be a string or a real number, not 'complex'`.
+- Now: `n = 0`, the correct answer. The literal control `x^2 + 1` already returned `n = 0`, so the two forms now agree.
+- Cause: `sp.solve(x**2 + a, x)` yields `±sqrt(-a)`, whose `is_real` is `None` rather
+  than `False`, so the three-valued filter in `_exact_real_solution_set` let them
+  through; `_candidate_in_domain` then called `float()` on a complex magnitude.
+- Correction, in `characteristics/candidates.py`:
+  - `_candidate_in_domain` treats a complex location as outside a real domain.
+    This is the shared chokepoint for roots, extrema, intersections and the
+    Piecewise analysis, so one guard covers every caller.
+  - `_exact_real_solution_set` marks a discovery `complete` when the response is a
+    polynomial in the variable, because `solve()` is a complete solver there. A
+    polynomial whose candidates are all complex is a proven absence of real roots,
+    not an unresolved case needing numeric confirmation.
+- The numeric-fallback contract was deliberately left untouched:
+  `test_unresolved_region_without_validated_root_raises_instead_of_guessing` still
+  passes. Relaxing it was tried and rejected — a 1025-point scan can miss a narrow
+  root, so an empty scan on a non-polynomial response must stay an error.
+
+### A-2 — false `global_max` when the upper bound coincides with a strict breakpoint
+
+- Reproduction: `a := 3*m` / `s(x) = piecewise(x, x < a, x - a)` / `extrema(s(x), x, 0, a)`.
+- Was: both endpoints reported `global_max` with value `0`, contradicted by `s(2*m) = 2 m`.
+- Now: the left-sided limit at `a` is reported with value `a`, and no attained point
+  claims `global_max`, because the supremum is approached and never reached.
+- Cause: one-sided limits were emitted only at junctions between consecutive
+  regions. A region whose open edge coincides with an analysis-domain bound has no
+  neighbour, so its limit was never emitted and global roles were computed as if the
+  region's supremum were its endpoint value.
+- Correction, in `characteristics/extrema.py`:
+  - `_solve_piecewise_extrema_exact` emits the one-sided limit for the first region's
+    open lower edge and the last region's open upper edge.
+  - `_piecewise_global_roles` suppresses `global_max` / `global_min` when a one-sided
+    limit lies strictly beyond every attained value, mirroring how `unbounded_above`
+    and `unbounded_below` already suppress them.
+- Interior breakpoints, non-strict (`<=`) conditions, a breakpoint on the lower bound,
+  and interior extrema inside the open region are all unchanged; each has a control test.
+
+### Validation
+
+- New contract file: `tests/test_v092_audit_a1_a2_regressions.py`, 10 tests, written
+  RED before the corrections. Six encoded the defects; four are controls against
+  over-correction (real roots still found, interior breakpoint unchanged, `<=`
+  still attains its maximum, interior extremum preserved).
+- Full suite on `fix/v0.9.2-audit-a1-a2`: **911/911 GREEN** (901 + 10), Python 3.14.3.
+- No production behaviour outside these two paths was modified.
+
 ## Exact next action
 
-1. Open PR from `fix/v0.9.2-post-audit-remediation` to `main` titled approximately `fix: remediate EngCalc 0.9.2 post-audit correctness defects`.
+1. Review PR from `fix/v0.9.2-audit-a1-a2` to `main`, titled `fix: correct complex root candidates and open-edge Piecewise extrema`.
 2. Require the permanent `.github/workflows/ci.yml` pull-request matrix for Python 3.10–3.14 to complete GREEN.
 3. Do **not** merge automatically.
-4. After permanent PR CI is GREEN, stop and request explicit user approval before merge.
+4. Stop and request explicit user approval before merge.
 
 ## How to resume
 
-Read this file first. The corrective implementation, requalification, wheel validation, multi-Python matrix, idempotence and temporary-infrastructure cleanup are complete. Work remains isolated on `fix/v0.9.2-post-audit-remediation`. The next operation is PR creation + permanent PR CI. Never merge without explicit user approval and never invoke Codex without explicit authorization.
+Read this file first. `main` is at `e073320` with PR #35 merged and 901/901 GREEN. The
+follow-up audit findings A-1 and A-2 are corrected on `fix/v0.9.2-audit-a1-a2` at
+911/911 GREEN, with ten RED-first regression contracts. The next operation is PR review
+plus the permanent CI matrix. Never merge without explicit user approval and never
+invoke Codex without explicit authorization.

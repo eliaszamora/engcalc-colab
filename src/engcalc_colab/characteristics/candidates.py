@@ -80,7 +80,12 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         if candidate.is_real is False:
             continue
         candidates.append(candidate)
-    return _ExactDiscovery(tuple(candidates), complete=False)
+    # solve() is a complete solver for polynomials: it returns every root, so a
+    # polynomial response needs no numerical confirmation even when solveset was
+    # unresolved. Candidates that turn out to be complex once their parameters
+    # are substituted are then a proven absence of real roots, not a gap.
+    complete = bool(sp.sympify(expression).is_polynomial(variable))
+    return _ExactDiscovery(tuple(candidates), complete=complete)
 
 
 def _normalize_candidate_quantity(context, quantity, domain: AnalysisDomain):
@@ -95,7 +100,13 @@ def _normalize_candidate_quantity(context, quantity, domain: AnalysisDomain):
 
 
 def _candidate_in_domain(quantity, domain: AnalysisDomain) -> bool:
-    magnitude = float(quantity.to(domain.unit).magnitude)
+    try:
+        magnitude = float(quantity.to(domain.unit).magnitude)
+    except TypeError:
+        # A complex candidate location never lies inside a real analysis domain.
+        # solve() can return such candidates when a registered parameter leaves
+        # the sign of a radicand undetermined, e.g. sqrt(-a) for x**2 + a.
+        return False
     lower = float(domain.lower_quantity.magnitude)
     upper = float(domain.upper_quantity.magnitude)
     tolerance = 1e-12 * max(1.0, abs(lower), abs(upper), abs(upper - lower))
