@@ -1179,6 +1179,15 @@ class _Evaluator(ast.NodeVisitor):
         raise EngSyntaxError(f"unsupported function '{name}'")
 
 
+    def _resolve_domain_numeric_value(self, node: ast.AST):
+        value = self._resolve_numeric_user_function_argument(node)
+        if isinstance(value, sp.Expr):
+            _, value = self.engine.numeric_context.evaluate_symbolic(
+                value,
+                overrides=self.engine.numeric_context.unit_literal_overrides(value),
+            )
+        return value
+
     @staticmethod
     def _operation_specific_characteristic_error(name: str, exc: EngEvaluationError):
         message = str(exc)
@@ -1223,10 +1232,20 @@ class _Evaluator(ast.NodeVisitor):
         lower_expression = self.visit(lower_node)
         upper_expression = self.visit(upper_node)
         try:
+            try:
+                lower_quantity = self._resolve_domain_numeric_value(lower_node)
+                upper_quantity = self._resolve_domain_numeric_value(upper_node)
+            except EngEvaluationError as exc:
+                raise EngEvaluationError(
+                    "characteristic domain bound must be numerically resolvable: "
+                    + str(exc)
+                ) from None
             domain = normalize_analysis_domain(
                 self.engine.numeric_context,
                 lower_expression,
                 upper_expression,
+                lower_quantity=lower_quantity,
+                upper_quantity=upper_quantity,
             )
         except EngEvaluationError as exc:
             raise self._operation_specific_characteristic_error(name, exc) from None
@@ -1338,10 +1357,7 @@ class _Evaluator(ast.NodeVisitor):
         return response.comparison_expression
 
     def _resolve_table_numeric_value(self, node: ast.AST):
-        value = self._resolve_numeric_user_function_argument(node)
-        if isinstance(value, sp.Expr):
-            _, value = self.engine.numeric_context.evaluate_symbolic(value)
-        return value
+        return self._resolve_domain_numeric_value(node)
 
     def _evaluate_table(self, node: ast.Call):
         args = node.args
@@ -1681,8 +1697,8 @@ class _Evaluator(ast.NodeVisitor):
 
         start_expression = self.visit(start_node)
         end_expression = self.visit(end_node)
-        _, start_quantity = self.engine.numeric_context.evaluate_symbolic(start_expression)
-        _, end_quantity = self.engine.numeric_context.evaluate_symbolic(end_expression)
+        start_quantity = self._resolve_domain_numeric_value(start_node)
+        end_quantity = self._resolve_domain_numeric_value(end_node)
         start_quantity, end_quantity = self.engine.numeric_context.normalize_plot_bounds(
             start_quantity,
             end_quantity,
@@ -1693,6 +1709,8 @@ class _Evaluator(ast.NodeVisitor):
                 self.engine.numeric_context,
                 start_expression,
                 end_expression,
+                lower_quantity=start_quantity,
+                upper_quantity=end_quantity,
             )
 
         resolved_expressions = [

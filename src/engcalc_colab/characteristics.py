@@ -92,7 +92,10 @@ def _evaluate_domain_bound(context, expression: sp.Expr):
     if _has_explicit_nonfinite_value(expression):
         raise EngEvaluationError("characteristic domain bounds must be finite")
     try:
-        _, quantity = context.evaluate_symbolic(expression)
+        _, quantity = context.evaluate_symbolic(
+            expression,
+            overrides=context.unit_literal_overrides(expression),
+        )
     except EngEvaluationError as exc:
         raise EngEvaluationError(
             "characteristic domain bound must be numerically resolvable: " + str(exc)
@@ -110,11 +113,22 @@ def normalize_analysis_domain(
     context,
     lower_expression,
     upper_expression,
+    *,
+    lower_quantity=None,
+    upper_quantity=None,
 ) -> AnalysisDomain:
     lower_symbolic = sp.sympify(lower_expression)
     upper_symbolic = sp.sympify(upper_expression)
-    lower = _evaluate_domain_bound(context, lower_symbolic)
-    upper = _evaluate_domain_bound(context, upper_symbolic)
+    lower = (
+        lower_quantity
+        if lower_quantity is not None
+        else _evaluate_domain_bound(context, lower_symbolic)
+    )
+    upper = (
+        upper_quantity
+        if upper_quantity is not None
+        else _evaluate_domain_bound(context, upper_symbolic)
+    )
 
     try:
         lower, upper = context.normalize_plot_bounds(lower, upper)
@@ -206,30 +220,6 @@ def _candidate_in_domain(quantity, domain: AnalysisDomain) -> bool:
     return lower - tolerance <= magnitude <= upper + tolerance
 
 
-def _characteristic_literal_unit_overrides(
-    context,
-    expression: sp.Expr,
-    overrides: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Resolve unit aliases that remain symbolic inside characteristic expressions.
-
-    Symbolic formulas intentionally keep names such as ``m`` as SymPy symbols.
-    During physical validation of a characteristic point, however, a unit literal
-    such as ``7*m`` must be interpreted through the same Pint unit registry as
-    numeric input. Explicit overrides and stored numeric values always win.
-    """
-    fixed = dict(overrides or {})
-    for symbol in sp.sympify(expression).free_symbols:
-        name = symbol.name
-        if name in fixed or name in context.values:
-            continue
-        try:
-            fixed[name] = context.resolve_target_unit_name(name)
-        except EngEvaluationError:
-            continue
-    return fixed
-
-
 def _evaluate_root_candidate(
     expression: sp.Expr,
     variable: sp.Symbol,
@@ -240,11 +230,8 @@ def _evaluate_root_candidate(
     overrides: dict[str, Any] | None,
     source_label: str | None,
 ) -> _CandidateEvaluation:
-    fixed_overrides = _characteristic_literal_unit_overrides(
-        context,
-        expression,
-        overrides,
-    )
+    fixed_overrides = context.unit_literal_overrides(expression, overrides)
+    fixed_overrides = context.unit_literal_overrides(candidate, fixed_overrides)
     try:
         _, x_quantity = context.evaluate_symbolic(candidate, overrides=fixed_overrides)
     except EngEvaluationError:
@@ -644,7 +631,7 @@ def _piecewise_boundary_candidates(
         try:
             _, quantity = context.evaluate_symbolic(
                 candidate,
-                overrides=dict(overrides or {}),
+                overrides=context.unit_literal_overrides(candidate, overrides),
             )
             quantity = _normalize_candidate_quantity(context, quantity, domain)
         except EngEvaluationError:
@@ -1360,7 +1347,7 @@ def _evaluate_intersection_candidate(
     left_label: str | None,
     right_label: str | None,
 ) -> CharacteristicPoint | None:
-    fixed_overrides = dict(overrides or {})
+    fixed_overrides = context.unit_literal_overrides(candidate, overrides)
     try:
         _, x_quantity = context.evaluate_symbolic(candidate, overrides=fixed_overrides)
     except EngEvaluationError:
@@ -1720,8 +1707,8 @@ def _evaluate_extrema_candidate(
     candidate_quantity=None,
     provenance: str = "exact",
 ) -> CharacteristicPoint | None:
-    fixed_overrides = dict(overrides or {})
     candidate = sp.sympify(candidate)
+    fixed_overrides = context.unit_literal_overrides(candidate, overrides)
     if candidate_quantity is None:
         try:
             _, x_quantity = context.evaluate_symbolic(candidate, overrides=fixed_overrides)

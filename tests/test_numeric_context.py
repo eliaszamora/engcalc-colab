@@ -162,3 +162,21 @@ def test_closed_nonreal_or_nonfinite_sympy_values_are_rejected(value):
     ctx = NumericContext()
     with pytest.raises(EngEvaluationError):
         ctx.evaluate_symbolic(value)
+
+
+def test_unit_literal_overrides_respects_explicit_and_stored_precedence():
+    ctx = NumericContext()
+    meter_symbol = sp.Symbol("m", real=True)
+
+    inferred = ctx.unit_literal_overrides(6 * meter_symbol)
+    assert inferred["m"] == ctx.ureg.Unit("meter")
+
+    explicit = ctx.ureg.Unit("centimeter")
+    assert ctx.unit_literal_overrides(
+        6 * meter_symbol, {"m": explicit}
+    )["m"] == explicit
+
+    ctx.values["m"] = ctx.ureg.Quantity(2, "second")
+    assert "m" not in ctx.unit_literal_overrides(6 * meter_symbol)
+    _, stored = ctx.evaluate_symbolic(6 * meter_symbol)
+    assert stored.to("second").magnitude == pytest.approx(12.0)

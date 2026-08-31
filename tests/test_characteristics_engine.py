@@ -144,3 +144,41 @@ def test_engine_extrema_reversed_domain_diagnostic_names_operation_and_line():
         match=r"line 2: extrema domain requires lower < upper",
     ):
         evaluate_cell(engine, source)
+
+
+def _task6_seeded_engine():
+    engine = EngineeringEngine()
+    evaluate_cell(
+        engine,
+        "L := 6*m\n"
+        "q := 12*kN/m\n"
+        "M(x) = q*x*(L-x)/2\n"
+        "M2(x) = q*x*(L-x)/3\n"
+        "V(x) = q*(L/2-x)",
+    )
+    return engine
+
+
+def test_direct_unit_literals_are_consistent_across_domain_bearing_apis():
+    engine = _task6_seeded_engine()
+
+    roots = evaluate_cell(engine, "roots(V(x), x, 0*m, 6*m)")
+    extrema = evaluate_cell(engine, "extrema(M(x), x, 0*m, 6000*mm)")
+    intersections = evaluate_cell(
+        engine, "intersections(M(x), M2(x), x, 0*m, 6*m)"
+    )
+    plot = evaluate_cell(engine, "plot(M(x), x, 0*m, 6*m)")
+    table = evaluate_cell(engine, "table(M(x), x, 0*m, 6*m, 5)")
+
+    assert roots.points[0].x_quantity.to("m").magnitude == pytest.approx(3.0)
+    peak = next(point for point in extrema.points if "global_max" in point.roles)
+    assert peak.x_quantity.to("mm").magnitude == pytest.approx(3000.0)
+    assert len(intersections.points) == 2
+    assert plot.x_values[-1].to("m").magnitude == pytest.approx(6.0)
+    assert table.point_values[-1].to("m").magnitude == pytest.approx(6.0)
+
+
+def test_direct_unit_literal_bounds_reject_incompatible_domain_units():
+    engine = _task6_seeded_engine()
+    with pytest.raises(EngEvaluationError, match="incompatible"):
+        evaluate_cell(engine, "roots(V(x), x, 0*m, 2*s)")

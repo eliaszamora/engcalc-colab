@@ -182,3 +182,20 @@ def test_envelope_deliberately_keeps_sampled_characteristic_path_until_v092():
         any(request.x_quantity is sample for sample in result.x_values)
         for request in requests
     )
+
+
+def test_plot_accepts_direct_unit_literal_bounds():
+    engine = EngineeringEngine()
+    result = evaluate_cell(
+        engine,
+        "L := 6*m\n"
+        "q := 12*kN/m\n"
+        "M(x) = q*x*(L-x)/2\n"
+        "plot(M(x), x, 0*m, 6000*mm)",
+    )
+
+    assert isinstance(result, PlotResult)
+    assert result.x_values[0].to("m").magnitude == pytest.approx(0.0)
+    assert result.x_values[-1].to("m").magnitude == pytest.approx(6.0)
+    peak = _global_point(result.series[0], "global_max")
+    assert peak.x_quantity.to("mm").magnitude == pytest.approx(3000.0)

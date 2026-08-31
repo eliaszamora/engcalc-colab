@@ -131,6 +131,25 @@ class NumericContext:
             return self.ureg.Unit(_UNIT_ALIASES[name])
         raise EngEvaluationError(f"unknown target unit '{name}'")
 
+    def unit_literal_overrides(
+        self,
+        expression,
+        overrides: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Resolve free symbols that are direct supported unit literals.
+
+        Explicit overrides take precedence over stored numeric values, and stored
+        numeric values take precedence over interpreting a name as a unit alias.
+        """
+        fixed = dict(overrides or {})
+        for symbol in sp.sympify(expression).free_symbols:
+            name = symbol.name
+            if name in fixed or name in self.values:
+                continue
+            if name in _UNIT_ALIASES:
+                fixed[name] = self.resolve_target_unit_name(name)
+        return fixed
+
     def evaluate_unit_expression(self, expression: ast.Expression):
         """Evaluate a restricted target-unit expression without consulting numeric values."""
         try:
