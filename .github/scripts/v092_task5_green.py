@@ -93,6 +93,19 @@ text = replace_once(
     extrema_new,
     "characteristics.extrema variable",
 )
+
+# A scaled absolute response c*Abs(g(x)), with c independent of x, has all
+# interior extrema among zeros of g (cusps) and stationary points of g. Solving
+# those smooth equations avoids differentiating Abs directly into sign/Piecewise
+# forms that are not physically evaluable by NumericContext.
+stationary_old = '''    derivative = sp.simplify(sp.diff(expression, variable))\n    stationary_points, stationary_intervals, derivative_unresolved = solve_roots_exact(\n        derivative,\n        variable,\n        domain,\n        context,\n        overrides=overrides,\n        source_label=source_label,\n    )\n    if stationary_intervals:\n        derivative_unresolved = True\n\n    for stationary in stationary_points:\n'''
+stationary_new = '''    independent_factor, dependent_factor = expression.as_independent(\n        variable,\n        as_Add=False,\n    )\n    if (\n        dependent_factor.func == sp.Abs\n        and variable not in independent_factor.free_symbols\n    ):\n        inner_expression = sp.sympify(dependent_factor.args[0])\n        cusp_points, cusp_intervals, cusp_unresolved = solve_roots_exact(\n            inner_expression,\n            variable,\n            domain,\n            context,\n            overrides=overrides,\n            source_label=source_label,\n        )\n        stationary_candidates = list(cusp_points)\n        derivative_unresolved = bool(cusp_unresolved or cusp_intervals)\n\n        inner_derivative = sp.simplify(sp.diff(inner_expression, variable))\n        if variable in inner_derivative.free_symbols:\n            smooth_points, smooth_intervals, smooth_unresolved = solve_roots_exact(\n                inner_derivative,\n                variable,\n                domain,\n                context,\n                overrides=overrides,\n                source_label=source_label,\n            )\n            stationary_candidates.extend(smooth_points)\n            derivative_unresolved = bool(\n                derivative_unresolved or smooth_unresolved or smooth_intervals\n            )\n        stationary_points = _deduplicate_root_points(stationary_candidates, domain)\n    else:\n        derivative = sp.simplify(sp.diff(expression, variable))\n        stationary_points, stationary_intervals, derivative_unresolved = solve_roots_exact(\n            derivative,\n            variable,\n            domain,\n            context,\n            overrides=overrides,\n            source_label=source_label,\n        )\n        if stationary_intervals:\n            derivative_unresolved = True\n\n    for stationary in stationary_points:\n'''
+text = replace_once(
+    text,
+    stationary_old,
+    stationary_new,
+    "characteristics scaled Abs extrema candidates",
+)
 path.write_text(text)
 
-print("Applied Task 5 real-symbol identity-safe migration.")
+print("Applied Task 5 real-symbol identity-safe migration with scaled-Abs extrema support.")
