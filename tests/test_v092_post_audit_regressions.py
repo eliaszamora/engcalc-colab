@@ -248,3 +248,25 @@ def test_n4_extrema_simplifies_decidable_abs_symbolic_boundary_values():
     assert upper.value_quantity.to("m").magnitude == pytest.approx(6.0)
     assert sp.simplify(lower.value_symbolic - a_symbol) == 0
     assert sp.simplify(upper.value_symbolic - (2 * L_symbol - 2 * a_symbol)) == 0
+
+
+def test_n4_extrema_respects_negative_registered_scalar_sign_in_display():
+    engine = EngineeringEngine()
+    result = evaluate_cell(
+        engine,
+        "a := -3*m\n"
+        "L := 6*m\n"
+        "f(x) = abs(a) + x\n"
+        "extrema(f(x), x, 0, L)",
+    )
+
+    assert isinstance(result, ExtremaResult)
+    lower = min(result.points, key=lambda point: point.x_quantity.to("m").magnitude)
+    upper = max(result.points, key=lambda point: point.x_quantity.to("m").magnitude)
+    a_symbol = engine.resolve_symbol("a")
+    L_symbol = engine.resolve_symbol("L")
+
+    assert lower.value_quantity.to("m").magnitude == pytest.approx(3.0)
+    assert upper.value_quantity.to("m").magnitude == pytest.approx(9.0)
+    assert sp.simplify(lower.value_symbolic + a_symbol) == 0
+    assert sp.simplify(upper.value_symbolic - (L_symbol - a_symbol)) == 0
