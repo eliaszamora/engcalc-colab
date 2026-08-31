@@ -84,68 +84,14 @@ def _fallback_canonical_unit(quantities, context):
     return context.ureg.dimensionless
 
 
-def _fallback_root_point(
+def _fallback_response_profile(
     expression: sp.Expr,
     variable: sp.Symbol,
-    x_magnitude: float,
     domain: AnalysisDomain,
     context,
-    canonical_unit,
-    response_scale: float,
     *,
     overrides: dict[str, Any] | None,
-    source_label: str | None,
-) -> CharacteristicPoint | None:
-    if not math.isfinite(x_magnitude):
-        return None
-    lower = float(domain.lower_quantity.to(domain.unit).magnitude)
-    upper = float(domain.upper_quantity.to(domain.unit).magnitude)
-    span = abs(upper - lower)
-    x_tolerance = _FALLBACK_X_DEDUP_REL_TOL * max(1.0, span)
-    if x_magnitude < lower - x_tolerance or x_magnitude > upper + x_tolerance:
-        return None
-    if x_magnitude < lower:
-        x_magnitude = lower
-    elif x_magnitude > upper:
-        x_magnitude = upper
-
-    x_quantity = context.ureg.Quantity(x_magnitude, domain.unit)
-    value_quantity = _fallback_response_quantity(
-        expression,
-        variable,
-        x_quantity,
-        context,
-        overrides=overrides,
-    )
-    residual = _fallback_magnitude_in_unit(value_quantity, canonical_unit, context)
-    if residual is None:
-        return None
-    relative_residual = abs(residual) / max(1.0, response_scale)
-    if relative_residual > _FALLBACK_REL_RESIDUAL_TOL:
-        return None
-
-    return CharacteristicPoint(
-        x_symbolic=sp.Float(x_magnitude, 17),
-        x_quantity=x_quantity,
-        value_symbolic=sp.Float(residual, 17),
-        value_quantity=value_quantity,
-        provenance="numeric",
-        side="at",
-        roles=("root",),
-        source_label=source_label,
-    )
-
-
-def _fallback_roots(
-    expression: sp.Expr,
-    variable: sp.Symbol,
-    domain: AnalysisDomain,
-    context,
-    *,
-    overrides: dict[str, Any] | None = None,
-    source_label: str | None = None,
-) -> tuple[CharacteristicPoint, ...]:
-    expression = sp.sympify(expression)
+):
     lower = float(domain.lower_quantity.to(domain.unit).magnitude)
     upper = float(domain.upper_quantity.to(domain.unit).magnitude)
     span = upper - lower
@@ -179,6 +125,102 @@ def _fallback_roots(
             "characteristic numerical fallback could not validate a solution set"
         )
     response_scale = max(abs(value) for value in finite_values)
+    return lower, upper, x_magnitudes, canonical_unit, values, response_scale
+
+
+def _fallback_validated_residual(
+    value_quantity,
+    canonical_unit,
+    response_scale: float,
+    context,
+):
+    residual = _fallback_magnitude_in_unit(value_quantity, canonical_unit, context)
+    if residual is None:
+        return None
+    relative_residual = abs(residual) / max(1.0, response_scale)
+    if relative_residual > _FALLBACK_REL_RESIDUAL_TOL:
+        return None
+    return residual
+
+
+def _fallback_root_point(
+    expression: sp.Expr,
+    variable: sp.Symbol,
+    x_magnitude: float,
+    domain: AnalysisDomain,
+    context,
+    canonical_unit,
+    response_scale: float,
+    *,
+    overrides: dict[str, Any] | None,
+    source_label: str | None,
+) -> CharacteristicPoint | None:
+    if not math.isfinite(x_magnitude):
+        return None
+    lower = float(domain.lower_quantity.to(domain.unit).magnitude)
+    upper = float(domain.upper_quantity.to(domain.unit).magnitude)
+    span = abs(upper - lower)
+    x_tolerance = _FALLBACK_X_DEDUP_REL_TOL * max(1.0, span)
+    if x_magnitude < lower - x_tolerance or x_magnitude > upper + x_tolerance:
+        return None
+    if x_magnitude < lower:
+        x_magnitude = lower
+    elif x_magnitude > upper:
+        x_magnitude = upper
+
+    x_quantity = context.ureg.Quantity(x_magnitude, domain.unit)
+    value_quantity = _fallback_response_quantity(
+        expression,
+        variable,
+        x_quantity,
+        context,
+        overrides=overrides,
+    )
+    residual = _fallback_validated_residual(
+        value_quantity,
+        canonical_unit,
+        response_scale,
+        context,
+    )
+    if residual is None:
+        return None
+
+    return CharacteristicPoint(
+        x_symbolic=sp.Float(x_magnitude, 17),
+        x_quantity=x_quantity,
+        value_symbolic=sp.Float(residual, 17),
+        value_quantity=value_quantity,
+        provenance="numeric",
+        side="at",
+        roles=("root",),
+        source_label=source_label,
+    )
+
+
+def _fallback_roots(
+    expression: sp.Expr,
+    variable: sp.Symbol,
+    domain: AnalysisDomain,
+    context,
+    *,
+    overrides: dict[str, Any] | None = None,
+    source_label: str | None = None,
+) -> tuple[CharacteristicPoint, ...]:
+    expression = sp.sympify(expression)
+    (
+        lower,
+        upper,
+        x_magnitudes,
+        canonical_unit,
+        values,
+        response_scale,
+    ) = _fallback_response_profile(
+        expression,
+        variable,
+        domain,
+        context,
+        overrides=overrides,
+    )
 
     def residual_callback(value):
         x_magnitude = float(value)
