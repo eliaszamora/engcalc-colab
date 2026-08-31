@@ -55,3 +55,21 @@ def test_v092_audit_abs_extrema_has_global_minimum_at_cusp():
     minimum = next(point for point in result.points if "global_min" in point.roles)
     assert float(minimum.x_quantity.magnitude) == pytest.approx(2.0)
     assert float(minimum.value_quantity.magnitude) == pytest.approx(0.0)
+
+
+def test_engine_symbols_are_real_by_contract():
+    engine = EngineeringEngine()
+    assert engine.resolve_symbol("x").is_real is True
+
+
+def test_dimensional_abs_extrema_keeps_units_and_cusp_minimum():
+    result = evaluate_cell(
+        EngineeringEngine(),
+        "L := 4*m\n"
+        "q := 2*kN/m\n"
+        "M(x) = q*(x-L/2)\n"
+        "extrema(abs(M(x)), x, 0, L)",
+    )
+    minimum = next(point for point in result.points if "global_min" in point.roles)
+    assert minimum.x_quantity.to("m").magnitude == pytest.approx(2.0)
+    assert minimum.value_quantity.to("kN").magnitude == pytest.approx(0.0)
