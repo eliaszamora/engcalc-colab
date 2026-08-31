@@ -22,7 +22,7 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_characteristics_fallback.py \
-            tests/test_roots.py \
+            tests/test_characteristics_roots.py \
             tests/test_characteristics_acceptance.py
       - name: Verify released baseline suite remains GREEN
         run: |
