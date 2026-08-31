@@ -9,16 +9,83 @@ permissions:
   contents: read
 
 jobs:
-  pre-refactor:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Materialize Task 12 decomposition
+        run: python .github/scripts/v092_task12_split.py
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e '.[dev]'
-      - name: Compile pre-refactor source
+      - name: Verify stable public imports
+        run: |
+          python - <<'PY'
+          from engcalc_colab.characteristics import (
+              AnalysisDomain,
+              normalize_analysis_domain,
+              solve_roots_exact,
+              solve_intersections_exact,
+              solve_extrema_exact,
+          )
+          print("characteristics public import PASS")
+          PY
+      - name: Compile decomposed source
         run: python -m compileall -q src/engcalc_colab
-      - name: Run complete pre-refactor suite
+      - name: Run complete source suite
         run: python -m pytest -q
+      - name: Run focused characteristic and integration regression
+        run: |
+          python -m pytest \
+            tests/test_characteristics*.py \
+            tests/test_v092_audit_regressions.py \
+            tests/test_v092_risk_probes.py \
+            tests/test_plotting.py \
+            tests/test_magic.py \
+            tests/test_matrix*.py -q
+      - name: Verify decomposition shape
+        shell: bash
+        run: |
+          test ! -e src/engcalc_colab/characteristics.py
+          for file in __init__.py domain.py candidates.py fallback.py roots.py intersections.py extrema.py piecewise_analysis.py; do
+            test -f "src/engcalc_colab/characteristics/$file"
+          done
+          if grep -R -n -E 'characteristics\._|monkeypatch\.setattr\(characteristics,' tests --include='test_*.py'; then
+            echo 'Unadapted private characteristics test target remains.'
+            exit 1
+          fi
+
+  commit:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Materialize Task 12 decomposition
+        run: python .github/scripts/v092_task12_split.py
+      - name: Verify and commit Task 12 refactor
+        shell: bash
+        run: |
+          git add -A -- \
+            src/engcalc_colab/characteristics.py \
+            src/engcalc_colab/characteristics \
+            tests/test_characteristics_fallback.py
+          unexpected=$(git status --porcelain | awk '{print $2}' | grep -Ev '^(src/engcalc_colab/characteristics\.py|src/engcalc_colab/characteristics/.*|tests/test_characteristics_fallback\.py)$' || true)
+          if [ -n "$unexpected" ]; then
+            echo 'Unexpected Task 12 working-tree paths:'
+            echo "$unexpected"
+            exit 1
+          fi
+          if git diff --cached --quiet; then
+            echo 'No Task 12 product or test patch to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'refactor: split characteristic solver by responsibility'
+          git push origin HEAD:feature/v0.9.2-audit-reliability
