@@ -17,7 +17,7 @@ def test_matrix_assignment_builds_immutable_matrix():
     value = value_of(engine, "A = [a, b; c, d]")
     assert isinstance(value, sp.ImmutableMatrix)
     assert value.shape == (2, 2)
-    assert value == sp.ImmutableMatrix([[sp.Symbol("a"), sp.Symbol("b")], [sp.Symbol("c"), sp.Symbol("d")]])
+    assert value == sp.ImmutableMatrix([[engine.resolve_symbol("a"), engine.resolve_symbol("b")], [engine.resolve_symbol("c"), engine.resolve_symbol("d")]])
 
 
 def test_row_and_column_vector_orientation_is_preserved():
@@ -36,8 +36,8 @@ def test_matrix_addition_and_subtraction_are_exact():
     plus = value_of(engine, "C = A + B")
     minus = value_of(engine, "D = A - B")
     assert isinstance(plus, sp.ImmutableMatrix)
-    assert plus == sp.ImmutableMatrix([[sp.Symbol("a") + 1, sp.Symbol("b") + 2], [sp.Symbol("c") + 3, sp.Symbol("d") + 4]])
-    assert minus == sp.ImmutableMatrix([[sp.Symbol("a") - 1, sp.Symbol("b") - 2], [sp.Symbol("c") - 3, sp.Symbol("d") - 4]])
+    assert plus == sp.ImmutableMatrix([[engine.resolve_symbol("a") + 1, engine.resolve_symbol("b") + 2], [engine.resolve_symbol("c") + 3, engine.resolve_symbol("d") + 4]])
+    assert minus == sp.ImmutableMatrix([[engine.resolve_symbol("a") - 1, engine.resolve_symbol("b") - 2], [engine.resolve_symbol("c") - 3, engine.resolve_symbol("d") - 4]])
 
 
 def test_scalar_matrix_multiplication_and_division_preserve_immutable_matrix():
@@ -46,20 +46,20 @@ def test_scalar_matrix_multiplication_and_division_preserve_immutable_matrix():
     left = value_of(engine, "L = 2*A")
     right = value_of(engine, "R = A*2")
     divided = value_of(engine, "D = A/2")
-    expected = sp.ImmutableMatrix([[2*sp.Symbol("a"), 2*sp.Symbol("b")], [2*sp.Symbol("c"), 2*sp.Symbol("d")]])
+    expected = sp.ImmutableMatrix([[2*engine.resolve_symbol("a"), 2*engine.resolve_symbol("b")], [2*engine.resolve_symbol("c"), 2*engine.resolve_symbol("d")]])
     assert left == expected
     assert right == expected
     assert isinstance(left, sp.ImmutableMatrix)
     assert isinstance(right, sp.ImmutableMatrix)
     assert isinstance(divided, sp.ImmutableMatrix)
-    assert divided == sp.ImmutableMatrix([[sp.Symbol("a")/2, sp.Symbol("b")/2], [sp.Symbol("c")/2, sp.Symbol("d")/2]])
+    assert divided == sp.ImmutableMatrix([[engine.resolve_symbol("a")/2, engine.resolve_symbol("b")/2], [engine.resolve_symbol("c")/2, engine.resolve_symbol("d")/2]])
 
 
 def test_matrix_multiplication_is_mathematical_not_elementwise():
     engine = EngineeringEngine()
     eval_cell(engine, "A = [a, b; c, d]\nB = [e, f; g, h]")
     product = value_of(engine, "C = A*B")
-    a, b, c, d, e, f, g, h = sp.symbols("a b c d e f g h")
+    a, b, c, d, e, f, g, h = tuple(engine.resolve_symbol(name) for name in "a b c d e f g h".split())
     assert product == sp.ImmutableMatrix([[a*e + b*g, a*f + b*h], [c*e + d*g, c*f + d*h]])
 
 
@@ -68,7 +68,7 @@ def test_row_times_column_and_column_times_row_keep_matrix_shapes():
     eval_cell(engine, "r = [a, b, c]\nv = [x; y; z]")
     dot_matrix = value_of(engine, "p = r*v")
     outer = value_of(engine, "Q = v*r")
-    a, b, c, x, y, z = sp.symbols("a b c x y z")
+    a, b, c, x, y, z = tuple(engine.resolve_symbol(name) for name in "a b c x y z".split())
     assert isinstance(dot_matrix, sp.ImmutableMatrix)
     assert dot_matrix.shape == (1, 1)
     assert dot_matrix[0, 0] == a*x + b*y + c*z
@@ -86,6 +86,6 @@ def test_integer_matrix_powers_are_exact_and_immutable():
     assert isinstance(identity, sp.ImmutableMatrix)
     assert identity == sp.eye(2).as_immutable()
     assert isinstance(square, sp.ImmutableMatrix)
-    assert square == (sp.ImmutableMatrix([[sp.Symbol("a"), sp.Symbol("b")], [sp.Symbol("c"), sp.Symbol("d")]]) ** 2)
+    assert square == (sp.ImmutableMatrix([[engine.resolve_symbol("a"), engine.resolve_symbol("b")], [engine.resolve_symbol("c"), engine.resolve_symbol("d")]]) ** 2)
     assert isinstance(inverse, sp.ImmutableMatrix)
     assert sp.simplify(inverse * engine.namespace["A"] - sp.eye(2)) == sp.zeros(2)

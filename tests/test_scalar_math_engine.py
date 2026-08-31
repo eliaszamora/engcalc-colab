@@ -27,7 +27,7 @@ def run(engine: EngineeringEngine, source: str):
 def test_scalar_math_functions_map_to_fixed_sympy_operations(source, expected):
     engine = EngineeringEngine()
     result = run(engine, source)
-    x = sp.Symbol("x")
+    x = engine.resolve_symbol("x")
 
     assert result.value == expected(x)
 
@@ -54,5 +54,5 @@ def test_scalar_math_composes_inside_user_function_symbolically():
 
     result = run(engine, "f(x) = sin(pi*x) + sqrt(x^2)")
 
-    x = sp.Symbol("x")
+    x = engine.resolve_symbol("x")
     assert result.value == sp.sin(sp.pi * x) + sp.sqrt(x**2)

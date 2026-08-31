@@ -16,7 +16,7 @@ def test_multiarg_function_binds_positionally():
 
     result = run(engine, "y = f(t, 2, 3)")
 
-    t = sp.Symbol("t")
+    t = engine.resolve_symbol("t")
     assert sp.simplify(result.value - (2*t + 3)) == 0
 
 
@@ -26,7 +26,7 @@ def test_parameter_binding_is_simultaneous_not_sequential():
 
     result = run(engine, "z = swap(y, x)")
 
-    x, y = sp.symbols("x y")
+    x, y = tuple(engine.resolve_symbol(name) for name in "x y".split())
     assert sp.expand(result.value) == y - x
 
 

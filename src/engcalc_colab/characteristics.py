@@ -64,6 +64,25 @@ def _coerce_exact_discovery(result) -> _ExactDiscovery:
     return _ExactDiscovery(tuple(candidates), complete=not bool(unresolved))
 
 
+def _analysis_variable(variable, *expressions):
+    if isinstance(variable, sp.Symbol):
+        return variable
+    if not isinstance(variable, str):
+        return variable
+    for expression in expressions:
+        symbols = sorted(
+            (
+                item
+                for item in sp.sympify(expression).free_symbols
+                if item.name == variable
+            ),
+            key=sp.default_sort_key,
+        )
+        if symbols:
+            return symbols[0]
+    return sp.Symbol(variable, real=True)
+
+
 def _has_explicit_nonfinite_value(expression: sp.Expr) -> bool:
     expression = sp.sympify(expression)
     return expression.has(sp.oo, -sp.oo, sp.zoo, sp.nan) or expression.is_finite is False
@@ -977,8 +996,7 @@ def solve_roots_exact(
     source_label: str | None = None,
 ):
     expression = sp.sympify(expression)
-    if isinstance(variable, str):
-        variable = sp.Symbol(variable)
+    variable = _analysis_variable(variable, expression)
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("roots variable must be a symbolic identifier")
 
@@ -1544,8 +1562,7 @@ def solve_intersections_exact(
 ):
     left_expression = sp.sympify(left_expression)
     right_expression = sp.sympify(right_expression)
-    if isinstance(variable, str):
-        variable = sp.Symbol(variable)
+    variable = _analysis_variable(variable, left_expression, right_expression)
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("intersections variable must be a symbolic identifier")
 
@@ -2008,8 +2025,7 @@ def _solve_continuous_extrema_exact(
     source_label: str | None = None,
 ):
     expression = sp.simplify(sp.sympify(expression))
-    if isinstance(variable, str):
-        variable = sp.Symbol(variable)
+    variable = _analysis_variable(variable, expression)
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("extrema variable must be a symbolic identifier")
     if expression.has(sp.Piecewise):
@@ -2051,17 +2067,53 @@ def _solve_continuous_extrema_exact(
         if point is not None:
             points.append(point)
 
-    derivative = sp.simplify(sp.diff(expression, variable))
-    stationary_points, stationary_intervals, derivative_unresolved = solve_roots_exact(
-        derivative,
+    independent_factor, dependent_factor = expression.as_independent(
         variable,
-        domain,
-        context,
-        overrides=overrides,
-        source_label=source_label,
+        as_Add=False,
     )
-    if stationary_intervals:
-        derivative_unresolved = True
+    if (
+        dependent_factor.func == sp.Abs
+        and variable not in independent_factor.free_symbols
+    ):
+        inner_expression = sp.sympify(dependent_factor.args[0])
+        cusp_points, cusp_intervals, cusp_unresolved = solve_roots_exact(
+            inner_expression,
+            variable,
+            domain,
+            context,
+            overrides=overrides,
+            source_label=source_label,
+        )
+        stationary_candidates = list(cusp_points)
+        derivative_unresolved = bool(cusp_unresolved or cusp_intervals)
+
+        inner_derivative = sp.simplify(sp.diff(inner_expression, variable))
+        if variable in inner_derivative.free_symbols:
+            smooth_points, smooth_intervals, smooth_unresolved = solve_roots_exact(
+                inner_derivative,
+                variable,
+                domain,
+                context,
+                overrides=overrides,
+                source_label=source_label,
+            )
+            stationary_candidates.extend(smooth_points)
+            derivative_unresolved = bool(
+                derivative_unresolved or smooth_unresolved or smooth_intervals
+            )
+        stationary_points = _deduplicate_root_points(stationary_candidates, domain)
+    else:
+        derivative = sp.simplify(sp.diff(expression, variable))
+        stationary_points, stationary_intervals, derivative_unresolved = solve_roots_exact(
+            derivative,
+            variable,
+            domain,
+            context,
+            overrides=overrides,
+            source_label=source_label,
+        )
+        if stationary_intervals:
+            derivative_unresolved = True
 
     for stationary in stationary_points:
         if not _quantity_strictly_inside_domain(stationary.x_quantity, domain):
@@ -2612,8 +2664,7 @@ def solve_extrema_exact(
     source_label: str | None = None,
 ):
     expression = sp.sympify(expression)
-    if isinstance(variable, str):
-        variable = sp.Symbol(variable)
+    variable = _analysis_variable(variable, expression)
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("extrema variable must be a symbolic identifier")
     if expression.has(sp.Piecewise):

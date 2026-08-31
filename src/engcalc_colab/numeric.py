@@ -434,7 +434,10 @@ class NumericContext:
     ) -> tuple[tuple[int, Any], ...] | None:
         """Evaluate known coefficients of a polynomial while leaving its variable free."""
         expr = sp.sympify(expression)
-        symbol = sp.Symbol(variable)
+        symbol = next(
+            (item for item in expr.free_symbols if item.name == variable),
+            sp.Symbol(variable, real=True),
+        )
         try:
             polynomial = sp.Poly(expr, symbol)
         except PolynomialError:
@@ -750,7 +753,10 @@ class NumericContext:
         if not isinstance(expression, sp.Piecewise):
             return None
 
-        symbol = sp.Symbol(variable)
+        symbol = next(
+            (item for item in expression.free_symbols if item.name == variable),
+            sp.Symbol(variable, real=True),
+        )
         overrides = dict(overrides or {})
         operator_direct = {
             sp.StrictLessThan: "<",
@@ -847,7 +853,11 @@ class NumericContext:
                 return int(expr.p) / int(expr.q)
             return float(expr)
 
-        if not expr.free_symbols and expr.is_number is True:
+        if (
+            not expr.free_symbols
+            and expr.is_number is True
+            and expr.func not in {sp.asin, sp.acos, sp.atan}
+        ):
             evaluated = sp.N(expr, 50)
             if evaluated.is_real is not True or evaluated.is_finite is not True:
                 raise EngEvaluationError(

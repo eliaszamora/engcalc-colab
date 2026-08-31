@@ -19,7 +19,7 @@ def test_rotation_matrix_function_binds_symbolically():
 
     result = run(engine, "A = R(phi)")
 
-    phi = sp.Symbol("phi")
+    phi = engine.resolve_symbol("phi")
     expected = sp.ImmutableMatrix(
         [[sp.cos(phi), -sp.sin(phi)], [sp.sin(phi), sp.cos(phi)]]
     )
@@ -36,7 +36,7 @@ def test_structural_stiffness_function_remains_exact_matrix():
 
     result = run(engine, "K = k(E0, I0, L0)")
 
-    E0, I0, L0 = sp.symbols("E0 I0 L0")
+    E0, I0, L0 = tuple(engine.resolve_symbol(name) for name in "E0 I0 L0".split())
     expected = sp.ImmutableMatrix(
         [
             [12 * E0 * I0 / L0**3, 6 * E0 * I0 / L0**2],
@@ -53,7 +53,7 @@ def test_matrix_function_parameter_binding_is_simultaneous():
 
     result = run(engine, "A = swap(y, x)")
 
-    x, y = sp.symbols("x y")
+    x, y = tuple(engine.resolve_symbol(name) for name in "x y".split())
     assert result.value == sp.ImmutableMatrix([[y, x], [x, y]])
 
 

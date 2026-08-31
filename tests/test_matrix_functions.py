@@ -33,7 +33,7 @@ def test_zeros_builds_requested_immutable_shape():
 def test_diag_builds_immutable_diagonal_matrix():
     engine = EngineeringEngine()
     value = value_of(engine, "D = diag(a,b,c)")
-    a, b, c = sp.symbols("a b c")
+    a, b, c = tuple(engine.resolve_symbol(name) for name in "a b c".split())
     assert isinstance(value, sp.ImmutableMatrix)
     assert value == sp.diag(a, b, c).as_immutable()
 
@@ -76,7 +76,7 @@ def test_transpose_returns_immutable_matrix():
     engine = EngineeringEngine()
     eval_cell(engine, "A = [a,b,c; d,e,f]")
     value = value_of(engine, "T = transpose(A)")
-    a, b, c, d, e, f = sp.symbols("a b c d e f")
+    a, b, c, d, e, f = tuple(engine.resolve_symbol(name) for name in "a b c d e f".split())
     assert isinstance(value, sp.ImmutableMatrix)
     assert value == sp.ImmutableMatrix([[a, d], [b, e], [c, f]])
 
@@ -85,7 +85,7 @@ def test_determinant_is_exact_scalar_expression():
     engine = EngineeringEngine()
     eval_cell(engine, "A = [a,b; c,d]")
     value = value_of(engine, "delta = det(A)")
-    a, b, c, d = sp.symbols("a b c d")
+    a, b, c, d = tuple(engine.resolve_symbol(name) for name in "a b c d".split())
     assert sp.expand(value - (a*d - b*c)) == 0
 
 
@@ -101,7 +101,7 @@ def test_trace_is_exact_scalar_expression():
     engine = EngineeringEngine()
     eval_cell(engine, "A = [a,b; c,d]")
     value = value_of(engine, "t = trace(A)")
-    a, d = sp.symbols("a d")
+    a, d = tuple(engine.resolve_symbol(name) for name in "a d".split())
     assert value == a + d
 
 

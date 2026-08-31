@@ -207,7 +207,7 @@ class EngineeringEngine:
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
         if name not in self.symbols:
-            self.symbols[name] = sp.Symbol(name)
+            self.symbols[name] = sp.Symbol(name, real=True)
         return self.symbols[name]
 
     def resolve_name(self, name: str):
