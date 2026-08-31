@@ -1,3 +1,4 @@
+# Idempotence recheck after Task 2 product commit.
 name: v0.9.2 Task 2 GREEN
 
 on:
@@ -46,7 +47,7 @@ jobs:
           status=$?
           set -e
           if [ "$status" -ne 1 ]; then
-            echo "Expected Task 1 audit regressions to remain RED before Tasks 3/5; got status $status"
+            echo "Expected remaining Task 1 regressions to stay RED before Tasks 3/5; got status $status"
             exit 1
           fi
       - name: Commit product patch when changed
