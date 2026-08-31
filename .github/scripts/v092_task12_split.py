@@ -257,7 +257,7 @@ from .candidates import (
     _solve_continuous_zero_set,
 )
 from .domain import AnalysisDomain, _analysis_variable, _quantity_is_zero
-from .fallback import _FALLBACK_REL_RESIDUAL_TOL
+from .fallback import _FALLBACK_REL_RESIDUAL_TOL, _fallback_roots
 from .piecewise_analysis import (
     _normalize_piecewise_breakpoint_quantity,
     _point_is_covered_by_interval,
