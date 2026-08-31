@@ -5,6 +5,41 @@
 Current version: **0.9.1**.
 
 
+## v0.9.2 reliability work
+
+The 0.9.2 reliability work hardens exact characteristic analysis without changing the released-version label yet. Characteristic solving remains exact-first; when exact discovery is incomplete, EngCalc supplements it with a deterministic numerical fallback instead of silently returning an empty result. Engine-created engineering symbols are explicitly real, and accepted exact candidates keep exact provenance when exact and numerical candidates coincide.
+
+Previously fragile transcendental and non-elementary cases are covered end to end with normal EngCalc syntax:
+
+```text
+roots(log(x)-1, x, 1, 10)
+roots(exp(x)-3*x, x, 0, 3)
+roots(x^5-x-1, x, 0, 2)
+intersections(log(x), 1+0*x, x, 1, 10)
+extrema(abs(x-2), x, 0, 4)
+```
+
+Natural unit-literal bounds use the same engineering grammar as plots and tables; no Python-qualified unit syntax is required:
+
+```text
+L := 6*m
+V(x) = x-L/2
+roots(V(x), x, 0*m, 6000*mm)
+```
+
+Continuous Piecewise boundaries preserve the selected governing branch and collapse equivalent left/at/right records to the physical `at` value, while real discontinuities retain meaningful one-sided values:
+
+```text
+a := 3*m
+L := 6*m
+f(x) = piecewise(x-a, x < a, 2*(x-a))
+extrema(f(x), x, 0*m, L)
+```
+
+Ordinary plots keep exact characteristic coordinates and annotation identity independently of their 201-point drawing grid. The characteristic solver is now split internally by responsibility under `engcalc_colab.characteristics` while its public imports remain stable. IPython is a declared runtime dependency, and permanent CI validates the advertised Python 3.10–3.14 range.
+
+`envelope(...)` deliberately remains sampled in 0.9.2. Exact envelope crossovers and governing intervals are planned for **0.9.3**.
+
 ## v0.9.1 Exact characteristic analysis
 
 EngCalc 0.9.1 adds exact-first engineering characteristic analysis with three standalone calls:
@@ -77,7 +112,7 @@ roots(cos(x) - x, x, 0, 1)
 
 This equation has no elementary closed-form root. EngCalc's deterministic fallback validates the numerical solution near `0.7390851332`; the standalone renderer marks the location with `≈` to distinguish numerical provenance from an exact symbolic result.
 
-Ordinary `plot(...)` series in 0.9.1 can already use exact global-extremum metadata independently of their 201-point drawing grid. Exact envelope crossovers and governing intervals remain intentionally deferred to **0.9.2**; `envelope(...)` keeps its existing sampled governing mathematics in 0.9.1.
+Ordinary `plot(...)` series in 0.9.1 can already use exact global-extremum metadata independently of their 201-point drawing grid. Exact envelope crossovers and governing intervals remain intentionally deferred to **0.9.3**; `envelope(...)` keeps its existing sampled governing mathematics through the 0.9.2 reliability work.
 
 ## v0.9.0 Matrix/CAS
 

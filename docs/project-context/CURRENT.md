@@ -1,12 +1,12 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-31 — EngCalc 0.9.1 remains the canonical released baseline. The approved 0.9.2 Audit Remediation & Reliability plan is active on `feature/v0.9.2-audit-reliability`. Tasks 1–12 are complete; Task 13 is next._
+_Last updated: 2026-08-31 — EngCalc 0.9.1 remains the canonical released baseline. The approved 0.9.2 Audit Remediation & Reliability plan is active on `feature/v0.9.2-audit-reliability`. Tasks 1–13 are complete; Task 14 is next._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Canonical released version: **EngCalc 0.9.1 Exact Characteristics**.
-- Canonical `main`: **`698696bb8854fa197851cdbb2f5e4c08ef22178b`**, re-verified unchanged through Task 12.
+- Canonical `main`: **`698696bb8854fa197851cdbb2f5e4c08ef22178b`**, re-verified unchanged through Task 13.
 - Active branch: **`feature/v0.9.2-audit-reliability`**.
 - Runtime/package version remains **0.9.1**; the 0.9.2 version bump is deferred to Task 14.
 - `requires-python` remains **`>=3.10`**.
@@ -34,8 +34,8 @@ _Last updated: 2026-08-31 — EngCalc 0.9.1 remains the canonical released basel
 10. **COMPLETE** — residual, tri-state-realness and simplify-cost audit risks investigated; all **not reproduced; no product change**.
 11. **COMPLETE** — permanent Python 3.10–3.14 CI + declared IPython runtime dependency + Python 3.10 TOML-test compatibility.
 12. **COMPLETE** — behavior-preserving `characteristics.py` package decomposition behind stable public imports.
-13. **NEXT** — broaden natural-input acceptance, rename v0.9.3 envelope acceptance, README reliability documentation, complete regression + hygiene.
-14. 0.9.2 version/release validation/PR; **STOP before merge**.
+13. **COMPLETE** — natural audit-remediation acceptance, 0.9.3 envelope deferral naming, README reliability documentation, full regression + hygiene.
+14. **NEXT** — 0.9.2 version/release validation/PR; **STOP before merge**.
 
 ## Product/evidence commits
 
@@ -52,7 +52,7 @@ _Last updated: 2026-08-31 — EngCalc 0.9.1 remains the canonical released basel
 
 Tasks 1–4 remain complete in branch history and covered by persistent audit/root/intersection regressions.
 
-## Reliability contract established through Task 12
+## Reliability contract established through Task 13
 
 - External audit findings receive EngCalc-owned RED reproduction before correction.
 - Exact-first remains authoritative; deterministic fallback supplements incomplete exact discovery.
@@ -138,30 +138,33 @@ Tasks 1–4 remain complete in branch history and covered by persistent audit/ro
 - `main` remains **`698696bb8854fa197851cdbb2f5e4c08ef22178b`**.
 - Runtime/package version remains **0.9.1**.
 
-## Exact next step — Task 13
+## Validation evidence — Task 13
 
-Task 13 is **acceptance/docs/full regression** and must not change solver product behavior.
+- Authoritative pre-persistence acceptance run: **`33364523103`**.
+- `compileall` PASS.
+- Natural acceptance + persistent audit regressions: **12/12 PASS**.
+- Characteristic plot/envelope integration: **10/10 PASS**; the sampled-envelope deferral test is now named `...until_v093` with assertions unchanged.
+- Complete source suite: **884/884 PASS**.
+- `git diff --check` PASS; no `src/engcalc_colab` modification is permitted or present in Task 13.
+- `.github/workflows/ci.yml` remains the only intentionally permanent workflow added relative to canonical `main`; the Task 13 workflow/scripts are temporary validation infrastructure.
+- README documents exact-first + deterministic fallback, natural unit-literal bounds, continuous Piecewise boundary semantics, exact ordinary-plot characteristic coordinates, Python 3.10–3.14 CI, declared IPython dependency, the `characteristics` package split, and exact-envelope deferral to 0.9.3 while the released-version label remains 0.9.1.
+- C-1 **COMPLETE** — `log`, incomplete transcendental discovery, quintic roots and log intersections no longer silently false-negative.
+- H-1 **COMPLETE** — engine engineering symbols are explicitly real; identity-sensitive reconstruction and `abs` extrema remain covered.
+- M-1 **COMPLETE** — direct supported unit literals are resolved consistently in domain-bearing APIs with dimensional-zero preservation.
+- M-2 **COMPLETE** — Piecewise boundary `value_symbolic` comes from the selected governing branch while parameters stay symbolic.
+- M-3 **COMPLETE** — continuous redundant sides collapse to `at`; discontinuities retain meaningful side topology after unit normalization.
+- L-series **COMPLETE** — renderer misuse, unresolved Piecewise diagnostics, Matplotlib title weight, exact rational annotation coordinates and negative-zero presentation are regression-covered.
+- Task 10 risk probes remain classified **not reproduced; no product change**.
+- Task 11 permanent Python 3.10–3.14 CI remains GREEN evidence with jobs `99386459903`, `99386460066`, `99386460051`, `99386460059`, `99386460063`.
+- Task 12 decomposition remains complete at product commit `cee4b39e19d2f6f2c49595d8a46efcdd6f1d58ce`, with stable public imports and no behavior change.
+- Runtime/package version remains **0.9.1**. No Task 13 product/solver source change exists.
 
-1. Extend `tests/test_characteristics_acceptance.py` with natural-input acceptance for:
-   - real engineering symbol + inverse trig (`asin(delta/L)`),
-   - unit-literal root domains (`domain=(0*m, 3*m)`),
-   - Piecewise extrema with units,
-   - transcendental roots and ordinary plot roots over `(0.0, 15.0)` with expected `2*pi` and `4*pi`.
-2. Rename `tests/test_v092_acceptance.py` to `tests/test_v093_envelope_acceptance.py` and rename only the envelope-deferment test to `...until_v093`; assertions stay unchanged.
-3. Add a concise README reliability note covering exact-first + deterministic fallback, explicit-real symbols, natural unit domains, Piecewise boundary selection, exact coordinate display validity, exact annotation identity, Python 3.10–3.14 CI, declared IPython dependency, the `characteristics` package split, and sampled-envelope deferment to 0.9.3. Use natural EngCalc syntax, not dependency-qualified syntax.
-4. Required gates:
-   - `python -m compileall -q src/engcalc_colab`
-   - `pytest -q tests/test_characteristics_acceptance.py tests/test_v093_envelope_acceptance.py`
-   - `pytest -q`
-   - `git diff --check`
-   - README hygiene grep for accidental `expression.`, `expression[`, `matplotlib.`, `plt.`, `sp.`, `sympy.`, `np.` syntax.
-5. Refresh this file with exact Task 13 pass counts and handoff commands.
-6. Commit only README/context/acceptance changes as **`docs: complete 0.9.2 reliability acceptance`** after GREEN.
-7. Do not start Task 14 until Task 13 is fully closed. Task 14 performs the 0.9.2 version/release validation/PR and must STOP before merge.
+## Exact next step — Task 14
+
+Task 14 is the **0.9.2 release task**. Execute the approved plan in order: prove intentional version RED; bump every release surface to 0.9.2; run pre-wheel source gates; build and inspect the real wheel; record wheel SHA-256; run an external clean-environment smoke; run the complete installed-wheel suite with repository source unavailable; repeat the complete source suite; remove release-only temporary infrastructure while retaining permanent `ci.yml`; update this handoff with authoritative release evidence; open the release PR titled `release: EngCalc 0.9.2 audit remediation and reliability`; then **STOP before merge and request explicit user approval**.
 
 ## Still deferred / open
 
-- Task 13: acceptance/docs/full regression.
 - Task 14: 0.9.2 version/release validation/PR; STOP before merge.
 - Separate deferred issues: `no_vertical_scroll()`, multiline ordinary non-matrix call parsing, generalized structural eigenproblems.
 - 0.9.3: Exact Envelopes / Governing Intervals.
@@ -179,10 +182,10 @@ Task 13 is **acceptance/docs/full regression** and must not change solver produc
 
 - **0.9.0 Matrix/CAS:** COMPLETE + MERGED.
 - **0.9.1 Exact Characteristics:** COMPLETE + RELEASE-VALIDATED + MERGED.
-- **0.9.2 Audit Remediation & Reliability:** **Tasks 1–12 COMPLETE; Task 13 NEXT**.
+- **0.9.2 Audit Remediation & Reliability:** **Tasks 1–13 COMPLETE; Task 14 NEXT**.
 - **0.9.3:** Exact Envelopes / Governing Intervals.
 - **0.9.4:** Named Response Cases / Combinations.
 
 ## How to resume in a new conversation
 
-Read this file first. Canonical released baseline is `main@698696bb8854fa197851cdbb2f5e4c08ef22178b`, EngCalc 0.9.1. Active branch is `feature/v0.9.2-audit-reliability`; runtime/package version is still 0.9.1. Tasks 1–12 are complete. Task 12 product commit is `cee4b39e19d2f6f2c49595d8a46efcdd6f1d58ce`; final idempotent run `33362287774` passed 881/881 full + 347/347 focused and commit job `99396580569` reported `No Task 12 product or test patch to commit.` Cleanup `6ccf182cef34fc3874793e2b8c5bf0816b13a92d` removed only temporary Task 12 infrastructure; permanent CI remains. Task 13 is next: acceptance tests + v0.9.3 envelope-test rename + README reliability note + full regression/hygiene, then commit `docs: complete 0.9.2 reliability acceptance`. Never invoke Codex without explicit authorization.
+Read this file first. Canonical released baseline remains `main@698696bb8854fa197851cdbb2f5e4c08ef22178b`, EngCalc 0.9.1. Active branch is `feature/v0.9.2-audit-reliability`; runtime/package version is still 0.9.1. Tasks 1–13 are complete. Task 13 authoritative acceptance run is `33364523103` with 12/12 natural/audit acceptance, 10/10 plot integration and 884/884 complete source tests; no `src/` product change is part of Task 13. Permanent Python 3.10–3.14 CI remains. Task 14 is next and must perform real-wheel release validation and open the 0.9.2 PR, then STOP before merge for explicit user approval. Never invoke Codex without explicit authorization.

@@ -165,7 +165,7 @@ def test_constant_plot_does_not_expand_extremum_interval_into_duplicate_markers(
     assert len(_characteristic_requests(result)) == 1
 
 
-def test_envelope_deliberately_keeps_sampled_characteristic_path_until_v092():
+def test_envelope_deliberately_keeps_sampled_characteristic_path_until_v093():
     engine = EngineeringEngine()
     result = evaluate_cell(
         engine,
