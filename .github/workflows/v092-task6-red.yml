@@ -43,7 +43,13 @@ jobs:
             tests/test_characteristics_plot_integration.py \
             tests/test_plotting.py -q
       - name: Run table regression
-        run: python -m pytest tests/test_engineering_tables.py -q
+        run: |
+          python -m pytest \
+            tests/test_table_acceptance.py \
+            tests/test_table_engine.py \
+            tests/test_table_parser.py \
+            tests/test_table_points.py \
+            tests/test_piecewise_table.py -q
       - name: Run complete source suite
         run: python -m pytest -q
       - name: Commit Task 6 patch
