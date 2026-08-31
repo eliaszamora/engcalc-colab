@@ -35,7 +35,18 @@ jobs:
       - name: Compile decomposed source
         run: python -m compileall -q src/engcalc_colab
       - name: Run complete source suite
-        run: python -m pytest -q
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q -x > /tmp/task12-pytest.log 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo '--- Task 12 first failure (tail) ---'
+            tail -n 140 /tmp/task12-pytest.log
+            exit "$status"
+          fi
+          cat /tmp/task12-pytest.log
       - name: Run focused characteristic and integration regression
         run: |
           python -m pytest \
