@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on `fix/v0.9.2-post-audit-remediation`. The released 0.9.2 baseline remains untouched on `main`; Task 1 (reproduction + N-1 diagnosis) is complete and Task 2 (shared residual-validation fix for N-1/N-2) is NEXT._
+_Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on `fix/v0.9.2-post-audit-remediation`. Tasks 1–2 are COMPLETE. Task 3 (N-3 unit-literal propagation) is NEXT. Released `main` remains untouched._
 
 ## Canonical baseline
 
@@ -33,8 +33,8 @@ _Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on 
 ## Corrective task status
 
 1. **COMPLETE** — baseline + N-1/N-2/N-3/N-4 persistent reproductions + N-1 supported-version diagnosis.
-2. **NEXT** — fix N-1/N-2 by unifying exact-candidate and fallback relative-residual validation.
-3. **PENDING** — fix N-3 by centralizing unit-literal overrides at characteristic solver boundaries.
+2. **COMPLETE** — N-1/N-2 exact-candidate residual validation unified with deterministic fallback contract.
+3. **NEXT** — fix N-3 by centralizing unit-literal overrides at characteristic solver boundaries.
 4. **PENDING** — fix N-4 symbolic extrema presentation without changing numeric semantics.
 5. **PENDING** — full source/wheel/multi-Python requalification, cleanup, PR, explicit merge approval gate.
 
@@ -48,20 +48,18 @@ _Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on 
 - `python -m compileall -q src/engcalc_colab`: PASS.
 - Complete source suite: **884/884 GREEN in 184.47 s**.
 
-This proves the released baseline was internally green before the new post-audit contracts were materialized.
-
 ### Initial RED contract
 
 - Run: **`33401852319`**.
 - Job: **`99519818274`**.
-- Result: N-1, N-2, N-3 and N-4 natural contracts RED as expected.
-- Negative/materially-wrong candidate control: GREEN.
+- N-1, N-2, N-3 and N-4 natural contracts RED as expected.
+- Materially-wrong candidate control: GREEN.
 - Lower-level fallback-with-resolved-unit-literal control: GREEN.
 - No `src/` product patch existed at this point.
 
 ### N-1 causal diagnosis
 
-Independent audit symptom is confirmed:
+Natural symptom:
 
 ```text
 f(x) = 2.87*x^2 - 12.50459*x + 6.4876637
@@ -69,8 +67,6 @@ roots(f(x), x, 0, 5)
 ```
 
 Expected roots: approximately `0.602` and `3.755`.
-
-However, the proposed `solveset -> EmptySet` mechanism was **not reproduced** on the supported SymPy range.
 
 Supported-version diagnostic run:
 - Run: **`33403078332`**.
@@ -80,51 +76,100 @@ Supported-version diagnostic run:
 Both versions show:
 - `solveset` returns `{0.602, 3.755}`;
 - `_exact_real_solution_set()` returns both candidates with `complete=True`;
-- candidate `0.602` leaves residual about `-8.88178419700125e-16` and is rejected;
+- candidate `0.602` leaves residual about `-8.88178419700125e-16` and is rejected by the released implementation;
 - candidate `3.755` leaves residual about `-7.10542735760100e-15` and is rejected;
 - direct `_fallback_roots()` recovers both physical roots.
 
-### Decimal family diagnostic
-
-Six deterministic expanded decimal quadratics were tested on both SymPy 1.13.3 and 1.14.0.
-
-Result on **both** versions:
+Six-case deterministic decimal family on both supported SymPy versions:
 - `EMPTY_DISCOVERY_COUNT=0`.
 - `RESIDUAL_REJECTION_COUNT=2`.
-- Case `a=2.87, r1=0.602, r2=3.755`: both roots lost by residual rejection.
-- Case `a=0.83, r1=1.125, r2=7.375`: one root lost by residual rejection while the other is accepted because its residual simplifies to exact zero.
-- Remaining four cases survive because their candidate residuals simplify to literal zero.
+- `a=2.87, r1=0.602, r2=3.755`: both roots lost by residual rejection.
+- `a=0.83, r1=1.125, r2=7.375`: one root lost while one residual simplifies to literal zero.
 
-Conclusion:
-- N-1 and N-2 share the same demonstrated root cause on the supported runtime matrix: **exact candidates are validated with literal numeric zero instead of the fallback relative-residual contract**.
-- Do **not** add speculative `Float + EmptySet => incomplete` behavior unless a supported-version reproduction is later demonstrated.
+Conclusion: N-1 and N-2 share the demonstrated root cause. Do **not** add speculative `Float + EmptySet => incomplete` behavior unless a supported-version reproduction appears later.
 
-### Task 1 plan/spec correction
+## Task 2 — N-1/N-2 residual correction
 
-The original N-1 `EmptySet` assumption was removed from the authoritative corrective spec and plan.
+### Product commits
 
-Persistent N-1 lower-level regression now requires:
-- exact discovery returns the two decimal candidates;
-- both candidates survive roundoff-aware validation after the fix.
+1. **`4278160bc789f48bdc9047cc8c6f5d2e7c813d71`** — `refactor: expose fallback residual contract`
+   - extracted `_fallback_response_profile(...)`;
+   - extracted `_fallback_validated_residual(...)`;
+   - preserved `_FALLBACK_REL_RESIDUAL_TOL = 1e-9` and the existing 1025-sample response-scale semantics;
+   - routed fallback root validation through the extracted shared predicate.
 
-The public N-1 example and six-case family remain persistent tests.
+2. **`5d573faf833f9c44a47a5e6fb57339381c56324b`** — `fix: validate root candidates by relative residual`
+   - symbolic exact zero remains the fast path;
+   - non-literal-zero exact candidates now reuse the same response unit, scale and relative-residual contract as deterministic fallback;
+   - exact provenance remains `exact`;
+   - no change to `_exact_real_solution_set()` completeness semantics;
+   - one response profile is reused per continuous zero-set rather than recomputed per candidate.
 
-## Exact next step — Task 2
+Scope audit of the product step showed only `fallback.py` and `candidates.py` plus the temporary validation workflow; no unrelated product files changed.
 
-1. Re-run the aligned RED gate after the corrected N-1 test/node ID.
-2. Read the current fallback residual implementation in `src/engcalc_colab/characteristics/fallback.py` and the exact-candidate validation in `candidates.py`.
-3. Extract/reuse the smallest dimensionally meaningful relative-residual predicate already represented by `_FALLBACK_REL_RESIDUAL_TOL`; do not create a second independent tolerance policy.
-4. Apply it to `_evaluate_root_candidate()` while retaining symbolic exact-zero as the fast path and preserving exact provenance.
-5. Verify:
-   - N-1 public example;
-   - six-case decimal family;
-   - N-1 lower-level candidate validation;
-   - N-2 `1e-6` and `1e-12`;
-   - materially wrong candidate remains rejected;
-   - existing fallback/root/acceptance suites;
-   - `compileall` + complete source suite.
-6. Only after all gates are GREEN, update this file and commit the product change as `fix: validate root candidates by relative residual`.
-7. Do not start N-3 until Task 2 is fully closed.
+### Harness-only correction
+
+Initial Task 2 GREEN run:
+- Run: **`33404574761`**.
+- Job: **`99528833618`**.
+- N-1/N-2 focused already passed **11/11**.
+- Job then failed only because the temporary workflow referenced nonexistent `tests/test_roots.py`.
+- No product failure was involved.
+
+Harness fix:
+- **`d196cb9e2f21db6c57e2c6eb8edefe6a72cabd3e`** — `test: fix Task 2 characteristic gate path`
+- Correct path: `tests/test_characteristics_roots.py`.
+
+### Authoritative Task 2 GREEN
+
+Run: **`33404788103`**.
+Job: **`99529556426`**.
+Conclusion: **SUCCESS**.
+
+Results:
+- compileall: PASS.
+- N-1/N-2 focused: **11 passed, 5 deselected in 3.64 s**.
+- characteristic focused (`fallback`, `roots`, `acceptance`): **41 passed in 14.52 s**.
+- released baseline suite excluding the intentionally still-RED post-audit file: **884/884 GREEN in 165.22 s**.
+- N-3 isolation gate: **3 failed, 1 passed, 12 deselected in 1.59 s** — exactly the three expected public failures; the already-resolved lower-level fallback control remains GREEN.
+- N-4 isolation gate: **1 failed, 15 deselected in 0.85 s** — expected symbolic `Abs(a)` display failure.
+- `git diff --check`: PASS.
+- final marker: **`TASK2_GREEN_GATE=PASS`**.
+
+Task 2 is therefore closed. N-3/N-4 remain intentionally RED and are handled independently in Tasks 3/4.
+
+## N-3 current RED signatures
+
+Using:
+
+```text
+L := 6*m
+q := 12*kN/m
+V(x) = q*(L/2-x)
+M(x) = q*x*(L-x)/2
+```
+
+Current public failures:
+1. `roots(V(x) - 6*kN, x, 0, L)` -> `EngEvaluationError: characteristic numerical fallback could not validate a solution set`.
+2. `extrema(M(x) - 20*kN*m, x, 0, L)` -> returns zero points instead of three.
+3. `intersections(M(x), 20*kN*m + 0*x, x, 0, L)` -> `EngEvaluationError: intersections responses could not be evaluated on the requested domain`.
+4. Lower-level fallback given an already-resolved unit-literal override dictionary remains GREEN.
+
+This isolates N-3 to propagation/resolution of direct unit literals, not the fallback root algorithm itself.
+
+## Exact next step — Task 3
+
+1. Inventory every `evaluate_symbolic(...)` call under `src/engcalc_colab/characteristics/` and classify how its overrides are obtained.
+2. Confirm the focused N-3 public RED boundary on the Task-2-closed tree.
+3. Resolve direct unit literals exactly once at each public solver boundary:
+   - roots: response expression;
+   - intersections: left then right response merged into one dictionary;
+   - extrema: response expression before continuous/Piecewise derivative analysis.
+4. Preserve caller-provided overrides and never mutate caller-owned dictionaries.
+5. Propagate the resolved override dictionary through all subordinate candidate/fallback/Piecewise/evaluation paths.
+6. Re-run the inventory and leave no response-evaluation path unclassified.
+7. Verify N-3 focused GREEN, characteristic integration suites, compileall, and the released 884-test baseline. N-4 must remain the only intentional future RED.
+8. Update this file and close Task 3 before starting N-4.
 
 ## Released 0.9.2 invariants that must remain intact
 
@@ -144,4 +189,4 @@ The public N-1 example and six-case family remain persistent tests.
 
 ## How to resume
 
-Read this file first. Work from `fix/v0.9.2-post-audit-remediation`, never directly from `main`. Task 1 is complete. The next operation is the aligned RED rerun and then the Task 2 relative-residual implementation for the shared N-1/N-2 cause. Do not implement speculative EmptySet behavior. Do not begin N-3 until Task 2 passes focused and complete regression gates. Never invoke Codex without explicit authorization.
+Read this file first. Work from `fix/v0.9.2-post-audit-remediation`, never directly from `main`. Tasks 1–2 are complete. The next operation is Task 3: inventory characteristic `evaluate_symbolic()` boundaries, confirm N-3 RED, then centralize and propagate unit-literal overrides. Do not begin N-4 until Task 3 is fully GREEN. Never invoke Codex without explicit authorization.
