@@ -1140,13 +1140,15 @@ def solve_extrema_exact(
     variable = _analysis_variable(variable, expression)
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("extrema variable must be a symbolic identifier")
+
+    resolved_overrides = context.unit_literal_overrides(expression, overrides)
     if expression.has(sp.Piecewise):
         return _solve_piecewise_extrema_exact(
             expression,
             variable,
             domain,
             context,
-            overrides=overrides,
+            overrides=resolved_overrides,
             source_label=source_label,
         )
     return _solve_continuous_extrema_exact(
@@ -1154,6 +1156,6 @@ def solve_extrema_exact(
         variable,
         domain,
         context,
-        overrides=overrides,
+        overrides=resolved_overrides,
         source_label=source_label,
     )

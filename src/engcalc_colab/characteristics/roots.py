@@ -73,6 +73,8 @@ def solve_roots_exact(
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("roots variable must be a symbolic identifier")
 
+    resolved_overrides = context.unit_literal_overrides(expression, overrides)
+
     if sp.simplify(expression) == 0:
         interval = CharacteristicInterval(
             lower_symbolic=domain.lower_symbolic,
@@ -95,7 +97,7 @@ def solve_roots_exact(
                 variable,
                 domain,
                 context,
-                overrides=overrides,
+                overrides=resolved_overrides,
                 source_label=source_label,
             ),
             (),
@@ -108,7 +110,7 @@ def solve_roots_exact(
         variable,
         domain,
         context,
-        overrides=overrides,
+        overrides=resolved_overrides,
     )
     points: list[CharacteristicPoint] = []
     intervals: list[CharacteristicInterval] = []
@@ -123,7 +125,7 @@ def solve_roots_exact(
                     variable,
                     region,
                     context,
-                    overrides=overrides,
+                    overrides=resolved_overrides,
                 )
             )
             continue
@@ -140,7 +142,7 @@ def solve_roots_exact(
             variable,
             region_domain,
             context,
-            overrides=overrides,
+            overrides=resolved_overrides,
             source_label=source_label,
         ):
             if _candidate_in_region(point.x_quantity, region, domain):
@@ -151,7 +153,7 @@ def solve_roots_exact(
         variable,
         domain,
         context,
-        overrides=overrides,
+        overrides=resolved_overrides,
     ):
         outcome = _evaluate_root_candidate(
             expression,
@@ -159,7 +161,7 @@ def solve_roots_exact(
             candidate,
             domain,
             context,
-            overrides=overrides,
+            overrides=resolved_overrides,
             source_label=source_label,
         )
         # Boundary probes are topology checks, not exact solver candidates. An
