@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+
+import sympy as sp
 from typing import Any
 
 from .models import PlotResult, PlotSeries
@@ -60,8 +62,15 @@ def _compact_number(value: float) -> str:
     return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
-def _coordinate_label(x: float, y: float) -> str:
-    return f"({_compact_number(x)}, {_compact_number(y)})"
+def _compact_exact_x_label(symbolic, numeric: float) -> str:
+    if isinstance(symbolic, sp.Rational) and symbolic.q != 1:
+        return f"{symbolic.p}/{symbolic.q}"
+    return _compact_number(numeric)
+
+
+def _coordinate_label(x: float, y: float, x_symbolic=None) -> str:
+    x_text = _compact_exact_x_label(x_symbolic, x)
+    return f"({x_text}, {_compact_number(y)})"
 
 
 def _extreme_indices(values: list[float]) -> tuple[int, int]:
@@ -96,6 +105,7 @@ class _CharacteristicRequest:
     response_label: str
     role: str
     inverted: bool
+    x_symbolic: Any | None = None
 
 
 def _nearest_sample_index(result: PlotResult, x_quantity) -> int:
@@ -162,6 +172,7 @@ def _characteristic_requests(result: PlotResult) -> tuple[_CharacteristicRequest
                         response_label=response_label,
                         role=request_role,
                         inverted=inverted,
+                        x_symbolic=point.x_symbolic,
                     )
                 )
             requests.extend(series_requests)
@@ -426,10 +437,11 @@ def _annotate_characteristic(
     inverted: bool,
     line_color,
     occupied_boxes: list,
+    x_symbolic=None,
 ) -> None:
     x = float(x_quantity.magnitude)
     y = float(y_quantity.magnitude)
-    text = _coordinate_label(x, y)
+    text = _coordinate_label(x, y, x_symbolic)
     annotation = _create_annotation(axis, text, x, y, _ANNOTATION_CANDIDATES[0], line_color)
     _place_annotation(
         annotation,
@@ -527,7 +539,7 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
         axis.invert_yaxis()
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
     axis.set_ylabel(_axis_label(result.display_label, series.y_values[0], moment=series.is_moment))
-    axis.set_title(result.display_label, pad=10, fontweight="semibold")
+    axis.set_title(result.display_label, pad=10, fontweight=600)
     _style_axes(axis)
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)
     figure.tight_layout()
@@ -543,6 +555,7 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
             inverted=request.inverted,
             line_color=line_color,
             occupied_boxes=occupied_boxes,
+            x_symbolic=request.x_symbolic,
         )
 
 def _render_multi_series(figure, axis, result: PlotResult) -> None:
@@ -577,7 +590,7 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
         axis.invert_yaxis()
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
     axis.set_ylabel(_axis_label(result.display_label, result.series[0].y_values[0], moment=moment))
-    axis.set_title(result.display_label, pad=10, fontweight="semibold")
+    axis.set_title(result.display_label, pad=10, fontweight=600)
     _style_axes(axis)
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)
     figure.tight_layout()
@@ -593,6 +606,7 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
             inverted=request.inverted,
             line_color=line_colors[request.series_index],
             occupied_boxes=occupied_boxes,
+            x_symbolic=request.x_symbolic,
         )
 
 
@@ -660,7 +674,7 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
         axis.invert_yaxis()
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
     axis.set_ylabel(_axis_label(result.display_label, maximum_series.y_values[0], moment=moment))
-    axis.set_title(f"{result.display_label} envelope", pad=10, fontweight="semibold")
+    axis.set_title(f"{result.display_label} envelope", pad=10, fontweight=600)
     _style_axes(axis)
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)
     figure.tight_layout()
@@ -727,7 +741,7 @@ def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
         axis.invert_yaxis()
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
     axis.set_ylabel(_axis_label(result.display_label, magnitude_series.y_values[0], moment=moment))
-    axis.set_title(f"|{result.display_label}| envelope", pad=10, fontweight="semibold")
+    axis.set_title(f"|{result.display_label}| envelope", pad=10, fontweight=600)
     _style_axes(axis)
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)
     figure.tight_layout()

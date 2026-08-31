@@ -160,3 +160,23 @@ def test_unbounded_extrema_state_is_rendered_without_python_repr():
     assert "unbounded above" in html.lower()
     assert "ExtremaResult(" not in html
     assert "CharacteristicPoint(" not in html
+
+
+def test_characteristic_rendering_normalizes_negative_zero_with_tolerance():
+    from engcalc_colab.engine import EngineeringEngine
+    from engcalc_colab.renderer import RenderSettings
+
+    engine = EngineeringEngine()
+    result = [
+        engine.evaluate(statement)
+        for statement in parse_cell(
+            "roots((x-1)*(x-1.0000001), x, 0, 2)"
+        )
+    ][-1]
+    html = renderer.render_characteristic_result(
+        result,
+        settings=RenderSettings(zero_tolerance=1e-10),
+    )
+    assert "-0.00" not in html
+    assert "-0.0" not in html
+    assert "-0\\," not in html

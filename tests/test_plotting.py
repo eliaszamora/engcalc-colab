@@ -201,3 +201,44 @@ def test_render_plot_returns_closed_figure():
     import matplotlib.pyplot as plt
     figure = render_plot(moment_plot_result())
     assert figure.number not in plt.get_fignums()
+
+
+def test_presented_plot_title_does_not_emit_font_weight_warning(capsys):
+    from engcalc_colab.presentation import render_presented_plot
+
+    engine = EngineeringEngine()
+    result = eval_cell(
+        engine,
+        'f(x)=x\nplot(f(x), x, 0, 1, title="Test")',
+    )[-1]
+    render_presented_plot(result)
+    captured = capsys.readouterr()
+    assert "font weight semibold" not in captured.err
+    assert "Failed to find font weight semibold" not in captured.err
+
+
+def test_presented_plot_title_uses_numeric_weight_600():
+    from engcalc_colab.presentation import render_presented_plot
+
+    engine = EngineeringEngine()
+    result = eval_cell(
+        engine,
+        'f(x)=x\nplot(f(x), x, 0, 1, title="Test")',
+    )[-1]
+    axis = render_presented_plot(result).axes[0]
+    assert axis.title.get_fontweight() == 600
+
+
+def test_exact_rational_characteristic_label_uses_symbolic_x_coordinate():
+    engine = EngineeringEngine()
+    result = eval_cell(
+        engine,
+        "f(x)=-(x-1/3)^2+2\nplot(f(x), x, 0, 1)",
+    )[-1]
+    axis = render_plot(result).axes[0]
+    exact = next(
+        item for item in annotations(axis)
+        if abs(float(item.xy[0]) - 1/3) < 1e-12
+    )
+    assert "1/3" in exact.get_text()
+    assert abs(float(exact.xy[0]) - 1/3) < 1e-12
