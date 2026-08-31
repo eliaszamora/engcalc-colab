@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install test dependencies
-        run: python -m pip install -e '.[dev]'
+        run: python -m pip install -e '.[dev]' ipython
       - name: Apply Task 5 patch
         run: python .github/scripts/v092_task5_green.py
       - name: Compile
