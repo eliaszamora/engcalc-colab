@@ -3,6 +3,7 @@ from __future__ import annotations
 import sympy as sp
 
 import engcalc_colab.characteristics.candidates as candidates
+import engcalc_colab.characteristics.fallback as fallback
 import engcalc_colab.engine as engine_module
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import RootsResult
@@ -18,10 +19,6 @@ def evaluate_cell(engine: EngineeringEngine, source: str):
 
 def inspect(label: str, expression: sp.Expr, x: sp.Symbol) -> None:
     expression = sp.sympify(expression)
-    floats = sorted(
-        ((str(value), repr(value), value._prec) for value in expression.atoms(sp.Float)),
-        key=lambda item: item[0],
-    )
     equation = sp.Eq(expression, 0)
     solveset_result = sp.solveset(equation, x, domain=sp.S.Reals)
     try:
@@ -33,12 +30,9 @@ def inspect(label: str, expression: sp.Expr, x: sp.Symbol) -> None:
     )
 
     print(f"=== {label} ===")
+    print("SYMPY_VERSION=", sp.__version__)
     print("REPR=", repr(expression))
     print("SREPR=", sp.srepr(expression))
-    print("FLOATS=", floats)
-    print("VARIABLE=", repr(x), x.assumptions0)
-    print("FREE_SYMBOLS=", [(repr(s), s.assumptions0) for s in expression.free_symbols])
-    print("VARIABLE_IN_FREE_SYMBOLS=", x in expression.free_symbols)
     print("SOLVESET=", repr(solveset_result))
     print("SOLVE=", repr(solve_result))
     print("DISCOVERY_CANDIDATES=", repr(discovery.candidates))
@@ -58,6 +52,8 @@ def main() -> None:
     def traced_solve_roots_exact(expression, variable, domain, context, **kwargs):
         captured["expression"] = sp.sympify(expression)
         captured["variable"] = variable
+        captured["domain"] = domain
+        captured["context"] = context
         print("ROOTS_SOURCE_LABEL=", repr(kwargs.get("source_label")))
         inspect("ROOTS_SOLVER_INPUT", sp.sympify(expression), variable)
         return original(expression, variable, domain, context, **kwargs)
@@ -72,24 +68,74 @@ def main() -> None:
     print("PUBLIC_ROOTS_COUNT=", len(result.points))
     print("PUBLIC_ROOTS=", [repr(point.x_symbolic) for point in result.points])
 
-    solver_expression = sp.sympify(captured["expression"])
-    solver_variable = captured["variable"]
-    print("STORED_EQ_SOLVER=", stored_expression == solver_expression)
-    print("GLOBAL_X_EQ_SOLVER_VARIABLE=", global_x == solver_variable)
-    print("STORED_MINUS_SOLVER=", repr(sp.expand(stored_expression - solver_expression)))
+    expression = sp.sympify(captured["expression"])
+    variable = captured["variable"]
+    domain = captured["domain"]
+    context = captured["context"]
+    discovery = candidates._coerce_exact_discovery(
+        candidates._exact_real_solution_set(expression, variable)
+    )
 
-    # The public failure must be reproduced while the stored expression remains solvable.
-    stored_discovery = candidates._coerce_exact_discovery(
-        candidates._exact_real_solution_set(stored_expression, global_x)
-    )
-    solver_discovery = candidates._coerce_exact_discovery(
-        candidates._exact_real_solution_set(solver_expression, solver_variable)
-    )
-    print("STORED_DISCOVERY=", stored_discovery)
-    print("SOLVER_DISCOVERY=", solver_discovery)
-    assert len(stored_discovery.candidates) == 2
-    assert len(result.points) == 0
-    print("N1_ROOT_CAUSE_DIAGNOSTIC_STAGE2=PASS")
+    print("=== CANDIDATE_VALIDATION ===")
+    for candidate in discovery.candidates:
+        symbolic_residual = sp.simplify(expression.subs(variable, candidate))
+        _, value_quantity = context.evaluate_symbolic(
+            expression,
+            overrides={variable.name: context.ureg.Quantity(float(candidate), domain.unit)},
+        )
+        outcome = candidates._evaluate_root_candidate(
+            expression,
+            variable,
+            candidate,
+            domain,
+            context,
+            overrides=None,
+            source_label="f(x)",
+        )
+        print("CANDIDATE=", repr(candidate))
+        print("SYMBOLIC_RESIDUAL=", repr(symbolic_residual))
+        print("NUMERIC_RESIDUAL=", repr(value_quantity.magnitude))
+        print("OUTCOME_POINT=", repr(outcome.point))
+        print("OUTCOME_NEEDS_FALLBACK=", outcome.needs_fallback)
+
+    print("=== FALLBACK_DIRECT ===")
+    try:
+        fallback_points = fallback._fallback_roots(
+            expression,
+            variable,
+            domain,
+            context,
+            overrides=None,
+            source_label="f(x)",
+        )
+        print("FALLBACK_POINTS=", [repr(point.x_symbolic) for point in fallback_points])
+    except Exception as exc:
+        print("FALLBACK_ERROR=", type(exc).__name__, str(exc))
+        fallback_points = ()
+
+    if discovery.candidates:
+        assert len(result.points) == 0
+        assert all(
+            candidates._evaluate_root_candidate(
+                expression,
+                variable,
+                candidate,
+                domain,
+                context,
+                overrides=None,
+                source_label="f(x)",
+            ).point
+            is None
+            for candidate in discovery.candidates
+        )
+        print("N1_MECHANISM=CANDIDATE_RESIDUAL_REJECTION")
+    elif discovery.complete:
+        assert len(result.points) == 0
+        print("N1_MECHANISM=AUTHORITATIVE_EMPTY_DISCOVERY")
+    else:
+        print("N1_MECHANISM=UNRESOLVED_DISCOVERY")
+
+    print("N1_ROOT_CAUSE_DIAGNOSTIC_STAGE3=PASS")
 
 
 if __name__ == "__main__":
