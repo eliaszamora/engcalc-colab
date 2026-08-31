@@ -922,6 +922,51 @@ def _fallback_roots(
         )
     return ordered
 
+def _solve_continuous_zero_set(
+    expression: sp.Expr,
+    variable: sp.Symbol,
+    domain: AnalysisDomain,
+    context,
+    *,
+    overrides: dict[str, Any] | None = None,
+    source_label: str | None = None,
+) -> tuple[CharacteristicPoint, ...]:
+    """Solve one continuous zero-set with exact-first/fallback merge semantics."""
+    discovery = _coerce_exact_discovery(
+        _exact_real_solution_set(expression, variable)
+    )
+    points: list[CharacteristicPoint] = []
+    needs_fallback = not discovery.complete
+
+    for candidate in discovery.candidates:
+        outcome = _evaluate_root_candidate(
+            expression,
+            variable,
+            sp.sympify(candidate),
+            domain,
+            context,
+            overrides=overrides,
+            source_label=source_label,
+        )
+        needs_fallback = needs_fallback or outcome.needs_fallback
+        if outcome.point is not None:
+            points.append(outcome.point)
+
+    if needs_fallback:
+        points.extend(
+            _fallback_roots(
+                expression,
+                variable,
+                domain,
+                context,
+                overrides=overrides,
+                source_label=source_label,
+            )
+        )
+    return _deduplicate_root_points(points, domain)
+
+
+
 def solve_roots_exact(
     expression,
     variable,
@@ -953,38 +998,18 @@ def solve_roots_exact(
         return (), (interval,), False
 
     if not expression.has(sp.Piecewise):
-        discovery = _coerce_exact_discovery(
-            _exact_real_solution_set(expression, variable)
-        )
-        points: list[CharacteristicPoint] = []
-        needs_fallback = not discovery.complete
-
-        for candidate in discovery.candidates:
-            outcome = _evaluate_root_candidate(
+        return (
+            _solve_continuous_zero_set(
                 expression,
                 variable,
-                sp.sympify(candidate),
                 domain,
                 context,
                 overrides=overrides,
                 source_label=source_label,
-            )
-            needs_fallback = needs_fallback or outcome.needs_fallback
-            if outcome.point is not None:
-                points.append(outcome.point)
-
-        if needs_fallback:
-            points.extend(
-                _fallback_roots(
-                    expression,
-                    variable,
-                    domain,
-                    context,
-                    overrides=overrides,
-                    source_label=source_label,
-                )
-            )
-        return _deduplicate_root_points(points, domain), (), False
+            ),
+            (),
+            False,
+        )
 
 
     regions = _partition_piecewise_regions(
@@ -1012,48 +1037,23 @@ def solve_roots_exact(
             )
             continue
 
-        discovery = _coerce_exact_discovery(
-            _exact_real_solution_set(branch_expression, variable)
+        region_domain = AnalysisDomain(
+            lower_symbolic=region.lower_symbolic,
+            upper_symbolic=region.upper_symbolic,
+            lower_quantity=region.lower_quantity,
+            upper_quantity=region.upper_quantity,
+            unit=domain.unit,
         )
-        needs_fallback = not discovery.complete
-        for candidate in discovery.candidates:
-            outcome = _evaluate_root_candidate(
-                branch_expression,
-                variable,
-                sp.sympify(candidate),
-                domain,
-                context,
-                overrides=overrides,
-                source_label=source_label,
-            )
-            needs_fallback = needs_fallback or outcome.needs_fallback
-            if outcome.point is not None and _candidate_in_region(
-                outcome.point.x_quantity,
-                region,
-                domain,
-            ):
-                points.append(outcome.point)
-
-        if needs_fallback:
-            region_domain = AnalysisDomain(
-                lower_symbolic=region.lower_symbolic,
-                upper_symbolic=region.upper_symbolic,
-                lower_quantity=region.lower_quantity,
-                upper_quantity=region.upper_quantity,
-                unit=domain.unit,
-            )
-            fallback_points = _fallback_roots(
-                branch_expression,
-                variable,
-                region_domain,
-                context,
-                overrides=overrides,
-                source_label=source_label,
-            )
-            for point in fallback_points:
-                if _candidate_in_region(point.x_quantity, region, domain):
-                    points.append(point)
-
+        for point in _solve_continuous_zero_set(
+            branch_expression,
+            variable,
+            region_domain,
+            context,
+            overrides=overrides,
+            source_label=source_label,
+        ):
+            if _candidate_in_region(point.x_quantity, region, domain):
+                points.append(point)
 
     for candidate in _piecewise_boundary_candidates(
         expression,
@@ -1582,30 +1582,41 @@ def solve_intersections_exact(
             )
             continue
 
-        candidates, unresolved = _exact_real_solution_set(difference, variable)
-        if unresolved:
-            region_domain = AnalysisDomain(
-                lower_symbolic=region.lower_symbolic,
-                upper_symbolic=region.upper_symbolic,
-                lower_quantity=region.lower_quantity,
-                upper_quantity=region.upper_quantity,
-                unit=domain.unit,
-            )
-            fallback_points = _fallback_roots(
-                difference,
-                variable,
-                region_domain,
-                context,
-                overrides=overrides,
-                source_label=_intersection_source_label(left_label, right_label),
-            )
-            for root_point in fallback_points:
-                if not _candidate_strictly_inside_intersection_region(
-                    root_point.x_quantity,
-                    region,
+        region_domain = AnalysisDomain(
+            lower_symbolic=region.lower_symbolic,
+            upper_symbolic=region.upper_symbolic,
+            lower_quantity=region.lower_quantity,
+            upper_quantity=region.upper_quantity,
+            unit=domain.unit,
+        )
+        zero_points = _solve_continuous_zero_set(
+            difference,
+            variable,
+            region_domain,
+            context,
+            overrides=overrides,
+            source_label=None,
+        )
+        for root_point in zero_points:
+            if not _candidate_strictly_inside_intersection_region(
+                root_point.x_quantity,
+                region,
+                domain,
+            ):
+                continue
+            if root_point.provenance == "exact":
+                point = _evaluate_intersection_candidate(
+                    left_expression,
+                    right_expression,
+                    variable,
+                    root_point.x_symbolic,
                     domain,
-                ):
-                    continue
+                    context,
+                    overrides=overrides,
+                    left_label=left_label,
+                    right_label=right_label,
+                )
+            else:
                 point = _evaluate_numeric_intersection_candidate(
                     left_expression,
                     right_expression,
@@ -1616,40 +1627,6 @@ def solve_intersections_exact(
                     left_label=left_label,
                     right_label=right_label,
                 )
-                if point is not None:
-                    points.append(point)
-            continue
-        for candidate in candidates:
-            candidate = sp.sympify(candidate)
-            try:
-                _, x_quantity = context.evaluate_symbolic(
-                    candidate,
-                    overrides=dict(overrides or {}),
-                )
-                x_quantity = _normalize_candidate_quantity(
-                    context,
-                    x_quantity,
-                    domain,
-                )
-            except EngEvaluationError:
-                continue
-            if not _candidate_strictly_inside_intersection_region(
-                x_quantity,
-                region,
-                domain,
-            ):
-                continue
-            point = _evaluate_intersection_candidate(
-                left_expression,
-                right_expression,
-                variable,
-                candidate,
-                domain,
-                context,
-                overrides=overrides,
-                left_label=left_label,
-                right_label=right_label,
-            )
             if point is not None:
                 points.append(point)
 
