@@ -72,7 +72,6 @@ jobs:
         shell: bash
         run: |
           git add -A -- \
-            src/engcalc_colab/characteristics.py \
             src/engcalc_colab/characteristics \
             tests/test_characteristics_fallback.py \
             tests/test_characteristics_acceptance.py
