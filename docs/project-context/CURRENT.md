@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on `fix/v0.9.2-post-audit-remediation`. Tasks 1–3 are COMPLETE. Task 4 (N-4 symbolic extrema presentation) is NEXT. Released `main` remains untouched._
+_Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on `fix/v0.9.2-post-audit-remediation`. Tasks 1–4 are COMPLETE. Task 5 (full requalification / wheel / cleanup / PR approval gate) is NEXT. Released `main` remains untouched._
 
 ## Canonical baseline
 
@@ -11,8 +11,8 @@ _Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on 
 - `requires-python = ">=3.10"`.
 - Runtime dependency includes `ipython>=8.18`.
 - Permanent CI: Python 3.10–3.14.
-- Definitive released wheel: `engcalc_colab-0.9.2-py3-none-any.whl`.
-- Definitive released-wheel SHA-256: `c493de3b527de4b6100830f00a038a137d1ec110a66aeef27b286e0874357de5`.
+- Definitive released wheel before this corrective branch: `engcalc_colab-0.9.2-py3-none-any.whl`.
+- Released-wheel SHA-256 before this corrective branch: `c493de3b527de4b6100830f00a038a137d1ec110a66aeef27b286e0874357de5`.
 - `0.9.3` Exact Envelopes / Governing Intervals remains deferred and is not part of this corrective branch.
 - Never invoke Codex / Codex Cloud without explicit user authorization.
 
@@ -25,20 +25,22 @@ _Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on 
 - Corrective spec: `docs/superpowers/specs/2026-08-31-engcalc-v0.9.2-post-audit-remediation-design.md`.
 - Corrective plan: `docs/superpowers/plans/2026-08-31-engcalc-v0.9.2-post-audit-remediation-implementation.md`.
 - Persistent post-audit regressions: `tests/test_v092_post_audit_regressions.py`.
+- Persistent post-audit regression file now contributes **17 test items**.
 - Temporary validation infrastructure currently present:
   - `.github/workflows/v092-post-audit-validation.yml`
   - `.github/scripts/v092_post_audit_n1_diagnostic.py`
   - `.github/scripts/v092_post_audit_n3_inventory.py`
   - `.github/scripts/v092_post_audit_task3_apply.py`
-  These must be removed before final PR closure.
+  - `.github/scripts/v092_post_audit_task4_apply.py`
+  These must be removed during Task 5 cleanup.
 
 ## Corrective task status
 
 1. **COMPLETE** — baseline + N-1/N-2/N-3/N-4 persistent reproductions + N-1 supported-version diagnosis.
 2. **COMPLETE** — N-1/N-2 exact-candidate residual validation unified with deterministic fallback contract.
 3. **COMPLETE** — N-3 direct unit literals resolved once at characteristic solver boundaries and propagated consistently.
-4. **NEXT** — fix N-4 symbolic extrema presentation without changing numeric semantics.
-5. **PENDING** — full source/wheel/multi-Python requalification, cleanup, PR, explicit merge approval gate.
+4. **COMPLETE** — N-4 extrema symbolic display now simplifies decidable `Abs(...)` values using registered numeric context without changing numeric semantics.
+5. **NEXT** — full source/wheel/multi-Python requalification, temporary-infrastructure cleanup, documentation, PR, explicit merge approval gate.
 
 ## Task 1 — authoritative evidence
 
@@ -48,7 +50,7 @@ _Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on 
 - Job: **`99517746481`**.
 - Python 3.14.
 - `python -m compileall -q src/engcalc_colab`: PASS.
-- Complete source suite: **884/884 GREEN in 184.47 s**.
+- Complete released-baseline source suite: **884/884 GREEN in 184.47 s**.
 
 ### Initial RED contract
 
@@ -57,152 +59,95 @@ _Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on 
 - N-1, N-2, N-3 and N-4 natural contracts RED as expected.
 - Materially-wrong candidate control: GREEN.
 - Lower-level fallback-with-resolved-unit-literal control: GREEN.
-- No `src/` product patch existed at this point.
 
-### N-1 causal diagnosis
+### N-1 supported-version diagnosis
 
-Natural symptom:
-
-```text
-f(x) = 2.87*x^2 - 12.50459*x + 6.4876637
-roots(f(x), x, 0, 5)
-```
-
-Expected roots: approximately `0.602` and `3.755`.
-
-Supported-version diagnostic run:
+Diagnostic run:
 - Run: **`33403078332`**.
 - SymPy 1.13.3 job: **`99523886412`** — SUCCESS.
 - SymPy 1.14.0 job: **`99523886487`** — SUCCESS.
 
-Both versions show:
-- `solveset` returns `{0.602, 3.755}`;
-- `_exact_real_solution_set()` returns both candidates with `complete=True`;
-- candidate `0.602` leaves residual about `-8.88178419700125e-16` and is rejected by the released implementation;
-- candidate `3.755` leaves residual about `-7.10542735760100e-15` and is rejected;
-- direct `_fallback_roots()` recovers both physical roots.
-
-Six-case deterministic decimal family on both supported SymPy versions:
-- `EMPTY_DISCOVERY_COUNT=0`.
-- `RESIDUAL_REJECTION_COUNT=2`.
-- `a=2.87, r1=0.602, r2=3.755`: both roots lost by residual rejection.
-- `a=0.83, r1=1.125, r2=7.375`: one root lost while one residual simplifies to literal zero.
-
-Conclusion: N-1 and N-2 share the demonstrated root cause. Do **not** add speculative `Float + EmptySet => incomplete` behavior unless a supported-version reproduction appears later.
+Conclusion:
+- `solveset` did **not** reproduce `EmptySet` on supported SymPy versions.
+- Exact decimal candidates were discovered but rejected because tiny floating residuals were compared to literal zero.
+- Deterministic fallback recovered the same physical roots.
+- Six-case decimal family: `EMPTY_DISCOVERY_COUNT=0`, `RESIDUAL_REJECTION_COUNT=2` on both supported SymPy versions.
+- N-1 and N-2 therefore share the demonstrated residual-validation cause; no speculative `Float + EmptySet` behavior was added.
 
 ## Task 2 — N-1/N-2 residual correction
 
 ### Product commits
 
-1. **`4278160bc789f48bdc9047cc8c6f5d2e7c813d71`** — `refactor: expose fallback residual contract`
-   - extracted `_fallback_response_profile(...)`;
-   - extracted `_fallback_validated_residual(...)`;
-   - preserved `_FALLBACK_REL_RESIDUAL_TOL = 1e-9` and the existing 1025-sample response-scale semantics;
-   - routed fallback root validation through the extracted shared predicate.
+1. **`4278160bc789f48bdc9047cc8c6f5d2e7c813d71`** — `refactor: expose fallback residual contract`.
+   - extracted `_fallback_response_profile(...)` and `_fallback_validated_residual(...)`;
+   - preserved `_FALLBACK_REL_RESIDUAL_TOL = 1e-9` and 1025-sample response-scale semantics.
 
-2. **`5d573faf833f9c44a47a5e6fb57339381c56324b`** — `fix: validate root candidates by relative residual`
-   - symbolic exact zero remains the fast path;
-   - non-literal-zero exact candidates now reuse the same response unit, scale and relative-residual contract as deterministic fallback;
-   - exact provenance remains `exact`;
-   - no change to `_exact_real_solution_set()` completeness semantics;
-   - one response profile is reused per continuous zero-set rather than recomputed per candidate.
+2. **`5d573faf833f9c44a47a5e6fb57339381c56324b`** — `fix: validate root candidates by relative residual`.
+   - exact symbolic zero stays the fast path;
+   - floating exact candidates reuse the fallback response unit/scale/relative-residual contract;
+   - exact provenance remains authoritative.
 
 ### Authoritative Task 2 GREEN
 
-Run: **`33404788103`**.
-Job: **`99529556426`**.
-Conclusion: **SUCCESS**.
-
-Results:
-- compileall: PASS.
-- N-1/N-2 focused: **11 passed, 5 deselected in 3.64 s**.
-- characteristic focused (`fallback`, `roots`, `acceptance`): **41 passed in 14.52 s**.
-- released baseline suite excluding the intentionally still-RED post-audit file: **884/884 GREEN in 165.22 s**.
-- N-3 isolation: expected three public REDs with lower-level resolved-override control GREEN.
-- N-4 isolation: expected `Abs(a)` symbolic presentation RED.
-- final marker: **`TASK2_GREEN_GATE=PASS`**.
+- Run: **`33404788103`**.
+- Job: **`99529556426`**.
+- N-1/N-2: **11 passed, 5 deselected in 3.64 s**.
+- characteristic focused: **41 passed in 14.52 s**.
+- released baseline: **884/884 GREEN in 165.22 s**.
+- N-3 and N-4 remained isolated intentional REDs.
+- marker: `TASK2_GREEN_GATE=PASS`.
 
 ## Task 3 — N-3 unit-literal propagation correction
 
 ### RED + evaluation-boundary inventory
 
-Authoritative RED/inventory run:
 - Run: **`33405568505`**.
 - Job: **`99532181077`**.
-- Conclusion: **SUCCESS as a RED gate**.
-
-Inventory findings before product modification:
-- **18** calls to `evaluate_symbolic(...)` under `src/engcalc_colab/characteristics/`.
-- **18/18** already supplied an `overrides=` keyword.
+- **18** `evaluate_symbolic(...)` calls under `characteristics/`; **18/18** already supplied `overrides=`.
 - `EVALUATE_SYMBOLIC_WITHOUT_OVERRIDES=0`.
-- Therefore N-3 was not caused by a forgotten evaluation call; the propagated dictionary itself entered the solver tree without direct unit literals resolved.
+- Public roots/extrema/intersections N-3 contracts RED; lower-level fallback with already-resolved unit overrides GREEN.
 
-Focused RED behavior on the Task-2-closed tree:
-- roots public N-3: RED.
-- extrema public N-3: RED.
-- intersections public N-3: RED.
-- lower-level fallback with boundary-resolved unit literals: GREEN.
-- N-1/N-2 remained **11 passed, 5 deselected**.
+Conclusion: the propagated override dictionary entered solver trees incomplete; there was no missing `overrides=` call site.
 
 ### Product correction
 
-Product commit:
-- **`e68a03de1467a88a68a92c7de7b045ac95fca048`** — `fix: propagate characteristic unit literals consistently`.
+- Product commit: **`e68a03de1467a88a68a92c7de7b045ac95fca048`** — `fix: propagate characteristic unit literals consistently`.
 - Exact product diff: **3 files, 24 insertions, 15 deletions**:
-  - `src/engcalc_colab/characteristics/roots.py`
-  - `src/engcalc_colab/characteristics/intersections.py`
-  - `src/engcalc_colab/characteristics/extrema.py`
-- No unrelated product file changed.
+  - `roots.py`
+  - `intersections.py`
+  - `extrema.py`
+- roots resolves one response-expression override dictionary;
+- intersections resolves left then right into one merged dictionary;
+- extrema resolves the response expression before continuous/Piecewise analysis;
+- caller-owned dictionaries are not mutated.
 
-Implemented boundary contract:
-- `solve_roots_exact(...)`: resolve response-expression unit literals once through `context.unit_literal_overrides(expression, overrides)`.
-- `solve_intersections_exact(...)`: resolve left response then right response into one merged override dictionary.
-- `solve_extrema_exact(...)`: resolve response-expression unit literals before continuous/Piecewise derivative analysis.
-- Caller dictionaries remain unmutated; the resolved dictionary is propagated through subordinate candidate/fallback/Piecewise/evaluation paths.
+### GREEN + idempotence
 
-### First authoritative GREEN / persistence run
-
-Run: **`33405927906`**.
-Job: **`99533390103`**.
-Conclusion: **SUCCESS**.
-
-Results:
-- `compileall`: PASS.
-- solver-boundary inventory: roots **1**, intersections **2**, extrema **1**, all as planned.
-- all **18/18** internal `evaluate_symbolic(...)` calls continue to receive `overrides=`.
-- N-3 focused: **4 passed, 12 deselected in 1.64 s**.
+First GREEN / persistence:
+- Run: **`33405927906`**.
+- Job: **`99533390103`**.
+- boundary inventory: roots **1**, intersections **2**, extrema **1**.
+- N-3: **4 passed, 12 deselected in 1.64 s**.
 - characteristic integration: **69/69 GREEN in 17.09 s**.
 - N-1/N-2: **11 passed, 5 deselected in 2.80 s**.
-- released baseline suite: **884/884 GREEN in 125.65 s**.
-- N-4 remains the sole intentional future RED: **1 failed, 15 deselected** with `Abs(a)` symbolic presentation mismatch.
-- product persisted as `e68a03de1467a88a68a92c7de7b045ac95fca048`.
+- baseline: **884/884 GREEN in 125.65 s**.
 
-### Idempotence confirmation
-
-Workflow-only trigger commit:
-- **`da760a7c03390e495cb688c401d20c2782bad726`** — `test: rerun Task 3 idempotence gate`.
-- Relative to the product commit it only adds an explanatory comment to the temporary workflow; no product change.
-
-Idempotent run:
+Idempotence:
+- workflow-only trigger: **`da760a7c03390e495cb688c401d20c2782bad726`**.
 - Run: **`33406513709`**.
 - Job: **`99535327351`**.
-- Conclusion: **SUCCESS**.
+- `TASK3_CHANGED=none`.
+- **884/884 GREEN in 161.91 s**.
+- exact final output: **`No Task 3 product patch to commit.`**
 
-Results:
-- apply script: `UNCHANGED roots.py`, `UNCHANGED intersections.py`, `UNCHANGED extrema.py`, `TASK3_CHANGED=none`.
-- solver-boundary inventory again PASS at **1 / 2 / 1**.
-- N-3 focused: **4 passed, 12 deselected in 2.01 s**.
-- characteristic integration: **69/69 GREEN in 21.76 s**.
-- N-1/N-2: **11 passed, 5 deselected in 3.54 s**.
-- released baseline suite: **884/884 GREEN in 161.91 s**.
-- N-4 remains the expected sole RED.
-- exact final persistence output: **`No Task 3 product patch to commit.`**
+Task 3 context close:
+- **`2c705bdf19675894a02dc310b3921ab328bd20db`** — `docs: record Task 3 completion`.
 
-Task 3 is therefore closed.
+## Task 4 — N-4 symbolic extrema presentation
 
-## N-4 current RED signature
+### Strengthened RED
 
-Current natural case:
+Original public case:
 
 ```text
 a := 3*m
@@ -211,25 +156,98 @@ s(x) = piecewise(x-a, x < a, 2*(x-a))
 extrema(abs(s(x)), x, 0, L)
 ```
 
-Numeric extrema semantics are already correct:
-- lower boundary value quantity = `3 m`;
-- upper boundary value quantity = `6 m`.
+Numeric extrema were already correct (`3 m`, `6 m`) but symbolic values retained undecided `Abs(a)` / related forms.
 
-Presentation defect:
-- lower `value_symbolic` is `Abs(a)` instead of the decidable `a`;
-- the failing assertion is `simplify(Abs(a) - a) != 0` because the engineering symbol itself carries no positivity assumption even though the registered scalar context knows `a := 3*m`.
+A negative-sign persistent control was added before product change:
 
-Task 4 must change **symbolic presentation only**. It must not change `value_quantity`, extrema roles, Piecewise branch selection, side/topology, or provenance.
+```text
+a := -3*m
+L := 6*m
+f(x) = abs(a) + x
+extrema(f(x), x, 0, L)
+```
 
-## Exact next step — Task 4
+This requires `-a` / `L-a`, preventing an invalid global-positive-symbol shortcut.
 
-1. Confirm focused N-4 RED on the Task-3-closed tree.
-2. Inspect existing known-scalar/sign-aware symbolic simplification machinery and reuse it if available.
-3. Normalize extrema `value_symbolic` only when registered scalar context makes the simplification decidable; do not globally assume positivity for engineering symbols.
-4. Verify numeric quantities, roles, Piecewise topology, side and provenance remain unchanged.
-5. Run N-4 focused GREEN, Piecewise/extrema suites, `compileall`, and complete source regression.
-6. Commit product as `fix: simplify decidable extrema display values`.
-7. Confirm idempotence, update this file, then proceed to Task 5 requalification only after Task 4 is fully closed.
+Persistent test commit:
+- **`07864111b09cfdca052b807211e0403fbb885c9c`** — `test: strengthen Task 4 sign-aware extrema RED`.
+
+Authoritative RED gate:
+- Run: **`33407321959`**.
+- Job: **`99538005203`**.
+- positive N-4: expected RED (`Abs(a)` vs `a`).
+- negative N-4: expected RED (`Abs(a)` vs `-a`).
+- Tasks 1–3: **15 passed, 2 deselected in 4.90 s**.
+- existing extrema/acceptance focused baseline: **7 passed, 4 deselected in 1.99 s**.
+- `git diff --check`: PASS.
+
+### Product correction
+
+- Product commit: **`df290d561f5d29171ba87aaba53c973d33bc0c86`** — `fix: simplify decidable extrema display values`.
+- Exact product diff from its parent: **only `src/engcalc_colab/characteristics/extrema.py`**, **46 insertions / 4 deletions**.
+- Introduced presentation-only `_simplify_decidable_abs(...)` behavior:
+  - inspect each symbolic `Abs(argument)`;
+  - use registered numeric context only to decide the sign of `argument`;
+  - preserve the symbolic argument itself (`g`, `-g`, or `0`) rather than substituting numeric values;
+  - leave unresolved/nonfinite `Abs(...)` untouched;
+  - apply to extrema candidate/interval/one-sided symbolic display production.
+- `value_quantity`, extrema roles, Piecewise branch selection, topology/side and provenance remain on their existing computation paths.
+
+### First authoritative GREEN / persistence
+
+- Run: **`33407649126`**.
+- Job: **`99539097505`**.
+- `compileall`: PASS.
+- N-4 focused: **2 passed, 15 deselected in 1.15 s**.
+- extrema + acceptance: **11/11 GREEN in 5.21 s**.
+- Tasks 1–3 post-audit: **15 passed, 2 deselected in 5.93 s**.
+- scope gate: `TASK4_WORKTREE_FILES=src/engcalc_colab/characteristics/extrema.py`.
+- complete source suite: **901/901 GREEN in 202.03 s**.
+- product persisted as `df290d561f5d29171ba87aaba53c973d33bc0c86`.
+
+### Idempotence confirmation
+
+Workflow-only trigger:
+- **`05bd8854dbdbe04fbdfdbeba399a22b9e44347ab`** — `test: rerun Task 4 idempotence gate`.
+
+Idempotent run:
+- Run: **`33408181901`**.
+- Job: **`99540890768`**.
+- apply script: **`TASK4_CHANGED=none`**.
+- N-4 focused: **2 passed, 15 deselected in 1.17 s**.
+- extrema + acceptance: **11/11 GREEN in 5.33 s**.
+- Tasks 1–3: **15 passed, 2 deselected in 5.90 s**.
+- `TASK4_IDEMPOTENT_WORKTREE=` (empty).
+- complete source suite: **901/901 GREEN in 198.59 s**.
+- exact final persistence output: **`No Task 4 product patch to commit.`**
+
+Task 4 is closed.
+
+## Exact next step — Task 5
+
+Execute the approved full requalification sequence; do not change product behavior unless a requalification failure exposes a real defect.
+
+1. Focused post-audit regression:
+   - `python -m pytest -q tests/test_v092_post_audit_regressions.py`
+   - focused characteristic suites using their actual repository paths.
+2. Compile + complete source suite:
+   - `python -m compileall -q src/engcalc_colab`
+   - `python -m pytest -q`
+3. Hygiene/scope audit:
+   - `git diff --check main...HEAD`
+   - clean worktree expectation after validation materialization;
+   - no exact-envelope work, unrelated refactor, temporary harness, or version bump.
+4. Build the real **`engcalc_colab-0.9.2-py3-none-any.whl`** and record SHA-256.
+5. Inspect wheel metadata and require:
+   - `Version: 0.9.2`;
+   - `Requires-Python: >=3.10`;
+   - IPython runtime dependency.
+6. Install the real wheel in an external/source-free environment, confirm `engcalc_colab.__file__` resolves under `site-packages`, copy tests outside the repository, and run the complete source-free suite.
+7. Re-run after materialization for idempotence.
+8. Remove all temporary `.github/` post-audit validation infrastructure and prove cleanup only deletes temporary files.
+9. Update this file with run/job IDs, commits, test counts, wheel filename/SHA, source-free evidence and final action.
+10. Open a PR approximately titled `fix: remediate EngCalc 0.9.2 post-audit correctness defects`.
+11. Require permanent Python 3.10–3.14 PR CI and **stop before merge**. Merge requires explicit user approval.
 
 ## Released 0.9.2 invariants that must remain intact
 
@@ -249,4 +267,4 @@ Task 4 must change **symbolic presentation only**. It must not change `value_qua
 
 ## How to resume
 
-Read this file first. Work from `fix/v0.9.2-post-audit-remediation`, never directly from `main`. Tasks 1–3 are complete. The next operation is Task 4: confirm the N-4 RED, inspect existing sign-aware/known-scalar simplification support, and implement presentation-only normalization in extrema. Never invoke Codex without explicit authorization.
+Read this file first. Work from `fix/v0.9.2-post-audit-remediation`, never directly from `main`. Tasks 1–4 are complete. Task 5 is next: full source/wheel/multi-Python requalification, source-free wheel validation, idempotence, cleanup and PR. Stop before merge and request explicit user approval. Never invoke Codex without explicit authorization.
