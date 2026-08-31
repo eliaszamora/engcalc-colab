@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on `fix/v0.9.2-post-audit-remediation`. Tasks 1–2 are COMPLETE. Task 3 (N-3 unit-literal propagation) is NEXT. Released `main` remains untouched._
+_Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on `fix/v0.9.2-post-audit-remediation`. Tasks 1–3 are COMPLETE. Task 4 (N-4 symbolic extrema presentation) is NEXT. Released `main` remains untouched._
 
 ## Canonical baseline
 
@@ -28,14 +28,16 @@ _Last updated: 2026-08-31 — EngCalc 0.9.2 post-audit remediation is ACTIVE on 
 - Temporary validation infrastructure currently present:
   - `.github/workflows/v092-post-audit-validation.yml`
   - `.github/scripts/v092_post_audit_n1_diagnostic.py`
+  - `.github/scripts/v092_post_audit_n3_inventory.py`
+  - `.github/scripts/v092_post_audit_task3_apply.py`
   These must be removed before final PR closure.
 
 ## Corrective task status
 
 1. **COMPLETE** — baseline + N-1/N-2/N-3/N-4 persistent reproductions + N-1 supported-version diagnosis.
 2. **COMPLETE** — N-1/N-2 exact-candidate residual validation unified with deterministic fallback contract.
-3. **NEXT** — fix N-3 by centralizing unit-literal overrides at characteristic solver boundaries.
-4. **PENDING** — fix N-4 symbolic extrema presentation without changing numeric semantics.
+3. **COMPLETE** — N-3 direct unit literals resolved once at characteristic solver boundaries and propagated consistently.
+4. **NEXT** — fix N-4 symbolic extrema presentation without changing numeric semantics.
 5. **PENDING** — full source/wheel/multi-Python requalification, cleanup, PR, explicit merge approval gate.
 
 ## Task 1 — authoritative evidence
@@ -105,21 +107,6 @@ Conclusion: N-1 and N-2 share the demonstrated root cause. Do **not** add specul
    - no change to `_exact_real_solution_set()` completeness semantics;
    - one response profile is reused per continuous zero-set rather than recomputed per candidate.
 
-Scope audit of the product step showed only `fallback.py` and `candidates.py` plus the temporary validation workflow; no unrelated product files changed.
-
-### Harness-only correction
-
-Initial Task 2 GREEN run:
-- Run: **`33404574761`**.
-- Job: **`99528833618`**.
-- N-1/N-2 focused already passed **11/11**.
-- Job then failed only because the temporary workflow referenced nonexistent `tests/test_roots.py`.
-- No product failure was involved.
-
-Harness fix:
-- **`d196cb9e2f21db6c57e2c6eb8edefe6a72cabd3e`** — `test: fix Task 2 characteristic gate path`
-- Correct path: `tests/test_characteristics_roots.py`.
-
 ### Authoritative Task 2 GREEN
 
 Run: **`33404788103`**.
@@ -131,45 +118,118 @@ Results:
 - N-1/N-2 focused: **11 passed, 5 deselected in 3.64 s**.
 - characteristic focused (`fallback`, `roots`, `acceptance`): **41 passed in 14.52 s**.
 - released baseline suite excluding the intentionally still-RED post-audit file: **884/884 GREEN in 165.22 s**.
-- N-3 isolation gate: **3 failed, 1 passed, 12 deselected in 1.59 s** — exactly the three expected public failures; the already-resolved lower-level fallback control remains GREEN.
-- N-4 isolation gate: **1 failed, 15 deselected in 0.85 s** — expected symbolic `Abs(a)` display failure.
-- `git diff --check`: PASS.
+- N-3 isolation: expected three public REDs with lower-level resolved-override control GREEN.
+- N-4 isolation: expected `Abs(a)` symbolic presentation RED.
 - final marker: **`TASK2_GREEN_GATE=PASS`**.
 
-Task 2 is therefore closed. N-3/N-4 remain intentionally RED and are handled independently in Tasks 3/4.
+## Task 3 — N-3 unit-literal propagation correction
 
-## N-3 current RED signatures
+### RED + evaluation-boundary inventory
 
-Using:
+Authoritative RED/inventory run:
+- Run: **`33405568505`**.
+- Job: **`99532181077`**.
+- Conclusion: **SUCCESS as a RED gate**.
+
+Inventory findings before product modification:
+- **18** calls to `evaluate_symbolic(...)` under `src/engcalc_colab/characteristics/`.
+- **18/18** already supplied an `overrides=` keyword.
+- `EVALUATE_SYMBOLIC_WITHOUT_OVERRIDES=0`.
+- Therefore N-3 was not caused by a forgotten evaluation call; the propagated dictionary itself entered the solver tree without direct unit literals resolved.
+
+Focused RED behavior on the Task-2-closed tree:
+- roots public N-3: RED.
+- extrema public N-3: RED.
+- intersections public N-3: RED.
+- lower-level fallback with boundary-resolved unit literals: GREEN.
+- N-1/N-2 remained **11 passed, 5 deselected**.
+
+### Product correction
+
+Product commit:
+- **`e68a03de1467a88a68a92c7de7b045ac95fca048`** — `fix: propagate characteristic unit literals consistently`.
+- Exact product diff: **3 files, 24 insertions, 15 deletions**:
+  - `src/engcalc_colab/characteristics/roots.py`
+  - `src/engcalc_colab/characteristics/intersections.py`
+  - `src/engcalc_colab/characteristics/extrema.py`
+- No unrelated product file changed.
+
+Implemented boundary contract:
+- `solve_roots_exact(...)`: resolve response-expression unit literals once through `context.unit_literal_overrides(expression, overrides)`.
+- `solve_intersections_exact(...)`: resolve left response then right response into one merged override dictionary.
+- `solve_extrema_exact(...)`: resolve response-expression unit literals before continuous/Piecewise derivative analysis.
+- Caller dictionaries remain unmutated; the resolved dictionary is propagated through subordinate candidate/fallback/Piecewise/evaluation paths.
+
+### First authoritative GREEN / persistence run
+
+Run: **`33405927906`**.
+Job: **`99533390103`**.
+Conclusion: **SUCCESS**.
+
+Results:
+- `compileall`: PASS.
+- solver-boundary inventory: roots **1**, intersections **2**, extrema **1**, all as planned.
+- all **18/18** internal `evaluate_symbolic(...)` calls continue to receive `overrides=`.
+- N-3 focused: **4 passed, 12 deselected in 1.64 s**.
+- characteristic integration: **69/69 GREEN in 17.09 s**.
+- N-1/N-2: **11 passed, 5 deselected in 2.80 s**.
+- released baseline suite: **884/884 GREEN in 125.65 s**.
+- N-4 remains the sole intentional future RED: **1 failed, 15 deselected** with `Abs(a)` symbolic presentation mismatch.
+- product persisted as `e68a03de1467a88a68a92c7de7b045ac95fca048`.
+
+### Idempotence confirmation
+
+Workflow-only trigger commit:
+- **`da760a7c03390e495cb688c401d20c2782bad726`** — `test: rerun Task 3 idempotence gate`.
+- Relative to the product commit it only adds an explanatory comment to the temporary workflow; no product change.
+
+Idempotent run:
+- Run: **`33406513709`**.
+- Job: **`99535327351`**.
+- Conclusion: **SUCCESS**.
+
+Results:
+- apply script: `UNCHANGED roots.py`, `UNCHANGED intersections.py`, `UNCHANGED extrema.py`, `TASK3_CHANGED=none`.
+- solver-boundary inventory again PASS at **1 / 2 / 1**.
+- N-3 focused: **4 passed, 12 deselected in 2.01 s**.
+- characteristic integration: **69/69 GREEN in 21.76 s**.
+- N-1/N-2: **11 passed, 5 deselected in 3.54 s**.
+- released baseline suite: **884/884 GREEN in 161.91 s**.
+- N-4 remains the expected sole RED.
+- exact final persistence output: **`No Task 3 product patch to commit.`**
+
+Task 3 is therefore closed.
+
+## N-4 current RED signature
+
+Current natural case:
 
 ```text
+a := 3*m
 L := 6*m
-q := 12*kN/m
-V(x) = q*(L/2-x)
-M(x) = q*x*(L-x)/2
+s(x) = piecewise(x-a, x < a, 2*(x-a))
+extrema(abs(s(x)), x, 0, L)
 ```
 
-Current public failures:
-1. `roots(V(x) - 6*kN, x, 0, L)` -> `EngEvaluationError: characteristic numerical fallback could not validate a solution set`.
-2. `extrema(M(x) - 20*kN*m, x, 0, L)` -> returns zero points instead of three.
-3. `intersections(M(x), 20*kN*m + 0*x, x, 0, L)` -> `EngEvaluationError: intersections responses could not be evaluated on the requested domain`.
-4. Lower-level fallback given an already-resolved unit-literal override dictionary remains GREEN.
+Numeric extrema semantics are already correct:
+- lower boundary value quantity = `3 m`;
+- upper boundary value quantity = `6 m`.
 
-This isolates N-3 to propagation/resolution of direct unit literals, not the fallback root algorithm itself.
+Presentation defect:
+- lower `value_symbolic` is `Abs(a)` instead of the decidable `a`;
+- the failing assertion is `simplify(Abs(a) - a) != 0` because the engineering symbol itself carries no positivity assumption even though the registered scalar context knows `a := 3*m`.
 
-## Exact next step — Task 3
+Task 4 must change **symbolic presentation only**. It must not change `value_quantity`, extrema roles, Piecewise branch selection, side/topology, or provenance.
 
-1. Inventory every `evaluate_symbolic(...)` call under `src/engcalc_colab/characteristics/` and classify how its overrides are obtained.
-2. Confirm the focused N-3 public RED boundary on the Task-2-closed tree.
-3. Resolve direct unit literals exactly once at each public solver boundary:
-   - roots: response expression;
-   - intersections: left then right response merged into one dictionary;
-   - extrema: response expression before continuous/Piecewise derivative analysis.
-4. Preserve caller-provided overrides and never mutate caller-owned dictionaries.
-5. Propagate the resolved override dictionary through all subordinate candidate/fallback/Piecewise/evaluation paths.
-6. Re-run the inventory and leave no response-evaluation path unclassified.
-7. Verify N-3 focused GREEN, characteristic integration suites, compileall, and the released 884-test baseline. N-4 must remain the only intentional future RED.
-8. Update this file and close Task 3 before starting N-4.
+## Exact next step — Task 4
+
+1. Confirm focused N-4 RED on the Task-3-closed tree.
+2. Inspect existing known-scalar/sign-aware symbolic simplification machinery and reuse it if available.
+3. Normalize extrema `value_symbolic` only when registered scalar context makes the simplification decidable; do not globally assume positivity for engineering symbols.
+4. Verify numeric quantities, roles, Piecewise topology, side and provenance remain unchanged.
+5. Run N-4 focused GREEN, Piecewise/extrema suites, `compileall`, and complete source regression.
+6. Commit product as `fix: simplify decidable extrema display values`.
+7. Confirm idempotence, update this file, then proceed to Task 5 requalification only after Task 4 is fully closed.
 
 ## Released 0.9.2 invariants that must remain intact
 
@@ -189,4 +249,4 @@ This isolates N-3 to propagation/resolution of direct unit literals, not the fal
 
 ## How to resume
 
-Read this file first. Work from `fix/v0.9.2-post-audit-remediation`, never directly from `main`. Tasks 1–2 are complete. The next operation is Task 3: inventory characteristic `evaluate_symbolic()` boundaries, confirm N-3 RED, then centralize and propagate unit-literal overrides. Do not begin N-4 until Task 3 is fully GREEN. Never invoke Codex without explicit authorization.
+Read this file first. Work from `fix/v0.9.2-post-audit-remediation`, never directly from `main`. Tasks 1–3 are complete. The next operation is Task 4: confirm the N-4 RED, inspect existing sign-aware/known-scalar simplification support, and implement presentation-only normalization in extrema. Never invoke Codex without explicit authorization.
