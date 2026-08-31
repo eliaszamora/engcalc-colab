@@ -248,3 +248,33 @@ def test_continuous_piecewise_breakpoint_emits_only_at_with_dimensional_zero():
     assert [point.side for point in at_a] == ["at"]
     assert at_a[0].value_quantity.to("m").magnitude == pytest.approx(0.0)
     assert unresolved is False
+
+
+def test_piecewise_characteristic_missing_value_has_actionable_hint():
+    from engcalc_colab.errors import EngEvaluationError
+
+    context = NumericContext()
+    x, a = sp.symbols("x a", real=True)
+    expr = sp.Piecewise((x, x < a), (2*x, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    with pytest.raises(EngEvaluationError) as exc_info:
+        solve_extrema_exact(expr, x, domain, context)
+    message = str(exc_info.value)
+    assert "a" in message
+    assert "a := <value>*<unit>" in message
+
+
+def test_piecewise_substitution_missing_branch_symbol_has_actionable_hint():
+    from engcalc_colab.errors import EngEvaluationError
+
+    context = NumericContext()
+    x, q = sp.symbols("x q", real=True)
+    expr = sp.Piecewise((q*x, x < 2), (x, True), evaluate=False)
+    domain = normalize_analysis_domain(context, sp.Integer(0), sp.Integer(4))
+
+    with pytest.raises(EngEvaluationError) as exc_info:
+        solve_extrema_exact(expr, x, domain, context)
+    message = str(exc_info.value)
+    assert "q" in message
+    assert "q := <value>*<unit>" in message

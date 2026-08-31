@@ -1170,6 +1170,12 @@ def render_characteristic_result(
     )
 
 def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:
+    if isinstance(result, (RootsResult, IntersectionsResult, ExtremaResult)):
+        raise TypeError(
+            "render_result does not support characteristic results; "
+            "use render_characteristic_result"
+        )
+
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
 
     if isinstance(result, NumericAssignmentResult):

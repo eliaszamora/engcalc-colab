@@ -9,7 +9,7 @@ from typing import Any
 import sympy as sp
 from pint.errors import DimensionalityError
 
-from .errors import EngEvaluationError
+from .errors import EngEvaluationError, diagnostic_hint
 from .models import CharacteristicInterval, CharacteristicPoint
 from .piecewise import extract_symbolic_breakpoints
 
@@ -362,9 +362,10 @@ def _piecewise_substitutions(
         elif name in context.values:
             substitutions[name] = context.values[name]
         else:
+            hint = diagnostic_hint("unresolved_numeric_symbols", names=(name,))
             raise EngEvaluationError(
                 "piecewise characteristic domain could not be partitioned safely: "
-                f"missing numeric value for '{name}'"
+                f"missing numeric value for '{name}'. {hint}"
             )
     return substitutions
 
