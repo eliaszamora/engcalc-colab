@@ -85,8 +85,9 @@ jobs:
           git add -A -- \
             src/engcalc_colab/characteristics.py \
             src/engcalc_colab/characteristics \
-            tests/test_characteristics_fallback.py
-          unexpected=$(git status --porcelain | awk '{print $2}' | grep -Ev '^(src/engcalc_colab/characteristics\.py|src/engcalc_colab/characteristics/.*|tests/test_characteristics_fallback\.py)$' || true)
+            tests/test_characteristics_fallback.py \
+            tests/test_characteristics_acceptance.py
+          unexpected=$(git status --porcelain | awk '{print $2}' | grep -Ev '^(src/engcalc_colab/characteristics\.py|src/engcalc_colab/characteristics/.*|tests/test_characteristics_fallback\.py|tests/test_characteristics_acceptance\.py)$' || true)
           if [ -n "$unexpected" ]; then
             echo 'Unexpected Task 12 working-tree paths:'
             echo "$unexpected"
