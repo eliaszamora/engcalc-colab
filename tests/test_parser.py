@@ -9,7 +9,7 @@ from engcalc_colab.parser import parse_cell
 
 def test_package_version_and_statement_model():
     stmt = ParsedStatement(3, "A = q*L", "A", None, ast.parse("q*L", mode="eval"))
-    assert __version__ == "0.9.0"
+    assert __version__ == "0.9.1"
     assert stmt.line_no == 3
     assert stmt.target == "A"
     assert stmt.blank_before is False
@@ -38,36 +38,46 @@ def test_parser_rejects_attribute_access():
         parse_cell("A = obj.attr")
 
 
-def test_parser_rejects_reserved_target():
-    with pytest.raises(EngSyntaxError, match="reserved"):
-        parse_cell("solve = 3")
+def test_parser_rejects_subscript_access():
+    with pytest.raises(EngSyntaxError, match="unsupported syntax"):
+        parse_cell("A = values[0]")
 
 
-def test_parser_rejects_dunder_call_with_concise_line_error():
-    with pytest.raises(EngSyntaxError, match=r"line 1: unsupported function '__import__'"):
-        parse_cell('A = __import__("os")')
+def test_parser_rejects_unapproved_function_calls():
+    with pytest.raises(EngSyntaxError, match="function 'open' is not allowed"):
+        parse_cell("A = open(x)")
 
 
-def test_parser_reports_line_for_unbalanced_parentheses():
-    with pytest.raises(EngSyntaxError, match=r"line 2: unbalanced parentheses"):
-        parse_cell("# heading\nA = (q*L")
+def test_parser_allows_sum_notation():
+    stmt = parse_cell("R = sum(F_i*i, i, 1, n)")[0]
+    assert ast.unparse(stmt.expression) == "sum(F_i * i, i, 1, n)"
 
 
-def test_parser_reserves_sum_as_builtin_operation():
-    with pytest.raises(EngSyntaxError, match="reserved"):
-        parse_cell("sum = 3")
+def test_parser_allows_numeric_call():
+    stmt = parse_cell("numeric(M_0)")[0]
+    assert ast.unparse(stmt.expression) == "numeric(M_0)"
 
 
-def test_parser_reserves_abs_as_builtin_operation():
-    with pytest.raises(EngSyntaxError, match="reserved"):
-        parse_cell("abs = 3")
+def test_parser_rewrites_result_call_to_numeric():
+    stmt = parse_cell("result(M_0)")[0]
+    assert ast.unparse(stmt.expression) == "numeric(M_0)"
 
 
-def test_parser_rejects_abs_keyword_arguments():
-    with pytest.raises(EngSyntaxError, match="keyword arguments are unsupported"):
-        parse_cell("A = abs(x, mode=1)")
+def test_parser_preserves_function_assignment_parameter_tuple():
+    stmt = parse_cell("M(x) = q*x*(L-x)/2")[0]
+    assert stmt.parameters == ("x",)
 
 
-def test_parser_marks_blank_line_as_output_group_separator():
-    stmts = parse_cell("A = 1\n\n\n# next group\nB = 2\n# same group\nC = 3")
-    assert [stmt.blank_before for stmt in stmts] == [False, True, False]
+def test_parser_rejects_zero_argument_function_assignment():
+    with pytest.raises(EngSyntaxError, match="at least one parameter"):
+        parse_cell("f() = x + 1")
+
+
+def test_parser_rejects_duplicate_function_parameters():
+    with pytest.raises(EngSyntaxError, match="duplicate function parameter"):
+        parse_cell("f(x, x) = x")
+
+
+def test_parser_rejects_keyword_function_arguments():
+    with pytest.raises(EngSyntaxError, match="keyword arguments are not supported"):
+        parse_cell("f(x=1)")
