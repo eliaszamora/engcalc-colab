@@ -10,7 +10,12 @@ from pint.errors import DimensionalityError
 from ..errors import EngEvaluationError
 from ..models import CharacteristicPoint
 from .domain import AnalysisDomain
-from .fallback import _FALLBACK_X_DEDUP_REL_TOL, _fallback_roots
+from .fallback import (
+    _FALLBACK_X_DEDUP_REL_TOL,
+    _fallback_response_profile,
+    _fallback_roots,
+    _fallback_validated_residual,
+)
 
 
 @dataclass(frozen=True)
@@ -106,6 +111,7 @@ def _evaluate_root_candidate(
     *,
     overrides: dict[str, Any] | None,
     source_label: str | None,
+    residual_profile=None,
 ) -> _CandidateEvaluation:
     fixed_overrides = context.unit_literal_overrides(expression, overrides)
     fixed_overrides = context.unit_literal_overrides(candidate, fixed_overrides)
@@ -139,11 +145,26 @@ def _evaluate_root_candidate(
         return _CandidateEvaluation(point=None, needs_fallback=True)
 
     if not exact_zero:
-        try:
-            numeric_zero = float(value_quantity.magnitude) == 0.0
-        except (TypeError, ValueError, OverflowError):
-            numeric_zero = False
-        if not numeric_zero:
+        if residual_profile is None:
+            try:
+                residual_profile = _fallback_response_profile(
+                    expression,
+                    variable,
+                    domain,
+                    context,
+                    overrides=fixed_overrides,
+                )
+            except EngEvaluationError:
+                return _CandidateEvaluation(point=None, needs_fallback=True)
+        canonical_unit = residual_profile[3]
+        response_scale = residual_profile[5]
+        residual = _fallback_validated_residual(
+            value_quantity,
+            canonical_unit,
+            response_scale,
+            context,
+        )
+        if residual is None:
             return _CandidateEvaluation(point=None)
 
     return _CandidateEvaluation(
@@ -229,6 +250,26 @@ def _solve_continuous_zero_set(
     points: list[CharacteristicPoint] = []
     needs_fallback = not discovery.complete
 
+    residual_profile = None
+    requires_numeric_validation = False
+    for candidate in discovery.candidates:
+        symbolic_value = sp.simplify(expression.subs(variable, sp.sympify(candidate)))
+        if not (symbolic_value == 0 or symbolic_value.is_zero is True):
+            requires_numeric_validation = True
+            break
+    if requires_numeric_validation:
+        fixed_overrides = context.unit_literal_overrides(expression, overrides)
+        try:
+            residual_profile = _fallback_response_profile(
+                expression,
+                variable,
+                domain,
+                context,
+                overrides=fixed_overrides,
+            )
+        except EngEvaluationError:
+            residual_profile = None
+
     for candidate in discovery.candidates:
         outcome = _evaluate_root_candidate(
             expression,
@@ -238,6 +279,7 @@ def _solve_continuous_zero_set(
             context,
             overrides=overrides,
             source_label=source_label,
+            residual_profile=residual_profile,
         )
         needs_fallback = needs_fallback or outcome.needs_fallback
         if outcome.point is not None:
