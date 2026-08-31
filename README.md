@@ -2,12 +2,12 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.9.0**.
+Current version: **0.9.1**.
 
 
 ## v0.9.1 Exact characteristic analysis
 
-The next EngCalc release adds exact-first engineering characteristic analysis with three standalone calls:
+EngCalc 0.9.1 adds exact-first engineering characteristic analysis with three standalone calls:
 
 ```text
 extrema(response, variable, lower, upper)
@@ -862,6 +862,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.9.1** — exact-first roots, intersections and extrema with unit-aware Piecewise semantics, deterministic numerical fallback, and authoritative ordinary-plot extrema metadata.
 - **0.9.0** — native exact symbolic matrices/vectors, one-based indexing, matrix-valued CAS functions, Pint-backed per-entry numerical matrices, exact `solve(A, b)`, guarded rank/RREF/norm/eigen analysis, native MathJax matrix presentation, Piecewise-cell integration and indexed scalar table/plot/envelope workflows.
 - **0.8.0** — restricted unit-aware Piecewise expressions with partial numerical cases, exact breakpoint-enriched shared plot grids, segmented discontinuous rendering, Piecewise calculus semantics, diagnostics and real `%%eng` acceptance.
 - **0.7.2** — native engineering tables with automatic unit-aware discretization, unit-once and fully explicit point forms, compatible multi-response columns, native HTML rendering, and source-order `%%eng` integration.
@@ -882,4 +883,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.9.0`.
+Version: `0.9.1`.
