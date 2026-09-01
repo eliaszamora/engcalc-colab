@@ -1,0 +1,52 @@
+name: Quality Gate Benchmark
+
+# Temporary. Measures the representative calibration slice on GitHub Actions so
+# the permanent Fast Gate corpus can be dimensioned from real runner timings
+# rather than from an auditor workstation. Deleted in Task 8.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Identify environment
+        run: |
+          git rev-parse HEAD
+          python --version
+          echo "runner image: $ImageOS"
+
+      - run: python -m pip install --upgrade pip
+
+      - run: python -m pip install -e '.[dev]'
+
+      - name: Baseline suite timing
+        run: |
+          start=$(date +%s)
+          python -m pytest -q tests
+          echo "baseline_seconds=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+
+      - name: Calibration slice timing
+        run: |
+          start=$(date +%s)
+          python -m pytest -q quality_tests/calibration --durations=0
+          echo "slice_seconds=$(( $(date +%s) - start ))"
+
+      - name: Report
+        if: always()
+        run: |
+          echo "python=${{ matrix.python-version }}"
+          echo "baseline_seconds=$baseline_seconds"
