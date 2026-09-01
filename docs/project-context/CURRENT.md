@@ -259,19 +259,52 @@ force one Deep property RED on a throwaway branch, dispatch the workflow, and ch
 whether a non-empty artifact appears. Until that is done, the persistence tier is
 designed and documented but not evidenced.
 
-## Exact next step
+## Engineering Presentation — design complete, awaiting independent review
 
-**Task 14: open Engineering Presentation with formal RED contracts for P-1, P-2 and
-P-3.** The Quality Gate is integrated, so the discipline it exists to enforce now
-applies: the defect is written as a failing test first, on a branch, and the fix is
-what turns it green. This is the first functional release since the gate, and the first
-change to production source since `c3f4b14`.
+Branch `feature/v0.10.0-engineering-presentation`, unmerged, no production source
+changed yet. Design:
+`docs/superpowers/specs/2026-09-01-engcalc-v0.10.0-engineering-presentation-design.md`.
 
-P-1 and P-2 share a root cause in `renderer.py::_quantity_latex`, which formats with
-fixed decimals over the stored unit without rescaling. P-3 does not: a dimensionally
-correct compound unit is a separate contract, and the audit demonstrated that a
-"never renders as zero" property passes on the P-3 deflection case. Three contracts,
-not one, and P-3 needs its own oracle rather than a shared invariant.
+**Twelve acceptance contracts in `tests/test_engineering_presentation.py`: ten RED, two
+GREEN.** Written before any fix, and each verified to fail for its own documented reason.
+
+**Five collapse and presentation sites, not three.** The audit of `characteristics/` had
+demonstrated P-1, P-2 and P-3 on scalars. Designing the fix found two more, both measured:
+
+- `_magnitude_latex`, the homogeneous **matrix** cell path. `d := 8e-05*m` with
+  `A = [d, 0; 0, 2*d]` renders four identical `0.00` for a matrix with two genuine zeros
+  and two lost values;
+- `_table_magnitude`, the **table** cell path, and this is the one that matters most in
+  practice. `table(d(x), x, 0, L, 4)` on `d(x) = x*8e-05` renders the whole ordinate
+  column as zero. A table along a beam is the commonest thing a memoria contains.
+
+A fourth fixed-decimal format at `renderer.py:306` is a literal zero for an empty
+polynomial and is **not** a collapse site. The enumeration is closed.
+
+**Approved policy: preferred unit by dimension**, chosen after measuring four candidates
+rather than reasoning about them. Two rules:
+
+1. authorship is a property of the **unit**, not of a quantity's provenance. A unit is
+   authored if the engineer typed it, which `NumericContext` already knows. This is what
+   makes the rule implementable: it removes the need to classify quantities at thirteen
+   call sites, several of which are neither declared nor derived;
+2. keep the authored unit unless a family member retains **strictly more significant
+   figures**; ties go to what the engineer wrote. Below the family floor, fall back to
+   scientific notation — reusing the `8.0 \cdot 10^{-5}` convention the symbolic path
+   already has.
+
+### The exact next step
+
+**Independent review of the design, by someone who did not write it.** The design was
+self-audited at the user's request; §9.1 of the spec records its four findings and states
+what a self-audit cannot reach. Do not write the implementation plan before that review.
+
+The reason is in this release's own record: **three separate contracts passed for the
+wrong reason** before being caught, and all three were caught by executing a simulated
+fix, not by reading. A GREEN contract at `rel=1e-6` that would have broken the moment the
+product was fixed; a matrix contract that counted zeros and so accepted a fix multiplying
+every cell by 1000; and its replacement's own `abs=1e-2`, which made it vacuous for
+exactly the small values it protects.
 
 Carried alongside, small and independent:
 
@@ -285,22 +318,30 @@ Carried alongside, small and independent:
 
 ## How to resume in a new conversation
 
-Read this file first. `main` is at `38b28d5` with 0.9.2 closed and the Permanent
-Quality Gate integrated: PR #35, #36 and #37 merged, post-merge CI green on Python
-3.10–3.14 (run `33567780020`) and Deep qualification green on 3.10 and 3.14 against the
+Read this file first. `main` is at `536c22d` with 0.9.2 closed and the Permanent Quality
+Gate integrated: PRs #35, #36, #37 and #38 merged, post-merge CI green on Python
+3.10-3.14 (run `33567780020`) and Deep qualification green on 3.10 and 3.14 against the
 merge commit itself (run `33567836733`), which discharges QG-2. The gate is 154 Fast
 tests collected by the ordinary suite on every push, 1066 GREEN in total, plus 18 Deep
-properties run weekly or on demand — with zero production source change across the
-whole phase.
+properties run weekly or on demand - with zero production source change across the whole
+phase.
+
+Active work is on `feature/v0.10.0-engineering-presentation`, unmerged and with no
+production source changed yet: twelve acceptance contracts and a complete, self-audited,
+**unapproved** design. The next step is an independent review of that design, not the
+implementation plan.
 
 The mathematical characteristic subsystem was independently audited and is CLEAN within
-the audited scope. The three open defects are all in presentation and untouched; they
-are the content of the next release. QG-3 is open, evidentiary only, and blocks nothing.
+the audited scope. QG-3 is open, evidentiary only, and blocks nothing.
 
 Read `docs/quality-gate.md` for how to operate the gate and, in particular, for the
-isolated configuration that historical sensitivity runs require — without it pytest
+isolated configuration that historical sensitivity runs require - without it pytest
 discovers the repository `pyproject.toml` and prepends the current `src`, so guards pass
 while appearing to exercise historical code.
 
-Never merge without explicit user approval and never invoke Codex without explicit
-authorization.
+Two rules that have each paid for themselves more than once: never merge without explicit
+user approval, and never let whoever built something be the one to certify it. The second
+was suspended once, deliberately, for the design review recorded in the spec's §9.1, and
+that section states plainly what the exercise could not reach.
+
+Never invoke Codex / Codex Cloud without explicit authorization.
