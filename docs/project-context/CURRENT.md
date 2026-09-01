@@ -172,6 +172,16 @@ guard green against the very implementation it existed to catch.
 Versions beyond the next release are not committed, because the audits repeatedly
 invalidated longer-horizon numbering.
 
+**Residual item, declared rather than assumed away.** The Deep Gate Actions
+qualification on Python 3.10 and 3.14 ran at branch head `9de3207`, not at the final
+head `f0afa6c`. `workflow_dispatch` only becomes available once a workflow exists on
+the default branch, so the qualification had to be reached through a temporary
+`pull_request` trigger, and recording the resulting evidence necessarily moved the head
+again. Between the two commits `quality_tests/deep` changed by one docstring, +6/-1,
+with no behavioural difference, and the deep suite was run locally on the final content
+at 18 GREEN. The gap is therefore narrow but real, and it closes by running
+`Quality Gate Deep` in `qualification` mode against `main` immediately after merge.
+
 ## Exact next step
 
 **Task 13: independent audit of PR #37, by a reviewer who did not implement it.**
