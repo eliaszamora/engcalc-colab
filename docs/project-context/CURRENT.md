@@ -202,8 +202,13 @@ evidence moves the head again.
 The exception is explicitly limited:
 
 - it applies to PR #37 only, the commit that introduces the workflow;
-- the difference between the qualified head `9de3207` and the merge candidate is one
-  docstring in `quality_tests/deep`, plus documentation and Fast Gate marker fixes;
+- between the qualified head `9de3207` and the merge candidate, `quality_tests/deep`
+  changed **only in one docstring**, with no effect on behaviour. Documentation, the
+  Fast Gate evidence markers and the Deep workflow also changed, the last of these
+  solely to correct QG-1 in the persistence and observability of the Hypothesis
+  database. Verified: the `pytest` invocation, the per-property `max_examples`, the
+  `derandomize` setting and the Python matrix are all untouched, so the qualification
+  logic and corpus are the same ones that were qualified;
 - the deep suite was run locally on the final content at 18 GREEN;
 - **immediately after merge, `Quality Gate Deep` must be run in `qualification` mode
   against the merge commit on `main`. If Python 3.10 or 3.14 is not GREEN there, the
