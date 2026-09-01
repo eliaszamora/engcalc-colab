@@ -5,11 +5,6 @@ name: Quality Gate Deep
 # not multiplied across the whole Python matrix on every commit.
 
 on:
-  # TEMPORARY, removed before final qualification. workflow_dispatch only becomes
-  # available once the workflow exists on the default branch, so the Deep Gate
-  # cannot be measured on Actions from this branch without a pull_request
-  # trigger. Task 11 needs that measurement before merge.
-  pull_request:
   schedule:
     - cron: "17 4 * * 1"
   workflow_dispatch:
@@ -76,7 +71,7 @@ jobs:
           if-no-files-found: ignore
 
   qualification:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification')
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification'
     runs-on: ubuntu-latest
 
     strategy:

@@ -19,7 +19,9 @@ from quality_tests.helpers import (
     role_xs,
 )
 
-pytestmark = pytest.mark.evidence_a
+# Evidence level is declared per test: this module mixes authoritative
+# Level A constructive cases with complementary Level C ones, and a module
+# marker would make the complementary tests count as Level A too.
 
 
 @pytest.mark.parametrize(
@@ -31,6 +33,7 @@ pytestmark = pytest.mark.evidence_a
         (3.75, 1.25, -2.25),
     ],
 )
+@pytest.mark.evidence_a
 def test_known_interior_maximum(vertex, curvature, offset):
     result = evaluate_cell(
         f"f(x) = -{curvature}*(x - {vertex})^2 + {offset}\nextrema(f(x), x, -5, 5)"
@@ -47,6 +50,7 @@ def test_known_interior_maximum(vertex, curvature, offset):
         (-3.5, 2.75, 4.0),
     ],
 )
+@pytest.mark.evidence_a
 def test_known_interior_minimum(vertex, curvature, offset):
     """New Level A coverage: the audit only reached minima through sign-flip."""
     result = evaluate_cell(
@@ -64,6 +68,7 @@ def test_known_interior_minimum(vertex, curvature, offset):
         (-1.25, -3.0, 1.5),
     ],
 )
+@pytest.mark.evidence_a
 def test_extrema_at_domain_boundaries(slope, lo, hi):
     """New Level A coverage: a monotone response puts both roles on the bounds."""
     result = evaluate_cell(f"f(x) = {slope}*x + 1.0\nextrema(f(x), x, {lo}, {hi})")
@@ -73,6 +78,7 @@ def test_extrema_at_domain_boundaries(slope, lo, hi):
 
 
 @pytest.mark.parametrize(("lo", "hi"), [(0.0, 4.0), (-2.5, 1.0)])
+@pytest.mark.evidence_a
 def test_constant_response_is_reported_as_an_interval(lo, hi):
     """A constant attains its extremes everywhere, which is an interval fact."""
     result = evaluate_cell(f"f(x) = 3.5 + 0*x\nextrema(f(x), x, {lo}, {hi})")

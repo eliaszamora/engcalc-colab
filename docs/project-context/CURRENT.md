@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-09-01 — EngCalc 0.9.2 is released and closed on `main`. PR #35 and PR #36 are merged, post-merge CI is GREEN on Python 3.10–3.14, and an independent property-based audit of `characteristics/` is complete and closed. The active phase is the **Permanent Quality Gate**, QA infrastructure only, on branch `qa/permanent-quality-gate`. Production source must not change during this phase. P-1/P-2/P-3 presentation defects remain open and are deliberately not corrected here._
+_Last updated: 2026-09-01 — EngCalc 0.9.2 is released and closed on `main`. The **Permanent Quality Gate** is implemented and qualified on branch `qa/permanent-quality-gate`, PR #37, awaiting independent audit and then explicit merge approval. No production source changed. P-1/P-2/P-3 presentation defects remain open and are deliberately not corrected here._
 
 ## Current baseline
 
@@ -100,6 +100,66 @@ The H4 replacement was verified before implementation: `sp.solve` returns `[a]` 
 across every mandated configuration, and simulating the historical over-broad rule makes
 the guard fail 4/4 configurations while the corrected implementation passes.
 
+### Permanent Quality Gate — implemented and qualified
+
+Branch `qa/permanent-quality-gate`, PR **#37**, based on `c3f4b14`. Operating notes:
+`docs/quality-gate.md`.
+
+**Scope.** 22 files, none of them production source. `git diff --name-only c3f4b14 --
+src/engcalc_colab` is empty. Package version unchanged at 0.9.2; Hypothesis pinned to
+`6.167.1` as a development dependency only.
+
+**Corpus.**
+
+| Suite | Level A | Level C | Level B | Level D | Total |
+|---|---|---|---|---|---|
+| Fast, every push | 148 | 6 | 0 | **0** | 154 |
+| Deep, scheduled | 16 | 2 | 0 | **0** | 18 |
+
+Level B is zero because the audit's H2 invariant was promoted: the Piecewise
+operator × bound matrix now asserts branch ownership, reported side and each attained
+role, derived from the public Piecewise contract rather than from current output. No
+test carries both an authoritative and a complementary marker.
+
+**Measured budget, GitHub Actions.**
+
+| | Python 3.10 | Python 3.14 |
+|---|---|---|
+| product suite | 190.1 s | 95.0 s |
+| Fast Gate added | **45.4 s** | **22.8 s** |
+| Deep Gate qualification | **377.1 s** | **168.7 s** |
+
+Contracts: ≤60 s median added per matrix job with a 90 s ceiling, and ≤10 min for the
+Deep Gate with a 12 min ceiling. All satisfied, nothing trimmed. The same Fast Gate
+took 62.6 s locally, so extrapolating from the workstation would have argued for
+cutting coverage the runners do not need — which is why the design requires sizing to
+follow measurement.
+
+**Historical sensitivity dossier.** Each guard run against the state it exists to
+catch, with the historical tree verified in use:
+
+| Guard | Bad state | Result |
+|---|---|---|
+| N-1 expanded decimals | `a1dc97b` | 10 failed / 2 passed, assertion failures |
+| A-1 complex candidates | `e073320` | 3 failed, product raises the complex `TypeError` |
+| A-2 open upper edge | `e073320` | 2 of 4 operator cases failed, exactly those whose topology involves a one-sided limit |
+| H4-A over-broad completeness | `7f4a2c5` | 6 failed of 6 |
+| all guards | `c3f4b14` | GREEN |
+
+Obtaining that evidence required an isolated pytest configuration. Run from a
+temporary tree, pytest still discovers the repository `pyproject.toml` as its
+configfile and prepends the current `src`, so the guards initially **passed** while
+appearing to exercise the historical code. That false GREEN is the mirror of the false
+RED the plan already guarded against, and `docs/quality-gate.md` records the procedure
+that avoids both.
+
+**H4 replacement.** `(x - a)*(x^5 + b*x + c)` with `b > 0`. The derivative `5x⁴ + b` is
+strictly positive, so the quintic is monotone and has exactly one real root: the count
+comes from calculus and the location from test-local bisection, so no symbolic solver
+participates in forming the expectation. The earlier candidate that embedded the root
+in the coefficients was rejected because SymPy could then factor it out, leaving the
+guard green against the very implementation it existed to catch.
+
 ## Roadmap / active plan
 
 1. **Permanent Quality Gate** — active. QA infrastructure only, no production change.
@@ -114,28 +174,31 @@ invalidated longer-horizon numbering.
 
 ## Exact next step
 
-Execute the Permanent Quality Gate plan task by task on `qa/permanent-quality-gate`.
+**Task 13: independent audit of PR #37, by a reviewer who did not implement it.**
 
-Task 1 is complete when this file, the design spec and the implementation plan are
-committed as a documentation-only diff. Task 2 establishes the dev-only Hypothesis
-dependency and the Fast/Deep collection topology. **Task 3 benchmarks a representative
-slice on GitHub Actions before any corpus is dimensioned** — sizing must not precede
-measurement.
+The implementer must not certify the gate, and that rule has already paid for itself
+twice in this project. It matters more than usual here because the same agent wrote
+the design, the plan and the implementation, so three of the four review layers share
+one perspective. The twelve audit questions are in the implementation plan; the two
+worth the closest attention are whether any mandatory partition was silently dropped
+during calibration, and whether the H4 replacement really is independent of the solver
+under test.
 
-Stop conditions during implementation: any permanent Level A test that demonstrates a
-current product defect halts the Quality Gate and becomes a separate corrective project;
-any required partition that cannot fit under the 90 s per-job ceiling halts implementation
-for a topology review.
+After a CLEAN audit, request explicit merge approval. Do not merge before that.
 
-Task 13 is an independent audit performed by a reviewer who did not implement. No merge
-without explicit user approval.
+No further implementation work remains: temporary calibration infrastructure is
+deleted, no audit instrumentation survives, `git diff --check` is clean, `compileall`
+passes, the default suite is 1066 GREEN and the Deep suite is 18 GREEN.
 
 ## How to resume in a new conversation
 
-Read this file first. `main` is at `c3f4b14` with 0.9.2 closed, PR #35 and #36 merged,
-912/912 GREEN and post-merge CI green on Python 3.10–3.14. The mathematical characteristic
-subsystem was independently audited and is CLEAN within the audited scope; the three open
-defects are all in presentation and are not touched by the current phase. Work continues
-on `qa/permanent-quality-gate` following the approved design and plan under
-`docs/superpowers/`. Production source must not change in this phase. Never merge without
-explicit user approval and never invoke Codex without explicit authorization.
+Read this file first. `main` is at `c3f4b14` with 0.9.2 closed, PR #35 and #36 merged
+and post-merge CI green on Python 3.10–3.14. The mathematical characteristic subsystem
+was independently audited and is CLEAN within the audited scope; the three open defects
+are all in presentation and untouched. The Permanent Quality Gate is implemented and
+qualified on `qa/permanent-quality-gate` as PR #37: 154 Fast Gate tests collected by the
+ordinary suite and 18 Deep properties behind an explicit path, with no production source
+change. What remains is the independent audit and then explicit merge approval. Read
+`docs/quality-gate.md` for how to operate the gate and, in particular, for the isolated
+configuration that historical sensitivity runs require. Never merge without explicit user
+approval and never invoke Codex without explicit authorization.

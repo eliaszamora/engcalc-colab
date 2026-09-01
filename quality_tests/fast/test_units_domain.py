@@ -17,7 +17,9 @@ from quality_tests.helpers import (
     role_xs,
 )
 
-pytestmark = pytest.mark.evidence_a
+# Evidence level is declared per test: this module mixes authoritative
+# Level A constructive cases with complementary Level C ones, and a module
+# marker would make the complementary tests count as Level A too.
 
 
 # --------------------------------------------------------------------------
@@ -34,6 +36,7 @@ pytestmark = pytest.mark.evidence_a
         (7.25, 10.0, 9.5),
     ],
 )
+@pytest.mark.evidence_a
 def test_unit_aware_root_location(load, length, target):
     result = evaluate_cell(
         f"q := {load}*kN/m\nL := {length}*m\nxr := {target}*m\n"
@@ -43,6 +46,7 @@ def test_unit_aware_root_location(load, length, target):
 
 
 @pytest.mark.parametrize(("load", "length"), [(12.0, 6.0), (4.0, 9.0)])
+@pytest.mark.evidence_a
 def test_unit_aware_extremum_of_a_simply_supported_moment(load, length):
     """The classic parabola: peak at midspan with value q*L^2/8."""
     result = evaluate_cell(
@@ -58,6 +62,7 @@ def test_unit_aware_extremum_of_a_simply_supported_moment(load, length):
 
 
 @pytest.mark.parametrize("bound_literal", ["6*m", "6000*mm"])
+@pytest.mark.evidence_a
 def test_unit_literals_are_accepted_in_domain_bounds(bound_literal):
     """A literal bound must be resolvable, not only a registered parameter."""
     result = evaluate_cell(
@@ -72,6 +77,7 @@ def test_unit_literals_are_accepted_in_domain_bounds(bound_literal):
 
 
 @pytest.mark.parametrize(("load", "length"), [(12.0, 6.0), (18.0, 4.0)])
+@pytest.mark.evidence_a
 def test_dimensional_zero_offset_matches_the_bare_response(load, length):
     """Subtracting a dimensional zero must not change the answer."""
     setup = f"q := {load}*kN/m\nL := {length}*m\nM(x) = q*x*(L-x)/2\n"
@@ -85,6 +91,7 @@ def test_dimensional_zero_offset_matches_the_bare_response(load, length):
     )
 
 
+@pytest.mark.evidence_a
 def test_identically_zero_response_is_reported_as_an_interval():
     result = evaluate_cell("z(x) = 0*x\nroots(z(x), x, 0, 4)")
     assert characteristic_xs(result) == []
@@ -98,6 +105,7 @@ def test_identically_zero_response_is_reported_as_an_interval():
 
 
 @pytest.mark.parametrize(("target", "lo", "hi"), [(2.0, 2.0, 6.0), (5.0, 1.0, 5.0)])
+@pytest.mark.evidence_a
 def test_unit_aware_root_on_a_domain_bound(target, lo, hi):
     result = evaluate_cell(
         f"q := 10*kN/m\nxr := {target}*m\nV(x) = q*(x - xr)\n"
@@ -106,6 +114,7 @@ def test_unit_aware_root_on_a_domain_bound(target, lo, hi):
     assert_close_sequence(characteristic_xs(result, "m"), [target], abs_tol=1e-9)
 
 
+@pytest.mark.evidence_a
 def test_unit_aware_root_outside_the_domain_is_excluded():
     result = evaluate_cell(
         "q := 10*kN/m\nxr := 9*m\nV(x) = q*(x - xr)\nroots(V(x), x, 0*m, 5*m)"
@@ -113,6 +122,7 @@ def test_unit_aware_root_outside_the_domain_is_excluded():
     assert characteristic_xs(result) == []
 
 
+@pytest.mark.evidence_a
 def test_incompatible_response_dimensions_are_rejected():
     """A moment and a shear cannot intersect; that must be an error, not a point."""
     from engcalc_colab.errors import EngEvaluationError

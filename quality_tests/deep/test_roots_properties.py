@@ -46,7 +46,12 @@ def test_factored_polynomial_roots(coeff, roots):
     roots=st.lists(root_value, min_size=2, max_size=3, unique=True),
 )
 def test_expanded_decimal_polynomial_roots(coeff, roots):
-    """N-1 family. Expanding is what produced the decimal coefficients that failed."""
+    """N-1 family. Expanding is what produced the decimal coefficients that failed.
+
+    SymPy appears here only to expand a polynomial already built from chosen
+    roots, which is a formatting step. The expectation still comes from those
+    roots, so this stays Level A: no solver is asked what the answer is.
+    """
     assume(sufficiently_separated(roots))
     x = sp.Symbol("x")
     expanded = sp.expand(coeff * sp.prod([x - r for r in roots]))
