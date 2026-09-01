@@ -186,6 +186,35 @@ numeric(d)
 """
 
 
+def test_p1_inside_a_homogeneous_matrix_keeps_real_zeros_distinguishable():
+    """P-1 also lives on the matrix cell path, through ``_magnitude_latex``.
+
+    Found while designing the fix, not by the original audit. A homogeneous
+    quantity matrix factors its unit out and renders bare cells, so the collapse
+    happens there too - and worse: the matrix below has two genuine zeros and two
+    nonzero cells, and renders as four identical ``0.00``. Nothing on the page
+    tells the reader a value was lost.
+    """
+    import engcalc_colab.renderer as renderer
+    from engcalc_colab.renderer import RenderSettings
+
+    engine = EngineeringEngine()
+    results = run_cell(engine, "d := 8e-05*m\nA = [d, 0; 0, 2*d]\nnumeric(A)")
+    quantity_matrix = results[-1].quantity_matrix
+
+    real = [float(quantity.magnitude) for quantity in quantity_matrix]
+    assert sorted(value == 0.0 for value in real) == [False, False, True, True], (
+        "guard: the matrix must hold two genuine zeros and two nonzero cells"
+    )
+
+    latex = renderer._quantity_matrix_latex(quantity_matrix, RenderSettings(precision=2))
+    zeros_shown = len(re.findall(r"(?<!\d)0\.00(?!\d)", latex))
+
+    assert zeros_shown == 2, (
+        f"a genuine zero and a collapsed value are indistinguishable: {latex!r}"
+    )
+
+
 def test_p3_a_length_is_presented_in_a_unit_of_length():
     """A deflection renders as ``5625.00 kN/(GPa.m)`` instead of a length.
 
@@ -229,6 +258,11 @@ def test_p3_is_not_detected_by_the_p1_and_p2_contracts():
     both the zero contract and the value-agreement contract while remaining
     unreadable. Recorded as a test so the distinction cannot be lost by someone
     later folding the three defects into one property.
+
+    This one is GREEN today and must stay GREEN after the fix, so it is compared
+    at display precision. A tighter tolerance passes only while the deflection
+    renders as an exact 5625.00 and fails the moment it renders as a rounded
+    5.63 mm - which is the fix working. Measured, not anticipated.
     """
     engine = EngineeringEngine()
     result = run_cell(engine, _DEFLECTION)[-1]
@@ -247,5 +281,5 @@ def test_p3_is_not_detected_by_the_p1_and_p2_contracts():
 
     assert displayed.dimensionality == result.quantity.dimensionality
     assert displayed.to(result.quantity.units).magnitude == pytest.approx(
-        result.quantity.magnitude, rel=1e-6
+        result.quantity.magnitude, rel=1e-2
     ), "P-3 is not a value-agreement defect: the number shown is correct"
