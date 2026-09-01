@@ -31,6 +31,19 @@ _DISPLAYED_MAGNITUDE = re.compile(r"(-?\d+(?:\.\d+)?)\s*\\,")
 _UNIT_TOKEN = re.compile(r"\\mathrm\{([^}]*)\}")
 _DISPLAYED_PAIR = re.compile(r"(-?\d+(?:\.\d+)?)\s*\\,\s*\\mathrm\{([^}]*)\}")
 
+# The symbolic path already renders small values as ``8.0 \cdot 10^{-5}``, so the
+# numeric path reuses that convention rather than inventing one. ``\times`` is
+# accepted because nothing in the codebase fixes the choice yet.
+_SCIENTIFIC = re.compile(r"(?:\\cdot|\\times)\s*10\^\{?-?\d+\}?")
+_DEFAULT_ZERO_TOLERANCE = 1e-10
+
+
+def _scientific_or_nonzero(latex: str) -> bool:
+    """True when the reader can recover a nonzero value from what is shown."""
+    if _SCIENTIFIC.search(latex):
+        return True
+    return any(value != 0.0 for value in displayed_magnitudes(latex))
+
 
 def run_cell(engine: EngineeringEngine, source: str):
     results = []
@@ -212,6 +225,108 @@ def test_p1_inside_a_homogeneous_matrix_keeps_real_zeros_distinguishable():
 
     assert zeros_shown == 2, (
         f"a genuine zero and a collapsed value are indistinguishable: {latex!r}"
+    )
+
+
+def test_p1_inside_a_matrix_cell_agrees_with_the_unit_factored_out():
+    """A-2. Counting zeros is not enough: the cells must mean what the header says.
+
+    A homogeneous matrix prints one unit outside the brackets and bare
+    magnitudes inside. A fix that rescales each cell independently satisfies
+    every zero-based contract and multiplies the whole matrix by 1000, because
+    the cells move to millimetres while the factored-out unit stays metres.
+    Measured against a simulated fix, which is how this contract came to exist.
+    """
+    import engcalc_colab.renderer as renderer
+    from engcalc_colab.renderer import RenderSettings
+
+    engine = EngineeringEngine()
+    results = run_cell(engine, "d := 8e-05*m\nA = [d, 0; 0, 2*d]\nnumeric(A)")
+    quantity_matrix = results[-1].quantity_matrix
+
+    latex = renderer._quantity_matrix_latex(quantity_matrix, RenderSettings(precision=2))
+
+    factored = _UNIT_TOKEN.findall(latex.rsplit(r"\right]", 1)[-1])
+    assert factored, f"expected a unit factored out of the matrix: {latex!r}"
+    unit = engine.numeric_context.ureg.Unit(" * ".join(factored))
+
+    body = latex.rsplit(r"\right]", 1)[0]
+    cells = [float(cell) for cell in re.findall(r"-?\d+\.\d+", body)]
+    truth = [quantity for quantity in quantity_matrix]
+    assert len(cells) == len(truth), f"expected {len(truth)} cells in: {latex!r}"
+
+    for cell, quantity in zip(cells, truth):
+        shown = engine.numeric_context.ureg.Quantity(cell, unit)
+        expected = float(quantity.to(unit).magnitude) if not getattr(
+            quantity, "dimensionless", False
+        ) else 0.0
+        # No absolute tolerance. An earlier draft passed abs=1e-2 and the contract
+        # became vacuous for exactly the small values it exists to protect: a cell
+        # showing 0.00 for a true 8e-05 m sat inside the tolerance.
+        assert float(shown.magnitude) == pytest.approx(expected, rel=1e-2), (
+            f"cell {cell} read in {unit} is not {quantity}: {latex!r}"
+        )
+
+
+def test_p1_inside_a_table_column_never_collapses_a_whole_column():
+    """A-1. ``_table_magnitude`` is a third collapse site, and the most visible.
+
+    A table along a beam is the commonest output in a real memoria. Measured
+    against 38b28d5, this table renders its whole ordinate column as ``0.00``:
+    one genuine zero and three lost values, indistinguishable from each other.
+    """
+    import engcalc_colab.renderer as renderer
+
+    engine = EngineeringEngine()
+    results = run_cell(engine, "d(x) = x*8e-05\nL := 3*m\ntable(d(x), x, 0, L, 4)")
+    result = results[-1]
+
+    column = result.columns[-1]
+    genuine_zeros = sum(1 for value in column.values if float(value.magnitude) == 0.0)
+    assert genuine_zeros == 1, "guard: exactly one sampled value is genuinely zero"
+
+    html = renderer.render_table(result)
+    cells = re.findall(r"<td[^>]*>([^<]*)</td>", html)
+    ordinate = [cell for index, cell in enumerate(cells) if index % 2 == 1]
+
+    shown_zeros = sum(1 for cell in ordinate if float(cell) == 0.0)
+    assert shown_zeros == genuine_zeros, (
+        f"the column collapses {shown_zeros - genuine_zeros} nonzero value(s) "
+        f"to zero: {ordinate}"
+    )
+
+
+def test_p1_falls_back_to_scientific_notation_below_the_family_floor():
+    """A-3. Rescaling alone does not discharge P-1.
+
+    The length family bottoms out at millimetres, so a value small enough still
+    renders as zero after rescaling: measured, ``1e-6 m`` renders ``0.00 mm``
+    under a simulated fix. Below that floor the value is shown in scientific
+    notation instead.
+
+    The boundary with ``zero_tolerance`` is the point of the second case. A
+    value below tolerance is a genuine zero by an existing approved contract and
+    must keep rendering as zero; only values above it are owed a readable form.
+    """
+    engine = EngineeringEngine()
+    result = run_cell(engine, "v := 1e-6*m")[-1]
+
+    assert abs(float(result.quantity.magnitude)) >= _DEFAULT_ZERO_TOLERANCE, (
+        "guard: this value is above zero_tolerance and is not a genuine zero"
+    )
+
+    latex = render_result(result)
+    assert _scientific_or_nonzero(latex), (
+        f"a value below the family floor is presented as zero: {latex!r}"
+    )
+
+    engine = EngineeringEngine()
+    genuine = run_cell(engine, "z := 1e-11*m")[-1]
+    assert abs(float(genuine.quantity.magnitude)) < _DEFAULT_ZERO_TOLERANCE, (
+        "guard: this value is below zero_tolerance"
+    )
+    assert not _scientific_or_nonzero(render_result(genuine)), (
+        "a value below zero_tolerance is a genuine zero and must render as zero"
     )
 
 
