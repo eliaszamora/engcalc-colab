@@ -330,6 +330,68 @@ def test_p1_falls_back_to_scientific_notation_below_the_family_floor():
     )
 
 
+# ---------------------------------------------------------------------------
+# A-4 - the authorship rule: what the engineer wrote is not overridden
+# ---------------------------------------------------------------------------
+
+
+def _rendered_unit(engine, source: str) -> str:
+    latex = render_result(run_cell(engine, source)[-1])
+    return " * ".join(_UNIT_TOKEN.findall(final_stage(latex)))
+
+
+def test_a4_a_declared_unit_survives_when_it_loses_no_information():
+    """GREEN today and must stay GREEN. Guards against over-application.
+
+    ``tonf`` exists in this product because civil engineers write it, and a slab
+    thickness is authored in metres on purpose. Neither loses a significant
+    figure by staying where the engineer put it, so neither moves. A policy that
+    renders these as ``27.46 kN/m`` and ``500.00 mm`` is wrong however readable
+    the result looks.
+    """
+    engine = EngineeringEngine()
+    assert "tonf" in _rendered_unit(engine, "q := 2.8*tonf/m")
+
+    engine = EngineeringEngine()
+    assert _rendered_unit(engine, "t := 0.5*m") == "m"
+
+    engine = EngineeringEngine()
+    assert _rendered_unit(engine, "L := 5*m") == "m"
+
+    engine = EngineeringEngine()
+    assert _rendered_unit(engine, "E := 200*GPa") == "GPa"
+
+
+def test_a4_a_declared_unit_yields_when_a_family_member_says_more():
+    """RED. Guards against under-application.
+
+    An admissible deflection ``L/300`` lands in metres, which the engineer did
+    author, so the authorship rule alone would keep it and render ``0.02 m`` for
+    a value of ``16.67 mm``. Note that ``0.02`` is a *correct rounding* - it sits
+    within half a unit of the last displayed place - which is why the criterion
+    is significant figures retained and not rounding error. Correct rounding and
+    honest presentation are not the same thing, and the difference is exactly why
+    an engineer changes unit instead of adding decimals.
+    """
+    engine = EngineeringEngine()
+    results = run_cell(engine, "f = L/300\nL := 5*m\nnumeric(f)")
+    result = results[-1]
+
+    assert result.quantity.to("mm").magnitude == pytest.approx(16.667, rel=1e-3), (
+        "guard: the admissible deflection is 16.67 mm"
+    )
+
+    latex = render_result(result)
+    shown = displayed_magnitudes(final_stage(latex))
+    assert shown, f"expected a magnitude in: {latex!r}"
+
+    digits = f"{abs(shown[0]):.2f}".replace(".", "").lstrip("0").rstrip("0")
+    assert len(digits) >= 3, (
+        f"the unit retains {len(digits)} significant figure(s) where the family "
+        f"offers 4: {latex!r}"
+    )
+
+
 def test_p3_a_length_is_presented_in_a_unit_of_length():
     """A deflection renders as ``5625.00 kN/(GPa.m)`` instead of a length.
 
