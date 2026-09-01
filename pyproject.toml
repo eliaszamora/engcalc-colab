@@ -10,10 +10,24 @@ requires-python = ">=3.10"
 dependencies = ["sympy>=1.13", "pint>=0.24", "matplotlib>=3.8", "ipython>=8.18"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "tomli>=2.0; python_version < '3.11'"]
+dev = [
+    "pytest>=8",
+    "hypothesis==6.167.1",
+    "tomli>=2.0; python_version < '3.11'",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+# "." is required so quality_tests.helpers resolves under bare `pytest` and in
+# historical-sensitivity runs executed from another working directory, not only
+# under `python -m pytest`, which prepends the working directory itself.
+pythonpath = ["src", "."]
+testpaths = ["tests", "quality_tests/fast"]
+markers = [
+    "evidence_a: constructive oracle known independently before EngCalc executes",
+    "evidence_b: internal invariant evidence, complementary",
+    "evidence_c: metamorphic evidence, complementary",
+    "quality_deep: exploratory Hypothesis quality-gate test",
+]
