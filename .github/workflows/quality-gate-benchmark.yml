@@ -33,20 +33,23 @@ jobs:
 
       - run: python -m pip install -e '.[dev]'
 
+      # Measured in the same job, back to back, so runner-to-runner variance
+      # cannot masquerade as a difference between the two figures.
       - name: Baseline suite timing
         run: |
           start=$(date +%s)
           python -m pytest -q tests
-          echo "baseline_seconds=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
+          echo "BASELINE_SECONDS=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
 
-      - name: Calibration slice timing
+      - name: Fast Gate timing
         run: |
           start=$(date +%s)
-          python -m pytest -q quality_tests/calibration --durations=0
-          echo "slice_seconds=$(( $(date +%s) - start ))"
+          python -m pytest -q quality_tests/fast --durations=15
+          echo "FAST_GATE_SECONDS=$(( $(date +%s) - start ))" >> "$GITHUB_ENV"
 
       - name: Report
         if: always()
         run: |
           echo "python=${{ matrix.python-version }}"
-          echo "baseline_seconds=$baseline_seconds"
+          echo "baseline_seconds=$BASELINE_SECONDS"
+          echo "fast_gate_added_seconds=$FAST_GATE_SECONDS"
