@@ -25,7 +25,7 @@ on:
 
 jobs:
   exploration:
-    if: github.event_name == 'schedule' || github.event_name == 'pull_request' || inputs.mode == 'exploration'
+    if: github.event_name == 'schedule' || inputs.mode == 'exploration'
     runs-on: ubuntu-latest
 
     steps:
@@ -76,7 +76,7 @@ jobs:
           if-no-files-found: ignore
 
   qualification:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification')
     runs-on: ubuntu-latest
 
     strategy:
