@@ -55,6 +55,19 @@ jobs:
       - name: Deep property gate
         run: python -m pytest -q quality_tests/deep --durations=0
 
+      # The database lives under a dot-directory, so its absence and its presence
+      # look identical in a green log. State it explicitly: this finding existed
+      # precisely because an empty artifact collection was indistinguishable from
+      # a working one.
+      - name: Report Hypothesis database state
+        if: always()
+        run: |
+          if [ -d .hypothesis/examples ]; then
+            echo "database present: $(find .hypothesis/examples -type f | wc -l) example file(s)"
+          else
+            echo "database absent: nothing to preserve from this run"
+          fi
+
       - name: Save Hypothesis database
         if: always()
         uses: actions/cache/save@v4
@@ -69,6 +82,9 @@ jobs:
           name: hypothesis-examples-py314-${{ github.run_id }}
           path: .hypothesis/examples
           if-no-files-found: ignore
+          # .hypothesis is a dot-directory and upload-artifact skips hidden files
+          # by default, so without this the artifact is silently empty.
+          include-hidden-files: true
 
   qualification:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification'
@@ -108,6 +124,19 @@ jobs:
       - name: Deep property qualification
         run: python -m pytest -q quality_tests/deep --durations=0
 
+      # The database lives under a dot-directory, so its absence and its presence
+      # look identical in a green log. State it explicitly: this finding existed
+      # precisely because an empty artifact collection was indistinguishable from
+      # a working one.
+      - name: Report Hypothesis database state
+        if: always()
+        run: |
+          if [ -d .hypothesis/examples ]; then
+            echo "database present: $(find .hypothesis/examples -type f | wc -l) example file(s)"
+          else
+            echo "database absent: nothing to preserve from this run"
+          fi
+
       - name: Save Hypothesis database
         if: always()
         uses: actions/cache/save@v4
@@ -122,3 +151,6 @@ jobs:
           name: hypothesis-examples-py${{ matrix.python-version }}-${{ github.run_id }}
           path: .hypothesis/examples
           if-no-files-found: ignore
+          # .hypothesis is a dot-directory and upload-artifact skips hidden files
+          # by default, so without this the artifact is silently empty.
+          include-hidden-files: true

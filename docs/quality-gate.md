@@ -173,6 +173,22 @@ convenience, the workflow artifact is evidence of one run, and the committed
 regression is permanent. Losing the cache must never remove a known defect from the
 gate's protection.
 
+The artifact steps set `include-hidden-files: true`. `.hypothesis/` is a
+dot-directory and `upload-artifact` skips hidden files by default, so without the flag
+the artifact is silently empty while the workflow still reports green. Each job also
+prints whether the database exists before saving it, because an absence that cannot be
+seen is indistinguishable from a working one — which is how that defect survived
+review in the first place.
+
+## Qualification SHA rule
+
+Deep qualification must run on the exact release-candidate SHA. One bounded exception
+is on record: PR #37, the commit that introduced this workflow, could not satisfy it,
+because `workflow_dispatch` registers only once a workflow exists on the default
+branch, so reaching qualification required a temporary trigger and recording the
+evidence moved the head. That exception covers that commit only. Every later
+qualification is on the exact SHA, without exception.
+
 ## Known uncovered families
 
 The gate does **not** protect these; they were never explored and remain open work:

@@ -172,15 +172,47 @@ guard green against the very implementation it existed to catch.
 Versions beyond the next release are not committed, because the audits repeatedly
 invalidated longer-horizon numbering.
 
-**Residual item, declared rather than assumed away.** The Deep Gate Actions
-qualification on Python 3.10 and 3.14 ran at branch head `9de3207`, not at the final
-head `f0afa6c`. `workflow_dispatch` only becomes available once a workflow exists on
-the default branch, so the qualification had to be reached through a temporary
-`pull_request` trigger, and recording the resulting evidence necessarily moved the head
-again. Between the two commits `quality_tests/deep` changed by one docstring, +6/-1,
-with no behavioural difference, and the deep suite was run locally on the final content
-at 18 GREEN. The gap is therefore narrow but real, and it closes by running
-`Quality Gate Deep` in `qualification` mode against `main` immediately after merge.
+### Independent audit of PR #37 — findings and resolution
+
+Audited by a reviewer who did not implement the gate. Ten of the twelve questions
+passed outright; production changes zero; no mandatory Level A partition lost; no
+authoritative Level D test; H4 independence and performance budgets both confirmed.
+
+**QG-1 — artifact persistence was silently empty. CORRECTED.** Both
+`upload-artifact` steps lacked `include-hidden-files: true`. Since v4 the action skips
+hidden files by default and `.hypothesis/` is a dot-directory, so the artifact was
+never produced. Verified against runs `33561021489` and `33560303585`: both report
+`total_count = 0`. This broke the middle tier of the agreed persistence architecture —
+cache for exploratory continuity, artifact as evidence of a run, committed regression
+as authority — while the workflow still reported green.
+
+The flag is added in both jobs, and a `Report Hypothesis database state` step now
+prints whether the database exists. That second part is not cosmetic: this defect
+survived review precisely because an empty artifact collection and a working one look
+identical in a green log. An absence that cannot be seen is the same failure mode as
+the false GREEN found during historical sensitivity, in a different place.
+
+**QG-2 — Deep qualification not on the exact final head. ACCEPTED AS A BOUNDED
+BOOTSTRAP EXCEPTION.** The acceptance contract requires Deep qualification at the exact
+release-candidate SHA. That requirement is operationally circular for this PR alone:
+`workflow_dispatch` only registers once the workflow exists on the default branch, so
+qualification must be reached through a temporary trigger, and recording the resulting
+evidence moves the head again.
+
+The exception is explicitly limited:
+
+- it applies to PR #37 only, the commit that introduces the workflow;
+- the difference between the qualified head `9de3207` and the merge candidate is one
+  docstring in `quality_tests/deep`, plus documentation and Fast Gate marker fixes;
+- the deep suite was run locally on the final content at 18 GREEN;
+- **immediately after merge, `Quality Gate Deep` must be run in `qualification` mode
+  against the merge commit on `main`. If Python 3.10 or 3.14 is not GREEN there, the
+  Quality Gate is not considered integrated and Engineering Presentation does not
+  begin.**
+
+Once the workflow exists on `main`, every later qualification must be on the exact SHA
+with no exception. The requirement is not weakened; it is acknowledged as unreachable
+exactly once, for the change that creates the mechanism it depends on.
 
 ## Exact next step
 
