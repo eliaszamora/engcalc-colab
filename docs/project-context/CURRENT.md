@@ -1,242 +1,141 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-08-31 — EngCalc 0.9.2 is released on `main`. PR #35 is merged and independently re-audited. Two further preexisting defects (A-1/A-2) are corrected on `fix/v0.9.2-audit-a1-a2`; an independent review found and corrected one over-broad completeness assumption in the first A-1 patch. PR #36 is OPEN. Final permanent Python 3.10–3.14 PR CI on the final head is the remaining technical gate. Do not merge without explicit user approval._
+_Last updated: 2026-09-01 — EngCalc 0.9.2 is released and closed on `main`. PR #35 and PR #36 are merged, post-merge CI is GREEN on Python 3.10–3.14, and an independent property-based audit of `characteristics/` is complete and closed. The active phase is the **Permanent Quality Gate**, QA infrastructure only, on branch `qa/permanent-quality-gate`. Production source must not change during this phase. P-1/P-2/P-3 presentation defects remain open and are deliberately not corrected here._
 
-## Canonical released state
+## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Runtime/package version: **0.9.2**.
-- Canonical released `main` before this follow-up: **`e073320ba988b5956187932b4fb33fa4015a1e80`** — merge of PR #35.
-- PR #35: `fix: remediate EngCalc 0.9.2 post-audit correctness defects` — **MERGED**.
-- Post-merge CI on `main@e073320...`: run **`33418339062`** — Python 3.10–3.14 **SUCCESS**.
-- Complete suite at that released point: **901/901 GREEN**.
-- `requires-python = ">=3.10"`.
-- Runtime dependency includes `ipython>=8.18`.
+- Canonical `main`: **`c3f4b14ccbca2c3ed926c8973648bd5c6168ce58`** — merge of PR #36.
+- Runtime/package version: **0.9.2**. No version bump for QA infrastructure.
+- `requires-python = ">=3.10"`; runtime dependency includes `ipython>=8.18`.
 - Permanent CI: `.github/workflows/ci.yml`, Python 3.10–3.14 on PRs and pushes to `main`.
-- `0.9.3` Exact Envelopes / Governing Intervals remains deferred. It is **not** part of this follow-up.
+- Complete suite at `c3f4b14`: **912/912 GREEN**.
+- Post-merge CI on `c3f4b14`: run **`33426755170`**, Python 3.10–3.14 **SUCCESS**.
+- Release history: PR #34 merge `a42b6bcd…` (0.9.2); PR #35 merge `e073320b…` (N-1…N-4 remediation, 901/901); PR #36 merge `c3f4b14c…` (A-1/A-2 correction, 912/912).
+- The certified `engcalc_colab-0.9.2-py3-none-any.whl` with SHA-256 `1d56169c…` predates PR #36. It is **historical qualification evidence, not an artifact of the current tree**. No GitHub Release is published; the documented install path is `git+https` against `main`, so there is no distributed artifact to reconcile.
 - Never invoke Codex / Codex Cloud without explicit user authorization.
 
-## PR #35 requalification evidence retained
+## Approved behavior
 
-Authoritative pre-merge requalification:
+All 0.9.x contracts remain in force and are regression requirements: exact-first
+characteristic analysis, deterministic numerical fallback, dimensional-zero semantics,
+sampled `envelope(...)`, positive structural moment plotted downward, Numeric/Pint,
+Piecewise, tables, plots, multi-argument functions and Matrix/CAS.
 
-- run **`33409999894`**;
-- focused post-audit: **17/17 GREEN**;
-- focused characteristics: **69/69 GREEN**;
-- complete source suite: **901/901 GREEN**;
-- source-free installed-wheel suite: **901/901 GREEN**;
-- Python 3.10, 3.11, 3.12, 3.13 and 3.14: **901/901 GREEN on each**;
-- scope audit: no unexpected files.
+The Permanent Quality Gate adds **no** product behavior. Its approved design is
+`docs/superpowers/specs/2026-09-01-engcalc-permanent-quality-gate-design.md`; its
+approved plan is
+`docs/superpowers/plans/2026-09-01-engcalc-permanent-quality-gate-implementation.md`.
 
-Corrective wheel:
+Evidence hierarchy adopted by that design: **Level A** constructive oracle is
+authoritative; **Level B** internal invariants and **Level C** metamorphic checks are
+complementary; **Level D** shared-solver oracles are prohibited as completeness evidence.
 
-- `engcalc_colab-0.9.2-py3-none-any.whl`;
-- SHA-256: **`1d56169c8591bffd5c3086ced510c92defe53b8e25494604d9426255a03c1dfe`**;
-- metadata: `Version: 0.9.2`, `Requires-Python: >=3.10`, runtime `ipython>=8.18`.
+## Open issues / user feedback
 
-Permanent PR #35 CI:
+Presentation defects, demonstrated and open, **outside the Quality Gate phase**:
 
-- run **`33411287211`** on head `18d98f7ee0d151c3fa2e53eef9c89f12a9d70120`;
-- Python 3.10–3.14: **SUCCESS**.
+- **P-1 HIGH** — automatic default rendering collapses a nonzero physical quantity to `0.00`. Minimized: `v := 8e-05*m` renders `0.00 m`.
+- **P-2 HIGH** — the substitution stage prints a nonzero factor as `0.00`, so the shown derivation contradicts its own result: `k = 2v = 2(0.00 m) = 0.00 m`.
+- **P-3 MEDIUM** — a derived quantity keeps a dimensionally correct but unreadable compound unit: a deflection renders `5625.00 kN/(GPa·m)` instead of `5.63 mm`.
 
-Post-merge `main` CI:
+Root cause of P-1/P-2: `renderer.py::_quantity_latex` formats with fixed decimals over the
+stored unit without rescaling. P-3 is a distinct contract: it is **not** caught by a
+"never renders as zero" property, which the audit demonstrated by having that property
+pass on the deflection case.
 
-- run **`33418339062`** on merge commit `e073320ba988b5956187932b4fb33fa4015a1e80`;
-- Python 3.10–3.14: **SUCCESS**.
+Known coverage gaps, not defects: roots separated by less than `0.05`; coefficients with
+many more decimal places; Piecewise with more than two branches; nested Piecewise;
+Piecewise combined with matrices; intersections between two Piecewise responses;
+unresolvable symbolic domain bounds; renderer and plotting beyond the above findings.
 
-Detailed N-1…N-4 remediation history remains in:
+Other deferred items: `no_vertical_scroll()` Colab ergonomics; multiline ordinary
+function-call parsing; generalized structural eigenproblems.
 
-- `docs/superpowers/specs/2026-08-31-engcalc-v0.9.2-post-audit-remediation-design.md`;
-- `docs/superpowers/plans/2026-08-31-engcalc-v0.9.2-post-audit-remediation-implementation.md`;
-- Git history of PR #35.
+## Validation evidence
 
-## Independent audit after PR #35
+### Independent property-based audit of `characteristics/` — CLOSED
 
-An independent adversarial audit of `main@e073320...` re-ran the original N-1…N-4 reproductions and attempted to falsify the remediation.
+Executed against `c3f4b14`, outside the repository, with Hypothesis 6.167.1 installed
+only in the auditor environment. Result: **CLEAN within the audited scope** — no new
+mathematical defect demonstrated in roots, intersections, extrema, Piecewise, domains,
+units, exact/fallback or deduplication.
 
-Audit conclusion:
+908 directed and generated mathematical cases, zero failures:
 
-- N-1…N-4: **resolved**;
-- no regression attributable to PR #35 was demonstrated;
-- two additional defects were demonstrated, both also reproducing on the pre-PR#35 tree `a1dc97b...`, therefore both are **preexisting**.
+| Evidence level | Cases |
+|---|---|
+| A — constructive oracle | 811 |
+| B — internal invariant | 24 |
+| C — metamorphic | 64 |
+| D — shared external oracle | 9 |
 
-### A-1 — HIGH — parameterized complex exact candidates
+Composition: 398 deterministic cases across three seeded sweeps plus 510 Hypothesis
+examples over 17 properties at 30 each. 965 total engine invocations.
 
-Reproduction:
+Historical families re-attacked at scale rather than by their original reproductions:
 
-```text
-a := 1
-f(x) = x^2 + a
-roots(f(x), x, -2, 2)
-```
+- **N-1** expanded decimal quadratics: previously 8/20 silent failures, now **0/117**;
+- **A-1** complex candidates: passes with degree 4 and 6 variants, symbolic coefficients and units;
+- **A-2** open-edge Piecewise: passes across four operators × both bounds;
+- **PR #36 completeness guard**: passes nine variants of the partially solvable family.
 
-Released behavior at `e073320...`:
+The 9 Level D cases used `sp.solveset` as oracle and are therefore **not acceptable as
+completeness evidence**; their replacement is mandated by the Quality Gate design §8.
 
-```text
-EngEvaluationError: symbolic evaluation failed:
-float() argument must be a string or a real number, not 'complex'
-```
+### Quality Gate design and plan — audited before implementation
 
-Correct behavior: **no real roots**.
+The design audit produced D-1/D-2/D-3, all resolved: the first proposed H4 replacement
+embedded its root in the coefficients so SymPy exposed it, defeating the sensitivity
+requirement; Fast Gate sizing preceded measurement; and one Extrema partition was
+presented as audit-inherited when it was new.
 
-Cause:
+The plan audit produced P-1/P-2/P-3 of the plan, all resolved: `pythonpath = ["src"]`
+made helper imports fail under bare `pytest` and in historical runs from another
+directory, which would have produced a false RED; Task 5 omitted required Extrema
+partitions; and a static cache key would have frozen the Hypothesis database after the
+first successful run.
 
-- symbolic candidates such as `±sqrt(-a)` have `is_real = None` before registered numeric values are substituted;
-- they passed the three-valued symbolic filter;
-- after `a := 1`, the physical candidate becomes complex;
-- converting its magnitude with `float()` surfaced an internal Python `TypeError`.
+The H4 replacement was verified before implementation: `sp.solve` returns `[a]` only
+across every mandated configuration, and simulating the historical over-broad rule makes
+the guard fail 4/4 configurations while the corrected implementation passes.
 
-### A-2 — MEDIUM-HIGH — Piecewise open upper edge
+## Roadmap / active plan
 
-Reproduction:
+1. **Permanent Quality Gate** — active. QA infrastructure only, no production change.
+2. **Engineering Presentation** — next functional release, opening with formal RED
+   contracts for P-1, P-2 and P-3.
+3. Backlog, deliberately unnumbered until Presentation ships: Exact Envelopes /
+   Governing Intervals, scalar equation systems, named cases and combinations,
+   verification APIs, golden engineering worksheets.
 
-```text
-a := 3*m
-s(x) = piecewise(x, x < a, x - a)
-extrema(s(x), x, 0, a)
-```
+Versions beyond the next release are not committed, because the audits repeatedly
+invalidated longer-horizon numbering.
 
-Released behavior at `e073320...` incorrectly labeled attained endpoint value `0` as `global_max`, even though values approach `3 m` as `x -> a-`.
+## Exact next step
 
-Correct behavior:
+Execute the Permanent Quality Gate plan task by task on `qa/permanent-quality-gate`.
 
-- emit the one-sided point at `x=a`, `side="left"`, value `a`;
-- do not assign `global_max` to an attained value below that non-attained supremum.
-
-## Active follow-up branch
-
-- Branch: **`fix/v0.9.2-audit-a1-a2`**.
-- Base: **`main@e073320ba988b5956187932b4fb33fa4015a1e80`**.
-- PR: **#36 — `fix: correct complex root candidates and open-edge Piecewise extrema`**.
-- Package version remains **0.9.2**.
-- No 0.9.3 work.
-- No dependency changes.
-- No temporary validation workflow was added; permanent CI is used directly.
-
-## Claude Code A-1/A-2 implementation
-
-Initial implementation commit:
-
-- **`7f4a2c5eae755ab37aabb81f2d188ac7fb38b8b9`** — `fix: handle complex candidates and open-edge Piecewise extrema`.
-
-Persistent A-1/A-2 regression file:
-
-- `tests/test_v092_audit_a1_a2_regressions.py` — **10 tests**;
-- six defect contracts;
-- four controls against over-correction.
-
-Claude Code local result before independent review:
-
-- Python 3.14.3;
-- **911/911 GREEN** (901 existing + 10 new).
-
-### A-2 correction retained
-
-`characteristics/extrema.py` now:
-
-- emits one-sided limits when the first/last Piecewise region has an open edge coincident with an analysis-domain bound;
-- suppresses `global_max` / `global_min` when a non-attained one-sided limit lies strictly beyond every attained value;
-- preserves controls for interior breakpoints, non-strict `<=`, lower-bound breakpoints and interior extrema.
-
-No independent over-correction was demonstrated in A-2 during review.
-
-## Independent review of the A-1 implementation
-
-The first A-1 implementation correctly rejected complex candidate locations, but also introduced this broader rule in `_exact_real_solution_set(...)`:
-
-```text
-expression.is_polynomial(variable) => solve() discovery is complete
-```
-
-That implication is **not valid** for symbolic-parameter polynomials. `solveset()` can return a `Union` containing both a finite solved factor and a `ConditionSet`; `solve()` may then expose only the finite factor. Marking that partial result complete suppresses deterministic fallback and silently loses real roots.
-
-### RED guard
-
-Reviewer guard commit:
-
-- **`cef0a0fa27e333edd2e52de1bf8dfb3070345f92`** — `test: guard incomplete symbolic polynomial discovery`.
-
-New persistent guard:
-
-- `tests/test_v092_audit_completion_guard.py`.
-
-Reproduction:
-
-```text
-a := 0
-b := -1
-f(x) = (x - a)*(x^5 + b*x + 1)
-roots(f(x), x, -2, 2)
-```
-
-Expected real roots:
-
-- approximately `-1.1673039782614187`;
-- `0`.
-
-Authoritative RED CI:
-
-- PR #36 run **`33424746960`**;
-- Python 3.10 job **`99595491670`**: `compileall` PASS, suite **1 failed / 911 passed**;
-- observed result: only `[0.0]`;
-- missing root: approximately `-1.1673039782614187`;
-- Python 3.12 independently failed on the same guard.
-
-This proves the over-broad polynomial-completeness rule was a real regression in the first A-1 patch, not a theoretical objection.
-
-### GREEN correction
-
-Correction commit:
-
-- **`527ced09980f19079a6ec0df344a32406162dfa0`** — `fix: preserve incomplete symbolic polynomial discovery`.
-
-The rule is now deliberately narrow:
-
-- `EmptySet`, `FiniteSet` and `Reals` from `solveset(..., domain=Reals)` remain complete;
-- `Intersection(FiniteSet, Reals)` is treated as an exhaustive finite candidate family whose real membership is decided after registered values are substituted;
-- any result containing unresolved structure such as `ConditionSet` remains incomplete;
-- fallback `solve()` candidates remain hints with `complete=False`;
-- deterministic numerical fallback therefore still runs when exact discovery is incomplete;
-- `_candidate_in_domain(...)` still rejects candidate locations that become complex after registered-value substitution.
-
-This preserves the intended A-1 fix while retaining the existing safety contract that an unresolved numerical scan may not silently become an empty solution set.
-
-## Validation status
-
-Permanent PR CI on the corrected code head is running as:
-
-- run **`33425292081`**;
-- code head **`527ced09980f19079a6ec0df344a32406162dfa0`**;
-- matrix: Python 3.10–3.14;
-- each job runs installation, `compileall`, and the complete `pytest -q` suite.
-
-Because this `CURRENT.md` update itself creates the final documentation commit, a fresh permanent PR CI run on the resulting final PR head is required before merge approval.
-
-Expected complete-suite count on the final branch: **912 tests** (901 released + 10 A-1/A-2 regressions + 1 independent completion guard).
-
-## Invariants that must remain true
-
-- Exact-first remains authoritative; deterministic numerical fallback supplements incomplete exact discovery.
-- Exact provenance wins when exact and numeric candidates deduplicate to one physical point.
-- A plausible unresolved candidate/region must not silently become an empty solution set.
-- Complex candidate locations are rejected as outside a real analysis domain rather than surfacing Python conversion errors.
-- Piecewise open edges at analysis-domain bounds retain their one-sided limiting values.
-- Non-attained suprema/infima must not be labeled as attained `global_max` / `global_min`.
-- Dimensional zero semantics remain preserved.
-- Positive structural moment plots downward.
-- `envelope(...)` remains sampled in 0.9.2.
-- No SciPy dependency.
-- IPython remains declared.
-- Python 3.10–3.14 remains the advertised range.
-
-## Exact next action
-
-1. Obtain permanent PR #36 CI on the **final branch head** after this documentation update.
-2. Require Python **3.10, 3.11, 3.12, 3.13 and 3.14** all to complete GREEN with the full **912-test** suite.
-3. Re-check PR scope against `main@e073320...`; no unrelated product, dependency, version or 0.9.3 changes are allowed.
-4. Update the PR description with the RED→GREEN reviewer evidence.
-5. **Stop for explicit user approval before merge.**
-
-## How to resume
-
-Read this file first. PR #35 is already merged and independently validated. Current work is PR #36 on `fix/v0.9.2-audit-a1-a2`. A-1 and A-2 were both real preexisting defects. Claude Code's initial fixes passed 911/911 locally, but independent review caught a genuine over-broad A-1 completeness rule and proved it RED in permanent CI. The rule has been narrowed at `527ced09980f19079a6ec0df344a32406162dfa0`. The remaining gate is permanent Python 3.10–3.14 CI on the final PR head, followed by explicit user merge approval. Never merge automatically and never invoke Codex without explicit authorization.
+Task 1 is complete when this file, the design spec and the implementation plan are
+committed as a documentation-only diff. Task 2 establishes the dev-only Hypothesis
+dependency and the Fast/Deep collection topology. **Task 3 benchmarks a representative
+slice on GitHub Actions before any corpus is dimensioned** — sizing must not precede
+measurement.
+
+Stop conditions during implementation: any permanent Level A test that demonstrates a
+current product defect halts the Quality Gate and becomes a separate corrective project;
+any required partition that cannot fit under the 90 s per-job ceiling halts implementation
+for a topology review.
+
+Task 13 is an independent audit performed by a reviewer who did not implement. No merge
+without explicit user approval.
+
+## How to resume in a new conversation
+
+Read this file first. `main` is at `c3f4b14` with 0.9.2 closed, PR #35 and #36 merged,
+912/912 GREEN and post-merge CI green on Python 3.10–3.14. The mathematical characteristic
+subsystem was independently audited and is CLEAN within the audited scope; the three open
+defects are all in presentation and are not touched by the current phase. Work continues
+on `qa/permanent-quality-gate` following the approved design and plan under
+`docs/superpowers/`. Production source must not change in this phase. Never merge without
+explicit user approval and never invoke Codex without explicit authorization.
