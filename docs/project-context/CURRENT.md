@@ -1,17 +1,18 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-09-01 — EngCalc 0.9.2 is released and closed on `main`. The **Permanent Quality Gate** is implemented and qualified on branch `qa/permanent-quality-gate`, PR #37, awaiting independent audit and then explicit merge approval. No production source changed. P-1/P-2/P-3 presentation defects remain open and are deliberately not corrected here._
+_Last updated: 2026-09-01 — EngCalc 0.9.2 is released and closed on `main`. The **Permanent Quality Gate** is audited, merged and qualified on `main`: PR #37 is integrated at `38b28d5`, post-merge CI is green on Python 3.10–3.14 and Deep qualification is green on 3.10 and 3.14 against the merge commit, which discharges the QG-2 bootstrap exception. No production source changed. One evidentiary residual, QG-3, is open. P-1/P-2/P-3 presentation defects remain open and are deliberately not corrected here. **Engineering Presentation is unblocked and not started.**_
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical `main`: **`c3f4b14ccbca2c3ed926c8973648bd5c6168ce58`** — merge of PR #36.
+- Canonical `main`: **`38b28d5ab3abce389fff5cdf74552bf7728c8437`** — merge of PR #37, the Permanent Quality Gate. The gate was developed on `c3f4b14`; branch `qa/permanent-quality-gate` is deleted, local and remote.
 - Runtime/package version: **0.9.2**. No version bump for QA infrastructure.
 - `requires-python = ">=3.10"`; runtime dependency includes `ipython>=8.18`.
 - Permanent CI: `.github/workflows/ci.yml`, Python 3.10–3.14 on PRs and pushes to `main`.
-- Complete suite at `c3f4b14`: **912/912 GREEN**.
-- Post-merge CI on `c3f4b14`: run **`33426755170`**, Python 3.10–3.14 **SUCCESS**.
-- Release history: PR #34 merge `a42b6bcd…` (0.9.2); PR #35 merge `e073320b…` (N-1…N-4 remediation, 901/901); PR #36 merge `c3f4b14c…` (A-1/A-2 correction, 912/912).
+- Default suite at `38b28d5`: **1066/1066 GREEN** — 912 product tests plus the 154 Fast Gate tests. Deep suite: **18**, behind an explicit path.
+- Post-merge CI on `38b28d5`: run **`33567780020`**, Python 3.10–3.14 **SUCCESS**.
+- Post-merge Deep qualification on `38b28d5`: run **`33567836733`**, `workflow_dispatch` in `qualification` mode, Python **3.10 SUCCESS** and **3.14 SUCCESS**.
+- Release history: PR #34 merge `a42b6bcd…` (0.9.2); PR #35 merge `e073320b…` (N-1…N-4 remediation, 901/901); PR #36 merge `c3f4b14c…` (A-1/A-2 correction, 912/912); PR #37 merge `38b28d5a…` (Permanent Quality Gate, 1066/1066, no production change).
 - The certified `engcalc_colab-0.9.2-py3-none-any.whl` with SHA-256 `1d56169c…` predates PR #36. It is **historical qualification evidence, not an artifact of the current tree**. No GitHub Release is published; the documented install path is `git+https` against `main`, so there is no distributed artifact to reconcile.
 - Never invoke Codex / Codex Cloud without explicit user authorization.
 
@@ -33,7 +34,8 @@ complementary; **Level D** shared-solver oracles are prohibited as completeness 
 
 ## Open issues / user feedback
 
-Presentation defects, demonstrated and open, **outside the Quality Gate phase**:
+Presentation defects, demonstrated and open. They were deliberately excluded from the
+Quality Gate phase and are the content of the next release:
 
 - **P-1 HIGH** — automatic default rendering collapses a nonzero physical quantity to `0.00`. Minimized: `v := 8e-05*m` renders `0.00 m`.
 - **P-2 HIGH** — the substitution stage prints a nonzero factor as `0.00`, so the shown derivation contradicts its own result: `k = 2v = 2(0.00 m) = 0.00 m`.
@@ -100,13 +102,13 @@ The H4 replacement was verified before implementation: `sp.solve` returns `[a]` 
 across every mandated configuration, and simulating the historical over-broad rule makes
 the guard fail 4/4 configurations while the corrected implementation passes.
 
-### Permanent Quality Gate — implemented and qualified
+### Permanent Quality Gate — implemented, qualified and merged
 
-Branch `qa/permanent-quality-gate`, PR **#37**, based on `c3f4b14`. Operating notes:
+PR **#37**, developed on `c3f4b14`, merged to `main` as `38b28d5`. Operating notes:
 `docs/quality-gate.md`.
 
-**Scope.** 22 files, none of them production source. `git diff --name-only c3f4b14 --
-src/engcalc_colab` is empty. Package version unchanged at 0.9.2; Hypothesis pinned to
+**Scope.** 22 files, none of them production source. `git diff --name-only c3f4b14
+38b28d5 -- src/engcalc_colab` is empty, verified again after the merge. Package version unchanged at 0.9.2; Hypothesis pinned to
 `6.167.1` as a development dependency only.
 
 **Corpus.**
@@ -162,9 +164,10 @@ guard green against the very implementation it existed to catch.
 
 ## Roadmap / active plan
 
-1. **Permanent Quality Gate** — active. QA infrastructure only, no production change.
-2. **Engineering Presentation** — next functional release, opening with formal RED
-   contracts for P-1, P-2 and P-3.
+1. **Permanent Quality Gate** — **DONE**, merged at `38b28d5` and qualified on `main`.
+   QA infrastructure only, no production change.
+2. **Engineering Presentation** — active and not started. Next functional release,
+   opening with formal RED contracts for P-1, P-2 and P-3.
 3. Backlog, deliberately unnumbered until Presentation ships: Exact Envelopes /
    Governing Intervals, scalar equation systems, named cases and combinations,
    verification APIs, golden engineering worksheets.
@@ -174,7 +177,7 @@ invalidated longer-horizon numbering.
 
 ### Independent audit of PR #37 — findings and resolution
 
-Audited by a reviewer who did not implement the gate. Ten of the twelve questions
+Audited by a reviewer who did not implement the gate, before the merge. Ten of the twelve questions
 passed outright; production changes zero; no mandatory Level A partition lost; no
 authoritative Level D test; H4 independence and performance budgets both confirmed.
 
@@ -193,7 +196,7 @@ identical in a green log. An absence that cannot be seen is the same failure mod
 the false GREEN found during historical sensitivity, in a different place.
 
 **QG-2 — Deep qualification not on the exact final head. ACCEPTED AS A BOUNDED
-BOOTSTRAP EXCEPTION.** The acceptance contract requires Deep qualification at the exact
+BOOTSTRAP EXCEPTION, NOW DISCHARGED.** The acceptance contract requires Deep qualification at the exact
 release-candidate SHA. That requirement is operationally circular for this PR alone:
 `workflow_dispatch` only registers once the workflow exists on the default branch, so
 qualification must be reached through a temporary trigger, and recording the resulting
@@ -215,37 +218,89 @@ The exception is explicitly limited:
   Quality Gate is not considered integrated and Engineering Presentation does not
   begin.**
 
+That condition is satisfied. Run **`33567836733`** ran `qualification` against
+`38b28d5`, the merge commit itself, with Python 3.10 and 3.14 both SUCCESS. The
+exception is discharged and the Quality Gate is integrated.
+
 Once the workflow exists on `main`, every later qualification must be on the exact SHA
-with no exception. The requirement is not weakened; it is acknowledged as unreachable
-exactly once, for the change that creates the mechanism it depends on.
+with no exception. The requirement is not weakened; it was acknowledged as unreachable
+exactly once, for the change that creates the mechanism it depends on, and that once
+is now spent.
+
+**QG-3 — the QG-1 diagnosis is unverified and its fix is still unexercised. OPEN,
+EVIDENTIARY ONLY.** Found while confirming QG-1 after the merge, not by the audit.
+
+Hypothesis creates `.hypothesis/examples/` only when it has a counterexample to store.
+On a passing run the directory never exists. Demonstrated directly with Hypothesis
+6.167.1, the pinned version, in an isolated tree: a green property leaves no `examples/`
+directory at all, and the same property made to fail leaves 22 files in it. The local
+repository tree shows the same thing after green Deep runs — `.hypothesis/` holds only
+`constants/`, and `examples/` is absent.
+
+The consequence is that `total_count = 0` on runs `33561021489` and `33560303585` does
+not demonstrate what QG-1 says it demonstrates. Both runs were green, so the artifact
+would have been empty with or without `include-hidden-files`. The observation is
+consistent with the hidden-file exclusion and equally consistent with there being
+nothing to upload, and therefore distinguishes neither. The post-merge run confirms it:
+with the flag in place, run `33567836733` still produced **zero** artifacts, and both
+jobs printed `database absent: nothing to preserve from this run`.
+
+This is not a functional defect and nothing needs to be reverted. `include-hidden-files`
+is harmless and is probably necessary, since every path under `.hypothesis/` has a
+hidden component — but "probably" is the whole point: no run has ever produced a
+non-empty artifact, so the middle tier of the persistence architecture has never once
+been observed working. It is the audit's own failure mode, an absence that cannot be
+seen, reproduced one level up: in the evidence for the fix rather than in the fix.
+
+Two things follow. First, `docs/quality-gate.md` reads as though the artifact is
+produced on every run; it should say that the artifact appears only when the gate finds
+something, which is by design. Second, the decisive test is cheap and has not been run:
+force one Deep property RED on a throwaway branch, dispatch the workflow, and check
+whether a non-empty artifact appears. Until that is done, the persistence tier is
+designed and documented but not evidenced.
 
 ## Exact next step
 
-**Task 13: independent audit of PR #37, by a reviewer who did not implement it.**
+**Task 14: open Engineering Presentation with formal RED contracts for P-1, P-2 and
+P-3.** The Quality Gate is integrated, so the discipline it exists to enforce now
+applies: the defect is written as a failing test first, on a branch, and the fix is
+what turns it green. This is the first functional release since the gate, and the first
+change to production source since `c3f4b14`.
 
-The implementer must not certify the gate, and that rule has already paid for itself
-twice in this project. It matters more than usual here because the same agent wrote
-the design, the plan and the implementation, so three of the four review layers share
-one perspective. The twelve audit questions are in the implementation plan; the two
-worth the closest attention are whether any mandatory partition was silently dropped
-during calibration, and whether the H4 replacement really is independent of the solver
-under test.
+P-1 and P-2 share a root cause in `renderer.py::_quantity_latex`, which formats with
+fixed decimals over the stored unit without rescaling. P-3 does not: a dimensionally
+correct compound unit is a separate contract, and the audit demonstrated that a
+"never renders as zero" property passes on the P-3 deflection case. Three contracts,
+not one, and P-3 needs its own oracle rather than a shared invariant.
 
-After a CLEAN audit, request explicit merge approval. Do not merge before that.
+Carried alongside, small and independent:
 
-No further implementation work remains: temporary calibration infrastructure is
-deleted, no audit instrumentation survives, `git diff --check` is clean, `compileall`
-passes, the default suite is 1066 GREEN and the Deep suite is 18 GREEN.
+- **QG-3** — force one Deep property RED on a throwaway branch and confirm a non-empty
+  Hypothesis artifact is produced, then correct the artifact paragraph in
+  `docs/quality-gate.md`. Evidentiary; blocks nothing.
+- 53 stale remote branches from versions already integrated, `0.2` through `0.9.2`.
+  `release/`, `spec/`, `planning/` and the `feature/` branches of published versions are
+  the obvious candidates; their history lives in the merge commits on `main`. Not
+  touched without an explicit request, because deletion is irreversible.
 
 ## How to resume in a new conversation
 
-Read this file first. `main` is at `c3f4b14` with 0.9.2 closed, PR #35 and #36 merged
-and post-merge CI green on Python 3.10–3.14. The mathematical characteristic subsystem
-was independently audited and is CLEAN within the audited scope; the three open defects
-are all in presentation and untouched. The Permanent Quality Gate is implemented and
-qualified on `qa/permanent-quality-gate` as PR #37: 154 Fast Gate tests collected by the
-ordinary suite and 18 Deep properties behind an explicit path, with no production source
-change. What remains is the independent audit and then explicit merge approval. Read
-`docs/quality-gate.md` for how to operate the gate and, in particular, for the isolated
-configuration that historical sensitivity runs require. Never merge without explicit user
-approval and never invoke Codex without explicit authorization.
+Read this file first. `main` is at `38b28d5` with 0.9.2 closed and the Permanent
+Quality Gate integrated: PR #35, #36 and #37 merged, post-merge CI green on Python
+3.10–3.14 (run `33567780020`) and Deep qualification green on 3.10 and 3.14 against the
+merge commit itself (run `33567836733`), which discharges QG-2. The gate is 154 Fast
+tests collected by the ordinary suite on every push, 1066 GREEN in total, plus 18 Deep
+properties run weekly or on demand — with zero production source change across the
+whole phase.
+
+The mathematical characteristic subsystem was independently audited and is CLEAN within
+the audited scope. The three open defects are all in presentation and untouched; they
+are the content of the next release. QG-3 is open, evidentiary only, and blocks nothing.
+
+Read `docs/quality-gate.md` for how to operate the gate and, in particular, for the
+isolated configuration that historical sensitivity runs require — without it pytest
+discovers the repository `pyproject.toml` and prepends the current `src`, so guards pass
+while appearing to exercise historical code.
+
+Never merge without explicit user approval and never invoke Codex without explicit
+authorization.
