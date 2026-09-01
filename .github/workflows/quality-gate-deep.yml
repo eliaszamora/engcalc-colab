@@ -1,0 +1,124 @@
+name: Quality Gate Deep
+
+# Exploratory property-based gate. Deliberately separate from the PR/push CI so
+# the ordinary loop stays fast enough to remain enabled, and so this search is
+# not multiplied across the whole Python matrix on every commit.
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Deep gate mode
+        required: true
+        default: exploration
+        type: choice
+        options:
+          - exploration
+          - qualification
+
+jobs:
+  exploration:
+    if: github.event_name == 'schedule' || inputs.mode == 'exploration'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev]'
+
+      - name: Identify state under test
+        run: |
+          echo "sha=$(git rev-parse HEAD)"
+          python --version
+          python -c "import hypothesis; print('hypothesis', hypothesis.__version__)"
+
+      # restore/save rather than the combined cache action: GitHub caches are
+      # immutable and the combined action writes in a post-step that does not run
+      # when the job fails, which would drop exactly the runs that found
+      # something. The key rotates so each run writes, and run_attempt keeps a
+      # re-run from colliding with its own earlier key.
+      - name: Restore Hypothesis database
+        uses: actions/cache/restore@v4
+        with:
+          path: .hypothesis/examples
+          key: hypothesis-deep-${{ runner.os }}-py314-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            hypothesis-deep-${{ runner.os }}-py314-
+
+      - name: Deep property gate
+        run: python -m pytest -q quality_tests/deep --durations=0
+
+      - name: Save Hypothesis database
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .hypothesis/examples
+          key: hypothesis-deep-${{ runner.os }}-py314-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Preserve Hypothesis database as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hypothesis-examples-py314-${{ github.run_id }}
+          path: .hypothesis/examples
+          if-no-files-found: ignore
+
+  qualification:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev]'
+
+      - name: Identify qualification state
+        run: |
+          echo "sha=$(git rev-parse HEAD)"
+          python --version
+          python -c "import hypothesis; print('hypothesis', hypothesis.__version__)"
+
+      # Keys are separated per Python version so the two qualification jobs do
+      # not overwrite each other's database.
+      - name: Restore Hypothesis database
+        uses: actions/cache/restore@v4
+        with:
+          path: .hypothesis/examples
+          key: hypothesis-deep-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            hypothesis-deep-${{ runner.os }}-py${{ matrix.python-version }}-
+
+      - name: Deep property qualification
+        run: python -m pytest -q quality_tests/deep --durations=0
+
+      - name: Save Hypothesis database
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .hypothesis/examples
+          key: hypothesis-deep-${{ runner.os }}-py${{ matrix.python-version }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Preserve Hypothesis database as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hypothesis-examples-py${{ matrix.python-version }}-${{ github.run_id }}
+          path: .hypothesis/examples
+          if-no-files-found: ignore
