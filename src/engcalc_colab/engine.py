@@ -41,6 +41,7 @@ from .models import (
     PlotResult,
     PlotSeries,
     RootsResult,
+    SystemSolveResult,
     TableColumn,
     TableResult,
     UserFunction,
@@ -175,6 +176,14 @@ class _TableEvaluation:
 
 
 @dataclass(frozen=True)
+class _SystemSolveEvaluation:
+    """A solved scalar system, carried out of the evaluator like plots and tables."""
+
+    equations: tuple
+    solutions: tuple
+
+
+@dataclass(frozen=True)
 class _CharacteristicEvaluation:
     kind: str
     variable: str
@@ -280,6 +289,21 @@ class EngineeringEngine:
                     governing_min=plot_evaluation.governing_min,
                     envelope_mode=plot_evaluation.envelope_mode,
                     governing_signed=plot_evaluation.governing_signed,
+                )
+
+            if evaluator.system_evaluation is not None:
+                system = evaluator.system_evaluation
+                if statement.target is not None:
+                    raise EngEvaluationError(
+                        "solve of a system must be a standalone statement; the unknowns "
+                        "are the result and are defined by it"
+                    )
+                for name, value in system.solutions:
+                    self.namespace[name] = value
+                return SystemSolveResult(
+                    statement=statement,
+                    equations=system.equations,
+                    solutions=system.solutions,
                 )
 
             if evaluator.table_evaluation is not None:
@@ -455,6 +479,7 @@ class _Evaluator(ast.NodeVisitor):
         self.plot_evaluation: _PlotEvaluation | None = None
         self.table_evaluation: _TableEvaluation | None = None
         self.characteristic_evaluation: _CharacteristicEvaluation | None = None
+        self.system_evaluation: _SystemSolveEvaluation | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
         self.derivative_variable: str | None = None
         self.derivative_breakpoints: tuple[object, ...] = ()
@@ -992,7 +1017,9 @@ class _Evaluator(ast.NodeVisitor):
             return symbolic_expression
 
         if name == "solve":
-            self._require_arity(name, node.args, 2, "equation, unknown")
+            if len(node.args) != 2:
+                self._visit_equation_system(node)
+                return None
 
             first_value = self.visit(node.args[0])
             if is_matrix(first_value):
@@ -2085,6 +2112,78 @@ class _Evaluator(ast.NodeVisitor):
         raise EngEvaluationError(
             f"function '{name}' expects {expected} arguments ({signature}), "
             f"received {received}"
+        )
+
+    def _visit_equation_system(self, node) -> None:
+        """`solve(eq_1, ..., eq_n, x_1, ..., x_n)`.
+
+        The count is even: n equations then n unknowns. The two-argument form is the
+        n = 1 case of the same rule, handled on the ordinary path so its behaviour is
+        untouched. Splitting by position rather than by inspecting the arguments is
+        deliberate - in `solve(eqFy, eqMA, R_A, R_B)` all four are plain identifiers,
+        so nothing syntactic distinguishes an equation from an unknown.
+        """
+        count = len(node.args)
+        if count < 4 or count % 2 != 0:
+            raise EngEvaluationError(
+                "solve expects n equations followed by n unknowns, so an even number "
+                f"of arguments; got {count}"
+            )
+
+        half = count // 2
+        unknown_nodes = node.args[half:]
+        names: list[str] = []
+        for unknown_node in unknown_nodes:
+            if not isinstance(unknown_node, ast.Name):
+                raise EngEvaluationError("solve unknown must be a symbolic identifier")
+            names.append(unknown_node.id)
+        if len(set(names)) != len(names):
+            raise EngEvaluationError("solve unknowns must be distinct")
+
+        # Every unknown is forced to resolve as a free symbol while the equations are
+        # read, so a name that already carries a value is still solved for rather than
+        # substituted away.
+        symbols = [self.engine.resolve_symbol(name) for name in names]
+        previous = {name: self.symbol_overrides.get(name) for name in names}
+        self.symbol_overrides.update(dict(zip(names, symbols)))
+        try:
+            equations = []
+            for equation_node in node.args[:half]:
+                equation = self.visit(equation_node)
+                if not isinstance(equation, sp.Equality):
+                    equation = sp.Eq(equation, 0, evaluate=False)
+                equations.append(equation)
+        finally:
+            for name, value in previous.items():
+                if value is None:
+                    self.symbol_overrides.pop(name, None)
+                else:
+                    self.symbol_overrides[name] = value
+
+        solution = sp.solve(equations, symbols, dict=True)
+        if not solution:
+            raise EngEvaluationError(
+                "solve found no solution for " + ", ".join(names)
+            )
+        if len(solution) > 1:
+            raise AmbiguousSolveError(
+                f"solve returned {len(solution)} solutions for "
+                + ", ".join(names)
+                + "; a system must have one"
+            )
+
+        mapping = solution[0]
+        missing = [name for name, symbol in zip(names, symbols) if symbol not in mapping]
+        if missing:
+            raise EngEvaluationError(
+                "solve did not determine " + ", ".join(missing)
+            )
+
+        self.system_evaluation = _SystemSolveEvaluation(
+            equations=tuple(equations),
+            solutions=tuple(
+                (name, mapping[symbol]) for name, symbol in zip(names, symbols)
+            ),
         )
 
     @staticmethod
