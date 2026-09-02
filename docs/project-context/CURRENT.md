@@ -259,48 +259,91 @@ force one Deep property RED on a throwaway branch, dispatch the workflow, and ch
 whether a non-empty artifact appears. Until that is done, the persistence tier is
 designed and documented but not evidenced.
 
-## Exact next step
+## Engineering Presentation - v0.10.0, implemented
 
-**Task 14: open Engineering Presentation with formal RED contracts for P-1, P-2 and
-P-3.** The Quality Gate is integrated, so the discipline it exists to enforce now
-applies: the defect is written as a failing test first, on a branch, and the fix is
-what turns it green. This is the first functional release since the gate, and the first
-change to production source since `c3f4b14`.
+Branch `feature/v0.10.0-engineering-presentation`, unmerged. Design:
+`docs/superpowers/specs/2026-09-01-engcalc-v0.10.0-engineering-presentation-design.md`.
 
-P-1 and P-2 share a root cause in `renderer.py::_quantity_latex`, which formats with
-fixed decimals over the stored unit without rescaling. P-3 does not: a dimensionally
-correct compound unit is a separate contract, and the audit demonstrated that a
-"never renders as zero" property passes on the P-3 deflection case. Three contracts,
-not one, and P-3 needs its own oracle rather than a shared invariant.
+**Thirteen contracts green, 1079 tests passing, no existing assertion changed.** Package
+version 0.10.0. The only production file touched is `renderer.py`.
+
+| source | before | now |
+|---|---|---|
+| `v := 8e-05*m` | `0.00 m` | `0.08 mm` |
+| `k = 2*v`, `numeric(k)` | `2(0.00 m) = 0.00 m` | `2(0.08 mm) = 0.16 mm` |
+| deflection `P*L^3/(48*E*I_z)` | `5625.00 kN/(GPa*m)` | `5.63 mm` |
+| admissible deflection `L/300` | `0.02 m` | `16.67 mm` |
+| table column of small values | every cell `0.00` | `0.00 0.08 0.16 0.24` in mm |
+| `q := 2.8*tonf/m` | `2.80 tonf/m` | unchanged |
+| `w := 1e-6*m` | `0.00 m` | `1.00e-6 m` |
+| `z := 1e-11*m` | `0.00 m` | unchanged, genuine zero |
+
+**Five presentation sites, not three.** The audit of `characteristics/` demonstrated
+P-1, P-2 and P-3 on scalars; designing the fix found the matrix cell path
+(`_magnitude_latex`) and the table cell path (`_table_magnitude`), the second being the
+one that matters most in a real memoria. A fourth fixed-decimal format at
+`renderer.py:306` is a literal zero for an empty polynomial and is not a collapse site;
+the enumeration is closed.
+
+**The rule.** Provenance is a property of the result, not of the unit: a
+`NumericAssignmentResult` and any value substituted into a derivation are declared,
+everything else is derived. A declared unit is kept unless rendering it retains no
+significant figure. A derived unit is kept when it came from the engineer's own inputs -
+measured by term count against the family's canonical member, so `tonf` and `kN/mm`
+survive and `kN/(GPa*m)` does not - and otherwise moves to the family member retaining
+the most significant figures, ties keeping what the value already carries. Below the
+family floor, scientific notation in the unit the engineer declared. `zero_tolerance` is
+evaluated in the stored unit, always, before any conversion.
+
+### What this release is missing
+
+**It was never independently reviewed.** The design, its audit, the contracts, the
+implementation and the mutation battery are one perspective, by the user's explicit
+direction. Six things passed for the wrong reason before being caught (spec §9.1, §9.2),
+and the two defects that actually shipped were caught by tests written in earlier
+sessions - not by this release's own thirteen contracts.
+
+### Exact next step
+
+Open the release PR, or review it. Do not merge without explicit approval.
 
 Carried alongside, small and independent:
 
-- **QG-3** — force one Deep property RED on a throwaway branch and confirm a non-empty
+- **QG-3** - force one Deep property RED on a throwaway branch and confirm a non-empty
   Hypothesis artifact is produced, then correct the artifact paragraph in
   `docs/quality-gate.md`. Evidentiary; blocks nothing.
+- `tests/test_piecewise_acceptance.py` reads `README.md` without an explicit encoding,
+  unlike its siblings, so it fails on any non-cp1252 character in the README. Latent,
+  found while writing the 0.10.0 README section, worked around rather than fixed.
 - 53 stale remote branches from versions already integrated, `0.2` through `0.9.2`.
-  `release/`, `spec/`, `planning/` and the `feature/` branches of published versions are
-  the obvious candidates; their history lives in the merge commits on `main`. Not
-  touched without an explicit request, because deletion is irreversible.
+  Deletion is irreversible and none has been touched.
 
 ## How to resume in a new conversation
 
-Read this file first. `main` is at `38b28d5` with 0.9.2 closed and the Permanent
-Quality Gate integrated: PR #35, #36 and #37 merged, post-merge CI green on Python
-3.10–3.14 (run `33567780020`) and Deep qualification green on 3.10 and 3.14 against the
+Read this file first. `main` is at `536c22d` with 0.9.2 closed and the Permanent Quality
+Gate integrated: PRs #35, #36, #37 and #38 merged, post-merge CI green on Python
+3.10-3.14 (run `33567780020`) and Deep qualification green on 3.10 and 3.14 against the
 merge commit itself (run `33567836733`), which discharges QG-2. The gate is 154 Fast
 tests collected by the ordinary suite on every push, 1066 GREEN in total, plus 18 Deep
-properties run weekly or on demand — with zero production source change across the
-whole phase.
+properties run weekly or on demand - with zero production source change across the whole
+phase.
+
+Active work is on `feature/v0.10.0-engineering-presentation`, unmerged and with no
+production source changed yet: twelve acceptance contracts and a complete, self-audited,
+**unapproved** design. The next step is an independent review of that design, not the
+implementation plan.
 
 The mathematical characteristic subsystem was independently audited and is CLEAN within
-the audited scope. The three open defects are all in presentation and untouched; they
-are the content of the next release. QG-3 is open, evidentiary only, and blocks nothing.
+the audited scope. QG-3 is open, evidentiary only, and blocks nothing.
 
 Read `docs/quality-gate.md` for how to operate the gate and, in particular, for the
-isolated configuration that historical sensitivity runs require — without it pytest
+isolated configuration that historical sensitivity runs require - without it pytest
 discovers the repository `pyproject.toml` and prepends the current `src`, so guards pass
 while appearing to exercise historical code.
 
-Never merge without explicit user approval and never invoke Codex without explicit
-authorization.
+Two rules that have each paid for themselves more than once: never merge without explicit
+user approval, and never let whoever built something be the one to certify it. The second
+was suspended once, deliberately, for the design review recorded in the spec's §9.1, and
+that section states plainly what the exercise could not reach.
+
+Never invoke Codex / Codex Cloud without explicit authorization.
