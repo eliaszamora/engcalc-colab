@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.10.0**.
+Current version: **0.10.1**.
 
 
 ## v0.10.0 engineering presentation
@@ -25,6 +25,10 @@ significant figures that survive at the active precision:
 | `k = 2*v`, `numeric(k)` | `2(0.00 m) = 0.00 m` | `2(0.08 mm) = 0.16 mm` |
 | a deflection `P·L³/(48·E·I_z)` | `5625.00 kN/(GPa·m)` | `5.63 mm` |
 | an admissible deflection `L/300` | `0.02 m` | `16.67 mm` |
+
+Where two family units are both plausible, the one that puts the magnitude in a readable
+range wins, so a deflection and the admissible limit it is compared against are shown in
+the same unit. A span stays in metres; a deflection moves to millimetres.
 | a table column of small values | every cell `0.00` | `0.00 0.08 0.16 0.24` in mm |
 
 Tables and matrices choose one unit for the whole column or matrix, because the unit is
@@ -930,6 +934,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.10.1** — the display unit is chosen by readable magnitude rather than by counting significant figures, so an admissible deflection of exactly `L/300` no longer stays in metres beside the deflection it bounds.
 - **0.10.0** — engineering presentation: quantities shown in units an engineer writes, declared units preserved, algebra-produced compound units replaced by units of their own dimension, one unit per table column and per matrix, and scientific notation below the family floor. No computed value changes.
 - **0.9.2** — audit remediation and reliability: resilient exact-first characteristic discovery with deterministic fallback, explicit-real engineering symbols, consistent direct unit bounds, normalized Piecewise topology, exact characteristic presentation polish, declared IPython runtime support, and permanent Python 3.10–3.14 CI.
 - **0.9.1** — exact-first roots, intersections and extrema with unit-aware Piecewise semantics, deterministic numerical fallback, and authoritative ordinary-plot extrema metadata.
@@ -953,4 +958,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.10.0`.
+Version: `0.10.1`.
