@@ -32,7 +32,7 @@ printed once in the header or outside the brackets; cells are never rescaled
 individually.
 
 Below the point where no unit of the family retains a figure, the value is shown in
-scientific notation in the unit you declared: `1e-6 m` reads `1.00e-6 m`.
+scientific notation in the unit you declared: `1e-6 m` reads `1.00 · 10⁻⁶ m`.
 `zero_tolerance` is unchanged and still decides what counts as a genuine zero — evaluated
 against the value as you stored it, so a change of display unit can never turn a zero
 into a number.
