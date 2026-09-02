@@ -25,7 +25,10 @@ _SCALAR_CALLS = {
     "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"
 }
 _ALLOWED_CALLS = {
-    "integral", "diff", "solve", "simplify", "expand", "factor",
+    # ``integrate`` is canonical - the name every mathematical Python user knows -
+    # and ``integral`` is a permanent alias, kept because existing memorias and the
+    # documented worked examples use it.
+    "integrate", "integral", "diff", "solve", "simplify", "expand", "factor",
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",
     "piecewise", "identity", "zeros", "diag", "transpose", "det", "inv", "trace", "size",
     "rank", "rref", "norm", "eigenvals", "eigenvects",

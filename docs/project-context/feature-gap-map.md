@@ -109,10 +109,10 @@ assumes E4 completes.
 
 ## API naming decision
 
-`integral(...)` is renamed to **`integrate(...)`**, the SymPy and common convention, on
-the principle of not inventing names for operations that already have recognised ones.
-`integral(...)` stays as an alias so existing memorias and the documented examples keep
-working; say so if a clean break is preferred instead.
+**Done in 0.11.0.** `integral(...)` is renamed to `integrate(...)`, the SymPy and common
+convention, on the principle of not inventing names for operations that already have
+recognised ones. `integral(...)` stays as a permanent alias, because existing memorias and
+the documented worked examples use it.
 
 `diff` keeps its name — it is already the recognised one.
 

@@ -1103,7 +1103,9 @@ class _Evaluator(ast.NodeVisitor):
             self._require_arity(name, args, 1, "expression")
             return sp.Abs(args[0])
 
-        if name == "integral":
+        if name in ("integrate", "integral"):
+            # ``name`` is passed through so the message names the function the
+            # engineer actually typed.
             self._require_arity(name, args, 4, "expression, variable, lower, upper")
             expr, var, lower, upper = args
             if is_matrix(expr):
