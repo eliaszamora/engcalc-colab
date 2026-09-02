@@ -89,11 +89,21 @@ R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
     assert sp.simplify(values["R_B"] - 3*q*L/8) == 0
 
 
-def test_ambiguous_solve_is_concise_and_line_aware():
+def test_assigning_a_multi_solution_solve_is_concise_and_line_aware():
+    """The subject of this test changed in 0.14.0; its intent did not.
+
+    Two solutions used to be an error in itself - `AmbiguousSolveError`, "v0.1 requires
+    one" - and they are now shown instead. What is still an error is *assigning* them,
+    because there is no single value to bind, and that error must stay concise, carry
+    its line, and say what to use instead.
+    """
     engine = EngineeringEngine()
-    with pytest_raises(AmbiguousSolveError) as captured:
+    with pytest_raises(EngEvaluationError) as captured:
         eval_cell(engine, "R = solve(x^2 = 1, x)")
-    assert str(captured.value) == "line 1: solve returned 2 solutions for x; v0.1 requires one"
+    message = str(captured.value)
+    assert message.startswith("line 1: solve returned 2 solutions")
+    assert "roots(expression, variable, lower, upper)" in message
+    assert len(message.splitlines()) == 1, "the message must stay one line"
 
 
 def test_integral_wrong_arity_is_concise_and_line_aware():

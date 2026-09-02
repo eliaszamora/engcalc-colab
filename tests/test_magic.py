@@ -65,7 +65,7 @@ def test_magic_prints_concise_user_errors_without_traceback(capsys):
     assert "Traceback" not in output
     assert "unsupported function '__import__'" in output
     assert "unsupported syntax 'Attribute'" in output
-    assert "solve returned 2 solutions for x; v0.1 requires one" in output
+    assert "solve returned 2 solutions, so there is no single value to assign" in output
     assert "integral expects 2 arguments (expression, variable) for an indefinite integral, or 4 (expression, variable, lower, upper) for a definite one; got 3" in output
 
 

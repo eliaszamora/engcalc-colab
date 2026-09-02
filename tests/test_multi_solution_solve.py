@@ -118,3 +118,19 @@ def test_the_physical_root_is_still_the_job_of_roots():
     )[-1]
     assert len(result.points) == 1
     assert float(result.points[0].x_quantity.to("m").magnitude) == pytest.approx(12.566, rel=1e-3)
+
+
+def test_a_multi_solution_solve_defines_nothing():
+    """Binding would quietly pick one, and the last one at that.
+
+    A mutation that bound the solutions passed every other contract here: `x` would
+    have silently become 2 after `solve(x^2 - 4, x)`, and the next line would use it
+    without anyone knowing a choice had been made. A system defines its unknowns because
+    each has one answer; this one has several and must define none.
+    """
+    engine = EngineeringEngine()
+    run_cell(engine, "solve(x^2 - 4, x)")
+
+    assert "x" not in engine.namespace, (
+        f"x was defined as {engine.namespace.get('x')!r} by a solve with two answers"
+    )
