@@ -177,10 +177,16 @@ class _TableEvaluation:
 
 @dataclass(frozen=True)
 class _SystemSolveEvaluation:
-    """A solved scalar system, carried out of the evaluator like plots and tables."""
+    """A solved scalar system, carried out of the evaluator like plots and tables.
+
+    ``kind`` separates the two cases that share this carrier. A ``system`` has one
+    answer per unknown and defines them. A ``multi`` has several answers for a single
+    unknown, so there is nothing to define - the reader picks.
+    """
 
     equations: tuple
     solutions: tuple
+    kind: str = "system"
 
 
 @dataclass(frozen=True)
@@ -294,12 +300,20 @@ class EngineeringEngine:
             if evaluator.system_evaluation is not None:
                 system = evaluator.system_evaluation
                 if statement.target is not None:
+                    if system.kind == "multi":
+                        raise EngEvaluationError(
+                            f"solve returned {len(system.solutions)} solutions, so there "
+                            "is no single value to assign. Read them, or use "
+                            "roots(expression, variable, lower, upper) to take the one "
+                            "inside a physical domain"
+                        )
                     raise EngEvaluationError(
                         "solve of a system must be a standalone statement; the unknowns "
                         "are the result and are defined by it"
                     )
-                for name, value in system.solutions:
-                    self.namespace[name] = value
+                if system.kind == "system":
+                    for name, value in system.solutions:
+                        self.namespace[name] = value
                 return SystemSolveResult(
                     statement=statement,
                     equations=system.equations,
@@ -1047,9 +1061,16 @@ class _Evaluator(ast.NodeVisitor):
             if len(solutions) == 0:
                 raise EngEvaluationError(f"solve found no solution for {unknown}")
             if len(solutions) > 1:
-                raise AmbiguousSolveError(
-                    f"solve returned {len(solutions)} solutions for {unknown}; v0.1 requires one"
+                # Several answers is not an error and never was; the previous guard
+                # said "v0.1 requires one", which was a contract from the earliest
+                # version rather than a mathematical limit. Complex solutions are kept:
+                # an engineer shown one answer has no way to know two were discarded.
+                self.system_evaluation = _SystemSolveEvaluation(
+                    equations=(equation,),
+                    solutions=tuple((unknown_name, value) for value in solutions),
+                    kind="multi",
                 )
+                return None
             return solutions[0]
 
         args = [self.visit(arg) for arg in node.args]

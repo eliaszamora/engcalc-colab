@@ -401,7 +401,7 @@ with plain functions: `M_U1(x) = 1.2*M_D(x) + 1.6*M_L(x)` works today.
 | **1.1 scalar equation systems** | **DONE, 0.12.0 — gap map 4/18 → 7/18, as predicted** |
 | **1.2 indefinite integral** | **DONE, 0.13.0** |
 | **new: resolve namespace symbols at numeric time** | found while doing 1.2; blocks E4's last step |
-| **1.3 multi-solution `solve`** | **next** |
+| **1.3 multi-solution `solve`** | **DONE, 0.14.0 — gap map unchanged at 7/18, and why is recorded** |
 | 2.1 Macaulay `<x-a>^n` | then |
 | 3.x evaluated summation, multi-variable `subs`, `assume` | then |
 | `governing()` and exact envelopes | after that |
@@ -414,6 +414,7 @@ Etapa 1 complete takes the gap map from 4/18 to 9/18. Measured after each step, 
 | 0.10.1 | 4 / 18 | 24 |
 | 0.12.0, scalar systems | **7 / 18** | 21 |
 | 0.13.0, indefinite integral | 7 / 18 | **17** |
+| 0.14.0, multi-solution solve | 7 / 18 | 17 |
 
 1.1 delivered exactly what the map predicted for it alone. 1.2 completed no further
 exercise, which the map had also predicted, and the reason turned out to be a gap nobody

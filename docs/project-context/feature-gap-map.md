@@ -53,7 +53,7 @@ failing lines is small enough to analyse by hand, and that is what these numbers
 | E11 governing envelope | estructuras | `governing()` |
 | E12 flexural design check | diseño | comparisons **+** `check()` |
 | E13 sizing for a deflection limit | diseño | — runs |
-| E14 Euler buckling, solve for length | diseño | multi-solution solve |
+| E14 Euler buckling, solve for length | diseño | **written with the wrong tool** — see below |
 | E15 zone of positive moment | general | comparisons **+** inequality-capable solve |
 | E16 assumptions and simplification | general | comparisons **+** `assume()` |
 | E17 evaluated summation of loads | general | evaluated summation |
@@ -74,7 +74,7 @@ touches is what produced the wrong answer the first time.
 | Macaulay notation | 1 | 5 / 18 |
 | `case` / `combo` | 1 | 5 / 18 |
 | `governing()` | 1 | 5 / 18 |
-| multi-solution solve | 1 | 5 / 18 |
+| multi-solution solve | 1 | **4 / 18** — corrected, see below |
 | evaluated summation | 1 | 5 / 18 |
 | `report()` + `summary()` | 2 | 5 / 18 |
 
@@ -88,6 +88,25 @@ work, and it is how statics is actually written — `ΣF = 0`, `ΣM_A = 0`.
 Adding the indefinite integral to it reaches 8/18 for two pieces of work, and makes the
 elastic curve derivable from scratch. The comparisons block reaches the same 8/18 and
 costs four.
+
+### E14 was written with the wrong tool, and the ranking overstated 1.3
+
+Measured while designing step 1.3: **`roots(...)` already solves E14 today**, returning
+12.57 m - the positive Euler length, inside a physical domain, in metres. The exercise
+asks `L_max = solve(eq(P_cr(Lk), 500*kN), Lk)`, which has a symmetric pair of answers and
+no single value to assign. `roots` is the tool the project designed for exactly that job.
+
+So multi-solution `solve` unblocks **no** exercise, not one, and this table said
+otherwise. That is the third time an entry in this document has been wrong, and the third
+time the error was in an exercise or an analysis rather than in EngCalc.
+
+`assume` would not have helped either. Declaring the unknown positive does not filter
+SymPy's answer, because the sign of `K` remains unknown - measured, not assumed.
+
+The exercise is **left as written**. An engineer reaching for `solve` there is behaving
+reasonably, and the natural expression failing is a genuine ergonomic gap even when a
+different tool can do the job. What 0.14.0 changes is that the dead end becomes guidance:
+the error now names `roots(...)`.
 
 ### The E4 caveat, resolved and replaced by a different one
 

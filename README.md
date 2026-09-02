@@ -2,7 +2,34 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.13.0**.
+Current version: **0.14.0**.
+
+
+## v0.14.0 solve shows every solution
+
+An equation with more than one answer no longer raises. All of them are shown:
+
+```text
+%%eng
+solve(x^2 - 5*x + 6, x)
+```
+
+```text
+x² - 5x + 6 = 0
+x = 2
+x = 3
+```
+
+The statement **defines nothing**, because there is no single value to assign. Binding one
+would quietly pick the last, and the next line would use it without anyone knowing a
+choice had been made.
+
+When what you want is the physically admissible root, `roots(...)` is the tool and always
+was: it selects inside a domain, with units. The error you get from assigning a
+multi-solution `solve` says so.
+
+Complex roots do not appear, and not because this path discards them: engine symbols are
+declared real, so `solve(x^3 - 1, x)` returns `1` and SymPy never offers the complex pair.
 
 
 ## v0.13.0 indefinite integral
@@ -941,7 +968,9 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
 - `diff(expr, var)` — first derivative.
 - `diff(expr, var, order)` — higher derivative.
 - `solve(lhs = rhs, unknown)` — solve one equation for one unknown.
-- `solve(expr, unknown)` — interpreted as `expr = 0`.
+- `solve(expr, unknown)` — interpreted as `expr = 0`. When the equation has more than one
+  solution they are all shown, and the statement defines nothing: there is no single value
+  to assign. Use `roots(...)` to take the one inside a physical domain.
 - `solve(eq_1, ..., eq_n, x_1, ..., x_n)` — solve a scalar system: **n equations
   followed by n unknowns**, so the argument count is always even. The two-argument form
   above is the n = 1 case of the same rule. A system is a standalone statement: the
@@ -1005,6 +1034,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.14.0** — `solve` shows every solution instead of refusing when there is more than one. The statement defines nothing, since there is no single value to assign; `roots(...)` remains the tool for taking the physically admissible root.
 - **0.13.0** — indefinite integral: `integrate(expr, var)` returns the antiderivative, so an elastic curve is derived from its shear rather than quoted. No constant of integration is invented; the engineer writes it.
 - **0.12.0** — scalar equation systems: `solve(eq_1, ..., eq_n, x_1, ..., x_n)` solves n equations for n unknowns, renders each on its own labelled line and defines them. Statics and elastic-curve boundary conditions no longer need a matrix.
 - **0.11.0** — `integrate(...)` is the canonical name for the definite integral, matching the convention every mathematical Python user already knows. `integral(...)` keeps working as a permanent alias.
@@ -1032,4 +1062,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.13.0`.
+Version: `0.14.0`.
