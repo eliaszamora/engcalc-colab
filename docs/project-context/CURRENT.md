@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-09-01 — EngCalc 0.9.2 is released and closed on `main`. The **Permanent Quality Gate** is audited, merged and qualified on `main`: PR #37 is integrated at `38b28d5`, post-merge CI is green on Python 3.10–3.14 and Deep qualification is green on 3.10 and 3.14 against the merge commit, which discharges the QG-2 bootstrap exception. No production source changed. One evidentiary residual, QG-3, is open. P-1/P-2/P-3 presentation defects remain open and are deliberately not corrected here. **Engineering Presentation is unblocked and not started.**_
+_Last updated: 2026-09-01 — **EngCalc 0.10.0 is released and closed on `main`, merged at `4a018fb`**, CI green on Python 3.10–3.14. Later commits on `main` are documentation; the release is that merge. The Permanent Quality Gate is integrated and qualified; its QG-2 bootstrap exception is discharged and 0.10.0 is the first release to satisfy the qualification-SHA rule with no exception. Engineering Presentation shipped: **P-1, P-2 and P-3 are corrected**, over five presentation sites rather than the three the audit had demonstrated. Open: **EP-1**, a display-resolution tie in the unit metric, which is 0.10.1; and **QG-3**, evidentiary. 0.10.0 was never independently reviewed, by explicit direction, and the spec records what that cost._
 
 ## Current baseline
 
@@ -41,17 +41,24 @@ complementary; **Level D** shared-solver oracles are prohibited as completeness 
 
 ## Open issues / user feedback
 
-Presentation defects, demonstrated and open. They were deliberately excluded from the
-Quality Gate phase and are the content of the next release:
+**P-1, P-2 and P-3 are CLOSED**, corrected in 0.10.0 (PR #39). Their contracts are in
+`tests/test_engineering_presentation.py` and are collected by the ordinary suite on every
+push. The reproductions and the before/after are in the release section below; the design
+and both audits are in
+`docs/superpowers/specs/2026-09-01-engcalc-v0.10.0-engineering-presentation-design.md`.
 
-- **P-1 HIGH** — automatic default rendering collapses a nonzero physical quantity to `0.00`. Minimized: `v := 8e-05*m` renders `0.00 m`.
-- **P-2 HIGH** — the substitution stage prints a nonzero factor as `0.00`, so the shown derivation contradicts its own result: `k = 2v = 2(0.00 m) = 0.00 m`.
-- **P-3 MEDIUM** — a derived quantity keeps a dimensionally correct but unreadable compound unit: a deflection renders `5625.00 kN/(GPa·m)` instead of `5.63 mm`.
+One thing from their history is still load-bearing and must not be lost: **P-3 is not
+caught by a "never renders as zero" property.** The audit demonstrated this by having
+that property pass on the deflection case, and the implementation confirmed it from the
+other side - `5625.00 kN/(GPa·m)` retains *more* significant figures than `5.63 mm`, so a
+rule that merely maximised figures kept the compound unit. Anyone tempted to fold the
+presentation contracts into one property will reintroduce P-3 and see green.
 
-Root cause of P-1/P-2: `renderer.py::_quantity_latex` formats with fixed decimals over the
-stored unit without rescaling. P-3 is a distinct contract: it is **not** caught by a
-"never renders as zero" property, which the audit demonstrated by having that property
-pass on the deflection case.
+Open presentation defect:
+
+- **EP-1 MEDIUM** — a derived length whose magnitude ties on the current metric stays in
+  a unit with 25% display resolution, so a deflection and its admissible limit render in
+  different units. Reproduction and analysis in the release section below.
 
 Known coverage gaps, not defects: roots separated by less than `0.05`; coefficients with
 many more decimal places; Piecewise with more than two branches; nested Piecewise;
@@ -172,12 +179,16 @@ guard green against the very implementation it existed to catch.
 ## Roadmap / active plan
 
 1. **Permanent Quality Gate** — **DONE**, merged at `38b28d5` and qualified on `main`.
-   QA infrastructure only, no production change.
-2. **Engineering Presentation** — active and not started. Next functional release,
-   opening with formal RED contracts for P-1, P-2 and P-3.
-3. Backlog, deliberately unnumbered until Presentation ships: Exact Envelopes /
-   Governing Intervals, scalar equation systems, named cases and combinations,
-   verification APIs, golden engineering worksheets.
+   QA infrastructure only, no production change. Still green on every push.
+2. **Engineering Presentation** — **DONE**, released as 0.10.0 and merged at `4a018fb`.
+   P-1, P-2 and P-3 corrected; one production file changed.
+3. **EP-1** — active, as 0.10.1. The unit metric ties where it should not, so a
+   deflection and its admissible limit render in different units. Measure candidate
+   metrics against a corpus before choosing one; the chosen metric must keep every row
+   of design §5 correct as well as fixing `f_adm`.
+4. Backlog, deliberately unnumbered until EP-1 ships: Exact Envelopes / Governing
+   Intervals, scalar equation systems, named cases and combinations, verification APIs,
+   golden engineering worksheets.
 
 Versions beyond the next release are not committed, because the audits repeatedly
 invalidated longer-horizon numbering.
