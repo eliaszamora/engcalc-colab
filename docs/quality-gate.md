@@ -173,12 +173,24 @@ convenience, the workflow artifact is evidence of one run, and the committed
 regression is permanent. Losing the cache must never remove a known defect from the
 gate's protection.
 
-The artifact steps set `include-hidden-files: true`. `.hypothesis/` is a
-dot-directory and `upload-artifact` skips hidden files by default, so without the flag
-the artifact is silently empty while the workflow still reports green. Each job also
-prints whether the database exists before saving it, because an absence that cannot be
-seen is indistinguishable from a working one — which is how that defect survived
-review in the first place.
+The artifact steps set `include-hidden-files: true`. `.hypothesis/` is a dot-directory
+and `upload-artifact` skips hidden files by default. That flag is kept, but **it was
+never the reason the artifact was empty** — see QG-3 below.
+
+**The profile must set `database` explicitly.** Hypothesis auto-loads a built-in `ci`
+profile when it detects CI, and a profile registered afterwards inherits what that one
+left in place. `quality_deep` inherited `database=None` for its entire existence, so in
+CI — the only place the gate actually runs — no counterexample was ever stored, the
+cache restored nothing and the artifact had nothing to upload. The whole persistence
+architecture was inert, and every run still reported green. `quality_tests/deep/conftest.py`
+now sets every setting the environment could otherwise decide, and
+`tests/test_quality_gate_profile.py` asserts it under CI environment variables on every
+push.
+
+Each job prints the configured database and whether the directory exists, because an
+absence that cannot be seen is indistinguishable from a working one. The first version
+of that step printed only the directory, which is how the real cause stayed hidden for
+one more round: it reported `database absent` truthfully and said nothing about *why*.
 
 ## Qualification SHA rule
 
