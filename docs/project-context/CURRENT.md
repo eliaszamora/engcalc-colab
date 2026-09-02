@@ -404,7 +404,7 @@ with plain functions: `M_U1(x) = 1.2*M_D(x) + 1.6*M_L(x)` works today.
 | **1.3 multi-solution `solve`** | **DONE, 0.14.0 — gap map unchanged at 7/18, and why is recorded** |
 | **2.1 Macaulay `<x-a>^n`** | **DONE, 0.15.0 — gap map 7/18 → 8/18, as predicted** |
 | **3.1 evaluated summation** | **DONE, 0.16.0 — gap map 8/18 → 9/18** |
-| 3.2 multi-variable `subs`, 3.3 `assume` | next |
+| **3.2 multi-variable `subs`, 3.3 `assume`** | **DONE, 0.17.0 — gap map 9/18 → 10/18. Etapa 3 complete** |
 | `governing()` and exact envelopes | after that |
 
 Etapa 1 complete takes the gap map from 4/18 to 9/18. Measured after each step, on
@@ -418,6 +418,7 @@ Etapa 1 complete takes the gap map from 4/18 to 9/18. Measured after each step, 
 | 0.14.0, multi-solution solve | 7 / 18 | 17 |
 | 0.15.0, Macaulay brackets | **8 / 18** | **15** |
 | 0.16.0, evaluated summation | **9 / 18** | **14** |
+| 0.17.0, multi-subs and assume | **10 / 18** | **13** |
 
 1.1 delivered exactly what the map predicted for it alone. 1.2 completed no further
 exercise, which the map had also predicted, and the reason turned out to be a gap nobody

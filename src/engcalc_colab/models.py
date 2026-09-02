@@ -322,6 +322,19 @@ class CharacteristicInterval:
 
 
 @dataclass(frozen=True)
+class AssumptionResult:
+    """``assume(L > 0, E > 0)``: what the engineer states before using the symbols."""
+
+    statement: ParsedStatement
+    assumptions: tuple[tuple[str, str], ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "assumptions", tuple(self.assumptions))
+        if not self.assumptions:
+            raise ValueError("an assumption result must carry at least one assumption")
+
+
+@dataclass(frozen=True)
 class SystemSolveResult:
     """`solve(eq_1, ..., eq_n, x_1, ..., x_n)`.
 

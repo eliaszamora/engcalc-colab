@@ -40,6 +40,7 @@ from .models import (
     PartialNumericEvaluationResult,
     PlotResult,
     PlotSeries,
+    AssumptionResult,
     RootsResult,
     SystemSolveResult,
     TableColumn,
@@ -210,6 +211,9 @@ class EngineeringEngine:
         self.namespace: dict[str, object] = {}
         self.functions: dict[str, UserFunction] = {}
         self.symbols: dict[str, sp.Symbol] = {}
+        # What the engineer has stated about a symbol before using it, as SymPy keyword
+        # assumptions. Applied in resolve_symbol.
+        self.assumptions: dict[str, dict[str, bool]] = {}
         self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
         self.numeric_context = NumericContext()
 
@@ -222,7 +226,12 @@ class EngineeringEngine:
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
         if name not in self.symbols:
-            self.symbols[name] = sp.Symbol(name, real=True)
+            # Assumptions are baked in at creation because a SymPy symbol carries them
+            # in its identity: Symbol('L', real=True) and Symbol('L', positive=True) are
+            # different symbols. That is also why `assume` refuses a name already here.
+            self.symbols[name] = sp.Symbol(
+                name, real=True, **self.assumptions.get(name, {})
+            )
         return self.symbols[name]
 
     def resolve_name(self, name: str):
@@ -295,6 +304,17 @@ class EngineeringEngine:
                     governing_min=plot_evaluation.governing_min,
                     envelope_mode=plot_evaluation.envelope_mode,
                     governing_signed=plot_evaluation.governing_signed,
+                )
+
+            if evaluator.assume_evaluation is not None:
+                if statement.target is not None:
+                    raise EngEvaluationError(
+                        "assume must be a standalone statement; it states what is known "
+                        "rather than producing a value"
+                    )
+                return AssumptionResult(
+                    statement=statement,
+                    assumptions=evaluator.assume_evaluation,
                 )
 
             if evaluator.system_evaluation is not None:
@@ -494,6 +514,7 @@ class _Evaluator(ast.NodeVisitor):
         self.table_evaluation: _TableEvaluation | None = None
         self.characteristic_evaluation: _CharacteristicEvaluation | None = None
         self.system_evaluation: _SystemSolveEvaluation | None = None
+        self.assume_evaluation: tuple[tuple[str, str], ...] | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
         self.derivative_variable: str | None = None
         self.derivative_breakpoints: tuple[object, ...] = ()
@@ -753,6 +774,43 @@ class _Evaluator(ast.NodeVisitor):
             symbolic_sum = sp.Sum(expr, (index, lower, upper))
             self.display_input = symbolic_sum
             return symbolic_sum
+
+        if name == "assume":
+            # The parser has already checked these are single comparisons; what each one
+            # means is decided here, so the messages come from one place.
+            keywords = {
+                ast.Gt: "positive",
+                ast.GtE: "nonnegative",
+                ast.Lt: "negative",
+                ast.LtE: "nonpositive",
+            }
+            declared: list[tuple[str, str]] = []
+            for argument in node.args:
+                subject = argument.left
+                comparator = argument.comparators[0]
+                if not isinstance(subject, ast.Name):
+                    raise EngEvaluationError(
+                        "assume applies to a plain symbol, as in assume(L > 0)"
+                    )
+                if not (
+                    isinstance(comparator, ast.Constant) and comparator.value == 0
+                ):
+                    raise EngEvaluationError(
+                        "assume compares a symbol against zero, as in assume(L > 0); "
+                        "a bound like L > 5 is not something a symbol can carry"
+                    )
+                subject_name = subject.id
+                if subject_name in self.engine.symbols:
+                    raise EngEvaluationError(
+                        f"'{subject_name}' has already been used, so an assumption about "
+                        "it would apply to a different symbol and change nothing at all; "
+                        "state assumptions before the symbol appears"
+                    )
+                keyword = keywords[type(argument.ops[0])]
+                self.engine.assumptions.setdefault(subject_name, {})[keyword] = True
+                declared.append((subject_name, keyword))
+            self.assume_evaluation = tuple(declared)
+            return None
 
         if name == "plot":
             return self._evaluate_plot(node)
@@ -1259,13 +1317,22 @@ class _Evaluator(ast.NodeVisitor):
             return operation(args[0])
 
         if name == "subs":
-            self._require_arity(name, args, 3, "expression, variable, value")
+            # One expression followed by variable/value pairs, so the count is odd. The
+            # three-argument form is the one-pair case of the same rule and is untouched.
+            if len(args) < 3 or len(args) % 2 == 0:
+                raise EngEvaluationError(
+                    "subs expects an expression followed by variable/value pairs, so an "
+                    f"odd number of arguments; got {len(args)}"
+                )
+            replacements = list(zip(args[1::2], args[2::2]))
+            # ``simultaneous`` because writing several replacements on one line means
+            # they happen together: subs(x + y, x, y, y, 2) is y + 2, not 4.
             if is_matrix(args[0]):
                 return map_matrix_entries(
                     args[0],
-                    lambda entry: sp.sympify(entry).subs(args[1], args[2]),
+                    lambda entry: sp.sympify(entry).subs(replacements, simultaneous=True),
                 )
-            return sp.sympify(args[0]).subs(args[1], args[2])
+            return sp.sympify(args[0]).subs(replacements, simultaneous=True)
 
         raise EngSyntaxError(f"unsupported function '{name}'")
 
