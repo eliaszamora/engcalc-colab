@@ -2,7 +2,31 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.15.0**.
+Current version: **0.16.0**.
+
+
+## v0.16.0 summations evaluate
+
+`sum(expr, i, lower, upper)` already built the right thing and already rendered as a real
+sigma. What it could not do was become a number:
+
+```text
+%%eng
+n := 5
+P := 10*kN
+S = sum(P*i, i, 1, n)
+numeric(S)
+```
+
+`numeric(S)` now gives `150.00 kN`, and `S` still shows as a sigma in the memoria.
+
+**No second function was added.** A `summation()` alongside `sum()` would invent a second
+name for one operation and break the pattern the whole language runs on: the symbolic
+layer keeps the formula and `numeric(...)` produces the value, exactly as `M(x)` stays
+symbolic while `numeric(M(x))` gives a number.
+
+Summation bounds must be dimensionless. Reversed bounds follow SymPy's convention, so
+`sum(i, i, 3, 1)` is `-2` whether or not the terms carry units.
 
 
 ## v0.15.0 Macaulay brackets
@@ -1068,6 +1092,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.16.0** — `numeric(...)` evaluates a symbolic summation, so a sum of loads becomes a number while still rendering as a sigma. No second function name; the symbolic/numeric division of labour is the same as everywhere else.
 - **0.15.0** — Macaulay brackets `<x-a>^n`: a beam is written as one expression with one term per load instead of a Piecewise branch per load, and the brackets integrate term by term so double integration chains directly.
 - **0.14.0** — `solve` shows every solution instead of refusing when there is more than one. The statement defines nothing, since there is no single value to assign; `roots(...)` remains the tool for taking the physically admissible root.
 - **0.13.0** — indefinite integral: `integrate(expr, var)` returns the antiderivative, so an elastic curve is derived from its shear rather than quoted. No constant of integration is invented; the engineer writes it.
@@ -1097,4 +1122,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.15.0`.
+Version: `0.16.0`.
