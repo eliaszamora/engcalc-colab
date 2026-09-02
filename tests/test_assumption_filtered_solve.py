@@ -219,6 +219,26 @@ def test_a_decided_answer_goes_and_an_undecided_one_beside_it_stays():
     assert [sp.sstr(v) for v in result.discarded.values] == ["-a"]
 
 
+def test_a_complex_answer_is_on_neither_side_of_zero():
+    """A complex root is not refuted by "the unknown is positive"; it is unaddressed.
+
+    With `d := 5.0` the roots of `(xr^2 + 2*xr + d)*(xr - b)` are `-1 ± 2i` and `b`,
+    which has no value at all. None can be placed on a side of zero, so all three stay.
+
+    The obvious wrong implementation compares the real part and calls it decided. Roots
+    on the imaginary axis will not catch it: `sqrt(-4)` comes back as `1e-16 + 2i`, and
+    judged on that residue it is "positive" and survives - the right answer for the
+    wrong reason. These roots sit at real part -1, where the two implementations part
+    company, and `b` survives both so the empty-set guard cannot mask the difference.
+    """
+    _engine, results = run_lines(
+        "assume(xr > 0)\nd := 5.0\nf(xr) = (xr^2 + 2*xr + d)*(xr - b)\nsolve(eq(f(xr), 0), xr)"
+    )
+    result = results[-1]
+    assert len(result.solutions) == 3
+    assert result.discarded is None
+
+
 def test_the_alignment_guard_still_holds_with_the_note():
     """The renderer refuses to lay out rows it has not accounted for.
 
