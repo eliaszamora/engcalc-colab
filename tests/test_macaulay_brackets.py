@@ -134,3 +134,60 @@ def test_two_piecewise_terms_with_a_power_are_untouched():
     engine = EngineeringEngine()
     run_cell(engine, "f(x) = piecewise(1, x < 2, 0) + piecewise(3, x > 5, 0)^2")
     assert str(run_cell(engine, "a = subs(f(x), x, 1)")[-1].value) == "1"
+
+
+def test_the_numeric_path_switches_the_bracket_off_before_its_offset():
+    """Through `numeric`, not `subs`.
+
+    The contracts above substitute symbolically, where SymPy applies the rule. They left
+    the numeric evaluator's own branch untested: a mutation that never switched the
+    bracket off passed all eleven.
+    """
+    engine = EngineeringEngine()
+    results = run_cell(
+        engine,
+        "L := 8*m\na := 3*m\nP := 40*kN\n"
+        "M(x) = P*<x-a>^1\n"
+        "numeric(subs(M(x), x, L/4))\n"      # x = 2 m, before the load
+        "numeric(subs(M(x), x, L/2))\n",     # x = 4 m, after it
+    )
+    assert float(results[-2].quantity.to("kN*m").magnitude) == pytest.approx(0.0)
+    assert float(results[-1].quantity.to("kN*m").magnitude) == pytest.approx(40.0)
+
+
+def test_the_numeric_path_matches_sympy_at_the_offset_itself():
+    """The one value where the convention could differ, so both paths are pinned to it.
+
+    SymPy closes the zero-order bracket on the left - `⟨0⟩⁰ = 1` - and gives zero for
+    every higher order. A mutation switching the bracket off at the offset as well
+    passed every other contract.
+    """
+    engine = EngineeringEngine()
+    results = run_cell(
+        engine,
+        "L := 8*m\na := L/2\n"
+        "step(x) = <x-a>^0\nramp(x) = <x-a>^1\n"
+        "numeric(subs(step(x), x, L/2))\n"
+        "numeric(subs(ramp(x), x, L/2))\n",
+    )
+    assert float(results[-2].quantity.magnitude) == pytest.approx(1.0)
+    assert float(results[-1].quantity.to("m").magnitude) == pytest.approx(0.0)
+
+
+def test_a_comparison_before_a_real_bracket_is_not_swallowed():
+    """The case that genuinely breaks a rewrite spanning commas and parentheses.
+
+    `piecewise(1, x < 2, 0) * <x-3>^1` has a `<` from the comparison and a `>` from the
+    bracket, and the bracket's `>` is followed by `^1`. A pattern allowed to cross commas
+    and parentheses matches from the comparison's `<` all the way to the bracket's `>`
+    and destroys both. The guarded pattern starts matching at the bracket instead.
+
+    The first version of this file asserted a different shape, believing it dangerous.
+    It was not, and the mutation passed. This is the one that fails.
+    """
+    engine = EngineeringEngine()
+    run_cell(engine, "f(x) = piecewise(1, x < 2, 0) * <x-3>^1")
+
+    assert str(run_cell(engine, "a = subs(f(x), x, 1)")[-1].value) == "0"
+    assert str(run_cell(engine, "b = subs(f(x), x, 5)")[-1].value) == "0"
+    assert str(run_cell(engine, "c = subs(f(x), x, 4)")[-1].value) == "0"
