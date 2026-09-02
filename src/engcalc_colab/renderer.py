@@ -12,6 +12,7 @@ from pint.errors import DimensionalityError
 
 from .matrix_numeric import QuantityMatrix
 from .models import (
+    AssumptionResult,
     CharacteristicInterval,
     CharacteristicPoint,
     EigenvalueSet,
@@ -1463,7 +1464,26 @@ def render_system_solve_result(
     return rf"\hspace{{0.2em}}\begin{{array}}{{l}} {body} \end{{array}}"
 
 
+_ASSUMPTION_RELATIONS = {
+    "positive": ">",
+    "nonnegative": r"\geq",
+    "negative": "<",
+    "nonpositive": r"\leq",
+}
+
+
+def render_assumption_result(result: AssumptionResult) -> str:
+    """As given data, which is what it is: `L > 0,\\; E > 0`."""
+    parts = [
+        rf"{_render_lhs(name, None)} {_ASSUMPTION_RELATIONS[keyword]} 0"
+        for name, keyword in result.assumptions
+    ]
+    return r",\; ".join(parts)
+
+
 def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:
+    if isinstance(result, AssumptionResult):
+        return render_assumption_result(result)
     if isinstance(result, SystemSolveResult):
         return render_system_solve_result(result, settings=settings)
     if isinstance(result, (RootsResult, IntersectionsResult, ExtremaResult)):

@@ -2,7 +2,31 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.16.0**.
+Current version: **0.17.0**.
+
+
+## v0.17.0 multi-substitution and assumptions
+
+`subs(expr, v1, a1, v2, a2, ...)` replaces several variables at once. The
+three-argument form is the one-pair case of the same rule and is unchanged.
+
+```text
+numeric(subs(M(x, b), x, L/2, b, c))
+```
+
+The replacements are **simultaneous**, so `subs(x + y, x, y, y, 2)` is `y + 2` and not
+`4`: writing both on one line means they happen together.
+
+`assume(L > 0, E > 0)` tells the engine what you already know. It matters:
+`simplify(sqrt(L^2))` is `Abs(L)` for a merely real `L` and `L` for a positive one.
+
+**Assumptions must come before the symbol is used**, and stating one late is refused
+rather than ignored. A SymPy symbol carries its assumptions in its identity, so a late
+assumption would apply to a symbol nothing references and change nothing at all,
+silently. Comparisons against zero only: `L > 5` is not something a symbol can carry.
+
+Comparisons remain allowed in the places that already took them - `piecewise(...)` and
+now `assume(...)` - rather than becoming general expressions.
 
 
 ## v0.16.0 summations evaluate
@@ -1092,6 +1116,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.17.0** — `subs(...)` takes several variable/value pairs and applies them simultaneously, and `assume(L > 0)` states what is known before a symbol is used, which is what lets `sqrt(L^2)` simplify to `L`.
 - **0.16.0** — `numeric(...)` evaluates a symbolic summation, so a sum of loads becomes a number while still rendering as a sigma. No second function name; the symbolic/numeric division of labour is the same as everywhere else.
 - **0.15.0** — Macaulay brackets `<x-a>^n`: a beam is written as one expression with one term per load instead of a Piecewise branch per load, and the brackets integrate term by term so double integration chains directly.
 - **0.14.0** — `solve` shows every solution instead of refusing when there is more than one. The statement defines nothing, since there is no single value to assign; `roots(...)` remains the tool for taking the physically admissible root.
@@ -1122,4 +1147,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.16.0`.
+Version: `0.17.0`.

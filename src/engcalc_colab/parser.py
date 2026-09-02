@@ -32,6 +32,8 @@ _ALLOWED_CALLS = {
     # Written `<x-a>^n`; the call form exists because that is what the notation is
     # rewritten to, and is accepted directly as well.
     "macaulay",
+    # Comparisons are accepted only here and inside piecewise.
+    "assume",
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",
     "piecewise", "identity", "zeros", "diag", "transpose", "det", "inv", "trace", "size",
     "rank", "rref", "norm", "eigenvals", "eigenvects",
@@ -423,6 +425,10 @@ def _validate_normal_node(
             )
             return
 
+        if node.func.id == "assume":
+            _validate_assume_call(node, line_no)
+            return
+
         if node.func.id == "piecewise":
             _validate_piecewise_call(
                 node,
@@ -584,6 +590,28 @@ def _validate_piecewise_call(
         raise EngSyntaxError(
             f"line {line_no}: ambiguous piecewise interval variable"
         )
+
+
+def _validate_assume_call(node: ast.Call, line_no: int) -> None:
+    """Comparisons are allowed here, as they are inside piecewise, and nowhere else.
+
+    This keeps the language's existing shape: comparisons live in specific call
+    positions rather than becoming general expressions. What each comparison *means* is
+    checked by the engine, so the messages come from one place.
+    """
+    if not node.args:
+        raise EngSyntaxError(
+            f"line {line_no}: assume expects at least one comparison, like assume(L > 0)"
+        )
+    for arg in node.args:
+        if not isinstance(arg, ast.Compare):
+            raise EngSyntaxError(
+                f"line {line_no}: assume takes comparisons, like assume(L > 0)"
+            )
+        if len(arg.ops) != 1 or not isinstance(arg.ops[0], _PIECEWISE_COMPARATORS):
+            raise EngSyntaxError(
+                f"line {line_no}: assume takes one comparison at a time, like assume(L > 0)"
+            )
 
 
 def _piecewise_condition_candidates(
