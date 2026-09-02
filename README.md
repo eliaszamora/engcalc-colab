@@ -2,7 +2,36 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.12.0**.
+Current version: **0.13.0**.
+
+
+## v0.13.0 indefinite integral
+
+`integrate(expr, var)` returns the antiderivative. Together with scalar equation systems
+this derives an elastic curve from scratch instead of quoting it:
+
+```text
+%%eng
+L := 6*m
+q := 10*kN/m
+E := 200*GPa
+I_z := 80e6*mm**4
+R_A = q*L/2
+V(x) = R_A - q*x
+M(x) = integrate(V(x), x, 0, x)
+theta(x) = integrate(M(x)/(E*I_z), x) + C1
+v(x) = integrate(theta(x), x) + C2
+solve(eq(subs(v(x), x, 0), 0), eq(subs(v(x), x, L), 0), C1, C2)
+```
+
+which gives the textbook constants, `C2 = 0` and `C1 = -qL³/(24 E I_z)`.
+
+**No constant of integration is invented.** You write the one you need, which is what you
+do on paper and avoids EngCalc naming symbols nobody asked for. `C1` is an ordinary free
+symbol and the boundary conditions determine it.
+
+Two arguments or four: two for the indefinite form, four for the definite one. Three
+almost always means a bound was forgotten, and the message says so.
 
 
 ## v0.12.0 scalar equation systems
@@ -905,8 +934,10 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
 
 ### Symbolic operations
 
-- `integrate(expr, var, lower, upper)` — definite integral. `integral(...)` is a
-  permanent alias for the same operation; `integrate` is the canonical name.
+- `integrate(expr, var, lower, upper)` — definite integral.
+- `integrate(expr, var)` — indefinite integral. No constant of integration is invented;
+  write the one you need, as on paper: `integrate(M(x)/(E*I), x) + C1`.
+- `integral(...)` is a permanent alias for both forms; `integrate` is the canonical name.
 - `diff(expr, var)` — first derivative.
 - `diff(expr, var, order)` — higher derivative.
 - `solve(lhs = rhs, unknown)` — solve one equation for one unknown.
@@ -974,6 +1005,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.13.0** — indefinite integral: `integrate(expr, var)` returns the antiderivative, so an elastic curve is derived from its shear rather than quoted. No constant of integration is invented; the engineer writes it.
 - **0.12.0** — scalar equation systems: `solve(eq_1, ..., eq_n, x_1, ..., x_n)` solves n equations for n unknowns, renders each on its own labelled line and defines them. Statics and elastic-curve boundary conditions no longer need a matrix.
 - **0.11.0** — `integrate(...)` is the canonical name for the definite integral, matching the convention every mathematical Python user already knows. `integral(...)` keeps working as a permanent alias.
 - **0.10.1** — the display unit is chosen by readable magnitude rather than by counting significant figures, so an admissible deflection of exactly `L/300` no longer stays in metres beside the deflection it bounds.
@@ -1000,4 +1032,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.12.0`.
+Version: `0.13.0`.

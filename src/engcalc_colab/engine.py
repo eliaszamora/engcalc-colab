@@ -1131,21 +1131,32 @@ class _Evaluator(ast.NodeVisitor):
             return sp.Abs(args[0])
 
         if name in ("integrate", "integral"):
-            # ``name`` is passed through so the message names the function the
-            # engineer actually typed.
-            self._require_arity(name, args, 4, "expression, variable, lower, upper")
-            expr, var, lower, upper = args
+            # Two arguments is the indefinite integral, four the definite one. The
+            # message below names the function the engineer actually typed, and names
+            # both forms, because three arguments almost always means a bound was
+            # forgotten rather than that the shape was misunderstood.
+            if len(args) not in (2, 4):
+                raise EngEvaluationError(
+                    f"{name} expects 2 arguments (expression, variable) for an "
+                    "indefinite integral, or 4 (expression, variable, lower, upper) "
+                    f"for a definite one; got {len(args)}"
+                )
+            expr, var = args[0], args[1]
+            # No constant of integration is invented. The engineer writes the one they
+            # need - ``integrate(M(x)/(E*I), x) + C1`` - which is what happens on paper
+            # and avoids EngCalc naming symbols nobody asked for.
+            bounds = var if len(args) == 2 else (var, args[2], args[3])
             if is_matrix(expr):
                 self.display_input = map_matrix_entries(
                     expr,
-                    lambda entry: sp.Integral(entry, (var, lower, upper)),
+                    lambda entry: sp.Integral(entry, bounds),
                 )
                 return map_matrix_entries(
                     expr,
-                    lambda entry: sp.integrate(entry, (var, lower, upper)),
+                    lambda entry: sp.integrate(entry, bounds),
                 )
-            self.display_input = sp.Integral(expr, (var, lower, upper))
-            return sp.integrate(expr, (var, lower, upper))
+            self.display_input = sp.Integral(expr, bounds)
+            return sp.integrate(expr, bounds)
 
         if name == "diff":
             if len(args) not in (2, 3):
