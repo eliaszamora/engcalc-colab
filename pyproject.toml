@@ -13,6 +13,10 @@ dependencies = ["sympy>=1.13", "pint>=0.24", "matplotlib>=3.8", "ipython>=8.18"]
 dev = [
     "pytest>=8",
     "hypothesis==6.167.1",
+    # Read by tests/test_quality_gate_workflow.py. Declared rather than relied on
+    # transitively: that test guards an automation whose absence is invisible, so it
+    # must not be the kind of test that quietly skips.
+    "pyyaml>=6",
     "tomli>=2.0; python_version < '3.11'",
 ]
 

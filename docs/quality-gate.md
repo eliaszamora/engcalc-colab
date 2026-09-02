@@ -201,6 +201,23 @@ branch, so reaching qualification required a temporary trigger and recording the
 evidence moved the head. That exception covers that commit only. Every later
 qualification is on the exact SHA, without exception.
 
+**It is automated, because twice it was not done by hand.** This rule was written here,
+broken across 0.10.1 to 0.12.0, recorded as a lapse in the project context — and then
+broken again across 0.14.0 to 0.19.0, by the same person, after writing the first lapse
+down. The conclusion is not that anyone should try harder. The Fast Gate runs on every
+push because a workflow runs it; qualification depended on someone remembering to
+dispatch one, and that is not a rule, it is a hope.
+
+`Quality Gate Deep` now runs its qualification job on **every push to `main`**. The PR
+loop is untouched: it fires after the merge, not before it, and the weekly exploration
+stays weekly. The manual dispatch remains, so a release candidate can still be qualified
+before merging, which is the stricter reading.
+
+`tests/test_quality_gate_workflow.py` pins all three. It imports PyYAML directly rather
+than through `importorskip`, and PyYAML is a declared development dependency: with a skip
+and no declaration the guard would have silently not run in CI, which is precisely the
+failure mode it exists to prevent.
+
 ## Known uncovered families
 
 The gate does **not** protect these; they were never explored and remain open work:

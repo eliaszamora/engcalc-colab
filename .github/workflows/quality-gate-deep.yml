@@ -5,6 +5,13 @@ name: Quality Gate Deep
 # not multiplied across the whole Python matrix on every commit.
 
 on:
+  # Qualification runs on every push to main. The rule that every release candidate is
+  # qualified on its exact SHA was written down, then broken across four releases,
+  # written down again as a lapse, and then broken across six more. A rule that depends
+  # on someone remembering to dispatch a workflow is not a rule, so it is automated
+  # here. The PR loop is untouched: this fires after the merge, not before it.
+  push:
+    branches: [main]
   schedule:
     - cron: "17 4 * * 1"
   workflow_dispatch:
@@ -94,7 +101,9 @@ jobs:
           include-hidden-files: true
 
   qualification:
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification'
+    if: >-
+      github.event_name == 'push'
+      || (github.event_name == 'workflow_dispatch' && inputs.mode == 'qualification')
     runs-on: ubuntu-latest
 
     strategy:
