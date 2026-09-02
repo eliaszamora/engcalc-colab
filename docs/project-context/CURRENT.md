@@ -5,14 +5,21 @@ _Last updated: 2026-09-01 — EngCalc 0.9.2 is released and closed on `main`. Th
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
-- Canonical `main`: **`38b28d5ab3abce389fff5cdf74552bf7728c8437`** — merge of PR #37, the Permanent Quality Gate. The gate was developed on `c3f4b14`; branch `qa/permanent-quality-gate` is deleted, local and remote.
-- Runtime/package version: **0.9.2**. No version bump for QA infrastructure.
+- Canonical `main`: **`4a018fb93493815dd266269d8cc5693d7b84e58b`** — merge of PR #39, EngCalc 0.10.0 Engineering Presentation.
+- Runtime/package version: **0.10.0**.
 - `requires-python = ">=3.10"`; runtime dependency includes `ipython>=8.18`.
 - Permanent CI: `.github/workflows/ci.yml`, Python 3.10–3.14 on PRs and pushes to `main`.
-- Default suite at `38b28d5`: **1066/1066 GREEN** — 912 product tests plus the 154 Fast Gate tests. Deep suite: **18**, behind an explicit path.
-- Post-merge CI on `38b28d5`: run **`33567780020`**, Python 3.10–3.14 **SUCCESS**.
-- Post-merge Deep qualification on `38b28d5`: run **`33567836733`**, `workflow_dispatch` in `qualification` mode, Python **3.10 SUCCESS** and **3.14 SUCCESS**.
-- Release history: PR #34 merge `a42b6bcd…` (0.9.2); PR #35 merge `e073320b…` (N-1…N-4 remediation, 901/901); PR #36 merge `c3f4b14c…` (A-1/A-2 correction, 912/912); PR #37 merge `38b28d5a…` (Permanent Quality Gate, 1066/1066, no production change).
+- Default suite at `4a018fb`: **1079/1079 GREEN** — 912 product tests, the 154 Fast Gate
+  tests, and the 13 presentation contracts. Deep suite: **18**, behind an explicit path.
+- Post-merge CI on `4a018fb`: run **`33584446587`**, Python 3.10–3.14 **SUCCESS**.
+- Post-merge Deep qualification on `4a018fb`: run **`33584467099`**, 3.10 and 3.14 SUCCESS.
+- **Pre-merge Deep qualification on the exact release candidate `aa83b2b`: run
+  `33576673675`, 3.10 and 3.14 SUCCESS.** This is the first release to satisfy the
+  Qualification SHA rule with no exception; PR #37 was the bootstrap that created it.
+  Note the constraint it imposes: the run identifiers cannot be committed to the release
+  branch, because doing so moves the head and the qualification stops being on the exact
+  SHA. They are recorded here, after the merge, against the merge commit.
+- Release history: PR #35 merge `e073320b…` (N-1…N-4 remediation, 901/901); PR #36 merge `c3f4b14c…` (A-1/A-2 correction, 912/912); PR #37 merge `38b28d5a…` (Permanent Quality Gate, 1066/1066, no production change); PR #38 merge `536c22dd…` (post-merge state, QG-3); PR #39 merge `4a018fb9…` (**0.10.0 Engineering Presentation**, 1079/1079).
 - The certified `engcalc_colab-0.9.2-py3-none-any.whl` with SHA-256 `1d56169c…` predates PR #36. It is **historical qualification evidence, not an artifact of the current tree**. No GitHub Release is published; the documented install path is `git+https` against `main`, so there is no distributed artifact to reconcile.
 - Never invoke Codex / Codex Cloud without explicit user authorization.
 
@@ -259,91 +266,129 @@ force one Deep property RED on a throwaway branch, dispatch the workflow, and ch
 whether a non-empty artifact appears. Until that is done, the persistence tier is
 designed and documented but not evidenced.
 
-## Engineering Presentation - v0.10.0, implemented
+## Engineering Presentation - v0.10.0, RELEASED
 
-Branch `feature/v0.10.0-engineering-presentation`, unmerged. Design:
+Merged as PR #39 at `4a018fb`. Design:
 `docs/superpowers/specs/2026-09-01-engcalc-v0.10.0-engineering-presentation-design.md`.
-
-**Thirteen contracts green, 1079 tests passing, no existing assertion changed.** Package
-version 0.10.0. The only production file touched is `renderer.py`.
+Thirteen contracts, 1079 tests, one production file changed: `renderer.py`.
 
 | source | before | now |
 |---|---|---|
 | `v := 8e-05*m` | `0.00 m` | `0.08 mm` |
 | `k = 2*v`, `numeric(k)` | `2(0.00 m) = 0.00 m` | `2(0.08 mm) = 0.16 mm` |
 | deflection `P*L^3/(48*E*I_z)` | `5625.00 kN/(GPa*m)` | `5.63 mm` |
-| admissible deflection `L/300` | `0.02 m` | `16.67 mm` |
 | table column of small values | every cell `0.00` | `0.00 0.08 0.16 0.24` in mm |
 | `q := 2.8*tonf/m` | `2.80 tonf/m` | unchanged |
 | `w := 1e-6*m` | `0.00 m` | `1.00e-6 m` |
 | `z := 1e-11*m` | `0.00 m` | unchanged, genuine zero |
 
-**Five presentation sites, not three.** The audit of `characteristics/` demonstrated
-P-1, P-2 and P-3 on scalars; designing the fix found the matrix cell path
-(`_magnitude_latex`) and the table cell path (`_table_magnitude`), the second being the
-one that matters most in a real memoria. A fourth fixed-decimal format at
-`renderer.py:306` is a literal zero for an empty polynomial and is not a collapse site;
-the enumeration is closed.
+**The rule.** Provenance is a property of the result: a `NumericAssignmentResult` and any
+value substituted into a derivation are declared, everything else is derived. A declared
+unit is kept unless rendering it retains no significant figure. A derived unit is kept
+when it came from the engineer's own inputs - measured by term count against the family's
+canonical member, so `tonf` and `kN/mm` survive and `kN/(GPa*m)` does not - and otherwise
+moves to the family member retaining the most significant figures, ties keeping what the
+value already carries. Below the family floor, scientific notation in the declared unit.
+`zero_tolerance` is evaluated in the stored unit, before any conversion.
 
-**The rule.** Provenance is a property of the result, not of the unit: a
-`NumericAssignmentResult` and any value substituted into a derivation are declared,
-everything else is derived. A declared unit is kept unless rendering it retains no
-significant figure. A derived unit is kept when it came from the engineer's own inputs -
-measured by term count against the family's canonical member, so `tonf` and `kN/mm`
-survive and `kN/(GPa*m)` does not - and otherwise moves to the family member retaining
-the most significant figures, ties keeping what the value already carries. Below the
-family floor, scientific notation in the unit the engineer declared. `zero_tolerance` is
-evaluated in the stored unit, always, before any conversion.
+Five presentation sites, not three: the scalar path, the matrix cell path
+(`_magnitude_latex`) and the table cell path (`_table_magnitude`). A fourth fixed-decimal
+format at `renderer.py:306` is a literal zero for an empty polynomial and is not a
+collapse site; the enumeration is closed.
+
+### EP-1 - OPEN. The tie-break leaves a derived length in a 25%-resolution unit
+
+Found immediately after the merge, by running a real memoria rather than a test. Not a
+regression, and not a correctness error, but it defeats this release's own stated goal in
+the one place it is most likely to matter.
+
+```text
+q := 2.8*tonf/m ; L := 6*m ; E := 200*GPa ; I_z := 1.25e-4*m^4
+numeric(d)       -> d     = 18.53 mm      the deflection
+numeric(f_adm)   -> f_adm = 0.02 m        its admissible limit, L/300
+```
+
+The two quantities an engineer compares directly render in different units, and the limit
+renders at a display resolution of 5 mm on a 20 mm value - 25% - where `20.00 mm` was
+available at 0.03%.
+
+The cause is exact. `_significant_figures` strips trailing zeros, so `20.00` scores one
+figure just as `0.02` does; the comparison ties and the tie-break keeps the stored unit.
+But the trailing zeros of `20.00` are not padding, they are resolution.
+
+| | displayed | figures by the current metric | resolution as a share of the value |
+|---|---|---|---|
+| metres | `0.02` | 1 | 25.00% |
+| millimetres | `20.00` | 1 | 0.03% |
+
+**The A-4 contract does not catch it**, and the reason is worth keeping: it was written
+with `L := 5*m`, where `L/300 = 0.0166...` renders `16.67 mm` and wins on figures four to
+one. With `L := 6*m` the quotient is exact and the comparison ties. The contract passes
+through the case rather than through the rule - the seventh thing in this release to be
+right for the wrong reason.
+
+**Not fixed here, and not to be fixed by intuition.** Preferring the smaller unit on ties
+repairs `f_adm` and breaks a derived span: `L1 + L2` would render `11000.00 mm`, which is
+the outcome the measurement in design §5 rejected. The metric is probably resolution
+relative to the value, bounded by the family, rather than significant figures - but that
+is a hypothesis, and this release's record is unambiguous about what happens to
+hypotheses that are reasoned instead of measured.
 
 ### What this release is missing
 
-**It was never independently reviewed.** The design, its audit, the contracts, the
-implementation and the mutation battery are one perspective, by the user's explicit
-direction. Six things passed for the wrong reason before being caught (spec §9.1, §9.2),
-and the two defects that actually shipped were caught by tests written in earlier
-sessions - not by this release's own thirteen contracts.
+**It was never independently reviewed**, by explicit direction. The design, its audit, the
+contracts, the implementation and the mutation battery are one perspective. Six things
+passed for the wrong reason before being caught (spec §9.1, §9.2), EP-1 is the seventh,
+and the two defects that actually shipped in the implementation were caught by tests
+written in earlier sessions - not by this release's own contracts.
 
 ### Exact next step
 
-Open the release PR, or review it. Do not merge without explicit approval.
+**EP-1, as 0.10.1.** Measure candidate metrics against a corpus of real engineering
+values before choosing one, exactly as design §5 did for the unit policy, and require the
+chosen metric to keep every row of the §5 table correct as well as fixing `f_adm`.
 
 Carried alongside, small and independent:
 
 - **QG-3** - force one Deep property RED on a throwaway branch and confirm a non-empty
   Hypothesis artifact is produced, then correct the artifact paragraph in
   `docs/quality-gate.md`. Evidentiary; blocks nothing.
-- `tests/test_piecewise_acceptance.py` reads `README.md` without an explicit encoding,
-  unlike its siblings, so it fails on any non-cp1252 character in the README. Latent,
-  found while writing the 0.10.0 README section, worked around rather than fixed.
+- README encoding: `tests/test_piecewise_acceptance.py` read `README.md` without an
+  explicit encoding, unlike its seven siblings, so it failed on any character outside the
+  local codepage. Fixed in PR #41, which also restores the typography the 0.10.0 README
+  had to give up - making the encoding argument load-bearing rather than decorative.
 - 53 stale remote branches from versions already integrated, `0.2` through `0.9.2`.
   Deletion is irreversible and none has been touched.
 
 ## How to resume in a new conversation
 
-Read this file first. `main` is at `536c22d` with 0.9.2 closed and the Permanent Quality
-Gate integrated: PRs #35, #36, #37 and #38 merged, post-merge CI green on Python
-3.10-3.14 (run `33567780020`) and Deep qualification green on 3.10 and 3.14 against the
-merge commit itself (run `33567836733`), which discharges QG-2. The gate is 154 Fast
-tests collected by the ordinary suite on every push, 1066 GREEN in total, plus 18 Deep
-properties run weekly or on demand - with zero production source change across the whole
-phase.
+Read this file first. `main` is at `4a018fb`, EngCalc **0.10.0**, with the Permanent
+Quality Gate integrated and Engineering Presentation released. PRs #35 to #39 merged.
+Post-merge CI green on Python 3.10-3.14 (run `33584446587`) and Deep qualification green
+on 3.10 and 3.14 (run `33584467099`); the release candidate itself was qualified before
+merge at `aa83b2b` (run `33576673675`).
 
-Active work is on `feature/v0.10.0-engineering-presentation`, unmerged and with no
-production source changed yet: twelve acceptance contracts and a complete, self-audited,
-**unapproved** design. The next step is an independent review of that design, not the
-implementation plan.
+1079 tests green: 912 product, 154 Fast Gate on every push, 13 presentation contracts,
+plus 18 Deep properties weekly or on demand.
 
-The mathematical characteristic subsystem was independently audited and is CLEAN within
-the audited scope. QG-3 is open, evidentiary only, and blocks nothing.
+P-1, P-2 and P-3 are corrected. **EP-1 is open** and is the next release: a derived length
+whose magnitude ties on the current metric stays in a unit with 25% display resolution, so
+a deflection and its admissible limit render in different units. The reproduction and the
+reason the existing contract misses it are recorded above.
 
 Read `docs/quality-gate.md` for how to operate the gate and, in particular, for the
 isolated configuration that historical sensitivity runs require - without it pytest
 discovers the repository `pyproject.toml` and prepends the current `src`, so guards pass
-while appearing to exercise historical code.
+while appearing to exercise historical code. Note also that Deep qualification must run on
+the exact release-candidate SHA, which means its run identifiers can only be written down
+after the merge.
 
-Two rules that have each paid for themselves more than once: never merge without explicit
-user approval, and never let whoever built something be the one to certify it. The second
-was suspended once, deliberately, for the design review recorded in the spec's §9.1, and
-that section states plainly what the exercise could not reach.
+Two rules that have each paid for themselves repeatedly: never merge without explicit user
+approval, and never let whoever built something be the one to certify it. The second was
+suspended for 0.10.0 by explicit direction. What that cost is documented rather than
+argued: seven separate things in that release were right or green for the wrong reason,
+and not one of them was found by reading - they were found by executing, by mutating the
+implementation, by tests written in earlier sessions, and finally by running a real
+memoria after the merge.
 
 Never invoke Codex / Codex Cloud without explicit authorization.
