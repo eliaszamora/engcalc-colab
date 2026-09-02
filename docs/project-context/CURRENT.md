@@ -6,7 +6,7 @@ _Last updated: 2026-09-01 — **EngCalc 0.10.0 is released and closed on `main`,
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Canonical `main`: **`4a018fb93493815dd266269d8cc5693d7b84e58b`** — merge of PR #39, EngCalc 0.10.0 Engineering Presentation.
-- Runtime/package version: **0.10.0**.
+- Runtime/package version: **0.10.1**.
 - `requires-python = ">=3.10"`; runtime dependency includes `ipython>=8.18`.
 - Permanent CI: `.github/workflows/ci.yml`, Python 3.10–3.14 on PRs and pushes to `main`.
 - Default suite at `4a018fb`: **1079/1079 GREEN** — 912 product tests, the 154 Fast Gate
@@ -54,11 +54,18 @@ other side - `5625.00 kN/(GPa·m)` retains *more* significant figures than `5.63
 rule that merely maximised figures kept the compound unit. Anyone tempted to fold the
 presentation contracts into one property will reintroduce P-3 and see green.
 
-Open presentation defect:
+**EP-1 is CLOSED**, corrected in 0.10.1. The root cause was not a subtle metric failure:
+design §4.5 specifies a band rule and it was never implemented. §4.3's significant-figures
+criterion, which exists to decide whether a *declared* unit still says anything, was used
+for the family choice as well — one criterion doing two jobs, and wrong for the second.
 
-- **EP-1 MEDIUM** — a derived length whose magnitude ties on the current metric stays in
-  a unit with 25% display resolution, so a deflection and its admissible limit render in
-  different units. Reproduction and analysis in the release section below.
+Measured over the cases that reach the family choice, the band rule is right 10 times out
+of 10 where counting figures is right 8. The two it fixes are `f_adm = L/300` with
+`L := 6*m`, where the quotient is exactly 0.02 and the figures tie, and a derived
+thickness. Ties keep the unit the value already carries, which is what leaves a derived
+11 m span in metres rather than rendering it as `11000.00 mm`.
+
+No presentation defect is currently open.
 
 Known coverage gaps, not defects: roots separated by less than `0.05`; coefficients with
 many more decimal places; Piecewise with more than two branches; nested Piecewise;

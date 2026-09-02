@@ -268,6 +268,32 @@ def test_p1_inside_a_matrix_cell_agrees_with_the_unit_factored_out():
         )
 
 
+def test_an_aggregate_keeps_the_engineers_unit_against_the_band():
+    """The aggregate authorship gate, where it actually disagrees with the band.
+
+    A matrix of `0.5 tonf` and `1.0 tonf` scores worse on the band than the same
+    values in kilonewtons - 0.5 sits outside [1, 1000) and 4.9 does not - so the
+    band alone converts the matrix away from the unit the engineer wrote.
+
+    Written because a mutation removing that gate passed all sixty-three tests in
+    this area. The gate had been covered only by `k := 10*kN/mm`, where the band
+    happens to reach the same answer by itself, so disabling the gate changed
+    nothing visible. A guard that only works while a second mechanism agrees with
+    it is the failure mode already recorded as QG-3 and as mutation B.
+    """
+    import engcalc_colab.renderer as renderer
+    from engcalc_colab.renderer import RenderSettings
+
+    engine = EngineeringEngine()
+    results = run_cell(engine, "k := 0.5*tonf\nA = [k, 0; 0, 2*k]\nnumeric(A)")
+    latex = renderer._quantity_matrix_latex(results[-1].quantity_matrix, RenderSettings())
+
+    factored = _UNIT_TOKEN.findall(latex.rsplit(r"\right]", 1)[-1])
+    assert factored == ["tonf"], (
+        f"the matrix left the unit the engineer wrote: {latex!r}"
+    )
+
+
 def test_p1_inside_a_table_column_never_collapses_a_whole_column():
     """A-1. ``_table_magnitude`` is a third collapse site, and the most visible.
 
@@ -382,6 +408,15 @@ def test_zero_tolerance_is_decided_in_the_stored_unit_not_the_display_unit():
 # ---------------------------------------------------------------------------
 
 
+def _significant_figures_of(rendered: str) -> int:
+    """The metric the family choice used before EP-1, reproduced locally.
+
+    Kept in the test rather than imported, so the guard in the EP-1 contract keeps
+    describing the tie even if the production helper is renamed or removed.
+    """
+    return len(rendered.replace(".", "").strip("0"))
+
+
 def _rendered_unit(engine, source: str) -> str:
     latex = render_result(run_cell(engine, source)[-1])
     return " * ".join(_UNIT_TOKEN.findall(final_stage(latex)))
@@ -437,6 +472,45 @@ def test_a4_a_declared_unit_yields_when_a_family_member_says_more():
         f"the unit retains {len(digits)} significant figure(s) where the family "
         f"offers 4: {latex!r}"
     )
+
+
+def test_ep1_the_family_choice_uses_the_readable_band_not_significant_figures():
+    """EP-1. The tie case, which the A-4 contract passes straight through.
+
+    ``L := 5*m`` makes ``L/300`` an unterminating 0.0166..., where millimetres win
+    four significant figures to one and any metric gets it right. ``L := 6*m``
+    makes it exactly 0.02: ``0.02 m`` and ``20.00 mm`` retain one figure each, the
+    comparison ties, and counting figures leaves the value in metres at a display
+    resolution of 25%. A deflection and its own admissible limit then render in
+    different units, which is the one comparison a memoria exists to make.
+
+    Both cases are kept. The first proves the rule fires; the second proves it
+    fires on the rule rather than on a comfortable margin.
+    """
+    engine = EngineeringEngine()
+    result = run_cell(engine, "f = L/300\nL := 6*m\nnumeric(f)")[-1]
+
+    assert float(result.quantity.to("mm").magnitude) == pytest.approx(20.0), (
+        "guard: the admissible deflection is exactly 20 mm"
+    )
+    assert _significant_figures_of("0.02") == _significant_figures_of("20.00"), (
+        "guard: this case must tie on significant figures, or it proves nothing"
+    )
+
+    assert _rendered_unit(engine, "f = L/300\nL := 6*m\nnumeric(f)") == "mm", (
+        f"the tie left the value in a 25%-resolution unit: {render_result(result)!r}"
+    )
+
+
+def test_ep1_a_derived_span_stays_in_metres():
+    """The other half of EP-1, and the reason it was not fixed by intuition.
+
+    Preferring the smaller unit on ties repairs the admissible deflection and
+    renders a derived span as ``11000.00 mm``. The band rule fixes one without
+    breaking the other; a tie-break alone does not.
+    """
+    engine = EngineeringEngine()
+    assert _rendered_unit(engine, "s = L1 + L2\nL1 := 6*m\nL2 := 5*m\nnumeric(s)") == "m"
 
 
 def test_p3_a_length_is_presented_in_a_unit_of_length():
