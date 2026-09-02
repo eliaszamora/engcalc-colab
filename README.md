@@ -2,7 +2,39 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.18.0**.
+Current version: **0.19.0**.
+
+
+## v0.19.0 governing intervals
+
+`governing(...)` reports which response is largest on which stretch of the span:
+
+```text
+%%eng
+L := 6*m
+w := 28.8*kN/m
+P := 40*kN
+M_U1(x) = w*x*(L-x)/2
+M_U2(x) = P*x
+governing(M_U1(x), M_U2(x), x, 0, L)
+```
+
+```text
+0 m      to 3.22 m   M_U1(x)
+3.22 m   to 6 m      M_U2(x)
+```
+
+Any number of responses, then the variable and the bounds - the same shape as
+`envelope(...)`.
+
+**The boundaries are exact, not sampled.** `envelope(...)` already records which series
+is largest at each of its 201 points, and reading that back would have put every boundary
+on a 30 mm grid for a 6 m span. `governing(...)` equates the responses pairwise instead
+and uses the existing exact-first `intersections` machinery, so the crossover above is
+`L - 2P/w` and the boundary is right to the last digit.
+
+A crossover where the governing response does not change is not a boundary: adjacent
+stretches with the same winner are one interval.
 
 
 ## v0.18.0 numeric resolves names defined later
@@ -1137,6 +1169,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.19.0** — `governing(...)` reports which response governs on which interval, with exact boundaries taken from the crossovers rather than from the envelope's sampling.
 - **0.18.0** — `numeric(...)` resolves names the symbolic sheet defines, not only values given with `:=`, so a deflection written with its integration constants can be evaluated once the boundary conditions determine them.
 - **0.17.0** — `subs(...)` takes several variable/value pairs and applies them simultaneously, and `assume(L > 0)` states what is known before a symbol is used, which is what lets `sqrt(L^2)` simplify to `L`.
 - **0.16.0** — `numeric(...)` evaluates a symbolic summation, so a sum of loads becomes a number while still rendering as a sigma. No second function name; the symbolic/numeric division of labour is the same as everywhere else.
@@ -1169,4 +1202,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.18.0`.
+Version: `0.19.0`.

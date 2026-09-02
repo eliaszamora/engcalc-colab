@@ -19,6 +19,7 @@ from .models import (
     EigenvectorSet,
     EvaluationResult,
     ExtremaResult,
+    GoverningResult,
     IntersectionsResult,
     MatrixShape,
     NumericAssignmentResult,
@@ -1481,7 +1482,39 @@ def render_assumption_result(result: AssumptionResult) -> str:
     return r",\; ".join(parts)
 
 
+def render_governing_result(
+    result: GoverningResult,
+    *,
+    settings: RenderSettings | None = None,
+) -> str:
+    """One row per interval: the span, then the response that governs it.
+
+    HTML rather than a MathJax array, to match how the other standalone analyses -
+    roots, extrema, intersections - already present themselves. This is a table of
+    intervals, and it is read as one.
+    """
+    active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    rows: list[str] = []
+    for interval in result.intervals:
+        span = (
+            _characteristic_quantity_math(interval.lower_quantity, active_settings)
+            + " to "
+            + _characteristic_quantity_math(interval.upper_quantity, active_settings)
+        )
+        rows.append(
+            f"<tr><td>{span}</td><td>{escape(interval.label)}</td></tr>"
+        )
+    body = "".join(rows)
+    return (
+        '<div class="engcalc-characteristic">'
+        f"<div><strong>Governing — {escape(result.variable)}</strong></div>"
+        f"<table><tbody>{body}</tbody></table></div>"
+    )
+
+
 def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:
+    if isinstance(result, GoverningResult):
+        return render_governing_result(result, settings=settings)
     if isinstance(result, AssumptionResult):
         return render_assumption_result(result)
     if isinstance(result, SystemSolveResult):
