@@ -353,8 +353,10 @@ Carried alongside, small and independent:
 - **QG-3** - force one Deep property RED on a throwaway branch and confirm a non-empty
   Hypothesis artifact is produced, then correct the artifact paragraph in
   `docs/quality-gate.md`. Evidentiary; blocks nothing.
-- `tests/test_piecewise_acceptance.py` reads `README.md` without an explicit encoding,
-  unlike its siblings, so it fails on any character outside the local codepage. Latent.
+- README encoding: `tests/test_piecewise_acceptance.py` read `README.md` without an
+  explicit encoding, unlike its seven siblings, so it failed on any character outside the
+  local codepage. Fixed in PR #41, which also restores the typography the 0.10.0 README
+  had to give up - making the encoding argument load-bearing rather than decorative.
 - 53 stale remote branches from versions already integrated, `0.2` through `0.9.2`.
   Deletion is irreversible and none has been touched.
 
