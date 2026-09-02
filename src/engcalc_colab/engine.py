@@ -216,6 +216,9 @@ class EngineeringEngine:
         self.assumptions: dict[str, dict[str, bool]] = {}
         self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
         self.numeric_context = NumericContext()
+        # Shared by reference, so a name defined symbolically later is visible when a
+        # numeric evaluation needs it. See NumericContext._resolve_symbolic_names.
+        self.numeric_context.symbolic_namespace = self.namespace
 
     def reset(self) -> None:
         self.namespace.clear()
