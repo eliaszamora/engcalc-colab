@@ -41,6 +41,8 @@ from .models import (
     PlotResult,
     PlotSeries,
     AssumptionResult,
+    GoverningInterval,
+    GoverningResult,
     RootsResult,
     SystemSolveResult,
     TableColumn,
@@ -309,6 +311,19 @@ class EngineeringEngine:
                     governing_signed=plot_evaluation.governing_signed,
                 )
 
+            if evaluator.governing_evaluation is not None:
+                variable, labels, intervals = evaluator.governing_evaluation
+                if statement.target is not None:
+                    raise EngEvaluationError(
+                        "governing must be a standalone statement"
+                    )
+                return GoverningResult(
+                    statement=statement,
+                    variable=variable,
+                    labels=labels,
+                    intervals=intervals,
+                )
+
             if evaluator.assume_evaluation is not None:
                 if statement.target is not None:
                     raise EngEvaluationError(
@@ -518,6 +533,7 @@ class _Evaluator(ast.NodeVisitor):
         self.characteristic_evaluation: _CharacteristicEvaluation | None = None
         self.system_evaluation: _SystemSolveEvaluation | None = None
         self.assume_evaluation: tuple[tuple[str, str], ...] | None = None
+        self.governing_evaluation = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
         self.derivative_variable: str | None = None
         self.derivative_breakpoints: tuple[object, ...] = ()
@@ -750,7 +766,7 @@ class _Evaluator(ast.NodeVisitor):
             raise EngSyntaxError(f"unsupported syntax '{type(node.func).__name__}'")
         name = node.func.id
 
-        if name in {"roots", "intersections", "extrema"}:
+        if name in {"roots", "intersections", "extrema", "governing"}:
             return self._evaluate_characteristic(node, name)
 
         if name == "piecewise":
@@ -1362,7 +1378,18 @@ class _Evaluator(ast.NodeVisitor):
                 f"{name} accepts positional arguments only"
             )
 
-        if name == "intersections":
+        if name == "governing":
+            # Any number of responses, then variable, lower, upper - the same shape as
+            # envelope, because these are the same combinations one would plot.
+            if len(node.args) < 5:
+                raise EngEvaluationError(
+                    "governing expects at least 5 positional arguments: "
+                    "two responses, variable, lower, upper. Comparing fewer than two "
+                    "is a mistake: one response governs its whole domain by itself"
+                )
+            response_nodes = node.args[:-3]
+            variable_node, lower_node, upper_node = node.args[-3:]
+        elif name == "intersections":
             self._require_arity(
                 name,
                 node.args,
@@ -1434,6 +1461,85 @@ class _Evaluator(ast.NodeVisitor):
                 f"{name} response must be scalar; index the matrix first, "
                 "for example A[1,1]"
             )
+
+        if name == "governing":
+            # Built on the exact crossovers rather than on the envelope's 201-point
+            # sampling. Reading the envelope's per-sample winner back would have been
+            # the obvious implementation and would have put every boundary on a 30 mm
+            # grid for a 6 m span; equating the responses pairwise gives the crossover
+            # symbolically, so a boundary is exact wherever the mathematics is.
+            lower_quantity = domain.lower_quantity
+            upper_quantity = domain.upper_quantity
+            unit = lower_quantity.units
+
+            crossovers = []
+            for index, left in enumerate(resolved):
+                for right in resolved[index + 1 :]:
+                    points, _intervals, unresolved = solve_intersections_exact(
+                        left.comparison_expression,
+                        right.comparison_expression,
+                        variable_symbol,
+                        domain,
+                        self.engine.numeric_context,
+                        left_label=left.display_label,
+                        right_label=right.display_label,
+                    )
+                    if unresolved:
+                        raise EngEvaluationError(
+                            "governing could not resolve where "
+                            f"{left.display_label} and {right.display_label} cross"
+                        )
+                    crossovers.extend(point.x_quantity for point in points)
+
+            def magnitude_in_unit(quantity):
+                return float(quantity.to(unit).magnitude)
+
+            edges = [lower_quantity, upper_quantity]
+            for crossover in crossovers:
+                position = magnitude_in_unit(crossover)
+                if (
+                    magnitude_in_unit(lower_quantity)
+                    < position
+                    < magnitude_in_unit(upper_quantity)
+                ):
+                    edges.append(crossover)
+            edges.sort(key=magnitude_in_unit)
+
+            segments: list[GoverningInterval] = []
+            for start, end in zip(edges, edges[1:]):
+                midpoint = (start + end) / 2
+                best_label = None
+                best_magnitude = None
+                for response in resolved:
+                    _, value = self.engine.numeric_context.evaluate_symbolic(
+                        response.comparison_expression,
+                        {variable_name: midpoint},
+                    )
+                    magnitude = float(value.magnitude)
+                    if best_magnitude is None or magnitude > best_magnitude:
+                        best_label, best_magnitude = response.display_label, magnitude
+                # A boundary where nothing changes hands is not a boundary.
+                if segments and segments[-1].label == best_label:
+                    segments[-1] = GoverningInterval(
+                        lower_quantity=segments[-1].lower_quantity,
+                        upper_quantity=end,
+                        label=best_label,
+                    )
+                else:
+                    segments.append(
+                        GoverningInterval(
+                            lower_quantity=start,
+                            upper_quantity=end,
+                            label=best_label,
+                        )
+                    )
+
+            self.governing_evaluation = (
+                variable_name,
+                tuple(item.display_label for item in resolved),
+                tuple(segments),
+            )
+            return None
 
         if name == "roots":
             response = resolved[0]

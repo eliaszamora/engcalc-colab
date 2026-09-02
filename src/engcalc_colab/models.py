@@ -322,6 +322,27 @@ class CharacteristicInterval:
 
 
 @dataclass(frozen=True)
+class GoverningInterval:
+    lower_quantity: Any
+    upper_quantity: Any
+    label: str
+
+
+@dataclass(frozen=True)
+class GoverningResult:
+    statement: ParsedStatement
+    variable: str
+    labels: tuple[str, ...]
+    intervals: tuple[GoverningInterval, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "labels", tuple(self.labels))
+        object.__setattr__(self, "intervals", tuple(self.intervals))
+        if not self.intervals:
+            raise ValueError("a governing result must cover the domain")
+
+
+@dataclass(frozen=True)
 class AssumptionResult:
     """``assume(L > 0, E > 0)``: what the engineer states before using the symbols."""
 

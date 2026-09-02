@@ -20,7 +20,7 @@ _SWEEP_VALUE_NODES = (
 )
 _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
 _DISPLAY_TEXT_OPTIONS = {"title", "xlabel", "ylabel"}
-_CHARACTERISTIC_CALLS = {"roots", "extrema", "intersections"}
+_CHARACTERISTIC_CALLS = {"roots", "extrema", "intersections", "governing"}
 _SCALAR_CALLS = {
     "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"
 }
@@ -472,17 +472,26 @@ def _validate_characteristic_call(
     piecewise_parameters: tuple[str, ...] | None,
 ) -> None:
     name = node.func.id
-    expected = 5 if name == "intersections" else 4
     if node.keywords:
         raise EngSyntaxError(
             f"line {line_no}: {name} keyword arguments are unsupported"
         )
-    if len(node.args) != expected:
-        raise EngSyntaxError(
-            f"line {line_no}: {name} expects {expected} positional arguments"
-        )
-
-    variable_index = 2 if name == "intersections" else 1
+    if name == "governing":
+        # Any number of responses, then variable, lower, upper - like envelope. Two
+        # responses is the minimum, since one governs its whole domain by itself.
+        if len(node.args) < 5:
+            raise EngSyntaxError(
+                f"line {line_no}: governing expects at least 5 positional arguments: "
+                "two responses, variable, lower, upper"
+            )
+        variable_index = len(node.args) - 3
+    else:
+        expected = 5 if name == "intersections" else 4
+        if len(node.args) != expected:
+            raise EngSyntaxError(
+                f"line {line_no}: {name} expects {expected} positional arguments"
+            )
+        variable_index = 2 if name == "intersections" else 1
     variable_node = node.args[variable_index]
     if (
         not isinstance(variable_node, ast.Name)
