@@ -2,7 +2,42 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.11.0**.
+Current version: **0.12.0**.
+
+
+## v0.12.0 scalar equation systems
+
+Statics as it is actually written — sum the forces, sum the moments, solve for the
+reactions:
+
+```text
+%%eng
+L := 6*m
+q := 10*kN/m
+eqFy = eq(R_A + R_B, q*L)
+eqMA = eq(R_B*L, q*L*L/2)
+solve(eqFy, eqMA, R_A, R_B)
+```
+
+The memoria shows both equations and then each unknown on its own labelled line, and
+`R_A` and `R_B` are defined from there on, so `V(x) = R_A - q*x` just works.
+
+The same shape determines the constants of an elastic curve from its boundary
+conditions:
+
+```text
+solve(bc1, bc2, C1, C2)
+```
+
+**n equations followed by n unknowns**, so the argument count is even; `solve(eq, x)` is
+the n = 1 case and is unchanged. The unknowns are named in the call and the results come
+back labelled, which is what SymPy, Mathematica, Maxima, TI-Nspire and Mathcad all do.
+Positional destructuring was deliberately not adopted: `R_B, R_A = solve(eq1, eq2, R_A,
+R_B)` would cross the values with nothing to catch it.
+
+One thing worth knowing: an equation stored in a variable is built when that line runs,
+so a name that already carries a value is substituted into it there. Name your unknowns
+before giving them values, which is what you would do on paper anyway.
 
 
 ## v0.10.0 engineering presentation
@@ -876,6 +911,10 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
 - `diff(expr, var, order)` — higher derivative.
 - `solve(lhs = rhs, unknown)` — solve one equation for one unknown.
 - `solve(expr, unknown)` — interpreted as `expr = 0`.
+- `solve(eq_1, ..., eq_n, x_1, ..., x_n)` — solve a scalar system: **n equations
+  followed by n unknowns**, so the argument count is always even. The two-argument form
+  above is the n = 1 case of the same rule. A system is a standalone statement: the
+  unknowns are the result, and solving defines them.
 - `sum(expr, index, lower, upper)` — unevaluated indexed symbolic sum.
 - `simplify(expr)` — simplify.
 - `expand(expr)` — expand.
@@ -935,6 +974,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.12.0** — scalar equation systems: `solve(eq_1, ..., eq_n, x_1, ..., x_n)` solves n equations for n unknowns, renders each on its own labelled line and defines them. Statics and elastic-curve boundary conditions no longer need a matrix.
 - **0.11.0** — `integrate(...)` is the canonical name for the definite integral, matching the convention every mathematical Python user already knows. `integral(...)` keeps working as a permanent alias.
 - **0.10.1** — the display unit is chosen by readable magnitude rather than by counting significant figures, so an admissible deflection of exactly `L/300` no longer stays in metres beside the deflection it bounds.
 - **0.10.0** — engineering presentation: quantities shown in units an engineer writes, declared units preserved, algebra-produced compound units replaced by units of their own dimension, one unit per table column and per matrix, and scientific notation below the family floor. No computed value changes.
@@ -960,4 +1000,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.11.0`.
+Version: `0.12.0`.

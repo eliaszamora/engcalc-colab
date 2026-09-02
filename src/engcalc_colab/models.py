@@ -322,6 +322,25 @@ class CharacteristicInterval:
 
 
 @dataclass(frozen=True)
+class SystemSolveResult:
+    """`solve(eq_1, ..., eq_n, x_1, ..., x_n)`.
+
+    The unknowns come back labelled rather than positional, which is what every
+    established system does and what makes a silent swap impossible.
+    """
+
+    statement: ParsedStatement
+    equations: tuple[Any, ...]
+    solutions: tuple[tuple[str, Any], ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "equations", tuple(self.equations))
+        object.__setattr__(self, "solutions", tuple(self.solutions))
+        if not self.solutions:
+            raise ValueError("a system solve result must carry at least one unknown")
+
+
+@dataclass(frozen=True)
 class RootsResult:
     statement: ParsedStatement
     display_label: str

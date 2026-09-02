@@ -21,7 +21,8 @@ confidently wrong.**
 | lines executed | 132 |
 | lines that failed | 24, of which **4 are cascades** — a name undefined because an earlier line failed |
 | distinct gaps | **12** |
-| exercises that run end to end today | **4 / 18** |
+| exercises that ran end to end when measured | **4 / 18** |
+| **after step 1.1, scalar equation systems** | **7 / 18** |
 
 Four already run clean, and they are not trivial ones: composite section properties,
 stress transformation with principal stresses and angle, **the propped cantilever by the
@@ -98,7 +99,9 @@ assumes E4 completes.
 
 ## Recommended order
 
-1. **Scalar equation systems** — 7/18, one piece, the largest genuine gap.
+1. **Scalar equation systems** — **DONE in 0.12.0. The map predicted 7/18 and the
+   re-measurement returned exactly 7/18**: E1, E2 and E3 now run end to end with zero
+   broken lines. Re-run `python tools/gap_map.py` to confirm.
 2. **Indefinite integral**, shipped alongside — 8/18, and the elastic curve becomes
    derivable rather than quoted. Resolve the integration-constant question here.
 3. **Comparisons, then `check()`** — 6/18 on its own but `check` is what turns a memoria

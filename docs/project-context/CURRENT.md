@@ -399,14 +399,15 @@ with plain functions: `M_U1(x) = 1.2*M_D(x) + 1.6*M_L(x)` works today.
 | Step | State |
 |---|---|
 | **1.0 `integrate` canonical**, `integral` a permanent alias | **DONE, 0.11.0** |
-| 1.1 scalar equation systems | next |
+| **1.1 scalar equation systems** | **DONE, 0.12.0 — gap map 4/18 → 7/18, as predicted** |
 | 1.2 indefinite integral | with 1.1 |
 | 1.3 multi-solution `solve` | after |
 | 2.1 Macaulay `<x-a>^n` | then |
 | 3.x evaluated summation, multi-variable `subs`, `assume` | then |
 | `governing()` and exact envelopes | after that |
 
-Etapa 1 complete takes the gap map from 4/18 to 9/18.
+Etapa 1 complete takes the gap map from 4/18 to 9/18. Step 1.1 has moved it to 7/18,
+which is exactly what the map predicted for that step alone.
 
 ### The solve API, decided by research rather than by taste
 
