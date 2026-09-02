@@ -400,7 +400,8 @@ with plain functions: `M_U1(x) = 1.2*M_D(x) + 1.6*M_L(x)` works today.
 |---|---|
 | **1.0 `integrate` canonical**, `integral` a permanent alias | **DONE, 0.11.0** |
 | **1.1 scalar equation systems** | **DONE, 0.12.0 — gap map 4/18 → 7/18, as predicted** |
-| 1.2 indefinite integral | with 1.1 |
+| **1.2 indefinite integral** | **DONE, 0.13.0** |
+| **new: resolve namespace symbols at numeric time** | found while doing 1.2; blocks E4's last step |
 | 1.3 multi-solution `solve` | after |
 | 2.1 Macaulay `<x-a>^n` | then |
 | 3.x evaluated summation, multi-variable `subs`, `assume` | then |

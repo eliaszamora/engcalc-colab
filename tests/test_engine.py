@@ -100,7 +100,7 @@ def test_integral_wrong_arity_is_concise_and_line_aware():
     engine = EngineeringEngine()
     with pytest_raises(EngEvaluationError) as captured:
         eval_cell(engine, "A = integral(x, x, 0)")
-    assert str(captured.value) == "line 1: integral expects 4 arguments: expression, variable, lower, upper"
+    assert str(captured.value) == "line 1: integral expects 2 arguments (expression, variable) for an indefinite integral, or 4 (expression, variable, lower, upper) for a definite one; got 3"
 
 
 def test_rejects_function_scalar_kind_conflict():

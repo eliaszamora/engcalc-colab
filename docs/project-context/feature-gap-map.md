@@ -89,13 +89,28 @@ Adding the indefinite integral to it reaches 8/18 for two pieces of work, and ma
 elastic curve derivable from scratch. The comparisons block reaches the same 8/18 and
 costs four.
 
-### One caveat on E4 that the count hides
+### The E4 caveat, resolved and replaced by a different one
 
-`theta(x) = integral(M(x)/(E*I), x)` as an engineer writes it carries an implied constant
-of integration. SymPy's indefinite integral omits it, so the two boundary conditions in E4
-have nothing to solve for unless EngCalc has a story for integration constants. Closing
-both gaps may still leave E4 short. Recorded because the count says 8/18 and that number
-assumes E4 completes.
+The caveat recorded here was that SymPy omits the constant of integration, so E4's
+boundary conditions would have nothing to solve for. **That turned out not to be the
+problem**: `C1` is an ordinary free symbol, the engineer writes it exactly as on paper,
+and 0.13.0 derives the textbook constants `C2 = 0` and `C1 = -qL³/(24 E I_z)` from the
+boundary conditions.
+
+The real blocker is elsewhere, and was found by running the exercise rather than by
+reasoning about it. **A definition captures its free symbols, and `numeric(...)` resolves
+symbols from the numeric context - values given with `:=` - not from the symbolic
+namespace where a solved constant lands.** So `v(x)`, defined before the constants are
+known, keeps the symbols `C1` and `C2` and cannot be evaluated numerically afterwards:
+
+```text
+y = 2*k ; k = 5    ; z = y        ->  2*k      a definition captures, it does not refer
+y = 2*k ; k = 5    ; numeric(y)   ->  refuses, asking for a numeric value
+y = 2*k ; k := 5*kN ; numeric(y)  ->  10 kN    resolved from the numeric context
+```
+
+E4 therefore derives its elastic curve symbolically end to end and stops one step short
+of a number. That step is a gap of its own, newly measured, and is not what 1.2 was for.
 
 ## Recommended order
 

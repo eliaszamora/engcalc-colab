@@ -51,12 +51,14 @@ def test_integrate_works_on_matrices_like_integral():
 
 def test_the_error_names_the_function_that_was_called():
     """A message naming a function the engineer did not type is its own small defect."""
+    # Two arguments is the indefinite integral since 0.13.0, so the example that
+    # exercises the arity message is three: a bound was forgotten.
     with pytest.raises(EngEvaluationError) as excinfo:
-        evaluate(EngineeringEngine(), "a = integrate(x^2, x)")
+        evaluate(EngineeringEngine(), "a = integrate(x^2, x, 0)")
     assert "integrate expects" in str(excinfo.value)
 
     with pytest.raises(EngEvaluationError) as excinfo:
-        evaluate(EngineeringEngine(), "a = integral(x^2, x)")
+        evaluate(EngineeringEngine(), "a = integral(x^2, x, 0)")
     assert "integral expects" in str(excinfo.value)
 
 
