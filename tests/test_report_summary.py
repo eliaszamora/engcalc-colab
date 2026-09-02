@@ -97,7 +97,10 @@ def test_an_empty_summary_says_so_rather_than_printing_nothing():
     engine = EngineeringEngine()
     with pytest.raises(EngEvaluationError) as excinfo:
         run_cell(engine, "summary()")
-    assert "report" in str(excinfo.value).lower()
+    # The model refuses an empty summary too, but with "a summary must carry at least
+    # one reported value" prefixed by "symbolic evaluation failed" - true, and no help.
+    # The engine guard earns its place by saying what to do, so that is what is pinned.
+    assert "mark a value with report" in str(excinfo.value)
 
 
 def test_summary_takes_no_arguments():
@@ -111,3 +114,21 @@ def test_report_must_be_a_standalone_statement():
     engine = EngineeringEngine()
     with pytest.raises(EngEvaluationError):
         run_cell(engine, "L := 6*m\nM = L\nx = report(M)")
+
+
+def test_a_reset_clears_what_was_reported():
+    """A fresh sheet has an empty summary, like it has an empty namespace.
+
+    Nothing in this file exercised `reset()`, so a mutation that left the register
+    behind passed every contract. A summary carrying values from a previous sheet is
+    the worst kind of wrong: plausible, and about the wrong problem.
+    """
+    engine = EngineeringEngine()
+    run_cell(engine, "L := 6*m\nM = L\nreport(M)")
+    assert engine.reported
+
+    engine.reset()
+    assert not engine.reported
+
+    with pytest.raises(EngEvaluationError):
+        run_cell(engine, "summary()")
