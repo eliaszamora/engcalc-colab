@@ -2,7 +2,40 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.9.2**.
+Current version: **0.10.0**.
+
+
+## v0.10.0 engineering presentation
+
+EngCalc 0.10.0 changes how numbers reach the page. Nothing about how they are computed
+changes, and no result moves; what changes is that the rendered memoria no longer
+contradicts the values behind it.
+
+A quantity is shown in a unit an engineer would write. The unit you declare is the unit
+you see: `q := 2.8*tonf/m` renders in `tonf/m`, and a 5 m span stays `5.00 m`. A unit that
+only the algebra produced is replaced by one of its own dimension — a deflection that
+evaluates to `kN/(GPa·m)` is a length, and is shown as `5.63 mm`.
+
+A declared unit is left alone unless it would misrepresent the value, measured by the
+significant figures that survive at the active precision:
+
+| source | before | now |
+|---|---|---|
+| `v := 8e-05*m` | `0.00 m` | `0.08 mm` |
+| `k = 2*v`, `numeric(k)` | `2(0.00 m) = 0.00 m` | `2(0.08 mm) = 0.16 mm` |
+| a deflection `P·L³/(48·E·I_z)` | `5625.00 kN/(GPa·m)` | `5.63 mm` |
+| an admissible deflection `L/300` | `0.02 m` | `16.67 mm` |
+| a table column of small values | every cell `0.00` | `0.00 0.08 0.16 0.24` in mm |
+
+Tables and matrices choose one unit for the whole column or matrix, because the unit is
+printed once in the header or outside the brackets; cells are never rescaled
+individually.
+
+Below the point where no unit of the family retains a figure, the value is shown in
+scientific notation in the unit you declared: `1e-6 m` reads `1.00e-6 m`.
+`zero_tolerance` is unchanged and still decides what counts as a genuine zero — evaluated
+against the value as you stored it, so a change of display unit can never turn a zero
+into a number.
 
 
 ## v0.9.2 reliability work
@@ -897,6 +930,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.10.0** — engineering presentation: quantities shown in units an engineer writes, declared units preserved, algebra-produced compound units replaced by units of their own dimension, one unit per table column and per matrix, and scientific notation below the family floor. No computed value changes.
 - **0.9.2** — audit remediation and reliability: resilient exact-first characteristic discovery with deterministic fallback, explicit-real engineering symbols, consistent direct unit bounds, normalized Piecewise topology, exact characteristic presentation polish, declared IPython runtime support, and permanent Python 3.10–3.14 CI.
 - **0.9.1** — exact-first roots, intersections and extrema with unit-aware Piecewise semantics, deterministic numerical fallback, and authoritative ordinary-plot extrema metadata.
 - **0.9.0** — native exact symbolic matrices/vectors, one-based indexing, matrix-valued CAS functions, Pint-backed per-entry numerical matrices, exact `solve(A, b)`, guarded rank/RREF/norm/eigen analysis, native MathJax matrix presentation, Piecewise-cell integration and indexed scalar table/plot/envelope workflows.
@@ -919,4 +953,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.9.2`.
+Version: `0.10.0`.

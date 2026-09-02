@@ -7,29 +7,29 @@ except ModuleNotFoundError:  # Python 3.10
 
 import engcalc_colab
 
-EXPECTED_VERSION = "0.9.2"
+EXPECTED_VERSION = "0.10.0"
 
 
-def test_runtime_version_is_0_9_2():
+def test_runtime_version_is_0_10_0():
     assert engcalc_colab.__version__ == EXPECTED_VERSION
 
 
-def test_project_metadata_version_is_0_9_2():
+def test_project_metadata_version_is_0_10_0():
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     assert pyproject["project"]["version"] == EXPECTED_VERSION
 
 
-def test_readme_release_version_is_0_9_2():
+def test_readme_release_version_is_0_10_0():
     readme = Path("README.md").read_text(encoding="utf-8")
-    assert "Current version: **0.9.2**." in readme
-    assert readme.rstrip().endswith("Version: `0.9.2`.")
+    assert "Current version: **0.10.0**." in readme
+    assert readme.rstrip().endswith("Version: `0.10.0`.")
 
 
-def test_readme_version_notes_cover_0_9_2_0_9_1_and_0_9_0():
+def test_readme_version_notes_cover_0_10_0_0_9_2_and_0_9_1():
     readme = Path("README.md").read_text(encoding="utf-8")
+    assert "- **0.10.0** —" in readme
     assert "- **0.9.2** —" in readme
     assert "- **0.9.1** —" in readme
-    assert "- **0.9.0** —" in readme
 
 
 def test_readme_matrix_cas_remains_documented():

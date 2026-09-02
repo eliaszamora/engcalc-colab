@@ -259,62 +259,64 @@ force one Deep property RED on a throwaway branch, dispatch the workflow, and ch
 whether a non-empty artifact appears. Until that is done, the persistence tier is
 designed and documented but not evidenced.
 
-## Engineering Presentation — design complete, awaiting independent review
+## Engineering Presentation - v0.10.0, implemented
 
-Branch `feature/v0.10.0-engineering-presentation`, unmerged, no production source
-changed yet. Design:
+Branch `feature/v0.10.0-engineering-presentation`, unmerged. Design:
 `docs/superpowers/specs/2026-09-01-engcalc-v0.10.0-engineering-presentation-design.md`.
 
-**Twelve acceptance contracts in `tests/test_engineering_presentation.py`: ten RED, two
-GREEN.** Written before any fix, and each verified to fail for its own documented reason.
+**Thirteen contracts green, 1079 tests passing, no existing assertion changed.** Package
+version 0.10.0. The only production file touched is `renderer.py`.
 
-**Five collapse and presentation sites, not three.** The audit of `characteristics/` had
-demonstrated P-1, P-2 and P-3 on scalars. Designing the fix found two more, both measured:
+| source | before | now |
+|---|---|---|
+| `v := 8e-05*m` | `0.00 m` | `0.08 mm` |
+| `k = 2*v`, `numeric(k)` | `2(0.00 m) = 0.00 m` | `2(0.08 mm) = 0.16 mm` |
+| deflection `P*L^3/(48*E*I_z)` | `5625.00 kN/(GPa*m)` | `5.63 mm` |
+| admissible deflection `L/300` | `0.02 m` | `16.67 mm` |
+| table column of small values | every cell `0.00` | `0.00 0.08 0.16 0.24` in mm |
+| `q := 2.8*tonf/m` | `2.80 tonf/m` | unchanged |
+| `w := 1e-6*m` | `0.00 m` | `1.00e-6 m` |
+| `z := 1e-11*m` | `0.00 m` | unchanged, genuine zero |
 
-- `_magnitude_latex`, the homogeneous **matrix** cell path. `d := 8e-05*m` with
-  `A = [d, 0; 0, 2*d]` renders four identical `0.00` for a matrix with two genuine zeros
-  and two lost values;
-- `_table_magnitude`, the **table** cell path, and this is the one that matters most in
-  practice. `table(d(x), x, 0, L, 4)` on `d(x) = x*8e-05` renders the whole ordinate
-  column as zero. A table along a beam is the commonest thing a memoria contains.
+**Five presentation sites, not three.** The audit of `characteristics/` demonstrated
+P-1, P-2 and P-3 on scalars; designing the fix found the matrix cell path
+(`_magnitude_latex`) and the table cell path (`_table_magnitude`), the second being the
+one that matters most in a real memoria. A fourth fixed-decimal format at
+`renderer.py:306` is a literal zero for an empty polynomial and is not a collapse site;
+the enumeration is closed.
 
-A fourth fixed-decimal format at `renderer.py:306` is a literal zero for an empty
-polynomial and is **not** a collapse site. The enumeration is closed.
+**The rule.** Provenance is a property of the result, not of the unit: a
+`NumericAssignmentResult` and any value substituted into a derivation are declared,
+everything else is derived. A declared unit is kept unless rendering it retains no
+significant figure. A derived unit is kept when it came from the engineer's own inputs -
+measured by term count against the family's canonical member, so `tonf` and `kN/mm`
+survive and `kN/(GPa*m)` does not - and otherwise moves to the family member retaining
+the most significant figures, ties keeping what the value already carries. Below the
+family floor, scientific notation in the unit the engineer declared. `zero_tolerance` is
+evaluated in the stored unit, always, before any conversion.
 
-**Approved policy: preferred unit by dimension**, chosen after measuring four candidates
-rather than reasoning about them. Two rules:
+### What this release is missing
 
-1. authorship is a property of the **unit**, not of a quantity's provenance. A unit is
-   authored if the engineer typed it, which `NumericContext` already knows. This is what
-   makes the rule implementable: it removes the need to classify quantities at thirteen
-   call sites, several of which are neither declared nor derived;
-2. keep the authored unit unless a family member retains **strictly more significant
-   figures**; ties go to what the engineer wrote. Below the family floor, fall back to
-   scientific notation — reusing the `8.0 \cdot 10^{-5}` convention the symbolic path
-   already has.
+**It was never independently reviewed.** The design, its audit, the contracts, the
+implementation and the mutation battery are one perspective, by the user's explicit
+direction. Six things passed for the wrong reason before being caught (spec §9.1, §9.2),
+and the two defects that actually shipped were caught by tests written in earlier
+sessions - not by this release's own thirteen contracts.
 
-### The exact next step
+### Exact next step
 
-**Independent review of the design, by someone who did not write it.** The design was
-self-audited at the user's request; §9.1 of the spec records its four findings and states
-what a self-audit cannot reach. Do not write the implementation plan before that review.
-
-The reason is in this release's own record: **three separate contracts passed for the
-wrong reason** before being caught, and all three were caught by executing a simulated
-fix, not by reading. A GREEN contract at `rel=1e-6` that would have broken the moment the
-product was fixed; a matrix contract that counted zeros and so accepted a fix multiplying
-every cell by 1000; and its replacement's own `abs=1e-2`, which made it vacuous for
-exactly the small values it protects.
+Open the release PR, or review it. Do not merge without explicit approval.
 
 Carried alongside, small and independent:
 
-- **QG-3** — force one Deep property RED on a throwaway branch and confirm a non-empty
+- **QG-3** - force one Deep property RED on a throwaway branch and confirm a non-empty
   Hypothesis artifact is produced, then correct the artifact paragraph in
   `docs/quality-gate.md`. Evidentiary; blocks nothing.
+- `tests/test_piecewise_acceptance.py` reads `README.md` without an explicit encoding,
+  unlike its siblings, so it fails on any non-cp1252 character in the README. Latent,
+  found while writing the 0.10.0 README section, worked around rather than fixed.
 - 53 stale remote branches from versions already integrated, `0.2` through `0.9.2`.
-  `release/`, `spec/`, `planning/` and the `feature/` branches of published versions are
-  the obvious candidates; their history lives in the merge commits on `main`. Not
-  touched without an explicit request, because deletion is irreversible.
+  Deletion is irreversible and none has been touched.
 
 ## How to resume in a new conversation
 
