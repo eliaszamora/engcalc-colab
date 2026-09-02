@@ -144,10 +144,30 @@ class UserFunction:
 
 
 @dataclass(frozen=True)
+class DiscardedSolutions:
+    """Answers `solve` found that `assume` ruled out.
+
+    Carried so the sheet can show them. An engineer who is shown one answer has no
+    way to know two were found, and a discard the reader cannot see is
+    indistinguishable from a solver that only ever found one.
+    """
+
+    variable: str
+    condition: str
+    values: tuple[Any, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "values", tuple(self.values))
+        if not self.values:
+            raise ValueError("a discard record must carry the answers it ruled out")
+
+
+@dataclass(frozen=True)
 class EvaluationResult:
     statement: ParsedStatement
     display_input: Any | None
     value: Any
+    discarded: DiscardedSolutions | None = None
 
 
 @dataclass(frozen=True)
@@ -377,6 +397,7 @@ class SystemSolveResult:
     statement: ParsedStatement
     equations: tuple[Any, ...]
     solutions: tuple[tuple[str, Any], ...]
+    discarded: DiscardedSolutions | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "equations", tuple(self.equations))

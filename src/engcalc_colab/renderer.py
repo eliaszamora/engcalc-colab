@@ -925,6 +925,10 @@ def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -
 
 
 def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
+    return _symbolic_value_rows(result, settings) + _discard_note_rows(result.discarded)
+
+
+def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameters)
     if isinstance(
@@ -1017,6 +1021,31 @@ def _internal_row_spacings(
     settings: RenderSettings,
 ) -> list[str]:
     """Classify internal rows as wrapped continuations or new mathematical stages."""
+    # A discard note is a stage of its own, and the branches below size only the value
+    # rows. Sizing it here rather than inside each of them keeps the count honest: the
+    # guard at the end of this function refuses to render a mismatch, which is the whole
+    # reason a new row cannot be added anywhere without being accounted for.
+    # Only the symbolic path grows a row here. A system solve renders its own array and
+    # carries the note inside it, so it arrives as a single row like any other.
+    note_count = (
+        len(_discard_note_rows(result.discarded))
+        if isinstance(result, EvaluationResult)
+        else 0
+    )
+    if note_count:
+        return (
+            _value_row_spacings(result, result_rows[:-note_count], settings)
+            + ["8pt"]
+            + ["4pt"] * (note_count - 1)
+        )
+    return _value_row_spacings(result, result_rows, settings)
+
+
+def _value_row_spacings(
+    result: CalculationResult,
+    result_rows: list[str],
+    settings: RenderSettings,
+) -> list[str]:
     if len(result_rows) <= 1:
         return []
 
@@ -1462,6 +1491,9 @@ def render_system_solve_result(
     for name, value in result.solutions:
         lhs = _render_lhs(name, None)
         rows.append(rf"\displaystyle {lhs} = {_value_latex(value, settings or _DEFAULT_RENDER_SETTINGS)}")
+    rows.extend(
+        row.replace(" & & ", "", 1) for row in _discard_note_rows(result.discarded)
+    )
     body = r"\\".join(rows)
     return rf"\hspace{{0.2em}}\begin{{array}}{{l}} {body} \end{{array}}"
 
@@ -1472,6 +1504,23 @@ _ASSUMPTION_RELATIONS = {
     "negative": "<",
     "nonpositive": r"\leq",
 }
+
+
+def _discard_note_rows(discarded) -> list[str]:
+    """Show what `assume` ruled out, as its own row.
+
+    A discard the reader cannot see is indistinguishable from a solver that only ever
+    found one answer, and the difference matters: the second is arithmetic, the first
+    is a decision the engineer made on the line above.
+    """
+    if discarded is None:
+        return []
+    condition = (
+        rf"{_render_lhs(discarded.variable, None)} "
+        rf"{_ASSUMPTION_RELATIONS[discarded.condition]} 0"
+    )
+    values = r",\;\; ".join(_latex(value) for value in discarded.values)
+    return [rf" & & \displaystyle \text{{discarded by }} {condition}:\;\; {values}"]
 
 
 def render_assumption_result(result: AssumptionResult) -> str:
