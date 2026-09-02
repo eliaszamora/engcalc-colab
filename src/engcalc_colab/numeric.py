@@ -471,6 +471,34 @@ class NumericContext:
             evaluated_terms.append((int(power), quantity))
         return tuple(evaluated_terms)
 
+    def _resolve_symbolic_names(self, expr: sp.Expr) -> sp.Expr:
+        """Replace free symbols that the symbolic namespace defines.
+
+        A definition captures its free symbols, so `v(x) = integrate(...) + C1` keeps
+        `C1` even after the boundary conditions determine it. Without this, an elastic
+        curve could be derived symbolically and never reach a number.
+
+        The loop stops when a pass changes nothing rather than after a fixed count. A
+        self-referential definition - `a = b` then `b = a`, where the second captures the
+        symbol `b` - substitutes to itself and falls through to the ordinary
+        missing-value message, which is the right thing to say about it.
+        """
+        namespace = getattr(self, "symbolic_namespace", None)
+        if not namespace:
+            return expr
+        while True:
+            replacements = {
+                symbol: namespace[symbol.name]
+                for symbol in expr.free_symbols
+                if symbol.name in namespace
+            }
+            if not replacements:
+                return expr
+            substituted = sp.sympify(expr).subs(replacements)
+            if substituted == expr:
+                return expr
+            expr = substituted
+
     def evaluate_symbolic(
         self,
         expression: sp.Expr,
@@ -478,6 +506,7 @@ class NumericContext:
     ):
         expr = sp.sympify(expression)
         overrides = overrides or {}
+        expr = self._resolve_symbolic_names(expr)
         names = sorted(symbol.name for symbol in expr.free_symbols)
         missing = [
             name

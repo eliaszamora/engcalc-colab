@@ -43,7 +43,7 @@ failing lines is small enough to analyse by hand, and that is what these numbers
 | E1 reactions, simply supported beam | estática | scalar systems |
 | E2 point plus distributed load | estática | scalar systems |
 | E3 truss, method of joints | estática | scalar systems |
-| E4 elastic curve by double integration | mecmat | indefinite integral **+** scalar systems |
+| E4 elastic curve by double integration | mecmat | **corrected — see below** |
 | E5 maximum deflection and its limit | mecmat | comparisons **+** `check()` |
 | E6 moment diagram, Macaulay brackets | mecmat | Macaulay notation |
 | E7 composite section properties | mecmat | — runs |
@@ -58,6 +58,20 @@ failing lines is small enough to analyse by hand, and that is what these numbers
 | E16 assumptions and simplification | general | comparisons **+** `assume()` |
 | E17 evaluated summation of loads | general | evaluated summation |
 | E18 recorded results and summary | general | `report()` **+** `summary()` |
+
+### E4 was written without its constants of integration, and that is not how it is written
+
+The exercise had `theta(x) = integral(M(x)/(E*I), x)` with no `+ C1`, relying on the
+constant being implicit, and then asked the boundary conditions to solve for constants
+that appear nowhere. **No CAS supports that** - not SymPy, not Mathematica, not Maxima -
+and more to the point it is not how an engineer writes double integration on paper, where
+the `+C₁` is always written.
+
+It is corrected to write the constants, which is a different act from rewriting an
+exercise until it passes. Both numbers are on the record: **10/18** with the exercise as
+first written and **11/18** with it written the way it is done by hand. E14, by contrast,
+is left alone - reaching for `solve` there is a reasonable thing an engineer would do, and
+the natural expression failing is a genuine ergonomic gap.
 
 ## Ranking — exercises that run end to end, against pieces of work
 
