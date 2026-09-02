@@ -390,9 +390,27 @@ written in earlier sessions - not by this release's own contracts.
 
 ### Exact next step
 
-**Nothing is broken and nothing is half-finished.** The next step is new work, chosen from
-the backlog: Exact Envelopes / Governing Intervals, scalar equation systems, named cases
-and combinations, verification APIs, golden engineering worksheets.
+**Nothing is broken and nothing is half-finished.** The next step is new work, and it is
+now chosen from measurement rather than from a feature list:
+`docs/project-context/feature-gap-map.md`, reproducible with `python tools/gap_map.py`.
+
+Eighteen real exercises written the way an engineer writes them, run line by line against
+0.10.1: **4 run end to end, 12 distinct gaps.** Ranked by exercises that go *fully* green:
+
+1. **first-class comparisons** — 4/18 → **8/18**. Comparisons already exist in the grammar
+   but only inside `piecewise(...)`; a bare `Compare` is rejected. That one restriction
+   blocks `check`, `assume` and inequalities, three separately-listed features with one
+   shared prerequisite.
+2. **scalar equation systems** — → 12/18 cumulative. The largest functional gap, and how
+   statics is actually written.
+3. **indefinite integral**, shipped with (2). On its own it unblocks **nothing**: the only
+   exercise needing it also needs scalar systems.
+4. multi-solution solve and evaluated summation → 14/18. Both small; the solve guard is a
+   v0.1-era contract that says so in its own error message.
+
+`integral(...)` becomes **`integrate(...)`** in that work, with `integral` kept as an
+alias — the user's decision, on the principle of not inventing names for operations that
+already have recognised ones.
 
 Two things are owed rather than open:
 
