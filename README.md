@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.10.1**.
+Current version: **0.11.0**.
 
 
 ## v0.10.0 engineering presentation
@@ -211,7 +211,7 @@ table(q(x), x, 0, L, 21)
 
 The example above returns exactly 21 rows. Piecewise does not add hidden table samples. Plotting is different by design: it retains the existing **201-point base grid** and adds any exact, numerically resolvable Piecewise breakpoints that are not already present. Multi-series plots, parameter sweeps and envelopes use the union of their breakpoints on one shared grid. Lines and fills are split at branch transitions, so a discontinuity is never shown with a fictitious connector. Positive structural moment remains plotted downward.
 
-Symbolic calculus continues to delegate to SymPy. `integral(...)` results containing supported `Piecewise`, `Min` or `Max` structures remain numerically evaluable. `diff(...)` returns branchwise derivatives without introducing a public `DiracDelta`; however, EngCalc treats a derivative as undefined at every explicit Piecewise breakpoint and `numeric(...)` raises a corrective diagnostic exactly at that point, regardless of endpoint ownership. Evaluate the derivative immediately to either side when one-sided values are needed.
+Symbolic calculus continues to delegate to SymPy. `integrate(...)` results containing supported `Piecewise`, `Min` or `Max` structures remain numerically evaluable. `diff(...)` returns branchwise derivatives without introducing a public `DiracDelta`; however, EngCalc treats a derivative as undefined at every explicit Piecewise breakpoint and `numeric(...)` raises a corrective diagnostic exactly at that point, regardless of endpoint ownership. Evaluate the derivative immediately to either side when one-sided values are needed.
 
 ### 0.8.0 limitations
 
@@ -562,8 +562,8 @@ Fully evaluated user functions keep their engineering label in the rendered memo
 The numerical workflow also supports mixed engineering units:
 
 ```text
-Delta_B0 = integral(M_0(x)*M_1(x)/(E*I), x, 0, L)
-f_11 = integral(M_1(x)^2/(E*I), x, 0, L)
+Delta_B0 = integrate(M_0(x)*M_1(x)/(E*I), x, 0, L)
+f_11 = integrate(M_1(x)^2/(E*I), x, 0, L)
 
 E := 200*GPa
 I := 8.5e8*mm^4
@@ -772,8 +772,8 @@ M_1(x) = -M_A1 + V_A1*x
 
 ## Compatibilidad
 
-Delta_B0 = integral(M_0(x)*M_1(x)/(E*I), x, 0, L)
-f_11 = integral(M_1(x)^2/(E*I), x, 0, L)
+Delta_B0 = integrate(M_0(x)*M_1(x)/(E*I), x, 0, L)
+f_11 = integrate(M_1(x)^2/(E*I), x, 0, L)
 Delta_B = Delta_B0 + V_B*f_11
 V_B = solve(Delta_B = 0, V_B)
 
@@ -870,7 +870,8 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
 
 ### Symbolic operations
 
-- `integral(expr, var, lower, upper)` — definite integral.
+- `integrate(expr, var, lower, upper)` — definite integral. `integral(...)` is a
+  permanent alias for the same operation; `integrate` is the canonical name.
 - `diff(expr, var)` — first derivative.
 - `diff(expr, var, order)` — higher derivative.
 - `solve(lhs = rhs, unknown)` — solve one equation for one unknown.
@@ -934,6 +935,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.11.0** — `integrate(...)` is the canonical name for the definite integral, matching the convention every mathematical Python user already knows. `integral(...)` keeps working as a permanent alias.
 - **0.10.1** — the display unit is chosen by readable magnitude rather than by counting significant figures, so an admissible deflection of exactly `L/300` no longer stays in metres beside the deflection it bounds.
 - **0.10.0** — engineering presentation: quantities shown in units an engineer writes, declared units preserved, algebra-produced compound units replaced by units of their own dimension, one unit per table column and per matrix, and scientific notation below the family floor. No computed value changes.
 - **0.9.2** — audit remediation and reliability: resilient exact-first characteristic discovery with deterministic fallback, explicit-real engineering symbols, consistent direct unit bounds, normalized Piecewise topology, exact characteristic presentation polish, declared IPython runtime support, and permanent Python 3.10–3.14 CI.
@@ -958,4 +960,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.10.1`.
+Version: `0.11.0`.

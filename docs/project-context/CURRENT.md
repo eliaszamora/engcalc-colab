@@ -388,52 +388,58 @@ passed for the wrong reason before being caught (spec §9.1, §9.2), EP-1 is the
 and the two defects that actually shipped in the implementation were caught by tests
 written in earlier sessions - not by this release's own contracts.
 
-### Exact next step
+### Roadmap - Etapa 1, ecuaciones y calculo
 
-**Nothing is broken and nothing is half-finished.** The next step is new work, and it is
-now chosen from measurement rather than from a feature list:
-`docs/project-context/feature-gap-map.md`, reproducible with `python tools/gap_map.py`.
+The route is chosen from the measured gap map, filtered by the user's own statement of
+what EngCalc is for: **a place to solve the exercise, with the code's help - not a place
+to verify a design.** That excludes `check()`, `summary()` and `report()` from the
+critical path, and demotes `case`/`combo`, which measurement showed is already achievable
+with plain functions: `M_U1(x) = 1.2*M_D(x) + 1.6*M_L(x)` works today.
 
-Eighteen real exercises written the way an engineer writes them, run line by line against
-0.10.1: **4 run end to end.** Ranked by exercises that go *fully* green against pieces of
-work, hand-verified:
+| Step | State |
+|---|---|
+| **1.0 `integrate` canonical**, `integral` a permanent alias | **DONE, 0.11.0** |
+| 1.1 scalar equation systems | next |
+| 1.2 indefinite integral | with 1.1 |
+| 1.3 multi-solution `solve` | after |
+| 2.1 Macaulay `<x-a>^n` | then |
+| 3.x evaluated summation, multi-variable `subs`, `assume` | then |
+| `governing()` and exact envelopes | after that |
 
-1. **scalar equation systems** — one piece, **4/18 → 7/18**. The only gap that pays on its
-   own, and how statics is actually written: `ΣF = 0`, `ΣM_A = 0`.
-2. **indefinite integral**, shipped alongside — two pieces, **8/18**, and the elastic curve
-   becomes derivable instead of quoted. Alone it unblocks nothing: the only exercise
-   needing it also needs scalar systems.
-3. **comparisons, then `check()`** — 6/18, but `check` is what turns a memoria into an
-   auditable verification, which is worth more than the count says. Comparisons exist in
-   the grammar only inside `piecewise(...)`; a bare `Compare` is rejected, and that one
-   restriction gates `check`, `assume` and inequalities alike.
-4. `assume()` and inequality solving on that groundwork — 8/18 for that branch, four
-   pieces. Then multi-solution solve, evaluated summation, and the structural and memoria
-   blocks.
+Etapa 1 complete takes the gap map from 4/18 to 9/18.
 
-The map's first version said comparisons were the best first move. That was an artifact of
-clustering each line by its first error, and it is corrected in place; the document records
-the mistake rather than hiding it.
+### The solve API, decided by research rather than by taste
 
-`integral(...)` becomes **`integrate(...)`** in that work, with `integral` kept as an
-alias — the user's decision, on the principle of not inventing names for operations that
-already have recognised ones.
+`solve(eq1, eq2, R_A, R_B)` names the unknowns as trailing arguments, renders both
+results labelled in the memoria, and **defines them**:
 
-Two things are owed rather than open:
+```text
+R_A = qL/2 = 30.00 kN
+R_B = qL/2 = 30.00 kN
+```
 
-- **Neither 0.10.0 nor 0.10.1 was independently reviewed**, by explicit direction. The
-  design, its audit, the contracts, the implementation and the mutation battery are one
-  perspective. Spec §9.1 and §9.2 record what that cost, in evidence rather than in
-  principle.
-- **Seven families remain uncovered by the Quality Gate** and are listed in
-  `docs/quality-gate.md` with the warning that green does not mean covered: roots
-  separated by less than 0.05, Piecewise with more than two branches, nested Piecewise,
-  Piecewise combined with matrices, intersections between two Piecewise responses,
-  domains whose symbolic bounds cannot be resolved, and renderer/plotting beyond the
-  presentation findings. Covering them is a project, not a cleanup.
+One shape at any number of unknowns, so `solve(eq1, V_B)` behaves the same and the
+existing `V_B = solve(eq1, V_B)` keeps working.
 
-Also deferred, and not defects: `no_vertical_scroll()` Colab ergonomics, multiline
-ordinary function-call parsing, generalized structural eigenproblems.
+Two alternatives were considered and rejected, both after checking what established
+systems do:
+
+- `R_A, R_B = solve(...)` - **positional destructuring, rejected.** No CAS does this.
+  SymPy returns a dict, Mathematica returns rules, Maxima returns `[x = ..., y = ...]`,
+  TI-Nspire returns `x=... and y=...`, Mathcad assigns a vector from `Find(x, y)`. Every
+  one of them returns *labelled* results. Positional targets introduce a silent swap:
+  `R_B, R_A = solve(eq1, eq2, R_A, R_B)` crosses the values with nothing to catch it.
+- keeping two shapes, one per arity - rejected as incoherent in a language written by
+  hand, which is how the user put it.
+
+Defining the unknowns as a statement effect was the objection to this design, and it does
+not apply here: `q := 2.8*tonf/m` and `M(x) = ...` already define by statement. It does
+change one behaviour deliberately - today a bare `solve` binds nothing - and that is
+recorded rather than silent.
+
+**The mathematics is not the work.** `sp.solve([e1, e2], [R_A, R_B])` already returns
+`{R_A: L*q/2, R_B: L*q/2}` and SymPy is already a dependency. What 1.1 builds is the API
+and the rendering.
 
 ## How to resume in a new conversation
 
