@@ -249,8 +249,12 @@ def _best_in_family(quantity, family, settings: RenderSettings, *, start=None):
         # obscures it: 1e-6 m reads as 1.00e-6 m, not as 1.00e-3 mm. Scientific
         # notation happens where the engineer left the value. Design 4.6.
         return quantity
-    # ``min`` is stable, and ``start`` - the unit the value already carries - is first,
-    # so a tie keeps it. That is what leaves a derived 11 m span in metres.
+    # ``min`` is stable and ``start`` - the unit the value already carries - is first,
+    # so a band tie keeps it. Every present family steps by 1000 or more, which makes a
+    # tie impossible, so this is currently inert: verified by mutation, removing ``start``
+    # changes no test. It is kept as the correct behaviour for any future family whose
+    # members sit closer together, and documented as inert rather than credited with
+    # results the band rule produces on its own.
     return min(candidates, key=lambda candidate: _band_distance(candidate.magnitude))
 
 
