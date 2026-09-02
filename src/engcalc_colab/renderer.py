@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from html import escape
 
 import sympy as sp
@@ -132,13 +133,184 @@ def _substitution_latex(expr, substitutions: dict[str, object], settings: Render
     return _NumericSubstitutionLatexPrinter(substitutions, settings).doprint(expr)
 
 
-def _quantity_latex(quantity, precision: int | None = None, *, settings: RenderSettings | None = None) -> str:
+# Ordered families of units an engineer actually writes for each dimension. Keyed by
+# Pint's dimensionality, which reduces to base dimensions: a table keyed on "[force]"
+# silently matches nothing.
+_UNIT_FAMILIES: dict[str, tuple[str, ...]] = {
+    "[length]": ("mm", "m"),
+    "[mass] * [length] / [time] ** 2": ("N", "kN", "MN"),
+    "[mass] * [length] ** 2 / [time] ** 2": ("kN * m",),
+    "[mass] / [length] / [time] ** 2": ("MPa", "GPa"),
+    "[mass] / [time] ** 2": ("kN / m",),
+    "[length] ** 2": ("cm ** 2", "m ** 2"),
+    "[length] ** 4": ("cm ** 4",),
+}
+
+
+def _significant_figures(magnitude, precision: int) -> int:
+    """Digits that survive a fixed-decimal render and still carry information."""
+    rendered = f"{abs(float(magnitude)):.{precision}f}".replace(".", "")
+    return len(rendered.strip("0"))
+
+
+def _unit_family(quantity) -> tuple[str, ...]:
+    try:
+        return _UNIT_FAMILIES.get(str(quantity.dimensionality), ())
+    except Exception:
+        return ()
+
+
+def _unit_terms(quantity) -> int:
+    """How many unit symbols the reader has to hold at once.
+
+    ``m`` and ``tonf`` are one, ``tonf/m`` and ``kN*m`` are two, and the deflection's
+    ``kN/(GPa*m)`` is three. The count is what separates a unit the engineer's own
+    inputs produced from one only the algebra invented.
+    """
+    try:
+        return len(quantity.units._units)
+    except Exception:
+        return 1
+
+
+def _unit_is_the_engineers(quantity) -> bool:
+    """True when the unit came from the engineer's own inputs rather than the algebra.
+
+    A family member is *not* the engineer's in this sense: metres are the family's
+    own unit, so a value in metres is subject to the family's choice. A unit outside
+    the family that is no more complex than the family's canonical member came from
+    what was typed - ``tonf``, ``kN/mm`` - and is kept.
+    """
+    family = _unit_family(quantity)
+    if not family:
+        return True
+    own = str(quantity.units)
+    for name in family:
+        try:
+            if str(quantity.to(name).units) == own:
+                return False
+        except DimensionalityError:
+            continue
+    canonical = min(
+        (_unit_terms(quantity.to(name)) for name in family),
+        default=_unit_terms(quantity),
+    )
+    return _unit_terms(quantity) <= canonical
+
+
+def _is_genuine_zero(quantity, settings: RenderSettings) -> bool:
+    """Decided in the stored unit, always, and never after a conversion.
+
+    ``zero_tolerance`` is compared against a magnitude, so it means something
+    different in every unit: 1e-7 kN/mm is below a 1e-6 tolerance and 1e-4 kN/m,
+    the same value, is above it. Rescaling for display must not be able to turn an
+    approved zero into a number.
+    """
+    try:
+        return abs(float(quantity.magnitude)) < settings.zero_tolerance
+    except (TypeError, ValueError):
+        return False
+
+
+def _best_in_family(quantity, family, settings: RenderSettings, *, start=None):
+    best = start
+    best_figures = (
+        -1 if start is None else _significant_figures(start.magnitude, settings.precision)
+    )
+    for name in family:
+        try:
+            candidate = quantity.to(name)
+        except DimensionalityError:
+            continue
+        figures = _significant_figures(candidate.magnitude, settings.precision)
+        if figures > best_figures:
+            best, best_figures = candidate, figures
+    if best is None or best_figures <= 0:
+        # Below the family floor nothing gains a figure, so moving the value only
+        # obscures it: 1e-6 m reads as 1.00e-6 m, not as 1.00e-3 mm. Scientific
+        # notation happens where the engineer left the value. Design 4.6.
+        return quantity
+    return best
+
+
+def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
+    """Choose the unit the reader sees.
+
+    Three cases, and the middle one is why significant figures alone are not
+    enough. The P-3 deflection carries ``kN/(GPa*m)`` and renders ``5625.00``,
+    which retains *more* figures than ``5.63 mm`` — so a rule that only maximised
+    figures would keep the compound and leave P-3 unfixed.
+
+    - the unit is a **family member**: choose within the family by significant
+      figures, ties keeping what the value already carries, so a 5 m span stays in
+      metres and an admissible deflection of ``L/300`` moves to millimetres;
+    - the unit is **not** a family member but is no more complex than one: it came
+      from the engineer's own inputs, as ``tonf`` does, and is kept;
+    - the unit is a compound the algebra invented: replaced, whatever it shows.
+
+    A declared unit is kept in every case, unless rendering it would leave no
+    significant figure at all.
+    """
+    try:
+        magnitude = float(quantity.magnitude)
+    except (TypeError, ValueError):
+        return quantity
+    if abs(magnitude) < settings.zero_tolerance:
+        return quantity
+
+    family = _unit_family(quantity)
+    if not family:
+        return quantity
+
+    own_figures = _significant_figures(magnitude, settings.precision)
+    if declared and own_figures > 0:
+        return quantity
+
+    if _unit_is_the_engineers(quantity):
+        # ``tonf``, ``kN/mm``: kept unless it says nothing at all.
+        return quantity if own_figures > 0 else _best_in_family(quantity, family, settings)
+
+    own_is_family_member = any(
+        str(quantity.to(name).units) == str(quantity.units) for name in family
+    )
+    start = quantity if own_is_family_member and own_figures > 0 else None
+    return _best_in_family(quantity, family, settings, start=start)
+
+
+def _scientific_latex(magnitude: float, precision: int) -> str:
+    exponent = int(math.floor(math.log10(abs(magnitude))))
+    mantissa = magnitude / (10.0**exponent)
+    return rf"{mantissa:.{precision}f} \cdot 10^{{{exponent}}}"
+
+
+def _magnitude_text(magnitude, settings: RenderSettings) -> str:
+    """Format one magnitude, falling back to scientific notation below the floor.
+
+    Only values above ``zero_tolerance`` are owed a readable form; below it a value
+    is a genuine zero by an existing approved contract and still renders as zero.
+    """
+    magnitude = float(magnitude)
+    if magnitude == 0.0 or abs(magnitude) < settings.zero_tolerance:
+        return f"{0.0:.{settings.precision}f}"
+    if _significant_figures(magnitude, settings.precision) == 0:
+        return _scientific_latex(magnitude, settings.precision)
+    return f"{magnitude:.{settings.precision}f}"
+
+
+def _quantity_latex(
+    quantity,
+    precision: int | None = None,
+    *,
+    settings: RenderSettings | None = None,
+    declared: bool = True,
+) -> str:
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
-    active_precision = active_settings.precision if precision is None else precision
-    magnitude = float(quantity.magnitude)
-    if abs(magnitude) < active_settings.zero_tolerance:
-        magnitude = 0.0
-    magnitude_latex = f"{magnitude:.{active_precision}f}"
+    if precision is not None:
+        active_settings = replace(active_settings, precision=precision)
+
+    quantity = _display_quantity(quantity, active_settings, declared=declared)
+    magnitude_latex = _magnitude_text(quantity.magnitude, active_settings)
+
     unit_name = str(quantity.units)
     if getattr(quantity, "dimensionless", False) and unit_name == "dimensionless":
         return magnitude_latex
@@ -148,10 +320,13 @@ def _quantity_latex(quantity, precision: int | None = None, *, settings: RenderS
 
 
 def _magnitude_latex(quantity, settings: RenderSettings) -> str:
-    magnitude = float(quantity.magnitude)
-    if abs(magnitude) < settings.zero_tolerance:
-        magnitude = 0.0
-    return f"{magnitude:.{settings.precision}f}"
+    """Format a cell whose unit was already chosen for the whole aggregate.
+
+    Deliberately does not rescale. A matrix prints one unit outside its brackets
+    and a table prints one unit in its header, so a per-cell choice here would
+    leave the cells reading against a unit that is not theirs.
+    """
+    return _magnitude_text(quantity.magnitude, settings)
 
 
 def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
@@ -207,6 +382,8 @@ def _quantity_matrix_latex(
     settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
 ) -> str:
     common_unit, homogeneous = _quantity_matrix_common_unit(quantity_matrix)
+    if homogeneous:
+        common_unit = _aggregate_unit(list(quantity_matrix), settings, common_unit)
     rows: list[list[str]] = []
 
     for row in range(quantity_matrix.rows):
@@ -602,7 +779,7 @@ def _append_assignment_stage(rows: list[str], lhs: str | None, body_rows: list[s
 
 def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSettings) -> list[str]:
     formula_rows = _bounded_expression_rows(result.symbolic_expression, settings=settings)
-    final_latex = _quantity_latex(result.quantity, settings=settings)
+    final_latex = _quantity_latex(result.quantity, settings=settings, declared=False)
     lhs = _display_lhs(result)
 
     rows: list[str] = []
@@ -962,11 +1139,73 @@ def _table_header(label: str, unit) -> str:
     return f"{safe_label} [{escape(unit_text)}]"
 
 
+def _in_unit(quantity, unit, settings: RenderSettings):
+    """Convert for display, leaving dimensionless zeros and mismatches alone.
+
+    A value that is a genuine zero in its stored unit is zeroed before conversion,
+    so it cannot cross ``zero_tolerance`` on the way. See ``_is_genuine_zero``.
+    """
+    if unit is None or getattr(quantity, "dimensionless", False):
+        return quantity
+    if _is_genuine_zero(quantity, settings):
+        quantity = quantity * 0.0
+    try:
+        return quantity.to(unit)
+    except DimensionalityError:
+        return quantity
+
+
 def _table_magnitude(quantity, settings: RenderSettings) -> str:
-    magnitude = float(quantity.magnitude)
-    if abs(magnitude) < settings.zero_tolerance:
-        magnitude = 0.0
-    return f"{magnitude:.{settings.precision}f}"
+    """A table column carries its unit in the header, so the unit is chosen once
+    for the column and this only formats. See ``_aggregate_unit``."""
+    return _magnitude_text(quantity.magnitude, settings)
+
+
+def _aggregate_unit(quantities, settings: RenderSettings, fallback):
+    """One unit for a whole table column or matrix, never one per cell.
+
+    Scored by the significant figures the column keeps in total, so a single large
+    value cannot drag the whole column into a unit that flattens the rest. Ties
+    keep the unit the values already carry.
+    """
+    physical = [
+        quantity
+        for quantity in quantities
+        if quantity is not None and not getattr(quantity, "dimensionless", False)
+    ]
+    if not physical or fallback is None:
+        return fallback
+
+    family = _unit_family(physical[0])
+    if not family:
+        return fallback
+    if _unit_is_the_engineers(physical[0]) and all(
+        _is_genuine_zero(quantity, settings)
+        or _significant_figures(quantity.to(fallback).magnitude, settings.precision) > 0
+        for quantity in physical
+    ):
+        # kN/mm is what the engineer typed and every cell still says something in it.
+        return fallback
+
+    def score(unit) -> int:
+        total = 0
+        for quantity in physical:
+            try:
+                converted = quantity.to(unit)
+            except DimensionalityError:
+                return -1
+            if abs(float(converted.magnitude)) < settings.zero_tolerance:
+                continue
+            total += _significant_figures(converted.magnitude, settings.precision)
+        return total
+
+    best_unit = fallback
+    best_score = score(fallback)
+    for name in family:
+        candidate_score = score(name)
+        if candidate_score > best_score:
+            best_unit, best_score = physical[0].to(name).units, candidate_score
+    return best_unit
 
 
 def render_table(
@@ -976,21 +1215,28 @@ def render_table(
 ) -> str:
     """Render a unit-aware engineering table as compact scoped HTML."""
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    point_unit = _aggregate_unit(result.point_values, active_settings, result.point_unit)
+    column_units = [
+        _aggregate_unit(column.values, active_settings, column.unit)
+        for column in result.columns
+    ]
     headers = [
-        _table_header(result.variable, result.point_unit),
+        _table_header(result.variable, point_unit),
         *(
-            _table_header(column.display_label, column.unit)
-            for column in result.columns
+            _table_header(column.display_label, unit)
+            for column, unit in zip(result.columns, column_units)
         ),
     ]
     header_html = "".join(f"<th>{header}</th>" for header in headers)
 
     rows: list[str] = []
     for row_index, point in enumerate(result.point_values):
-        cells = [_table_magnitude(point, active_settings)]
+        cells = [_table_magnitude(_in_unit(point, point_unit, active_settings), active_settings)]
         cells.extend(
-            _table_magnitude(column.values[row_index], active_settings)
-            for column in result.columns
+            _table_magnitude(
+                _in_unit(column.values[row_index], unit, active_settings), active_settings
+            )
+            for column, unit in zip(result.columns, column_units)
         )
         rows.append(
             "<tr>"
@@ -1246,7 +1492,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     if isinstance(result, NumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
-        final_latex = _quantity_latex(result.quantity, settings=active_settings)
+        final_latex = _quantity_latex(result.quantity, settings=active_settings, declared=False)
         chain = [formula_latex]
         if _shows_substitution(result):
             chain.append(
