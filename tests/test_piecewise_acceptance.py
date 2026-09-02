@@ -28,7 +28,7 @@ def test_realistic_piecewise_workflow_preserves_result_order_and_contracts():
     assert results[8].series[0].segment_starts
 
 def test_readme_documents_the_executable_piecewise_contract():
-    readme = Path("README.md").read_text()
+    readme = Path("README.md").read_text(encoding="utf-8")
     required = [
         "## v0.8.0 Piecewise expressions",
         "piecewise(q1, x < a, q2, x <= L, 0)",
