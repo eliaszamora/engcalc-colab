@@ -931,6 +931,50 @@ class NumericContext:
                 exponent = exponent.to_base_units().magnitude
             return base ** exponent
 
+        if isinstance(expr, sp.Sum):
+            # The symbolic layer keeps the sigma, which is what the memoria shows, and
+            # this turns it into a value - the same division of labour as every other
+            # operation in the language. No second `summation()` name is introduced.
+            if len(expr.limits) != 1:
+                raise EngEvaluationError(
+                    "numeric evaluation supports one summation index at a time"
+                )
+            index, lower, upper = expr.limits[0]
+            bounds = []
+            for bound in (lower, upper):
+                value = self._evaluate_sympy(bound, substitutions)
+                if hasattr(value, "dimensionality") and not value.dimensionless:
+                    raise EngEvaluationError(
+                        "summation bounds must be dimensionless"
+                    )
+                bounds.append(int(getattr(value, "magnitude", value)))
+            start, stop = bounds
+            if stop < start:
+                # SymPy's convention for reversed bounds, and the dimensionless path
+                # below goes through SymPy directly: sum(i, i, 3, 1) is -2 there, so it
+                # must be -2 here too. Two paths disagreeing about the same construct
+                # would be a defect, and the units are the only thing that decides which
+                # path a summation takes.
+                reversed_sum = self._evaluate_sympy(
+                    sp.Sum(expr.function, (index, stop + 1, start - 1)), substitutions
+                )
+                return -reversed_sum
+            # A mistyped limit should not lock up a notebook while it adds ten million
+            # terms; saying no is better than not responding.
+            _SUMMATION_TERM_LIMIT = 100_000
+            if stop - start + 1 > _SUMMATION_TERM_LIMIT:
+                raise EngEvaluationError(
+                    f"summation would evaluate {stop - start + 1} terms, above the "
+                    f"limit of {_SUMMATION_TERM_LIMIT}; check the bounds"
+                )
+            total = None
+            for step in range(start, stop + 1):
+                term = self._evaluate_sympy(
+                    expr.function.subs(index, sp.Integer(step)), substitutions
+                )
+                total = term if total is None else total + term
+            return total
+
         if expr.func == sp.SingularityFunction and len(expr.args) == 3:
             # Macaulay bracket. Zero before the offset, the shifted power from there on.
             # Pint carries the units through the subtraction, so a bracket whose offset
