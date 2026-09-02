@@ -41,11 +41,12 @@ I := 80e6*mm**4
 R_A = q*L/2
 V(x) = R_A - q*x
 M(x) = integral(V(x), x, 0, x)
-theta(x) = integral(M(x)/(E*I), x)
-v(x) = integral(theta(x), x)
-bc1 = eq(subs(v(x), x, 0*m), 0*m)
-bc2 = eq(subs(v(x), x, L), 0*m)
+theta(x) = integrate(M(x)/(E*I), x) + C1
+v(x) = integrate(theta(x), x) + C2
+bc1 = eq(subs(v(x), x, 0), 0)
+bc2 = eq(subs(v(x), x, L), 0)
 solve(bc1, bc2, C1, C2)
+numeric(subs(v(x), x, L/2))
 """),
 
 ("E5 MecMat - flecha maxima y verificacion", "mecmat", """

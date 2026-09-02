@@ -2,7 +2,28 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.17.0**.
+Current version: **0.18.0**.
+
+
+## v0.18.0 numeric resolves names defined later
+
+A definition captures its free symbols, so a deflection written before its integration
+constants are known keeps them:
+
+```text
+theta(x) = integrate(M(x)/(E*I_z), x) + C1
+v(x) = integrate(theta(x), x) + C2
+solve(eq(subs(v(x), x, 0), 0), eq(subs(v(x), x, L), 0), C1, C2)
+numeric(subs(v(x), x, L/2))
+```
+
+Until now the last line could not produce a number: `numeric(...)` looked only at values
+given with `:=`, not at names the symbolic sheet had defined. It now follows those too,
+so **the elastic curve is derived and evaluated from scratch** - the midspan deflection
+comes out as `-5qL⁴/(384 E I)` to the last digit.
+
+Chains are followed, and a name defined in terms of itself is reported as a missing value
+rather than looping.
 
 
 ## v0.17.0 multi-substitution and assumptions
@@ -1116,6 +1137,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.18.0** — `numeric(...)` resolves names the symbolic sheet defines, not only values given with `:=`, so a deflection written with its integration constants can be evaluated once the boundary conditions determine them.
 - **0.17.0** — `subs(...)` takes several variable/value pairs and applies them simultaneously, and `assume(L > 0)` states what is known before a symbol is used, which is what lets `sqrt(L^2)` simplify to `L`.
 - **0.16.0** — `numeric(...)` evaluates a symbolic summation, so a sum of loads becomes a number while still rendering as a sigma. No second function name; the symbolic/numeric division of labour is the same as everywhere else.
 - **0.15.0** — Macaulay brackets `<x-a>^n`: a beam is written as one expression with one term per load instead of a Piecewise branch per load, and the brackets integrate term by term so double integration chains directly.
@@ -1147,4 +1169,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.17.0`.
+Version: `0.18.0`.
