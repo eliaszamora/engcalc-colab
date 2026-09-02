@@ -1,12 +1,18 @@
 # EngCalc Current Project Context
 
-_Last updated: 2026-09-01 — **EngCalc 0.10.0 is released and closed on `main`, merged at `4a018fb`**, CI green on Python 3.10–3.14. Later commits on `main` are documentation; the release is that merge. The Permanent Quality Gate is integrated and qualified; its QG-2 bootstrap exception is discharged and 0.10.0 is the first release to satisfy the qualification-SHA rule with no exception. Engineering Presentation shipped: **P-1, P-2 and P-3 are corrected**, over five presentation sites rather than the three the audit had demonstrated. Open: **EP-1**, a display-resolution tie in the unit metric, which is 0.10.1; and **QG-3**, evidentiary. 0.10.0 was never independently reviewed, by explicit direction, and the spec records what that cost._
+_Last updated: 2026-09-02 — **EngCalc 0.10.1 is released and closed on `main`**, CI green on Python 3.10–3.14, and **verified installable and working in Google Colab from the documented `git+https` path**. Engineering Presentation shipped in 0.10.0: P-1, P-2 and P-3 corrected over five presentation sites. 0.10.1 closes **EP-1**, and a separate fix closes **QG-3**, which turned out to be the real reason the Deep Gate never preserved a counterexample — and which invalidates QG-1's diagnosis. **No defect is currently open.** Neither release was independently reviewed, by explicit direction; the spec records what that cost._
 
 ## Current baseline
 
 - Repository: `eliaszamora/engcalc-colab`.
 - Canonical `main`: **`4a018fb93493815dd266269d8cc5693d7b84e58b`** — merge of PR #39, EngCalc 0.10.0 Engineering Presentation.
 - Runtime/package version: **0.10.1**.
+- **Colab verified end to end**, not assumed: a clean virtual environment, installed from
+  the documented `git+https` path, `%load_ext engcalc_colab`, and a real memoria through
+  `%%eng`. Equations, tables, `plot(...)`, `roots(...)` and `extrema(...)` all exercised.
+  The plot arrives as a `Figure` handed to `display()` with 2 series over 201 points and
+  units appended to the axis labels, so it does not depend on `%matplotlib inline` being
+  active.
 - `requires-python = ">=3.10"`; runtime dependency includes `ipython>=8.18`.
 - Permanent CI: `.github/workflows/ci.yml`, Python 3.10–3.14 on PRs and pushes to `main`.
 - Default suite at `4a018fb`: **1079/1079 GREEN** — 912 product tests, the 154 Fast Gate
@@ -54,7 +60,7 @@ other side - `5625.00 kN/(GPa·m)` retains *more* significant figures than `5.63
 rule that merely maximised figures kept the compound unit. Anyone tempted to fold the
 presentation contracts into one property will reintroduce P-3 and see green.
 
-**EP-1 is CLOSED**, corrected in 0.10.1. The root cause was not a subtle metric failure:
+**EP-1 is CLOSED**, corrected in 0.10.1 (PR #43). The root cause was not a subtle metric failure:
 design §4.5 specifies a band rule and it was never implemented. §4.3's significant-figures
 criterion, which exists to decide whether a *declared* unit still says anything, was used
 for the family choice as well — one criterion doing two jobs, and wrong for the second.
@@ -189,13 +195,13 @@ guard green against the very implementation it existed to catch.
    QA infrastructure only, no production change. Still green on every push.
 2. **Engineering Presentation** — **DONE**, released as 0.10.0 and merged at `4a018fb`.
    P-1, P-2 and P-3 corrected; one production file changed.
-3. **EP-1** — active, as 0.10.1. The unit metric ties where it should not, so a
-   deflection and its admissible limit render in different units. Measure candidate
-   metrics against a corpus before choosing one; the chosen metric must keep every row
-   of design §5 correct as well as fixing `f_adm`.
-4. Backlog, deliberately unnumbered until EP-1 ships: Exact Envelopes / Governing
-   Intervals, scalar equation systems, named cases and combinations, verification APIs,
-   golden engineering worksheets.
+3. **EP-1** — **DONE**, released as 0.10.1. Design §4.5's band rule was specified and
+   never implemented; §4.3's significant-figures criterion was doing both jobs. Measured
+   10/10 against 8/10 before changing anything.
+4. **QG-3** — **DONE**. The Deep Gate had no example database in CI at all.
+5. Next, and now genuinely open: Exact Envelopes / Governing Intervals, scalar equation
+   systems, named cases and combinations, verification APIs, golden engineering
+   worksheets. Nothing among them is a defect; they are new work.
 
 Versions beyond the next release are not committed, because the audits repeatedly
 invalidated longer-horizon numbering.
@@ -314,43 +320,65 @@ Five presentation sites, not three: the scalar path, the matrix cell path
 format at `renderer.py:306` is a literal zero for an empty polynomial and is not a
 collapse site; the enumeration is closed.
 
-### EP-1 - OPEN. The tie-break leaves a derived length in a 25%-resolution unit
+### EP-1 - CLOSED in 0.10.1
 
-Found immediately after the merge, by running a real memoria rather than a test. Not a
-regression, and not a correctness error, but it defeats this release's own stated goal in
-the one place it is most likely to matter.
+The root cause was not a subtle metric failure. **Design §4.5 specifies a band rule and it
+was never implemented**; §4.3's significant-figures criterion, which exists to decide
+whether a *declared* unit still says anything, was doing the family choice as well. One
+criterion, two jobs, wrong for the second.
 
-```text
-q := 2.8*tonf/m ; L := 6*m ; E := 200*GPa ; I_z := 1.25e-4*m^4
-numeric(d)       -> d     = 18.53 mm      the deflection
-numeric(f_adm)   -> f_adm = 0.02 m        its admissible limit, L/300
-```
+Measured before changing anything, over the cases that reach the family choice: the band
+rule is right **10 out of 10** where counting figures is right **8**. Ties keep the unit
+the value already carries, which is what leaves a derived 11 m span in metres instead of
+`11000.00 mm` - the outcome design §5 had already measured and rejected.
 
-The two quantities an engineer compares directly render in different units, and the limit
-renders at a display resolution of 5 mm on a 20 mm value - 25% - where `20.00 mm` was
-available at 0.03%.
+Why the A-4 contract missed it, which matters more than the defect: it was written with
+`L := 5*m`, where `L/300` is unterminating and millimetres win four figures to one. With
+`L := 6*m` the quotient is exactly 0.02 and the comparison ties. **The contract passed
+through the case rather than through the rule.** Its replacement carries a guard asserting
+the tie, so it cannot quietly stop testing what it claims to test.
 
-The cause is exact. `_significant_figures` strips trailing zeros, so `20.00` scores one
-figure just as `0.02` does; the comparison ties and the tie-break keeps the stored unit.
-But the trailing zeros of `20.00` are not padding, they are resolution.
+Re-running the mutation battery afterwards found two guards that had stopped guarding: the
+aggregate authorship gate, invisible because the band rule now reaches the same answer on
+the only case that covered it, and a tie-break comment crediting `start` with a result the
+band rule produces unaided. The first has a contract where the two rules genuinely
+disagree; the second is documented as inert, since every family steps by 1000 or more and
+a tie can never occur.
 
-| | displayed | figures by the current metric | resolution as a share of the value |
-|---|---|---|---|
-| metres | `0.02` | 1 | 25.00% |
-| millimetres | `20.00` | 1 | 0.03% |
+### QG-3 - CLOSED, and it invalidates QG-1
 
-**The A-4 contract does not catch it**, and the reason is worth keeping: it was written
-with `L := 5*m`, where `L/300 = 0.0166...` renders `16.67 mm` and wins on figures four to
-one. With `L := 6*m` the quotient is exact and the comparison ties. The contract passes
-through the case rather than through the rule - the seventh thing in this release to be
-right for the wrong reason.
+**The Deep Gate had no example database in CI at all.** Hypothesis auto-loads a built-in
+`ci` profile when it detects CI, setting `database=None`; a profile registered afterwards
+inherits it. `quality_deep` set `derandomize` explicitly - so exploration survived - and
+never set `database`.
 
-**Not fixed here, and not to be fixed by intuition.** Preferring the smaller unit on ties
-repairs `f_adm` and breaks a derived span: `L1 + L2` would render `11000.00 mm`, which is
-the outcome the measurement in design §5 rejected. The metric is probably resolution
-relative to the value, bounded by the family, rather than significant figures - but that
-is a hypothesis, and this release's record is unambiguous about what happens to
-hypotheses that are reasoned instead of measured.
+| environment | resolved database |
+|---|---|
+| local | `DirectoryBasedExampleDatabase(.hypothesis/examples)` |
+| `CI=1 GITHUB_ACTIONS=1` | **`None`** |
+
+For its entire existence the gate stored counterexamples locally and none in CI, which is
+the only place it runs. Nothing was saved, the cache restored nothing, the artifact had
+nothing to upload, and every run reported green.
+
+Found by forcing a Deep property red on a throwaway branch: the test failed in CI exactly
+as intended and the job still reported `database absent`, contradicting the same failure
+locally, which writes 13 example files. Rather than guess, the workflow was instrumented
+to print the resolved path. It printed `None`.
+
+**Proved closed rather than argued closed.** The same deliberate failure on top of the fix,
+run `33592040244`: `configured database: DirectoryBasedExampleDatabase(PosixPath(...))`,
+and artifact `hypothesis-examples-py314-33592040244`, **1288 bytes**. The middle tier of
+the persistence architecture has now been observed working, for the first time.
+
+That corrects **QG-1**, which attributed the empty artifact to `upload-artifact` skipping
+hidden files. The flag it added is harmless and probably right, but there was never a
+database to skip. QG-3 had already recorded that the cited evidence could not distinguish
+the two explanations; it was the other one.
+
+`tests/test_quality_gate_profile.py` now asserts the profile in a subprocess under CI
+environment variables, in the ordinary suite on every push, because the defect only exists
+under those variables.
 
 ### What this release is missing
 
@@ -362,51 +390,50 @@ written in earlier sessions - not by this release's own contracts.
 
 ### Exact next step
 
-**EP-1, as 0.10.1.** Measure candidate metrics against a corpus of real engineering
-values before choosing one, exactly as design §5 did for the unit policy, and require the
-chosen metric to keep every row of the §5 table correct as well as fixing `f_adm`.
+**Nothing is broken and nothing is half-finished.** The next step is new work, chosen from
+the backlog: Exact Envelopes / Governing Intervals, scalar equation systems, named cases
+and combinations, verification APIs, golden engineering worksheets.
 
-Carried alongside, small and independent:
+Two things are owed rather than open:
 
-- **QG-3** - force one Deep property RED on a throwaway branch and confirm a non-empty
-  Hypothesis artifact is produced, then correct the artifact paragraph in
-  `docs/quality-gate.md`. Evidentiary; blocks nothing.
-- README encoding: `tests/test_piecewise_acceptance.py` read `README.md` without an
-  explicit encoding, unlike its seven siblings, so it failed on any character outside the
-  local codepage. Fixed in PR #41, which also restores the typography the 0.10.0 README
-  had to give up - making the encoding argument load-bearing rather than decorative.
-- 53 stale remote branches from versions already integrated, `0.2` through `0.9.2`.
-  Deletion is irreversible and none has been touched.
+- **Neither 0.10.0 nor 0.10.1 was independently reviewed**, by explicit direction. The
+  design, its audit, the contracts, the implementation and the mutation battery are one
+  perspective. Spec §9.1 and §9.2 record what that cost, in evidence rather than in
+  principle.
+- **Seven families remain uncovered by the Quality Gate** and are listed in
+  `docs/quality-gate.md` with the warning that green does not mean covered: roots
+  separated by less than 0.05, Piecewise with more than two branches, nested Piecewise,
+  Piecewise combined with matrices, intersections between two Piecewise responses,
+  domains whose symbolic bounds cannot be resolved, and renderer/plotting beyond the
+  presentation findings. Covering them is a project, not a cleanup.
+
+Also deferred, and not defects: `no_vertical_scroll()` Colab ergonomics, multiline
+ordinary function-call parsing, generalized structural eigenproblems.
 
 ## How to resume in a new conversation
 
-Read this file first. `main` is at `4a018fb`, EngCalc **0.10.0**, with the Permanent
-Quality Gate integrated and Engineering Presentation released. PRs #35 to #39 merged.
-Post-merge CI green on Python 3.10-3.14 (run `33584446587`) and Deep qualification green
-on 3.10 and 3.14 (run `33584467099`); the release candidate itself was qualified before
-merge at `aa83b2b` (run `33576673675`).
+Read this file first. `main` is at **EngCalc 0.10.1**, CI green on Python 3.10-3.14, and
+verified installable and working in Google Colab from the documented `git+https` path.
+1086 tests green: 912 product, 154 Fast Gate on every push, the presentation contracts and
+the Quality Gate profile guards, plus 18 Deep properties weekly or on demand.
 
-1079 tests green: 912 product, 154 Fast Gate on every push, 13 presentation contracts,
-plus 18 Deep properties weekly or on demand.
+**No defect is open.** P-1, P-2, P-3, EP-1, QG-1, QG-2 and QG-3 are all closed, and QG-3's
+resolution corrected QG-1's diagnosis rather than confirming it. What remains is new work
+from the backlog, seven families the gate does not cover and says so, and three deferred
+ergonomics items.
 
-P-1, P-2 and P-3 are corrected. **EP-1 is open** and is the next release: a derived length
-whose magnitude ties on the current metric stays in a unit with 25% display resolution, so
-a deflection and its admissible limit render in different units. The reproduction and the
-reason the existing contract misses it are recorded above.
-
-Read `docs/quality-gate.md` for how to operate the gate and, in particular, for the
-isolated configuration that historical sensitivity runs require - without it pytest
-discovers the repository `pyproject.toml` and prepends the current `src`, so guards pass
-while appearing to exercise historical code. Note also that Deep qualification must run on
-the exact release-candidate SHA, which means its run identifiers can only be written down
-after the merge.
+Read `docs/quality-gate.md` for how to operate the gate: the isolated configuration that
+historical sensitivity runs require, the qualification-SHA rule and the consequence that
+its run identifiers can only be recorded after a merge, and the requirement that the
+Hypothesis profile set every setting the environment could otherwise decide.
 
 Two rules that have each paid for themselves repeatedly: never merge without explicit user
 approval, and never let whoever built something be the one to certify it. The second was
-suspended for 0.10.0 by explicit direction. What that cost is documented rather than
-argued: seven separate things in that release were right or green for the wrong reason,
-and not one of them was found by reading - they were found by executing, by mutating the
-implementation, by tests written in earlier sessions, and finally by running a real
-memoria after the merge.
+suspended for 0.10.0 and 0.10.1 by explicit direction. What that cost is documented rather
+than argued. Across those two releases **nine separate things were green or correct for
+the wrong reason**, and not one was found by reading: they were found by executing, by
+mutating the finished implementation, by tests written in earlier sessions, by running a
+real memoria after a merge, and once by forcing a passing gate to fail on purpose to see
+whether it could even record the failure. It could not.
 
 Never invoke Codex / Codex Cloud without explicit authorization.
