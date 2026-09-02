@@ -319,6 +319,13 @@ def test_p1_falls_back_to_scientific_notation_below_the_family_floor():
     assert _scientific_or_nonzero(latex), (
         f"a value below the family floor is presented as zero: {latex!r}"
     )
+    # Design 4.6: scientific notation happens where the engineer left the value.
+    # Below the floor no family member gains a figure, so moving it only obscures
+    # it - 1e-6 m reads as 1.00e-6 m, never as 1.00e-3 mm. Added because a mutation
+    # that rescaled anyway passed every other test in this area.
+    assert _UNIT_TOKEN.findall(final_stage(latex)) == ["m"], (
+        f"the fallback left the unit the engineer declared: {latex!r}"
+    )
 
     engine = EngineeringEngine()
     genuine = run_cell(engine, "z := 1e-11*m")[-1]
@@ -327,6 +334,46 @@ def test_p1_falls_back_to_scientific_notation_below_the_family_floor():
     )
     assert not _scientific_or_nonzero(render_result(genuine)), (
         "a value below zero_tolerance is a genuine zero and must render as zero"
+    )
+
+
+def test_zero_tolerance_is_decided_in_the_stored_unit_not_the_display_unit():
+    """A rescale must not be able to turn an approved zero into a number.
+
+    ``zero_tolerance`` is compared against a magnitude, so it means something
+    different in every unit: at a tolerance of 1.5e-3, ``0.001 m`` is a genuine
+    zero and ``1.0 mm`` - the same value - is not. Any display conversion can
+    therefore reclassify a zero, and the scientific fallback will then invent a
+    figure for it.
+
+    Contrived on purpose. It exists because a mutation of the implementation that
+    decided zero-ness after conversion passed all sixty tests in this area: the
+    one existing test that had caught the defect only did so in combination with a
+    second defect, and stopped catching it once that one was fixed.
+    """
+    import engcalc_colab.renderer as renderer
+    from engcalc_colab.renderer import RenderSettings
+
+    engine = EngineeringEngine()
+    result = run_cell(engine, "g(x) = 2*x\nL := 0.002*m\ntable(g(x), x, 0, L, 3)")[-1]
+
+    settings = RenderSettings(precision=2, zero_tolerance=1.5e-3)
+    genuine_zeros = sum(
+        1
+        for point in result.point_values
+        if abs(float(point.magnitude)) < settings.zero_tolerance
+    )
+    assert genuine_zeros == 2, "guard: two sampled points are zero at this tolerance"
+
+    html = renderer.render_table(result, settings=settings)
+    cells = re.findall(r"<td[^>]*>([^<]*)</td>", html)
+    abscissa = cells[::2]
+
+    assert "mm" in re.findall(r"<th[^>]*>([^<]*)</th>", html)[0], (
+        "guard: this column must actually change unit, or the test proves nothing"
+    )
+    assert sum(1 for cell in abscissa if float(cell) == 0.0) == genuine_zeros, (
+        f"a genuine zero survived the rescale as a nonzero: {abscissa}"
     )
 
 
