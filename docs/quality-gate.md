@@ -205,6 +205,12 @@ Future work must not assume these are covered merely because the gate is green.
 
 ## Out of scope
 
-Presentation defects P-1, P-2 and P-3 are open and deliberately untouched here. They
-become formal RED contracts when Engineering Presentation begins. No permanently
-failing or indefinitely `xfail`ed test for them belongs in this gate.
+Presentation defects P-1, P-2 and P-3 were open and deliberately untouched by this gate.
+They became formal RED contracts when Engineering Presentation began and were corrected
+in **0.10.0**; their contracts live in `tests/test_engineering_presentation.py` and are
+collected by the ordinary suite, not by this gate. The rule that produced them stands: no
+permanently failing or indefinitely `xfail`ed test for a known defect belongs here.
+
+The exception recorded above is the shape of the rule, not a loophole. A known defect is
+either a RED contract on a branch that is being fixed, or an entry in the open-issues
+list. It is never a green test that quietly tolerates it.
