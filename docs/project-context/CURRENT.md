@@ -395,18 +395,25 @@ now chosen from measurement rather than from a feature list:
 `docs/project-context/feature-gap-map.md`, reproducible with `python tools/gap_map.py`.
 
 Eighteen real exercises written the way an engineer writes them, run line by line against
-0.10.1: **4 run end to end, 12 distinct gaps.** Ranked by exercises that go *fully* green:
+0.10.1: **4 run end to end.** Ranked by exercises that go *fully* green against pieces of
+work, hand-verified:
 
-1. **first-class comparisons** — 4/18 → **8/18**. Comparisons already exist in the grammar
-   but only inside `piecewise(...)`; a bare `Compare` is rejected. That one restriction
-   blocks `check`, `assume` and inequalities, three separately-listed features with one
-   shared prerequisite.
-2. **scalar equation systems** — → 12/18 cumulative. The largest functional gap, and how
-   statics is actually written.
-3. **indefinite integral**, shipped with (2). On its own it unblocks **nothing**: the only
-   exercise needing it also needs scalar systems.
-4. multi-solution solve and evaluated summation → 14/18. Both small; the solve guard is a
-   v0.1-era contract that says so in its own error message.
+1. **scalar equation systems** — one piece, **4/18 → 7/18**. The only gap that pays on its
+   own, and how statics is actually written: `ΣF = 0`, `ΣM_A = 0`.
+2. **indefinite integral**, shipped alongside — two pieces, **8/18**, and the elastic curve
+   becomes derivable instead of quoted. Alone it unblocks nothing: the only exercise
+   needing it also needs scalar systems.
+3. **comparisons, then `check()`** — 6/18, but `check` is what turns a memoria into an
+   auditable verification, which is worth more than the count says. Comparisons exist in
+   the grammar only inside `piecewise(...)`; a bare `Compare` is rejected, and that one
+   restriction gates `check`, `assume` and inequalities alike.
+4. `assume()` and inequality solving on that groundwork — 8/18 for that branch, four
+   pieces. Then multi-solution solve, evaluated summation, and the structural and memoria
+   blocks.
+
+The map's first version said comparisons were the best first move. That was an artifact of
+clustering each line by its first error, and it is corrected in place; the document records
+the mistake rather than hiding it.
 
 `integral(...)` becomes **`integrate(...)`** in that work, with `integral` kept as an
 alias — the user's decision, on the principle of not inventing names for operations that

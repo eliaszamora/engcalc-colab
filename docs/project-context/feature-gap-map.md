@@ -5,9 +5,13 @@ Análisis Estructural, diseño y matemática general were written the way an eng
 write them — *before* checking what EngCalc accepts — and then run line by line against
 `main` at EngCalc 0.10.1. Every failing line is recorded with its verbatim error.
 
-The method matters as much as the result. This document exists because a feature list
-imagined from the outside had already produced two confident recommendations that
-measurement contradicted, including one of mine.
+The method matters as much as the result, and this document is its own best argument.
+Its first version clustered failures by each line's *first* error and concluded that
+first-class comparisons were the highest-return gap - which was wrong, and which
+contradicted a recommendation that had been right. A second, automated attempt to fix
+that introduced fresh errors of its own. The numbers below are hand-verified from twenty
+failing lines. **Automating the analysis of a measurement is another place to be
+confidently wrong.**
 
 ## Result
 
@@ -27,86 +31,81 @@ feature list suggests.
 
 ## What each exercise needs
 
+Determined **by hand**, from the verbatim error of every failing line plus reading the
+line. The first automated attempt clustered by each line's *first* error, which is wrong:
+`check(d_max <= d_adm)` fails on `Compare`, and would fail again on `check` even if
+comparisons were allowed. A second automated attempt introduced further errors. Twenty
+failing lines is small enough to analyse by hand, and that is what these numbers are.
+
 | Exercise | Area | Gaps it needs closed |
 |---|---|---|
 | E1 reactions, simply supported beam | estática | scalar systems |
 | E2 point plus distributed load | estática | scalar systems |
 | E3 truss, method of joints | estática | scalar systems |
-| E4 elastic curve by double integration | mecmat | indefinite integral **and** scalar systems |
-| E5 maximum deflection and its limit | mecmat | first-class comparisons |
+| E4 elastic curve by double integration | mecmat | indefinite integral **+** scalar systems |
+| E5 maximum deflection and its limit | mecmat | comparisons **+** `check()` |
 | E6 moment diagram, Macaulay brackets | mecmat | Macaulay notation |
 | E7 composite section properties | mecmat | — runs |
 | E8 stress transformation | mecmat | — runs |
 | E9 propped cantilever, flexibility | estructuras | — runs |
 | E10 load cases and combinations | estructuras | `case` / `combo` syntax |
 | E11 governing envelope | estructuras | `governing()` |
-| E12 flexural design check | diseño | first-class comparisons |
+| E12 flexural design check | diseño | comparisons **+** `check()` |
 | E13 sizing for a deflection limit | diseño | — runs |
-| E14 Euler buckling, solve for length | diseño | multi-solution solve, evaluated summation |
-| E15 zone of positive moment | general | first-class comparisons |
-| E16 assumptions and simplification | general | first-class comparisons |
+| E14 Euler buckling, solve for length | diseño | multi-solution solve |
+| E15 zone of positive moment | general | comparisons **+** inequality-capable solve |
+| E16 assumptions and simplification | general | comparisons **+** `assume()` |
 | E17 evaluated summation of loads | general | evaluated summation |
-| E18 recorded results and summary | general | `report()`, `summary()` |
+| E18 recorded results and summary | general | `report()` **+** `summary()` |
 
-## Ranking — by exercises that run *end to end*, not by exercises touched
+## Ranking — exercises that run end to end, against pieces of work
 
-An exercise needs **every** one of its gaps closed to run. Counting exercises a gap
-touches is misleading; this counts exercises that go green.
+An exercise needs **every** one of its gaps closed. Counting exercises a gap merely
+touches is what produced the wrong answer the first time.
 
-| Close this | Exercises running end to end |
-|---|---|
-| today | 4 / 18 |
-| **first-class comparisons** | **8 / 18** |
-| **scalar equation systems** | **7 / 18** |
-| evaluated summation | 5 / 18 |
-| Macaulay notation | 5 / 18 |
-| `case` / `combo` | 5 / 18 |
-| `governing()` | 5 / 18 |
-| **indefinite integral** | **4 / 18 — unblocks nothing on its own** |
-| multi-solution solve | 4 / 18 |
-| `report()` / `summary()` | 4 / 18 |
+| Block | Pieces of work | End to end |
+|---|---|---|
+| today | — | 4 / 18 |
+| **scalar equation systems** | **1** | **7 / 18** |
+| **scalar systems + indefinite integral** | **2** | **8 / 18** |
+| comparisons + `check()` | 2 | 6 / 18 |
+| comparisons + `check()` + `assume()` + inequality solve | 4 | 8 / 18 |
+| Macaulay notation | 1 | 5 / 18 |
+| `case` / `combo` | 1 | 5 / 18 |
+| `governing()` | 1 | 5 / 18 |
+| multi-solution solve | 1 | 5 / 18 |
+| evaluated summation | 1 | 5 / 18 |
+| `report()` + `summary()` | 2 | 5 / 18 |
 
-Blocks:
+**Neither first-class comparisons nor the indefinite integral unblocks a single exercise
+on its own.** Both are prerequisites. Comparisons gate `check`, `assume` and inequality
+solving; the indefinite integral is needed only by E4, which also needs scalar systems.
 
-| Block | Exercises running end to end |
-|---|---|
-| indefinite integral + scalar systems | 8 / 18 |
-| first-class comparisons alone | 8 / 18 |
-| both of the above | 12 / 18 |
-| plus multi-solution solve and evaluated summation | **14 / 18** |
+**Scalar equation systems is the one gap that pays alone**: three exercises, one piece of
+work, and it is how statics is actually written — `ΣF = 0`, `ΣM_A = 0`.
 
-## Two findings that change the plan
+Adding the indefinite integral to it reaches 8/18 for two pieces of work, and makes the
+elastic curve derivable from scratch. The comparisons block reaches the same 8/18 and
+costs four.
 
-**Indefinite integral unblocks nothing by itself.** It is the only gap in that position.
-E4 is the sole exercise needing it, and E4 also needs scalar systems, so building the
-integral first moves the count from 4/18 to 4/18. It is a prerequisite, not a deliverable.
+### One caveat on E4 that the count hides
 
-**First-class comparisons buy as much as the two-gap block, for one gap.** Comparisons
-already exist in the grammar but only inside `piecewise(...)`; a bare `Compare` node is
-rejected by the general expression validator. That single restriction is what blocks
-`check(...)`, `assume(...)` and inequality solving — three separately-listed features with
-one shared prerequisite — and it blocks four exercises across design, mechanics and
-general mathematics.
-
-This **corrects an earlier recommendation made in conversation**, which put indefinite
-integral plus scalar systems first on the strength of the elastic-curve workflow. That
-argument was built from one exercise. Measured over eighteen, comparisons return the same
-for half the work, and the integral returns nothing until scalar systems exist.
+`theta(x) = integral(M(x)/(E*I), x)` as an engineer writes it carries an implied constant
+of integration. SymPy's indefinite integral omits it, so the two boundary conditions in E4
+have nothing to solve for unless EngCalc has a story for integration constants. Closing
+both gaps may still leave E4 short. Recorded because the count says 8/18 and that number
+assumes E4 completes.
 
 ## Recommended order
 
-1. **First-class comparisons** → 8/18. One parser change unblocks `check`, `assume` and
-   inequalities. Each of those three is then its own contained piece of work, and `check`
-   is the one that turns a memoria into a verification.
-2. **Scalar equation systems** → 12/18 cumulative. The largest single functional gap, and
-   the natural way an engineer writes statics: `ΣFy = 0`, `ΣM_A = 0`.
-3. **Indefinite integral**, shipped with (2), which is what makes the elastic curve
-   derivable from scratch: integrate twice, then solve the boundary conditions together.
-4. **Multi-solution solve and evaluated summation** → 14/18. Both small. The solve guard
-   is a v0.1-era contract that says so in its own error message, not a mathematical limit.
-5. Then the structural block — `case`/`combo`, `governing()`, Macaulay — and the memoria
-   block — `report()`/`summary()`. Each worth one exercise here, but this sample
-   under-represents them.
+1. **Scalar equation systems** — 7/18, one piece, the largest genuine gap.
+2. **Indefinite integral**, shipped alongside — 8/18, and the elastic curve becomes
+   derivable rather than quoted. Resolve the integration-constant question here.
+3. **Comparisons, then `check()`** — 6/18 on its own but `check` is what turns a memoria
+   into an auditable verification, which is worth more than the exercise count says.
+4. `assume()` and inequality solving, on the comparison groundwork — 8/18 cumulative for
+   that branch.
+5. Then multi-solution solve, evaluated summation, and the structural and memoria blocks.
 
 ## API naming decision
 
@@ -125,5 +124,7 @@ entirely, and the structural block above is measured by one exercise each. A gap
 appears once here may be far more important in practice than this count suggests — the
 ranking is evidence about these eighteen, not a claim about all engineering.
 
-Reproduce or extend it with the harness in the session scratchpad: each exercise is
-plain EngCalc source, run line by line, with failures recorded rather than worked around.
+Reproduce or extend it with `python tools/gap_map.py`. Each exercise in
+`tools/gap_map_exercises.py` is plain EngCalc source, run line by line, with failures
+recorded rather than worked around. The harness reports *where* each line breaks; deciding
+what a broken line needs is done by hand, for the reason given at the top.
