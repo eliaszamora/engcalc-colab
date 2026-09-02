@@ -1822,20 +1822,19 @@ class _Evaluator(ast.NodeVisitor):
     def _admits(self, value, condition: str):
         """Does `value` satisfy `condition`? True, False, or None when nothing says.
 
-        SymPy answers first, and it can only answer when the expression carries enough
-        assumptions to decide. It usually cannot: in `pi*sqrt(E*I/kN)/K` every one of
-        E, I, K and kN is an unsigned free symbol, so both roots are equally plausible
-        signs and `is_positive` is None for each.
+        Asking SymPy first would be the obvious design and it would be dead code. When
+        the unknown carries the assumption, `sp.solve` has already dropped every root
+        whose sign it could determine: solving `(x + 2)*(x - b)` for a positive x
+        returns `[b]`, with the -2 gone before anything here runs. What reaches this
+        method is exactly the set SymPy could not decide, so `value.is_positive` is
+        None by construction and a symbolic branch could never change an outcome.
 
-        The numeric context is asked second, because the sheet already knows what those
-        symbols are worth. That is not extra information the reader has to supply - it
-        is the `:=` lines above, which is exactly what an engineer reads off the page
-        when they say the negative root is not the answer.
+        That is also why a numeric route is needed at all. In `pi*sqrt(E*I/kN)/K` every
+        symbol is unsigned, so neither root is decidable - but the sheet above says what
+        E, I, K and kN are worth. Those `:=` lines are not extra information the reader
+        must supply; they are what an engineer reads off their own page when they cross
+        out the negative root.
         """
-        known = getattr(value, f"is_{condition}", None)
-        if known is not None:
-            return bool(known)
-
         context = self.engine.numeric_context
         try:
             overrides = context.unit_literal_overrides(value)

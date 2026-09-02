@@ -117,9 +117,13 @@ def test_the_sheet_shows_the_discard():
 
     assert r"\text{discarded by }" in rendered
     assert "Lk > 0" in rendered
-    # The value itself, not just a count. Rendering "1 root discarded" would pass a
-    # weaker assertion while telling the reader nothing they could check.
-    assert rendered.count("sqrt") >= 2
+
+    # The note must carry the root itself. Counting `sqrt` across the whole rendering
+    # proves nothing: the kept root has two of its own, so "1 root discarded" would
+    # satisfy that while telling the reader nothing they could check. Read the note.
+    note = rendered.split(r"\text{discarded by }", 1)[1]
+    assert "sqrt" in note
+    assert "-" in note.split(":", 1)[1][:40]
 
 
 def test_without_an_assumption_both_answers_survive():
@@ -178,18 +182,41 @@ def test_an_assumption_that_rules_out_everything_rules_out_nothing():
     assert result.discarded is None
 
 
-def test_a_symbolic_verdict_is_taken_before_the_numeric_one():
-    """When SymPy can decide, the numeric context is never consulted.
+def test_sympy_has_already_dropped_whatever_it_could_decide():
+    """The reason there is no symbolic branch in the filter.
 
-    `assume(xr > 0)` makes the unknown positive, so `sp.solve` returns only the positive
-    root of `xr^2 = 4` and there is nothing left to filter. Pinned because a filter that
-    ran regardless would need numeric values for problems that do not have any, turning
-    a clean symbolic solve into an error.
+    `assume(xr > 0)` makes the unknown positive and `sp.solve` honours it, so the -2 of
+    `xr^2 = 4` never reaches the filter at all. Pinned because the obvious design - ask
+    `value.is_positive` first, fall back to numbers - would be dead code resting on the
+    opposite belief, and dead code that looks like a safety net is worse than none.
     """
     engine, results = run_lines("assume(xr > 0)\nf(xr) = xr^2\nxr_1 = solve(eq(f(xr), 4), xr)")
     assert sp.sympify(results[-1].value) == sp.Integer(2)
     assert results[-1].discarded is None
     assert engine.numeric_context.values == {}
+
+
+def test_a_decided_answer_goes_and_an_undecided_one_beside_it_stays():
+    """The two verdicts have to be told apart, not merged into "not kept".
+
+    `(xr + a)*(xr - b)` has roots `-a` and `b`. With `a := 3.0` the first evaluates to
+    -3 and is refuted; `b` has no value and stays undecided. One goes, one stays.
+
+    Every other case here has all its answers in the same state, so a filter that
+    dropped the undecided ones along with the refuted ones would pass all of them: with
+    nothing left to keep, the empty-set guard puts everything back and the result looks
+    untouched. This is the case that separates the two.
+    """
+    _engine, results = run_lines(
+        "assume(xr > 0)\na := 3.0\nf(xr) = (xr + a)*(xr - b)\nsolve(eq(f(xr), 0), xr)"
+    )
+    result = results[-1]
+
+    # One survivor, so it is a value rather than a list of candidates to read.
+    assert isinstance(result, EvaluationResult)
+    assert sp.sstr(sp.sympify(result.value)) == "b"
+    assert result.discarded is not None
+    assert [sp.sstr(v) for v in result.discarded.values] == ["-a"]
 
 
 def test_the_alignment_guard_still_holds_with_the_note():
