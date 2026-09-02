@@ -62,6 +62,13 @@ jobs:
       - name: Report Hypothesis database state
         if: always()
         run: |
+          python - <<'EOF'
+          import sys
+          sys.path.insert(0, "quality_tests/deep")
+          import conftest  # loads the quality_deep profile
+          from hypothesis import settings
+          print("configured database:", settings.default.database)
+          EOF
           if [ -d .hypothesis/examples ]; then
             echo "database present: $(find .hypothesis/examples -type f | wc -l) example file(s)"
           else
@@ -131,6 +138,13 @@ jobs:
       - name: Report Hypothesis database state
         if: always()
         run: |
+          python - <<'EOF'
+          import sys
+          sys.path.insert(0, "quality_tests/deep")
+          import conftest  # loads the quality_deep profile
+          from hypothesis import settings
+          print("configured database:", settings.default.database)
+          EOF
           if [ -d .hypothesis/examples ]; then
             echo "database present: $(find .hypothesis/examples -type f | wc -l) example file(s)"
           else
