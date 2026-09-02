@@ -2,7 +2,35 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.19.0**.
+Current version: **0.20.0**.
+
+
+## v0.20.0 report and summary
+
+In a memoria of sixty lines the four numbers that matter are scattered among the working.
+`report(...)` marks one; `summary()` collects them:
+
+```text
+%%eng
+L := 6*m
+q := 10*kN/m
+M_max = q*L^2/8
+report(M_max)
+R_A = q*L/2
+report(R_A)
+summary()
+```
+
+`report(M_max)` shows the value exactly where it is written, as `numeric(...)` does, and
+records it. `summary()` prints what was recorded, in the order it was first marked.
+
+Reporting the same name twice replaces its row in place: a recomputed result is the same
+result, not a second row, and a correction belongs where the reader expects it.
+
+This is the code helping rather than the code checking. It computes nothing new and
+judges nothing; it saves the reader from scrolling. `result(...)` keeps its own meaning -
+formula and final value, without the substitution stage - because which value belongs in
+the summary is a different question from how it is shown.
 
 
 ## v0.19.0 governing intervals
@@ -1169,6 +1197,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.20.0** — `report(...)` marks a value and `summary()` collects the marked ones into a table at the end of the memoria.
 - **0.19.0** — `governing(...)` reports which response governs on which interval, with exact boundaries taken from the crossovers rather than from the envelope's sampling.
 - **0.18.0** — `numeric(...)` resolves names the symbolic sheet defines, not only values given with `:=`, so a deflection written with its integration constants can be evaluated once the boundary conditions determine them.
 - **0.17.0** — `subs(...)` takes several variable/value pairs and applies them simultaneously, and `assume(L > 0)` states what is known before a symbol is used, which is what lets `sqrt(L^2)` simplify to `L`.
@@ -1202,4 +1231,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.19.0`.
+Version: `0.20.0`.

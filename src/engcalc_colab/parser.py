@@ -32,6 +32,8 @@ _ALLOWED_CALLS = {
     # Written `<x-a>^n`; the call form exists because that is what the notation is
     # rewritten to, and is accepted directly as well.
     "macaulay",
+    # report marks a value for the summary; summary prints what was marked.
+    "report", "summary",
     # Comparisons are accepted only here and inside piecewise.
     "assume",
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",

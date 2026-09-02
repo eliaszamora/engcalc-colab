@@ -44,6 +44,7 @@ from .models import (
     GoverningInterval,
     GoverningResult,
     RootsResult,
+    SummaryResult,
     SystemSolveResult,
     TableColumn,
     TableResult,
@@ -216,6 +217,8 @@ class EngineeringEngine:
         # What the engineer has stated about a symbol before using it, as SymPy keyword
         # assumptions. Applied in resolve_symbol.
         self.assumptions: dict[str, dict[str, bool]] = {}
+        # Values marked with report(...), in the order they were first marked.
+        self.reported: dict[str, object] = {}
         self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
         self.numeric_context = NumericContext()
         # Shared by reference, so a name defined symbolically later is visible when a
@@ -224,6 +227,7 @@ class EngineeringEngine:
 
     def reset(self) -> None:
         self.namespace.clear()
+        self.reported.clear()
         self.functions.clear()
         self.symbols.clear()
         self.numeric_guards.clear()
@@ -309,6 +313,16 @@ class EngineeringEngine:
                     governing_min=plot_evaluation.governing_min,
                     envelope_mode=plot_evaluation.envelope_mode,
                     governing_signed=plot_evaluation.governing_signed,
+                )
+
+            if evaluator.summary_evaluation is not None:
+                if statement.target is not None:
+                    raise EngEvaluationError(
+                        "summary must be a standalone statement"
+                    )
+                return SummaryResult(
+                    statement=statement,
+                    entries=evaluator.summary_evaluation,
                 )
 
             if evaluator.governing_evaluation is not None:
@@ -477,6 +491,16 @@ class EngineeringEngine:
                     display_name,
                     display_arguments,
                 ) = evaluator.numeric_evaluation
+                if evaluator.report_request is not None:
+                    if statement.target is not None:
+                        raise EngEvaluationError(
+                            "report must be a standalone statement; its value is shown "
+                            "where it is written"
+                        )
+                    # Assigning to the same key keeps the row where the reader first
+                    # saw it. A recomputed result is the same result, not a second row,
+                    # and a correction belongs in place rather than at the bottom.
+                    self.reported[evaluator.report_request] = quantity
                 return NumericEvaluationResult(
                     statement=statement,
                     symbolic_expression=symbolic_expression,
@@ -534,6 +558,8 @@ class _Evaluator(ast.NodeVisitor):
         self.system_evaluation: _SystemSolveEvaluation | None = None
         self.assume_evaluation: tuple[tuple[str, str], ...] | None = None
         self.governing_evaluation = None
+        self.summary_evaluation = None
+        self.report_request: str | None = None
         self.symbol_overrides: dict[str, sp.Symbol] = {}
         self.derivative_variable: str | None = None
         self.derivative_breakpoints: tuple[object, ...] = ()
@@ -840,7 +866,27 @@ class _Evaluator(ast.NodeVisitor):
         if name == "table":
             return self._evaluate_table(node)
 
-        if name == "numeric":
+        if name == "summary":
+            if node.args or node.keywords:
+                raise EngEvaluationError("summary takes no arguments")
+            if not self.engine.reported:
+                raise EngEvaluationError(
+                    "summary has nothing to show; mark a value with report(...) first"
+                )
+            self.summary_evaluation = tuple(self.engine.reported.items())
+            return None
+
+        if name in ("numeric", "report"):
+            if name == "report":
+                # Evaluated and displayed exactly as numeric does; what report adds is
+                # the record. `result(...)` already means "formula and final value
+                # without the substitution stage" and keeps that meaning - which value
+                # belongs in the summary is a different question from how it is shown.
+                if len(node.args) != 1 or not isinstance(node.args[0], ast.Name):
+                    raise EngEvaluationError(
+                        "report expects one defined name, as in report(M_max)"
+                    )
+                self.report_request = node.args[0].id
             if len(node.args) not in (1, 2):
                 raise EngEvaluationError(
                     "numeric expects 1 or 2 arguments: expression[, target_unit]"

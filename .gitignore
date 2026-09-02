@@ -6,3 +6,6 @@ dist/
 build/
 *.egg-info/
 .hypothesis/
+
+# byproduct of tools/gap_map.py, regenerated on every run
+gapmap.json
