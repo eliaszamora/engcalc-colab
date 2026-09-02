@@ -71,7 +71,7 @@ touches is what produced the wrong answer the first time.
 | **scalar systems + indefinite integral** | **2** | **8 / 18** |
 | comparisons + `check()` | 2 | 6 / 18 |
 | comparisons + `check()` + `assume()` + inequality solve | 4 | 8 / 18 |
-| Macaulay notation | 1 | 5 / 18 |
+| Macaulay notation | 1 | 5 / 18 — **delivered in 0.15.0, and it did move the count** |
 | `case` / `combo` | 1 | 5 / 18 |
 | `governing()` | 1 | 5 / 18 |
 | multi-solution solve | 1 | **4 / 18** — corrected, see below |

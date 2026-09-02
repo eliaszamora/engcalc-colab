@@ -2,7 +2,41 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.14.0**.
+Current version: **0.15.0**.
+
+
+## v0.15.0 Macaulay brackets
+
+`<x-a>^n` is the singularity function of Hibbeler and Beer: zero before `a`, and
+`(x-a)^n` from there on. A beam becomes one expression with **one term per load**:
+
+```text
+%%eng
+L := 8*m
+q := 12*kN/m
+P := 40*kN
+a := 3*m
+R_A = q*L/2 + P*(L-a)/L
+M(x) = R_A*x - q/2*<x>^2 - P*<x-a>^1
+plot(M(x), x, 0, L)
+```
+
+The same beam as a Piecewise needs a branch per load, and every branch repeats the one
+before it. Adding a load here adds a summand.
+
+Brackets integrate term by term, so the double-integration method chains directly:
+
+```text
+theta(x) = integrate(M(x)/(E*I_z), x) + C1
+v(x) = integrate(theta(x), x) + C2
+```
+
+The exponent must be written: `<x-a>^1`, not `<x-a>`. The bracket shifts its variable and
+does not scale it, so `<2*x-a>` is refused rather than guessed at.
+
+`<` and `>` remain comparison operators inside `piecewise(...)`; the bracket notation is
+recognised only when a `>` is immediately followed by `^` and an integer, which no
+comparison ever is.
 
 
 ## v0.14.0 solve shows every solution
@@ -1034,6 +1068,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.15.0** — Macaulay brackets `<x-a>^n`: a beam is written as one expression with one term per load instead of a Piecewise branch per load, and the brackets integrate term by term so double integration chains directly.
 - **0.14.0** — `solve` shows every solution instead of refusing when there is more than one. The statement defines nothing, since there is no single value to assign; `roots(...)` remains the tool for taking the physically admissible root.
 - **0.13.0** — indefinite integral: `integrate(expr, var)` returns the antiderivative, so an elastic curve is derived from its shear rather than quoted. No constant of integration is invented; the engineer writes it.
 - **0.12.0** — scalar equation systems: `solve(eq_1, ..., eq_n, x_1, ..., x_n)` solves n equations for n unknowns, renders each on its own labelled line and defines them. Statics and elastic-curve boundary conditions no longer need a matrix.
@@ -1062,4 +1097,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.14.0`.
+Version: `0.15.0`.
