@@ -322,6 +322,17 @@ class CharacteristicInterval:
 
 
 @dataclass(frozen=True)
+class SummaryResult:
+    statement: ParsedStatement
+    entries: tuple[tuple[str, Any], ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "entries", tuple(self.entries))
+        if not self.entries:
+            raise ValueError("a summary must carry at least one reported value")
+
+
+@dataclass(frozen=True)
 class GoverningInterval:
     lower_quantity: Any
     upper_quantity: Any

@@ -28,6 +28,7 @@ from .models import (
     PartialMatrixNumericEvaluationResult,
     PartialNumericEvaluationResult,
     RootsResult,
+    SummaryResult,
     SystemSolveResult,
     TableResult,
 )
@@ -1512,7 +1513,32 @@ def render_governing_result(
     )
 
 
+def render_summary_result(
+    result: SummaryResult,
+    *,
+    settings: RenderSettings | None = None,
+) -> str:
+    """The reported values, in the order they were first marked.
+
+    HTML, like the tables and the standalone analyses, because that is what it is: a
+    short table the reader looks at instead of scrolling back through the working.
+    """
+    active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    rows = "".join(
+        f"<tr><td>{escape(name)}</td>"
+        f"<td>{_characteristic_quantity_math(quantity, active_settings)}</td></tr>"
+        for name, quantity in result.entries
+    )
+    return (
+        '<div class="engcalc-characteristic">'
+        "<div><strong>Summary</strong></div>"
+        f"<table><tbody>{rows}</tbody></table></div>"
+    )
+
+
 def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:
+    if isinstance(result, SummaryResult):
+        return render_summary_result(result, settings=settings)
     if isinstance(result, GoverningResult):
         return render_governing_result(result, settings=settings)
     if isinstance(result, AssumptionResult):
