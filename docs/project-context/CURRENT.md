@@ -421,6 +421,7 @@ Etapa 1 complete takes the gap map from 4/18 to 9/18. Measured after each step, 
 | 0.17.0, multi-subs and assume | **10 / 18** | **13** |
 | 0.18.0, namespace resolution | **11 / 18** | **12** |
 | 0.19.0, governing intervals | **12 / 18** | **11** |
+| 0.20.0, report and summary | **13 / 18** | **9** |
 
 1.1 delivered exactly what the map predicted for it alone. 1.2 completed no further
 exercise, which the map had also predicted, and the reason turned out to be a gap nobody
