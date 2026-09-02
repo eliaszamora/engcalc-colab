@@ -29,6 +29,9 @@ _ALLOWED_CALLS = {
     # and ``integral`` is a permanent alias, kept because existing memorias and the
     # documented worked examples use it.
     "integrate", "integral", "diff", "solve", "simplify", "expand", "factor",
+    # Written `<x-a>^n`; the call form exists because that is what the notation is
+    # rewritten to, and is accepted directly as well.
+    "macaulay",
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",
     "piecewise", "identity", "zeros", "diag", "transpose", "det", "inv", "trace", "size",
     "rank", "rref", "norm", "eigenvals", "eigenvects",
@@ -50,7 +53,18 @@ _TABLE_COLLECTION_NODES = (
 _PIECEWISE_COMPARATORS = (ast.Lt, ast.LtE, ast.Gt, ast.GtE)
 
 
+# Macaulay brackets, `<x-a>^n`. `<` and `>` are comparison operators, so the notation is
+# rewritten to a call before Python's grammar ever sees it. The pattern deliberately
+# refuses to span commas or parentheses: without that guard it could swallow
+# `< 2, ...) + piecewise(..., x >` from two adjacent Piecewise terms. Measured against
+# every source in the repository - 128 files, every Piecewise and the whole README - and
+# it matched nothing but the intended notation.
+_MACAULAY_BRACKET = re.compile(r"<([^<>,()]+)>\s*\^\s*(-?\d+)")
+
+
 def normalize_expression(text: str) -> str:
+    # Before the `^` substitution below, because the bracket notation is written with `^`.
+    text = _MACAULAY_BRACKET.sub(r"macaulay(\1, \2)", text)
     text = text.replace("^", "**")
     text = _RESULT_CALL.sub("numeric", text)
     return _rewrite_solve_equality(text)

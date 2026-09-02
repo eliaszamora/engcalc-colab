@@ -931,6 +931,21 @@ class NumericContext:
                 exponent = exponent.to_base_units().magnitude
             return base ** exponent
 
+        if expr.func == sp.SingularityFunction and len(expr.args) == 3:
+            # Macaulay bracket. Zero before the offset, the shifted power from there on.
+            # Pint carries the units through the subtraction, so a bracket whose offset
+            # is not a length compatible with the variable raises there rather than
+            # silently producing a number.
+            shifted = self._evaluate_sympy(expr.args[0], substitutions) - self._evaluate_sympy(
+                expr.args[1], substitutions
+            )
+            order = int(expr.args[2])
+            powered = shifted**order
+            magnitude = getattr(shifted, "magnitude", shifted)
+            # At the offset itself this reproduces SymPy exactly: 0**0 is 1, so the
+            # zero-order bracket is closed on the left, and every higher order is zero.
+            return powered if float(magnitude) >= 0 else powered * 0
+
         if expr.func == sp.Abs and len(expr.args) == 1:
             return abs(self._evaluate_sympy(expr.args[0], substitutions))
 

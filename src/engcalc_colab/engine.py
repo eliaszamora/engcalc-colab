@@ -1179,6 +1179,36 @@ class _Evaluator(ast.NodeVisitor):
             self.display_input = sp.Integral(expr, bounds)
             return sp.integrate(expr, bounds)
 
+        if name == "macaulay":
+            # Written `<variable - offset>^n`; the parser rewrites the bracket notation
+            # to this call. SymPy's SingularityFunction is the operation itself,
+            # including the integration rule that makes V -> M -> theta -> v chain term
+            # by term, so nothing mathematical is implemented here.
+            self._require_arity(name, args, 2, "shifted expression, exponent")
+            expression, order = args
+            expanded = sp.expand(expression)
+            # The variable is the symbol the bracket shifts, so it carries coefficient 1.
+            # Anything else - a scaled variable, two symbols, a bare number - is not
+            # Macaulay notation and is refused rather than guessed at.
+            candidates = [
+                symbol
+                for symbol in getattr(expanded, "free_symbols", set())
+                if expanded.coeff(symbol, 1) == 1
+            ]
+            if len(candidates) != 1:
+                raise EngEvaluationError(
+                    "a Macaulay bracket is written <variable - offset>, so exactly one "
+                    f"symbol must appear with coefficient 1; got <{expression}>"
+                )
+            variable = candidates[0]
+            offset = sp.simplify(variable - expanded)
+            if variable in offset.free_symbols:
+                raise EngEvaluationError(
+                    "a Macaulay bracket shifts its variable, it does not scale it: "
+                    f"<{expression}> is not of the form <variable - offset>"
+                )
+            return sp.SingularityFunction(variable, offset, order)
+
         if name == "diff":
             if len(args) not in (2, 3):
                 raise EngEvaluationError(
