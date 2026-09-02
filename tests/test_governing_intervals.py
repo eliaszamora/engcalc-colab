@@ -93,9 +93,12 @@ def test_three_combinations():
         "A(x) = P*x\nB(x) = w*x^2/2\nC(x) = M0\n"
         "governing(A(x), B(x), C(x), x, 0, L)",
     )[-1]
-    labels = [interval.label for interval in result.intervals]
-    assert len(labels) >= 2
-    assert len(set(labels)) >= 2
+    # A(x) and B(x) cross at 6 m, A(x) meets C(x) at 3 m and B(x) meets C(x) at 4.24 m,
+    # so there are two interior crossovers - but only one of them changes who governs.
+    # C(x) holds the first 3 m and A(x) the rest, in two intervals and not three: a
+    # boundary where nothing changes hands is not a boundary.
+    assert [interval.label for interval in result.intervals] == ["C(x)", "A(x)"]
+    assert float(result.intervals[0].upper_quantity.to("m").magnitude) == pytest.approx(3.0)
 
 
 def test_it_renders_one_row_per_interval():
