@@ -99,3 +99,24 @@ def test_no_other_module_reaches_for_ipython():
         if path.name != "magic.py" and "IPython" in path.read_text(encoding="utf-8")
     ]
     assert not offenders, offenders
+
+
+def test_ci_runs_the_suite_against_colab_s_ipython():
+    """The floor is a claim, and this is what keeps it true.
+
+    Without a job pinned to 7.34.0, "the suite passes on Colab's IPython" is a sentence
+    in a comment. It was measured once, by hand, in a scratch virtual environment that
+    no longer exists.
+    """
+    import yaml
+
+    workflow = yaml.safe_load(
+        (PYPROJECT.parent / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    job = workflow["jobs"]["colab-ipython"]
+    body = yaml.safe_dump(job)
+
+    assert f"ipython=={COLAB_IPYTHON}" in body, body
+    assert "pytest" in body

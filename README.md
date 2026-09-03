@@ -700,6 +700,12 @@ Existing engineering table/plot APIs remain scalar-response APIs by design. An i
 
 ## Install in Google Colab
 
+Colab pins `ipython==7.34.0`, and EngCalc's floor is that same version rather than the
+newest release. A higher floor makes the install upgrade IPython underneath the platform,
+which pip reports as a conflict with `google-colab`. Nothing here needs a newer one, and
+CI runs the whole suite against 7.34.0 so the claim keeps being checked.
+
+
 ```python
 %pip install -q --upgrade --no-cache-dir git+https://github.com/eliaszamora/engcalc-colab.git
 %load_ext engcalc_colab
