@@ -21,8 +21,10 @@ from .errors import (
     diagnostic_hint,
 )
 from .models import (
+    CharacteristicInterval,
     CharacteristicPoint,
     DiscardedSolutions,
+    InequalityResult,
     EigenvalueEntry,
     EigenvalueSet,
     EigenvectorEntry,
@@ -340,6 +342,25 @@ class EngineeringEngine:
                     intervals=intervals,
                 )
 
+            if evaluator.inequality_evaluation is not None:
+                variable, relation, domain, intervals, difference = (
+                    evaluator.inequality_evaluation
+                )
+                if statement.target is not None:
+                    raise EngEvaluationError(
+                        "an inequality answers with a region rather than a value, so "
+                        "it cannot be assigned to a name; read the intervals"
+                    )
+                return InequalityResult(
+                    statement=statement,
+                    display_label=str(difference),
+                    variable=variable,
+                    relation=relation,
+                    lower_quantity=domain.lower_quantity,
+                    upper_quantity=domain.upper_quantity,
+                    intervals=intervals,
+                )
+
             if evaluator.assume_evaluation is not None:
                 if statement.target is not None:
                     raise EngEvaluationError(
@@ -561,6 +582,7 @@ class _Evaluator(ast.NodeVisitor):
         self.characteristic_evaluation: _CharacteristicEvaluation | None = None
         self.system_evaluation: _SystemSolveEvaluation | None = None
         self.discarded_solutions: DiscardedSolutions | None = None
+        self.inequality_evaluation = None
         self.assume_evaluation: tuple[tuple[str, str], ...] | None = None
         self.governing_evaluation = None
         self.summary_evaluation = None
@@ -1159,6 +1181,9 @@ class _Evaluator(ast.NodeVisitor):
             return symbolic_expression
 
         if name == "solve":
+            if node.args and isinstance(node.args[0], ast.Compare):
+                return self._evaluate_inequality(node)
+
             if len(node.args) != 2:
                 self._visit_equation_system(node)
                 return None
@@ -1883,6 +1908,140 @@ class _Evaluator(ast.NodeVisitor):
                 values=tuple(ruled_out),
             )
         return solutions, None
+
+    _INEQUALITY_RELATIONS = {
+        ast.Gt: ">",
+        ast.GtE: r"\geq",
+        ast.Lt: "<",
+        ast.LtE: r"\leq",
+    }
+    _INEQUALITY_HOLDS = {
+        ast.Gt: lambda number: number > 0.0,
+        ast.GtE: lambda number: number >= 0.0,
+        ast.Lt: lambda number: number < 0.0,
+        ast.LtE: lambda number: number <= 0.0,
+    }
+
+    def _evaluate_inequality(self, node: ast.Call):
+        """`solve(M(x) > 20*kN*m, x, 0, L)` - the region where a response exceeds a value.
+
+        The boundaries of that region are the roots of `lhs - rhs`, so this is the roots
+        machinery with a sign test on top rather than a second solver. SymPy's own
+        `solve_univariate_inequality` cannot take this problem: `q*x*(L - x)/2 > 20*kN*m`
+        raises NotImplementedError, because q, L, kN and m are unsigned free symbols in
+        the symbolic layer. The sheet's `:=` lines are what make it answerable.
+
+        The domain is required. It is where the variable gets its unit, and "between 0.76
+        and 5.24" with no unit is not an engineering answer. It is also the beam.
+        """
+        comparison = node.args[0]
+        operator = type(comparison.ops[0])
+        variable_name = node.args[1].id
+        variable_symbol = self.engine.resolve_symbol(variable_name)
+
+        lower_node, upper_node = node.args[2:]
+        lower_expression = self.visit(lower_node)
+        upper_expression = self.visit(upper_node)
+        try:
+            domain = normalize_analysis_domain(
+                self.engine.numeric_context,
+                lower_expression,
+                upper_expression,
+                lower_quantity=self._resolve_domain_numeric_value(lower_node),
+                upper_quantity=self._resolve_domain_numeric_value(upper_node),
+            )
+        except EngEvaluationError as exc:
+            raise EngEvaluationError(
+                "inequality domain bound must be numerically resolvable: " + str(exc)
+            ) from None
+
+        sentinel = object()
+        previous = self.symbol_overrides.get(variable_name, sentinel)
+        self.symbol_overrides[variable_name] = variable_symbol
+        try:
+            left = self.visit(comparison.left)
+            right = self.visit(comparison.comparators[0])
+        finally:
+            if previous is sentinel:
+                self.symbol_overrides.pop(variable_name, None)
+            else:
+                self.symbol_overrides[variable_name] = previous
+
+        if is_matrix(left) or is_matrix(right):
+            raise EngEvaluationError(
+                "inequality sides must be scalar; index the matrix first, "
+                "for example A[1,1]"
+            )
+        difference = sp.sympify(left) - sp.sympify(right)
+
+        points, _intervals, unresolved = solve_roots_exact(
+            difference,
+            variable_symbol,
+            domain,
+            self.engine.numeric_context,
+        )
+        if unresolved:
+            raise EngEvaluationError(
+                "inequality analysis could not resolve a safe solution set"
+            )
+
+        unit = domain.lower_quantity.units
+        edges = [domain.lower_quantity]
+        for point in points:
+            quantity = point.x_quantity.to(unit)
+            if all(
+                abs(float((quantity - edge).magnitude)) > 0.0 for edge in edges
+            ):
+                edges.append(quantity)
+        edges.append(domain.upper_quantity.to(unit))
+        edges.sort(key=lambda quantity: float(quantity.magnitude))
+
+        # A boundary is a root, where the two sides are equal. A strict comparison
+        # excludes it and a non-strict one includes it; the ends of the domain are
+        # always closed, being bounds the engineer wrote rather than roots.
+        boundary_closed = operator in (ast.GtE, ast.LtE)
+
+        holds = self._INEQUALITY_HOLDS[operator]
+        satisfied: list[tuple[int, int]] = []
+        for index in range(len(edges) - 1):
+            lower, upper = edges[index], edges[index + 1]
+            midpoint = (lower + upper) / 2
+            _substitutions, value = self.engine.numeric_context.evaluate_symbolic(
+                difference,
+                overrides={variable_name: midpoint},
+            )
+            if holds(float(value.to_base_units().magnitude)):
+                # Two neighbouring regions join only if the root between them is in
+                # the answer too. For `(x - 3)^2 > 0` on [0, 6] both sides hold and
+                # x = 3 does not, so the answer is two intervals; merging them would
+                # quietly hand back a point the inequality excludes.
+                if satisfied and satisfied[-1][1] == index and boundary_closed:
+                    satisfied[-1] = (satisfied[-1][0], index + 1)
+                else:
+                    satisfied.append((index, index + 1))
+
+        intervals = tuple(
+            CharacteristicInterval(
+                lower_symbolic=None,
+                upper_symbolic=None,
+                lower_quantity=edges[start],
+                upper_quantity=edges[stop],
+                role="satisfies",
+                provenance="exact",
+                lower_closed=True if start == 0 else boundary_closed,
+                upper_closed=True if stop == len(edges) - 1 else boundary_closed,
+            )
+            for start, stop in satisfied
+        )
+
+        self.inequality_evaluation = (
+            variable_name,
+            self._INEQUALITY_RELATIONS[operator],
+            domain,
+            intervals,
+            difference,
+        )
+        return None
 
     def _evaluate_plot(self, node: ast.Call):
         resolved = self._resolve_response_series(node, call_name="plot")

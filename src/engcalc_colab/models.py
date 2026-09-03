@@ -422,6 +422,33 @@ class RootsResult:
 
 
 @dataclass(frozen=True)
+class InequalityResult:
+    """`solve(M(x) > 20*kN*m, x, 0, L)` - where on the beam the moment exceeds a value.
+
+    The answer to an inequality is a region, not a point, so this carries intervals and
+    no points. It keeps the shape of the other characteristics because it is one: the
+    boundaries are the roots of `lhs - rhs`, found by the same machinery.
+
+    The domain is not ceremony borrowed from `roots`. It is where the variable gets its
+    unit, and an answer of "between 0.76 and 5.24" with no unit is not an engineering
+    answer.
+    """
+
+    statement: ParsedStatement
+    display_label: str
+    variable: str
+    relation: str
+    lower_quantity: Any
+    upper_quantity: Any
+    intervals: tuple[CharacteristicInterval, ...] = ()
+    points: tuple[CharacteristicPoint, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "intervals", tuple(self.intervals))
+        object.__setattr__(self, "points", tuple(self.points))
+
+
+@dataclass(frozen=True)
 class IntersectionsResult:
     statement: ParsedStatement
     left_label: str

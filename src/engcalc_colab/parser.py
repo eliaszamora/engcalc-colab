@@ -431,6 +431,14 @@ def _validate_normal_node(
             _validate_assume_call(node, line_no)
             return
 
+        if node.func.id == "solve" and node.args and isinstance(node.args[0], ast.Compare):
+            _validate_inequality_solve_call(
+                node,
+                line_no,
+                piecewise_parameters=piecewise_parameters,
+            )
+            return
+
         if node.func.id == "piecewise":
             _validate_piecewise_call(
                 node,
@@ -623,6 +631,49 @@ def _validate_assume_call(node: ast.Call, line_no: int) -> None:
             raise EngSyntaxError(
                 f"line {line_no}: assume takes one comparison at a time, like assume(L > 0)"
             )
+
+
+def _validate_inequality_solve_call(
+    node: ast.Call,
+    line_no: int,
+    *,
+    piecewise_parameters: tuple[str, ...] | None,
+) -> None:
+    """`solve(M(x) > 20*kN*m, x, 0, L)`.
+
+    A comparison in the first position is unambiguous: an equation is written `eq(a, b)`,
+    so nothing else can mean an inequality. This keeps the language's existing shape,
+    where comparisons live in named call positions rather than becoming general
+    expressions.
+    """
+    comparison = node.args[0]
+    if len(comparison.ops) != 1 or len(comparison.comparators) != 1:
+        raise EngSyntaxError(
+            f"line {line_no}: chained comparisons are unsupported; "
+            "solve takes one, like solve(M(x) > 20*kN*m, x, 0, L)"
+        )
+    if not isinstance(comparison.ops[0], _PIECEWISE_COMPARATORS):
+        raise EngSyntaxError(
+            f"line {line_no}: solve takes an inequality here, like "
+            "solve(M(x) > 20*kN*m, x, 0, L); an equation is written "
+            "solve(a = b, x) or solve(eq(a, b), x)"
+        )
+    if len(node.args) != 4:
+        raise EngSyntaxError(
+            f"line {line_no}: an inequality is solved over a domain, as in "
+            "solve(M(x) > 20*kN*m, x, 0, L); the bounds are what give the variable "
+            "its unit"
+        )
+    if not isinstance(node.args[1], ast.Name):
+        raise EngSyntaxError(
+            f"line {line_no}: solve variable must be a symbolic identifier"
+        )
+    for part in (comparison.left, comparison.comparators[0], *node.args[2:]):
+        _validate_normal_node(
+            part,
+            line_no,
+            piecewise_parameters=piecewise_parameters,
+        )
 
 
 def _piecewise_condition_candidates(
@@ -922,7 +973,15 @@ def _rewrite_solve_equality(text: str) -> str:
             search_from = close_pos + 1
             continue
         first_arg = inner[:comma]
-        equals = _positions_at_depth(first_arg, "=", 0)
+        # `>=` and `<=` contain an `=` and are not equalities. Without this the rewrite
+        # turns `solve(M(x) >= 2, x, 0, L)` into `eq(M(x) >, 2)`, and the engineer is
+        # told their line has invalid syntax when it is this function that broke it.
+        equals = [
+            position
+            for position in _positions_at_depth(first_arg, "=", 0)
+            if not (position and first_arg[position - 1] in "<>!=")
+            and not first_arg[position + 1: position + 2] == "="
+        ]
         if len(equals) == 1:
             eq_pos = equals[0]
             left = first_arg[:eq_pos].strip()
