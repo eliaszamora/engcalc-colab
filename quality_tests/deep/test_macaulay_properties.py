@@ -69,7 +69,7 @@ def test_a_simply_supported_beam_with_a_point_load_closes_at_the_far_support(
 @settings(max_examples=60)
 @given(offset=_OFFSET, order=st.integers(min_value=0, max_value=2), upper=_STATION)
 def test_integrating_a_bracket_raises_its_order(offset, order, upper):
-    """`integral(<x-a>^n, x, 0, b)` is `<b-a>^(n+1)/(n+1)`.
+    """`integrate(<x-a>^n, x, 0, b)` is `<b-a>^(n+1)/(n+1)`.
 
     The rule is built into SymPy's SingularityFunction, so this checks that EngCalc
     reaches it rather than that SymPy has it - a bracket handled as an ordinary power
@@ -79,7 +79,7 @@ def test_integrating_a_bracket_raises_its_order(offset, order, upper):
     assume(upper > offset + 0.05 or upper < offset - 0.05)
 
     result = evaluate_cell(
-        f"b(x) = <x-{offset}>^{order}\nS = integral(b(x), x, 0, {upper})\nnumeric(S)"
+        f"b(x) = <x-{offset}>^{order}\nS = integrate(b(x), x, 0, {upper})\nnumeric(S)"
     )
     expected = macaulay(upper, offset, order + 1) / (order + 1)
     assert float(result.quantity.magnitude) == pytest.approx(

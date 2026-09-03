@@ -29,12 +29,12 @@ _BOUND = st.integers(min_value=-400, max_value=400).map(lambda n: n / 100)
 @settings(max_examples=80)
 @given(coeff=_COEFF, order=_ORDER, lower=_BOUND, upper=_BOUND)
 def test_a_monomial_integrates_to_its_closed_form(coeff, order, lower, upper):
-    """`integral(k*x^n, x, a, b)` is `k*(b^(n+1) - a^(n+1))/(n+1)`."""
+    """`integrate(k*x^n, x, a, b)` is `k*(b^(n+1) - a^(n+1))/(n+1)`."""
     assume(abs(upper - lower) > 0.05)
 
     result = evaluate_cell(
         f"f(x) = {coeff}*x^{order}\n"
-        f"S = integral(f(x), x, {lower}, {upper})\n"
+        f"S = integrate(f(x), x, {lower}, {upper})\n"
         "numeric(S)"
     )
     power = order + 1
@@ -58,8 +58,8 @@ def test_reversing_the_bounds_reverses_the_sign(coeff, order, upper):
     assume(abs(upper) > 0.05)
 
     body = f"f(x) = {coeff}*x^{order}\n"
-    forward = evaluate_cell(body + f"S = integral(f(x), x, 0, {upper})\nnumeric(S)")
-    backward = evaluate_cell(body + f"S = integral(f(x), x, {upper}, 0)\nnumeric(S)")
+    forward = evaluate_cell(body + f"S = integrate(f(x), x, 0, {upper})\nnumeric(S)")
+    backward = evaluate_cell(body + f"S = integrate(f(x), x, {upper}, 0)\nnumeric(S)")
 
     assert float(forward.quantity.magnitude) == pytest.approx(
         -float(backward.quantity.magnitude), rel=1e-9, abs=1e-12
@@ -104,9 +104,9 @@ def test_a_definite_integral_splits_at_an_interior_point(coeff, order, middle, u
     assume(abs(upper) > 0.2 and abs(middle) > 0.05 and abs(upper - middle) > 0.05)
 
     body = f"f(x) = {coeff}*x^{order}\n"
-    whole = evaluate_cell(body + f"S = integral(f(x), x, 0, {upper})\nnumeric(S)")
-    first = evaluate_cell(body + f"S = integral(f(x), x, 0, {middle})\nnumeric(S)")
-    second = evaluate_cell(body + f"S = integral(f(x), x, {middle}, {upper})\nnumeric(S)")
+    whole = evaluate_cell(body + f"S = integrate(f(x), x, 0, {upper})\nnumeric(S)")
+    first = evaluate_cell(body + f"S = integrate(f(x), x, 0, {middle})\nnumeric(S)")
+    second = evaluate_cell(body + f"S = integrate(f(x), x, {middle}, {upper})\nnumeric(S)")
 
     assert float(whole.quantity.magnitude) == pytest.approx(
         float(first.quantity.magnitude) + float(second.quantity.magnitude),
