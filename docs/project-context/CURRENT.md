@@ -499,6 +499,35 @@ the renderer outright - a Pint `Unit` has no magnitude. The near miss was to "fi
 by substituting `1*kN` and printing `kN = 1 kN` under the working, a line no engineer
 writes. Units resolve for the arithmetic and stay out of the substitution stage.
 
+### What the gap map does not measure
+
+**The gap map catches exceptions and nothing else.** Every "N/18 exercises run end to
+end" in this document and in PRs #46 to #62 means N exercises raised no error. It has
+never meant that a single answer was right, and an exercise returning a number wrong by
+a factor of a thousand is reported as a success.
+
+Measured rather than argued, by breaking the product and running both:
+
+| Defect introduced | Gap map | `tests/test_exercise_answers.py` |
+|---|---|---|
+| Macaulay bracket permanently on | **15/18, green** | caught |
+| summation drops its last term | **15/18, green** | caught |
+| bracket opens one step early | **15/18, green** | caught |
+| definite integral loses its bounds | 14/18 | caught |
+
+Three of four leave the gap map completely green. The first ruins every beam carrying a
+point load.
+
+`tests/test_exercise_answers.py` closes this for the fifteen exercises that run. Every
+expected value is worked from the statics, and where a textbook formula exists it is
+quoted as a second independent check - a propped cantilever's prop reaction is 3qL/8
+whatever EngCalc thinks, and the flexibility method has to arrive there on its own.
+
+The two numbers answer different questions and both are worth keeping. The gap map says
+how much of the language an exercise can reach; the answer file says whether what came
+back is true. Quoting the first as evidence of the second is the mistake this section
+exists to prevent.
+
 ### Quality Gate: a lapse, recorded
 
 **0.10.1, the QG-3 fix, 0.11.0 and 0.12.0 were merged without a Deep Gate
