@@ -160,6 +160,7 @@ numeric(I_req)
 E := 200*GPa
 I := 40e6*mm**4
 K := 1.0
+assume(Lk > 0)
 P_cr(Lk) = pi^2*E*I/(K*Lk)^2
 L_max = solve(eq(P_cr(Lk), 500*kN), Lk)
 numeric(L_max)
