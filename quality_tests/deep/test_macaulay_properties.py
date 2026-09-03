@@ -85,3 +85,63 @@ def test_integrating_a_bracket_raises_its_order(offset, order, upper):
     assert float(result.quantity.magnitude) == pytest.approx(
         expected, rel=1e-9, abs=1e-9
     )
+
+
+def _in_metres(quantity, order: int) -> float:
+    """The magnitude in `m**order`, tolerating an exact zero that carries no dimension.
+
+    Exactly at the offset the bracket is zero, and EngCalc returns a dimensionless zero
+    rather than `0 m`. That is the language's adaptable zero, which has been deliberate
+    since 0.9.x: a genuine zero takes the dimension of whatever it meets, so a beam
+    evaluated exactly under its point load still gives 75 kN*m rather than refusing to
+    add a force to a moment. Demanding a unit here would assert something the design
+    does not promise, so this asserts what it does.
+    """
+    if quantity.dimensionless and float(quantity.magnitude) == 0.0:
+        return 0.0
+    unit = f"m**{order}" if order else ""
+    return float((quantity.to(unit) if unit else quantity).magnitude)
+
+
+# A bracket has two implementations and the properties above reach only one of them.
+# Without units SymPy resolves `SingularityFunction(2, 0, 1)` during `subs`, so the
+# branch in `numeric.py` never runs: switching that branch permanently on - which ruins
+# every beam carrying a point load - left all three properties above green. With a unit
+# on the coordinate the bracket survives substitution unevaluated and the numeric branch
+# decides. Both paths are covered below, and so is their agreement.
+
+
+@settings(max_examples=60)
+@given(offset=_OFFSET, order=_ORDER, station=_STATION)
+def test_the_numeric_branch_obeys_the_definition_too(offset, order, station):
+    result = evaluate_cell(
+        "L := 1*m\n"
+        f"b(x) = <x-{offset}*L>^{order}\n"
+        f"numeric(subs(b(x), x, {station}*L))"
+    )
+    assert _in_metres(result.quantity, order) == pytest.approx(
+        macaulay(station, offset, order), rel=1e-9, abs=1e-9
+    )
+
+
+@settings(max_examples=60)
+@given(offset=_OFFSET, order=_ORDER, station=_STATION)
+def test_the_two_paths_agree(offset, order, station):
+    """Level C by construction, and the only property that compares the two.
+
+    Each path is checked against the definition above, so this cannot be the whole
+    protection - both could be wrong in the same way and agree. It is here because a
+    disagreement between them is a defect in its own right: the same sheet would give
+    two answers depending on whether a coordinate carried a unit.
+    """
+    bare = evaluate_cell(
+        f"b(x) = <x-{offset}>^{order}\nnumeric(subs(b(x), x, {station}))"
+    )
+    with_unit = evaluate_cell(
+        "L := 1*m\n"
+        f"b(x) = <x-{offset}*L>^{order}\n"
+        f"numeric(subs(b(x), x, {station}*L))"
+    )
+    assert float(bare.quantity.magnitude) == pytest.approx(
+        _in_metres(with_unit.quantity, order), rel=1e-9, abs=1e-9
+    )

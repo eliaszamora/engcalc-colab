@@ -120,6 +120,48 @@ than read off current output.
 | N-2 roundoff residual | `test_n2_near_double_root_is_not_rejected_by_roundoff` | `e073320` |
 | N-3 unit literals in response | `test_n3_*` | `e073320` |
 
+## What came after the Gate
+
+The Gate was designed for `characteristics/` in 0.9.x. Thirteen releases of features
+followed it and none gained a property, so all of them rested on the examples their
+author happened to think of. These are the first covered, in `quality_tests/deep`:
+
+| Family | File | Oracle |
+|---|---|---|
+| inequality regions | `test_inequality_properties.py` | a polynomial evaluated in plain Python from its own coefficients |
+| Macaulay brackets | `test_macaulay_properties.py` | the bracket's definition: zero before the offset, the shifted power after |
+| definite and indefinite integrals | `test_integration_properties.py` | the closed form of a monomial integral |
+
+**A bracket has two implementations and the first draft of its properties reached only
+one.** Without units SymPy resolves `SingularityFunction(2, 0, 1)` during `subs`, so the
+branch in `numeric.py` never runs. Switching that branch permanently on - which ruins
+every beam carrying a point load - left all three properties green. The unit-carrying
+properties were added after measuring that, and there is a Level C property asserting the
+two paths agree, because a sheet that answered differently depending on whether a
+coordinate carried a unit would be a defect in its own right.
+
+Measured locally, one run of the whole Deep Gate: **31 properties in 15 min 13 s**, of
+which the three new families are 3 min 37 s (inequality 53 s, Macaulay 1 min 37 s,
+integration 1 min 7 s). The Gate runs weekly and on every push to `main`, not per PR, so
+this budget is spent where it is affordable.
+
+**Exactly at its offset the bracket returns a dimensionless zero rather than `0 m`.**
+That is the language's adaptable zero and it is deliberate: a genuine zero takes the
+dimension of whatever it meets, so a beam evaluated exactly under its point load still
+gives 75 kN*m rather than refusing to add a force to a moment. The property asserts what
+the design promises rather than what a stricter reading would want.
+
+### Restoring the tree is part of the mutation harness
+
+A ten-minute timeout killed a mutation loop between mutating and restoring, and the next
+twenty minutes were spent diagnosing a deliberately broken build as a real defect -
+"the definite integral drops its bounds" - and building a case for it. The tree was
+dirty the whole time.
+
+`git checkout -- src/` belongs at the **start** of a mutation run as well as the end, and
+the tree must be checked before a result is believed. A trap is not enough on its own:
+the timeout kills the process group and the trap never fires.
+
 ## Measured budget
 
 GitHub Actions, both figures from the same job back to back:
@@ -222,6 +264,9 @@ failure mode it exists to prevent.
 
 The gate does **not** protect these; they were never explored and remain open work:
 
+- `assume`-filtered solve, `governing`, `report`/`summary`, evaluated summations, `subs`,
+  scalar equation systems and unit-literal resolution in `numeric` - every one of them
+  covered by examples only, which is where the three families above started;
 - roots separated by less than `0.05`;
 - coefficients with substantially more than three decimal places;
 - Piecewise with more than two branches, and nested Piecewise;
