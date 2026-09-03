@@ -111,3 +111,53 @@ def test_substituting_two_variables_puts_each_value_in_its_own_place(
     assert float(result.quantity.magnitude) == pytest.approx(
         expected, rel=1e-9, abs=1e-9
     )
+
+
+# The numeric layer has two summation paths and everything above reaches one of them.
+# A dimensionless summand goes to SymPy's `Sum` directly; a summand carrying a unit is
+# added term by term in `numeric.py`. Dropping the last term of that loop leaves every
+# property above green - `sum(3*i, i, 1, 5)` is still 45 - while `sum(P*i, i, 1, 5)`
+# with `P := 10*kN` returns 100 kN instead of 150.
+#
+# This is the second family in this Gate where a dimensionless property tested only half
+# the implementation; the Macaulay bracket was the first. The question to ask of any
+# property here is which path its units send it down.
+
+
+@settings(max_examples=60)
+@given(coefficient=st.integers(min_value=1, max_value=20), count=_COUNT)
+def test_a_series_of_forces_matches_the_same_closed_form(coefficient, count):
+    """`sum(P*i, i, 1, n)` is `P*n*(n+1)/2`, term by term through the dimensional path."""
+    result = evaluate_cell(
+        f"P := {coefficient}*kN\nS = sum(P*i, i, 1, {count})\nnumeric(S)"
+    )
+    expected = coefficient * count * (count + 1) / 2
+    assert float(result.quantity.to("kN").magnitude) == pytest.approx(
+        expected, rel=1e-9
+    )
+
+
+@settings(max_examples=40)
+@given(
+    coefficient=st.integers(min_value=1, max_value=20),
+    lower=st.integers(1, 15),
+    extra=st.integers(0, 15),
+)
+def test_the_two_summation_paths_agree(coefficient, lower, extra):
+    """Level C by construction, and the only property comparing the two.
+
+    Each path is checked against a closed form above, so this is not the protection -
+    both could be wrong the same way. It is here because a disagreement is a defect of
+    its own: the same sheet would total differently depending on whether the load
+    carried a unit.
+    """
+    upper = lower + extra
+    bare = evaluate_cell(
+        f"S = sum({coefficient}*i, i, {lower}, {upper})\nnumeric(S)"
+    )
+    with_unit = evaluate_cell(
+        f"P := {coefficient}*kN\nS = sum(P*i, i, {lower}, {upper})\nnumeric(S)"
+    )
+    assert float(bare.quantity.magnitude) == pytest.approx(
+        float(with_unit.quantity.to("kN").magnitude), rel=1e-9
+    )
