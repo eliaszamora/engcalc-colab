@@ -2,7 +2,42 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.22.0**.
+Current version: **0.23.0**.
+
+
+## v0.23.0 solving an inequality
+
+Where on the beam does the moment exceed its limit?
+
+```text
+%%eng
+L := 6*m
+q := 10*kN/m
+M(x) = q*x*(L-x)/2
+solve(M(x) > 20*kN*m, x, 0, L)
+```
+
+```text
+Where x satisfies the inequality
+Domain: 0.00 m to 6.00 m
+x in (0.76 m, 5.24 m)
+```
+
+The answer to an inequality is a region, so several come back when there are several:
+`solve(M(x) < 20*kN*m, x, 0, L)` gives `[0 m, 0.76 m)` and `(5.24 m, 6 m]`. A strict
+comparison opens the boundary and a non-strict one closes it, because the boundary is
+where the two sides are equal. The ends of the domain stay closed: they are bounds you
+wrote, not roots.
+
+**The domain is required, and that departs from what a CAS does** - TI-Nspire and
+Mathematica both answer `x^2 - 6x + 4 < 0` with no domain at all. The reason is units.
+Without bounds the variable has none, and "between 0.76 and 5.24" is not an engineering
+answer. For a beam it is also simply the beam.
+
+Underneath, the boundaries are the roots of `lhs - rhs`, so this is `roots(...)` with a
+sign test rather than a second solver. SymPy cannot take the problem directly:
+`q*x*(L - x)/2 > 20*kN*m` raises NotImplementedError, because q, L, kN and m are unsigned
+free symbols. What makes it answerable is the `:=` lines above it.
 
 
 ## v0.22.0 numeric reads a unit as a unit
@@ -1275,6 +1310,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.23.0** — `solve(M(x) > 20*kN*m, x, 0, L)` answers an inequality with the region that satisfies it.
 - **0.22.0** — `numeric(...)` reads a unit literal as the unit, agreeing with `:=`; scalars and matrices alike.
 - **0.21.0** — `assume(...)` now decides between several answers from `solve`, and the sheet shows which were ruled out.
 - **0.20.0** — `report(...)` marks a value and `summary()` collects the marked ones into a table at the end of the memoria.
@@ -1311,4 +1347,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.22.0`.
+Version: `0.23.0`.
