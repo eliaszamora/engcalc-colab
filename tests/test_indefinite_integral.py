@@ -45,7 +45,7 @@ def test_no_constant_of_integration_is_invented():
 
 
 def test_the_alias_accepts_the_indefinite_form_too():
-    result = run_cell(EngineeringEngine(), "a = integral(x^2, x)")[-1]
+    result = run_cell(EngineeringEngine(), "a = integrate(x^2, x)")[-1]
     assert str(result.value) == "x**3/3"
 
 

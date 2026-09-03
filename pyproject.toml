@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "engcalc-colab"
-version = "0.23.3"
+version = "0.24.0"
 description = "Compact symbolic and unit-aware engineering calculations for Google Colab and Jupyter"
 requires-python = ">=3.10"
 dependencies = ["sympy>=1.13", "pint>=0.24", "matplotlib>=3.8", "ipython>=8.18"]

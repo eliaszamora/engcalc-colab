@@ -36,8 +36,8 @@ M_A1 = -L
 V_1(x) = V_A1
 M_1(x) = -M_A1 + V_A1*x
 
-Delta_B0 = integral(M_0(x)*M_1(x)/(E*I), x, 0, L)
-f_11 = integral(M_1(x)^2/(E*I), x, 0, L)
+Delta_B0 = integrate(M_0(x)*M_1(x)/(E*I), x, 0, L)
+f_11 = integrate(M_1(x)^2/(E*I), x, 0, L)
 Delta_B = Delta_B0 + V_B*f_11
 V_B = solve(Delta_B = 0, V_B)
 

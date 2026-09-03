@@ -71,7 +71,7 @@ def test_definite_integral_maps_over_matrix_entries():
     engine = EngineeringEngine()
     run(engine, "A = [x, x^2; 1, 2*x]")
 
-    result = run(engine, "B = integral(A, x, 0, L)")
+    result = run(engine, "B = integrate(A, x, 0, L)")
 
     L = engine.resolve_symbol("L")
     assert isinstance(result.value, sp.ImmutableMatrix)

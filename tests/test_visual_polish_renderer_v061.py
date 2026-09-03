@@ -19,7 +19,7 @@ def assert_rows_bounded(rows):
 def propped_symbolic_results():
     engine = EngineeringEngine()
     source = """
-delta_B = integral((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)
+delta_B = integrate((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)
 R_B(q) = solve(eq(delta_B, 0), R_B_aux)
 R_A(q) = solve(eq(R_A_aux + R_B(q) - q*L, 0), R_A_aux)
 M_A(q) = solve(eq(M_A_aux + q*L^2/2 - R_B(q)*L, 0), M_A_aux)
