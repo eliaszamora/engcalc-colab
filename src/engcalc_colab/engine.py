@@ -22,6 +22,7 @@ from .errors import (
 )
 from .models import (
     CharacteristicPoint,
+    DiscardedSolutions,
     EigenvalueEntry,
     EigenvalueSet,
     EigenvectorEntry,
@@ -191,6 +192,7 @@ class _SystemSolveEvaluation:
     equations: tuple
     solutions: tuple
     kind: str = "system"
+    discarded: DiscardedSolutions | None = None
 
 
 @dataclass(frozen=True)
@@ -370,6 +372,7 @@ class EngineeringEngine:
                     statement=statement,
                     equations=system.equations,
                     solutions=system.solutions,
+                    discarded=system.discarded,
                 )
 
             if evaluator.table_evaluation is not None:
@@ -531,6 +534,7 @@ class EngineeringEngine:
                 statement=statement,
                 display_input=evaluator.display_input,
                 value=value,
+                discarded=evaluator.discarded_solutions,
             )
         except EngCalcError as exc:
             message = str(exc)
@@ -556,6 +560,7 @@ class _Evaluator(ast.NodeVisitor):
         self.table_evaluation: _TableEvaluation | None = None
         self.characteristic_evaluation: _CharacteristicEvaluation | None = None
         self.system_evaluation: _SystemSolveEvaluation | None = None
+        self.discarded_solutions: DiscardedSolutions | None = None
         self.assume_evaluation: tuple[tuple[str, str], ...] | None = None
         self.governing_evaluation = None
         self.summary_evaluation = None
@@ -1184,6 +1189,10 @@ class _Evaluator(ast.NodeVisitor):
             if len(solutions) == 0:
                 raise EngEvaluationError(f"solve found no solution for {unknown}")
             if len(solutions) > 1:
+                solutions, self.discarded_solutions = self._rule_out_by_assumption(
+                    solutions, unknown_name
+                )
+            if len(solutions) > 1:
                 # Several answers is not an error and never was; the previous guard
                 # said "v0.1 requires one", which was a contract from the earliest
                 # version rather than a mathematical limit. Complex solutions are kept:
@@ -1192,6 +1201,7 @@ class _Evaluator(ast.NodeVisitor):
                     equations=(equation,),
                     solutions=tuple((unknown_name, value) for value in solutions),
                     kind="multi",
+                    discarded=self.discarded_solutions,
                 )
                 return None
             return solutions[0]
@@ -1801,6 +1811,78 @@ class _Evaluator(ast.NodeVisitor):
             if point.value_quantity is not None
             and any(role in {"global_max", "global_min"} for role in point.roles)
         )
+
+    _ASSUMPTION_ADMITS = {
+        "positive": lambda number: number > 0,
+        "nonnegative": lambda number: number >= 0,
+        "negative": lambda number: number < 0,
+        "nonpositive": lambda number: number <= 0,
+    }
+
+    def _admits(self, value, condition: str):
+        """Does `value` satisfy `condition`? True, False, or None when nothing says.
+
+        Asking SymPy first would be the obvious design and it would be dead code. When
+        the unknown carries the assumption, `sp.solve` has already dropped every root
+        whose sign it could determine: solving `(x + 2)*(x - b)` for a positive x
+        returns `[b]`, with the -2 gone before anything here runs. What reaches this
+        method is exactly the set SymPy could not decide, so `value.is_positive` is
+        None by construction and a symbolic branch could never change an outcome.
+
+        That is also why a numeric route is needed at all. In `pi*sqrt(E*I/kN)/K` every
+        symbol is unsigned, so neither root is decidable - but the sheet above says what
+        E, I, K and kN are worth. Those `:=` lines are not extra information the reader
+        must supply; they are what an engineer reads off their own page when they cross
+        out the negative root.
+        """
+        context = self.engine.numeric_context
+        try:
+            overrides = context.unit_literal_overrides(value)
+            _substitutions, quantity = context.evaluate_symbolic(value, overrides=overrides)
+        except EngCalcError:
+            return None
+
+        magnitude = getattr(quantity, "magnitude", quantity)
+        try:
+            number = complex(magnitude)
+        except (TypeError, ValueError):
+            return None
+        if number.imag:
+            # A complex answer has no sign, so the assumption says nothing about it and
+            # it survives. Discarding on ignorance is how a solver quietly loses roots.
+            return None
+        return self._ASSUMPTION_ADMITS[condition](number.real)
+
+    def _rule_out_by_assumption(self, solutions: list, unknown_name: str):
+        """Drop the answers the engineer has already said are impossible.
+
+        `assume(L > 0)` reaches the unknown's symbol, but a length being positive says
+        nothing about the sign of an expression built from unsigned symbols, so SymPy
+        keeps both roots and is right to. This is where the statement is spent.
+
+        Only decided contradictions are dropped. An answer that cannot be evaluated
+        survives, and if every answer would go, none does: an assumption that rules out
+        the entire solution set is a statement about the problem, not about the answer,
+        and silently emptying the result would hide it.
+        """
+        declared = self.engine.assumptions.get(unknown_name)
+        if not declared:
+            return solutions, None
+
+        for condition in declared:
+            if condition not in self._ASSUMPTION_ADMITS:
+                continue
+            verdicts = [self._admits(value, condition) for value in solutions]
+            kept = [v for v, ok in zip(solutions, verdicts) if ok is not False]
+            if not kept or len(kept) == len(solutions):
+                continue
+            ruled_out = [v for v, ok in zip(solutions, verdicts) if ok is False]
+            return kept, DiscardedSolutions(
+                variable=unknown_name,
+                condition=condition,
+                values=tuple(ruled_out),
+            )
+        return solutions, None
 
     def _evaluate_plot(self, node: ast.Call):
         resolved = self._resolve_response_series(node, call_name="plot")

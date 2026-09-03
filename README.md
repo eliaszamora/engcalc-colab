@@ -2,7 +2,46 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.20.0**.
+Current version: **0.21.0**.
+
+
+## v0.21.0 assume decides between several answers
+
+Euler buckling is even in the length, so solving it for L returns a symmetric pair:
+
+```text
+%%eng
+E := 200*GPa
+I := 40e6*mm**4
+K := 1.0
+assume(Lk > 0)
+P_cr(Lk) = pi^2*E*I/(K*Lk)^2
+L_max = solve(eq(P_cr(Lk), 500*kN), Lk)
+```
+
+`assume(Lk > 0)` now settles it, and `L_max` becomes a single value the sheet can go on
+to use. The line shows what was ruled out and why:
+
+```text
+discarded by Lk > 0:  -sqrt(5)*pi*sqrt(E*I/kN)/(50*K)
+```
+
+An engineer given one answer has no way to know two were found, and the difference
+between "there was one" and "I ruled one out" is the difference between arithmetic and
+a decision. So the discard is on the page, with the root itself rather than a count.
+
+The assumption had always reached the unknown's symbol; what it could not do is decide
+the sign of `pi*sqrt(E*I/kN)/K`, where every symbol is unsigned. SymPy keeps both roots
+there and is right to. What settles it is the `:=` lines above - which is exactly what
+an engineer reads off their own page when they cross out the negative root.
+
+Three rules keep this from becoming a solver that quietly loses answers:
+
+- without `assume`, nothing is discarded, however obvious the sign looks;
+- an answer that cannot be evaluated survives, and so does a complex one: an imaginary
+  root is not refuted by "the unknown is positive", it is unaddressed;
+- if every answer would go, none does. An assumption that rules out the whole solution
+  set is a statement about the problem, and emptying the result would hide it.
 
 
 ## v0.20.0 report and summary
@@ -1197,6 +1236,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.21.0** — `assume(...)` now decides between several answers from `solve`, and the sheet shows which were ruled out.
 - **0.20.0** — `report(...)` marks a value and `summary()` collects the marked ones into a table at the end of the memoria.
 - **0.19.0** — `governing(...)` reports which response governs on which interval, with exact boundaries taken from the crossovers rather than from the envelope's sampling.
 - **0.18.0** — `numeric(...)` resolves names the symbolic sheet defines, not only values given with `:=`, so a deflection written with its integration constants can be evaluated once the boundary conditions determine them.
@@ -1231,4 +1271,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.20.0`.
+Version: `0.21.0`.

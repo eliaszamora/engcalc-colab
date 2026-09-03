@@ -422,6 +422,7 @@ Etapa 1 complete takes the gap map from 4/18 to 9/18. Measured after each step, 
 | 0.18.0, namespace resolution | **11 / 18** | **12** |
 | 0.19.0, governing intervals | **12 / 18** | **11** |
 | 0.20.0, report and summary | **13 / 18** | **9** |
+| 0.21.0, assumption-filtered solve | **13 / 18** | **8** |
 
 1.1 delivered exactly what the map predicted for it alone. 1.2 completed no further
 exercise, which the map had also predicted, and the reason turned out to be a gap nobody
@@ -447,6 +448,32 @@ before the constants were known and keeps their symbols.
 It is not obvious that the answer is to make `numeric` resolve the namespace: capture is
 consistent across the whole language, and changing it is a core-path change with an
 unmeasured blast radius. Measure before deciding, as with the unit metric.
+
+### The gap 0.21.0 uncovered: `numeric()` does not read unit literals
+
+**OPEN, and it needs a decision rather than a patch.**
+
+`M = 5*kN` then `numeric(M)` fails with *"requires values for: kN. Define the missing
+numeric values first, for example: kN := <value>*<unit>"* - advice nobody should follow.
+In the symbolic layer a unit is an ordinary free symbol, and only the characteristic
+domain path (`_resolve_domain_numeric_value`) calls `unit_literal_overrides` to resolve
+one. This predates 0.21.0; E14 simply never reached the line before.
+
+It is what still blocks E14's last line. `L_max` comes out of the solve carrying `kN`
+from the `500*kN` the engineer wrote, so asking for its number fails.
+
+The one-line fix - pass `unit_literal_overrides` on the `numeric()` path too - is not
+safe as it stands. Of the fifteen unit aliases, three are single letters: **N, m, s.**
+`N` is axial force in any structures memoria. A sheet that writes `sigma = N/A` and
+forgets to define `N` is told so today; with the aliases resolved it would silently be
+told that sigma is one newton per unit area. Partial resolution does not save it either:
+if `A := 100*mm**2` is defined and `N` is not, every symbol resolves and the wrong
+answer is complete and quiet.
+
+The distinction that would settle it - a symbol that entered the expression from a unit
+literal in the source, as opposed to a bare undefined name - is erased by the time the
+symbolic layer stores `Symbol('kN')`. Restoring it means marking unit literals at parse
+time, which is a real change and not this one.
 
 ### Quality Gate: a lapse, recorded
 
