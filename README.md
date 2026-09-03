@@ -2,7 +2,44 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.23.1**.
+Current version: **0.23.2**.
+
+
+## v0.23.2 an equation is written once
+
+A statics sheet printed every equation twice - once where it was defined, once as the
+solve's echo of it:
+
+```text
+%%eng
+eqFy = eq(R_A + R_B, q*L)
+eqMA = eq(R_B*L, q*L*L/2)
+solve(eqFy, eqMA, R_A, R_B)
+```
+
+```text
+eqFy   =   R_A + R_B = qL
+eqMA   =   L R_B = qL^2/2
+R_A    =   qL/2
+R_B    =   qL/2
+```
+
+An equation passed by name is already on the page under that name, so the solve leaves
+it there. Written inline it exists nowhere else, so it is shown:
+
+```text
+solve(eq(R_A + R_B, q*L), eq(R_B*L, q*L*L/2), R_A, R_B)
+```
+
+still prints both equations before the reactions.
+
+The rule is not "the argument is a name". `solve(delta_B, R_B_aux)` names an
+*expression*, and the line displays `delta_B = 0` with the integral evaluated - the
+equality is new, and dropping it would hide the equation being solved in a flexibility
+calculation. Only a name already bound to an equation is a genuine repeat.
+
+The duplication was invisible until 0.23.1 aligned the block; the malformed array had
+been hiding it.
 
 
 ## v0.23.1 what the notebook actually shows
@@ -1374,4 +1411,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.23.1`.
+Version: `0.23.2`.
