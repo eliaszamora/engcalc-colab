@@ -40,7 +40,7 @@ E := 200*GPa
 I := 80e6*mm**4
 R_A = q*L/2
 V(x) = R_A - q*x
-M(x) = integral(V(x), x, 0, x)
+M(x) = integrate(V(x), x, 0, x)
 theta(x) = integrate(M(x)/(E*I), x) + C1
 v(x) = integrate(theta(x), x) + C2
 bc1 = eq(subs(v(x), x, 0), 0)
@@ -108,8 +108,8 @@ E := 200*GPa
 I := 120e6*mm**4
 M_0(x) = -q*x^2/2
 M_1(x) = x
-D_B0 = integral(M_0(x)*M_1(x)/(E*I), x, 0, L)
-f_11 = integral(M_1(x)^2/(E*I), x, 0, L)
+D_B0 = integrate(M_0(x)*M_1(x)/(E*I), x, 0, L)
+f_11 = integrate(M_1(x)^2/(E*I), x, 0, L)
 V_B = solve(eq(D_B0 + V_B*f_11, 0*m), V_B)
 numeric(V_B)
 """),

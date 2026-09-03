@@ -99,3 +99,31 @@ def bisect_monotone_quintic(
             lo = midpoint
 
     return (lo + hi) / 2.0
+
+
+def inequality_regions(result: Any) -> list[tuple[float, float, bool, bool]]:
+    """Each reported region as (lower, upper, lower_closed, upper_closed)."""
+    return [
+        (
+            float(interval.lower_quantity.magnitude),
+            float(interval.upper_quantity.magnitude),
+            interval.lower_closed,
+            interval.upper_closed,
+        )
+        for interval in result.intervals
+    ]
+
+
+def inside_any_region(value: float, regions, tolerance: float = 0.0) -> bool:
+    """Plain-arithmetic membership, deliberately not asking EngCalc anything."""
+    for lower, upper, lower_closed, upper_closed in regions:
+        after_start = value > lower + tolerance or (lower_closed and value >= lower - tolerance)
+        before_end = value < upper - tolerance or (upper_closed and value <= upper + tolerance)
+        if after_start and before_end:
+            return True
+    return False
+
+
+def macaulay(x: float, offset: float, order: int) -> float:
+    """`<x - a>^n`, from its definition rather than from EngCalc."""
+    return (x - offset) ** order if x >= offset else 0.0
