@@ -5,6 +5,42 @@
 Current version: **0.23.3**.
 
 
+## Load cases and combinations
+
+```text
+%%eng
+M_D(x) = qD*x*(L-x)/2
+M_Lv(x) = qL*x*(L-x)/2
+
+case D = M_D(x)
+case Lv = M_Lv(x)
+
+combo U1 = 1.2*D + 1.6*Lv
+combo U2 = 1.4*D
+
+governing(U1(x), U2(x), x, 0, L)
+```
+
+```text
+U1(x) = 1.2 D(x) + 1.6 Lv(x)
+U2(x) = 1.4 D(x)
+```
+
+**A combination keeps the factors it was written with.** Written as an ordinary
+definition, `U1(x) = 1.2*M_D(x) + 1.6*M_Lv(x)` renders as
+`0.6*qD*x*(L - x) + 0.8*qL*x*(L - x)`, because 1.2/2 is 0.6. The number is right and the
+load combination is gone: a reviewer checking 1.2 and 1.6 against the code that requires
+them cannot, because the page no longer contains them.
+
+A case and a combination are both functions of the member coordinate, so `plot`,
+`governing`, `envelope` and `numeric` take them without knowing what they are. The
+variable is found rather than declared - everything else in a load case has a value, and
+what is left is the coordinate.
+
+This was deferred twice as sugar over plain functions, and the measurement that changed
+that is above: it is not the naming, it is that the factors survive.
+
+
 ## v0.23.3 three things the page showed
 
 **A magnitude outside the readable band goes to scientific notation, at both ends.**
