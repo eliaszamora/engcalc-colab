@@ -1,0 +1,42 @@
+## Viga simplemente apoyada con carga distribuida
+
+"""
+Se calculan las reacciones, la ley de momentos, la zona donde se supera el
+momento admisible y la flecha maxima de una viga de acero de 6 m con carga
+uniforme de servicio.
+"""
+
+## Datos
+
+L := 6*m
+q := 10*kN/m
+E := 200*GPa
+I_z := 80e6*mm**4
+
+## Reacciones
+
+eqFy = eq(R_A + R_B, q*L)
+eqMA = eq(R_B*L, q*L*L/2)
+solve(eqFy, eqMA, R_A, R_B)
+
+## Ley de momentos
+
+M(x) = R_A*x - q*x^2/2
+numeric(subs(M(x), x, L/2))
+
+plot(M(x), x, 0, L)
+
+## Zona donde se supera el momento admisible
+
+solve(M(x) > 20*kN*m, x, 0, L)
+
+## Flecha
+
+d_max = 5*q*L^4/(384*E*I_z)
+report(d_max)
+d_adm = L/300
+report(d_adm)
+
+## Resumen
+
+summary()

@@ -26,7 +26,10 @@ from .presentation import render_presented_plot
 from .renderer import (
     RenderSettings,
     render_aligned_results,
+    CharacteristicResult,
+    HtmlBlockResult,
     render_characteristic_result,
+    render_result,
     render_table,
 )
 
@@ -139,7 +142,24 @@ class EngMagics(Magics):
                     )
                     continue
 
-                if isinstance(result, (RootsResult, IntersectionsResult, ExtremaResult)):
+                # The union from the renderer, not a tuple written out here. This
+                # listed three types by hand and InequalityResult was added to the
+                # renderer without reaching it, so a `solve(M(x) > ..., x, 0, L)` cell
+                # raised AttributeError in the notebook while every contract passed:
+                # they called render_characteristic_result directly and never asked
+                # whether the magic would route anything to it.
+                if isinstance(result, HtmlBlockResult):
+                    _display_equation_group(
+                        pending_results,
+                        self.render_settings,
+                    )
+                    pending_results.clear()
+                    display(
+                        HTML(render_result(result, settings=self.render_settings))
+                    )
+                    continue
+
+                if isinstance(result, CharacteristicResult):
                     _display_equation_group(
                         pending_results,
                         self.render_settings,

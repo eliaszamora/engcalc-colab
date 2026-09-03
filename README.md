@@ -2,7 +2,34 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.23.0**.
+Current version: **0.23.1**.
+
+
+## v0.23.1 what the notebook actually shows
+
+Three merged features produced broken output in a real notebook, and every contract
+passed the whole time:
+
+- `solve(M(x) > 20*kN*m, x, 0, L)` raised `AttributeError` and killed the cell (0.23.0);
+- `governing(...)` and `summary()` had their finished HTML embedded inside a LaTeX array,
+  so the reader saw `\[\hspace{0.2em}\begin{array}{lcl}` as literal text beside the
+  values (0.19.0 and 0.20.0, in every release since).
+
+None was found by a test. All three were found the first time the product was rendered
+and looked at, which had never happened: every check asserted that a LaTeX string
+contained a substring, and a string that renders as garbage contains the same substrings.
+
+The magic now routes on the `CharacteristicResult` and `HtmlBlockResult` unions in the
+renderer rather than on type tuples written out by hand, so a result type added to a
+union is routed without anyone remembering to.
+
+The summary also disagreed with the working above it: `d = L/300` printed `20.00 mm` in
+the derivation and `0.02 m` in the summary, and the names were plain text where the
+working used mathematics. A reported value is a computed one, so it now renders exactly
+as `numeric(...)` renders it.
+
+`python tools/render_memoria.py memoria-preview.html` writes the page. Open it and look
+at it - that is what it is for.
 
 
 ## v0.23.0 solving an inequality
@@ -1347,4 +1374,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.23.0`.
+Version: `0.23.1`.

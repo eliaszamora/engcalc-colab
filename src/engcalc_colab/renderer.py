@@ -1327,6 +1327,14 @@ def render_table(
 
 CharacteristicResult = RootsResult | IntersectionsResult | ExtremaResult | InequalityResult
 
+# Results that are their own HTML block rather than a row in the aligned LaTeX array.
+# `render_result` returns finished HTML for these, so anything that drops one into
+# `render_aligned_results` embeds a <div> inside egin{array} and the reader sees the
+# markup as text. That is exactly what a notebook showed for `governing(...)` and
+# `summary()`, in every release since 0.19.0, while the contracts stayed green by
+# calling the renderers directly.
+HtmlBlockResult = SummaryResult | GoverningResult
+
 
 def _characteristic_role_text(role: str) -> str:
     return role.replace("_", " ")
@@ -1578,9 +1586,15 @@ def render_summary_result(
     short table the reader looks at instead of scrolling back through the working.
     """
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    # The name as mathematics and the value with `declared=False`, both to agree with
+    # the line that produced them. A reported value is a computed one, and `numeric(...)`
+    # shows a computed value in the unit of its own dimension: rendering it as declared
+    # put `0.02 m` in the summary two lines under `20.00 mm` in the working, for the same
+    # quantity. The name was plain text for the same reason - nobody checked the two
+    # against each other, because nobody had seen them side by side.
     rows = "".join(
-        f"<tr><td>{escape(name)}</td>"
-        f"<td>{_characteristic_quantity_math(quantity, active_settings)}</td></tr>"
+        f"<tr><td>{_characteristic_math(_render_lhs(name, None))}</td>"
+        f"<td>{_characteristic_math(_quantity_latex(quantity, settings=active_settings, declared=False))}</td></tr>"
         for name, quantity in result.entries
     )
     return (
