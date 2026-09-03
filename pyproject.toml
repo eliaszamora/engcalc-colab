@@ -7,7 +7,16 @@ name = "engcalc-colab"
 version = "0.25.0"
 description = "Compact symbolic and unit-aware engineering calculations for Google Colab and Jupyter"
 requires-python = ">=3.10"
-dependencies = ["sympy>=1.13", "pint>=0.24", "matplotlib>=3.8", "ipython>=8.18"]
+# The IPython floor is Colab's own pin, not the newest release. Colab installs
+# ipython==7.34.0, so a floor above it makes `%pip install engcalc-colab` upgrade
+# IPython underneath the platform this package exists for, and pip says so:
+#
+#   google-colab 1.0.0 requires ipython==7.34.0, but you have ipython 9.17.1
+#
+# Nothing here needs a newer one. The whole IPython surface is `Magics`, `cell_magic`,
+# `line_magic`, `magics_class`, `HTML`, `Math` and `display` - API that has been stable
+# since IPython 1.x. The full suite passes against 7.34.0, and CI keeps checking it.
+dependencies = ["sympy>=1.13", "pint>=0.24", "matplotlib>=3.8", "ipython>=7.34"]
 
 [project.optional-dependencies]
 dev = [
