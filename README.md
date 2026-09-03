@@ -2,7 +2,32 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.23.2**.
+Current version: **0.23.3**.
+
+
+## v0.23.3 three things the page showed
+
+**A magnitude outside the readable band goes to scientific notation, at both ends.**
+`I_z := 80e6*mm**4` printed as `80000000.00 mm^4` - eight zeros nobody writes or counts.
+It is now `8.00 x 10^7 mm^4`, in the unit the engineer declared. The floor case has been
+handled since 0.10.0; this is the same failure from the other side, where every digit
+survives and none can be read. The threshold is a million rather than a hundred thousand
+because `200000 MPa` is how a steel modulus is written.
+
+**A multi-letter name is upright.** `eqFy` in italic is spaced by MathJax as a product,
+so the reactions block read `e q F y`. Italic is for a quantity, which is a single
+letter; a name of several letters is a label. Only the base is touched, and only when
+SymPy has not already recognised it, so `theta` stays a theta and `d_{max}` is untouched.
+
+**A power of ten uses a cross, not a dot.** A wrapped product marks its continuation with
+`\cdot`. Once large magnitudes started rendering in scientific notation, that line read
+`\cdot 1/(8.00 \cdot 10^7 mm^4)` - the same mark carrying two meanings four characters
+apart. The cross is the conventional notation anyway.
+
+All three were found by rendering a memoria and reading it, with
+`python tools/render_memoria.py memoria-preview.html`. None could have been found by
+asserting that a LaTeX string contains a substring, which is what every other check here
+does: all three produce strings with the right substrings in them.
 
 
 ## v0.23.2 an equation is written once
@@ -1411,4 +1436,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.23.2`.
+Version: `0.23.3`.
