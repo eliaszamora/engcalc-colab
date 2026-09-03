@@ -566,12 +566,25 @@ class NumericContext:
             for symbol in sp.sympify(entry).free_symbols
         })
 
+        # Same rule as the scalar path: a unit literal resolves for the arithmetic and
+        # stays out of the substitution stage. Without this a column of forces reports
+        # itself as partially evaluated, because `kN` looks like a name nobody defined.
+        resolved_units = dict(overrides)
+        for entry in matrix:
+            resolved_units = self.unit_literal_overrides(entry, resolved_units)
+        for name in overrides:
+            resolved_units.pop(name, None)
+
         substitutions = {
             name: overrides[name] if name in overrides else self.values[name]
             for name in names
             if name in overrides or name in self.values
         }
-        unresolved = tuple(name for name in names if name not in substitutions)
+        unresolved = tuple(
+            name
+            for name in names
+            if name not in substitutions and name not in resolved_units
+        )
 
         if allowed_unresolved is not None:
             unexpected = tuple(
@@ -601,7 +614,9 @@ class NumericContext:
                 if expression.is_zero is True:
                     adaptable_zeros.add((row, col))
                 try:
-                    value = self._evaluate_sympy(expression, substitutions)
+                    value = self._evaluate_sympy(
+                        expression, {**resolved_units, **substitutions}
+                    )
                     quantity = self._as_quantity(value)
                 except DimensionalityError as exc:
                     raise EngEvaluationError(
