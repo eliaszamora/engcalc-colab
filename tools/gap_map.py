@@ -1,4 +1,17 @@
-"""Execute each exercise line by line against main and record where it breaks."""
+"""Execute each exercise line by line against main and record where it breaks.
+
+This measures reach, not correctness. It catches exceptions and looks at nothing else,
+so "15 of 18 exercises run end to end" means fifteen raise no error - never that any
+answer is right. Measured: with the Macaulay bracket permanently switched on, which
+ruins every beam carrying a point load, this tool still reports 15/18 and every line
+green. So do a summation that drops its last term and a bracket that opens one step
+early.
+
+The answers are checked in `tests/test_exercise_answers.py`, where every expected value
+is worked from the statics by hand. Read the two numbers together: this one says how
+much of the language an exercise can reach, that one says whether what came back is
+true.
+"""
 
 import json
 import pathlib
