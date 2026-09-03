@@ -5,6 +5,27 @@
 Current version: **0.24.0**.
 
 
+## Help, inside the notebook
+
+A notebook cannot help with this language on its own. `Shift+Tab` reads a Python
+object's signature, and `integrate` inside `%%eng` is a name in a restricted grammar
+rather than a function object. So the help is a line magic, beside `%eng_reset` and
+`%eng_config`:
+
+```python
+%eng_help              # every call, with its first form
+%eng_help integrate    # the forms, what goes in each slot, and an example
+```
+
+Every example in the catalogue is executed by the test suite. A help text that does not
+run is worse than none: it teaches a form the language refuses, and the reader blames
+their own typing.
+
+`examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
+reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
+the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
 ## v0.24.0 one name for one operation
 
 `integral(...)` is retired. `integrate(...)` has been the name since 0.11.0, and the old

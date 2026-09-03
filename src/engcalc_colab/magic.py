@@ -8,6 +8,7 @@ from IPython.display import HTML, Math, display
 
 from .engine import EngineeringEngine
 from .errors import EngCalcError
+from .reference import CATALOGUE
 from .models import (
     EvaluationResult,
     ExtremaResult,
@@ -29,6 +30,8 @@ from .renderer import (
     CharacteristicResult,
     HtmlBlockResult,
     render_characteristic_result,
+    render_call_help,
+    render_call_index,
     render_result,
     render_table,
 )
@@ -187,6 +190,32 @@ class EngMagics(Magics):
                 self.render_settings,
             )
             print(f"engcalc: {exc}")
+        return None
+
+    @line_magic
+    def eng_help(self, line: str):
+        """`%eng_help` lists the calls; `%eng_help integrate` explains one.
+
+        A notebook cannot help with this language on its own: `Shift+Tab` reads a Python
+        object's signature, and `integrate` inside `%%eng` is a name in a restricted
+        grammar rather than a function object. So the help is a line magic, beside
+        `%eng_reset` and `%eng_config`.
+        """
+        name = line.strip()
+        if not name:
+            ordered = sorted(CATALOGUE.values(), key=lambda entry: entry.name)
+            display(HTML(render_call_index(ordered)))
+            return None
+
+        entry = CATALOGUE.get(name)
+        if entry is None:
+            near = sorted(other for other in CATALOGUE if other.startswith(name[:2]))
+            hint = f"; did you mean {', '.join(near)}?" if near else ""
+            print(f"engcalc: no help for '{name}'{hint}")
+            print("engcalc: %eng_help with no name lists every call")
+            return None
+
+        display(HTML(render_call_help(entry)))
         return None
 
     @line_magic
