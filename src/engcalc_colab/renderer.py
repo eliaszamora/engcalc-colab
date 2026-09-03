@@ -1808,3 +1808,67 @@ def _render_lhs(
         _latex(sp.Symbol(parameter)) for parameter in parameters
     )
     return rf"{target_latex}\left({parameter_latex}\right)"
+
+
+_HELP_STYLE = (
+    "<style>"
+    ".engcalc-help{margin:0.35rem 0 0.55rem 0;font-size:0.94rem;line-height:1.5;}"
+    ".engcalc-help code{background:rgba(127,127,127,0.12);padding:0.05rem 0.25rem;"
+    "border-radius:3px;}"
+    ".engcalc-help-name{font-weight:600;font-size:1.02rem;}"
+    ".engcalc-help-summary{margin:0.1rem 0 0.35rem 0;}"
+    ".engcalc-help-heading{font-weight:600;margin:0.4rem 0 0.1rem 0;}"
+    ".engcalc-help-arg{margin:0.05rem 0 0.05rem 1.1rem;}"
+    ".engcalc-help-example{margin:0.15rem 0 0 0;white-space:pre;"
+    "background:rgba(127,127,127,0.10);padding:0.4rem 0.6rem;border-radius:4px;"
+    "overflow-x:auto;}"
+    ".engcalc-help-row{margin:0.08rem 0;}"
+    "</style>"
+)
+
+
+def render_call_help(entry) -> str:
+    """One call's forms, what goes in each slot, and an example that runs."""
+    forms = "".join(
+        f'<div class="engcalc-help-row"><code>{escape(form)}</code></div>'
+        for form in entry.forms
+    )
+    arguments = "".join(
+        f'<div class="engcalc-help-arg"><code>{escape(name)}</code> \u2014 {escape(meaning)}</div>'
+        for name, meaning in entry.arguments
+    )
+    argument_block = (
+        f'<div class="engcalc-help-heading">Arguments</div>{arguments}'
+        if arguments
+        else ""
+    )
+    return (
+        _HELP_STYLE
+        + '<div class="engcalc-help">'
+        + f'<div class="engcalc-help-name">{escape(entry.name)}</div>'
+        + f'<div class="engcalc-help-summary">{escape(entry.summary)}</div>'
+        + forms
+        + argument_block
+        + '<div class="engcalc-help-heading">Example</div>'
+        + f'<div class="engcalc-help-example">{escape(entry.example)}</div>'
+        + "</div>"
+    )
+
+
+def render_call_index(entries) -> str:
+    """Every call with its first form, for `%eng_help` with no argument."""
+    rows = "".join(
+        f'<div class="engcalc-help-row"><code>{escape(entry.forms[0])}</code>'
+        f" \u2014 {escape(entry.summary)}</div>"
+        for entry in entries
+    )
+    return (
+        _HELP_STYLE
+        + '<div class="engcalc-help">'
+        + '<div class="engcalc-help-name">EngCalc calls</div>'
+        + '<div class="engcalc-help-summary">'
+        + "%eng_help &lt;name&gt; for the arguments and an example."
+        + "</div>"
+        + rows
+        + "</div>"
+    )
