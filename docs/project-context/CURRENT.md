@@ -449,6 +449,32 @@ It is not obvious that the answer is to make `numeric` resolve the namespace: ca
 consistent across the whole language, and changing it is a core-path change with an
 unmeasured blast radius. Measure before deciding, as with the unit metric.
 
+### The gap 0.21.0 uncovered: `numeric()` does not read unit literals
+
+**OPEN, and it needs a decision rather than a patch.**
+
+`M = 5*kN` then `numeric(M)` fails with *"requires values for: kN. Define the missing
+numeric values first, for example: kN := <value>*<unit>"* - advice nobody should follow.
+In the symbolic layer a unit is an ordinary free symbol, and only the characteristic
+domain path (`_resolve_domain_numeric_value`) calls `unit_literal_overrides` to resolve
+one. This predates 0.21.0; E14 simply never reached the line before.
+
+It is what still blocks E14's last line. `L_max` comes out of the solve carrying `kN`
+from the `500*kN` the engineer wrote, so asking for its number fails.
+
+The one-line fix - pass `unit_literal_overrides` on the `numeric()` path too - is not
+safe as it stands. Of the fifteen unit aliases, three are single letters: **N, m, s.**
+`N` is axial force in any structures memoria. A sheet that writes `sigma = N/A` and
+forgets to define `N` is told so today; with the aliases resolved it would silently be
+told that sigma is one newton per unit area. Partial resolution does not save it either:
+if `A := 100*mm**2` is defined and `N` is not, every symbol resolves and the wrong
+answer is complete and quiet.
+
+The distinction that would settle it - a symbol that entered the expression from a unit
+literal in the source, as opposed to a bare undefined name - is erased by the time the
+symbolic layer stores `Symbol('kN')`. Restoring it means marking unit literals at parse
+time, which is a real change and not this one.
+
 ### Quality Gate: a lapse, recorded
 
 **0.10.1, the QG-3 fix, 0.11.0 and 0.12.0 were merged without a Deep Gate
