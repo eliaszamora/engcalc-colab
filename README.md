@@ -2,7 +2,25 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.23.3**.
+Current version: **0.24.0**.
+
+
+## v0.24.0 one name for one operation
+
+`integral(...)` is retired. `integrate(...)` has been the name since 0.11.0, and the old
+one was kept as a permanent alias for memorias written before the rename. There turned
+out to be none - EngCalc had never been run in a notebook by anyone - so the reason for
+carrying two names for one operation was void.
+
+Typing the old name says what to write instead, because it is still in the version notes
+above and in the design history, where somebody can read it:
+
+```text
+'integral' was renamed to 'integrate'; write integrate(...) instead
+```
+
+Retiring it also hands the name back: `integral := 5*kN*m` is now an ordinary quantity a
+sheet may define, which a reserved-but-broken name would not allow.
 
 
 ## v0.23.3 three things the page showed
@@ -1329,7 +1347,6 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
 - `integrate(expr, var, lower, upper)` — definite integral.
 - `integrate(expr, var)` — indefinite integral. No constant of integration is invented;
   write the one you need, as on paper: `integrate(M(x)/(E*I), x) + C1`.
-- `integral(...)` is a permanent alias for both forms; `integrate` is the canonical name.
 - `diff(expr, var)` — first derivative.
 - `diff(expr, var, order)` — higher derivative.
 - `solve(lhs = rhs, unknown)` — solve one equation for one unknown.
@@ -1399,6 +1416,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.24.0** — `integral(...)` is retired; `integrate(...)` is the one name for the operation, and typing the old one says what to write instead.
 - **0.23.0** — `solve(M(x) > 20*kN*m, x, 0, L)` answers an inequality with the region that satisfies it.
 - **0.22.0** — `numeric(...)` reads a unit literal as the unit, agreeing with `:=`; scalars and matrices alike.
 - **0.21.0** — `assume(...)` now decides between several answers from `solve`, and the sheet shows which were ruled out.
@@ -1411,7 +1429,7 @@ v0.9.0 currently does not provide:
 - **0.14.0** — `solve` shows every solution instead of refusing when there is more than one. The statement defines nothing, since there is no single value to assign; `roots(...)` remains the tool for taking the physically admissible root.
 - **0.13.0** — indefinite integral: `integrate(expr, var)` returns the antiderivative, so an elastic curve is derived from its shear rather than quoted. No constant of integration is invented; the engineer writes it.
 - **0.12.0** — scalar equation systems: `solve(eq_1, ..., eq_n, x_1, ..., x_n)` solves n equations for n unknowns, renders each on its own labelled line and defines them. Statics and elastic-curve boundary conditions no longer need a matrix.
-- **0.11.0** — `integrate(...)` is the canonical name for the definite integral, matching the convention every mathematical Python user already knows. `integral(...)` keeps working as a permanent alias.
+- **0.11.0** — `integrate(...)` is the name for the definite integral, matching the convention every mathematical Python user already knows. `integral(...)` was kept as an alias at the time and retired in 0.24.0.
 - **0.10.1** — the display unit is chosen by readable magnitude rather than by counting significant figures, so an admissible deflection of exactly `L/300` no longer stays in metres beside the deflection it bounds.
 - **0.10.0** — engineering presentation: quantities shown in units an engineer writes, declared units preserved, algebra-produced compound units replaced by units of their own dimension, one unit per table column and per matrix, and scientific notation below the family floor. No computed value changes.
 - **0.9.2** — audit remediation and reliability: resilient exact-first characteristic discovery with deterministic fallback, explicit-real engineering symbols, consistent direct unit bounds, normalized Piecewise topology, exact characteristic presentation polish, declared IPython runtime support, and permanent Python 3.10–3.14 CI.
@@ -1436,4 +1454,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.23.3`.
+Version: `0.24.0`.

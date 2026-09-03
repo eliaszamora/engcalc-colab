@@ -14,7 +14,7 @@ def test_auto_symbols_and_integral():
     results = eval_cell(engine, """
 M_0 = -q/2*(L-x)^2
 m_B = L-x
-Delta_B = integral(M_0*m_B/(E*I), x, 0, L)
+Delta_B = integrate(M_0*m_B/(E*I), x, 0, L)
 """)
     q, L, E, I = tuple(engine.resolve_symbol(name) for name in "q L E I".split())
     assert sp.simplify(results[-1].value + q*L**4/(8*E*I)) == 0
@@ -78,8 +78,8 @@ def test_propped_cantilever_reference_solution():
     results = eval_cell(engine, """
 M_0 = -q/2*(L-x)^2
 m_B = L-x
-Delta_B = integral(M_0*m_B/(E*I), x, 0, L)
-f_BB = integral(m_B^2/(E*I), x, 0, L)
+Delta_B = integrate(M_0*m_B/(E*I), x, 0, L)
+f_BB = integrate(m_B^2/(E*I), x, 0, L)
 R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
 """)
     q, L, E, I = tuple(engine.resolve_symbol(name) for name in "q L E I".split())
@@ -106,11 +106,11 @@ def test_assigning_a_multi_solution_solve_is_concise_and_line_aware():
     assert len(message.splitlines()) == 1, "the message must stay one line"
 
 
-def test_integral_wrong_arity_is_concise_and_line_aware():
+def test_integrate_wrong_arity_is_concise_and_line_aware():
     engine = EngineeringEngine()
     with pytest_raises(EngEvaluationError) as captured:
-        eval_cell(engine, "A = integral(x, x, 0)")
-    assert str(captured.value) == "line 1: integral expects 2 arguments (expression, variable) for an indefinite integral, or 4 (expression, variable, lower, upper) for a definite one; got 3"
+        eval_cell(engine, "A = integrate(x, x, 0)")
+    assert str(captured.value) == "line 1: integrate expects 2 arguments (expression, variable) for an indefinite integral, or 4 (expression, variable, lower, upper) for a definite one; got 3"
 
 
 def test_rejects_function_scalar_kind_conflict():
@@ -141,8 +141,8 @@ def test_solve_unknown_stays_symbolic_when_cell_is_reexecuted():
     cell = """
 M_0 = -q/2*(L-x)^2
 m_B = L-x
-Delta_B = integral(M_0*m_B/(E*I), x, 0, L)
-f_BB = integral(m_B^2/(E*I), x, 0, L)
+Delta_B = integrate(M_0*m_B/(E*I), x, 0, L)
+f_BB = integrate(m_B^2/(E*I), x, 0, L)
 R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
 """
     first = eval_cell(engine, cell)[-1].value

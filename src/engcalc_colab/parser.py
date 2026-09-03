@@ -24,11 +24,17 @@ _CHARACTERISTIC_CALLS = {"roots", "extrema", "intersections", "governing"}
 _SCALAR_CALLS = {
     "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"
 }
+_RETIRED_CALLS = {
+    # ``integral`` was the original name and ``integrate`` replaced it in 0.11.0, on the
+    # principle of not inventing names for operations that have recognised ones. The
+    # alias was kept for memorias written under the old name; there turned out to be
+    # none, so it is retired rather than carried forever. It is named here so the
+    # message says what to write instead of only that the name is unknown - the old one
+    # still appears in this repository's design history.
+    "integral": "integrate",
+}
 _ALLOWED_CALLS = {
-    # ``integrate`` is canonical - the name every mathematical Python user knows -
-    # and ``integral`` is a permanent alias, kept because existing memorias and the
-    # documented worked examples use it.
-    "integrate", "integral", "diff", "solve", "simplify", "expand", "factor",
+    "integrate", "diff", "solve", "simplify", "expand", "factor",
     # Written `<x-a>^n`; the call form exists because that is what the notation is
     # rewritten to, and is accepted directly as well.
     "macaulay",
@@ -417,6 +423,13 @@ def _validate_normal_node(
         if node.func.id.startswith("__"):
             raise EngSyntaxError(
                 f"line {line_no}: unsupported function '{node.func.id}'"
+            )
+
+        if node.func.id in _RETIRED_CALLS:
+            replacement = _RETIRED_CALLS[node.func.id]
+            raise EngSyntaxError(
+                f"line {line_no}: '{node.func.id}' was renamed to '{replacement}'; "
+                f"write {replacement}(...) instead"
             )
 
         if node.func.id in _CHARACTERISTIC_CALLS:

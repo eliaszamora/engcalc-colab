@@ -29,7 +29,7 @@ def test_magic_persists_state_and_reset_clears_it():
     shell.run_cell_magic("eng", "", "M_0 = -q/2*(L-x)^2")
     magics = _eng_magics_instance(shell)
     assert "M_0" in magics.engine.namespace
-    shell.run_cell_magic("eng", "", "Delta = integral(M_0, x, 0, L)")
+    shell.run_cell_magic("eng", "", "Delta = integrate(M_0, x, 0, L)")
     assert "Delta" in magics.engine.namespace
     shell.run_line_magic("eng_reset", "")
     assert magics.engine.namespace == {}
@@ -42,8 +42,8 @@ def test_reference_beam_runs_through_eng_magic():
     shell.run_cell_magic("eng", "", """
 M_0 = -q/2*(L-x)^2
 m_B = L-x
-Delta_B = integral(M_0*m_B/(E*I), x, 0, L)
-f_BB = integral(m_B^2/(E*I), x, 0, L)
+Delta_B = integrate(M_0*m_B/(E*I), x, 0, L)
+f_BB = integrate(m_B^2/(E*I), x, 0, L)
 R_B = solve(Delta_B + R_B*f_BB = 0, R_B)
 """)
     magics = _eng_magics_instance(shell)
@@ -57,7 +57,7 @@ def test_magic_prints_concise_user_errors_without_traceback(capsys):
         'A = __import__("os")',
         "A = obj.attr",
         "R = solve(x^2 = 1, x)",
-        "A = integral(x, x, 0)",
+        "A = integrate(x, x, 0)",
     ]:
         shell.run_cell_magic("eng", "", source)
     output = capsys.readouterr().out
@@ -66,7 +66,7 @@ def test_magic_prints_concise_user_errors_without_traceback(capsys):
     assert "unsupported function '__import__'" in output
     assert "unsupported syntax 'Attribute'" in output
     assert "solve returned 2 solutions, so there is no single value to assign" in output
-    assert "integral expects 2 arguments (expression, variable) for an indefinite integral, or 4 (expression, variable, lower, upper) for a definite one; got 3" in output
+    assert "integrate expects 2 arguments (expression, variable) for an indefinite integral, or 4 (expression, variable, lower, upper) for a definite one; got 3" in output
 
 
 def test_eng_magic_returns_none_so_jupyter_does_not_echo_internal_results():

@@ -53,7 +53,7 @@ def test_heading_margins_and_divider_are_subtle(monkeypatch):
 
 def test_three_column_layout_keeps_extra_equals_on_right_side(monkeypatch):
     displayed = _capture(
-        "### Compatibilidad\nA = integral(x, x, 0, L)",
+        "### Compatibilidad\nA = integrate(x, x, 0, L)",
         monkeypatch,
     )
 

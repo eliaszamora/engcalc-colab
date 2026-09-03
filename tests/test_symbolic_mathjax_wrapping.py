@@ -31,7 +31,7 @@ def test_long_symbolic_integral_breaks_input_and_evaluated_expression_across_row
     engine = EngineeringEngine()
     result = evaluate(
         engine,
-        "delta_B = integral((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)",
+        "delta_B = integrate((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)",
     )
 
     rows = _display_rows(result, RenderSettings())
@@ -47,7 +47,7 @@ def test_long_solve_equation_is_wrapped_and_solution_gets_its_own_row():
     engine = EngineeringEngine()
     evaluate(
         engine,
-        "delta_B = integral((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)",
+        "delta_B = integrate((-q*(L-s)^2/2 + R_B_aux*(L-s))*(L-s), s, 0, L)",
     )
     result = evaluate(engine, "R_B(q) = solve(delta_B, R_B_aux)")
 

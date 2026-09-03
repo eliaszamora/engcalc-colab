@@ -16,7 +16,7 @@ def test_piecewise_integral_remains_symbolic_and_is_numerically_evaluable():
     results = eval_cell(
         engine,
         "q(x) = piecewise(q1, x < a, q2, x <= L, 0)\n"
-        "I = integral(q(x), x, 0, L)\n"
+        "I = integrate(q(x), x, 0, L)\n"
         "q1 := 8*kN/m\nq2 := 4*kN/m\na := 3*m\nL := 6*m\n"
         "numeric(I)",
     )

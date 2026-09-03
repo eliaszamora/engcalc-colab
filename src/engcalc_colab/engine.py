@@ -1311,7 +1311,7 @@ class _Evaluator(ast.NodeVisitor):
             self._require_arity(name, args, 1, "expression")
             return sp.Abs(args[0])
 
-        if name in ("integrate", "integral"):
+        if name == "integrate":
             # Two arguments is the indefinite integral, four the definite one. The
             # message below names the function the engineer actually typed, and names
             # both forms, because three arguments almost always means a bound was
