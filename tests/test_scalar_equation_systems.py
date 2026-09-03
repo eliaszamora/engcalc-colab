@@ -254,3 +254,30 @@ def test_a_named_expression_still_shows_the_equation_it_becomes():
 
     assert "= 0" in latex, latex
     assert "X_{1}" in latex
+
+
+def test_the_two_argument_form_follows_the_same_rule():
+    """`z = solve(eq1, y)` where `eq1` is a named equation shows only `z = 5`.
+
+    Pinned separately because the rule lives in two places - the system form and the
+    single-unknown form - and a build that applied it only to the system passed every
+    other contract here. The named-expression case above cannot see the difference: an
+    expression is displayed either way.
+    """
+    import engcalc_colab.renderer as renderer
+
+    engine = EngineeringEngine()
+    named = renderer.render_aligned_results(
+        [run_cell(engine, "eq1 = eq(2*y, 10)\nz = solve(eq1, y)")[-1]]
+    )
+    inline = renderer.render_aligned_results(
+        [run_cell(EngineeringEngine(), "z = solve(eq(2*y, 10), y)")[-1]]
+    )
+
+    assert "2 y = 10" not in named, named
+    assert len(named.split(r"\\")) == 1
+
+    # The same solve written inline does show it, so this is the rule and not a build
+    # that simply stopped displaying equations.
+    assert "2 y = 10" in inline, inline
+    assert len(inline.split(r"\\")) == 2
