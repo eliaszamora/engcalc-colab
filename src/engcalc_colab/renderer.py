@@ -23,6 +23,8 @@ from .models import (
     GoverningResult,
     InequalityResult,
     IntersectionsResult,
+    LoadCaseResult,
+    LoadCombinationResult,
     MatrixShape,
     NumericAssignmentResult,
     NumericEvaluationResult,
@@ -963,6 +965,42 @@ def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -
     return rows
 
 
+def _load_case_rows(result, settings: RenderSettings) -> list[str]:
+    """`D(x) = <expression>` - a named load case reads as the function it is."""
+    lhs = _render_lhs(result.name, result.variable)
+    rows: list[str] = []
+    _append_assignment_stage(
+        rows, lhs, _bounded_expression_rows(result.expression, settings=settings)
+    )
+    return rows
+
+
+def _load_combination_rows(result, settings: RenderSettings) -> list[str]:
+    """`U1(x) = 1.2 D(x) + 1.6 Lv(x)` - the factors, not their product with the bodies.
+
+    Written as an ordinary definition this renders `0.6 qD x (L - x) + 0.8 qL x (L - x)`:
+    the same number, and no longer a load combination. A reviewer checking 1.2 and 1.6
+    against the code that requires them cannot, because the page no longer has them.
+    """
+    pieces: list[str] = []
+    for factor, case in result.terms:
+        name = _render_lhs(case, result.variable)
+        negative = factor.could_extract_minus_sign()
+        magnitude = -factor if negative else factor
+        sign = "-" if negative else "+"
+        term = (
+            name
+            if magnitude == 1
+            else rf"{_latex(magnitude)} \, {name}"
+        )
+        pieces.append(term if not pieces and not negative else f"{sign} {term}")
+    body = " ".join(pieces)
+
+    rows: list[str] = []
+    _append_assignment_stage(rows, _render_lhs(result.name, result.variable), [body])
+    return rows
+
+
 def _system_solve_rows(result: SystemSolveResult, settings: RenderSettings) -> list[str]:
     """One row per equation and one per unknown, in the sheet's own aligned array.
 
@@ -1051,6 +1089,10 @@ def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[s
         return _numeric_evaluation_rows(result, settings)
     if isinstance(result, PartialNumericEvaluationResult):
         return _partial_numeric_evaluation_rows(result, settings)
+    if isinstance(result, LoadCombinationResult):
+        return _load_combination_rows(result, settings)
+    if isinstance(result, LoadCaseResult):
+        return _load_case_rows(result, settings)
     if isinstance(result, SystemSolveResult):
         return _system_solve_rows(result, settings)
     if isinstance(result, EvaluationResult):
@@ -1112,6 +1154,9 @@ def _value_row_spacings(
 ) -> list[str]:
     if len(result_rows) <= 1:
         return []
+
+    if isinstance(result, (LoadCaseResult, LoadCombinationResult)):
+        return _stage_spacing_sequence([len(result_rows)])
 
     if isinstance(result, SystemSolveResult):
         stage_lengths = [len(result.equations), len(result.solutions)]

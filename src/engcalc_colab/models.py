@@ -63,6 +63,8 @@ class ParsedStatement:
     blank_before: bool = False
     display_options: tuple[tuple[str, str], ...] = ()
     matrix_literals: tuple[MatrixLiteralBinding, ...] = ()
+    declaration: str | None = None
+    """`"case"` or `"combo"` when the line declared one; `None` for every other line."""
 
     @property
     def parameter(self) -> str | None:
@@ -419,6 +421,41 @@ class RootsResult:
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
         object.__setattr__(self, "intervals", tuple(self.intervals))
+
+
+@dataclass(frozen=True)
+class LoadCombinationResult:
+    """`combo U1 = 1.2*D + 1.6*L`, shown with its factors rather than multiplied out.
+
+    Written as an ordinary definition, `U1(x) = 1.2*D(x) + 1.6*Lv(x)` renders as
+    `0.6*qD*x*(L - x) + 0.8*qL*x*(L - x)`: mathematically the same and no longer a load
+    combination. The reader cannot check 1.2 and 1.6 against the code that requires
+    them, because the page no longer contains them.
+
+    So the combination keeps the terms as written, and the expanded expression lives
+    beside them for everything else to use.
+    """
+
+    statement: ParsedStatement
+    name: str
+    variable: str
+    terms: tuple[tuple[Any, str], ...]
+    expression: Any
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "terms", tuple(self.terms))
+        if not self.terms:
+            raise ValueError("a load combination must carry at least one case")
+
+
+@dataclass(frozen=True)
+class LoadCaseResult:
+    """`case D = M_D(x)` - a named load case, ready to be combined."""
+
+    statement: ParsedStatement
+    name: str
+    variable: str
+    expression: Any
 
 
 @dataclass(frozen=True)

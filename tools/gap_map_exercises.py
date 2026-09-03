@@ -121,9 +121,9 @@ qL := 12*kN/m
 M_D(x) = qD*x*(L-x)/2
 M_L(x) = qL*x*(L-x)/2
 case D = M_D(x)
-case L = M_L(x)
-combo U1 = 1.2*D + 1.6*L
-plot(M_U1(x), x, 0, L)
+case Lv = M_L(x)
+combo U1 = 1.2*D + 1.6*Lv
+plot(U1(x), x, 0, L)
 """),
 
 ("E11 Estructuras - envolvente gobernante", "estructuras", """

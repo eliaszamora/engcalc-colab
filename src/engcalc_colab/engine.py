@@ -24,6 +24,8 @@ from .models import (
     CharacteristicInterval,
     CharacteristicPoint,
     DiscardedSolutions,
+    LoadCaseResult,
+    LoadCombinationResult,
     InequalityResult,
     EigenvalueEntry,
     EigenvalueSet,
@@ -81,7 +83,7 @@ from .matrix_analysis import (
 )
 from .matrix_numeric import ensure_common_scale
 from .matrix_solve import solve_linear_system
-from .numeric import NumericContext
+from .numeric import _UNIT_ALIASES, NumericContext
 from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
 from .tables import normalize_explicit_points, normalize_uniform_points
 
@@ -223,15 +225,143 @@ class EngineeringEngine:
         self.assumptions: dict[str, dict[str, bool]] = {}
         # Values marked with report(...), in the order they were first marked.
         self.reported: dict[str, object] = {}
+        self.load_cases: dict[str, str] = {}
         self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
         self.numeric_context = NumericContext()
         # Shared by reference, so a name defined symbolically later is visible when a
         # numeric evaluation needs it. See NumericContext._resolve_symbolic_names.
         self.numeric_context.symbolic_namespace = self.namespace
 
+    def _case_variable(self, expression, where: str) -> str:
+        """The one symbol a case is a function of.
+
+        Everything else in a load case has a value: `qD`, `L`, the units. What is left
+        is the coordinate along the member, so it is found rather than declared - which
+        is what lets `case D = M_D(x)` read the way a combination is written down.
+        """
+        free = sorted(
+            symbol.name
+            for symbol in sp.sympify(expression).free_symbols
+            if symbol.name not in self.numeric_context.values
+            and symbol.name not in _UNIT_ALIASES
+        )
+        if len(free) != 1:
+            raise EngEvaluationError(
+                f"{where} must be a function of exactly one variable; "
+                + (
+                    "it has none, so there is nothing to plot it against"
+                    if not free
+                    else "found " + ", ".join(free)
+                )
+            )
+        return free[0]
+
+    def _declare_load(self, statement, evaluator):
+        """`case D = ...` and `combo U1 = 1.2*D + 1.6*L`.
+
+        A combination keeps its terms as written. Defined as an ordinary function,
+        `U1(x) = 1.2*D(x) + 1.6*Lv(x)` renders as `0.6*qD*x*(L - x) + 0.8*qL*x*(L - x)`:
+        the same number and no longer a load combination, so nobody can check 1.2 and
+        1.6 against the code that requires them. The expanded form is kept beside the
+        terms for everything else to use.
+        """
+        name = statement.target
+        if name is None:
+            raise EngEvaluationError(
+                f"{statement.declaration} needs a name, as in "
+                f"{statement.declaration} D = M_D(x)"
+            )
+        if name in self.functions or name in self.namespace:
+            raise EngEvaluationError(
+                f"redefinition conflict: '{name}' is already defined"
+            )
+
+        if statement.declaration == "case":
+            expression = evaluator.visit(statement.expression.body)
+            variable = self._case_variable(expression, f"a load case, '{name}',")
+            self.functions[name] = UserFunction(
+                parameters=(variable,),
+                expression=sp.sympify(expression),
+            )
+            self.load_cases[name] = variable
+            return LoadCaseResult(
+                statement=statement,
+                name=name,
+                variable=variable,
+                expression=sp.sympify(expression),
+            )
+
+        if not self.load_cases:
+            raise EngEvaluationError(
+                "a combination is built from load cases; declare one first, as in "
+                "case D = M_D(x)"
+            )
+
+        # The case names stay free symbols here, so the written terms survive.
+        previous = {
+            case: evaluator.symbol_overrides.get(case) for case in self.load_cases
+        }
+        evaluator.symbol_overrides.update(
+            {case: sp.Symbol(case) for case in self.load_cases}
+        )
+        try:
+            written = sp.sympify(evaluator.visit(statement.expression.body))
+        finally:
+            for case, value in previous.items():
+                if value is None:
+                    evaluator.symbol_overrides.pop(case, None)
+                else:
+                    evaluator.symbol_overrides[case] = value
+
+        used = [case for case in self.load_cases if written.has(sp.Symbol(case))]
+        if not used:
+            raise EngEvaluationError(
+                f"'{name}' names no load case; the ones declared are "
+                + ", ".join(sorted(self.load_cases))
+            )
+
+        variables = {self.load_cases[case] for case in used}
+        if len(variables) > 1:
+            raise EngEvaluationError(
+                "the cases in a combination must share one variable; found "
+                + ", ".join(sorted(variables))
+            )
+        variable = variables.pop()
+
+        terms = tuple((written.coeff(sp.Symbol(case)), case) for case in used)
+        rebuilt = sum(
+            factor * sp.Symbol(case) for factor, case in terms
+        )
+        if sp.simplify(written - rebuilt) != 0:
+            raise EngEvaluationError(
+                "a combination is a sum of factored load cases, as in "
+                "combo U1 = 1.2*D + 1.6*L"
+            )
+
+        symbol = self.resolve_symbol(variable)
+        expanded = written.subs(
+            {
+                sp.Symbol(case): self.functions[case].expression
+                for case in used
+            }
+        )
+        self.functions[name] = UserFunction(
+            parameters=(variable,),
+            expression=sp.sympify(expanded),
+        )
+        self.load_cases[name] = variable
+        return LoadCombinationResult(
+            statement=statement,
+            name=name,
+            variable=variable,
+            terms=terms,
+            expression=sp.sympify(expanded),
+        )
+
     def reset(self) -> None:
         self.namespace.clear()
         self.reported.clear()
+        self.load_cases.clear()
         self.functions.clear()
         self.symbols.clear()
         self.numeric_guards.clear()
@@ -270,6 +400,9 @@ class EngineeringEngine:
     ):
         evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))
         try:
+            if getattr(statement, "declaration", None) is not None:
+                return self._declare_load(statement, evaluator)
+
             if isinstance(statement, ParsedNumericAssignment):
                 quantity = self.numeric_context.assign(
                     statement.target,
