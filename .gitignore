@@ -12,3 +12,6 @@ gapmap.json
 
 # local render preview, not part of the package
 memoria-preview.html
+
+# local preview server config, not part of the package
+.claude/

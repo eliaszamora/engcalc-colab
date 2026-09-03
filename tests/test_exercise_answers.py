@@ -11,8 +11,8 @@ grade itself. Where a textbook formula exists it is quoted as a second, independ
 check: a propped cantilever's prop reaction is 3qL/8 whatever EngCalc thinks, and a
 simply supported UDL deflects 5qL^4/(384EI).
 
-Exercises E5, E10 and E12 are absent because they do not run: two need `check`, which the
-project declined, and one needs `case`/`combo`, measured as sugar over plain functions.
+Exercises E5 and E12 are absent because they do not run: both need `check`, which the
+project declined. E10 joined this file when `case`/`combo` was built.
 """
 
 import math
@@ -266,3 +266,58 @@ def test_e18_the_reported_maximum_moment_reaches_the_summary():
     assert [name for name, _value in summary.entries] == ["M_max"]
     quantity = summary.entries[0][1]
     assert quantity.to("kN*m").magnitude == pytest.approx(45.0)
+
+
+def test_e10_the_factored_combination_totals_what_the_code_requires():
+    """L = 6 m, qD = 8 kN/m, qL = 12 kN/m, and U1 = 1.2D + 1.6L.
+
+    At midspan the dead moment is 8*36/8 = 36 kN*m and the live one 12*36/8 = 54, so
+    U1 is 1.2*36 + 1.6*54 = 129.6 kN*m. Worked here rather than read off the run.
+
+    E10 was the last exercise with a real capability gap. It now runs, and this is what
+    it must answer; the gap map only ever said it stopped raising.
+    """
+    engine, _results = run_exercise("E10")
+
+    assert function_at(engine, "D", "3*m", "kN*m") == pytest.approx(36.0)
+    assert function_at(engine, "Lv", "3*m", "kN*m") == pytest.approx(54.0)
+    assert function_at(engine, "U1", "3*m", "kN*m") == pytest.approx(129.6)
+
+
+def test_e10_the_combination_still_carries_its_factors():
+    """The reason `combo` exists, asserted on the exercise it was built for.
+
+    A combination that totalled correctly and printed `0.6*qD*x*(L-x)` would pass the
+    property above and lose the thing a reviewer checks.
+    """
+    engine, _results = run_exercise("E10")
+    combination = engine.functions["U1"]
+
+    assert combination.parameters == ("x",)
+    # The stored expression is expanded, as it must be to plot; the terms are what the
+    # page shows, and they are what this pins.
+    assert "1.2" in _rendered_combination(engine)
+    assert "1.6" in _rendered_combination(engine)
+
+
+def _rendered_combination(engine):
+    from engcalc_colab.renderer import render_aligned_results
+
+    source = next(
+        source
+        for title, _area, source in EXERCISES
+        if title.startswith("E10 ")
+    )
+    fresh = EngineeringEngine()
+    results = []
+    for line in [ln for ln in source.strip().splitlines() if ln.strip()]:
+        for item in parse_cell(line):
+            if isinstance(item, ParsedHeading):
+                continue
+            outcome = fresh.evaluate(item)
+            if outcome is not None:
+                results.append(outcome)
+    from engcalc_colab.models import LoadCombinationResult
+
+    combination = next(r for r in results if isinstance(r, LoadCombinationResult))
+    return render_aligned_results([combination])

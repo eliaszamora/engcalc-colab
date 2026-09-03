@@ -233,6 +233,9 @@ def parse_cell(
             lhs, rhs = _split_top_level_assignment(source)
             target: str | None = None
             parameters: tuple[str, ...] | None = None
+            declaration: str | None = None
+            if lhs is not None:
+                declaration, lhs = _split_declaration(lhs, line_no)
             if lhs is not None:
                 function_target = _parse_function_target(lhs.strip(), line_no)
                 if function_target is not None:
@@ -272,6 +275,7 @@ def parse_cell(
                 target=target,
                 parameters=parameters,
                 expression=expression,
+                declaration=declaration,
                 blank_before=pending_blank,
                 display_options=display_options,
                 matrix_literals=matrix_literals,
@@ -932,6 +936,28 @@ def _split_top_level_numeric_assignment(text: str) -> tuple[str, str] | None:
     if not lhs or not rhs:
         raise EngSyntaxError("malformed numeric assignment")
     return lhs, rhs
+
+
+_DECLARATIONS = ("case", "combo")
+
+
+def _split_declaration(lhs: str, line_no: int) -> tuple[str | None, str]:
+    """Pull a leading `case` or `combo` off an assignment's left-hand side.
+
+    `case D = M_D(x)` is a definition with a label on it, so it is split here rather
+    than given its own statement type: everything after the keyword is the ordinary
+    target and expression the rest of the parser already understands.
+    """
+    head, separator, rest = lhs.strip().partition(" ")
+    if not separator or head not in _DECLARATIONS:
+        return None, lhs
+    name = rest.strip()
+    if not _IDENTIFIER.fullmatch(name):
+        raise EngSyntaxError(
+            f"line {line_no}: {head} takes a plain name, as in "
+            f"{head} {'U1' if head == 'combo' else 'D'} = ..."
+        )
+    return head, name
 
 
 def _split_top_level_assignment(text: str) -> tuple[str | None, str]:
