@@ -555,12 +555,26 @@ the renderer, so a type added to a union is routed without anyone remembering.
 writes the page a notebook would show. **Run it and look at it** before believing a
 presentation claim.
 
-Still open, seen in that render and not fixed here:
+Two more came out of the same render and are now closed. The system-solve block was not
+merely misaligned: `render_system_solve_result` built a single-column array which
+`_standard_result_row` then split on its first " = ", injecting `& = &` into an
+environment declared `{l}`. Fixed in 0.23.1 by making each equation and each unknown a
+row of the sheet's own array. Two contracts had asserted
+`latex.count(r"\displaystyle") == 4` on the flat form, and the count was identical for
+the mangled output.
+
+Aligning it exposed the next one: every equation printed twice, once as its definition
+and once as the solve's echo. Fixed in 0.23.2. An equation passed by name is left where
+it is; written inline it is shown, because it exists nowhere else. The rule tests for a
+name **bound to an equation**, not merely for a name: `solve(delta_B, R_B_aux)` names an
+expression and displays `delta_B = 0` with the integral evaluated, which the reader has
+not seen.
+
+Still open, seen in that render and not fixed:
 
 - `I_z := 80e6*mm**4` prints as `80000000.00 mm^4`. Scientific notation exists for
   magnitudes below the family floor but not above it, and no engineer writes eight zeros.
 - multi-letter names print as products of italic letters, so `eqFy` reads as `e q F y`.
-- the equation-system block does not align its solutions with the equations above them.
 - a long substitution wraps to a line beginning with a stray multiplication dot.
 
 ### Quality Gate: a lapse, recorded
