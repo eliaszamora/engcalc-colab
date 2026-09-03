@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.24.0**.
+Current version: **0.25.0**.
 
 
 ## Help, inside the notebook
@@ -44,7 +44,7 @@ Retiring it also hands the name back: `integral := 5*kN*m` is now an ordinary qu
 sheet may define, which a reserved-but-broken name would not allow.
 
 
-## Load cases and combinations
+## v0.25.0 load cases and combinations
 
 ```text
 %%eng
@@ -1473,6 +1473,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.25.0** — `case D = M_D(x)` and `combo U1 = 1.2*D + 1.6*Lv`: a load combination keeps the factors it was written with, and `%eng_help` explains every call.
 - **0.24.0** — `integral(...)` is retired; `integrate(...)` is the one name for the operation, and typing the old one says what to write instead.
 - **0.23.0** — `solve(M(x) > 20*kN*m, x, 0, L)` answers an inequality with the region that satisfies it.
 - **0.22.0** — `numeric(...)` reads a unit literal as the unit, agreeing with `:=`; scalars and matrices alike.
@@ -1511,4 +1512,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.24.0`.
+Version: `0.25.0`.
