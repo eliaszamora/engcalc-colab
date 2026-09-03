@@ -170,7 +170,7 @@ numeric(L_max)
 L := 6*m
 q := 10*kN/m
 M(x) = q*x*(L-x)/2
-solve(M(x) > 20*kN*m, x)
+solve(M(x) > 20*kN*m, x, 0, L)
 """),
 
 ("E16 General - assumptions y simplificacion", "general", """

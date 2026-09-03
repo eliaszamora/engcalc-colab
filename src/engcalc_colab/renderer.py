@@ -20,6 +20,7 @@ from .models import (
     EvaluationResult,
     ExtremaResult,
     GoverningResult,
+    InequalityResult,
     IntersectionsResult,
     MatrixShape,
     NumericAssignmentResult,
@@ -1324,7 +1325,7 @@ def render_table(
 
 
 
-CharacteristicResult = RootsResult | IntersectionsResult | ExtremaResult
+CharacteristicResult = RootsResult | IntersectionsResult | ExtremaResult | InequalityResult
 
 
 def _characteristic_role_text(role: str) -> str:
@@ -1390,6 +1391,8 @@ def _characteristic_interval_text(
 
 
 def _characteristic_heading(result: CharacteristicResult) -> str:
+    if isinstance(result, InequalityResult):
+        return "Where " + escape(result.variable) + " satisfies the inequality"
     if isinstance(result, RootsResult):
         return f"Roots — {escape(result.display_label)}"
     if isinstance(result, IntersectionsResult):
@@ -1435,7 +1438,9 @@ def render_characteristic_result(
 
     for interval in result.intervals:
         interval_text = _characteristic_interval_text(interval, active_settings)
-        if isinstance(result, RootsResult) or interval.role == "roots":
+        if isinstance(result, InequalityResult) or interval.role == "satisfies":
+            text = f"{escape(result.variable)} in {interval_text}"
+        elif isinstance(result, RootsResult) or interval.role == "roots":
             text = f"all x in {interval_text}"
         elif isinstance(result, IntersectionsResult) or interval.role == "coincident":
             text = f"coincident on {interval_text}"
