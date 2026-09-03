@@ -2,7 +2,46 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.21.0**.
+Current version: **0.22.0**.
+
+
+## v0.22.0 numeric reads a unit as a unit
+
+A unit is an ordinary free symbol in the symbolic layer, so `M = 5*kN` stores an
+expression containing `kN`. Asking for its number used to refuse:
+
+```text
+requires values for: kN. Define the missing numeric values first,
+for example: kN := <value>*<unit>
+```
+
+Advice nobody should follow. Meanwhile `sigma := N/A` on the same sheet resolved `N` to
+newtons without complaint, because the numeric assignment path has read undefined unit
+aliases as units since the beginning. The two paths disagreed, and that was the defect.
+They agree now, on both the scalar and the matrix path:
+
+```text
+%%eng
+M = 5*kN
+numeric(M)          ->  5.00 kN
+Fv = [3*kN; 4*kN]
+numeric(Fv)         ->  [3.00; 4.00] kN
+```
+
+A unit resolves for the arithmetic and stays out of the substitution stage - nobody
+writes "kN = 1 kN" under their working - so it is printed as itself. A value defined
+with `:=` always beats the unit of the same name: on a sheet that says `m := 4.0`,
+`2*m` is 8, not two metres. And a name that is not a unit is still reported missing,
+which is the diagnostic that mattered most to keep.
+
+This closes E14 of the gap map, Euler buckling, which now runs end to end.
+
+**One hazard is pinned rather than hidden.** `N`, `m` and `s` are unit aliases and also
+perfectly ordinary variable names. A sheet that writes `sigma = N/A` meaning axial force
+and never defines `N` is told, quietly, that sigma is one newton per unit area. `:=` has
+always behaved this way; making the paths agree puts it in one place instead of two. It
+has a contract of its own so that the day EngCalc warns about it, the decision is visible
+rather than accidental.
 
 
 ## v0.21.0 assume decides between several answers
@@ -1236,6 +1275,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.22.0** — `numeric(...)` reads a unit literal as the unit, agreeing with `:=`; scalars and matrices alike.
 - **0.21.0** — `assume(...)` now decides between several answers from `solve`, and the sheet shows which were ruled out.
 - **0.20.0** — `report(...)` marks a value and `summary()` collects the marked ones into a table at the end of the memoria.
 - **0.19.0** — `governing(...)` reports which response governs on which interval, with exact boundaries taken from the crossovers rather than from the envelope's sampling.
@@ -1271,4 +1311,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.21.0`.
+Version: `0.22.0`.

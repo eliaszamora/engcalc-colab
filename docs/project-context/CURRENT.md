@@ -423,6 +423,7 @@ Etapa 1 complete takes the gap map from 4/18 to 9/18. Measured after each step, 
 | 0.19.0, governing intervals | **12 / 18** | **11** |
 | 0.20.0, report and summary | **13 / 18** | **9** |
 | 0.21.0, assumption-filtered solve | **13 / 18** | **8** |
+| 0.22.0, numeric reads unit literals | **14 / 18** | **7** |
 
 1.1 delivered exactly what the map predicted for it alone. 1.2 completed no further
 exercise, which the map had also predicted, and the reason turned out to be a gap nobody
@@ -451,7 +452,8 @@ unmeasured blast radius. Measure before deciding, as with the unit metric.
 
 ### The gap 0.21.0 uncovered: `numeric()` does not read unit literals
 
-**OPEN, and it needs a decision rather than a patch.**
+**CLOSED in 0.22.0.** The analysis below is kept because its premise was wrong in an
+instructive way, and the correction is recorded at the end of the section.
 
 `M = 5*kN` then `numeric(M)` fails with *"requires values for: kN. Define the missing
 numeric values first, for example: kN := <value>*<unit>"* - advice nobody should follow.
@@ -474,6 +476,27 @@ The distinction that would settle it - a symbol that entered the expression from
 literal in the source, as opposed to a bare undefined name - is erased by the time the
 symbolic layer stores `Symbol('kN')`. Restoring it means marking unit literals at parse
 time, which is a real change and not this one.
+
+**What that reasoning missed.** `:=` already resolves undefined unit aliases as units:
+`sigma := N/A` returns `0.01 newton/mm**2` and always has. The hazard was never being
+introduced - it was already there, on the more heavily used of the two paths. The actual
+defect was the disagreement between them, and the fix is to make `numeric()` follow the
+rule the numeric layer had all along.
+
+The N/m/s collision remains real and is now pinned by
+`tests/test_numeric_unit_literals.py::test_an_undefined_axial_force_reads_as_newtons`,
+which asserts the two paths agree rather than asserting the behaviour is desirable. It
+lives in one place instead of two, so a decision to warn is a change to one contract.
+
+**Two measurements are worth keeping.** A counter on the new branch stayed at zero across
+all 1203 tests: the existing corpus never reaches it, so the green suite was evidence of
+no regression and no evidence whatever that the change worked. Those had to be
+established separately, and the contracts exist because of that.
+
+And the first attempt put resolved units into the substitution dictionary, which crashed
+the renderer outright - a Pint `Unit` has no magnitude. The near miss was to "fix" that
+by substituting `1*kN` and printing `kN = 1 kN` under the working, a line no engineer
+writes. Units resolve for the arithmetic and stay out of the substitution stage.
 
 ### Quality Gate: a lapse, recorded
 

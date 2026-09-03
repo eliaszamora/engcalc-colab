@@ -507,11 +507,17 @@ class NumericContext:
         expr = sp.sympify(expression)
         overrides = overrides or {}
         expr = self._resolve_symbolic_names(expr)
+        # A unit is an ordinary free symbol in the symbolic layer, so `M = 5*kN` leaves
+        # `kN` behind and asking for its number used to fail with "define kN := <value>",
+        # which is advice nobody should follow. The numeric layer has always read an
+        # undefined unit alias as the unit on the `:=` path - `L := 6*m` is metres - so
+        # this is not a new rule, it is the same rule reaching the other path.
+        resolved_units = self.unit_literal_overrides(expr, overrides)
         names = sorted(symbol.name for symbol in expr.free_symbols)
         missing = [
             name
             for name in names
-            if name not in overrides and name not in self.values
+            if name not in resolved_units and name not in self.values
         ]
         if missing:
             hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
@@ -521,12 +527,16 @@ class NumericContext:
                 + f". {hint}"
             )
 
+        # A unit resolves for the arithmetic but never joins the substitution stage.
+        # Nobody writes "kN = 1 kN" under their working: a unit stays a unit there, and
+        # the printer renders any symbol it finds no substitution for as itself.
         substitutions = {
             name: overrides[name] if name in overrides else self.values[name]
             for name in names
+            if name in overrides or name in self.values
         }
         try:
-            value = self._evaluate_sympy(expr, substitutions)
+            value = self._evaluate_sympy(expr, {**resolved_units, **substitutions})
             quantity = self._as_quantity(value)
         except EngEvaluationError:
             raise
@@ -555,12 +565,26 @@ class NumericContext:
             for entry in matrix
             for symbol in sp.sympify(entry).free_symbols
         })
+
+        # Same rule as the scalar path: a unit literal resolves for the arithmetic and
+        # stays out of the substitution stage. Without this a column of forces reports
+        # itself as partially evaluated, because `kN` looks like a name nobody defined.
+        resolved_units = dict(overrides)
+        for entry in matrix:
+            resolved_units = self.unit_literal_overrides(entry, resolved_units)
+        for name in overrides:
+            resolved_units.pop(name, None)
+
         substitutions = {
             name: overrides[name] if name in overrides else self.values[name]
             for name in names
             if name in overrides or name in self.values
         }
-        unresolved = tuple(name for name in names if name not in substitutions)
+        unresolved = tuple(
+            name
+            for name in names
+            if name not in substitutions and name not in resolved_units
+        )
 
         if allowed_unresolved is not None:
             unexpected = tuple(
@@ -590,7 +614,9 @@ class NumericContext:
                 if expression.is_zero is True:
                     adaptable_zeros.add((row, col))
                 try:
-                    value = self._evaluate_sympy(expression, substitutions)
+                    value = self._evaluate_sympy(
+                        expression, {**resolved_units, **substitutions}
+                    )
                     quantity = self._as_quantity(value)
                 except DimensionalityError as exc:
                     raise EngEvaluationError(
