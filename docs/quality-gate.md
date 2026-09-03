@@ -131,6 +131,33 @@ author happened to think of. These are the first covered, in `quality_tests/deep
 | inequality regions | `test_inequality_properties.py` | a polynomial evaluated in plain Python from its own coefficients |
 | Macaulay brackets | `test_macaulay_properties.py` | the bracket's definition: zero before the offset, the shifted power after |
 | definite and indefinite integrals | `test_integration_properties.py` | the closed form of a monomial integral |
+| scalar equation systems, `assume` | `test_equation_system_properties.py` | the answer is chosen first and the equations are built from it |
+| summations and `subs` | `test_summation_and_substitution_properties.py` | the closed forms of an arithmetic series and a sum of squares |
+| `governing` | `test_governing_properties.py` | two lines built from a crossover point chosen in advance |
+| `report` and `summary` | `test_report_summary_properties.py` | which names, in what order, and what a repeat does |
+| unit literals in `numeric` | `test_unit_literal_properties.py` | the magnitude and unit the sheet wrote |
+
+### The rule this Gate learned twice
+
+**The numeric layer has a dimensionless fast path and a dimensional slow path, and a
+property written without units tests only one of them.**
+
+It happened twice, and neither time was it noticed by reading the code:
+
+| Family | Dimensionless property | With a unit |
+|---|---|---|
+| Macaulay bracket permanently on | green | RED |
+| summation dropping its last term | green | RED |
+
+`sum(3*i, i, 1, 5)` is still 45 with the per-term loop broken, because a dimensionless
+summand goes to SymPy's `Sum` directly. `sum(P*i, i, 1, 5)` with `P := 10*kN` returns
+100 kN instead of 150. The same shape holds for the bracket, where `subs` resolves
+`SingularityFunction(2, 0, 1)` before the numeric branch is ever reached.
+
+**The question to ask of any property here is which path its units send it down.** Both
+families now cover both paths and carry a Level C property asserting the two agree,
+because a sheet that answered differently depending on whether a load carried a unit
+would be a defect in its own right.
 
 **A bracket has two implementations and the first draft of its properties reached only
 one.** Without units SymPy resolves `SingularityFunction(2, 0, 1)` during `subs`, so the
@@ -140,10 +167,10 @@ properties were added after measuring that, and there is a Level C property asse
 two paths agree, because a sheet that answered differently depending on whether a
 coordinate carried a unit would be a defect in its own right.
 
-Measured locally, one run of the whole Deep Gate: **31 properties in 15 min 13 s**, of
-which the three new families are 3 min 37 s (inequality 53 s, Macaulay 1 min 37 s,
-integration 1 min 7 s). The Gate runs weekly and on every push to `main`, not per PR, so
-this budget is spent where it is affordable.
+Measured locally, one run of the whole Deep Gate: **53 properties in 17 min 43 s**. The
+eight families above are 22 of those properties and about 6 minutes of it. The Gate runs
+weekly and on every push to `main`, never per PR, so this budget is spent where it is
+affordable.
 
 **Exactly at its offset the bracket returns a dimensionless zero rather than `0 m`.**
 That is the language's adaptable zero and it is deliberate: a genuine zero takes the
@@ -264,9 +291,11 @@ failure mode it exists to prevent.
 
 The gate does **not** protect these; they were never explored and remain open work:
 
-- `assume`-filtered solve, `governing`, `report`/`summary`, evaluated summations, `subs`,
-  scalar equation systems and unit-literal resolution in `numeric` - every one of them
-  covered by examples only, which is where the three families above started;
+- `case`/`combo`, if it is ever built;
+- the renderer, beyond the presentation contracts in `tests/`: what a page *looks like*
+  has no property, and three merged features reached a notebook broken while every
+  contract passed. `tools/render_memoria.py` is the instrument, and a pair of eyes is
+  still the only oracle;
 - roots separated by less than `0.05`;
 - coefficients with substantially more than three decimal places;
 - Piecewise with more than two branches, and nested Piecewise;
