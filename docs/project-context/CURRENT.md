@@ -570,12 +570,15 @@ name **bound to an equation**, not merely for a name: `solve(delta_B, R_B_aux)` 
 expression and displays `delta_B = 0` with the integral evaluated, which the reader has
 not seen.
 
-Still open, seen in that render and not fixed:
+The remaining three were closed in 0.23.3, and the third turned out to be a consequence
+of the first. Scientific notation now applies above a ceiling as well as below the floor,
+so `80000000.00` is `8.00 x 10^7`; a multi-letter base renders upright, so `eqFy` is one
+name rather than four sliding letters; and a power of ten uses `	imes` rather than
+`\cdot`, because the wrapped-product continuation already owns the dot and
+`\cdot 1/(8.00 \cdot 10^7 mm^4)` gave one mark two meanings four characters apart.
 
-- `I_z := 80e6*mm**4` prints as `80000000.00 mm^4`. Scientific notation exists for
-  magnitudes below the family floor but not above it, and no engineer writes eight zeros.
-- multi-letter names print as products of italic letters, so `eqFy` reads as `e q F y`.
-- a long substitution wraps to a line beginning with a stray multiplication dot.
+The `\quad \cdot` continuation marker itself was left alone. It is a contracted choice
+from earlier work, and once the glyphs stopped colliding it reads correctly.
 
 ### Quality Gate: a lapse, recorded
 

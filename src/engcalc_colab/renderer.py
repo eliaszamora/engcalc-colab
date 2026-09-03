@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from html import escape
 
 import sympy as sp
+from sympy.printing.conventions import split_super_sub
 from sympy.printing.latex import LatexPrinter
 
 from pint.errors import DimensionalityError
@@ -64,6 +65,26 @@ _DEFAULT_RENDER_SETTINGS = RenderSettings()
 
 
 class _EngineeringLatexPrinter(LatexPrinter):
+    def _print_Symbol(self, expr, style=None):
+        """A multi-letter name is upright, so `eqFy` is not read as `e q F y`.
+
+        Italic is for a quantity, which is a single letter. A name of several letters is
+        a label, and setting it in italic makes MathJax space it as a product: the
+        reactions block of a memoria showed `eqFy` and `eqMA` as four and four sliding
+        letters. This is the ISO 80000-2 rule and what every typeset engineering
+        document does.
+
+        Only the base is touched, and only when SymPy has not already recognised it:
+        `theta` must stay a theta, not become upright "theta". Subscripts are left alone
+        - `d_{max}` in italic is near-universal in practice, and changing it would churn
+        every name in the project for a defect nobody reported.
+        """
+        base, _supers, _subs = split_super_sub(expr.name)
+        if len(base) > 1 and not super()._print_Symbol(sp.Symbol(base)).startswith("\\"):
+            upright = sp.Symbol(rf"\mathrm{{{base}}}" + expr.name[len(base):])
+            return super()._print_Symbol(upright, style) if style else super()._print_Symbol(upright)
+        return super()._print_Symbol(expr, style) if style else super()._print_Symbol(expr)
+
     def _print_Mul(self, expr):
         if not expr.is_commutative:
             return super()._print_Mul(expr)
@@ -310,19 +331,36 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
 def _scientific_latex(magnitude: float, precision: int) -> str:
     exponent = int(math.floor(math.log10(abs(magnitude))))
     mantissa = magnitude / (10.0**exponent)
-    return rf"{mantissa:.{precision}f} \cdot 10^{{{exponent}}}"
+    # `\times`, not `\cdot`. It is the conventional mark for a power of ten, and it keeps
+    # the glyph distinct from the multiplication dot that starts a wrapped product line.
+    # With both as dots a continuation read `· 1/(8.00 · 10^7 mm^4)`: the same mark
+    # carrying two meanings four characters apart.
+    return rf"{mantissa:.{precision}f} \times 10^{{{exponent}}}"
+
+
+# Above this, a fixed-decimal render stops being readable: `I_z := 80e6*mm**4` printed
+# as `80000000.00`, eight zeros nobody writes or counts. The ceiling is a million rather
+# than a hundred thousand because a steel modulus is written `200000 MPa`, and rendering
+# that as `2.00 * 10^5` would be worse than the problem.
+_FIXED_DECIMAL_CEILING = 1e6
 
 
 def _magnitude_text(magnitude, settings: RenderSettings) -> str:
-    """Format one magnitude, falling back to scientific notation below the floor.
+    """Format one magnitude, in scientific notation outside the readable band.
 
     Only values above ``zero_tolerance`` are owed a readable form; below it a value
     is a genuine zero by an existing approved contract and still renders as zero.
+
+    The floor case is P-1: a value so small that a fixed-decimal render keeps none of
+    its digits. The ceiling is the same failure from the other side - every digit is
+    kept and none of them can be read.
     """
     magnitude = float(magnitude)
     if magnitude == 0.0 or abs(magnitude) < settings.zero_tolerance:
         return f"{0.0:.{settings.precision}f}"
     if _significant_figures(magnitude, settings.precision) == 0:
+        return _scientific_latex(magnitude, settings.precision)
+    if abs(magnitude) >= _FIXED_DECIMAL_CEILING:
         return _scientific_latex(magnitude, settings.precision)
     return f"{magnitude:.{settings.precision}f}"
 
