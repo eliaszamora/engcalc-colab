@@ -46,8 +46,17 @@ def test_every_solution_is_labelled_with_its_unknown():
 def test_each_solution_is_rendered_on_its_own_line():
     import engcalc_colab.renderer as renderer
 
-    latex = renderer.render_result(run_cell(EngineeringEngine(), "solve(x^2 - 4, x)")[-1])
-    assert latex.count(r"\displaystyle") == 3, latex  # the equation, then both solutions
+    result = run_cell(EngineeringEngine(), "solve(x^2 - 4, x)")[-1]
+    latex = renderer.render_aligned_results([result])
+
+    # The equation, then both solutions, each an aligned row of the sheet's own array
+    # rather than a line inside a nested one. The old assertion counted `\displaystyle`
+    # and was blind to the difference: the nested form had the same count.
+    rows = latex.split(r"\\")
+    assert len(rows) == 3, latex
+    assert "x^{2} - 4 = 0" in rows[0]
+    assert len([row for row in rows if "x & = &" in row]) == 2, latex
+    assert r"\begin{array}" not in "".join(rows[1:]), latex
     assert not [char for char in latex if ord(char) < 32]
 
 

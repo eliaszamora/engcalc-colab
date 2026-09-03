@@ -925,6 +925,29 @@ def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -
     return rows
 
 
+def _system_solve_rows(result: SystemSolveResult, settings: RenderSettings) -> list[str]:
+    """One row per equation and one per unknown, in the sheet's own aligned array.
+
+    This used to render its own single-column array and hand it to
+    `_standard_result_row`, which splits a rendering on its first " = " and wraps the
+    halves in column separators. The split landed inside the nested array, so `& = &`
+    was injected into an environment declared `{l}`: the first solution picked up
+    separators, the other three had none, and none of them lined up with the equations
+    above. A reader sees a block that drifts left for no reason.
+
+    Rows here mean the unknowns share the `=` column with everything else on the page,
+    which is the whole point of the aligned array.
+    """
+    rows = [rf" & & \displaystyle {_latex(equation)}" for equation in result.equations]
+    for name, value in result.solutions:
+        lhs = _render_lhs(name, None)
+        rows.append(
+            rf"\displaystyle {lhs} & = & \displaystyle {_value_latex(value, settings)}"
+        )
+    rows.extend(_discard_note_rows(result.discarded))
+    return rows
+
+
 def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
     return _symbolic_value_rows(result, settings) + _discard_note_rows(result.discarded)
 
@@ -990,6 +1013,8 @@ def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[s
         return _numeric_evaluation_rows(result, settings)
     if isinstance(result, PartialNumericEvaluationResult):
         return _partial_numeric_evaluation_rows(result, settings)
+    if isinstance(result, SystemSolveResult):
+        return _system_solve_rows(result, settings)
     if isinstance(result, EvaluationResult):
         return _symbolic_evaluation_rows(result, settings)
     return [_standard_result_row(result, settings)]
@@ -1049,6 +1074,18 @@ def _value_row_spacings(
 ) -> list[str]:
     if len(result_rows) <= 1:
         return []
+
+    if isinstance(result, SystemSolveResult):
+        stage_lengths = [len(result.equations), len(result.solutions)]
+        notes = len(_discard_note_rows(result.discarded))
+        if notes:
+            stage_lengths.append(notes)
+        spacings = _stage_spacing_sequence(stage_lengths)
+        if len(spacings) != len(result_rows) - 1:
+            raise RuntimeError(
+                "renderer semantic spacing metadata does not match rendered row count"
+            )
+        return spacings
 
     if isinstance(result, NumericMatrixEvaluationResult):
         stage_lengths = [1, 1]
@@ -1329,7 +1366,7 @@ CharacteristicResult = RootsResult | IntersectionsResult | ExtremaResult | Inequ
 
 # Results that are their own HTML block rather than a row in the aligned LaTeX array.
 # `render_result` returns finished HTML for these, so anything that drops one into
-# `render_aligned_results` embeds a <div> inside egin{array} and the reader sees the
+# `render_aligned_results` embeds a <div> inside \begin{array} and the reader sees the
 # markup as text. That is exactly what a notebook showed for `governing(...)` and
 # `summary()`, in every release since 0.19.0, while the contracts stayed green by
 # calling the renderers directly.
@@ -1612,7 +1649,10 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
     if isinstance(result, AssumptionResult):
         return render_assumption_result(result)
     if isinstance(result, SystemSolveResult):
-        return render_system_solve_result(result, settings=settings)
+        raise TypeError(
+            "render_result does not support system solve results; they are rows in the "
+            "aligned array, and flattening one to a string is what misaligned them"
+        )
     if isinstance(result, (RootsResult, IntersectionsResult, ExtremaResult)):
         raise TypeError(
             "render_result does not support characteristic results; "
