@@ -1526,28 +1526,6 @@ def render_characteristic_result(
         + '</div>'
     )
 
-def render_system_solve_result(
-    result: SystemSolveResult,
-    *,
-    settings: RenderSettings | None = None,
-) -> str:
-    """The equations as written, then one labelled line per unknown.
-
-    Never an anonymous vector: the whole reason the unknowns are named in the call is
-    that the reader - and the engineer scanning the memoria - can see which value
-    belongs to which reaction.
-    """
-    rows = [rf"\displaystyle {_latex(equation)}" for equation in result.equations]
-    for name, value in result.solutions:
-        lhs = _render_lhs(name, None)
-        rows.append(rf"\displaystyle {lhs} = {_value_latex(value, settings or _DEFAULT_RENDER_SETTINGS)}")
-    rows.extend(
-        row.replace(" & & ", "", 1) for row in _discard_note_rows(result.discarded)
-    )
-    body = r"\\".join(rows)
-    return rf"\hspace{{0.2em}}\begin{{array}}{{l}} {body} \end{{array}}"
-
-
 _ASSUMPTION_RELATIONS = {
     "positive": ">",
     "nonnegative": r"\geq",

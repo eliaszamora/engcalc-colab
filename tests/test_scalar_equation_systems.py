@@ -77,7 +77,9 @@ def test_each_unknown_is_rendered_on_its_own_labelled_line():
     rows = latex.split(r"\\")
     solution_rows = [row for row in rows if "R_{A} & = &" in row or "R_{B} & = &" in row]
     assert len(solution_rows) == 2, latex
-    assert r"\begin{array}" not in "".join(solution_rows)
+    # One array, the sheet's own. A second `\begin{array}` means the solutions went back
+    # into a nested one, which is where the malformed output came from.
+    assert latex.count(r"\begin{array}") == 1, latex
     # A control character reached this template once, from an escape in the source that
     # turned `\begin` into a backspace, and the assertions above still passed while the
     # output read `egin{array}`. Nothing but the eye caught it.
@@ -187,3 +189,68 @@ def test_repeating_an_unknown_is_refused():
     with pytest.raises(EngEvaluationError) as excinfo:
         run_cell(engine, "e1 = eq(a + b, 3)\ne2 = eq(a - b, 1)\nsolve(e1, e2, a, a)")
     assert "distinct" in str(excinfo.value)
+
+
+def _solve_rows(source: str) -> list[str]:
+    import engcalc_colab.renderer as renderer
+
+    engine = EngineeringEngine()
+    latex = renderer.render_aligned_results([run_cell(engine, source)[-1]])
+    return latex.split(r"\\")
+
+
+def test_an_equation_given_by_name_is_not_printed_a_second_time():
+    """A statics sheet printed every equation twice: once as its definition, once as
+    the solve's echo of it. Nobody writes the same equation twice by hand.
+
+    Only the unknowns are left, which is what the reader came to this line for.
+    """
+    rows = _solve_rows(_STATICS)
+
+    assert len(rows) == 2
+    assert all("&  = &" in row or "& = &" in row for row in rows), rows
+    assert "R_{A} + R_{B}" not in "".join(rows)
+
+
+def test_an_equation_written_inline_is_printed_because_it_is_nowhere_else():
+    """The other half of the rule. Dropping these would hide what was solved."""
+    rows = _solve_rows(
+        "L := 6*m\n"
+        "q := 10*kN/m\n"
+        "solve(eq(R_A + R_B, q*L), eq(R_B*L, q*L*L/2), R_A, R_B)"
+    )
+
+    assert len(rows) == 4
+    assert "R_{A} + R_{B} = q L" in rows[0]
+
+
+def test_only_the_inline_equation_is_printed_when_the_two_forms_are_mixed():
+    rows = _solve_rows(
+        "L := 6*m\n"
+        "q := 10*kN/m\n"
+        "eqFy = eq(R_A + R_B, q*L)\n"
+        "solve(eqFy, eq(R_B*L, q*L*L/2), R_A, R_B)"
+    )
+
+    assert len(rows) == 3
+    assert "L R_{B}" in rows[0]
+    assert "R_{A} + R_{B}" not in "".join(rows)
+
+
+def test_a_named_expression_still_shows_the_equation_it_becomes():
+    """The rule is not "the argument is a name".
+
+    `solve(delta_B, R_B_aux)` names an expression, and the line displays `delta_B = 0`
+    with the integral evaluated. The equality is new: the reader saw `delta_B` defined,
+    never `delta_B = 0`. Treating every named argument as a repeat would delete the
+    equation being solved from a flexibility calculation.
+    """
+    import engcalc_colab.renderer as renderer
+
+    engine = EngineeringEngine()
+    run_cell(engine, "L := 6*m\nq := 10*kN/m\nd_B = q*L^4/8 - X*L^3/3")
+    result = run_cell(engine, "X_1 = solve(d_B, X)")[-1]
+    latex = renderer.render_aligned_results([result])
+
+    assert "= 0" in latex, latex
+    assert "X_{1}" in latex

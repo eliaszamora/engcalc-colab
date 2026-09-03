@@ -1209,7 +1209,9 @@ class _Evaluator(ast.NodeVisitor):
                     self.symbol_overrides[unknown_name] = previous
             if not isinstance(equation, sp.Equality):
                 equation = sp.Eq(equation, 0, evaluate=False)
-            self.display_input = equation
+            # Same rule as the system form.
+            if not self._already_on_the_page(node.args[0]):
+                self.display_input = equation
             solutions = sp.solve(equation, unknown)
             if len(solutions) == 0:
                 raise EngEvaluationError(f"solve found no solution for {unknown}")
@@ -2639,6 +2641,22 @@ class _Evaluator(ast.NodeVisitor):
             f"received {received}"
         )
 
+    def _already_on_the_page(self, node: ast.AST) -> bool:
+        """Has the reader seen this exact equation under a name of its own?
+
+        `solve(eqFy, eqMA, R_A, R_B)` re-showed both equations, so a statics sheet
+        printed each of them twice - once as its definition and once as the solve's
+        echo. Nobody writes the same equation twice by hand.
+
+        The test is not merely "the argument is a name". `solve(delta_B, R_B_aux)` names
+        an *expression*, and what the solve displays is `delta_B = 0` with the integral
+        evaluated: the equality is new, and dropping it would hide the equation being
+        solved. Only a name already bound to an `Eq` is a genuine repeat.
+        """
+        if not isinstance(node, ast.Name):
+            return False
+        return isinstance(self.engine.namespace.get(node.id), sp.Equality)
+
     def _visit_equation_system(self, node) -> None:
         """`solve(eq_1, ..., eq_n, x_1, ..., x_n)`.
 
@@ -2673,11 +2691,14 @@ class _Evaluator(ast.NodeVisitor):
         self.symbol_overrides.update(dict(zip(names, symbols)))
         try:
             equations = []
+            unnamed = []
             for equation_node in node.args[:half]:
                 equation = self.visit(equation_node)
                 if not isinstance(equation, sp.Equality):
                     equation = sp.Eq(equation, 0, evaluate=False)
                 equations.append(equation)
+                if not self._already_on_the_page(equation_node):
+                    unnamed.append(equation)
         finally:
             for name, value in previous.items():
                 if value is None:
@@ -2705,7 +2726,7 @@ class _Evaluator(ast.NodeVisitor):
             )
 
         self.system_evaluation = _SystemSolveEvaluation(
-            equations=tuple(equations),
+            equations=tuple(unnamed),
             solutions=tuple(
                 (name, mapping[symbol]) for name, symbol in zip(names, symbols)
             ),
