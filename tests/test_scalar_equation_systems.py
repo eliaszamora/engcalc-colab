@@ -61,13 +61,23 @@ def test_each_unknown_is_rendered_on_its_own_labelled_line():
     import engcalc_colab.renderer as renderer
 
     engine = EngineeringEngine()
-    latex = renderer.render_result(run_cell(engine, _STATICS)[-1])
+    result = run_cell(engine, _STATICS)[-1]
+    latex = renderer.render_aligned_results([result])
 
     assert latex.count("R_{A}") >= 1
     assert latex.count("R_{B}") >= 1
-    # Both equations as written, then both unknowns: four rows.
-    assert latex.count(r"\displaystyle") == 4
     assert r"\begin{array}" in latex and r"\end{array}" in latex
+
+    # Rows of the sheet's own array, so the unknowns share its `=` column. This used to
+    # render a nested single-column array which `_standard_result_row` then split on its
+    # first " = ", injecting `& = &` into an environment declared `{l}`: one solution
+    # picked up separators, the rest had none, and the block drifted left of the
+    # equations above it. Counting `\displaystyle` could not see that - the mangled
+    # version had the same count.
+    rows = latex.split(r"\\")
+    solution_rows = [row for row in rows if "R_{A} & = &" in row or "R_{B} & = &" in row]
+    assert len(solution_rows) == 2, latex
+    assert r"\begin{array}" not in "".join(solution_rows)
     # A control character reached this template once, from an escape in the source that
     # turned `\begin` into a backspace, and the assertions above still passed while the
     # output read `egin{array}`. Nothing but the eye caught it.

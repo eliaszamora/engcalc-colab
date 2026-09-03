@@ -9,3 +9,6 @@ build/
 
 # byproduct of tools/gap_map.py, regenerated on every run
 gapmap.json
+
+# local render preview, not part of the package
+memoria-preview.html

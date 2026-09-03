@@ -528,6 +528,41 @@ how much of the language an exercise can reach; the answer file says whether wha
 back is true. Quoting the first as evidence of the second is the mistake this section
 exists to prevent.
 
+### Nobody had ever looked at the output
+
+Elias has never run EngCalc in Colab. He has been trusting the reports, and every report
+until 0.23.1 rested on the same kind of check: that a LaTeX string contains a substring.
+A string that renders as garbage contains all the same substrings.
+
+The first time the product was rendered and read, it had **three defects in merged
+releases**, all with passing contracts:
+
+| Defect | Shipped in | Contracts said |
+|---|---|---|
+| `solve(ineq, ...)` raised AttributeError and killed the cell | 0.23.0 | green |
+| `governing(...)` HTML embedded inside a LaTeX array | 0.19.0 | green |
+| `summary()` the same | 0.20.0 | green |
+
+Every one of those contracts called `render_characteristic_result` or
+`render_summary_result` directly. None asked whether the magic would route anything to
+them, and the magic listed its types in a hand-written tuple. `tests/test_characteristics_magic.py`
+had established the right pattern in 0.9.x; three features were added without following it.
+
+The routing now goes through the `CharacteristicResult` and `HtmlBlockResult` unions in
+the renderer, so a type added to a union is routed without anyone remembering.
+
+`tools/render_memoria.py` is the instrument that found them. It drives the real magic and
+writes the page a notebook would show. **Run it and look at it** before believing a
+presentation claim.
+
+Still open, seen in that render and not fixed here:
+
+- `I_z := 80e6*mm**4` prints as `80000000.00 mm^4`. Scientific notation exists for
+  magnitudes below the family floor but not above it, and no engineer writes eight zeros.
+- multi-letter names print as products of italic letters, so `eqFy` reads as `e q F y`.
+- the equation-system block does not align its solutions with the equations above them.
+- a long substitution wraps to a line beginning with a stray multiplication dot.
+
 ### Quality Gate: a lapse, recorded
 
 **0.10.1, the QG-3 fix, 0.11.0 and 0.12.0 were merged without a Deep Gate

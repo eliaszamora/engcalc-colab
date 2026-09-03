@@ -88,8 +88,29 @@ def test_the_summary_renders_a_row_per_entry():
     engine = EngineeringEngine()
     html = renderer.render_result(run_cell(engine, _MEMORIA)[-1])
     assert html.count("<tr>") == 2
-    assert "M_max" in html and "R_A" in html
+    # As mathematics, matching the working above rather than as the literal source text.
+    # A memoria that writes M_max one way in the derivation and another in the summary
+    # reads like two different quantities.
+    assert r"\(M_{max}\)" in html and r"\(R_{A}\)" in html
     assert not [char for char in html if ord(char) < 32]
+
+
+def test_the_summary_shows_a_value_the_way_the_working_above_showed_it():
+    """`d = L/300` is 20.00 mm in the working; the summary said 0.02 m.
+
+    A computed value carries no author-declared unit, so `numeric(...)` renders it in the
+    unit of its own dimension. The summary rendered the same quantity as declared and put
+    `0.02 m` two lines under `20.00 mm`. Nobody saw it because nobody had looked at the
+    two side by side until the memoria was rendered and read.
+    """
+    import engcalc_colab.renderer as renderer
+
+    engine = EngineeringEngine()
+    html = renderer.render_result(
+        run_cell(engine, "L := 6*m\nd = L/300\nreport(d)\nsummary()")[-1]
+    )
+    assert "20.00" in html and "mm" in html
+    assert "0.02" not in html
 
 
 def test_an_empty_summary_says_so_rather_than_printing_nothing():
