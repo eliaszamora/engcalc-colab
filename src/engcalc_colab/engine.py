@@ -638,6 +638,9 @@ class EngineeringEngine:
                     display_name=display_name,
                     display_arguments=display_arguments,
                     piecewise_evaluation=piecewise_evaluation,
+                    unit_literals=self.numeric_context.unit_literal_names(
+                        symbolic_expression
+                    ),
                 )
 
             if evaluator.numeric_evaluation is not None:
@@ -665,6 +668,9 @@ class EngineeringEngine:
                     quantity=quantity,
                     display_name=display_name,
                     display_arguments=display_arguments,
+                    unit_literals=self.numeric_context.unit_literal_names(
+                        symbolic_expression
+                    ),
                 )
 
             if statement.target is not None:
