@@ -346,6 +346,27 @@ def _best_in_family(quantity, family, settings: RenderSettings, *, start=None):
     return min(candidates, key=lambda candidate: _band_distance(candidate.magnitude))
 
 
+# Pint calls these dimensionless, and they are, but an angle is not a ratio anyone
+# wants reduced: 30 deg is 30 deg, not 0.52.
+_ANGLE_UNIT_NAMES = frozenset({"degree", "radian"})
+
+
+def _is_a_dimensionless_ratio(quantity) -> bool:
+    """True when the units are left over from arithmetic on a value that is a number.
+
+    The test is "dimensionless and not an angle", not "more than two unit symbols". The
+    second was measured against the same defect in a different disguise - a demand in
+    `N*m` over a capacity in `kN*m` reduces to `newton/kilonewton`, two symbols - and
+    would have printed `1000.00 N/kN` while calling the ratio fixed.
+    """
+    if not getattr(quantity, "dimensionless", False):
+        return False
+    # No early return for a value that is already unitless: converting one to base units
+    # is its own value, so the guard an earlier draft had here survived mutation and is
+    # left out rather than kept as a branch no test can tell apart from its absence.
+    return str(quantity.units) not in _ANGLE_UNIT_NAMES
+
+
 def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     """Choose the unit the reader sees.
 
@@ -368,6 +389,22 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
         magnitude = float(quantity.magnitude)
     except (TypeError, ValueError):
         return quantity
+    # A ratio that is physically a number reads as a number. `Mu/phiMn` with a capacity
+    # computed from a stress and a volume carries `kN*m/(MPa*mm^3)`, which is
+    # dimensionless with a scale factor of 1e6, so the page said 9.63e-7 for a
+    # demand/capacity of 0.96.
+    #
+    # Above the zero-tolerance return, not below it. Below looked safer - the rule that
+    # a zero is decided in its stored unit exists so rescaling m to mm cannot lift an
+    # approved zero out of the band - but it was measured, and a ratio of exactly zero
+    # printed `0.00 kN*m/(MPa*mm^3)`, carrying the artefact unit in the one place it is
+    # least defensible. That rule is about choosing between units a value could
+    # reasonably wear. A dimensionless value has only one, its own number, so deciding
+    # zero-ness anywhere else decides it on a scale the algebra picked by accident.
+    # `_magnitude_text` still applies the tolerance, now to the honest magnitude.
+    if not declared and _is_a_dimensionless_ratio(quantity):
+        return quantity.to_base_units()
+
     if abs(magnitude) < settings.zero_tolerance:
         return quantity
 
