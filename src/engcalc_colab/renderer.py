@@ -66,6 +66,21 @@ class RenderSettings:
 _DEFAULT_RENDER_SETTINGS = RenderSettings()
 
 
+def _letters_of(latex: str) -> str:
+    r"""The letters a reader would see, with LaTeX scaffolding stripped.
+
+    `\Sigma` reads "Sigma" and `\mathrm{M}` reads "mathrmM"; either way it is not
+    "Mu", and that difference is the whole test for whether a rendering still spells
+    the name it was given.
+
+    An earlier draft stripped `mathrm` first, so `\mathrm{M}` reduced to "M". It made
+    no difference and is gone: every one of the fourteen entries SymPy renders that way
+    is a capital Greek name mapped onto a Latin letter, and not one of them spells
+    itself back with or without the strip.
+    """
+    return re.sub(r"[\\{}^_ ]", "", latex)
+
+
 class _EngineeringLatexPrinter(LatexPrinter):
     def __init__(self, settings=None, *, unit_literals: frozenset[str] = frozenset()):
         super().__init__(settings)
@@ -73,34 +88,59 @@ class _EngineeringLatexPrinter(LatexPrinter):
         self.unit_literals = frozenset(unit_literals)
 
     def _print_Symbol(self, expr, style=None):
-        """A multi-letter name is upright, so `eqFy` is not read as `e q F y`.
+        r"""Print a name so it reads as what the engineer wrote.
 
-        Italic is for a quantity, which is a single letter. A name of several letters is
-        a label, and setting it in italic makes MathJax space it as a product: the
+        Two rules, in order.
+
+        A unit that survived into the expression is a unit, not a quantity. `subs(M(x),
+        x, 3*m)` substitutes symbolically, so the metre stays behind as a free symbol
+        and italic set it between `3` and `q` exactly as a variable would. The caller
+        decides which names these are, because the alias table cannot: `m := 500*kg` is
+        a mass and must keep its italic.
+
+        Then: a multi-letter name is upright, so `eqFy` is not read as `e q F y`. Italic
+        is for a quantity, which is a single letter. A name of several letters is a
+        label, and setting it in italic makes MathJax space it as a product: the
         reactions block of a memoria showed `eqFy` and `eqMA` as four and four sliding
         letters. This is the ISO 80000-2 rule and what every typeset engineering
         document does.
 
-        Only the base is touched, and only when SymPy has not already recognised it:
-        `theta` must stay a theta, not become upright "theta". Subscripts are left alone
-        - `d_{max}` in italic is near-universal in practice, and changing it would churn
-        every name in the project for a defect nobody reported.
+        SymPy is left in charge only when it spells the base back. That test replaced
+        "SymPy produced a backslash, so it recognised the name", which was true and
+        beside the point: `translate("Mu")` returns `\mathrm{M}`, because capital mu has
+        no glyph of its own, and a memoria that prints a factored moment as `M` has lost
+        three characters where a reviewer cannot see them. The same guard catches
+        `rebar`, which SymPy's modifier table reads as `re` under an overbar. `\Sigma`,
+        `\mu` and `\theta` spell themselves and are untouched.
+
+        Subscripts stay italic and stay exactly as written - `d_{max}` in italic is near
+        universal in practice - but they are now braced. Handing SymPy a name carrying
+        `\mathrm{...}` made `_split_super_sub` return early on the brace, so nothing was
+        split and `\mathrm{As}_prov` subscripted the `p` alone, leaving `rov` beside it.
         """
-        # A unit that survived into the expression is a unit, not a quantity. `subs(M(x),
-        # x, 3*m)` substitutes symbolically, so the metre stays behind as a free symbol
-        # and italic set it between `3` and `q` exactly as a variable would. Multi-letter
-        # units were already upright by the rule below, which is why only `m`, `N` and `s`
-        # ever showed it. The caller decides which names these are, because the alias
-        # table cannot: `m := 500*kg` is a mass and must keep its italic.
         if expr.name in self.unit_literals:
             unit = sp.Symbol(rf"\mathrm{{{expr.name}}}")
             return super()._print_Symbol(unit, style) if style else super()._print_Symbol(unit)
 
-        base, _supers, _subs = split_super_sub(expr.name)
-        if len(base) > 1 and not super()._print_Symbol(sp.Symbol(base)).startswith("\\"):
-            upright = sp.Symbol(rf"\mathrm{{{base}}}" + expr.name[len(base):])
-            return super()._print_Symbol(upright, style) if style else super()._print_Symbol(upright)
-        return super()._print_Symbol(expr, style) if style else super()._print_Symbol(expr)
+        base, supers, subs = split_super_sub(expr.name)
+        if len(base) <= 1 or self._sympy_spells_it_back(base):
+            return super()._print_Symbol(expr, style) if style else super()._print_Symbol(expr)
+
+        name = rf"\mathrm{{{base}}}"
+        if style == "bold":
+            name = rf"\mathbf{{{name}}}"
+        if supers:
+            name += "^{%s}" % " ".join(supers)
+        if subs:
+            name += "_{%s}" % " ".join(subs)
+        return name
+
+    def _sympy_spells_it_back(self, base: str) -> bool:
+        """True when SymPy has a symbol for ``base`` and it still reads as ``base``."""
+        rendered = super()._print_Symbol(sp.Symbol(base))
+        if not rendered.startswith("\\"):
+            return False
+        return _letters_of(rendered) == base
 
     def _print_Mul(self, expr):
         if not expr.is_commutative:
