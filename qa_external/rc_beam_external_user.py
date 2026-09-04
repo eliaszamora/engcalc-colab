@@ -40,8 +40,8 @@ def main() -> None:
 
     flexure = r"""
 ## Design data
-fc := 4.35*ksi
-fy := 60*ksi
+fc := 4.35*kip/inch^2
+fy := 60*kip/inch^2
 DL := 0.82*kip/ft
 LL := 1.00*kip/ft
 L := 25*ft
@@ -84,18 +84,17 @@ numeric(DC)
     if "engcalc:" in flexure_text:
         raise AssertionError(f"EngCalc reported an error in flexural design:\n{flexure_text}")
 
-    # Independent reference values, rounded at the public default precision.
     require(flexure_text, "2.58", "32.30", "201.88", "17.56", "2.87", "209.69", "0.96")
 
     shear = r"""
 ## Shear design
 phi_v := 0.75
-fyt := 60*ksi
+fyt := 60*kip/inch^2
 Av := 0.22*inch^2
 s_prov := 8.30*inch
 
 Vu_d = RA - wu*d
-Vc = 2*sqrt(fc/psi)*psi*b*d
+Vc = 2*sqrt(1000*fc/(kip/inch^2))*(kip/inch^2)*b*d/1000
 phiVc = phi_v*Vc
 Vs_req = Vu_d/phi_v - Vc
 Av_over_s_req = (Vu_d-phiVc)/(phi_v*fyt*d)
