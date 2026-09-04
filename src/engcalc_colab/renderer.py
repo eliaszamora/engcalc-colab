@@ -67,6 +67,11 @@ _DEFAULT_RENDER_SETTINGS = RenderSettings()
 
 
 class _EngineeringLatexPrinter(LatexPrinter):
+    def __init__(self, settings=None, *, unit_literals: frozenset[str] = frozenset()):
+        super().__init__(settings)
+        # Keyword-only: SymPy constructs printers positionally with a settings dict.
+        self.unit_literals = frozenset(unit_literals)
+
     def _print_Symbol(self, expr, style=None):
         """A multi-letter name is upright, so `eqFy` is not read as `e q F y`.
 
@@ -81,6 +86,16 @@ class _EngineeringLatexPrinter(LatexPrinter):
         - `d_{max}` in italic is near-universal in practice, and changing it would churn
         every name in the project for a defect nobody reported.
         """
+        # A unit that survived into the expression is a unit, not a quantity. `subs(M(x),
+        # x, 3*m)` substitutes symbolically, so the metre stays behind as a free symbol
+        # and italic set it between `3` and `q` exactly as a variable would. Multi-letter
+        # units were already upright by the rule below, which is why only `m`, `N` and `s`
+        # ever showed it. The caller decides which names these are, because the alias
+        # table cannot: `m := 500*kg` is a mass and must keep its italic.
+        if expr.name in self.unit_literals:
+            unit = sp.Symbol(rf"\mathrm{{{expr.name}}}")
+            return super()._print_Symbol(unit, style) if style else super()._print_Symbol(unit)
+
         base, _supers, _subs = split_super_sub(expr.name)
         if len(base) > 1 and not super()._print_Symbol(sp.Symbol(base)).startswith("\\"):
             upright = sp.Symbol(rf"\mathrm{{{base}}}" + expr.name[len(base):])
@@ -123,8 +138,13 @@ class _EngineeringLatexPrinter(LatexPrinter):
 
 
 class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
-    def __init__(self, substitutions: dict[str, object], settings: RenderSettings):
-        super().__init__()
+    def __init__(
+        self,
+        substitutions: dict[str, object],
+        settings: RenderSettings,
+        unit_literals: frozenset[str] = frozenset(),
+    ):
+        super().__init__(unit_literals=unit_literals)
         self.substitutions = substitutions
         self.render_settings = settings
 
@@ -153,12 +173,12 @@ def _engineering_factor_key(term):
     return (3, sp.default_sort_key(term))
 
 
-def _latex(expr) -> str:
-    return _EngineeringLatexPrinter().doprint(expr)
+def _latex(expr, unit_literals: frozenset[str] = frozenset()) -> str:
+    return _EngineeringLatexPrinter(unit_literals=unit_literals).doprint(expr)
 
 
-def _substitution_latex(expr, substitutions: dict[str, object], settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> str:
-    return _NumericSubstitutionLatexPrinter(substitutions, settings).doprint(expr)
+def _substitution_latex(expr, substitutions: dict[str, object], settings: RenderSettings = _DEFAULT_RENDER_SETTINGS, unit_literals: frozenset[str] = frozenset()) -> str:
+    return _NumericSubstitutionLatexPrinter(substitutions, settings, unit_literals).doprint(expr)
 
 
 # Ordered families of units an engineer actually writes for each dimension. Keyed by
@@ -650,21 +670,21 @@ def _latex_visual_width(latex: str) -> float:
     return float(len(normalized) + 6 * fraction_count)
 
 
-def _render_signed_term(term: sp.Expr, *, substitutions: dict[str, object] | None, settings: RenderSettings) -> tuple[bool, str]:
+def _render_signed_term(term: sp.Expr, *, substitutions: dict[str, object] | None, settings: RenderSettings, unit_literals: frozenset[str] = frozenset()) -> tuple[bool, str]:
     negative = term.could_extract_minus_sign()
     unsigned_term = -term if negative else term
     if substitutions is None:
-        body = _latex(unsigned_term)
+        body = _latex(unsigned_term, unit_literals)
     else:
-        body = _substitution_latex(unsigned_term, substitutions, settings)
+        body = _substitution_latex(unsigned_term, substitutions, settings, unit_literals)
     return negative, body
 
 
-def _adaptive_additive_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, visual_budget: float = _NUMERIC_ROW_VISUAL_BUDGET, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> list[str]:
+def _adaptive_additive_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, visual_budget: float = _NUMERIC_ROW_VISUAL_BUDGET, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS, unit_literals: frozenset[str] = frozenset()) -> list[str]:
     """Pack complete top-level additive terms into MathJax rows adaptively."""
     expression = sp.sympify(expression)
     terms = expression.as_ordered_terms() if expression.is_Add else [expression]
-    rendered_terms = [_render_signed_term(term, substitutions=substitutions, settings=settings) for term in terms]
+    rendered_terms = [_render_signed_term(term, substitutions=substitutions, settings=settings, unit_literals=unit_literals) for term in terms]
 
     packed: list[list[tuple[int, bool, str]]] = []
     current: list[tuple[int, bool, str]] = []
@@ -711,11 +731,12 @@ def _render_multiplicative_factor(
     factor: sp.Expr,
     substitutions: dict[str, object] | None,
     settings: RenderSettings,
+    unit_literals: frozenset[str] = frozenset(),
 ) -> str:
     if substitutions is None:
-        rendered = _latex(factor)
+        rendered = _latex(factor, unit_literals)
     else:
-        rendered = _substitution_latex(factor, substitutions, settings)
+        rendered = _substitution_latex(factor, substitutions, settings, unit_literals)
     if factor.is_Add:
         rendered = rf"\left({rendered}\right)"
     return rendered
@@ -726,6 +747,7 @@ def _bounded_product_rows(
     substitutions: dict[str, object] | None = None,
     *,
     settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+    unit_literals: frozenset[str] = frozenset(),
 ) -> list[str]:
     """Split one commutative product/fraction at factor boundaries for display."""
     expression = sp.sympify(expression)
@@ -736,7 +758,7 @@ def _bounded_product_rows(
 
     factors = sorted(expression.args, key=_multiplicative_factor_key)
     rendered_factors = [
-        _render_multiplicative_factor(factor, substitutions, settings)
+        _render_multiplicative_factor(factor, substitutions, settings, unit_literals)
         for factor in factors
     ]
 
@@ -761,6 +783,7 @@ def _split_overwide_terms(
     substitutions: dict[str, object] | None = None,
     *,
     settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+    unit_literals: frozenset[str] = frozenset(),
 ) -> list[str]:
     """Split only over-budget multiplicative terms while preserving additive signs."""
     expression = sp.sympify(expression)
@@ -772,6 +795,7 @@ def _split_overwide_terms(
             term,
             substitutions=substitutions,
             settings=settings,
+            unit_literals=unit_literals,
         )
         if index == 0:
             prefix = "- " if negative else ""
@@ -787,6 +811,7 @@ def _split_overwide_terms(
             unsigned_term,
             substitutions,
             settings=settings,
+            unit_literals=unit_literals,
         )
         if not product_rows:
             rows.append(prefix + body)
@@ -798,16 +823,16 @@ def _split_overwide_terms(
     return rows
 
 
-def _bounded_expression_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> list[str]:
+def _bounded_expression_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS, unit_literals: frozenset[str] = frozenset()) -> list[str]:
     """Return additive rows and split overwide products/fractions at safe factor boundaries."""
     expression = sp.sympify(expression)
-    rows = _adaptive_additive_rows(expression, substitutions, settings=settings)
+    rows = _adaptive_additive_rows(expression, substitutions, settings=settings, unit_literals=unit_literals)
     if all(_latex_visual_width(row) <= _NUMERIC_ROW_VISUAL_BUDGET for row in rows):
         return rows
 
     expanded = sp.expand(expression)
     if sp.sstr(expanded) != sp.sstr(expression):
-        expanded_rows = _adaptive_additive_rows(expanded, substitutions, settings=settings)
+        expanded_rows = _adaptive_additive_rows(expanded, substitutions, settings=settings, unit_literals=unit_literals)
         if max(_latex_visual_width(row) for row in expanded_rows) < max(_latex_visual_width(row) for row in rows):
             expression = expanded
             rows = expanded_rows
@@ -818,6 +843,7 @@ def _bounded_expression_rows(expression: sp.Expr, substitutions: dict[str, objec
         expression,
         substitutions,
         settings=settings,
+        unit_literals=unit_literals,
     )
     if split_rows:
         return split_rows
@@ -848,7 +874,11 @@ def _append_assignment_stage(rows: list[str], lhs: str | None, body_rows: list[s
 
 
 def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSettings) -> list[str]:
-    formula_rows = _bounded_expression_rows(result.symbolic_expression, settings=settings)
+    formula_rows = _bounded_expression_rows(
+        result.symbolic_expression,
+        settings=settings,
+        unit_literals=result.unit_literals,
+    )
     final_latex = _quantity_latex(result.quantity, settings=settings, declared=False)
     lhs = _display_lhs(result)
 
@@ -859,6 +889,7 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
             result.symbolic_expression,
             result.substitutions,
             settings=settings,
+            unit_literals=result.unit_literals,
         )
         for index, body in enumerate(substituted_rows):
             if index == 0:
@@ -870,7 +901,11 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 
 
 def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, settings: RenderSettings) -> list[str]:
-    formula_rows = _bounded_expression_rows(result.symbolic_expression, settings=settings)
+    formula_rows = _bounded_expression_rows(
+        result.symbolic_expression,
+        settings=settings,
+        unit_literals=result.unit_literals,
+    )
     evaluated_latex = None
     if result.piecewise_evaluation is not None:
         evaluated_latex = _piecewise_partial_latex(
@@ -889,6 +924,7 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
             result.symbolic_expression,
             result.substitutions,
             settings=settings,
+            unit_literals=result.unit_literals,
         )
         for index, body in enumerate(substituted_rows):
             if index == 0:

@@ -150,6 +150,24 @@ class NumericContext:
                 fixed[name] = self.resolve_target_unit_name(name)
         return fixed
 
+    def unit_literal_names(self, expression) -> frozenset[str]:
+        """Names in ``expression`` this evaluation reads as units rather than values.
+
+        The printer needs this to set a unit upright. It cannot decide on the alias
+        table alone: `m := 500*kg` makes `m` a mass, and the same precedence that
+        governs the arithmetic has to govern the typesetting, or the page relabels the
+        reader's own quantity.
+
+        That precedence already lives in `unit_literal_overrides`, which yields to a
+        stored value before ever consulting the alias table, so this is a rename rather
+        than a second rule - one place decides what a name means. Two earlier drafts
+        re-checked `self.values` and filtered explicit overrides here; both survived
+        mutation, because the first is redundant and the second has no caller. Taking
+        an `overrides` argument this cannot honour would be worse than not taking one:
+        the filter would be dead until the day it silently was not.
+        """
+        return frozenset(self.unit_literal_overrides(expression))
+
     def evaluate_unit_expression(self, expression: ast.Expression):
         """Evaluate a restricted target-unit expression without consulting numeric values."""
         try:
