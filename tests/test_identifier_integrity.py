@@ -90,6 +90,45 @@ def test_a_genuine_greek_letter_still_prints_as_that_letter(name, expected):
     assert _latex(sp.Symbol(name)) == expected
 
 
+# The whole Greek alphabet, in both cases, split by whether the letter has a glyph of
+# its own. This is the frontier the new rule sits on - "special notation SymPy is right
+# about" against "transformation that discards the name" - and naming only the letters
+# an engineer is likely to type would leave the rest of it unmeasured.
+#
+# Lowercase omicron is upright because there is no distinct glyph and LaTeX has no
+# `\omicron`; it was upright before this change too. The capitalised var- forms are
+# upright for the same reason.
+GREEK_WITH_ITS_OWN_GLYPH = [
+    "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota",
+    "kappa", "lambda", "mu", "nu", "xi", "pi", "rho", "sigma", "tau", "upsilon",
+    "phi", "chi", "psi", "omega", "varepsilon", "vartheta", "varkappa", "varrho",
+    "varsigma", "varphi",
+    "Gamma", "Delta", "Theta", "Lambda", "Xi", "Pi", "Sigma", "Upsilon", "Phi",
+    "Psi", "Omega",
+]
+GREEK_WITHOUT_ONE = [
+    "omicron", "Alpha", "Beta", "Epsilon", "Zeta", "Eta", "Iota", "Kappa", "Mu",
+    "Nu", "Omicron", "Rho", "Tau", "Chi", "Varepsilon", "Vartheta", "Varkappa",
+    "Varrho", "Varsigma", "Varphi",
+]
+
+
+@pytest.mark.parametrize("name", GREEK_WITH_ITS_OWN_GLYPH)
+def test_greek_that_has_a_glyph_still_prints_as_that_glyph(name):
+    r"""Forty names that must not move. `\Delta` is a delta, not `\mathrm{Delta}`."""
+    assert _latex(sp.Symbol(name)) == "\\" + name
+
+
+@pytest.mark.parametrize("name", GREEK_WITHOUT_ONE)
+def test_greek_without_a_glyph_is_set_upright_with_its_letters(name):
+    """Twenty names that print as a Latin letter, so the name itself must survive.
+
+    Thirteen of these changed with this fix, every one of them from losing letters to
+    keeping them. The other seven were already upright and are here so that stays true.
+    """
+    assert _latex(sp.Symbol(name)) == rf"\mathrm{{{name}}}"
+
+
 def test_a_multi_letter_base_keeps_its_whole_subscript():
     r"""`\mathrm{As}_prov` subscripts the `p` and leaves `rov` standing beside it.
 
