@@ -224,14 +224,29 @@ def _substitution_latex(expr, substitutions: dict[str, object], settings: Render
 # Ordered families of units an engineer actually writes for each dimension. Keyed by
 # Pint's dimensionality, which reduces to base dimensions: a table keyed on "[force]"
 # silently matches nothing.
-_UNIT_FAMILIES: dict[str, tuple[str, ...]] = {
-    "[length]": ("mm", "m"),
-    "[mass] * [length] / [time] ** 2": ("N", "kN", "MN"),
-    "[mass] * [length] ** 2 / [time] ** 2": ("kN * m",),
-    "[mass] / [length] / [time] ** 2": ("MPa", "GPa"),
-    "[mass] / [time] ** 2": ("kN / m",),
-    "[length] ** 2": ("cm ** 2", "m ** 2"),
-    "[length] ** 4": ("cm ** 4",),
+#
+# Keyed by the *sorted pairs*, not by `str(dimensionality)`. The string was the bug.
+# Pint caches one dimensionality object per unit combination and prints its dimensions
+# in whatever order the first computation to reach it happened to build them, so a
+# flexural capacity written `phi*As*fy*z` produced
+#
+#     [length] ** 2 * [mass] / [time] ** 2
+#
+# and missed the moment family, while the same sheet after any earlier computation that
+# had already touched that dimensionality produced
+#
+#     [mass] * [length] ** 2 / [time] ** 2
+#
+# and found it. Measured both ways in the same process: the memoria's units depended on
+# what the notebook had computed before it. Sorted pairs cannot be ordered two ways.
+_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
+    (("[length]", 1),): ("mm", "m"),
+    (("[length]", 2),): ("cm ** 2", "m ** 2"),
+    (("[length]", 4),): ("cm ** 4",),
+    (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("N", "kN", "MN"),
+    (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("kN * m",),
+    (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("MPa", "GPa"),
+    (("[mass]", 1), ("[time]", -2)): ("kN / m",),
 }
 
 
@@ -243,20 +258,30 @@ def _significant_figures(magnitude, precision: int) -> int:
 
 def _unit_family(quantity) -> tuple[str, ...]:
     try:
-        return _UNIT_FAMILIES.get(str(quantity.dimensionality), ())
+        return _UNIT_FAMILIES.get(tuple(sorted(quantity.dimensionality.items())), ())
     except Exception:
         return ()
 
 
 def _unit_terms(quantity) -> int:
-    """How many unit symbols the reader has to hold at once.
+    """How much unit the reader has to hold at once.
 
     ``m`` and ``tonf`` are one, ``tonf/m`` and ``kN*m`` are two, and the deflection's
     ``kN/(GPa*m)`` is three. The count is what separates a unit the engineer's own
     inputs produced from one only the algebra invented.
+
+    Exponents count. Counting symbols alone made ``MPa*mm^3`` cost two, the same as
+    ``kN*m``, so a flexural capacity written as ``phi*As*fy*z`` tied with the unit an
+    engineer would actually read and kept the one the algebra had produced: the memoria
+    said ``2.84e8 MPa*mm^3`` for ``284.30 kN*m``. A cube is more to hold than a length,
+    which is the same thing this function was already measuring.
+
+    It stays a comparison against the family's own canonical member rather than an
+    absolute limit, so ``mm^4`` costs four and the inertia family's ``cm^4`` costs four
+    as well, and an inertia written in mm^4 is left where the engineer put it.
     """
     try:
-        return len(quantity.units._units)
+        return sum(abs(exponent) for exponent in quantity.units._units.values())
     except Exception:
         return 1
 
