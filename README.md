@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.26.0**.
+Current version: **0.26.1**.
 
 
 ## Help, inside the notebook
@@ -24,6 +24,31 @@ their own typing.
 `examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
 reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
+## v0.26.1 a formula and its evaluation are one derivation
+
+A definition immediately followed by its evaluation printed the formula twice:
+
+```text
+d_max = 5qL⁴/(384·E·I_z)
+d_max = 5qL⁴/(384·E·I_z)
+      = (5/384)(10.00 kN/m)(6.00 m)⁴ · 1/(200.00 GPa) · 1/(8.00 x 10⁷ mm⁴)
+      = 10.55 mm
+```
+
+The evaluation now continues from the definition rather than restating it, which is how
+a memoria is written by hand - the formula, then what was put into it, then the answer.
+The reference memoria in this repository did this twice, in `d_max` and `d_adm`, and no
+check could see it: every row was correct on its own.
+
+`## v0.23.2 an equation is written once` fixed the same repeat for `solve`, and its rule
+does not transfer. "The argument is a name already bound" would also strip the formula
+from an evaluation written some way below its definition, where that row is the only
+thing on the page saying which formula is being evaluated. What is wrong is narrower and
+can be said exactly: the block's opening row is, character for character, the row
+immediately above it. Nothing that reads differently, nothing written inline, and
+nothing that is not adjacent.
 
 
 ## v0.26.0 an ACI example in its own units
@@ -1586,6 +1611,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.26.1** — a definition immediately followed by `numeric(...)` prints its formula once: the evaluation continues from the definition instead of restating it. The reference memoria in this repository did it twice, and every row was correct on its own.
 - **0.26.0** — `kip`, `ksi`, `psi`, `inch` and `ft`: a US code example is worked in the units it is written in, and the unit a computed value is shown in is chosen inside the system it is already in. A declared unit is now one the engineer wrote rather than one a `:=` line produced, so a capacity assigned as a number reads as a moment and a demand-capacity ratio reads as a number.
 - **0.25.1** — presentation corrections from the first use of the package by someone outside it: a name keeps every letter that was typed, a dimensionless ratio prints as a number, a moment prints in a moment's units, a coefficient obeys the page's precision, and a unit left in a substitution reads as a unit. The IPython floor is Colab's own 7.34.0, so installing EngCalc no longer upgrades the platform underneath it.
 - **0.25.0** — `case D = M_D(x)` and `combo U1 = 1.2*D + 1.6*Lv`: a load combination keeps the factors it was written with, and `%eng_help` explains every call.
@@ -1627,4 +1653,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.26.0`.
+Version: `0.26.1`.

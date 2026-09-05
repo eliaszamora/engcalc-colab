@@ -8,15 +8,15 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `f1f289b` (#84 merged) |
-| declared version | **0.26.0** |
-| default suite (`pytest -q`) | **1589 passing** — `tests` plus `quality_tests/fast` |
+| `main` | `951f0e7` (#86 merged) |
+| declared version | **0.26.1** |
+| default suite (`pytest -q`) | **1599 passing** — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests`) | **207 properties** |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
 
-**Releasing.** 0.25.1 was the patch digit `0.9.2` and `0.10.1` used, a release of
-corrections carrying no new feature. 0.26.0 is the minor digit, because US customary
-units are a capability that was not there before. Kept here because the next one will
+**Releasing.** The patch digit is a release of corrections carrying no new feature -
+`0.9.2`, `0.10.1`, `0.25.1`, `0.26.1`. The minor digit is a capability that was not
+there before, as `0.26.0`'s US customary units were. Kept here because the next one will
 want it: a bump is not the two-file change this note first claimed. The version string is
 asserted in four test modules, and `tests/test_version.py` additionally pins the README's
 opening line, its closing line and its changelog. Seven files:
@@ -134,17 +134,16 @@ deflection carrying `kN·m³/(GPa·mm⁴)` fell into their families because thei
 round to `0.00`. `MPa·mm³` keeps four, so it stayed. Whether the page was right depended
 on where the decimal point fell.
 
-**An equation is written twice.** A definition followed by `numeric(...)` prints the
-formula, then prints it again as the opening of the substitution block:
+**An equation is written twice — done.** It was a defect, and the answer to "same as
+v0.23.2 or deliberate?" turned out to be neither: the same page problem, and a different
+rule. v0.23.2 asked whether the argument was a name already bound; copying that would
+also strip the formula from an evaluation written some way below its definition, where
+that row is the only thing saying which formula is being evaluated. The test is now that
+the block's opening row is, character for character, the row immediately above it -
+which says exactly what is wrong and cannot reach anything else.
 
-    phiMn = fy φ z As
-    phiMn = fy φ z As
-          = (413.69 MPa)(0.90)(394.53 mm)(1935.48 mm²)
-          = 284.30 kN·m
-
-`## v0.23.2 an equation is written once` fixed this shape for a statics sheet. Whether
-this one is the same defect or a deliberate restatement is a question for whoever wrote
-that, and the answer decides whether it is a bug at all. Not imperial: it does this in SI.
+A page-level contract came out of it and is worth reusing: no two consecutive rows on
+the reference memoria are identical. It is what found the two nothing else could see.
 
 **The factors of a compound unit are ordered alphabetically.** Pint's ordering, applied by
 `format(units, "~L")` — the single call that typesets every unit in the system. It reads
