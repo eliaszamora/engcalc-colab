@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.25.0**.
+Current version: **0.25.1**.
 
 
 ## Help, inside the notebook
@@ -24,6 +24,48 @@ their own typing.
 `examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
 reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
+## v0.25.1 what the first outside reader saw
+
+Someone was handed the repository link, installed the package and worked a reinforced-
+concrete beam from an ACI 318-14 example without reading `src/`. The engineering came out
+right - reactions, flexural capacity and shear design all matched an independent hand
+check. What did not was the page.
+
+**A name keeps every letter that was typed.** `Mu` printed as `M`. SymPy's translation
+table collapses fourteen capital Greek names onto Latin letters, and the guard deciding
+whether a rendering may be trusted accepted anything that began with a backslash. A
+memoria that quietly drops a subscript is worse than one that refuses to render.
+
+**A dimensionless ratio prints as a number.** A demand-capacity check came out as
+`9.63 x 10^-7 kN*m/(MPa*mm^3)` - the units the algebra left behind, carried by a quantity
+that by definition has none.
+
+**A moment prints in a moment's units.** `phiMn`, computed from a stress and a volume,
+printed as `2.84 x 10^8 MPa*mm^3`. The unit-family table was keyed on a string whose
+ordering depended on what the session had already computed, so the same quantity could
+find its family or miss it depending on the order the cells were run in.
+
+**A coefficient is as long as the page's precision.** `0.588235294117647` appeared inside
+a formula. SymPy prints a Float at full binary precision, and nothing said that a number
+written into a formula obeys the same precision setting as a number written into a
+result.
+
+All four were found by rendering a memoria and reading it, with
+`python tools/render_memoria.py`. The suite was 1387 tests at the time and saw none of
+them - each defect produces a LaTeX string containing all the right substrings.
+
+A fifth, found the same way: **a unit left in a substitution reads as a unit.**
+`subs(M(x), x, 3*m)` substitutes symbolically, so the metre stays in the expression as an
+ordinary free symbol and was typeset in italic between `3` and `q`, exactly where a
+variable would sit. The arithmetic was always right; the typesetting said something
+false. Only `m`, `N` and `s` could show it - a multi-letter unit like `kN` is upright
+already.
+
+Also in this release: EngCalc declared `ipython>=8.18`, so installing it in Colab
+upgraded IPython out from under the platform this package exists for. The floor is now
+7.34.0, Colab's own pin, and a CI job runs the whole suite against it.
 
 
 ## v0.24.0 one name for one operation
@@ -1479,6 +1521,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.25.1** — presentation corrections from the first use of the package by someone outside it: a name keeps every letter that was typed, a dimensionless ratio prints as a number, a moment prints in a moment's units, a coefficient obeys the page's precision, and a unit left in a substitution reads as a unit. The IPython floor is Colab's own 7.34.0, so installing EngCalc no longer upgrades the platform underneath it.
 - **0.25.0** — `case D = M_D(x)` and `combo U1 = 1.2*D + 1.6*Lv`: a load combination keeps the factors it was written with, and `%eng_help` explains every call.
 - **0.24.0** — `integral(...)` is retired; `integrate(...)` is the one name for the operation, and typing the old one says what to write instead.
 - **0.23.0** — `solve(M(x) > 20*kN*m, x, 0, L)` answers an inequality with the region that satisfies it.
@@ -1518,4 +1561,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.25.0`.
+Version: `0.25.1`.
