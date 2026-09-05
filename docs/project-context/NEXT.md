@@ -8,17 +8,18 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `6a675ac` (#81 merged) |
-| declared version | **0.25.1** |
-| default suite (`pytest -q`) | **1562 passing** — `tests` plus `quality_tests/fast` |
+| `main` | `f1f289b` (#84 merged) |
+| declared version | **0.26.0** |
+| default suite (`pytest -q`) | **1589 passing** — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests`) | **207 properties** |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
 
-**The bump is done** - 0.25.1, the patch digit `0.9.2` and `0.10.1` used for a release
-of corrections carrying no new feature. Kept here because the next one will want it: a
-bump is not the two-file change this note first claimed. The version string is asserted
-in four test modules, and `tests/test_version.py` additionally pins the README's opening
-line, its closing line and its changelog. Seven files:
+**Releasing.** 0.25.1 was the patch digit `0.9.2` and `0.10.1` used, a release of
+corrections carrying no new feature. 0.26.0 is the minor digit, because US customary
+units are a capability that was not there before. Kept here because the next one will
+want it: a bump is not the two-file change this note first claimed. The version string is
+asserted in four test modules, and `tests/test_version.py` additionally pins the README's
+opening line, its closing line and its changelog. Seven files:
 
 | file | what holds the string |
 |---|---|
@@ -32,8 +33,13 @@ line, its closing line and its changelog. Seven files:
 
 Two things not to disturb: `## v0.25.0 load cases and combinations` names the release a
 feature arrived in, and `test_readme_version_notes_cover_0_25_0_0_24_0_and_0_23_0` needs
-those three changelog lines to stay where they are. A release also gets a `## vX.Y.Z`
-section of its own; `v0.23.3` and `v0.25.1` are the shape a set of corrections takes.
+those three changelog lines to stay where they are.
+
+The division of labour between a feature pull request and the release that carries it:
+the feature adds a plain `## Its Name` section to the README and does not touch the
+version; the release renames that section to `## vX.Y.Z its name` and adds the changelog
+bullet. `v0.25.0` and `v0.26.0` were both written that way. A release of corrections has
+no section to rename and writes one, which is what `v0.23.3` and `v0.25.1` are.
 
 ## What this session was
 
