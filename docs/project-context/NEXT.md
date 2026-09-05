@@ -8,15 +8,33 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `e68bb84` (plus #80 if it has merged by the time you read this) |
-| declared version | **0.25.0** — five merged pull requests have deferred the bump again |
+| `main` | `7858d41` (#80 merged) |
+| declared version | **0.25.0** — #73 and #75 through #80 all landed without a bump |
 | default suite (`pytest -q`) | **1562 passing** — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests`) | **207 properties** |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
 
-**First task, small and overdue: bump the version.** #75 through #80 all landed while
-`pyproject.toml` still said 0.25.0. `tests/test_packaging_metadata.py` asserts that
-string, so the bump is two files and a green run.
+**First task, small and overdue: bump the version to 0.25.1.** Corrections without a
+new feature is what `0.9.2` and `0.10.1` were, so the patch digit is the convention here,
+not `0.26.0`.
+
+It is not a two-file change. The string `0.25.0` is asserted in four test modules, and
+`tests/test_version.py` additionally pins the README's opening line, its closing line and
+its changelog. Seven files:
+
+| file | what holds the string |
+|---|---|
+| `pyproject.toml` | `version = ` |
+| `src/engcalc_colab/__init__.py` | `__version__` |
+| `README.md` | the `Current version:` line, a new changelog entry, and the closing `Version:` line |
+| `tests/test_version.py` | `EXPECTED_VERSION`, both README assertions, and four test *names* — the fourth names the 0.25.0/0.24.0/0.23.0 trio and can stay as it is |
+| `tests/test_packaging.py` | two literals (its function names say `0_9_2` and were already stale) |
+| `tests/test_packaging_metadata.py` | one literal |
+| `tests/test_parser.py` | one literal |
+
+Leave `## v0.25.0 load cases and combinations` alone — that heading names the release a
+feature arrived in, and the changelog assertions for 0.25.0, 0.24.0 and 0.23.0 must keep
+finding their lines.
 
 ## What this session was
 
