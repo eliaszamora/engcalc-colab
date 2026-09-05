@@ -1,5 +1,11 @@
 # EngCalc Current Project Context
 
+> **Stale as of 2026-09-05. Read `NEXT.md` first.** This file was last updated at
+> 0.13.0 on `9a9d6e3`, and `main` has moved a long way past it. The *approved behaviour*
+> and *evidence hierarchy* sections below are still in force and are regression
+> requirements. The baseline numbers, release history and open-issue list are not — do
+> not quote its counts.
+
 _Last updated: 2026-09-02 — **EngCalc 0.13.0 is released and closed on `main` at `9a9d6e3`**, CI green on Python 3.10–3.14 and **verified installable and working in Google Colab from the documented `git+https` path**, running a complete memoria: a statics system, a moment from its shear, an elastic curve and a plot. Etapa 1 is three quarters done — `integrate` canonical (0.11.0), scalar equation systems (0.12.0), the indefinite integral (0.13.0) — and the measured gap map has gone from 4/18 to 7/18 exercises running end to end, with broken lines down from 24 to 17. No defect is open. One protocol lapse is recorded and corrected below._
 
 ## Current baseline
