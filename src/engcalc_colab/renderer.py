@@ -1279,6 +1279,16 @@ def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings
     return _symbolic_value_rows(result, settings) + _discard_note_rows(result.discarded)
 
 
+def _shown_expression(result: EvaluationResult):
+    """The formula as the engineer typed it when that was kept, the computed one if not.
+
+    Only ever shown. `result.value` stays what everything else computes with, so a
+    written form cannot reach `solve`, `subs` or a numeric evaluation - it is the page
+    and nothing else. The engine verifies the two agree before it hands one over.
+    """
+    return result.value if result.written is None else result.written
+
+
 def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameters)
@@ -1288,7 +1298,7 @@ def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> 
     ):
         return [_standard_result_row(result, settings)]
 
-    value = sp.sympify(result.value)
+    value = sp.sympify(_shown_expression(result))
     display_input = result.display_input
 
     if display_input is None or sp.sstr(display_input) == sp.sstr(value):
@@ -1488,7 +1498,7 @@ def _value_row_spacings(
     elif isinstance(result, EvaluationResult):
         statement = result.statement
         lhs = _render_lhs(statement.target, statement.parameters)
-        value = sp.sympify(result.value)
+        value = sp.sympify(_shown_expression(result))
         display_input = result.display_input
 
         if display_input is None or sp.sstr(display_input) == sp.sstr(value):
@@ -2115,7 +2125,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameters)
-    value_latex = _value_latex(result.value, active_settings)
+    value_latex = _value_latex(_shown_expression(result), active_settings)
 
     if lhs is None:
         if result.display_input is not None:
@@ -2124,7 +2134,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     if result.display_input is not None:
         input_latex = _latex(result.display_input)
-        if sp.sstr(result.display_input) != sp.sstr(result.value):
+        if sp.sstr(result.display_input) != sp.sstr(_shown_expression(result)):
             return rf"{lhs} = {input_latex} = {value_latex}"
     return rf"{lhs} = {value_latex}"
 

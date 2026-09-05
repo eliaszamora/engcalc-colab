@@ -102,7 +102,27 @@ The questions I would want answered before anyone writes a line:
   re-render stored expressions?
 
 Related surface already in the tree: `case` / `combo` (#71) keep a combination's factors
-rather than expanding them, which is the same idea in a narrower place. Read that first.
+rather than expanding them, which is the same idea in a narrower place. Read that first,
+and read what it does rather than what it is for: `symbol_overrides` holds a name as a
+free symbol while the expression is built, and the result carries the written terms and
+the expanded expression side by side. That is the barrier, and it answers two of the four
+questions above — the barrier survives further algebra because everything downstream uses
+the expanded form, and the substitution stage shows the name's own value because that is
+what a `combo` already does.
+
+**A written form now exists, and stops exactly where RC-3 begins.** The coefficient fix
+keeps a definition's expression as it was typed, verified against the evaluated one, and
+shows it. It declines the moment a name on the right-hand side is itself a symbolic
+definition, because what gets substituted there is an expression SymPy has already
+evaluated: splicing it in makes the row wider, which tips it past the wrapping budget,
+and the wrapping path expands the product. `phi*As*fy*(d - a/2)` stops being a product of
+four factors and becomes two rows of expanded terms.
+
+So RC-3 is not a second mechanism. It is the same one with names held back — and the
+`_WrittenFormEvaluator` in `engine.py` is where it would be done, with the restriction in
+`_written_form` as the line to move. One warning from building it: `_agrees_with` checks
+the mathematics, not the typesetting, and an expression that is right can still print
+wrong. `Mul(-1, Add(a, b), evaluate=False)` prints `- a + b`.
 
 ### RC-1 — imperial units: done, and what it turned up
 
