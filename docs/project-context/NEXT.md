@@ -98,13 +98,59 @@ The questions I would want answered before anyone writes a line:
 Related surface already in the tree: `case` / `combo` (#71) keep a combination's factors
 rather than expanding them, which is the same idea in a narrower place. Read that first.
 
-### RC-1 — imperial units
+### RC-1 — imperial units: done, and what it turned up
 
-`kip`, `ksi`, `inch`, `ft` are not in `_UNIT_ALIASES` (`src/engcalc_colab/numeric.py`),
-so an ACI example in its own units stops at `unknown numeric name 'ksi'`. Half an hour of
-work: the alias table, `_UNIT_FAMILIES` entries if imperial families are wanted for
-display, and contracts. Low urgency for a sheet in SI, and it is the difference between
-reading a US code example directly and transcribing it.
+`kip`, `ksi`, `psi`, `inch` and `ft` are in `_UNIT_ALIASES`, `in` says what to write
+instead of `invalid syntax`, and the family table is chosen by the system the value is
+already in. Pint knew every one of the names, so none of them is a definition.
+
+It was not half an hour, and the reason is worth keeping: the aliases alone leave the
+page mixing systems. Everything declared survives, and so does every computed unit no
+more complex than its family's canonical member — `kip`, `ft·kip`, `in`. The exception is
+the shape RC-2B was: `phi*As*fy*z` carries `in³·ksi`, four unit terms against two, so the
+family is consulted and the family had only `kN·m` in it. An all-imperial page printed
+its capacity in kilonewton-metres.
+
+Three things came out of rendering that page and reading it, none of them imperial.
+
+**A declared unit that was never declared.** This is the one worth taking next.
+
+    phiMn := 0.9*As*fy*z      ->  2.84 x 10^8 MPa·mm³      (SI)
+    phiMn  = 0.9*As*fy*z
+    numeric(phiMn)            ->  284.30 kN·m              (SI)
+
+Same numbers, two pages, decided by which assignment operator was used. The rule doing it
+is the documented one — a declared unit is left alone unless it would misrepresent the
+value, measured in surviving figures — and it is right for `q := 2.8*tonf/m`, where a unit
+really was written down. On a line whose right-hand side is a product of other quantities
+nothing was written down, and `MPa·mm³` keeps four figures, so the guard holds and RC-2B
+survives by a second route. The deflection in the README's own table escapes only because
+`kN·m³/(GPa·mm⁴)` keeps no figures at all.
+
+The question is not how to patch it but what `declared` should mean: *this statement used
+`:=`*, which is what it means today, or *the engineer wrote this unit*, which is what
+every sentence about it in the README says. The second is a different flag, computed from
+whether the right-hand side carries a unit literal of its own — and #75 already built
+machinery for knowing which names an evaluation read as units.
+
+**An equation is written twice.** A definition followed by `numeric(...)` prints the
+formula, then prints it again as the opening of the substitution block:
+
+    phiMn = fy φ z As
+    phiMn = fy φ z As
+          = (413.69 MPa)(0.90)(394.53 mm)(1935.48 mm²)
+          = 284.30 kN·m
+
+`## v0.23.2 an equation is written once` fixed this shape for a statics sheet. Whether
+this one is the same defect or a deliberate restatement is a question for whoever wrote
+that, and the answer decides whether it is a bug at all. Not imperial: it does this in SI.
+
+**The factors of a compound unit are ordered alphabetically.** Pint's ordering, applied by
+`format(units, "~L")` — the single call that typesets every unit in the system. It reads
+`ft·kip` where US practice writes kip-ft, and agrees with SI practice only by the accident
+that `kilonewton` sorts before `meter`. Ordering a moment force-first is a change to that
+one call and therefore to every unit on every page, which is why it is written here rather
+than folded into the alias table.
 
 ### The hunt for guards nobody is checking
 

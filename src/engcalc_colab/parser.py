@@ -4,9 +4,27 @@ import ast
 import keyword
 import re
 
-from .errors import EngSyntaxError
+from .errors import EngSyntaxError, diagnostic_hint
 from .matrix_syntax import consume_matrix_statement, rewrite_matrix_literals
 from .models import ParsedHeading, ParsedNarrative, ParsedNumericAssignment, ParsedStatement
+
+# `in` is the inch, and it is the first thing a US engineer writes. It is also a Python
+# keyword, so `b := 12*in` can never parse and said nothing but "invalid syntax" - true,
+# and not the one thing the reader needs to know. Consulted only after a parse has
+# already failed, so no working sheet can reach it and no valid name can be shadowed.
+_KEYWORD_UNIT_REPLACEMENTS = {"in": "inch"}
+
+
+def _invalid_syntax(line_no: int, source: str) -> EngSyntaxError:
+    message = f"line {line_no}: invalid syntax"
+    for name, replacement in _KEYWORD_UNIT_REPLACEMENTS.items():
+        if re.search(rf"\b{name}\b", source):
+            hint = diagnostic_hint(
+                "keyword_unit_name", name=name, replacement=replacement
+            )
+            return EngSyntaxError(f"{message}. {hint}")
+    return EngSyntaxError(message)
+
 
 _ALLOWED_NODES = (
     ast.Expression, ast.BinOp, ast.UnaryOp, ast.Call, ast.Name,
@@ -218,7 +236,7 @@ def parse_cell(
                 try:
                     expression = ast.parse(normalized, mode="eval")
                 except SyntaxError as exc:
-                    raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
+                    raise _invalid_syntax(line_no, normalized) from exc
                 _validate_ast(expression, line_no)
                 _validate_characteristic_statement_context(
                     expression,
@@ -261,7 +279,7 @@ def parse_cell(
             try:
                 expression = ast.parse(rewritten, mode="eval")
             except SyntaxError as exc:
-                raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
+                raise _invalid_syntax(line_no, rewritten) from exc
             _validate_ast(expression, line_no, piecewise_parameters=parameters)
             _validate_matrix_literal_bindings(
                 matrix_literals,
@@ -294,7 +312,7 @@ def parse_cell(
                 raise
             raise EngSyntaxError(f"line {line_no}: {message}") from None
         except Exception as exc:
-            raise EngSyntaxError(f"line {line_no}: invalid syntax") from exc
+            raise _invalid_syntax(line_no, source) from exc
     return statements
 
 

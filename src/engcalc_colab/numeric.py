@@ -32,6 +32,17 @@ _UNIT_ALIASES = {
     "s": "second",
     "rad": "radian",
     "deg": "degree",
+    # US customary. Pint knows every one of these already, so this is a table of the
+    # spellings an engineer writes, not a set of definitions. Two traps it steps around:
+    # `inch` rather than `in`, because `in` is a Python keyword and can never be a name
+    # here - the parser says what to write instead when somebody tries it; and `kip`,
+    # which is Pint's force, where its `kilopound` is a mass of 453 kg, one letter away
+    # and never what a structural engineer means by the word.
+    "kip": "kip",
+    "ksi": "ksi",
+    "psi": "psi",
+    "inch": "inch",
+    "ft": "foot",
 }
 
 
