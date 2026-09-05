@@ -337,10 +337,13 @@ def _unit_is_the_engineers(quantity) -> bool:
     own unit, so a value in metres is subject to the family's choice. A unit outside
     the family that is no more complex than the family's canonical member came from
     what was typed - ``tonf``, ``kN/mm`` - and is kept.
+
+    This opened with an empty-family shortcut. Its only caller returns before reaching
+    here when the family is empty, so the branch was unreachable: turned into a raised
+    error it never fired across the whole suite, and `min(..., default=...)` below
+    already answers the same way if a second caller ever arrives without one.
     """
     family = _unit_family(quantity)
-    if not family:
-        return True
     own = str(quantity.units)
     for name in family:
         try:
