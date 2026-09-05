@@ -300,11 +300,64 @@ def _significant_figures(magnitude, precision: int) -> int:
     return len(rendered.strip("0"))
 
 
-def _unit_family(quantity) -> tuple[str, ...]:
+# The same table for a sheet written in US customary units. It exists because the
+# aliases alone leave one hole, and it is the hole RC-2B was: a flexural capacity comes
+# out as `inch^3 * kip_per_square_inch`, four unit terms against the moment family's
+# two, so `_unit_is_the_engineers` rightly refuses it and hands it to the family - which
+# had only `kN * m` in it. An all-imperial page printed its capacity in kilonewton-metres.
+#
+# Everything else on such a page already survived: a declared unit is kept, and a
+# computed `kip`, `foot * kip` or `inch` is no more complex than its family's canonical
+# member. Only the units the algebra invents need somewhere imperial to land.
+_US_CUSTOMARY_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
+    (("[length]", 1),): ("inch", "ft"),
+    (("[length]", 2),): ("inch ** 2",),
+    (("[length]", 4),): ("inch ** 4",),
+    (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("lbf", "kip"),
+    (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("kip * ft",),
+    (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("psi", "ksi"),
+    (("[mass]", 1), ("[time]", -2)): ("kip / ft",),
+}
+
+# Pint's own names for the units the alias table exposes, plus the two spellings a
+# conversion can produce on its own.
+_US_CUSTOMARY_UNIT_NAMES = frozenset({
+    "inch",
+    "foot",
+    "kip",
+    "force_pound",
+    "kip_per_square_inch",
+    "pound_force_per_square_inch",
+})
+
+
+def _is_us_customary(quantity) -> bool:
+    """True when any part of the unit the value already carries is US customary.
+
+    Deliberately `any` and not a majority. A value whose units mix systems is one the
+    engineer built out of both, and the alternative rule - SI wins unless everything is
+    imperial - silently converts the imperial half of a page somebody wrote in imperial
+    on purpose. This only ever decides where a *rejected* unit lands; a unit that came
+    from what was typed is kept before the family is consulted at all.
+    """
     try:
-        return _UNIT_FAMILIES.get(tuple(sorted(quantity.dimensionality.items())), ())
+        return any(name in _US_CUSTOMARY_UNIT_NAMES for name in quantity.units._units)
+    except Exception:
+        return False
+
+
+def _unit_family(quantity) -> tuple[str, ...]:
+    """The units this dimensionality is shown in, in the system the value is already in.
+
+    A stand-in carrying a dimensionality and no units at all reads as SI, which is both
+    the default system and what the one caller that passes such an object means.
+    """
+    try:
+        key = tuple(sorted(quantity.dimensionality.items()))
     except Exception:
         return ()
+    table = _US_CUSTOMARY_UNIT_FAMILIES if _is_us_customary(quantity) else _UNIT_FAMILIES
+    return table.get(key, ())
 
 
 def _unit_terms(quantity) -> int:
@@ -410,11 +463,18 @@ def _best_in_family(quantity, family, settings: RenderSettings, *, start=None):
         # notation happens where the engineer left the value. Design 4.6.
         return quantity
     # ``min`` is stable and ``start`` - the unit the value already carries - is first,
-    # so a band tie keeps it. Every present family steps by 1000 or more, which makes a
-    # tie impossible, so this is currently inert: verified by mutation, removing ``start``
-    # changes no test. It is kept as the correct behaviour for any future family whose
-    # members sit closer together, and documented as inert rather than credited with
-    # results the band rule produces on its own.
+    # so a band tie keeps it.
+    #
+    # This was documented as inert on the grounds that every family stepped by 1000 or
+    # more, which made a band tie impossible. That reason is gone: the US customary
+    # length family steps by 12, and `20 ft` and `240 in` sit in the readable band
+    # together. The branch is inert for a different reason, and a sturdier one - a value
+    # already wearing a family member's unit costs no more unit terms than the family's
+    # canonical member, so `_unit_is_the_engineers` answers True and `_display_quantity`
+    # returns before ever calling this function with a `start`. Re-measured after the
+    # imperial families were added, on the full suite rather than a subset: removing
+    # ``start`` still changes no test. Kept as the correct behaviour for any future
+    # family whose members sit closer together, and no longer credited to a step size.
     return min(candidates, key=lambda candidate: _band_distance(candidate.magnitude))
 
 

@@ -29,4 +29,11 @@ def diagnostic_hint(code: str, **context) -> str:
         names = tuple(context.get("names", ()))
         examples = ", ".join(f"{name} := <value>*<unit>" for name in names)
         return f"Define the missing numeric values first, for example: {examples}."
+    if code == "keyword_unit_name":
+        name = context["name"]
+        replacement = context["replacement"]
+        return (
+            f"'{name}' is a Python keyword and cannot be a name here; "
+            f"write {replacement}."
+        )
     raise ValueError(f"unknown diagnostic code '{code}'")

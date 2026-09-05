@@ -26,6 +26,56 @@ reactions, moment law, a diagram, an inequality and a summary. Its cells are exe
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
 
 
+## US customary units
+
+`kip`, `ksi`, `psi`, `inch` and `ft` are names a sheet may use, so a US code example is
+worked in the units it is written in rather than transcribed into SI first - a step that
+is work the engineer should not have to do, and one where a transcription error would be
+invisible in the memoria.
+
+```text
+%%eng
+L := 20*ft
+b := 12*inch
+d := 21.5*inch
+fc := 4*ksi
+fy := 60*ksi
+As := 3.16*inch**2
+wu := 3.5*kip/ft
+phi := 0.9
+
+Ru := wu*L/2
+Mu := wu*L**2/8
+
+a := As*fy/(0.85*fc*b)
+z = d - a/2
+phiMn = phi*As*fy*z
+numeric(phiMn)
+```
+
+reads `35.00 kip`, `175.00 ft·kip`, `4.65 in` and `272.69 ft·kip`.
+
+Write `inch`, not `in`. `in` is a Python keyword and can never be a name here; typing it
+now says so and says what to write instead, where before it said only `invalid syntax`.
+
+The unit a value is shown in is chosen inside the system the value is already in. This
+matters in one place, and it is the place a capacity lands: `phi*As*fy*z` comes out
+carrying `in³·ksi`, which is the algebra's unit and not one anybody writes, so it is
+replaced by the moment family - `kip·ft` on an imperial sheet, `kN·m` on an SI one.
+Everything else on the page survives without help, because a declared unit is kept and a
+computed `kip`, `ft·kip` or `in` is no more complex than its family's own unit. A value
+whose units mix the two systems is shown in US customary: mixing them was a choice, and
+converting the imperial half of a deliberately imperial page is the worse answer.
+
+Two things this does not do. The factors of a compound unit are ordered by Pint, which
+sorts them alphabetically - `ft·kip`, where US practice writes kip-ft. It agrees with
+practice in SI by coincidence, `kilonewton` sorting before `meter`. And a capacity
+written as a numeric assignment, `phiMn := phi*As*fy*z`, keeps `in³·ksi`, because a
+declared unit is left alone while it still shows figures at the active precision; the
+same is true of `MPa·mm³` in SI. Both are recorded in
+`docs/project-context/NEXT.md`.
+
+
 ## v0.25.1 what the first outside reader saw
 
 Someone was handed the repository link, installed the package and worked a reinforced-
