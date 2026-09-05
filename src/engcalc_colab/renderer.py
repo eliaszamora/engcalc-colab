@@ -82,10 +82,49 @@ def _letters_of(latex: str) -> str:
 
 
 class _EngineeringLatexPrinter(LatexPrinter):
-    def __init__(self, settings=None, *, unit_literals: frozenset[str] = frozenset()):
+    def __init__(
+        self,
+        settings=None,
+        *,
+        unit_literals: frozenset[str] = frozenset(),
+        render_settings: "RenderSettings | None" = None,
+    ):
         super().__init__(settings)
         # Keyword-only: SymPy constructs printers positionally with a settings dict.
         self.unit_literals = frozenset(unit_literals)
+        self.render_settings = render_settings or _DEFAULT_RENDER_SETTINGS
+
+    def _print_Float(self, expr):
+        r"""Shorten a number that is longer than the page's precision. Never reshape one.
+
+        `a = As*fy/(0.85*fc*b)` puts 1/(2*0.85) into the expression for `a/2`, and SymPy
+        prints a Float at its full binary precision, so the memoria carried
+
+            0.588235294117647
+
+        through the formula and again through the substitution: fifteen digits in the
+        middle of a page whose every result is shown to two decimals.
+
+        Only numbers longer than that precision are touched. A first draft rounded every
+        Float and trimmed the trailing zeros, which read well until it turned the `1.0`
+        of `0.9*D - 1.0*Lv` into `1`, deleting a load factor an engineer writes on
+        purpose. What the engineer typed is left exactly as typed, which is the rule this
+        renderer already follows for units.
+
+        The rounded form goes through `_magnitude_text`, so one setting governs the whole
+        page and `%eng_config precision=4` moves this with it.
+
+        Everything after the first dot is counted, which is also what sends SymPy's own
+        `1.0 \cdot 10^{-8}` down the rounding path: its tail is a whole exponent, always
+        longer than any precision this accepts. That matters, because the rest of the
+        page writes exponents with `\times` and two notations on one page is a wart. An
+        explicit branch for it was written first, measured, and found unreachable.
+        """
+        written = super()._print_Float(expr)
+        decimals = written.partition(".")[2]
+        if len(decimals) <= self.render_settings.precision:
+            return written
+        return _magnitude_text(float(expr), self.render_settings)
 
     def _print_Symbol(self, expr, style=None):
         r"""Print a name so it reads as what the engineer wrote.
@@ -184,9 +223,8 @@ class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
         settings: RenderSettings,
         unit_literals: frozenset[str] = frozenset(),
     ):
-        super().__init__(unit_literals=unit_literals)
+        super().__init__(unit_literals=unit_literals, render_settings=settings)
         self.substitutions = substitutions
-        self.render_settings = settings
 
     def _print_Symbol(self, expr):
         quantity = self.substitutions.get(expr.name)
@@ -213,8 +251,14 @@ def _engineering_factor_key(term):
     return (3, sp.default_sort_key(term))
 
 
-def _latex(expr, unit_literals: frozenset[str] = frozenset()) -> str:
-    return _EngineeringLatexPrinter(unit_literals=unit_literals).doprint(expr)
+def _latex(
+    expr,
+    unit_literals: frozenset[str] = frozenset(),
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+) -> str:
+    return _EngineeringLatexPrinter(
+        unit_literals=unit_literals, render_settings=settings
+    ).doprint(expr)
 
 
 def _substitution_latex(expr, substitutions: dict[str, object], settings: RenderSettings = _DEFAULT_RENDER_SETTINGS, unit_literals: frozenset[str] = frozenset()) -> str:
@@ -776,7 +820,7 @@ def _render_signed_term(term: sp.Expr, *, substitutions: dict[str, object] | Non
     negative = term.could_extract_minus_sign()
     unsigned_term = -term if negative else term
     if substitutions is None:
-        body = _latex(unsigned_term, unit_literals)
+        body = _latex(unsigned_term, unit_literals, settings)
     else:
         body = _substitution_latex(unsigned_term, substitutions, settings, unit_literals)
     return negative, body
@@ -836,7 +880,7 @@ def _render_multiplicative_factor(
     unit_literals: frozenset[str] = frozenset(),
 ) -> str:
     if substitutions is None:
-        rendered = _latex(factor, unit_literals)
+        rendered = _latex(factor, unit_literals, settings)
     else:
         rendered = _substitution_latex(factor, substitutions, settings, unit_literals)
     if factor.is_Add:
@@ -1093,7 +1137,7 @@ def _standard_result_row(result: CalculationResult, settings: RenderSettings) ->
 def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -> list[str]:
     """Render the equation being solved entirely in the right-hand block."""
     lhs_rows = _bounded_expression_rows(display_input.lhs, settings=settings)
-    rhs_latex = _latex(display_input.rhs)
+    rhs_latex = _latex(display_input.rhs, settings=settings)
     rows: list[str] = []
     for index, equation_row in enumerate(lhs_rows):
         if index == len(lhs_rows) - 1:
