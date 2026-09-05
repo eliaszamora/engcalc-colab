@@ -256,6 +256,64 @@ class EngineeringEngine:
             )
         return free[0]
 
+    def _written_form(self, statement, evaluator, value):
+        """The definition's expression as it was typed, or None to show the evaluated one.
+
+        Returned only for a plain scalar definition whose calls are pure arithmetic. The
+        written pass is the evaluator run a second time, so a statement that plots,
+        summarises or solves would do that work twice and record its effects twice; the
+        safe-call list is what keeps this to expressions where a second walk is free of
+        consequence.
+
+        None on anything unexpected, and None when the result does not verify. A formula
+        the reader cannot check against the code is the defect being fixed here; a
+        formula that is simply wrong would be worse than the defect.
+        """
+        # No guard here for a statement that plots or summarises. One was written, and
+        # turning it into a raise fired it zero times across the whole suite: both of
+        # those return their own result before this is reached, so the branch could not
+        # be told apart from its absence.
+        if not isinstance(value, sp.Expr):
+            return None
+        for node in ast.walk(statement.expression):
+            if isinstance(node, ast.Call):
+                name = getattr(node.func, "id", None)
+                if name not in _WRITTEN_FORM_SAFE_CALLS:
+                    return None
+            # A name already bound to a symbolic definition is substituted here, and
+            # what arrives is an expression SymPy has already evaluated. The written
+            # form that results is *wider* than the evaluated one - it keeps
+            # `1.18 fy As / (2 b fc)` where evaluation folds the halving into
+            # `0.59 fy As / (b fc)` - and width is not cosmetic here: it tips the row
+            # past the wrapping budget, and the wrapping path splits a product into
+            # additive terms. Measured on a real sheet, `phi*As*fy*(d - a/2)` stops
+            # being a product of four factors and becomes two rows of expanded terms.
+            #
+            # An earlier draft of this comment blamed `(-1)` and separate `1/b`, `1/fc`
+            # fractions. That was `sp.latex`; the renderer's own printer collects those
+            # denominators correctly, and the reason above is what the page shows.
+            #
+            # So a written form is offered only where every name stands for itself.
+            # That is the boundary RC-3 moves; until a definition can be shown without
+            # expanding the names inside it, there is nothing here to preserve.
+            if isinstance(node, ast.Name) and node.id in self.namespace:
+                return None
+        try:
+            writer = _WrittenFormEvaluator(
+                self, getattr(statement, "matrix_literals", ())
+            )
+            if statement.parameters is not None:
+                written = writer.visit_function_body(
+                    statement.expression.body, statement.parameters
+                )
+            else:
+                written = writer.visit(statement.expression.body)
+        except Exception:
+            return None
+        if not isinstance(written, sp.Expr) or not _agrees_with(written, value):
+            return None
+        return written
+
     def _declare_load(self, statement, evaluator):
         """`case D = ...` and `combo U1 = 1.2*D + 1.6*L`.
 
@@ -702,6 +760,7 @@ class EngineeringEngine:
                 display_input=evaluator.display_input,
                 value=value,
                 discarded=evaluator.discarded_solutions,
+                written=self._written_form(statement, evaluator, value),
             )
         except EngCalcError as exc:
             message = str(exc)
@@ -922,17 +981,22 @@ class _Evaluator(ast.NodeVisitor):
         raise EngEvaluationError("unsupported unary operator")
 
     def visit_BinOp(self, node: ast.BinOp):
-        left = self.visit(node.left)
-        right = self.visit(node.right)
-        if isinstance(node.op, ast.Add):
+        # Split from `_combine` so the written-form evaluator can change what an
+        # operator does without changing how its operands are reached. Visiting is not
+        # free of consequence - it records numeric guards - so a subclass must not walk
+        # the children a second time.
+        return self._combine(node.op, self.visit(node.left), self.visit(node.right))
+
+    def _combine(self, op, left, right):
+        if isinstance(op, ast.Add):
             return matrix_add(left, right)
-        if isinstance(node.op, ast.Sub):
+        if isinstance(op, ast.Sub):
             return matrix_subtract(left, right)
-        if isinstance(node.op, ast.Mult):
+        if isinstance(op, ast.Mult):
             return matrix_multiply(left, right)
-        if isinstance(node.op, ast.Div):
+        if isinstance(op, ast.Div):
             return matrix_scalar_divide(left, right)
-        if isinstance(node.op, ast.Pow):
+        if isinstance(op, ast.Pow):
             return matrix_power(left, right)
         raise EngEvaluationError("unsupported operator")
 
@@ -2883,3 +2947,91 @@ class _Evaluator(ast.NodeVisitor):
         if len(args) != count:
             noun = "argument" if count == 1 else "arguments"
             raise EngEvaluationError(f"{name} expects {count} {noun}: {signature}")
+
+
+# Functions a written form may walk through. Everything here is pure arithmetic; the
+# written pass runs the evaluator a second time, and a call that solves, plots or
+# summarises would do that work twice and record its effects twice.
+_WRITTEN_FORM_SAFE_CALLS = frozenset(
+    {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "abs"}
+)
+
+
+def _flattened(kind, *args):
+    r"""An unevaluated ``Add`` or ``Mul`` with no nesting of its own kind inside it.
+
+    Not a detail. Built nested, `5*q*L**4/(384*E*I_z)` prints `L^4 \cdot 5 q` and
+    `h - cover - db_st - db/2` prints `-(cover + db_st - h)`: grouping SymPy would never
+    produce, and worse than the defect this exists to fix. Flat, every real formula
+    measured prints exactly as it does today apart from the one whose coefficient was
+    being destroyed.
+    """
+    flat: list = []
+    for arg in args:
+        if isinstance(arg, kind):
+            flat.extend(arg.args)
+        else:
+            flat.append(arg)
+    return kind(*flat, evaluate=False)
+
+
+def _agrees_with(written, value) -> bool:
+    """True when the written form is the same expression as the one computed beside it.
+
+    Not `written - value == 0`: that is False even when they agree, because subtracting
+    does not force an unevaluated expression to flatten and the difference keeps it
+    whole. `simplify` does force it, at about 33 ms a definition, and still failed to
+    verify three of seven real formulas. A `srepr` round-trip rebuilds the expression
+    through SymPy's ordinary constructors - which is precisely the evaluation that was
+    held off - and verified all seven at 1.9 ms.
+    """
+    try:
+        return sp.sympify(sp.srepr(written)) - sp.sympify(value) == 0
+    except Exception:
+        return False
+
+
+class _WrittenFormEvaluator(_Evaluator):
+    """The expression as the engineer typed it, kept for the page.
+
+    `a = As*fy/(0.85*fc*b)` rendered `1.18 fy As / (b fc)`, because SymPy inverts a Float
+    in a denominator as it builds the expression. The number is right and the 0.85 that
+    ACI 318 requires is not on the page, so a reviewer cannot check the sheet against the
+    code - which is `## v0.25.0`'s finding about load combinations, in a second place.
+
+    Only the arithmetic changes. Names, calls and everything else resolve exactly as they
+    do for the evaluated form, so this is not a second language: it is the same walk with
+    SymPy's automatic simplification held off, and its answer is verified against the
+    evaluated expression before anything is shown.
+    """
+
+    # The unary minus is deliberately left alone, and `_Evaluator` has no seam for it.
+    # An unevaluated negation was written here first and then measured away: SymPy's own
+    # `-value` leaves an unevaluated `Mul` whole, so `-x/(0.85*b)` keeps its 0.85 either
+    # way, and every unary-minus formula measured renders identically. What it did do
+    # was break one case -
+    # `Mul(-1, Add(a, b), evaluate=False)` is the right expression and prints `- a + b`,
+    # dropping the parentheses so the page states something false. `_agrees_with` cannot
+    # see that, because what is wrong is the typesetting and not the mathematics, which
+    # is the trap #76 was.
+    #
+    # `a - (b + c)` is a `Sub` and goes through `_combine`, where the negation lands
+    # inside an `Add` and keeps its brackets - so that one is written as typed rather
+    # than flattened to `a - b - c`, and gains from this without needing a unary rule.
+
+    def _combine(self, op, left, right):
+        if not (isinstance(left, sp.Expr) and isinstance(right, sp.Expr)):
+            return super()._combine(op, left, right)
+        if isinstance(op, ast.Add):
+            return _flattened(sp.Add, left, right)
+        if isinstance(op, ast.Sub):
+            return _flattened(sp.Add, left, _flattened(sp.Mul, sp.Integer(-1), right))
+        if isinstance(op, ast.Mult):
+            return _flattened(sp.Mul, left, right)
+        if isinstance(op, ast.Div):
+            return _flattened(
+                sp.Mul, left, sp.Pow(right, sp.Integer(-1), evaluate=False)
+            )
+        if isinstance(op, ast.Pow):
+            return sp.Pow(left, right, evaluate=False)
+        return super()._combine(op, left, right)

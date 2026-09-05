@@ -170,6 +170,11 @@ class EvaluationResult:
     display_input: Any | None
     value: Any
     discarded: DiscardedSolutions | None = None
+    # The expression as the engineer typed it, when it could be kept and verified.
+    # `value` is what everything computes with; this is only ever shown. They differ
+    # where SymPy rewrote the arithmetic - `As*fy/(0.85*fc*b)` becomes
+    # `1.18*fy*As/(b*fc)`, and the 0.85 the code requires leaves the page.
+    written: Any | None = None
 
 
 @dataclass(frozen=True)
