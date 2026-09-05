@@ -516,6 +516,12 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
 
     A declared unit is kept in every case, unless rendering it would leave no
     significant figure at all.
+
+    ``declared`` means the engineer wrote this unit, not that the statement used
+    ``:=``. It once meant the second, and the difference is every line whose
+    right-hand side is a product of other quantities: `phiMn := 0.9*As*fy*z` declares
+    a name and no unit, and used to keep `MPa*mm^3` on the strength of an operator.
+    `q := 2.8*tonf/m` still keeps its tonf, which is what the flag is for.
     """
     try:
         magnitude = float(quantity.magnitude)
@@ -1969,7 +1975,11 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     if isinstance(result, NumericAssignmentResult):
         lhs = _render_lhs(result.statement.target, None)
-        return rf"{lhs} = {_quantity_latex(result.quantity, settings=active_settings)}"
+        # `declared` asks whether the engineer wrote this unit, not whether the line
+        # used `:=`. The two agree on `q := 2.8*tonf/m` and part company on
+        # `phiMn := 0.9*As*fy*z`, where the units came from three stored values and the
+        # statement declared only a name.
+        return rf"{lhs} = {_quantity_latex(result.quantity, settings=active_settings, declared=bool(result.written_units))}"
 
     if isinstance(result, PartialMatrixNumericEvaluationResult):
         stages = [_matrix_latex(result.symbolic_matrix)]

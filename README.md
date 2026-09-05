@@ -67,13 +67,11 @@ computed `kip`, `ft·kip` or `in` is no more complex than its family's own unit.
 whose units mix the two systems is shown in US customary: mixing them was a choice, and
 converting the imperial half of a deliberately imperial page is the worse answer.
 
-Two things this does not do. The factors of a compound unit are ordered by Pint, which
+One thing this does not do. The factors of a compound unit are ordered by Pint, which
 sorts them alphabetically - `ft·kip`, where US practice writes kip-ft. It agrees with
-practice in SI by coincidence, `kilonewton` sorting before `meter`. And a capacity
-written as a numeric assignment, `phiMn := phi*As*fy*z`, keeps `in³·ksi`, because a
-declared unit is left alone while it still shows figures at the active precision; the
-same is true of `MPa·mm³` in SI. Both are recorded in
-`docs/project-context/NEXT.md`.
+practice in SI by coincidence, `kilonewton` sorting before `meter`. Changing it means
+changing the single call that typesets every unit in the system, so it is recorded in
+`docs/project-context/NEXT.md` rather than done here.
 
 
 ## v0.25.1 what the first outside reader saw

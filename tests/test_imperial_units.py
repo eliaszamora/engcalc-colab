@@ -222,16 +222,40 @@ def test_a_name_that_merely_contains_in_is_not_read_as_the_keyword():
     assert "inch" not in str(excinfo.value), str(excinfo.value)
 
 
-# A limitation this module deliberately does not contract, because contracting it would
-# cement it: a numeric assignment keeps its own unit while that unit still shows figures
-# at the active precision, so
-#
-#     phiMn := 0.9*As*fy*z        ->  2.84 x 10^8 MPa*mm^3   (SI)
-#     phiMn := 0.9*As*fy*(d-a/2)  ->  in^3 * ksi             (imperial)
-#
-# never reach the family at all. The rule is the documented one - a declared unit is left
-# alone unless it would misrepresent the value - and it is right for `q := 2.8*tonf/m`,
-# where a unit really was declared. On a line whose right-hand side is a product of other
-# quantities no unit was typed, and the same shape the external trial reported survives
-# by a different route. That is an SI question, not an imperial one, and it belongs in
-# its own change.
+def test_a_capacity_assigned_as_a_number_also_reads_as_a_moment(cell):
+    """This module first shipped with a note saying the `:=` route was a limitation it
+    deliberately did not contract - `phiMn := 0.9*As*fy*(d - a/2)` kept `in^3 * ksi`,
+    because a declared unit was left alone while it still showed figures. That was an
+    SI question wearing imperial clothes, and it was answered separately: `declared`
+    now asks whether the right-hand side names a unit, and a line built out of stored
+    values names none.
+
+    The contract is here because the imperial families are what this lands in.
+    """
+    final = _final(cell(
+        "b := 12*inch\n"
+        "d := 21.5*inch\n"
+        "fc := 4*ksi\n"
+        "fy := 60*ksi\n"
+        "As := 3.16*inch**2\n"
+        "a := As*fy/(0.85*fc*b)\n"
+        "phiMn := 0.9*As*fy*(d - a/2)\n"
+    ))
+    assert "272.69" in final, final
+    assert r"\mathrm{kip}" in final, final
+    assert r"\mathrm{ft}" in final, final
+    assert "ksi" not in final, final
+
+
+def test_a_length_built_from_imperial_inputs_stays_in_inches(cell):
+    """The guard beside it. `a` names no unit either, so it is no longer declared - and
+    `in` costs no more than the family's own member, so it is kept where it was."""
+    final = _final(cell(
+        "b := 12*inch\n"
+        "fc := 4*ksi\n"
+        "fy := 60*ksi\n"
+        "As := 3.16*inch**2\n"
+        "a := As*fy/(0.85*fc*b)\n"
+    ))
+    assert "4.65" in final, final
+    assert r"\mathrm{in}" in final, final

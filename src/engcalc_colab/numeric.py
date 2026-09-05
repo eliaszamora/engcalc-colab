@@ -78,6 +78,37 @@ class NumericContext:
         self.values[name] = quantity
         return quantity
 
+    def written_unit_names(self, expression: ast.Expression) -> frozenset[str]:
+        """Names in this assignment's source that the evaluation reads as units.
+
+        What separates `q := 2.8*tonf/m`, where a unit was written down, from
+        `phiMn := 0.9*As*fy*z`, where the units arrived from three stored values and
+        nothing was declared at all. The renderer needs the difference: it keeps a
+        declared unit outright, and on the second kind there is nothing to keep.
+
+        The precedence is not a second rule. `resolve_numeric_name` consults stored
+        values before the alias table, so `m := 500*kg` makes `m` a mass; asking the
+        same two things in the same order is what stops the page relabelling the
+        reader's own quantity as a metre. `unit_literal_names` does this for a symbolic
+        expression and its free symbols; an assignment's right-hand side is an AST that
+        has not been through SymPy, so the walk is over `ast.Name` instead.
+
+        Its caller asks before ``assign`` stores the target, so the names are read
+        against the values the arithmetic actually saw. Reading them afterwards differs
+        only for a statement whose right-hand side mentions its own target, and
+        `m := 2*m` renders the same either way - the metre is a family member, so the
+        band rule returns it whichever answer `declared` gives. Measured, not assumed:
+        moving the call after the assignment changes no test. Kept as the order that is
+        correct rather than the order that happens to agree.
+        """
+        return frozenset(
+            node.id
+            for node in ast.walk(expression)
+            if isinstance(node, ast.Name)
+            and node.id not in self.values
+            and node.id in _UNIT_ALIASES
+        )
+
     def resolve_numeric_name(self, name: str):
         if name in self.values:
             return self.values[name]

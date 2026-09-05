@@ -113,25 +113,20 @@ its capacity in kilonewton-metres.
 
 Three things came out of rendering that page and reading it, none of them imperial.
 
-**A declared unit that was never declared.** This is the one worth taking next.
+**A declared unit that was never declared — done.** `declared` asked whether the
+statement used `:=`; it now asks whether the right-hand side names a unit, read with the
+precedence the arithmetic uses. Three rows the README presented as current were not
+current on that route, and the first of them is in the README's own table:
 
-    phiMn := 0.9*As*fy*z      ->  2.84 x 10^8 MPa·mm³      (SI)
-    phiMn  = 0.9*As*fy*z
-    numeric(phiMn)            ->  284.30 kN·m              (SI)
+    d_adm := L/300            0.02 m            the table's "before" column
+    phiMn := 0.9*As*fy*z      2.84e8 MPa·mm³    RC-2B, by a second route
+    DC    := Mu/(0.9*As*fy*z) 8.79e-7 kN·m/...  RC-2A, for a ratio of 0.88
 
-Same numbers, two pages, decided by which assignment operator was used. The rule doing it
-is the documented one — a declared unit is left alone unless it would misrepresent the
-value, measured in surviving figures — and it is right for `q := 2.8*tonf/m`, where a unit
-really was written down. On a line whose right-hand side is a product of other quantities
-nothing was written down, and `MPa·mm³` keeps four figures, so the guard holds and RC-2B
-survives by a second route. The deflection in the README's own table escapes only because
-`kN·m³/(GPa·mm⁴)` keeps no figures at all.
-
-The question is not how to patch it but what `declared` should mean: *this statement used
-`:=`*, which is what it means today, or *the engineer wrote this unit*, which is what
-every sentence about it in the README says. The second is a different flag, computed from
-whether the right-hand side carries a unit literal of its own — and #75 already built
-machinery for knowing which names an evaluation read as units.
+What made it hard to see is worth keeping: the rows that were right were right by
+accident. A declared unit is dropped when it shows *no* figures, so `v := 8e-05*m` and a
+deflection carrying `kN·m³/(GPa·mm⁴)` fell into their families because their magnitudes
+round to `0.00`. `MPa·mm³` keeps four, so it stayed. Whether the page was right depended
+on where the decimal point fell.
 
 **An equation is written twice.** A definition followed by `numeric(...)` prints the
 formula, then prints it again as the opening of the substitution block:
