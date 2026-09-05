@@ -31,7 +31,15 @@ def test_eng_magic_groups_matrix_numeric_stages_without_traceback(monkeypatch, c
 
     assert [type(item) for item in displayed] == [Math]
     latex = displayed[0].data
-    assert latex.count(r"\begin{matrix}") >= 6
+    # Five matrices, named so the number means something: the definition, the two
+    # stages `numeric(A)` adds to it, and the two `result(A)` prints on its own.
+    #
+    # This read `>= 6` while `numeric(A)` opened by restating the definition verbatim,
+    # immediately below it. That row is gone - see
+    # tests/test_a_formula_is_not_restated_by_its_own_evaluation.py - and the block now
+    # continues from the definition instead. `result(A)` still restates the formula,
+    # correctly: the row above it is the numeric result, not the definition.
+    assert latex.count(r"\begin{matrix}") == 5
     assert "10.00" in latex and "20.00" in latex
     assert "Matrix([[" not in latex
     assert "Traceback" not in capsys.readouterr().out

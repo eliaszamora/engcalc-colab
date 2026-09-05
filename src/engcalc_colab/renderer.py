@@ -1524,6 +1524,31 @@ def _value_row_spacings(
     return spacings
 
 
+def _opens_by_repeating(result_rows: list[str], previous_rows: list[str] | None) -> bool:
+    """True when this block's first row is the row above it, character for character.
+
+    `M = q*L^2/8` followed by `numeric(M)` printed the formula twice: once as the
+    definition, once as the opening stage of the evaluation. `## v0.23.2 an equation is
+    written once` fixed the same repeat for `solve`, using a different test - "the
+    argument is a name already bound to an equation". Copying that here would be wrong,
+    because an evaluation written some way below its definition needs that row: it is
+    the only thing on the page saying which formula is being evaluated.
+
+    Comparing rendered rows says exactly what is wrong and nothing more. It cannot
+    over-apply to a formula that reads differently, to an evaluation of an inline
+    expression, which has no left-hand side to match, or to one whose definition is not
+    immediately above.
+
+    A single-row block is never dropped. Two identical definitions in a row are a
+    sheet's own business, and swallowing the second is a worse answer than printing it.
+    """
+    return (
+        previous_rows is not None
+        and len(result_rows) > 1
+        and result_rows[0] == previous_rows[-1]
+    )
+
+
 def render_aligned_results(results: list[CalculationResult], *, settings: RenderSettings | None = None) -> str:
     """Render all calculation groups with one consistent MathJax array layout."""
     if not results:
@@ -1531,25 +1556,48 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
 
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
     rows: list[str] = []
+    previous_rows: list[str] | None = None
     for result_index, result in enumerate(results):
         result_rows = _display_rows(result, active_settings)
+
+        # Spacings are computed from the whole block, before anything is dropped. They
+        # correspond to `result_rows[1:]`, and `_internal_row_spacings` refuses a
+        # mismatched count - which is exactly the guard that would fire if this were
+        # measured against a shortened list instead.
+        internal_spacings = _internal_row_spacings(
+            result,
+            result_rows,
+            active_settings,
+        )
+
+        if _opens_by_repeating(result_rows, previous_rows):
+            # The definition becomes the opening of the derivation rather than being
+            # said twice. Every row after the first already carries an empty left-hand
+            # side, so the array's alignment needs nothing else, and the separator
+            # becomes the stage spacing this block would have used internally.
+            for spacing, continuation_row in zip(internal_spacings, result_rows[1:]):
+                rows.append(rf"\\[{spacing}]")
+                rows.append(continuation_row)
+            # The whole block, not the tail that was emitted. Only `[-1]` is ever read
+            # and it is the same either way, so this cannot be observed: setting it to
+            # None here changes no test. Kept because it is what the name says - the
+            # rows of the block before this one - rather than for a result it produces.
+            previous_rows = result_rows
+            continue
 
         if result_index:
             spacing = "16pt" if result.statement.blank_before else "8pt"
             rows.append(rf"\\[{spacing}]")
         rows.append(result_rows[0])
 
-        internal_spacings = _internal_row_spacings(
-            result,
-            result_rows,
-            active_settings,
-        )
         for spacing, continuation_row in zip(
             internal_spacings,
             result_rows[1:],
         ):
             rows.append(rf"\\[{spacing}]")
             rows.append(continuation_row)
+
+        previous_rows = result_rows
 
     body = " ".join(rows)
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
