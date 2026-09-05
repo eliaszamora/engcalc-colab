@@ -404,6 +404,12 @@ class EngineeringEngine:
                 return self._declare_load(statement, evaluator)
 
             if isinstance(statement, ParsedNumericAssignment):
+                # Before the assignment, not after: `assign` stores the target, and a
+                # name this statement is defining must not read back as a value the
+                # arithmetic never saw.
+                written_units = self.numeric_context.written_unit_names(
+                    statement.expression
+                )
                 quantity = self.numeric_context.assign(
                     statement.target,
                     statement.expression,
@@ -411,6 +417,7 @@ class EngineeringEngine:
                 return NumericAssignmentResult(
                     statement=statement,
                     quantity=quantity,
+                    written_units=written_units,
                 )
 
             if statement.target is not None:

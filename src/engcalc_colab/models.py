@@ -176,6 +176,10 @@ class EvaluationResult:
 class NumericAssignmentResult:
     statement: ParsedNumericAssignment
     quantity: Any
+    # Names on the right-hand side that the evaluation read as units. Empty means the
+    # statement declared a name and not a unit, which is what the renderer needs in
+    # order to tell `q := 2.8*tonf/m` from `phiMn := 0.9*As*fy*z`.
+    written_units: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, init=False)
