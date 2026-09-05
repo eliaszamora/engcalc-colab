@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.25.1**.
+Current version: **0.26.0**.
 
 
 ## Help, inside the notebook
@@ -26,7 +26,7 @@ reactions, moment law, a diagram, an inequality and a summary. Its cells are exe
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
 
 
-## US customary units
+## v0.26.0 an ACI example in its own units
 
 `kip`, `ksi`, `psi`, `inch` and `ft` are names a sheet may use, so a US code example is
 worked in the units it is written in rather than transcribed into SI first - a step that
@@ -66,6 +66,23 @@ Everything else on the page survives without help, because a declared unit is ke
 computed `kip`, `ft·kip` or `in` is no more complex than its family's own unit. A value
 whose units mix the two systems is shown in US customary: mixing them was a choice, and
 converting the imperial half of a deliberately imperial page is the worse answer.
+
+**A declared unit is one you wrote.** `phiMn := 0.9*As*fy*z` declares a name, not a unit -
+every unit on that line arrived from `As`, `fy` and `z`. The rule that keeps a declared
+unit was reading the assignment operator instead, so three things this README describes
+were not true of a value written as a number:
+
+| written with `:=` | said | now |
+|---|---|---|
+| `d_adm := L/300` | `0.02 m` | `20.00 mm` |
+| `phiMn := 0.9*As*fy*z` | `2.84 x 10^8 MPa·mm³` | `284.30 kN·m` |
+| `DC := Mu/(0.9*As*fy*z)` | `8.79 x 10^-7 kN·m/(MPa·mm³)` | `0.88` |
+
+The rows beside them were right by accident. A declared unit is dropped when it shows no
+figure at all, so `v := 8e-05*m` and a deflection carrying `kN·m³/(GPa·mm⁴)` fell into
+their families because their magnitudes round to `0.00`; `MPa·mm³` keeps four, so it
+stayed. Whether the page was right depended on where the decimal point fell.
+`q := 2.8*tonf/m` still keeps its `tonf/m`, which is what the rule is for.
 
 One thing this does not do. The factors of a compound unit are ordered by Pint, which
 sorts them alphabetically - `ft·kip`, where US practice writes kip-ft. It agrees with
@@ -1569,6 +1586,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.26.0** — `kip`, `ksi`, `psi`, `inch` and `ft`: a US code example is worked in the units it is written in, and the unit a computed value is shown in is chosen inside the system it is already in. A declared unit is now one the engineer wrote rather than one a `:=` line produced, so a capacity assigned as a number reads as a moment and a demand-capacity ratio reads as a number.
 - **0.25.1** — presentation corrections from the first use of the package by someone outside it: a name keeps every letter that was typed, a dimensionless ratio prints as a number, a moment prints in a moment's units, a coefficient obeys the page's precision, and a unit left in a substitution reads as a unit. The IPython floor is Colab's own 7.34.0, so installing EngCalc no longer upgrades the platform underneath it.
 - **0.25.0** — `case D = M_D(x)` and `combo U1 = 1.2*D + 1.6*Lv`: a load combination keeps the factors it was written with, and `%eng_help` explains every call.
 - **0.24.0** — `integral(...)` is retired; `integrate(...)` is the one name for the operation, and typing the old one says what to write instead.
@@ -1609,4 +1627,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.25.1`.
+Version: `0.26.0`.
