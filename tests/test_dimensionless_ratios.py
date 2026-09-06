@@ -181,11 +181,18 @@ def test_a_declared_ratio_keeps_the_unit_the_engineer_wrote(cell):
 def test_computing_with_that_ratio_does_give_the_number(cell):
     """The visible cost of scoping by `declared`, pinned rather than left in a comment.
 
-    `slope := 2*mm/m` shows `2.00 mm/m` on its own row and `2.00e-3` where it is
+    `slope := 2*mm/m` shows `2.00 mm/m` on its own row and the bare ratio where it is
     computed. That is the same split the renderer already makes for physical
     quantities - a declared unit is kept, a computed one is made readable - so it is
     the existing model rather than a new wart, but it is a change a reader will notice
     and it should fail loudly if anyone alters it by accident.
+
+    This asserted the literal `10^{-3}` until `figures` arrived. The exponent was never
+    the point: it was the shape readability happened to take when two decimals turned
+    0.002 into `0.00`, and the rescue now prints `0.002`, which is the same ratio in a
+    form an engineer would rather read. What the test is for - the declared row keeps
+    `mm/m`, the computed row does not - is unchanged and is what it now checks.
     """
     final = _final(cell("slope := 2*mm/m\nnumeric(slope)\n"))
-    assert "10^{-3}" in final, final
+    assert "0.002" in final, final
+    assert r"\mathrm{mm}" not in final, final
