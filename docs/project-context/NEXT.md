@@ -8,16 +8,18 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `e23e1e5` (#90 merged) |
-| declared version | **0.27.0** |
+| `main` | `348067a` (#92 merged) |
+| declared version | **0.27.1** |
 | default suite (`pytest -q`) | **1629 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
-| Deep Property Gate (`pytest quality_tests`) | **207 properties** |
+| Deep Property Gate (`pytest quality_tests`) | **207 properties**, about 4 and a half minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
 
-The suite took seven and a half minutes until Pint's registry was shared rather than
-rebuilt per engine. If a run starts taking that again, measure before assuming the
-machine: `--durations=25` names the slow tests, and a fixed cost paid 724 times does
-not appear there at all.
+The suite took seven and a half minutes and the Gate twenty-five, until Pint's registry
+was shared rather than rebuilt per engine. If a run starts taking that again, measure
+before blaming the machine — and note that `--durations=25` would not have found this
+one. It reported a slowest test of 4.65 s out of 378, which reads as nothing to fix. A
+fixed cost paid once per engine, 724 times, is invisible to it; timing the constructor
+is what found it.
 
 **Releasing.** The patch digit is a release of corrections carrying no new feature -
 `0.9.2`, `0.10.1`, `0.25.1`, `0.26.1`. The minor digit is a capability that was not

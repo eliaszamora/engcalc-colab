@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.27.0**.
+Current version: **0.27.1**.
 
 
 ## Help, inside the notebook
@@ -24,6 +24,21 @@ their own typing.
 `examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
 reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
+## v0.27.1 one unit registry
+
+Every numeric context built its own Pint registry. Pint re-parses its unit definition
+file on each one, so the test suite spent more than half its time reading the same file
+again: 453 seconds became 179, and each CI job went from about six minutes to two.
+
+Speed is the smaller half. Pint asks for one registry per application because quantities
+built by two registries cannot be combined at all - `Cannot operate with Quantity and
+Quantity of different registries`. A notebook holds one context, so nothing reached that;
+it is a hazard removed rather than a defect fixed.
+
+Nothing about a sheet changes. `%eng_reset` clears the values it always cleared, and now
+cannot take the unit definitions with it.
 
 
 ## v0.27.0 the formula on the page is the one you wrote
@@ -1677,6 +1692,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.27.1** — one Pint registry for the process rather than one per numeric context. The suite went from 453 seconds to 179 and each CI job from about six minutes to two, and quantities from two contexts can now be combined at all.
 - **0.27.0** — the formula on the page is the one you wrote: a coefficient in a denominator stays there rather than returning as its reciprocal, and `keep d = ...` marks a name a later formula shows instead of expanding, so a capacity reads `phi As fy (d - a/2)` and not in `cover`, `db_st` and `h`.
 - **0.26.1** — a definition immediately followed by `numeric(...)` prints its formula once: the evaluation continues from the definition instead of restating it. The reference memoria in this repository did it twice, and every row was correct on its own.
 - **0.26.0** — `kip`, `ksi`, `psi`, `inch` and `ft`: a US code example is worked in the units it is written in, and the unit a computed value is shown in is chosen inside the system it is already in. A declared unit is now one the engineer wrote rather than one a `:=` line produced, so a capacity assigned as a number reads as a moment and a demand-capacity ratio reads as a number.
@@ -1720,4 +1736,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.27.0`.
+Version: `0.27.1`.
