@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.27.1**.
+Current version: **0.28.0**.
 
 
 ## Help, inside the notebook
@@ -24,6 +24,68 @@ their own typing.
 `examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
 reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
+## v0.28.0 what a matrix frame analysis found
+
+A one-storey braced frame was solved from scratch as a benchmark - vector, localisation,
+rotation, element stiffness, assembly, static condensation, period - with nothing
+hardcoded. The engineering was right on the first run. Everything below is what reading
+the *page* found, which the 1658-test suite could not see.
+
+**`figures` — a number reduced to one digit or none gets them back.** `precision` counts
+decimal places, and one such count cannot serve a page spanning seven orders of
+magnitude: a period of 0.016756 s printed `0.02 s` and two section properties printed
+`0.00`, while `%eng_config precision=6` would have printed a column stiffness as
+`517195.945000`.
+
+```python
+%eng_config figures=3     # the default; 0 restores decimal places alone
+```
+
+It is a floor underneath `precision`, not a replacement for it, and it fires only where
+the page's decimals have reduced a value to a single digit or none. `0.88`, `2.85` and
+every formula coefficient stay exactly as they were. This is deliberately unlike
+siunitx's `round-mode = figures`, Mathcad's `float` and NumPy's
+`format_float_positional(fractional=False)`, all of which *replace* decimals and would
+round `70303.22` to `70300`.
+
+**A matrix takes its scale outside the brackets, and a sheet stays in kilonewtons.**
+
+```
+K = 10^3 [ 517.20 kN*m   209.67 kN     0           ]
+         [ 209.67 kN     240.31 kN/m   209.67 kN   ]
+         [ 0             209.67 kN     517.20 kN*m ]
+```
+
+The unit families stop at kilo, so nothing reaches mega and a page does not mix the two;
+the matrix then takes the largeness outside as a power of ten, the way MATLAB's `format
+short` and siunitx's `fixed-exponent` have always done. The exponent is a multiple of
+three and is only taken when every cell survives it. `MPa` and `GPa` are left alone
+deliberately: a concrete strength is 25 MPa in every code on the shelf.
+
+**Prose can typeset the relation it is explaining.** Text between `"""` marks was escaped
+and nothing else, so a memoria explaining a matrix formulation had to write `A_e = R_e
+L_e T` in ASCII. Inline `$...$` now renders:
+
+```
+"""
+The element matrix follows from $A_e = R_e L_e T$ and $K_e = A_e^T k_e A_e$.
+"""
+```
+
+**Four corrections, all of them the same shape: one value rendering differently on two
+code paths.** A stiffness assembled inside a matrix read `70303.22 GPa*mm^2/m` where the
+same expression outside one read `kN/m`. `keep` marked a name for later formulas but
+stopped at the edge of a matrix, so `[A_c, 0; 0, A_c]` expanded to `b d`. A cell of a
+mixed-dimension matrix was never offered the unit family a scalar gets. And a period read
+`240.00 ms`, which is my own error from 0.27.0 and which nobody writes - the time family
+is seconds and nothing else now.
+
+`docs/project-context/HOW-OTHERS-FORMAT-NUMBERS.md` records how siunitx, Mathcad, MATLAB,
+NumPy, handcalcs, Pint and forallpeople each decide this, including the measurement that
+shaped the release: the standard auto-prefix algorithm, run on this benchmark, produces
+four of the six defects that were reported against it.
 
 
 ## v0.27.1 one unit registry
@@ -1692,6 +1754,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.28.0** — what a matrix frame analysis found. `%eng_config figures=3` gives a number reduced to one digit or none its figures back, so a 0.016756 s period reads `0.0168 s` rather than `0.02 s`; a matrix takes a common power of ten outside its brackets and the unit families stop at kilo, so a page no longer mixes kilo and mega; prose between `"""` marks typesets inline `$...$`; `keep` reaches inside a matrix; and a value reads the same in a matrix as it does on its own.
 - **0.27.1** — one Pint registry for the process rather than one per numeric context. The suite went from 453 seconds to 179 and each CI job from about six minutes to two, and quantities from two contexts can now be combined at all.
 - **0.27.0** — the formula on the page is the one you wrote: a coefficient in a denominator stays there rather than returning as its reciprocal, and `keep d = ...` marks a name a later formula shows instead of expanding, so a capacity reads `phi As fy (d - a/2)` and not in `cover`, `db_st` and `h`.
 - **0.26.1** — a definition immediately followed by `numeric(...)` prints its formula once: the evaluation continues from the definition instead of restating it. The reference memoria in this repository did it twice, and every row was correct on its own.
@@ -1736,4 +1799,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.27.1`.
+Version: `0.28.0`.
