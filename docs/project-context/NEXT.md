@@ -155,6 +155,23 @@ tidy fix and was implemented before it was measured - left `0.00008*m` printing 
 `0.00008 m` instead of `0.08 mm`. The separation to copy is siunitx's, where `round-mode`
 and `exponent-mode` know nothing about each other; it is not a merge.
 
+### Two tables, two questions
+
+`_UNIT_FAMILIES` is what the system *chooses*. `_UNIT_ALIASES` is what the engineer may
+*write*. Keeping them straight matters, because #99 took mega out of the first for a
+reason that says nothing about the second - the sheet should stay in kilonewtons rather
+than mixing prefixes - and `MN` had never been in the second at all.
+
+So `P := 12*MN` answered "unknown numeric name 'MN'. Define the numeric value first",
+reading a unit as a variable the engineer had forgotten to define. The alias table gave
+pressure four steps and force two. #107 adds the one a bridge reaction is written in, and
+its guards pin the other half unchanged: a large computed force still reads
+`209670.00 kN`, and an assembled stiffness matrix still factors `10^3` rather than
+reaching mega.
+
+Worth remembering as a shape rather than a fact: a rule about *display* was quietly
+constraining *input*, and the two are separate tables that happened to be read as one.
+
 ### `numeric(expr, unit)` was ignored
 
 Found by auditing `examples/memoria-viga.ipynb` after 0.28.0. The second argument is the

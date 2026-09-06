@@ -22,6 +22,13 @@ _UNIT_ALIASES = {
     "m": "meter",
     "N": "newton",
     "kN": "kilonewton",
+    # `MN` is here and deliberately not in `_UNIT_FAMILIES`, and the two tables answer
+    # different questions. The families are what the system *chooses*, and #99 took mega
+    # out of them because the engineer wanted a sheet that stays in kilonewtons rather
+    # than mixing the two prefixes. This table is what the engineer may *write*, and a
+    # bridge reaction is written in meganewtons. Without it, `P := 12*MN` was read as an
+    # undefined variable and answered with "Define the numeric value first".
+    "MN": "meganewton",
     "kgf": "kilogram_force",
     "tonf": "tonf",
     "Pa": "pascal",
