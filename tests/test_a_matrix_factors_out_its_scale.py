@@ -161,19 +161,19 @@ def test_a_small_moment_keeps_the_units_it_was_built_from(cell):
     moment is written in newton-metres, not in thousandths of a kilonewton-metre - and
     this test does *not* show it, which is worth knowing rather than hiding.
 
-    `10 N x 500 mm` is stored as `mm * N`, which costs two unit terms, exactly what
+    `10 N x 500 mm` is stored as `N * mm`, which costs two unit terms, exactly what
     `N * m` costs. `_unit_is_the_engineers` therefore judges it to be what was typed and
-    keeps it, so the value reads `5000.00 mm*N`. That is a legitimate unit - Eurocode
-    work is full of moments in N*mm - printed with its factors in Pint's alphabetical
-    order rather than the conventional one.
+    keeps it, so the value reads `5000.00 N*mm` - a legitimate unit, and the one Eurocode
+    work is full of. The family's small step is reached whenever the stored unit is not
+    itself a two-term tie.
 
-    Both of those are open items in `docs/project-context/NEXT.md`: the tie that
-    `_unit_terms` cannot break, and the factor ordering. The family's small step is
-    reached whenever the stored unit is not itself a two-term tie.
+    This asserted `mm * N` until the registry stopped alphabetising a compound unit's
+    factors. That ordering was one of two open items named here; the remaining one is the
+    tie `_unit_terms` cannot break, which is why the family is not reached at all.
     """
     final = _final(cell("F := 10*N\nr := 500*mm\nM = F*r\nnumeric(M)\n"))
     assert "5000.00" in final, final
-    assert r"\mathrm{mm} \cdot \mathrm{N}" in final, final
+    assert r"\mathrm{N} \cdot \mathrm{mm}" in final, final
 
 
 def test_an_ordinary_beam_moment_still_reads_in_kilonewton_metres(cell):
