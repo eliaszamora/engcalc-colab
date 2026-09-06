@@ -153,6 +153,48 @@ no-op looks exactly like success.
 
 ---
 
+## 9. A check that fails towards "fine"
+
+Section 7 is about harnesses. This is the shape underneath it, and it showed up three
+times in one session, in three different kinds of tool. Every time, the broken check
+produced the reassuring answer rather than an error:
+
+- **`gh pr checks` reported six green from a stale run.** After a force-push it answered
+  for the commit that had been replaced, while the new one was still `in_progress`. The
+  rule in this repository is CI green *on that exact SHA*, and the tool most likely to be
+  used to check it will happily answer about a different one. Ask
+  `repos/<owner>/<repo>/commits/<sha>/check-runs` instead.
+
+- **A mutation harness reported six clean survivors having never run pytest.** One path
+  in its subset named a module that does not exist. pytest exits without a summary line,
+  the harness found no "failed" in it, and "no failure" and "nothing ran" are the same
+  string to a grep. It reads as a weak contract set - which is a conclusion you might act
+  on - rather than as a broken tool.
+
+- **A polling loop span for twenty-four minutes on green CI.** Its `jq` filter had
+  `\"-\"` inside single quotes, which is a parse error; `2>/dev/null` swallowed it; the
+  empty result failed the loop's own guard; and the symptom was "CI is slow". The
+  engineer noticed before I did.
+
+**What they share.** None of them raised. Each degraded into the answer that invites you
+to move on, and two of the three were about *verification itself* - so the thing that
+failed was the thing whose job was to notice failure.
+
+**The checks.**
+
+- A verifier must fail loudly. If it cannot produce a verdict, say so and stop; never
+  return the shape of a good answer. The mutation harness now raises on a missing summary
+  line rather than printing "SURVIVED".
+- Do not silence a checker's stderr. `2>/dev/null` on a query whose output you are about
+  to branch on converts a bug into a wrong answer.
+- Prefer a query that names what you are asking about. `gh pr checks` asks about a pull
+  request; the rule is about a commit.
+- When something takes much longer than every previous run of the same thing, that is
+  data. Twenty-four minutes against a two-minute baseline was the signal, and it was
+  read as patience for three-quarters of an hour.
+
+---
+
 ## What would make the tool better, rather than the process
 
 **Write page-level invariants, not only substring contracts.** The single most productive
