@@ -491,6 +491,47 @@ def _is_us_customary(quantity) -> bool:
         return False
 
 
+# The metric-technical system: kilogram-force and tonne-force, with stresses in
+# kgf/cm^2. Half the Spanish-speaking world writes a memoria in it - Peru and Mexico put
+# the steel modulus at 2.1e6 kgf/cm^2, and f'c and fy are written in it beside MPa - and
+# without a table of its own such a sheet was converted to SI under the engineer, whose
+# own words were: "si te los doy en kgf, entonces que sea kgf".
+#
+# Lengths, areas and time are deliberately the SI entries. A metre is a metre in both,
+# and what distinguishes the systems is how force and stress are spelled.
+_TECHNICAL_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
+    (("[length]", 1),): ("mm", "m"),
+    (("[length]", 2),): ("cm ** 2", "m ** 2"),
+    (("[length]", 4),): ("cm ** 4",),
+    (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("kgf", "tonf"),
+    (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("kgf * m", "tonf * m"),
+    (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("kgf / cm ** 2",),
+    (("[mass]", 1), ("[time]", -2)): ("kgf / m", "tonf / m"),
+    (("[time]", 1),): ("s",),
+    (("[time]", -1),): ("1 / s",),
+}
+
+# Pint's own names. `tonf` is defined by this package; `force_kilogram` is Pint's
+# spelling of what the alias table exposes as `kgf`.
+_TECHNICAL_UNIT_NAMES = frozenset({
+    "force_kilogram",
+    "tonf",
+})
+
+
+def _is_technical(quantity) -> bool:
+    """True when any part of the unit the value carries is kilogram- or tonne-force.
+
+    `any`, for the same reason `_is_us_customary` uses it, and because the engineer
+    said so directly when asked what should happen to a page that mixes the two:
+    "si te los doy en ambos, elige kgf cm2".
+    """
+    try:
+        return any(name in _TECHNICAL_UNIT_NAMES for name in quantity.units._units)
+    except Exception:
+        return False
+
+
 def _unit_family(quantity) -> tuple[str, ...]:
     """The units this dimensionality is shown in, in the system the value is already in.
 
@@ -501,7 +542,12 @@ def _unit_family(quantity) -> tuple[str, ...]:
         key = tuple(sorted(quantity.dimensionality.items()))
     except Exception:
         return ()
-    table = _US_CUSTOMARY_UNIT_FAMILIES if _is_us_customary(quantity) else _UNIT_FAMILIES
+    if _is_us_customary(quantity):
+        table = _US_CUSTOMARY_UNIT_FAMILIES
+    elif _is_technical(quantity):
+        table = _TECHNICAL_UNIT_FAMILIES
+    else:
+        table = _UNIT_FAMILIES
     return table.get(key, ())
 
 

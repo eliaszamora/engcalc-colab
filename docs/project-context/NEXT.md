@@ -155,6 +155,43 @@ tidy fix and was implemented before it was measured - left `0.00008*m` printing 
 `0.00008 m` instead of `0.08 mm`. The separation to copy is siunitx's, where `round-mode`
 and `exponent-mode` know nothing about each other; it is not a merge.
 
+### A third unit system: metric-technical
+
+Asked which units he works in, the engineer answered with a rule rather than a list:
+
+    "si te los doy en kgf, entonces que sea kgf, si te los doy en MPa entonces que sea
+     MPa, si te los doy en ambos, elige kgf cm2"
+
+That is what this renderer already does for US customary - RC-1 gave imperial its own
+family table and `_is_us_customary` detects it - applied to the system half the
+Spanish-speaking world writes a memoria in. Peru and Mexico put the steel modulus at
+2.1e6 kgf/cm^2; f'c and fy are written in kgf/cm^2 beside MPa. Without a table of its
+own, such a sheet was rewritten into SI under its author:
+
+    fc := 250*kgf/cm**2          ->  24.52 MPa      the *declared* unit, overruled
+    E := 2100000*kgf/cm**2       ->  205.94 GPa
+
+#108 adds `_TECHNICAL_UNIT_FAMILIES` and `_is_technical`, and a whole sheet now reads in
+kgf, cm, kgf/cm^2 and tonf*m.
+
+**Two things it turned over, both worth keeping.**
+
+`test_an_aggregate_keeps_the_engineers_unit_against_the_band` used `0.5 tonf`, and stopped
+testing what it was written to test: with a technical family, `0.5 tonf` reads
+`500.00 kgf` whether the authorship gate is present or not, because that is a band step
+*inside* the engineer's own system - exactly as `0.5 kip` has always read `500.00 lbf`.
+Its docstring also claimed `kN/mm` could not serve as the case, and that has not been
+true since the band work of #94/#97/#99. Re-pointed at `kN/mm`, measured, and the
+mutation harness now checks that it bites.
+
+The gate is not an orphan: fifteen tests fail when it is disabled.
+
+**What it does not fix.** `25000 kgf / (100 mm x 100 mm)` still reads `2.50 kgf/mm^2`
+rather than `250.00 kgf/cm^2`. The system is detected correctly; `_unit_is_the_engineers`
+never hands it to the family, because `kgf/mm^2` and `kgf/cm^2` both cost two unit terms.
+That is the same tie that keeps `GPa*mm` out of `kN/m` - the last of the seven - and
+sections written in centimetres, which is what this engineer writes, are unaffected.
+
 ### Two tables, two questions
 
 `_UNIT_FAMILIES` is what the system *chooses*. `_UNIT_ALIASES` is what the engineer may

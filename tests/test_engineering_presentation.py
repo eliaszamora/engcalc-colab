@@ -271,25 +271,39 @@ def test_p1_inside_a_matrix_cell_agrees_with_the_unit_factored_out():
 def test_an_aggregate_keeps_the_engineers_unit_against_the_band():
     """The aggregate authorship gate, where it actually disagrees with the band.
 
-    A matrix of `0.5 tonf` and `1.0 tonf` scores worse on the band than the same
-    values in kilonewtons - 0.5 sits outside [1, 1000) and 4.9 does not - so the
-    band alone converts the matrix away from the unit the engineer wrote.
+    A matrix of `10 kN/mm` and `20 kN/mm` reads in `kN/mm` with the gate and in `kN/m`
+    without it - measured by disabling the gate, not assumed - so this is a case where
+    the gate is the only thing standing between the reader and a unit they did not
+    write.
 
-    Written because a mutation removing that gate passed all sixty-three tests in
-    this area. The gate had been covered only by `k := 10*kN/mm`, where the band
-    happens to reach the same answer by itself, so disabling the gate changed
-    nothing visible. A guard that only works while a second mechanism agrees with
-    it is the failure mode already recorded as QG-3 and as mutation B.
+    Written because a mutation removing the gate passed all sixty-three tests in this
+    area. A guard that only works while a second mechanism agrees with it is the failure
+    mode recorded as QG-3 and as mutation B.
+
+    Both halves of that sentence have since turned over, which is worth recording rather
+    than quietly rewriting:
+
+    * It used `k := 0.5*tonf`, and said `kN/mm` could not serve because "the band
+      happens to reach the same answer by itself". That is no longer true - `kN/mm` is
+      exactly the case that distinguishes now - and it stopped being true somewhere in
+      the band and family work of #94, #97 and #99.
+    * `tonf` stopped serving when the metric-technical system got a family table of its
+      own. `0.5 tonf` now reads `500.00 kgf`, which is a band step *inside* the
+      engineer's own system rather than a departure from it, exactly as `0.5 kip` has
+      always read `500.00 lbf`. The gate is no longer what decides it.
+
+    Fifteen tests fail when the gate is disabled, so it is not an orphan; this one just
+    had to be re-pointed at a case that still tests it.
     """
     import engcalc_colab.renderer as renderer
     from engcalc_colab.renderer import RenderSettings
 
     engine = EngineeringEngine()
-    results = run_cell(engine, "k := 0.5*tonf\nA = [k, 0; 0, 2*k]\nnumeric(A)")
+    results = run_cell(engine, "k := 10*kN/mm\nA = [k, 0; 0, 2*k]\nnumeric(A)")
     latex = renderer._quantity_matrix_latex(results[-1].quantity_matrix, RenderSettings())
 
     factored = _UNIT_TOKEN.findall(latex.rsplit(r"\right]", 1)[-1])
-    assert factored == ["tonf"], (
+    assert factored == ["kN", "mm"], (
         f"the matrix left the unit the engineer wrote: {latex!r}"
     )
 
