@@ -969,15 +969,24 @@ def _split_top_level_numeric_assignment(text: str) -> tuple[str, str] | None:
     return lhs, rhs
 
 
-_DECLARATIONS = ("case", "combo")
+_DECLARATIONS = ("case", "combo", "keep")
+
+# What the error message offers back, so each keyword is shown with a name of its own
+# kind rather than a load case's `D` for all three.
+_DECLARATION_EXAMPLES = {
+    "case": "case D = M_D(x)",
+    "combo": "combo U1 = 1.2*D + 1.6*Lv",
+    "keep": "keep d = h - cover",
+}
 
 
 def _split_declaration(lhs: str, line_no: int) -> tuple[str | None, str]:
-    """Pull a leading `case` or `combo` off an assignment's left-hand side.
+    """Pull a leading `case`, `combo` or `keep` off an assignment's left-hand side.
 
     `case D = M_D(x)` is a definition with a label on it, so it is split here rather
     than given its own statement type: everything after the keyword is the ordinary
-    target and expression the rest of the parser already understands.
+    target and expression the rest of the parser already understands. `keep d = ...` is
+    the same shape - an ordinary definition, marked.
     """
     head, separator, rest = lhs.strip().partition(" ")
     if not separator or head not in _DECLARATIONS:
@@ -986,7 +995,7 @@ def _split_declaration(lhs: str, line_no: int) -> tuple[str | None, str]:
     if not _IDENTIFIER.fullmatch(name):
         raise EngSyntaxError(
             f"line {line_no}: {head} takes a plain name, as in "
-            f"{head} {'U1' if head == 'combo' else 'D'} = ..."
+            f"{_DECLARATION_EXAMPLES[head]}"
         )
     return head, name
 

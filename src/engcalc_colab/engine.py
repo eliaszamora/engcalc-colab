@@ -226,11 +226,24 @@ class EngineeringEngine:
         # Values marked with report(...), in the order they were first marked.
         self.reported: dict[str, object] = {}
         self.load_cases: dict[str, str] = {}
+        # Names declared with `keep`. A later formula shows the name instead of
+        # what it stands for; `namespace` still holds the expanded expression and
+        # everything computes with that, so the barrier is presentation only.
+        self.kept_names: set[str] = set()
+        # The expression each definition was written with, when one was kept and
+        # verified. Only ever displayed - `namespace` is what everything computes
+        # with - and it is what lets `numeric(phiMn)` open with the same formula
+        # its definition showed instead of contradicting it a line later.
+        self.written_namespace: dict[str, object] = {}
         self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
         self.numeric_context = NumericContext()
         # Shared by reference, so a name defined symbolically later is visible when a
         # numeric evaluation needs it. See NumericContext._resolve_symbolic_names.
         self.numeric_context.symbolic_namespace = self.namespace
+        # Shared the same way, and for the opposite reason: a kept name must not
+        # be expanded when a numeric evaluation reaches it. It has a value of its
+        # own, and that value is what the substitution stage should show.
+        self.numeric_context.kept_names = self.kept_names
 
     def _case_variable(self, expression, where: str) -> str:
         """The one symbol a case is a function of.
@@ -255,6 +268,25 @@ class EngineeringEngine:
                 )
             )
         return free[0]
+
+    def _store_kept_value(self, name: str, value) -> None:
+        """Give a kept name a number of its own, so an evaluation substitutes the name.
+
+        Without this the substitution stage still reads in primitives. `d` and `a`
+        resolve through the shared namespace to their expressions, and what the page
+        shows is `cover`, `db_st`, `h`, `b` and `fc` again - the formula stage would say
+        `phi As fy (d - a/2)` and the line under it would contradict it.
+
+        Numeric values are consulted before symbolic names, so storing one here is what
+        makes `d` substitute as `440.00 mm`. A definition that has no number yet - one
+        with a free variable in it, `keep M = q*x**2/2` - simply does not get one, and
+        its evaluation behaves as it did before.
+        """
+        try:
+            _, quantity = self.numeric_context.evaluate_symbolic(sp.sympify(value))
+        except Exception:
+            return
+        self.numeric_context.values[name] = quantity
 
     def _written_form(self, statement, evaluator, value):
         """The definition's expression as it was typed, or None to show the evaluated one.
@@ -296,7 +328,11 @@ class EngineeringEngine:
             # So a written form is offered only where every name stands for itself.
             # That is the boundary RC-3 moves; until a definition can be shown without
             # expanding the names inside it, there is nothing here to preserve.
-            if isinstance(node, ast.Name) and node.id in self.namespace:
+            if (
+                isinstance(node, ast.Name)
+                and node.id in self.namespace
+                and node.id not in self.kept_names
+            ):
                 return None
         try:
             writer = _WrittenFormEvaluator(
@@ -310,7 +346,14 @@ class EngineeringEngine:
                 written = writer.visit(statement.expression.body)
         except Exception:
             return None
-        if not isinstance(written, sp.Expr) or not _agrees_with(written, value):
+        if not isinstance(written, sp.Expr):
+            return None
+        expansions = {
+            self.resolve_symbol(name): self.namespace[name]
+            for name in self.kept_names
+            if name in self.namespace
+        }
+        if not _agrees_with(written, value, expansions):
             return None
         return written
 
@@ -420,6 +463,8 @@ class EngineeringEngine:
         self.namespace.clear()
         self.reported.clear()
         self.load_cases.clear()
+        self.kept_names.clear()
+        self.written_namespace.clear()
         self.functions.clear()
         self.symbols.clear()
         self.numeric_guards.clear()
@@ -458,8 +503,17 @@ class EngineeringEngine:
     ):
         evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))
         try:
-            if getattr(statement, "declaration", None) is not None:
+            declaration = getattr(statement, "declaration", None)
+            if declaration is not None and declaration != "keep":
                 return self._declare_load(statement, evaluator)
+            # `keep` is an ordinary definition with a mark on it, so it falls through
+            # to the path below rather than getting a branch of its own. What the mark
+            # changes is presentation: the name stays a name in a later formula instead
+            # of being replaced by what it stands for. Everything computes with the
+            # expanded expression exactly as it did before, which is what makes an
+            # opt-in barrier possible without dividing the language in two.
+            if declaration == "keep":
+                self.kept_names.add(statement.target)
 
             if isinstance(statement, ParsedNumericAssignment):
                 # Before the assignment, not after: `assign` stores the target, and a
@@ -751,6 +805,13 @@ class EngineeringEngine:
                     )
                 else:
                     self.namespace[statement.target] = value
+                    if declaration == "keep":
+                        self._store_kept_value(statement.target, value)
+                    written_form = self._written_form(statement, evaluator, value)
+                    if written_form is None:
+                        self.written_namespace.pop(statement.target, None)
+                    else:
+                        self.written_namespace[statement.target] = written_form
                     if evaluator.numeric_guards:
                         self.numeric_guards[statement.target] = tuple(evaluator.numeric_guards)
                     else:
@@ -760,7 +821,11 @@ class EngineeringEngine:
                 display_input=evaluator.display_input,
                 value=value,
                 discarded=evaluator.discarded_solutions,
-                written=self._written_form(statement, evaluator, value),
+                written=(
+                    self.written_namespace.get(statement.target)
+                    if statement.target is not None
+                    else self._written_form(statement, evaluator, value)
+                ),
             )
         except EngCalcError as exc:
             message = str(exc)
@@ -1333,6 +1398,19 @@ class _Evaluator(ast.NodeVisitor):
                     ) from exc
             else:
                 symbolic_expression = self.visit(argument)
+                # `numeric(phiMn)` opens with the formula its definition showed, not a
+                # second and different one. Both stages or neither: a definition reading
+                # `phi As fy (d - a/2)` above an evaluation reading `cover` and `h`
+                # contradicts itself, and #86's rule that a formula is not restated by
+                # its own evaluation stops firing, so the reader is handed both.
+                #
+                # The quantity comes from this same expression, and it is the same
+                # number: a kept name resolves to the value stored for it rather than
+                # being expanded again.
+                if isinstance(argument, ast.Name) and isinstance(symbolic_expression, sp.Expr):
+                    written = self.engine.written_namespace.get(argument.id)
+                    if isinstance(written, sp.Expr):
+                        symbolic_expression = written
                 guard_validations = self._validate_numeric_guards()
                 if isinstance(symbolic_expression, EigenvalueSet):
                     return self._numeric_eigenvalue_set(
@@ -2975,7 +3053,7 @@ def _flattened(kind, *args):
     return kind(*flat, evaluate=False)
 
 
-def _agrees_with(written, value) -> bool:
+def _agrees_with(written, value, expansions: dict | None = None) -> bool:
     """True when the written form is the same expression as the one computed beside it.
 
     Not `written - value == 0`: that is False even when they agree, because subtracting
@@ -2986,7 +3064,14 @@ def _agrees_with(written, value) -> bool:
     held off - and verified all seven at 1.9 ms.
     """
     try:
-        return sp.sympify(sp.srepr(written)) - sp.sympify(value) == 0
+        rebuilt = sp.sympify(sp.srepr(written))
+        if expansions:
+            # A `keep` name stands for itself in the written form and for its expression
+            # in the evaluated one, so the two only agree once the names are put back.
+            # Checking without this would reject every formula built on a kept name,
+            # which is the whole feature.
+            rebuilt = rebuilt.subs(expansions)
+        return rebuilt - sp.sympify(value) == 0
     except Exception:
         return False
 
@@ -3018,6 +3103,14 @@ class _WrittenFormEvaluator(_Evaluator):
     # `a - (b + c)` is a `Sub` and goes through `_combine`, where the negation lands
     # inside an `Add` and keeps its brackets - so that one is written as typed rather
     # than flattened to `a - b - c`, and gains from this without needing a unary rule.
+
+    def visit_Name(self, node: ast.Name):
+        # A kept name stands for itself. This is the whole of RC-3: without it the
+        # symbolic layer replaces `d` with `h - cover - db_st - db/2` where it is used,
+        # and the formula an engineer would check against the code is not on the page.
+        if node.id in self.engine.kept_names:
+            return self.engine.resolve_symbol(node.id)
+        return super().visit_Name(node)
 
     def _combine(self, op, left, right):
         if not (isinstance(left, sp.Expr) and isinstance(right, sp.Expr)):

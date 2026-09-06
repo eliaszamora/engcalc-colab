@@ -66,63 +66,59 @@ mattered was a dictionary key. #79's first rule deleted the `1.0` of `0.9*D - 1.
 caught by a contract from #71. What corrected the course each time was executing
 something, not reasoning further.
 
-## Open work, in the order I would take it
+## Where the findings landed, and what is still open
 
-### RC-3 — preservation of intermediate formulas
+All four findings of the external trial are closed, and so are two of the three things
+that came out of working RC-1. What is open, in the order I would take it:
 
-**This is design, not a patch, and it is the only one of the four external findings that
-is not a bug.**
+- **the factors of a compound unit are ordered alphabetically** — `ft·kip` where US
+  practice writes kip-ft, in the RC-1 section below
+- **a wide substitution is split into additive terms** by the wrapping path, in the RC-3
+  section directly below
+- **the hunt for guards nobody is checking**, never run on the symbolic engine, the
+  numeric layer or the parser, at the end of this section
 
-An engineer writes
+The finished ones are kept rather than deleted: each says what the answer turned out to
+be and what it cost to find, which is the part a summary would lose.
 
-```text
-a = As*fy/(0.85*fc*b)
-phiMn = phi*As*fy*(d - a/2)
-numeric(phiMn)
-```
+### RC-3 — preservation of intermediate formulas: done, as `keep`
 
-and wants the main stage of the memoria to read
+The last of the four external findings, and the only one that was not a bug. `keep d = ...`
+marks a name a later formula shows instead of expanding, so a capacity reads
+`phi As fy (d - a/2)` rather than in `cover`, `db_st`, `h`, `b` and `fc`.
 
-    φMn = φ As fy (d − a/2)
+The four questions this note asked, answered:
 
-Today EngCalc expands it down to primitives — `cover`, `db_st`, `h`, `b`, `fc` — because
-the symbolic layer substitutes a definition's free symbols at definition time. That is
-the two-layer model working as designed, not a defect, which is why it needs a decision
-before it needs code.
+**What makes a name a barrier** — a declaration keyword, `keep`, alongside `case` and
+`combo`. Opt-in, and measured rather than argued: making every definition a barrier is
+the semantics anyone would expect and moves **24 of the 131** tests shaped like memorias,
+including all eighteen worked exercises and the hyperstatic validation case.
 
-The questions I would want answered before anyone writes a line:
+**What the substitution stage shows** — the name's own value. `keep` gives the name a
+number of its own so the numeric layer substitutes `440.00 mm` instead of expanding the
+formula again.
 
-- **What makes a name a barrier?** Opt-in with a marker, or does every `=` definition
-  become one? Making them all barriers changes every memoria that already works.
-- **What does the substitution stage show for a barrier name** — the name's own value
-  (`a = 103.04 mm`), or nothing, or a nested trace?
-- **Does the barrier survive further algebra?** `solve(...)` and `subs(...)` rebuild
-  expressions; a barrier that dissolves the moment it is used is worse than none.
-- **How does it interact with `report`, `summary` and `governing`,** all of which
-  re-render stored expressions?
+**Does the barrier survive further algebra** — it never enters it. `namespace` holds the
+expanded expression and everything computes with that; the written form is only ever
+displayed. This is `combo`'s answer, and it is why an opt-in barrier does not divide the
+language in two.
 
-Related surface already in the tree: `case` / `combo` (#71) keep a combination's factors
-rather than expanding them, which is the same idea in a narrower place. Read that first,
-and read what it does rather than what it is for: `symbol_overrides` holds a name as a
-free symbol while the expression is built, and the result carries the written terms and
-the expanded expression side by side. That is the barrier, and it answers two of the four
-questions above — the barrier survives further algebra because everything downstream uses
-the expanded form, and the substitution stage shows the name's own value because that is
-what a `combo` already does.
+**How it interacts with `report`, `summary` and `governing`** — they re-render stored
+expressions, and stored expressions are unchanged. `numeric` and `report` share one
+branch, so a reported value shows the kept formula too.
 
-**A written form now exists, and stops exactly where RC-3 begins.** The coefficient fix
-keeps a definition's expression as it was typed, verified against the evaluated one, and
-shows it. It declines the moment a name on the right-hand side is itself a symbolic
-definition, because what gets substituted there is an expression SymPy has already
-evaluated: splicing it in makes the row wider, which tips it past the wrapping budget,
-and the wrapping path expands the product. `phi*As*fy*(d - a/2)` stops being a product of
-four factors and becomes two rows of expanded terms.
+Three pieces, and the third was not foreseen here: the written form holds the name; `keep`
+gives it a value so the substitution stage shows it; and the *numeric* layer had to be
+told not to expand it — `_resolve_symbolic_names` replaced every free symbol the symbolic
+namespace defined, before values were consulted. The kept names are shared by reference
+the way the symbolic namespace already was, so nothing that does not use `keep` changes.
 
-So RC-3 is not a second mechanism. It is the same one with names held back — and the
-`_WrittenFormEvaluator` in `engine.py` is where it would be done, with the restriction in
-`_written_form` as the line to move. One warning from building it: `_agrees_with` checks
-the mathematics, not the typesetting, and an expression that is right can still print
-wrong. `Mul(-1, Add(a, b), evaluate=False)` prints `- a + b`.
+**One rough edge is left, and it is not `keep`'s.** A substitution wide enough to wrap is
+split into additive terms by the wrapping path, so `phi*As*fy*(d - a/2)` shows its numbers
+spread over two lines instead of inside the brackets. A wide formula with no kept name
+does the same, and a narrow one keeps its shape either way. Whoever takes it should start
+at `_bounded_expression_rows` and `_adaptive_additive_rows`, and should know that width is
+load-bearing in that path: it is the same mechanism that made #88 decline a written form.
 
 ### RC-1 — imperial units: done, and what it turned up
 

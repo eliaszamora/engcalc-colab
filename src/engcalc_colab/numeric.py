@@ -547,10 +547,11 @@ class NumericContext:
         if not namespace:
             return expr
         while True:
+            kept = getattr(self, "kept_names", None) or frozenset()
             replacements = {
                 symbol: namespace[symbol.name]
                 for symbol in expr.free_symbols
-                if symbol.name in namespace
+                if symbol.name in namespace and symbol.name not in kept
             }
             if not replacements:
                 return expr
