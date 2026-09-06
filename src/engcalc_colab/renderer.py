@@ -574,6 +574,22 @@ def _unit_terms(quantity) -> int:
         return 1
 
 
+def _factor_shape(quantity) -> tuple[str, ...]:
+    """The dimensions a unit is spelled out of, ignoring prefix and exponent.
+
+    `kN/mm`, `tonf/m` and `kN/m` all come out as a force and a length. `GPa*mm` comes
+    out as a pressure and a length. The four are the same dimension overall and only
+    this tells them apart.
+    """
+    try:
+        registry = quantity._REGISTRY
+        return tuple(sorted(
+            str(registry.Unit(name).dimensionality) for name in quantity.units._units
+        ))
+    except Exception:
+        return ()
+
+
 def _unit_is_the_engineers(quantity) -> bool:
     """True when the unit came from the engineer's own inputs rather than the algebra.
 
@@ -586,6 +602,17 @@ def _unit_is_the_engineers(quantity) -> bool:
     here when the family is empty, so the branch was unreachable: turned into a raised
     error it never fired across the whole suite, and `min(..., default=...)` below
     already answers the same way if a second caller ever arrives without one.
+
+    The count alone could not settle `GPa*mm` against `kN/m`, which was the last of the
+    seven display findings. Both cost two, so a plate stiffness `E*t` was judged to be
+    the engineer's own unit and printed `1680.00 GPa*mm`. Tightening the count was never
+    available, because the same two protects `kN/mm`, which *is* an engineer's unit.
+
+    So the shape decides first. `kN/mm`, `tonf/m` and `kgf*cm` reach their dimension
+    through a force, because that is how a line load or a moment is spelled; `GPa*mm`
+    reaches it through a pressure, which is what `E*t` leaves behind rather than
+    anything a person writes. A unit whose factors are not shaped like any of the
+    family's is the algebra's, whatever it costs to read.
     """
     family = _unit_family(quantity)
     own = str(quantity.units)
@@ -595,6 +622,18 @@ def _unit_is_the_engineers(quantity) -> bool:
                 return False
         except DimensionalityError:
             continue
+
+    own_shape = _factor_shape(quantity)
+    if own_shape:
+        shapes = []
+        for name in family:
+            try:
+                shapes.append(_factor_shape(quantity.to(name)))
+            except DimensionalityError:
+                continue
+        if shapes and own_shape not in shapes:
+            return False
+
     canonical = min(
         (_unit_terms(quantity.to(name)) for name in family),
         default=_unit_terms(quantity),

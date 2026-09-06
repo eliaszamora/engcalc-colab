@@ -79,9 +79,9 @@ All four findings of the external trial are closed, and so are two of the three 
 that came out of working RC-1. A matrix frame analysis run as a benchmark then produced
 seven more, of which four are fixed. What is open, in the order I would take it:
 
-- **`_unit_terms` ties `GPa*mm` with `kN/m`** — the last of the seven-places findings
-  still open, in the first section below. Six are now closed; #100 also amended that
-  note, where the digit rule turned out not to belong in the count at all
+- **`_unit_terms` is now inert** — #109 closed the last of the seven-places findings
+  and, in doing so, left the term count deciding nothing. Removing it is the next
+  change, and the measurements are in the first section below
 - ~~the factors of a compound unit are ordered alphabetically~~ — **fixed by #104.**
   Not a formatter to rewrite: Pint exposes the sort as
   `registry.formatter.default_sort_func`, and `_units` had kept the written order all
@@ -109,7 +109,7 @@ at a time; of the remaining three, #99 settled one, #102 fixed another, and one 
 | a heterogeneous matrix cell | `_quantity_latex`, `declared` defaulting True | fixed |
 | the substitution stage | `declared` per name, from what the `:=` wrote | fixed by #102 |
 | a family with one member | stops at kilo on purpose; the matrix factors instead | settled by #99 |
-| `GPa*mm` against `kN/m` | `_unit_terms` ties them | **open** |
+| `GPa*mm` against `kN/m` | the shape of the factors, not their number | fixed by #109 |
 
 The one still open, and the two with the answers they got, each with what it costs on a
 real page:
@@ -131,11 +131,20 @@ real page:
   which is MATLAB's `format short` and siunitx's `fixed-exponent`. `MPa`/`GPa` keep both
   steps deliberately. A large scalar outside a matrix does stay a large number - `517195.95
   kN*m` - and that is the accepted cost, not an open defect.
-- **`_unit_terms` cannot separate `GPa*mm` from `kN/m`.** Both cost 2, so a force per
-  length assembled from a modulus and a length is judged to be the engineer's own unit and
-  kept. The same tie is what protects `kN/mm`, which *is* an engineer's unit and is
-  documented as kept, so the count cannot be tightened. What separates them is which one
-  was typed - and #88's written form already records exactly that.
+- ~~**`_unit_terms` cannot separate `GPa*mm` from `kN/m`.**~~ **Fixed by #109, and not
+  the way this note predicted.** Both halves of the difficulty were real - both cost 2,
+  and the same 2 protects `kN/mm` - but the way out was not the written form. It was to
+  stop comparing *how many* factors and start comparing *what they are*: `kN/mm`,
+  `tonf/m` and `kgf*cm` reach their dimension through a force, which is how a line load
+  or a moment is spelled, and `GPa*mm` reaches it through a pressure, which is what
+  `E*t` leaves behind. A plate stiffness printed `1680.00 GPa*mm` and now reads in kN/m.
+
+  **The count is now inert.** The whole suite passes with `_unit_terms(quantity) <=
+  canonical` replaced by `True`, and an exhaustive search over twenty base units in six
+  composite forms against all three family tables finds no unit with a family member's
+  shape and a larger count - which is what the dimensional equation predicts, since the
+  shape fixes which dimensions appear and the exponents then follow. Removing it is the
+  next change; it is kept out of #109 so that the removal is judged on its own.
 
 That last line is the shape of the answer. One function taking a quantity and the unit
 names the sheet actually wrote, returning the unit to show; every path calls it. The

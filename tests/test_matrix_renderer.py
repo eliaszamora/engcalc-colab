@@ -112,24 +112,34 @@ def test_heterogeneous_quantity_matrix_keeps_units_inside_each_cell():
     #
     # This asserted `GPa` four times until a cell of a mixed-dimension matrix started
     # being offered the unit family, the way a homogeneous one always had been. Three of
-    # the four moved:
+    # the four moved then:
     #
     #     12EI/L^3   GPa*mm    ->  GPa*mm     2 unit terms, ties with kN/m
     #      6EI/L^2   GPa*mm^2  ->  kN         3 terms against kN's 1
     #      4EI/L     GPa*mm^3  ->  kN*m       4 terms against 2
     #
-    # The first stays because `_unit_terms` cannot separate `GPa*mm` from `kN/m` - they
-    # cost the same - and that same tie is what protects `kN/mm`, which is a unit an
-    # engineer writes and which the weighting is documented as keeping.
+    # and the first was left, with a comment here saying `_unit_terms` could not separate
+    # `GPa*mm` from `kN/m` because they cost the same, and that the same tie protects
+    # `kN/mm`. Both were true. What was missing is that the count is not the only thing
+    # that can be compared: `kN/mm` is a force over a length and `GPa*mm` is a pressure
+    # times one, and the shape of the factors separates them where the number cannot.
     #
-    # No power of ten outside the brackets here, and that is the rule working: 5.00 and
-    # 15000.00 are three orders apart, so one factor cannot serve both without costing
-    # the smaller its figures.
-    assert latex.count(r"\mathrm{GPa}") == 1
-    assert latex.count(r"\mathrm{kN}") == 3
+    # So the fourth cell moved too, and the whole matrix now reads in kilonewtons:
+    #
+    #     10^3 [ 5.00 kN/m   15.00 kN     ]
+    #          [ 15.00 kN    60.00 kN*m   ]
+    #
+    # The power of ten is a consequence rather than a second change. This comment used to
+    # explain its absence - "5.00 and 15000.00 are three orders apart, so one factor
+    # cannot serve both" - and that was a symptom of the cell that had not moved. With
+    # all four in kilonewtons they are 5000, 15000, 15000 and 60000, and one factor
+    # serves them all.
+    assert "GPa" not in latex
+    assert latex.count(r"\mathrm{kN}") == 4
     assert latex.count(r"\mathrm{kN} \cdot \mathrm{m}") == 1
+    assert latex.count(r"\frac{\mathrm{kN}}{\mathrm{m}}") == 1
     assert "MN" not in latex
-    assert "10^{" not in latex
+    assert "10^{3}" in latex
     assert not latex.rstrip().endswith(r"\mathrm{mm}")
 
 
