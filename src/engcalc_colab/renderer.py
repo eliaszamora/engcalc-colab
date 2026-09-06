@@ -291,6 +291,13 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("kN * m",),
     (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("MPa", "GPa"),
     (("[mass]", 1), ("[time]", -2)): ("kN / m",),
+    # Time, and its reciprocal. A dynamics sheet ends in a frequency and a period,
+    # and `sqrt(k/m)` produces fractional exponents - `GPa^0.5*mm/(kg^0.5*m^0.5)` -
+    # that no amount of weighting can read. `1 / s` rather than `Hz`: a circular
+    # frequency is rad/s and a natural frequency is Hz, Pint cannot tell them apart
+    # because a radian is dimensionless, and `1 / s` is true of both.
+    (("[time]", 1),): ("s", "ms"),
+    (("[time]", -1),): ("1 / s",),
 }
 
 
@@ -317,6 +324,9 @@ _US_CUSTOMARY_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] 
     (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("kip * ft",),
     (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("psi", "ksi"),
     (("[mass]", 1), ("[time]", -2)): ("kip / ft",),
+    # A second is a second in either system.
+    (("[time]", 1),): ("s", "ms"),
+    (("[time]", -1),): ("1 / s",),
 }
 
 # Pint's own names for the units the alias table exposes, plus the two spellings a
@@ -1689,7 +1699,17 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
         return total
 
     best_unit = fallback
-    best_score = score(fallback)
+    # No seed. The fallback used to start as champion and a strict `<` then handed it
+    # every tie - and `GPa*mm^2/m` ties with `kN/m` always, because they are the same
+    # unit under two names. An assembled stiffness matrix read `70303.22 GPa*mm^2/m`
+    # while the scalar path replaced that very expression with `kN/m`: the same value,
+    # two answers, decided by whether it sat in a matrix.
+    #
+    # The engineer's own unit is not defended by this seed and never was - the early
+    # return above is what keeps `tonf/m`. Seeding the fallback's score as well was
+    # measured against `tonf/m` matrices with and without a cell that shows no figures,
+    # and changed nothing, so it is not here.
+    best_score = None
     for name in family:
         candidate_score = score(name)
         if candidate_score is not None and (
