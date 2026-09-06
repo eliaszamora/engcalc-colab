@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.26.1**.
+Current version: **0.27.0**.
 
 
 ## Help, inside the notebook
@@ -26,7 +26,18 @@ reactions, moment law, a diagram, an inequality and a summary. Its cells are exe
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
 
 
-## keep, so a formula shows the names it was written with
+## v0.27.0 the formula on the page is the one you wrote
+
+Two changes, and they say the same thing: what is on the page is what was written.
+
+**A coefficient written in a denominator stays there.** `a = As*fy/(0.85*fc*b)` rendered
+`1.18 fy As / (b fc)` - SymPy inverts a Float in a denominator as it builds the
+expression, so the 0.85 that ACI 318 §22.2.2.4.1 requires was not on the page and a
+reviewer checking the sheet against the code could not find it. A definition now keeps
+the expression it was typed with, verified against the evaluated one before it is shown,
+and everything goes on computing with the evaluated one.
+
+The rest of this section is the second change.
 
 A definition's names are substituted where they are used, so a flexural capacity built on
 two intermediate results comes out in primitives - `cover`, `db_st`, `h`, `b`, `fc` - and
@@ -1666,6 +1677,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.27.0** — the formula on the page is the one you wrote: a coefficient in a denominator stays there rather than returning as its reciprocal, and `keep d = ...` marks a name a later formula shows instead of expanding, so a capacity reads `phi As fy (d - a/2)` and not in `cover`, `db_st` and `h`.
 - **0.26.1** — a definition immediately followed by `numeric(...)` prints its formula once: the evaluation continues from the definition instead of restating it. The reference memoria in this repository did it twice, and every row was correct on its own.
 - **0.26.0** — `kip`, `ksi`, `psi`, `inch` and `ft`: a US code example is worked in the units it is written in, and the unit a computed value is shown in is chosen inside the system it is already in. A declared unit is now one the engineer wrote rather than one a `:=` line produced, so a capacity assigned as a number reads as a moment and a demand-capacity ratio reads as a number.
 - **0.25.1** — presentation corrections from the first use of the package by someone outside it: a name keeps every letter that was typed, a dimensionless ratio prints as a number, a moment prints in a moment's units, a coefficient obeys the page's precision, and a unit left in a substitution reads as a unit. The IPython floor is Colab's own 7.34.0, so installing EngCalc no longer upgrades the platform underneath it.
@@ -1708,4 +1720,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.26.1`.
+Version: `0.27.0`.
