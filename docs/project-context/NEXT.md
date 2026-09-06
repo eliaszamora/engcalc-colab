@@ -8,10 +8,10 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `3b25cbd` (#97 merged) |
-| declared version | **0.27.1** — six pull requests have landed since |
-| default suite (`pytest -q`) | **1658 passing**, about 2 minutes — `tests` plus `quality_tests/fast` |
-| Deep Property Gate (`pytest quality_tests`) | **207 properties**, about 4 and a half minutes |
+| `main` | `a0e6d49` (#99 merged) |
+| declared version | **0.27.1** — eight pull requests have landed since |
+| default suite (`pytest -q`) | **1688 passing**, under 2 minutes — `tests` plus `quality_tests/fast` |
+| Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
 
 The suite took seven and a half minutes and the Gate twenty-five, until Pint's registry
@@ -80,7 +80,8 @@ that came out of working RC-1. A matrix frame analysis run as a benchmark then p
 seven more, of which four are fixed. What is open, in the order I would take it:
 
 - **the display unit is decided in seven places** — the benchmark's finding, and the one
-  worth settling before adding another surface; first section below
+  worth settling before adding another surface; first section below, amended by #100
+  where the digit rule turned out not to belong in that count
 - **the factors of a compound unit are ordered alphabetically** — `ft·kip` where US
   practice writes kip-ft, in the RC-1 section below
 - **a wide substitution is split into additive terms** by the wrapping path, in the RC-3
@@ -132,6 +133,44 @@ thing that tells `kN/mm` from `GPa*mm`.
 Until that exists, every new surface is born divergent: matrices, tables and the
 substitution stage each grew their own copy of the decision, and each had to be corrected
 separately after a page showed the drift.
+
+**Amended by #100.** The sentence above is right about the *unit* paths and was wrong
+about one thing it swept in. `_significant_figures` is called from five places, and this
+note counted all five as copies of one decision. They are not. One of them formats a
+number; the other four ask whether a value sits in the natural band for a unit, which is
+a different question wearing the same clothes. Unifying them - which looked like the
+tidy fix and was implemented before it was measured - left `0.00008*m` printing as
+`0.00008 m` instead of `0.08 mm`. The separation to copy is siunitx's, where `round-mode`
+and `exponent-mode` know nothing about each other; it is not a merge.
+
+### The digits are a floor now, not a single page-wide count
+
+`precision` counts decimal places, which is also what Mathcad's Display Precision and
+handcalcs' `display_precision` mean. One count cannot serve a sheet spanning seven orders
+of magnitude: the braced-frame benchmark printed `T = 0.02 s` for a 0.016756 s period and
+`0.00` for two of its section properties, and `precision=6` would have printed
+`517195.945000` for a column stiffness.
+
+`figures` (default 3) is a floor underneath it, added in #100. It fires only where the
+page's decimals have reduced a value to a single digit or none - which is the reported
+defect, `0.02` and `0.00` - and never removes a digit from a large value. The whole
+benchmark page moved by three bytes: `0.02 s` became `0.0168 s` and nothing else changed.
+
+Two deliberate departures from the prior art, both measured rather than assumed:
+
+- siunitx, handcalcs, Mathcad and NumPy all *replace* decimals with significant figures.
+  At four figures that rounds `70303.22` to `70300`. This only ever adds decimals,
+  because the engineer asked for more digits on the small values and never for fewer on
+  the large ones.
+- They apply to every number. This applies only to the reduced ones, which is what kept
+  `0.88`, `2.85` and every formula coefficient exactly where they were.
+
+`docs/project-context/HOW-OTHERS-FORMAT-NUMBERS.md` has the survey this came from,
+including the measurement that matters most: **the standard auto-prefix algorithm, which
+Pint's `to_compact()` and forallpeople both implement, produces four of the six display
+defects reported against this benchmark.** `16.756 ms` for a period, `70.303 MN/m` for a
+stiffness, `2278125000.000 mm⁴`, and `-405.4 1/km` for a condensation coefficient. That
+is why "do it the way the well-known libraries do" is not available as an answer here.
 
 ### RC-3 — preservation of intermediate formulas: done, as `keep`
 

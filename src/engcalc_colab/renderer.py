@@ -53,12 +53,17 @@ class RenderSettings:
 
     precision: int = 2
     zero_tolerance: float = 1e-10
+    figures: int = 3
 
     def __post_init__(self) -> None:
         if isinstance(self.precision, bool) or not isinstance(self.precision, int):
             raise ValueError("precision must be an integer from 0 to 10")
         if not 0 <= self.precision <= 10:
             raise ValueError("precision must be an integer from 0 to 10")
+        if isinstance(self.figures, bool) or not isinstance(self.figures, int):
+            raise ValueError("figures must be an integer from 0 to 10")
+        if not 0 <= self.figures <= 10:
+            raise ValueError("figures must be an integer from 0 to 10")
         if self.zero_tolerance < 0:
             raise ValueError("zero_tolerance must be non-negative")
 
@@ -114,6 +119,14 @@ class _EngineeringLatexPrinter(LatexPrinter):
         The rounded form goes through `_magnitude_text`, so one setting governs the whole
         page and `%eng_config precision=4` moves this with it.
 
+        `figures` is deliberately switched off for this one path. It is a floor for
+        *values* - a period, an area, a stiffness - that would otherwise lose their
+        meaning, and 1/(2*0.85) is not a value: it is an artefact of the algebra, which
+        the engineer never typed and does not read as a measurement. `0.59` has lost
+        nothing, and letting the floor stretch it to `0.588` would both overturn a
+        decision this page already made deliberately and shift where long expressions
+        wrap, which nobody asked for.
+
         Everything after the first dot is counted, which is also what sends SymPy's own
         `1.0 \cdot 10^{-8}` down the rounding path: its tail is a whole exponent, always
         longer than any precision this accepts. That matters, because the rest of the
@@ -124,7 +137,7 @@ class _EngineeringLatexPrinter(LatexPrinter):
         decimals = written.partition(".")[2]
         if len(decimals) <= self.render_settings.precision:
             return written
-        return _magnitude_text(float(expr), self.render_settings)
+        return _magnitude_text(float(expr), replace(self.render_settings, figures=0))
 
     def _print_Symbol(self, expr, style=None):
         r"""Print a name so it reads as what the engineer wrote.
@@ -317,8 +330,114 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
 }
 
 
+# How deep the floor may go before an exponent reads better than more zeros. Six
+# decimal places, because the engineer named his own floor - "0.00002 sería lo máximo
+# que acepto" - and six covers it with one to spare. Past that the reader is counting
+# zeros, which is the job notation was invented to remove: `1.00 \times 10^{-8}` rather
+# than `0.00000001`. Below the limit the escape to scientific notation still fires on
+# its own terms, because a value that shows no figure at six decimals shows none.
+_FIGURES_DECIMAL_LIMIT = 6
+
+# "The value really is exactly this" - loose enough that arithmetic noise at the
+# fifteenth decimal still counts as exact, tight enough that a real digit does not.
+_EXACT_TOLERANCE = 1e-12
+
+
+def _is_reduced(magnitude, settings: RenderSettings) -> bool:
+    """Has the page's decimal count left this value with a single digit or none?
+
+    The one place that answers it. `_decimals_for` asks in order to rescue the value,
+    and `_magnitude_text` asks again in order to decide whether the rescue told the
+    truth; when the two conditions were written separately they disagreed, and `0.963`
+    - which the rescue deliberately leaves as `0.96` - was sent to `9.63 x 10^{-1}` by
+    a faithfulness test that thought it had been rescued.
+    """
+    if settings.figures <= 0:
+        return False
+    magnitude = abs(float(magnitude))
+    if magnitude == 0.0 or not math.isfinite(magnitude):
+        return False
+    return _significant_figures(magnitude, settings.precision) < 2
+
+
+def _decimals_for(magnitude, settings: RenderSettings) -> int:
+    """Decimal places for one magnitude: the page's precision, raised until the value
+    shows `figures` significant digits.
+
+    `precision` is a count of decimal places, which is what Mathcad's Display Precision
+    and handcalcs' `display_precision` also mean. One such count cannot serve a page
+    that spans seven orders of magnitude: at 2 decimals a period of 0.016756 s reads
+    `0.02` and a second moment of 0.002278 m^4 reads `0.00`, while raising the page to
+    6 prints a column stiffness as `517195.945000`.
+
+    So `precision` stays a floor and `figures` is a second floor underneath it: never
+    fewer decimals than the page asked for, and never so few that the number stops
+    saying anything. A large value is untouched - 70303.22 already carries seven
+    figures at two decimals - which is the deliberate difference from siunitx's
+    `round-mode = figures`, where four figures would round it to `70300`. The engineer
+    asked for more decimals on the small values and never for fewer digits on the
+    large ones:
+
+        "no tengo problemas en que hayan varios decimales con los segundos,
+         0.00002 sería lo máximo que acepto"
+
+    Zeros that reveal nothing are not padded, so `h := 3.70*m` stays `3.70` rather than
+    becoming `3.700`; pure significant figures would pad it.
+
+    It is a rescue and not a global guarantee, and the difference is the whole reason
+    the page does not churn. The engineer reported `0.02` for a period and `0.00` for a
+    second moment of area - one digit and none - and never complained about `0.88` or
+    `2.85`, which are perfectly good numbers. So the floor fires only where a value has
+    been reduced to a single digit or fewer, and then gives it `figures` of them:
+
+        0.016756  ->  0.02    one digit    rescued to 0.0168
+        0.002278  ->  0.00    none         rescued to 0.00228
+        0.879     ->  0.88    two digits   left exactly as it was
+        2.845     ->  2.85    three        left exactly as it was
+
+    Phrased in digits rather than as `< 0.1` so that it moves with the page:
+    `%eng_config precision=4` shifts what counts as reduced, as it should.
+    """
+    if not _is_reduced(magnitude, settings):
+        return settings.precision
+    decimals = settings.precision
+    magnitude = abs(float(magnitude))
+    needed = settings.figures - 1 - math.floor(math.log10(magnitude))
+    if needed <= decimals:
+        return decimals
+    decimals = min(needed, _FIGURES_DECIMAL_LIMIT)
+    if decimals <= settings.precision:
+        return settings.precision
+    # Give back only the decimals the value genuinely does not have. A trailing zero is
+    # dropped when the shorter render still *is* the value, and kept when it is a
+    # significant zero the rounding produced: `3.7` gives back its third decimal and
+    # stays `3.70`, while a period of 0.0300406 keeps `0.0300` rather than collapsing
+    # to `0.03` and reporting a number it is not.
+    while decimals > settings.precision:
+        shorter = float(f"{magnitude:.{decimals - 1}f}")
+        if abs(shorter - magnitude) > abs(magnitude) * _EXACT_TOLERANCE:
+            break
+        decimals -= 1
+    return decimals
+
+
 def _significant_figures(magnitude, precision: int) -> int:
-    """Digits that survive a fixed-decimal render and still carry information."""
+    """Digits that survive a fixed-decimal render and still carry information.
+
+    Asked from five places, and it was tempting to make all five ask about the render
+    that `figures` will actually perform. Measured, that is wrong, and the measurement
+    is worth keeping: four of the five are choosing a *unit*, and what they mean by
+    this question is "does the value sit in the natural band for that unit?" - a band
+    question that happens to be spelled in digits.
+
+    Unifying them broke `0.00008*m`, which an engineer writes as `0.08 mm` however many
+    decimals the page is willing to print, and which the floor would have left as
+    `0.00008 m`. So the band keeps asking about `precision` and only `_magnitude_text`,
+    which is the one site actually formatting a number, consults `_decimals_for`.
+
+    They share an implementation and not a meaning. Naming that is the separation
+    siunitx gets by keeping `round-mode` and `exponent-mode` independent.
+    """
     rendered = f"{abs(float(magnitude)):.{precision}f}".replace(".", "")
     return len(rendered.strip("0"))
 
@@ -615,17 +734,47 @@ def _magnitude_text(magnitude, settings: RenderSettings) -> str:
     is a genuine zero by an existing approved contract and still renders as zero.
 
     The floor case is P-1: a value so small that a fixed-decimal render keeps none of
-    its digits. The ceiling is the same failure from the other side - every digit is
-    kept and none of them can be read.
+    its digits. `figures` rescues most of those directly now, so what is left for
+    scientific notation is the value a decimal render cannot tell the truth about.
+
+    "Cannot tell the truth" is the test, and it is not the same as "shows no digit".
+    Two values that both read `0.00` at two decimals part company here:
+
+        0.00002   ->  0.00002        exactly what it is, and the engineer's own floor
+        1.05e-5   ->  1.05 x 10^-5   `0.00001` would be a different number
+
+    So a decimal render is kept when it either reaches `figures` significant digits or
+    still agrees with the value; otherwise the exponent goes back. Without the second
+    half, deepening the decimals turns a rounding into a quiet lie.
+
+    Agreement is relative and not exact, because almost nothing on a calculation page
+    is exact: a period of 0.03 s arrives as 0.030000000000000002, and an equality test
+    called that a lie and printed `3.00 x 10^-2` for it. The tolerance is one part in
+    10^figures - the same digits the floor is trying to secure - which noise at the
+    fifteenth decimal passes and a truncated 1.05e-5 does not.
+
+    The ceiling is the same failure from the other side - every digit is kept and none
+    of them can be read.
     """
     magnitude = float(magnitude)
     if magnitude == 0.0 or abs(magnitude) < settings.zero_tolerance:
         return f"{0.0:.{settings.precision}f}"
-    if _significant_figures(magnitude, settings.precision) == 0:
-        return _scientific_latex(magnitude, settings.precision)
     if abs(magnitude) >= _FIXED_DECIMAL_CEILING:
         return _scientific_latex(magnitude, settings.precision)
-    return f"{magnitude:.{settings.precision}f}"
+    text = f"{magnitude:.{_decimals_for(magnitude, settings)}f}"
+    # Leading zeros only. A trailing zero here was printed on purpose and is a figure:
+    # `0.0300` shows three, and counting it as one sent a 0.0300394 s period back to
+    # `3.00 x 10^{-2}`. `_significant_figures` strips both ends because it is asking a
+    # different question - whether the value sits in a unit's natural band - and there
+    # a trailing zero genuinely carries nothing.
+    shown = len(text.replace(".", "").replace("-", "").lstrip("0"))
+    if shown == 0:
+        return _scientific_latex(magnitude, settings.precision)
+    if _is_reduced(magnitude, settings) and shown < settings.figures:
+        tolerance = abs(magnitude) * 10.0 ** (-settings.figures)
+        if abs(float(text) - magnitude) > tolerance:
+            return _scientific_latex(magnitude, settings.precision)
+    return text
 
 
 def _quantity_latex(

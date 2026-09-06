@@ -115,6 +115,7 @@ def _config_summary(settings: RenderSettings) -> str:
     return (
         "engcalc config: "
         f"precision={settings.precision} "
+        f"figures={settings.figures} "
         f"zero_tolerance={settings.zero_tolerance:g}"
     )
 
@@ -262,6 +263,7 @@ class EngMagics(Magics):
 
         values = {
             "precision": self.render_settings.precision,
+            "figures": self.render_settings.figures,
             "zero_tolerance": self.render_settings.zero_tolerance,
         }
 
@@ -275,17 +277,17 @@ class EngMagics(Magics):
                 print(f"engcalc: unknown option '{name}'")
                 return None
 
-            if name == "precision":
+            if name in ("precision", "figures"):
                 try:
                     value = int(raw_value)
                 except ValueError:
-                    print("engcalc: precision must be an integer from 0 to 10")
+                    print(f"engcalc: {name} must be an integer from 0 to 10")
                     return None
                 if str(value) != raw_value.strip() and raw_value.strip() not in {
                     f"+{value}",
                     f"-{abs(value)}" if value < 0 else "",
                 }:
-                    print("engcalc: precision must be an integer from 0 to 10")
+                    print(f"engcalc: {name} must be an integer from 0 to 10")
                     return None
                 values[name] = value
                 continue
@@ -303,6 +305,7 @@ class EngMagics(Magics):
         try:
             self.render_settings = RenderSettings(
                 precision=values["precision"],
+                figures=values["figures"],
                 zero_tolerance=values["zero_tolerance"],
             )
         except ValueError as exc:
