@@ -82,8 +82,11 @@ seven more, of which four are fixed. What is open, in the order I would take it:
 - **`_unit_terms` ties `GPa*mm` with `kN/m`** — the last of the seven-places findings
   still open, in the first section below. Six are now closed; #100 also amended that
   note, where the digit rule turned out not to belong in the count at all
-- **the factors of a compound unit are ordered alphabetically** — `ft·kip` where US
-  practice writes kip-ft, in the RC-1 section below
+- ~~the factors of a compound unit are ordered alphabetically~~ — **fixed by #104.**
+  Not a formatter to rewrite: Pint exposes the sort as
+  `registry.formatter.default_sort_func`, and `_units` had kept the written order all
+  along. One function that returns its argument; `m·N` and `ft·kip` were the only two
+  compound units in the whole suite that moved
 - **a wide substitution is split into additive terms** by the wrapping path, in the RC-3
   section directly below
 - **the hunt for guards nobody is checking**, never run on the symbolic engine, the

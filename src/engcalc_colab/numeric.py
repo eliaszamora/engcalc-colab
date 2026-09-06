@@ -49,6 +49,16 @@ _UNIT_ALIASES = {
 _ENGINEERING_REGISTRY: UnitRegistry | None = None
 
 
+def _keep_written_unit_order(items, _registry):
+    """Pint's sort hook, made to leave the order alone.
+
+    Its contract is `Iterable[tuple[str, Number, str]] -> Iterable[...]`, and the
+    default returns `sorted(items, key=lambda el: el[2])`. Returning the items as given
+    is what preserves the order `_units` recorded when the quantity was built.
+    """
+    return list(items)
+
+
 def engineering_registry() -> UnitRegistry:
     """The one Pint registry this process uses, built on first ask.
 
@@ -65,11 +75,24 @@ def engineering_registry() -> UnitRegistry:
 
     `tonf` is defined here rather than in `NumericContext.__init__` because a shared
     registry would see that definition once per context, and the second would raise.
+
+    The sort function is replaced so a compound unit keeps the order it was built in.
+    Pint's default sorts the factors alphabetically, which is right often enough to hide
+    that it is not a rule anybody writes by: a moment is `kN*m` and survives because k
+    precedes m, while the same moment in newtons prints `m*N` and an imperial one prints
+    `ft*kip` where every US code writes kip-ft. `_units` already carries the order the
+    quantity was made with - `N*m` gives newton then meter, `m*N` the reverse - so the
+    information was there and only the formatter was discarding it.
+
+    Measured rather than assumed: of every compound unit this suite renders, only `m*N`
+    and `ft*kip` move. `kN*m`, `GPa*mm^2/m`, `N/mm^2`, `kg*m/s^2` and `kN/m` are
+    identical either way, because for those the written order and the alphabet agree.
     """
     global _ENGINEERING_REGISTRY
     if _ENGINEERING_REGISTRY is None:
         registry = UnitRegistry()
         registry.define("tonf = 9.80665 * kilonewton")
+        registry.formatter.default_sort_func = _keep_written_unit_order
         _ENGINEERING_REGISTRY = registry
     return _ENGINEERING_REGISTRY
 
