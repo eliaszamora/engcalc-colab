@@ -1689,7 +1689,17 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
         return total
 
     best_unit = fallback
-    best_score = score(fallback)
+    # No seed. The fallback used to start as champion and a strict `<` then handed it
+    # every tie - and `GPa*mm^2/m` ties with `kN/m` always, because they are the same
+    # unit under two names. An assembled stiffness matrix read `70303.22 GPa*mm^2/m`
+    # while the scalar path replaced that very expression with `kN/m`: the same value,
+    # two answers, decided by whether it sat in a matrix.
+    #
+    # The engineer's own unit is not defended by this seed and never was - the early
+    # return above is what keeps `tonf/m`. Seeding the fallback's score as well was
+    # measured against `tonf/m` matrices with and without a cell that shows no figures,
+    # and changed nothing, so it is not here.
+    best_score = None
     for name in family:
         candidate_score = score(name)
         if candidate_score is not None and (
