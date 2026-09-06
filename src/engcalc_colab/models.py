@@ -200,6 +200,10 @@ class NumericEvaluationResult:
     # as stored from one it should hand to the family. Empty is the safe reading for a
     # result built without it: nothing was declared, so nothing is protected.
     declared_names: frozenset[str] = frozenset()
+    # True when `numeric(expr, unit)` named the unit. The quantity is already in
+    # it; this says it was asked for, which is what stops the family overruling a
+    # request it happens to have an opinion about.
+    unit_was_requested: bool = False
 
     def __init__(
         self,
@@ -213,6 +217,7 @@ class NumericEvaluationResult:
         display_argument: Any | None = None,
         unit_literals: frozenset[str] = frozenset(),
         declared_names: frozenset[str] = frozenset(),
+        unit_was_requested: bool = False,
     ) -> None:
         if display_arguments is not None and display_argument is not None:
             raise TypeError("provide either display_arguments or display_argument, not both")
@@ -229,6 +234,7 @@ class NumericEvaluationResult:
         object.__setattr__(self, "display_arguments", normalized)
         object.__setattr__(self, "unit_literals", frozenset(unit_literals))
         object.__setattr__(self, "declared_names", frozenset(declared_names))
+        object.__setattr__(self, "unit_was_requested", bool(unit_was_requested))
 
     @property
     def display_argument(self) -> Any | None:
@@ -247,6 +253,10 @@ class NumericMatrixEvaluationResult:
     display_arguments: tuple[Any, ...] | None = None
     declared_names: frozenset[str] = frozenset()
     """Names whose `:=` wrote a unit down; see `NumericEvaluationResult`."""
+    # True when `numeric(expr, unit)` named the unit. The quantity is already in
+    # it; this says it was asked for, which is what stops the family overruling a
+    # request it happens to have an opinion about.
+    unit_was_requested: bool = False
 
 
 @dataclass(frozen=True)
@@ -259,6 +269,10 @@ class PartialMatrixNumericEvaluationResult:
     display_arguments: tuple[Any, ...] | None = None
     declared_names: frozenset[str] = frozenset()
     """Names whose `:=` wrote a unit down; see `NumericEvaluationResult`."""
+    # True when `numeric(expr, unit)` named the unit. The quantity is already in
+    # it; this says it was asked for, which is what stops the family overruling a
+    # request it happens to have an opinion about.
+    unit_was_requested: bool = False
 
 
 @dataclass(frozen=True)
@@ -290,6 +304,10 @@ class PartialNumericEvaluationResult:
     # as stored from one it should hand to the family. Empty is the safe reading for a
     # result built without it: nothing was declared, so nothing is protected.
     declared_names: frozenset[str] = frozenset()
+    # True when `numeric(expr, unit)` named the unit. The quantity is already in
+    # it; this says it was asked for, which is what stops the family overruling a
+    # request it happens to have an opinion about.
+    unit_was_requested: bool = False
 
     def __init__(
         self,
@@ -305,6 +323,7 @@ class PartialNumericEvaluationResult:
         display_argument: Any | None = None,
         unit_literals: frozenset[str] = frozenset(),
         declared_names: frozenset[str] = frozenset(),
+        unit_was_requested: bool = False,
     ) -> None:
         if display_arguments is not None and display_argument is not None:
             raise TypeError("provide either display_arguments or display_argument, not both")
@@ -323,6 +342,7 @@ class PartialNumericEvaluationResult:
         object.__setattr__(self, "piecewise_evaluation", piecewise_evaluation)
         object.__setattr__(self, "unit_literals", frozenset(unit_literals))
         object.__setattr__(self, "declared_names", frozenset(declared_names))
+        object.__setattr__(self, "unit_was_requested", bool(unit_was_requested))
 
     @property
     def display_argument(self) -> Any | None:

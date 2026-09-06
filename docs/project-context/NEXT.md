@@ -155,6 +155,32 @@ tidy fix and was implemented before it was measured - left `0.00008*m` printing 
 `0.00008 m` instead of `0.08 mm`. The separation to copy is siunitx's, where `round-mode`
 and `exponent-mode` know nothing about each other; it is not a merge.
 
+### `numeric(expr, unit)` was ignored
+
+Found by auditing `examples/memoria-viga.ipynb` after 0.28.0. The second argument is the
+one place in the language where an engineer states the display unit outright; it is
+documented, and that notebook uses it.
+
+`convert_quantity` stored the value in exactly the unit asked for, and the renderer then
+handed it to the family with `declared=False`, which converted it back. `numeric(M, N*m)`
+printed `45.00 kN*m`.
+
+Narrower than "always ignored", which is worth having measured. A requested unit outside
+every family survived by accident - `cm` and `inch` are one unit term each, so
+`_unit_is_the_engineers` kept them - and only a request the family *also* had an opinion
+about was overruled. The notebook's own call names `kN*m`, which is what the family would
+have chosen anyway, which is why nobody saw it.
+
+Fixed by #106, and it needed #104 first: honouring `N*m` before compound units kept
+their written order would have printed `45000.00 m*N`.
+
+**One mutation was inert and the code went rather than the contract.** A mixed-dimension
+matrix cell can never see a requested unit - the engine refuses a target unit
+incompatible with any entry, and converting them all to a compatible one makes the matrix
+homogeneous - so the branch that passed the flag through was unreachable. Section 6 of
+`HOW-THIS-WORK-GOES-WRONG.md` is about exactly that, so the branch is gone and the reason
+is in a comment.
+
 ### An evaluation with no name on its left
 
 Found by reading `tools/memoria.eng`, this repository's own reference sheet, after
