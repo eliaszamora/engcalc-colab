@@ -305,6 +305,11 @@ class EngineeringEngine:
         # turning it into a raise fired it zero times across the whole suite: both of
         # those return their own result before this is reached, so the branch could not
         # be told apart from its absence.
+        # `sp.Expr` already admits a matrix: `build_matrix` returns an
+        # `ImmutableMatrix`, whose ancestry runs through `MatrixExpr` to `Expr`. This
+        # line was widened to `(sp.Expr, sp.MatrixBase)` first, with a comment claiming
+        # it was what had kept the written form out of matrices; mutation showed the
+        # widening changed nothing, and it is not here.
         if not isinstance(value, sp.Expr):
             return None
         for node in ast.walk(statement.expression):
@@ -3071,7 +3076,21 @@ def _agrees_with(written, value, expansions: dict | None = None) -> bool:
             # Checking without this would reject every formula built on a kept name,
             # which is the whole feature.
             rebuilt = rebuilt.subs(expansions)
-        return rebuilt - sp.sympify(value) == 0
+        difference = rebuilt - sp.sympify(value)
+        if isinstance(difference, sp.MatrixBase):
+            # The whole of what let a written form reach a matrix. A zero matrix is not
+            # `== 0` - `Matrix([[0, 0], [0, 0]]) == 0` is False - so asking a matrix the
+            # question a scalar is asked discarded every matrix, including the ones that
+            # agreed, and no matrix ever had a written form to show. A local stiffness
+            # matrix printed each entry expanded into `b_c d_c^3/12` and
+            # `sqrt((-x_1 + x_2)^2 + ...)` for want of this line.
+            #
+            # A shape mismatch raises above and is caught, which is the answer it should
+            # give. `is True` because the property is True, False or None for a symbolic
+            # matrix; returning it raw is indistinguishable to the one caller, measured,
+            # and this says what is meant.
+            return difference.is_zero_matrix is True
+        return difference == 0
     except Exception:
         return False
 
