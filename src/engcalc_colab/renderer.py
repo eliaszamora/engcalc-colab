@@ -1091,6 +1091,42 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
     return r"\begin{cases} " + r" \\ ".join(rendered) + r" \end{cases}"
 
 
+def _shown_substitutions(result, settings: RenderSettings) -> dict[str, object]:
+    """The substituted values, each already converted to the unit it will be shown in.
+
+    `_quantity_latex` takes `declared` - keep the unit as stored, or hand it to the
+    family that makes it readable - and it defaults to True.
+    `_NumericSubstitutionLatexPrinter._print_Symbol` never passed it, so every
+    substituted value was treated as a unit the engineer wrote down, including the ones
+    the algebra invented. A period derived from a circular frequency read
+
+        T = 2 pi / (6.61 GPa^0.5*mm/(kg^0.5*m^0.5))
+          = 0.0300 s
+
+    the same quantity in two units, two lines apart, and the unreadable one in the
+    middle of the derivation the reader is being asked to follow. It is also where the
+    fractional unit exponents came from.
+
+    Deciding it here rather than inside the printer is what keeps the change small: the
+    printer, `_substitution_latex`, `_render_signed_term`, `_bounded_expression_rows`
+    and five more would each have had to carry the set. Converting the dictionary first
+    means the printer's `declared=True` becomes correct by construction - it keeps the
+    unit it was handed, and the unit it is handed is already the right one.
+
+    Only one value on a whole sheet actually turns on this: `d := 0.0105*m` is metres
+    because the engineer wrote metres, and the family would make it `10.50 mm`.
+    Everything else - `tonf/m`, `kN/mm`, `mm^4`, `MPa` - reads the same either way,
+    which is why the set has to be right rather than large.
+    """
+    declared = getattr(result, "declared_names", frozenset())
+    shown: dict[str, object] = {}
+    for name, value in result.substitutions.items():
+        if hasattr(value, "units"):
+            value = _display_quantity(value, settings, declared=name in declared)
+        shown[name] = value
+    return shown
+
+
 def _display_lhs(
     result: (
         NumericEvaluationResult
@@ -1357,7 +1393,7 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
     if _shows_substitution(result):
         substituted_rows = _bounded_expression_rows(
             result.symbolic_expression,
-            result.substitutions,
+            _shown_substitutions(result, settings),
             settings=settings,
             unit_literals=result.unit_literals,
         )
@@ -1380,7 +1416,7 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
     if result.piecewise_evaluation is not None:
         evaluated_latex = _piecewise_partial_latex(
             result.piecewise_evaluation,
-            result.substitutions,
+            _shown_substitutions(result, settings),
             settings,
         )
     elif len(result.unresolved_symbols) == 1:
@@ -1392,7 +1428,7 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
     if _shows_substitution(result):
         substituted_rows = _bounded_expression_rows(
             result.symbolic_expression,
-            result.substitutions,
+            _shown_substitutions(result, settings),
             settings=settings,
             unit_literals=result.unit_literals,
         )
@@ -1426,7 +1462,7 @@ def _numeric_matrix_evaluation_rows(
         stages.append(
             _matrix_substitution_latex(
                 result.symbolic_matrix,
-                result.substitutions,
+                _shown_substitutions(result, settings),
                 settings,
             )
         )
@@ -1443,7 +1479,7 @@ def _partial_matrix_numeric_evaluation_rows(
         stages.append(
             _matrix_substitution_latex(
                 result.symbolic_matrix,
-                result.substitutions,
+                _shown_substitutions(result, settings),
                 settings,
             )
         )
@@ -1709,7 +1745,7 @@ def _value_row_spacings(
                 len(
                     _bounded_expression_rows(
                         result.symbolic_expression,
-                        result.substitutions,
+                        _shown_substitutions(result, settings),
                         settings=settings,
                     )
                 )
@@ -1729,7 +1765,7 @@ def _value_row_spacings(
                 len(
                     _bounded_expression_rows(
                         result.symbolic_expression,
-                        result.substitutions,
+                        _shown_substitutions(result, settings),
                         settings=settings,
                     )
                 )
@@ -1738,7 +1774,7 @@ def _value_row_spacings(
         if result.piecewise_evaluation is not None:
             evaluated_latex = _piecewise_partial_latex(
                 result.piecewise_evaluation,
-                result.substitutions,
+                _shown_substitutions(result, settings),
                 settings,
             )
         elif len(result.unresolved_symbols) == 1:
@@ -2310,7 +2346,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
             stages.append(
                 _matrix_substitution_latex(
                     result.symbolic_matrix,
-                    result.substitutions,
+                    _shown_substitutions(result, active_settings),
                     active_settings,
                 )
             )
@@ -2324,7 +2360,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
             stages.append(
                 _matrix_substitution_latex(
                     result.symbolic_matrix,
-                    result.substitutions,
+                    _shown_substitutions(result, active_settings),
                     active_settings,
                 )
             )
@@ -2339,7 +2375,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         if result.piecewise_evaluation is not None:
             evaluated_latex = _piecewise_partial_latex(
                 result.piecewise_evaluation,
-                result.substitutions,
+                _shown_substitutions(result, active_settings),
                 active_settings,
             )
         elif len(result.unresolved_symbols) == 1:
@@ -2350,7 +2386,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
             chain.append(
                 _substitution_latex(
                     result.symbolic_expression,
-                    result.substitutions,
+                    _shown_substitutions(result, active_settings),
                     active_settings,
                 )
             )
@@ -2374,7 +2410,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
             chain.append(
                 _substitution_latex(
                     result.symbolic_expression,
-                    result.substitutions,
+                    _shown_substitutions(result, active_settings),
                     active_settings,
                 )
             )

@@ -196,6 +196,10 @@ class NumericEvaluationResult:
     display_name: str | None = None
     display_arguments: tuple[Any, ...] | None = None
     unit_literals: frozenset[str] = frozenset()
+    # Names whose `:=` wrote a unit down, so the renderer can tell a value it must show
+    # as stored from one it should hand to the family. Empty is the safe reading for a
+    # result built without it: nothing was declared, so nothing is protected.
+    declared_names: frozenset[str] = frozenset()
 
     def __init__(
         self,
@@ -208,6 +212,7 @@ class NumericEvaluationResult:
         *,
         display_argument: Any | None = None,
         unit_literals: frozenset[str] = frozenset(),
+        declared_names: frozenset[str] = frozenset(),
     ) -> None:
         if display_arguments is not None and display_argument is not None:
             raise TypeError("provide either display_arguments or display_argument, not both")
@@ -223,6 +228,7 @@ class NumericEvaluationResult:
         object.__setattr__(self, "display_name", display_name)
         object.__setattr__(self, "display_arguments", normalized)
         object.__setattr__(self, "unit_literals", frozenset(unit_literals))
+        object.__setattr__(self, "declared_names", frozenset(declared_names))
 
     @property
     def display_argument(self) -> Any | None:
@@ -239,6 +245,8 @@ class NumericMatrixEvaluationResult:
     quantity_matrix: Any
     display_name: str | None = None
     display_arguments: tuple[Any, ...] | None = None
+    declared_names: frozenset[str] = frozenset()
+    """Names whose `:=` wrote a unit down; see `NumericEvaluationResult`."""
 
 
 @dataclass(frozen=True)
@@ -249,6 +257,8 @@ class PartialMatrixNumericEvaluationResult:
     unresolved_symbols: tuple[str, ...]
     display_name: str | None = None
     display_arguments: tuple[Any, ...] | None = None
+    declared_names: frozenset[str] = frozenset()
+    """Names whose `:=` wrote a unit down; see `NumericEvaluationResult`."""
 
 
 @dataclass(frozen=True)
@@ -276,6 +286,10 @@ class PartialNumericEvaluationResult:
     display_arguments: tuple[Any, ...] | None = None
     piecewise_evaluation: PiecewisePartialEvaluation | None = None
     unit_literals: frozenset[str] = frozenset()
+    # Names whose `:=` wrote a unit down, so the renderer can tell a value it must show
+    # as stored from one it should hand to the family. Empty is the safe reading for a
+    # result built without it: nothing was declared, so nothing is protected.
+    declared_names: frozenset[str] = frozenset()
 
     def __init__(
         self,
@@ -290,6 +304,7 @@ class PartialNumericEvaluationResult:
         *,
         display_argument: Any | None = None,
         unit_literals: frozenset[str] = frozenset(),
+        declared_names: frozenset[str] = frozenset(),
     ) -> None:
         if display_arguments is not None and display_argument is not None:
             raise TypeError("provide either display_arguments or display_argument, not both")
@@ -307,6 +322,7 @@ class PartialNumericEvaluationResult:
         object.__setattr__(self, "display_arguments", normalized)
         object.__setattr__(self, "piecewise_evaluation", piecewise_evaluation)
         object.__setattr__(self, "unit_literals", frozenset(unit_literals))
+        object.__setattr__(self, "declared_names", frozenset(declared_names))
 
     @property
     def display_argument(self) -> Any | None:
