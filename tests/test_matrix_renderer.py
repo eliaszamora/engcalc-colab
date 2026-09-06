@@ -106,9 +106,24 @@ def test_heterogeneous_quantity_matrix_keeps_units_inside_each_cell():
 
     _matrix_markers(latex)
     # A beam stiffness submatrix legitimately mixes force/length, force and force*length.
-    # The spec requires a unit in each cell, not conversion to one canonical engineering unit.
-    assert latex.count(r"\mathrm{GPa}") == 4
-    assert latex.count(r"\mathrm{mm}") >= 4
+    # The spec requires a unit in each cell, not conversion to one canonical engineering
+    # unit, and that is what is checked: four cells, four units, none shared and none
+    # printed outside the brackets.
+    #
+    # This asserted `GPa` four times until a cell of a mixed-dimension matrix started
+    # being offered the unit family, the way a homogeneous one always had been. Three of
+    # the four moved:
+    #
+    #     12EI/L^3   GPa*mm    ->  GPa*mm     2 unit terms, ties with kN/m
+    #      6EI/L^2   GPa*mm^2  ->  MN         3 terms against MN's 1
+    #      4EI/L     GPa*mm^3  ->  kN*m       4 terms against 2
+    #
+    # The first stays because `_unit_terms` cannot separate `GPa*mm` from `kN/m` - they
+    # cost the same - and that same tie is what protects `kN/mm`, which is a unit an
+    # engineer writes and which the weighting is documented as keeping.
+    assert latex.count(r"\mathrm{GPa}") == 1
+    assert latex.count(r"\mathrm{MN}") == 2
+    assert latex.count(r"\mathrm{kN} \cdot \mathrm{m}") == 1
     assert not latex.rstrip().endswith(r"\mathrm{mm}")
 
 
