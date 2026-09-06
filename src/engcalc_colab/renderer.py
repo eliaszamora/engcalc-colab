@@ -908,9 +908,18 @@ def _matrix_scale_exponent(magnitudes, settings: RenderSettings) -> int:
 def _quantity_matrix_latex(
     quantity_matrix: QuantityMatrix,
     settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+    *,
+    declared: bool = False,
 ) -> str:
+    """Render a matrix of quantities.
+
+    `declared` is the same word it is everywhere else here: the cells are already in
+    the unit that should be shown, so nothing is to be chosen. It is set when
+    `numeric(K, unit)` named one - the engine has converted every cell to it, and
+    `_aggregate_unit` would otherwise choose again and convert them back.
+    """
     common_unit, homogeneous = _quantity_matrix_common_unit(quantity_matrix)
-    if homogeneous:
+    if homogeneous and not declared:
         common_unit = _aggregate_unit(list(quantity_matrix), settings, common_unit)
 
     # The unit each cell will be shown in has to be settled before the scale can be,
@@ -921,6 +930,13 @@ def _quantity_matrix_latex(
             if common_unit is not None and not getattr(quantity, "dimensionless", False):
                 quantity = quantity.to(common_unit)
         else:
+            # `declared=False` and not `declared`, which a mixed cell can never see as
+            # True: a target unit has to be compatible with every entry - the engine
+            # refuses one that is not, naming the cell - and converting them all to it
+            # makes the matrix homogeneous, so a requested unit always takes the branch
+            # above. Written as `declared` first; mutation reported it inert, the full
+            # suite agreed, and an unreachable branch is worse than the parameter it
+            # was trying to respect.
             quantity = _display_quantity(quantity, settings, declared=False)
         shown.append(quantity)
     exponent = _matrix_scale_exponent(
@@ -1089,6 +1105,22 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
         )
 
     return r"\begin{cases} " + r" \\ ".join(rendered) + r" \end{cases}"
+
+
+def _shows_as_stored(result) -> bool:
+    """Was this result's unit asked for by name?
+
+    `declared` means "keep the unit as stored", and a unit the engineer wrote into
+    `numeric(expr, unit)` is the strongest case of a declared unit there is. It was the
+    one case that did not get it: `convert_quantity` stored the value in exactly the
+    unit asked for and the renderer then handed it to the family, which converted it
+    back. `numeric(M, N*m)` printed `45.00 kN*m`.
+
+    Narrower than it first looked. A requested unit outside every family survived by
+    accident - `cm` and `inch` are one unit term each, so `_unit_is_the_engineers` kept
+    them - and only a request the family also had an opinion about was overruled.
+    """
+    return bool(getattr(result, "unit_was_requested", False))
 
 
 def _shown_substitutions(result, settings: RenderSettings) -> dict[str, object]:
@@ -1445,7 +1477,11 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
         settings=settings,
         unit_literals=result.unit_literals,
     )
-    final_latex = _quantity_latex(result.quantity, settings=settings, declared=False)
+    final_latex = _quantity_latex(
+        result.quantity,
+        settings=settings,
+        declared=_shows_as_stored(result),
+    )
     lhs = _display_lhs(result)
 
     substituted_rows: list[str] = []
@@ -1542,7 +1578,7 @@ def _numeric_matrix_evaluation_rows(
                 settings,
             )
         )
-    stages.append(_quantity_matrix_latex(result.quantity_matrix, settings))
+    stages.append(_quantity_matrix_latex(result.quantity_matrix, settings, declared=_shows_as_stored(result)))
     return _matrix_stage_rows(_display_lhs(result), stages)
 
 
@@ -1820,7 +1856,11 @@ def _value_row_spacings(
                 _shown_substitutions(result, settings),
                 settings=settings,
             )
-        final_latex = _quantity_latex(result.quantity, settings=settings, declared=False)
+        final_latex = _quantity_latex(
+            result.quantity,
+            settings=settings,
+            declared=_shows_as_stored(result),
+        )
         lhs = _display_lhs(result)
         first_body = substituted_rows[0] if substituted_rows else final_latex
         stage_lengths = [
@@ -2447,7 +2487,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
                     active_settings,
                 )
             )
-        stages.append(_quantity_matrix_latex(result.quantity_matrix, active_settings))
+        stages.append(_quantity_matrix_latex(result.quantity_matrix, active_settings, declared=_shows_as_stored(result)))
         right = " = ".join(stages)
         lhs = _display_lhs(result)
         return rf"{lhs} = {right}" if lhs is not None else right
@@ -2487,7 +2527,11 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     if isinstance(result, NumericEvaluationResult):
         formula_latex = _latex(result.symbolic_expression)
-        final_latex = _quantity_latex(result.quantity, settings=active_settings, declared=False)
+        final_latex = _quantity_latex(
+            result.quantity,
+            settings=active_settings,
+            declared=_shows_as_stored(result),
+        )
         chain = [formula_latex]
         if _shows_substitution(result):
             chain.append(

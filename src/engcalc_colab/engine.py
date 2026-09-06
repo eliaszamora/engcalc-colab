@@ -738,6 +738,7 @@ class EngineeringEngine:
                     display_name=display_name,
                     display_arguments=display_arguments,
                     declared_names=frozenset(self.declared_unit_names),
+                    unit_was_requested=evaluator.requested_unit is not None,
                 )
 
             if evaluator.numeric_matrix_evaluation is not None:
@@ -756,6 +757,7 @@ class EngineeringEngine:
                     display_name=display_name,
                     display_arguments=display_arguments,
                     declared_names=frozenset(self.declared_unit_names),
+                    unit_was_requested=evaluator.requested_unit is not None,
                 )
 
             if evaluator.partial_numeric_evaluation is not None:
@@ -781,6 +783,7 @@ class EngineeringEngine:
                         symbolic_expression
                     ),
                     declared_names=frozenset(self.declared_unit_names),
+                    unit_was_requested=evaluator.requested_unit is not None,
                 )
 
             if evaluator.numeric_evaluation is not None:
@@ -812,6 +815,7 @@ class EngineeringEngine:
                         symbolic_expression
                     ),
                     declared_names=frozenset(self.declared_unit_names),
+                    unit_was_requested=evaluator.requested_unit is not None,
                 )
 
             if statement.target is not None:
@@ -866,6 +870,10 @@ class _Evaluator(ast.NodeVisitor):
         self.matrix_literals = {binding.name: binding.literal for binding in matrix_literals}
         self.display_input = None
         self.numeric_evaluation = None
+        # Set when `numeric(expr, unit)` named a unit. `convert_quantity` already
+        # stores the result in it; the renderer needs to know it was *asked for*,
+        # because a unit a family also knows was being overruled by the family.
+        self.requested_unit = None
         self.partial_numeric_evaluation = None
         self.numeric_matrix_evaluation = None
         self.partial_matrix_numeric_evaluation = None
@@ -1222,6 +1230,7 @@ class _Evaluator(ast.NodeVisitor):
                 target_unit = self.engine.numeric_context.evaluate_unit_expression(
                     ast.Expression(body=node.args[1])
                 )
+                self.requested_unit = target_unit
 
             display_name = argument.id if isinstance(argument, ast.Name) else None
             display_arguments = None
