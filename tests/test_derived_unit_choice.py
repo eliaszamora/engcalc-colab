@@ -107,7 +107,7 @@ def test_the_family_lookup_does_not_depend_on_how_the_dimensionality_prints():
             self.dimensionality = dimensionality
 
     moment = dict([("[time]", -2), ("[mass]", 1), ("[length]", 2)])
-    assert _unit_family(_Quantity(moment)) == ("kN * m",)
+    assert _unit_family(_Quantity(moment)) == ("N * m", "kN * m")
 
     pressure = dict([("[time]", -2), ("[length]", -1), ("[mass]", 1)])
     assert _unit_family(_Quantity(pressure)) == ("MPa", "GPa")
