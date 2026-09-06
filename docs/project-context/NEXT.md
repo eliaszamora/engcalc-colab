@@ -79,9 +79,9 @@ All four findings of the external trial are closed, and so are two of the three 
 that came out of working RC-1. A matrix frame analysis run as a benchmark then produced
 seven more, of which four are fixed. What is open, in the order I would take it:
 
-- **the display unit is decided in seven places** — the benchmark's finding, and the one
-  worth settling before adding another surface; first section below, amended by #100
-  where the digit rule turned out not to belong in that count
+- **`_unit_terms` ties `GPa*mm` with `kN/m`** — the last of the seven-places findings
+  still open, in the first section below. Six are now closed; #100 also amended that
+  note, where the digit rule turned out not to belong in the count at all
 - **the factors of a compound unit are ordered alphabetically** — `ft·kip` where US
   practice writes kip-ft, in the RC-1 section below
 - **a wide substitution is split into additive terms** by the wrapping path, in the RC-3
@@ -97,25 +97,28 @@ be and what it cost to find, which is the part a summary would lose.
 **This is the one to settle before adding another surface.** A matrix frame analysis, run
 as a benchmark, asked one question - *in what unit is this shown?* - of seven different
 code paths and got seven answers. Four of them had already drifted and were reconciled one
-at a time; of the remaining three, one was settled by #99 and two are still open.
+at a time; of the remaining three, #99 settled one, #102 fixed another, and one is left.
 
 | where | what decides | state |
 |---|---|---|
 | a scalar | `_display_quantity`: family, then `_unit_terms` | the reference behaviour |
 | a homogeneous matrix, a table column | `_aggregate_unit` | a tie handed the fallback the win, fixed |
 | a heterogeneous matrix cell | `_quantity_latex`, `declared` defaulting True | fixed |
-| the substitution stage | the stored unit, consulting nothing | **open** |
+| the substitution stage | `declared` per name, from what the `:=` wrote | fixed by #102 |
 | a family with one member | stops at kilo on purpose; the matrix factors instead | settled by #99 |
 | `GPa*mm` against `kN/m` | `_unit_terms` ties them | **open** |
 
-The two still open, and the third with the answer it got, each with what it costs on a
+The one still open, and the two with the answers they got, each with what it costs on a
 real page:
 
-- **The substitution stage** shows a value in the unit it was stored in. The same
-  `70303.22` appears as `kN/m` on one line and `GPa*mm^2/m` two lines below it, and a
-  circular frequency substitutes as `11.86 GPa^0.5*mm/(kg^0.5*m^0.5)` above a result that
-  reads `374.98 1/s`. Fixing it needs the question #84 answered for definitions asked
-  again here: which substituted values count as declared.
+- ~~**The substitution stage** shows a value in the unit it was stored in.~~ **Fixed by
+  #102.** The question it was waiting on - which substituted values count as declared -
+  turned out to be already answered: `written_unit_names` drew exactly that line per
+  assignment and then threw the answer away, so the engine keeps the set now. One
+  argument was missing, `declared`, which `_quantity_latex` takes and
+  `_NumericSubstitutionLatexPrinter` never passed. `70303.22 GPa*mm^2/m` became
+  `70303.22 kN/m` and `11.86 GPa^0.5*mm/(kg^0.5*m^0.5)` became `374.98 1/s`, which is
+  also where the fractional unit exponents on the page came from.
 - ~~**A family of one member** cannot move the magnitude into the readable band.~~
   **Answered by #99, in the opposite direction to the one this bullet assumed.** It
   proposed giving every family a mega step so an assembled stiffness could reach

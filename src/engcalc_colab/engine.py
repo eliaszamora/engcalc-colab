@@ -230,6 +230,12 @@ class EngineeringEngine:
         # what it stands for; `namespace` still holds the expanded expression and
         # everything computes with that, so the barrier is presentation only.
         self.kept_names: set[str] = set()
+        # Names whose `:=` wrote a unit down. `written_unit_names` already drew this
+        # line per assignment, for that assignment's own row, and then discarded it.
+        # A substituted value two lines later needs the same answer, so it is kept:
+        # `d := 0.0105*m` must substitute as metres, and a circular frequency the
+        # algebra left in `GPa^0.5*mm/(kg^0.5*m^0.5)` must not.
+        self.declared_unit_names: set[str] = set()
         # The expression each definition was written with, when one was kept and
         # verified. Only ever displayed - `namespace` is what everything computes
         # with - and it is what lets `numeric(phiMn)` open with the same formula
@@ -469,6 +475,7 @@ class EngineeringEngine:
         self.reported.clear()
         self.load_cases.clear()
         self.kept_names.clear()
+        self.declared_unit_names.clear()
         self.written_namespace.clear()
         self.functions.clear()
         self.symbols.clear()
@@ -527,6 +534,12 @@ class EngineeringEngine:
                 written_units = self.numeric_context.written_unit_names(
                     statement.expression
                 )
+                # `discard` and not just `add`: redefining a name without a unit -
+                # `d := 0.0105*m` then `d := As*fy/b` - must stop protecting it.
+                if written_units:
+                    self.declared_unit_names.add(statement.target)
+                else:
+                    self.declared_unit_names.discard(statement.target)
                 quantity = self.numeric_context.assign(
                     statement.target,
                     statement.expression,
@@ -724,6 +737,7 @@ class EngineeringEngine:
                     unresolved_symbols=unresolved_symbols,
                     display_name=display_name,
                     display_arguments=display_arguments,
+                    declared_names=frozenset(self.declared_unit_names),
                 )
 
             if evaluator.numeric_matrix_evaluation is not None:
@@ -741,6 +755,7 @@ class EngineeringEngine:
                     quantity_matrix=quantity_matrix,
                     display_name=display_name,
                     display_arguments=display_arguments,
+                    declared_names=frozenset(self.declared_unit_names),
                 )
 
             if evaluator.partial_numeric_evaluation is not None:
@@ -765,6 +780,7 @@ class EngineeringEngine:
                     unit_literals=self.numeric_context.unit_literal_names(
                         symbolic_expression
                     ),
+                    declared_names=frozenset(self.declared_unit_names),
                 )
 
             if evaluator.numeric_evaluation is not None:
@@ -795,6 +811,7 @@ class EngineeringEngine:
                     unit_literals=self.numeric_context.unit_literal_names(
                         symbolic_expression
                     ),
+                    declared_names=frozenset(self.declared_unit_names),
                 )
 
             if statement.target is not None:
