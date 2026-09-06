@@ -8,8 +8,8 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `a0e6d49` (#99 merged) |
-| declared version | **0.27.1** — eight pull requests have landed since |
+| `main` | `6e8284f` (#100 merged) |
+| declared version | **0.28.0** — released by #101, carrying #94 through #100 |
 | default suite (`pytest -q`) | **1688 passing**, under 2 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
@@ -97,7 +97,7 @@ be and what it cost to find, which is the part a summary would lose.
 **This is the one to settle before adding another surface.** A matrix frame analysis, run
 as a benchmark, asked one question - *in what unit is this shown?* - of seven different
 code paths and got seven answers. Four of them had already drifted and were reconciled one
-at a time; three are still open.
+at a time; of the remaining three, one was settled by #99 and two are still open.
 
 | where | what decides | state |
 |---|---|---|
@@ -105,20 +105,26 @@ at a time; three are still open.
 | a homogeneous matrix, a table column | `_aggregate_unit` | a tie handed the fallback the win, fixed |
 | a heterogeneous matrix cell | `_quantity_latex`, `declared` defaulting True | fixed |
 | the substitution stage | the stored unit, consulting nothing | **open** |
-| a family with one member | cannot reach the readable band | **open** |
+| a family with one member | stops at kilo on purpose; the matrix factors instead | settled by #99 |
 | `GPa*mm` against `kN/m` | `_unit_terms` ties them | **open** |
 
-The open three, with what each costs on a real page:
+The two still open, and the third with the answer it got, each with what it costs on a
+real page:
 
 - **The substitution stage** shows a value in the unit it was stored in. The same
   `70303.22` appears as `kN/m` on one line and `GPa*mm^2/m` two lines below it, and a
   circular frequency substitutes as `11.86 GPa^0.5*mm/(kg^0.5*m^0.5)` above a result that
   reads `374.98 1/s`. Fixing it needs the question #84 answered for definitions asked
   again here: which substituted values count as declared.
-- **A family of one member** can change the unit but cannot move the magnitude into the
-  readable band. Moments have only `kN * m`, line loads only `kN / m`, second moments of
-  area only `cm ** 4`, so an assembled stiffness prints `517195.95 kN*m` where forces,
-  which have `N, kN, MN`, correctly reach `209.67 MN`.
+- ~~**A family of one member** cannot move the magnitude into the readable band.~~
+  **Answered by #99, in the opposite direction to the one this bullet assumed.** It
+  proposed giving every family a mega step so an assembled stiffness could reach
+  `209.67 MN`. The engineer was asked and wanted the reverse: *"prefiero que nos quedemos
+  con kN, m, s ... no me gusta que hayan algunos en kilo y otros en mega"*. So the
+  families now **stop at kilo** and a matrix takes the largeness outside as `10^3 x []`,
+  which is MATLAB's `format short` and siunitx's `fixed-exponent`. `MPa`/`GPa` keep both
+  steps deliberately. A large scalar outside a matrix does stay a large number - `517195.95
+  kN*m` - and that is the accepted cost, not an open defect.
 - **`_unit_terms` cannot separate `GPa*mm` from `kN/m`.** Both cost 2, so a force per
   length assembled from a modulus and a length is judged to be the engineer's own unit and
   kept. The same tie is what protects `kN/mm`, which *is* an engineer's unit and is
