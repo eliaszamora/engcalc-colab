@@ -115,15 +115,21 @@ def test_heterogeneous_quantity_matrix_keeps_units_inside_each_cell():
     # the four moved:
     #
     #     12EI/L^3   GPa*mm    ->  GPa*mm     2 unit terms, ties with kN/m
-    #      6EI/L^2   GPa*mm^2  ->  MN         3 terms against MN's 1
+    #      6EI/L^2   GPa*mm^2  ->  kN         3 terms against kN's 1
     #      4EI/L     GPa*mm^3  ->  kN*m       4 terms against 2
     #
     # The first stays because `_unit_terms` cannot separate `GPa*mm` from `kN/m` - they
     # cost the same - and that same tie is what protects `kN/mm`, which is a unit an
     # engineer writes and which the weighting is documented as keeping.
+    #
+    # No power of ten outside the brackets here, and that is the rule working: 5.00 and
+    # 15000.00 are three orders apart, so one factor cannot serve both without costing
+    # the smaller its figures.
     assert latex.count(r"\mathrm{GPa}") == 1
-    assert latex.count(r"\mathrm{MN}") == 2
+    assert latex.count(r"\mathrm{kN}") == 3
     assert latex.count(r"\mathrm{kN} \cdot \mathrm{m}") == 1
+    assert "MN" not in latex
+    assert "10^{" not in latex
     assert not latex.rstrip().endswith(r"\mathrm{mm}")
 
 

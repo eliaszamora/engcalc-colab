@@ -287,10 +287,20 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[length]", 1),): ("mm", "m"),
     (("[length]", 2),): ("cm ** 2", "m ** 2"),
     (("[length]", 4),): ("cm ** 4",),
-    (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("N", "kN", "MN"),
-    (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("kN * m",),
+    # Kilo is the top step, by the engineer's preference: a sheet stays in kN, m and s,
+    # and a value too large for kN has its scale taken outside the brackets by
+    # `_matrix_scale_exponent` rather than climbing to mega. MPa and GPa below are
+    # the deliberate exception - a concrete strength is 25 MPa and a modulus
+    # 210 GPa in every code on the shelf, and nobody writes 25000 kPa.
+    (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("N", "kN"),
+    # The same three steps forces have. With `kN * m` alone a family can change the
+    # unit to one an engineer writes but cannot move the magnitude into the readable
+    # band, and an assembled stiffness printed `517195.95 kN*m` beside a coupling
+    # that had reached `209.67 MN` - one matrix, two scales, for no reason but a
+    # missing member. Given the steps the band rule lands them together.
+    (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("N * m", "kN * m"),
     (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("MPa", "GPa"),
-    (("[mass]", 1), ("[time]", -2)): ("kN / m",),
+    (("[mass]", 1), ("[time]", -2)): ("N / m", "kN / m"),
     # Time, and its reciprocal. A dynamics sheet ends in a frequency and a period,
     # and `sqrt(k/m)` produces fractional exponents - `GPa^0.5*mm/(kg^0.5*m^0.5)` -
     # that no amount of weighting can read. `1 / s` rather than `Hz`: a circular
@@ -698,6 +708,54 @@ def _quantity_matrix_common_unit(quantity_matrix: QuantityMatrix):
     return common_unit, True
 
 
+def _matrix_scale_exponent(magnitudes, settings: RenderSettings) -> int:
+    """A power of ten to take outside the brackets, or zero to leave the matrix alone.
+
+    An assembled stiffness runs to six digits a cell, and a matrix is where that is worst:
+    the reader is comparing entries, and the digits are what they have to see past. Every
+    textbook takes the scale outside once - `K = 10^3 [ ... ]` - and that is what this
+    computes.
+
+    A multiple of three, so the reader is choosing among the prefixes they already know,
+    and sized on the largest entry so the matrix reads at the scale of its own biggest
+    number.
+
+    Declined in three cases. A matrix already inside the readable band has nothing to
+    gain. A matrix holding both a large entry and a small one would flatten the small one
+    to `0.00`, and losing a number is worse than reading a long one - the same rule that
+    decides a family member elsewhere, asked here of every cell at once. And a single
+    entry has nothing to line up with: `10^3 [70.30]` is longer than `70303.22`, not
+    shorter.
+    """
+    values = [
+        abs(float(magnitude))
+        for magnitude in magnitudes
+        if abs(float(magnitude)) >= settings.zero_tolerance
+    ]
+    if len(values) < 2:
+        return 0
+    largest = max(values)
+    # Large means unwieldy; small means unreadable, and those are different questions.
+    # Above the band a matrix is all digits and the scale is worth taking out. Below it,
+    # what matters is whether the number still says anything: `-0.41` reads perfectly
+    # and does not want to become `10^-3 [-405.41]`, while `0.0008` shows `0.00` and
+    # does. The second test is the one the family rule already uses for a single value.
+    if largest < 1000.0 and _significant_figures(largest, settings.precision) > 0:
+        return 0
+    exponent = int(math.floor(math.log10(largest) / 3.0)) * 3
+    if exponent == 0:
+        return 0
+    # Every cell, not just the largest. One factor serves a matrix whose entries share
+    # an order of magnitude, which a stiffness matrix in consistent units does by
+    # construction. Where they do not - `[517.20 kN*m, 35472.97 kN/m]` spans two orders -
+    # sizing on the largest turns the smaller into `0.52` and costs it three significant
+    # figures. A factor that has to damage a cell to tidy another is not taken.
+    for value in values:
+        if not 1.0 <= value / 10.0**exponent < 1000.0:
+            return 0
+    return exponent
+
+
 def _quantity_matrix_latex(
     quantity_matrix: QuantityMatrix,
     settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
@@ -705,29 +763,53 @@ def _quantity_matrix_latex(
     common_unit, homogeneous = _quantity_matrix_common_unit(quantity_matrix)
     if homogeneous:
         common_unit = _aggregate_unit(list(quantity_matrix), settings, common_unit)
+
+    # The unit each cell will be shown in has to be settled before the scale can be,
+    # because the magnitudes it is computed from are the ones the reader will see.
+    shown = []
+    for quantity in quantity_matrix:
+        if homogeneous:
+            if common_unit is not None and not getattr(quantity, "dimensionless", False):
+                quantity = quantity.to(common_unit)
+        else:
+            quantity = _display_quantity(quantity, settings, declared=False)
+        shown.append(quantity)
+    exponent = _matrix_scale_exponent(
+        [quantity.magnitude for quantity in shown], settings
+    )
+
     rows: list[list[str]] = []
 
+    scale = 10.0**exponent
+    index = 0
     for row in range(quantity_matrix.rows):
         rendered_row: list[str] = []
         for col in range(quantity_matrix.cols):
-            quantity = quantity_matrix.entry(row, col)
+            quantity = shown[index]
+            index += 1
+            if exponent:
+                quantity = quantity / scale
             if homogeneous:
-                if common_unit is not None and not getattr(quantity, "dimensionless", False):
-                    quantity = quantity.to(common_unit)
                 rendered_row.append(_magnitude_latex(quantity, settings))
             else:
-                # `declared=False`: a cell of a computed matrix wrote no unit. The
-                # default is True, so every cell of a mixed-dimension matrix kept
-                # whatever the algebra left it in - `5.17 x 10^8 GPa*mm^4/m` for a
-                # 517.20 kN*m rotational stiffness. A homogeneous matrix has consulted
-                # the family through `_aggregate_unit` all along; this is the same
-                # question asked for a matrix whose cells cannot share one unit.
-                rendered_row.append(
-                    _quantity_latex(quantity, settings=settings, declared=False)
-                )
+                # The unit is already settled - `_display_quantity` chose it above, with
+                # `declared=False`, because a cell of a computed matrix wrote no unit.
+                # The default is True, and it left every cell of a mixed-dimension
+                # matrix in whatever the algebra produced: `5.17 x 10^8 GPa*mm^4/m` for
+                # a 517.20 kN*m rotational stiffness.
+                magnitude = _magnitude_text(quantity.magnitude, settings)
+                if getattr(quantity, "dimensionless", False) and str(quantity.units) == "dimensionless":
+                    rendered_row.append(magnitude)
+                else:
+                    rendered_row.append(
+                        rf"{magnitude}\,{format(quantity.units, '~L')}"
+                    )
         rows.append(rendered_row)
 
     matrix_latex = _matrix_from_cells_latex(rows)
+    if exponent:
+        # Before the brackets, the way it is written by hand: `K = 10^3 [ ... ] kN`.
+        matrix_latex = rf"10^{{{exponent}}}\," + matrix_latex
     if homogeneous and common_unit is not None:
         return rf"{matrix_latex}\,{format(common_unit, '~L')}"
     return matrix_latex

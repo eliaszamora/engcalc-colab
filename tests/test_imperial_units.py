@@ -171,7 +171,7 @@ def test_a_quantity_carrying_no_unit_information_is_read_as_si():
             self.dimensionality = dimensionality
 
     moment = dict([("[time]", -2), ("[mass]", 1), ("[length]", 2)])
-    assert _unit_family(_Quantity(moment)) == ("kN * m",)
+    assert _unit_family(_Quantity(moment)) == ("N * m", "kN * m")
 
 
 def test_a_value_that_mixes_systems_is_shown_in_us_customary(cell):

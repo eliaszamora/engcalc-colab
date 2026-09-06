@@ -83,7 +83,10 @@ def test_a_matrix_of_several_cells_still_shares_one_unit(cell):
     latex = cell(INPUTS + "K = [E*A/L, 2*E*A/L; 3*E*A/L, 4*E*A/L]\nnumeric(K)\n")
     final = _final(latex)
     assert final.count(r"\frac{\mathrm{kN}}{\mathrm{m}}") == 1, final
-    assert "21875.00" in final and "87500.00" in final, final
+    # The digits moved outside the brackets once, which is a separate change and does
+    # not touch what this asserts: one unit, printed once, for the whole matrix.
+    assert "10^{3}" in final, final
+    assert "21.88" in final and "87.50" in final, final
 
 
 def test_a_column_of_a_table_is_unaffected(cell):
