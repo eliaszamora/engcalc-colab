@@ -26,6 +26,61 @@ reactions, moment law, a diagram, an inequality and a summary. Its cells are exe
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
 
 
+## keep, so a formula shows the names it was written with
+
+A definition's names are substituted where they are used, so a flexural capacity built on
+two intermediate results comes out in primitives - `cover`, `db_st`, `h`, `b`, `fc` - and
+the formula an engineer would check against the code is not on the page. `keep` marks a
+name that a later formula shows instead of expanding.
+
+```text
+%%eng
+keep d = h - cover - db_st - db/2
+keep a = As*fy/(0.85*fc*b)
+
+phiMn = phi*As*fy*(d - a/2)
+numeric(phiMn)
+```
+
+reads
+
+```text
+d      =  h - cover - db_st - db/2
+a      =  fy As / (0.85 b fc)
+
+phiMn  =  fy phi As (d - a/2)
+       =  ... (440.00 mm) ... (127.48 mm) ...
+       =  275.21 kN·m
+```
+
+Both stages, or neither: the definition and the evaluation under it show the same
+formula, and the substitution shows each kept name's own value rather than expanding it
+again. On a formula narrow enough to print whole the shape is the one a memoria is
+written in:
+
+```text
+z  =  2 a
+   =  2 (127.48 mm)
+   =  254.96 mm
+```
+
+**`keep` changes nothing about the value.** The expanded expression is still what
+everything computes with - `solve`, `subs`, every numeric evaluation - exactly as a
+`combo` keeps its written terms beside an expanded expression for everything else to
+use. The barrier is presentation.
+
+**It is opt-in, and that was measured rather than assumed.** Making every definition a
+barrier is the semantics anyone would expect, and it moves 24 of the 131 tests shaped
+like memorias, including all eighteen worked exercises and the hyperstatic validation
+case. Each of those pages would have to be read and judged one at a time. `case` and
+`combo` chose a declaration keyword for the same reason.
+
+One rough edge, and it is not `keep`'s: a substitution wide enough to wrap is split into
+additive terms by the wrapping path, so `phi*As*fy*(d - a/2)` shows its numbers spread
+over two lines instead of inside the brackets. A wide formula with no kept name in it
+does the same, and a narrow one keeps its shape either way.
+
+
 ## v0.26.1 a formula and its evaluation are one derivation
 
 A definition immediately followed by its evaluation printed the formula twice:
