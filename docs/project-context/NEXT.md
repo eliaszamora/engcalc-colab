@@ -8,9 +8,9 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `348067a` (#92 merged) |
-| declared version | **0.27.1** |
-| default suite (`pytest -q`) | **1629 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
+| `main` | `3b25cbd` (#97 merged) |
+| declared version | **0.27.1** — six pull requests have landed since |
+| default suite (`pytest -q`) | **1658 passing**, about 2 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests`) | **207 properties**, about 4 and a half minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
 
@@ -76,8 +76,11 @@ something, not reasoning further.
 ## Where the findings landed, and what is still open
 
 All four findings of the external trial are closed, and so are two of the three things
-that came out of working RC-1. What is open, in the order I would take it:
+that came out of working RC-1. A matrix frame analysis run as a benchmark then produced
+seven more, of which four are fixed. What is open, in the order I would take it:
 
+- **the display unit is decided in seven places** — the benchmark's finding, and the one
+  worth settling before adding another surface; first section below
 - **the factors of a compound unit are ordered alphabetically** — `ft·kip` where US
   practice writes kip-ft, in the RC-1 section below
 - **a wide substitution is split into additive terms** by the wrapping path, in the RC-3
@@ -87,6 +90,48 @@ that came out of working RC-1. What is open, in the order I would take it:
 
 The finished ones are kept rather than deleted: each says what the answer turned out to
 be and what it cost to find, which is the part a summary would lose.
+
+### The display unit is decided in seven places
+
+**This is the one to settle before adding another surface.** A matrix frame analysis, run
+as a benchmark, asked one question - *in what unit is this shown?* - of seven different
+code paths and got seven answers. Four of them had already drifted and were reconciled one
+at a time; three are still open.
+
+| where | what decides | state |
+|---|---|---|
+| a scalar | `_display_quantity`: family, then `_unit_terms` | the reference behaviour |
+| a homogeneous matrix, a table column | `_aggregate_unit` | a tie handed the fallback the win, fixed |
+| a heterogeneous matrix cell | `_quantity_latex`, `declared` defaulting True | fixed |
+| the substitution stage | the stored unit, consulting nothing | **open** |
+| a family with one member | cannot reach the readable band | **open** |
+| `GPa*mm` against `kN/m` | `_unit_terms` ties them | **open** |
+
+The open three, with what each costs on a real page:
+
+- **The substitution stage** shows a value in the unit it was stored in. The same
+  `70303.22` appears as `kN/m` on one line and `GPa*mm^2/m` two lines below it, and a
+  circular frequency substitutes as `11.86 GPa^0.5*mm/(kg^0.5*m^0.5)` above a result that
+  reads `374.98 1/s`. Fixing it needs the question #84 answered for definitions asked
+  again here: which substituted values count as declared.
+- **A family of one member** can change the unit but cannot move the magnitude into the
+  readable band. Moments have only `kN * m`, line loads only `kN / m`, second moments of
+  area only `cm ** 4`, so an assembled stiffness prints `517195.95 kN*m` where forces,
+  which have `N, kN, MN`, correctly reach `209.67 MN`.
+- **`_unit_terms` cannot separate `GPa*mm` from `kN/m`.** Both cost 2, so a force per
+  length assembled from a modulus and a length is judged to be the engineer's own unit and
+  kept. The same tie is what protects `kN/mm`, which *is* an engineer's unit and is
+  documented as kept, so the count cannot be tightened. What separates them is which one
+  was typed - and #88's written form already records exactly that.
+
+That last line is the shape of the answer. One function taking a quantity and the unit
+names the sheet actually wrote, returning the unit to show; every path calls it. The
+weighting stops being the discriminator and what was typed becomes it, which is the only
+thing that tells `kN/mm` from `GPa*mm`.
+
+Until that exists, every new surface is born divergent: matrices, tables and the
+substitution stage each grew their own copy of the decision, and each had to be corrected
+separately after a page showed the drift.
 
 ### RC-3 — preservation of intermediate formulas: done, as `keep`
 
