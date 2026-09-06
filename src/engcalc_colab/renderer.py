@@ -1379,6 +1379,66 @@ def _append_assignment_stage(rows: list[str], lhs: str | None, body_rows: list[s
         rows.append(rf" & & \displaystyle {body}")
 
 
+def _promotes_opening(
+    lhs: str | None, formula_rows: list[str], first_body: str | None
+) -> bool:
+    """Does this evaluation's formula become the identity column of its own relation?
+
+    Asked twice and answered once. `_relation_opening` asks in order to build the rows,
+    and `_value_row_spacings` asks in order to say how many rows there will be - and
+    that second question is checked against reality, which is how the first version of
+    this change was caught: the spacing metadata still counted a formula stage the
+    renderer had stopped emitting, and the invariant raised rather than shipping a page
+    with the wrong gaps.
+    """
+    if lhs is not None or len(formula_rows) != 1 or first_body is None:
+        return False
+    return (
+        _latex_visual_width(
+            rf"\displaystyle {formula_rows[0]} & = & \displaystyle {first_body}"
+        )
+        <= _COMPLETE_ROW_VISUAL_BUDGET
+    )
+
+
+def _relation_opening(
+    lhs: str | None,
+    formula_rows: list[str],
+    first_body: str | None,
+    rows: list[str],
+) -> str:
+    """Emit the formula stage, and return what belongs in the identity column of the
+    first `=` row after it.
+
+    An evaluation with a name puts the name there and its formula beside it. An
+    evaluation without one - `numeric(q*L)`, `numeric(subs(M(x), x, L/2))` - had its
+    formula opened as ` & & body`, an empty identity column and no relation, which is
+    what a *wrapped continuation* looks like everywhere else here. Consecutive
+    statements share one aligned array, so on the reference memoria it landed directly
+    under the previous statement and read as part of it:
+
+        M(x)  =  q x L / 2 - q x^2 / 2
+                 q L^2 / 8                  <- equal to what?
+              =  (10.00 kN/m) (6.00 m)^2 / 8
+
+    The expression is its own subject, so it goes where a subject goes and the next
+    stage's `=` attaches to it, which is what a hand calculation does:
+
+        q L^2 / 8  =  (10.00 kN/m) (6.00 m)^2 / 8
+                   =  45.00 kN*m
+
+    Only when the whole relation fits a row, measured with the budget
+    `_append_assignment_stage` already uses for the named case. A formula too wide to
+    sit beside its own value keeps the rows it had: an identity column the width of the
+    page is a worse answer than the one being fixed. Multi-row formulas are declined for
+    the same reason - there is no single line to promote.
+    """
+    if _promotes_opening(lhs, formula_rows, first_body):
+        return rf"\displaystyle {formula_rows[0]}"
+    _append_assignment_stage(rows, lhs, formula_rows)
+    return ""
+
+
 def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSettings) -> list[str]:
     formula_rows = _bounded_expression_rows(
         result.symbolic_expression,
@@ -1388,8 +1448,7 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
     final_latex = _quantity_latex(result.quantity, settings=settings, declared=False)
     lhs = _display_lhs(result)
 
-    rows: list[str] = []
-    _append_assignment_stage(rows, lhs, formula_rows)
+    substituted_rows: list[str] = []
     if _shows_substitution(result):
         substituted_rows = _bounded_expression_rows(
             result.symbolic_expression,
@@ -1397,12 +1456,21 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
             settings=settings,
             unit_literals=result.unit_literals,
         )
-        for index, body in enumerate(substituted_rows):
-            if index == 0:
-                rows.append(rf" & = & \displaystyle {body}")
-            else:
-                rows.append(rf" & & \displaystyle {body}")
-    rows.append(rf" & = & \displaystyle {final_latex}")
+
+    rows: list[str] = []
+    opening = _relation_opening(
+        lhs,
+        formula_rows,
+        substituted_rows[0] if substituted_rows else final_latex,
+        rows,
+    )
+    for index, body in enumerate(substituted_rows):
+        if index == 0:
+            rows.append(rf"{opening} & = & \displaystyle {body}")
+            opening = ""
+        else:
+            rows.append(rf" & & \displaystyle {body}")
+    rows.append(rf"{opening} & = & \displaystyle {final_latex}")
     return rows
 
 
@@ -1423,8 +1491,7 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
         evaluated_latex = _partial_polynomial_latex(result.evaluated_terms, result.unresolved_symbols[0], settings)
     lhs = _display_lhs(result)
 
-    rows: list[str] = []
-    _append_assignment_stage(rows, lhs, formula_rows)
+    substituted_rows: list[str] = []
     if _shows_substitution(result):
         substituted_rows = _bounded_expression_rows(
             result.symbolic_expression,
@@ -1432,13 +1499,22 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
             settings=settings,
             unit_literals=result.unit_literals,
         )
-        for index, body in enumerate(substituted_rows):
-            if index == 0:
-                rows.append(rf" & = & \displaystyle {body}")
-            else:
-                rows.append(rf" & & \displaystyle {body}")
+
+    rows: list[str] = []
+    opening = _relation_opening(
+        lhs,
+        formula_rows,
+        substituted_rows[0] if substituted_rows else evaluated_latex,
+        rows,
+    )
+    for index, body in enumerate(substituted_rows):
+        if index == 0:
+            rows.append(rf"{opening} & = & \displaystyle {body}")
+            opening = ""
+        else:
+            rows.append(rf" & & \displaystyle {body}")
     if evaluated_latex is not None:
-        rows.append(rf" & = & \displaystyle {evaluated_latex}")
+        rows.append(rf"{opening} & = & \displaystyle {evaluated_latex}")
     return rows
 
 
@@ -1737,19 +1813,23 @@ def _value_row_spacings(
             result.symbolic_expression,
             settings=settings,
         )
-        stage_lengths = [
-            _assignment_stage_row_count(_display_lhs(result), formula_rows)
-        ]
+        substituted_rows = []
         if _shows_substitution(result):
-            stage_lengths.append(
-                len(
-                    _bounded_expression_rows(
-                        result.symbolic_expression,
-                        _shown_substitutions(result, settings),
-                        settings=settings,
-                    )
-                )
+            substituted_rows = _bounded_expression_rows(
+                result.symbolic_expression,
+                _shown_substitutions(result, settings),
+                settings=settings,
             )
+        final_latex = _quantity_latex(result.quantity, settings=settings, declared=False)
+        lhs = _display_lhs(result)
+        first_body = substituted_rows[0] if substituted_rows else final_latex
+        stage_lengths = [
+            0
+            if _promotes_opening(lhs, formula_rows, first_body)
+            else _assignment_stage_row_count(lhs, formula_rows)
+        ]
+        if substituted_rows:
+            stage_lengths.append(len(substituted_rows))
         stage_lengths.append(1)
 
     elif isinstance(result, PartialNumericEvaluationResult):
@@ -1757,18 +1837,12 @@ def _value_row_spacings(
             result.symbolic_expression,
             settings=settings,
         )
-        stage_lengths = [
-            _assignment_stage_row_count(_display_lhs(result), formula_rows)
-        ]
+        substituted_rows = []
         if _shows_substitution(result):
-            stage_lengths.append(
-                len(
-                    _bounded_expression_rows(
-                        result.symbolic_expression,
-                        _shown_substitutions(result, settings),
-                        settings=settings,
-                    )
-                )
+            substituted_rows = _bounded_expression_rows(
+                result.symbolic_expression,
+                _shown_substitutions(result, settings),
+                settings=settings,
             )
         evaluated_latex = None
         if result.piecewise_evaluation is not None:
@@ -1783,6 +1857,15 @@ def _value_row_spacings(
                 result.unresolved_symbols[0],
                 settings,
             )
+        lhs = _display_lhs(result)
+        first_body = substituted_rows[0] if substituted_rows else evaluated_latex
+        stage_lengths = [
+            0
+            if _promotes_opening(lhs, formula_rows, first_body)
+            else _assignment_stage_row_count(lhs, formula_rows)
+        ]
+        if substituted_rows:
+            stage_lengths.append(len(substituted_rows))
         if evaluated_latex is not None:
             stage_lengths.append(1)
 

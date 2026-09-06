@@ -152,6 +152,37 @@ tidy fix and was implemented before it was measured - left `0.00008*m` printing 
 `0.00008 m` instead of `0.08 mm`. The separation to copy is siunitx's, where `round-mode`
 and `exponent-mode` know nothing about each other; it is not a merge.
 
+### An evaluation with no name on its left
+
+Found by reading `tools/memoria.eng`, this repository's own reference sheet, after
+0.28.0 - not by the suite, which was 1697 tests and green. Its moment section rendered:
+
+    M(x)  =  q x L / 2 - q x^2 / 2
+             q L^2 / 8                       <- no equals sign, no subject
+          =  (10.00 kN/m) (6.00 m)^2 / 8
+          =  45.00 kN*m
+
+`q L^2 / 8` is right and hangs there. `_append_assignment_stage` opens a stage with
+` & & body` when given no left-hand side, which is what a *wrapped continuation* looks
+like everywhere else here, and consecutive statements share one aligned array - so it
+landed under the previous statement and read as part of it. Not about `subs`:
+`numeric(q*L)` did the same.
+
+#103 puts the expression where a subject goes, so the next stage's `=` attaches to it.
+Older than the session that found it: present in 0.27.1 at `a1b9cf5`, from `8b5f95a`.
+
+**The remainder.** A formula too wide to sit beside its own value is not promoted -
+`5 k q L^4 / (384 E I)` measures 124 against a budget of 104 - because an identity
+column that wide pushes every other row's `=` across the page. Those still open with a
+loose row. The reference memoria has none, and the trade was taken deliberately rather
+than overlooked; the contract that pins it says so.
+
+**Worth keeping from how it was built.** The mutation harness reported six clean
+survivors and had not run pytest at all: one path in its subset named a module that does
+not exist, and a run with no summary line reads exactly like a run where nothing failed.
+The harness now stops instead. Any harness in this repository should refuse to report a
+verdict it did not measure.
+
 ### The digits are a floor now, not a single page-wide count
 
 `precision` counts decimal places, which is also what Mathcad's Display Precision and
