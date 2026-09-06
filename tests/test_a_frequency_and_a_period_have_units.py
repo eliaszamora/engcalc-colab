@@ -64,11 +64,34 @@ def test_a_circular_frequency_reads_in_reciprocal_seconds(cell):
     assert "GPa" not in final, final
 
 
-def test_a_period_reads_in_time(cell):
+def test_a_period_reads_in_seconds(cell):
+    """Seconds, not milliseconds, and this contract was written the other way first.
+
+    `("s", "ms")` was the original family, on the reasoning that sends a 0.02 m
+    deflection to millimetres. A period does not obey that convention: it made a
+    building with T = 0.24 s read `240.00 ms`, which nobody writes. The 30 ms period
+    here reads `0.03 s` at a precision of 2, and recovering its figures is what
+    `%eng_config precision=4` is for - a precision question, not a unit one.
+    """
     final = _final(cell(OSCILLATOR + "w = sqrt(k/ms_)\nkeep w_n = w\nT = 2*pi/w_n\nnumeric(T)\n"))
-    assert "30.04" in final, final
-    assert r"\mathrm{ms}" in final, final
+    assert "0.03" in final, final
+    assert r"\mathrm{s}" in final, final
+    assert "ms" not in final, final
     assert "GPa" not in final, final
+
+
+def test_a_structural_period_is_not_sent_to_milliseconds(cell):
+    """The case that decided it. Every period a building actually has is under a
+    second or a few, and all of them read in seconds."""
+    for source, expected in [
+        ("T := 0.24*s\nx = 1*T\nnumeric(x)\n", "0.24"),
+        ("T := 0.50*s\nx = 1*T\nnumeric(x)\n", "0.50"),
+        ("T := 1.20*s\nx = 1*T\nnumeric(x)\n", "1.20"),
+    ]:
+        final = _final(cell(source))
+        assert expected in final, final
+        assert r"\mathrm{s}" in final, final
+        assert "ms" not in final, final
 
 
 def test_a_period_of_ordinary_size_stays_in_seconds(cell):

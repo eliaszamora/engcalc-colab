@@ -296,7 +296,13 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     # that no amount of weighting can read. `1 / s` rather than `Hz`: a circular
     # frequency is rad/s and a natural frequency is Hz, Pint cannot tell them apart
     # because a radian is dimensionless, and `1 / s` is true of both.
-    (("[time]", 1),): ("s", "ms"),
+    #
+    # Seconds and nothing else. `("s", "ms")` was written here first, on the same
+    # reasoning that sends a 0.02 m deflection to millimetres - and a period does not
+    # obey that convention. It made a building with T = 0.24 s read `240.00 ms`, which
+    # nobody writes. A period too short to show figures at the active precision is a
+    # precision question, answered by `%eng_config precision=4`, not a unit one.
+    (("[time]", 1),): ("s",),
     (("[time]", -1),): ("1 / s",),
 }
 
@@ -325,7 +331,7 @@ _US_CUSTOMARY_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] 
     (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("psi", "ksi"),
     (("[mass]", 1), ("[time]", -2)): ("kip / ft",),
     # A second is a second in either system.
-    (("[time]", 1),): ("s", "ms"),
+    (("[time]", 1),): ("s",),
     (("[time]", -1),): ("1 / s",),
 }
 
@@ -710,7 +716,15 @@ def _quantity_matrix_latex(
                     quantity = quantity.to(common_unit)
                 rendered_row.append(_magnitude_latex(quantity, settings))
             else:
-                rendered_row.append(_quantity_latex(quantity, settings=settings))
+                # `declared=False`: a cell of a computed matrix wrote no unit. The
+                # default is True, so every cell of a mixed-dimension matrix kept
+                # whatever the algebra left it in - `5.17 x 10^8 GPa*mm^4/m` for a
+                # 517.20 kN*m rotational stiffness. A homogeneous matrix has consulted
+                # the family through `_aggregate_unit` all along; this is the same
+                # question asked for a matrix whose cells cannot share one unit.
+                rendered_row.append(
+                    _quantity_latex(quantity, settings=settings, declared=False)
+                )
         rows.append(rendered_row)
 
     matrix_latex = _matrix_from_cells_latex(rows)
