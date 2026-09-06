@@ -8,9 +8,9 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `951f0e7` (#86 merged) |
-| declared version | **0.26.1** |
-| default suite (`pytest -q`) | **1599 passing** — `tests` plus `quality_tests/fast` |
+| `main` | `e23e1e5` (#90 merged) |
+| declared version | **0.27.0** |
+| default suite (`pytest -q`) | **1624 passing** — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests`) | **207 properties** |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
 
