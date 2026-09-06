@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import re
 from html import escape
 
 from IPython.core.magic import Magics, cell_magic, line_magic, magics_class
@@ -56,9 +57,38 @@ def _render_heading(heading: ParsedHeading) -> HTML:
     return HTML(f'<div style="{style}">{escape(heading.text)}</div>')
 
 
+# `$...$` inside a narrative paragraph is mathematics, the way a Colab markdown cell
+# already reads it. A span qualifies only when its content neither begins nor ends with a
+# space, which is the whole of what keeps prose safe: `cuesta $5 y $10` has a candidate
+# span of `5 y `, and it ends with one.
+#
+# The relations a memoria explains have nowhere else to live. Written as statements the
+# free symbols commute - `A_e = R_e*L_e*T` renders `L_e R_e T`, with the factors
+# reordered - and for matrices the order is the mathematics, so the page would be stating
+# something false. `transpose` on a symbol does not render at all.
+_NARRATIVE_MATH = re.compile(r"\$(\S|\S[^$]*?\S)\$")
+
+
+def _narrative_paragraph_html(paragraph: str) -> str:
+    """Escape the prose and hand the marked spans to MathJax.
+
+    Everything is escaped, the mathematics included. MathJax reads the DOM's text
+    content, which decodes entities, so a `<` inside a formula survives as a `<` and a
+    paragraph still cannot inject markup.
+    """
+    parts: list[str] = []
+    index = 0
+    for match in _NARRATIVE_MATH.finditer(paragraph):
+        parts.append(escape(paragraph[index:match.start()]))
+        parts.append(r"\(" + escape(match.group(1)) + r"\)")
+        index = match.end()
+    parts.append(escape(paragraph[index:]))
+    return "".join(parts)
+
+
 def _render_narrative(narrative: ParsedNarrative) -> HTML:
     paragraphs = "".join(
-        f'<p style="{_NARRATIVE_PARAGRAPH_STYLE}">{escape(paragraph)}</p>'
+        f'<p style="{_NARRATIVE_PARAGRAPH_STYLE}">{_narrative_paragraph_html(paragraph)}</p>'
         for paragraph in narrative.paragraphs
     )
     return HTML(f'<div style="{_NARRATIVE_STYLE}">{paragraphs}</div>')
