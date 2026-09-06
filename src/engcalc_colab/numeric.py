@@ -46,12 +46,44 @@ _UNIT_ALIASES = {
 }
 
 
+_ENGINEERING_REGISTRY: UnitRegistry | None = None
+
+
+def engineering_registry() -> UnitRegistry:
+    """The one Pint registry this process uses, built on first ask.
+
+    Pint asks for a single registry per application, and not as a style preference:
+    quantities built by two registries refuse to meet, with `Cannot operate with Quantity
+    and Quantity of different registries`. A notebook holds one context so nothing ever
+    reached that, but every `NumericContext` carried its own registry and the hazard with
+    it.
+
+    It is also most of the test suite's running time. Pint re-parses its unit definition
+    file on every `UnitRegistry()` - about 155 ms - and the suite builds an engine 724
+    times across 120 files. Measured on the whole suite: 453 s with a registry per engine,
+    179 s with this, 1624 passing either way.
+
+    `tonf` is defined here rather than in `NumericContext.__init__` because a shared
+    registry would see that definition once per context, and the second would raise.
+    """
+    global _ENGINEERING_REGISTRY
+    if _ENGINEERING_REGISTRY is None:
+        registry = UnitRegistry()
+        registry.define("tonf = 9.80665 * kilonewton")
+        _ENGINEERING_REGISTRY = registry
+    return _ENGINEERING_REGISTRY
+
+
 class NumericContext:
-    """Pint-backed numeric values kept separate from EngCalc symbolic state."""
+    """Pint-backed numeric values kept separate from EngCalc symbolic state.
+
+    The registry is shared with every other context; the values are not. `reset` clears
+    the sheet and leaves the units alone, which is the division a notebook expects from
+    `%eng_reset`.
+    """
 
     def __init__(self) -> None:
-        self.ureg = UnitRegistry()
-        self.ureg.define("tonf = 9.80665 * kilonewton")
+        self.ureg = engineering_registry()
         self.values: dict[str, Any] = {}
 
     def reset(self) -> None:
