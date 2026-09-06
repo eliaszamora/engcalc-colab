@@ -206,6 +206,11 @@ lie to you; one did, in this session.
 
 ## How this work is run
 
+The failure modes behind these, each with the instance that produced it and the check
+that catches it, are in **`docs/project-context/HOW-THIS-WORK-GOES-WRONG.md`**. Read that
+one before writing a contract. The short version is that almost everything on this list
+exists because something was believed instead of measured.
+
 Constraints that held all session and should keep holding:
 
 - **Never merge without the user saying so**, and not before CI is green on the exact
