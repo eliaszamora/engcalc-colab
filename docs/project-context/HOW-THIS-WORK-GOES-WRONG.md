@@ -20,9 +20,18 @@ reaches the code it is named after.
 | `parse_cell("b := 12*(")` as the negative case | same guard, same nothing |
 | `\frac{L^{2} q}{8}` for a definition's rendering | that is `sp.latex`'s ordering; the renderer writes `\frac{q L^{2}}{8}` |
 | `\left(-1\right)` absent, for a written form | again `sp.latex`; the renderer collects those denominators correctly |
+| two contracts for the zero-tolerance early return | passed with that return *deleted*; the family floor was holding the value, and at the default tolerance the guard decides nothing at all |
 
 Each was green on the first run. Each died the moment the thing it guarded was mutated —
 which is the only reason any of them was found.
+
+The last one is the most instructive, because it was written *while* fixing a defect in
+the very line it failed to guard, by someone who had just read the line. Both contracts
+were green, and a mutant that removed the guard entirely passed all 1873 tests. The guard
+is unreachable at the default `zero_tolerance` of 1e-10 — no unit family has members 1e10
+apart, so `_best_in_family`'s own floor keeps a tiny value where it is — and no test had
+ever raised the tolerance. Worse than a wasted test: the false green let a condition ship
+whose second arm could never fire, and only the mutation run found that too.
 
 **The check.** A contract is not evidence until it has failed on purpose. Mutate the
 guard it is named after and watch it die. If it stays green, it is testing something

@@ -90,6 +90,8 @@ seven more, of which four are fixed. What is open, in the order I would take it:
   section directly below
 - ~~the hunt for guards nobody is checking~~ — **run on the engine and the parser by
   #115.** What it found, and what is left of it, is a section of its own below
+- **a modulus derived from one written in MPa is shown in GPa**, in the section below.
+  Open, and it is a question for the engineer rather than a defect
 
 The finished ones are kept rather than deleted: each says what the answer turned out to
 be and what it cost to find, which is the part a summary would lose.
@@ -211,6 +213,51 @@ several factors" and "a one-member family is authoritative" each break one of `N
 system is written `kgf/cm^2` - and it is recorded as one, yielding to any unit the sheet
 actually wrote. Writing the note as a remainder was easier than finding that out, and the
 reason it survived is that the reason given for it was never checked.
+
+### A deflection printed 0.00, and a modulus still prints GPa
+
+Both came out of asking a question the engineer had asked first: he wondered whether unit
+*palettes* - `%kgf`, `%kN`, declared at the top of a sheet - were the right way to get
+uniform units, and said he did not know how other tools solve it.
+
+**The palette is not needed for the rule he stated, and that is measured rather than
+argued.** Three sheets, each rendered in its own interpreter so the written units cannot
+leak between them:
+
+| the sheet | the stress it printed |
+|---|---|
+| f'c, fy in kgf/cm^2, section in mm | `18.52 kgf/cm^2` |
+| f'c, fy in MPa, section in mm | `1.85 MPa` |
+| f'c in kgf/cm^2 *and* E in MPa | `18.52 kgf/cm^2` |
+
+Which is exactly *"si te los doy en kgf, entonces que sea kgf, si te los doy en MPa
+entonces que sea MPa, si te los doy en ambos, elige kgf cm2"*, already implemented by
+`_TECHNICAL_UNIT_FAMILIES`, `_is_technical` and the technical-stress convention. Mathcad's
+Unit System dialog and forallpeople's `environment('structural')` are both palettes, so
+the idea is not exotic - it is what the two most memoria-like tools do. It is just that
+here the sheet already says which system it is in, on every line.
+
+A fourth sheet, written to check the two things he named himself, found both:
+
+- ~~**a deflection of 3.95 mm printed `0.00`**~~ **fixed.** `P*L^3/(3*E*I)` carries
+  `kN*m^3/(MPa*mm^4)`, which is 10^9 metres, so the magnitude was 3.95e-12 and fell under
+  the 1e-10 zero tolerance. Zero-ness was being decided on a scale the algebra picked by
+  accident, and a deflection check is a comparison against a limit, so a wrong zero passes
+  it. It is decided in a unit the reader will see now - declared, a family member, or the
+  engineer's own shape. `test_a_deflection_is_not_a_zero.py`, and the two contracts it
+  first shipped with were vacuous; see section 1 of `HOW-THIS-WORK-GOES-WRONG.md`.
+
+- **`G = E/2.6` prints `76.92 GPa` from a sheet written in MPa.** Open. The pressure
+  family keeps both the mega and the giga step deliberately - #99 made every other family
+  stop at kilo at the engineer's request, and exempted this one. He has since said twice
+  that he never uses GPa: *"el E del acero nunca lo he trabajado en GPa"* and *"GPa nunca
+  lo he usado"*. So the exemption was granted before the preference was known, and the
+  same argument that stopped the other families at kilo applies here.
+
+  It is a preference and not a defect, so it is his call, not a change to make quietly.
+  What it would take: drop `GPa` from `_UNIT_FAMILIES`' pressure entry, keeping it for any
+  sheet that writes it, exactly as `written_units` already does. `E := 200*GPa` would stay
+  `200.00 GPa`; a modulus derived from MPa would read `76923.08 MPa`.
 
 ### Two tables, two questions
 
