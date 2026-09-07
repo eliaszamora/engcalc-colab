@@ -357,7 +357,15 @@ def _is_reduced(magnitude, settings: RenderSettings) -> bool:
     magnitude = abs(float(magnitude))
     if magnitude == 0.0 or not math.isfinite(magnitude):
         return False
-    return _significant_figures(magnitude, settings.precision) < 2
+    # Leading zeros only. `_significant_figures` strips both ends because it answers the
+    # *band* question - whether a value sits in the natural range for its unit - and
+    # there a trailing zero genuinely carries nothing. This is a different question, and
+    # a trailing zero is a digit the renderer chose to print: `0.80` has lost no more
+    # than `0.59` has. Counted the other way, a brace's two direction cosines came out
+    # `0.804` and `-0.59`, one line apart, differing only in whether the second decimal
+    # happened to be a zero.
+    rendered = f"{magnitude:.{settings.precision}f}".replace(".", "").lstrip("0")
+    return len(rendered) < 2
 
 
 def _decimals_for(magnitude, settings: RenderSettings) -> int:
