@@ -102,22 +102,26 @@ def test_mixing_the_two_chooses_the_technical_one(cell):
     assert "MPa" not in final, final
 
 
-def test_a_section_in_millimetres_does_not_reach_kgf_per_cm2_yet(cell):
-    """The one this does *not* fix, pinned rather than left in a comment.
+def test_a_section_in_millimetres_reaches_kgf_per_cm2(cell):
+    """This was pinned the other way, and the reasoning behind that was wrong.
 
-    `25000 kgf / (100 mm x 100 mm)` reads `2.50 kgf/mm^2` where it should read
-    `250.00 kgf/cm^2`. The system is detected correctly - the value is technical - but
-    `_unit_is_the_engineers` never hands it to the family: `kgf/mm^2` and `kgf/cm^2`
-    both cost two unit terms, so the tie keeps whatever the algebra produced.
+    It read `2.50 kgf/mm^2` and this test asserted it, on the grounds that "sections
+    written in centimetres - which is what this engineer writes - are unaffected". They
+    are not what he writes: a structural section is written in millimetres, as the
+    braced-frame benchmark's own `b := 300*mm` is. Shown it, he said `kgf/mm^2` is not a
+    unit he has ever used, and he is right that `kgf/cm^2` is the convention.
 
-    That is the last of the seven display findings still open in `NEXT.md`, and it is
-    the same tie that keeps `GPa*mm` out of `kN/m`. Sections written in centimetres -
-    which is what this engineer writes - are unaffected, so this is a remainder rather
-    than a hole in what was asked for.
+    It also cost more than a unit. `25000 kgf / (300 mm x 450 mm)` printed `0.19` where
+    the stress is `18.52 kgf/cm^2`, and `0.19` is not a number anybody recognises.
+
+    Fixed by recording the convention rather than by finding a rule; see
+    `_AUTHORITATIVE_TECHNICAL_DIMENSIONS`, and `test_a_unit_the_sheet_never_wrote` for
+    the three general rules that were tried first and what each of them broke.
     """
     final = _final(cell("P := 25000*kgf\nb := 100*mm\nd := 100*mm\nfc = P/(b*d)\nnumeric(fc)\n"))
-    assert "2.50" in final, final
-    assert r"\mathrm{mm}" in final, final
+    assert "250.00" in final, final
+    assert KGF_CM2 in final, final
+    assert "mm" not in final, final
 
 
 # --- the other two systems must not move --------------------------------------------

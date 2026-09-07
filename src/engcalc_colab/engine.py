@@ -236,6 +236,10 @@ class EngineeringEngine:
         # `d := 0.0105*m` must substitute as metres, and a circular frequency the
         # algebra left in `GPa^0.5*mm/(kg^0.5*m^0.5)` must not.
         self.declared_unit_names: set[str] = set()
+        # The composite units those lines actually spelled, as Pint writes them.
+        # Consulted in exactly one place: a convention that would otherwise rewrite
+        # a soil pressure the engineer wrote as `tonf/m^2` into `kgf/cm^2`.
+        self.written_units: set[str] = set()
         # The expression each definition was written with, when one was kept and
         # verified. Only ever displayed - `namespace` is what everything computes
         # with - and it is what lets `numeric(phiMn)` open with the same formula
@@ -476,6 +480,7 @@ class EngineeringEngine:
         self.load_cases.clear()
         self.kept_names.clear()
         self.declared_unit_names.clear()
+        self.written_units.clear()
         self.written_namespace.clear()
         self.functions.clear()
         self.symbols.clear()
@@ -551,6 +556,11 @@ class EngineeringEngine:
                     statement.target,
                     statement.expression,
                 )
+                if written_units:
+                    try:
+                        self.written_units.add(str(quantity.units))
+                    except AttributeError:
+                        pass
                 return NumericAssignmentResult(
                     statement=statement,
                     quantity=quantity,
