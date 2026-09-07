@@ -300,11 +300,31 @@ at a time, like assume(L > 0)` guards *chained* comparisons - `assume(0 < L < 10
 `assume(L > 0, b > 0)` is accepted and works. The sentence reads as a limit that is not
 there. Cosmetic, and left alone rather than changed without being asked.
 
-**What is left.** Thirty-six unreached guards were not exercised by hand. They are
-plausible mistakes with messages already written, and the evidence from the twenty-eight
-that were is that they behave. Contracts for them would be cheap and would stop the next
-edit from silently removing one; that is the shape of the remaining work here, and it is
-maintenance rather than a defect hunt.
+**Contracts, by #117.** Seventy-six of them, covering every mistake that could be
+reached by typing it. The count of guards the suite never executes went from 63 to 39,
+and the parser's from 25 to 9.
+
+**What the last 39 are, measured rather than assumed.** Two kinds, and neither is a gap
+a contract would close:
+
+* **Duplicate branches.** The same sentence is raised from more than one place - "narrative
+  block cannot be empty" from two, "unbalanced parentheses" from five - so a test can
+  reach the message without reaching the line. Two of those pairs are now both covered;
+  the rest would need inputs distinguished only by which internal splitter sees them.
+* **Defensive branches that the analysis does not need.** `roots`, `extrema`,
+  `intersections` and the inequality solver each carry a "could not resolve a safe
+  solution set". Fed `sin(1/x)` on a domain that touches its accumulation point, all four
+  *resolve* rather than raise. They are there for a case the current analysis has not
+  produced.
+
+The engine's thirty are almost all of the second kind, which is why a second battery aimed
+squarely at them reached none. Chasing them further would mean constructing inputs to
+break an analysis that works, which is a different activity from checking that guards
+guard.
+
+**One convention found while looking for a guard, and now pinned.** `solve(x + 2, x)` is
+an engineer who forgot `eq(...)`, and the engine reads the expression as `x + 2 = 0` and
+answers `-2` rather than refusing it. That helpfulness had no test.
 
 ### Re-running the benchmark found one more
 
