@@ -274,6 +274,35 @@ not exist, and a run with no summary line reads exactly like a run where nothing
 The harness now stops instead. Any harness in this repository should refuse to report a
 verdict it did not measure.
 
+### Re-running the benchmark found one more
+
+The braced frame was re-run against 0.29.0 - the whole sheet, re-rendered, and its
+numbers re-checked against the independent NumPy assembly, which still agrees to 2.12e-16
+on `k_eq = 70303.22 kN/m`. Everything that had been reported was gone. One thing nobody
+had looked at was not.
+
+Its two direction cosines, one line apart:
+
+    c_d =  0.804
+    s_d = -0.59
+
+Same brace, same computation, different precision. `_is_reduced` asked
+`_significant_figures`, which strips zeros from *both* ends, so `0.80386` rendered `0.80`,
+counted as one figure because the trailing zero was discarded, was judged reduced, and
+was rescued to three decimals. `0.59489` counted as two and stayed.
+
+A leading zero really does carry nothing; a trailing one is a digit the renderer chose to
+print. `_magnitude_text` already counted them that way and carried a comment saying
+`_significant_figures` strips both ends because it asks a different question - which it
+does, the band question, where a trailing zero genuinely carries nothing. The rescue had
+kept the wrong one. Fixed by #113.
+
+**Worth keeping about how it was found.** A sweep of the page for every pattern that had
+been a defect flagged two more, and both were the sweep's fault: the `GPa` is the
+*declared* modulus and the four `0.00 m` are nodal coordinates that really are zero. A
+coarse pattern reports work that is not there, which costs less than the opposite but is
+still worth saying out loud.
+
 ### The digits are a floor now, not a single page-wide count
 
 `precision` counts decimal places, which is also what Mathcad's Display Precision and
