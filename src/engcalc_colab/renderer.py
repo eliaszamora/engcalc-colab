@@ -54,6 +54,9 @@ class RenderSettings:
     precision: int = 2
     zero_tolerance: float = 1e-10
     figures: int = 3
+    # The composite units this sheet's `:=` lines spelled. Read only by the
+    # technical-stress convention, which yields to anything the engineer wrote.
+    written_units: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         if isinstance(self.precision, bool) or not isinstance(self.precision, int):
@@ -527,6 +530,34 @@ _TECHNICAL_UNIT_NAMES = frozenset({
 })
 
 
+# One dimension in one system where the family is authoritative rather than a menu.
+#
+# In SI a stress reaches `MPa` on its own, because `MPa` is a *named* unit: its factor
+# shape is a pressure, `N/mm^2`'s is a force and a length, and the shape rule sends the
+# second to the first. The metric-technical system has no named unit for a stress - the
+# convention is the composite `kgf/cm^2` - so `kgf/mm^2` and `kgf/cm^2` have the same
+# shape and nothing about the units themselves separates them.
+#
+# What separates them is a fact about engineering practice rather than about units:
+# f'c is 250 kgf/cm^2, fy is 4200, the steel modulus 2.1e6, and `kgf/mm^2` is not written
+# in structural work at all. The engineer, shown a section in millimetres printing it:
+#
+#     "yo nunca he ocupado kgf/mm2. debería ser kgf/cm2 no? es lo más común?"
+#
+# It cost more than a unit. `25000 kgf / (300 mm x 450 mm)` printed `0.19 kgf/mm^2` where
+# the stress is `18.52 kgf/cm^2`, and `0.19` is not a number anybody recognises.
+#
+# Written as a convention, and deliberately not as a rule. Three general rules were tried
+# first - "the sheet never wrote this composite", "the family member has several factors",
+# "a one-member family is authoritative" - and each one broke something that works: `mm^2`
+# built from two declared `mm`, `N*mm` as Eurocode writes it, an inertia in `mm^4`. A
+# convention table that says which conventions it holds is more honest than a rule that is
+# wrong somewhere else.
+_AUTHORITATIVE_TECHNICAL_DIMENSIONS = frozenset({
+    (("[length]", -1), ("[mass]", 1), ("[time]", -2)),
+})
+
+
 def _is_technical(quantity) -> bool:
     """True when any part of the unit the value carries is kilogram- or tonne-force.
 
@@ -568,14 +599,22 @@ def _factor_shape(quantity) -> tuple[str, ...]:
     """
     try:
         registry = quantity._REGISTRY
+        # `tuple(sorted(items))` and not `str(...)`. Pint renders a dimensionality in the
+        # order it happens to hold it, so `kgf` prints `[length] * [mass] / [time] ** 2`
+        # and `tonf` prints `[mass] * [length] / [time] ** 2` for the same dimension. Read
+        # as strings they are different shapes, and a soil pressure written `tonf/m^2`
+        # therefore did not match a `kgf/cm^2` family member. `kN`, `N`, `kip` and `lbf`
+        # split across the two renderings too, so this was wrong for every system at once
+        # and only ever showed where a family member and a value used different spellings.
         return tuple(sorted(
-            str(registry.Unit(name).dimensionality) for name in quantity.units._units
+            tuple(sorted(registry.Unit(name).dimensionality.items()))
+            for name in quantity.units._units
         ))
     except Exception:
         return ()
 
 
-def _unit_is_the_engineers(quantity) -> bool:
+def _unit_is_the_engineers(quantity, settings: RenderSettings) -> bool:
     """True when the unit came from the engineer's own inputs rather than the algebra.
 
     A family member is *not* the engineer's in this sense: metres are the family's own
@@ -618,6 +657,25 @@ def _unit_is_the_engineers(quantity) -> bool:
                 return False
         except DimensionalityError:
             continue
+
+    # `_is_technical` is inert today and kept deliberately, which is a different thing
+    # from the unreachable branches section 6 says to remove. Those could not be reached
+    # by any input; this one cannot change an *outcome* only because of what the other
+    # two family tables happen to hold: SI and US customary name their stress units
+    # (`MPa`, `psi`), so a composite's factor shape already differs from theirs and the
+    # shape rule sends it on without the convention being asked. Give either table a
+    # composite member and this guard starts deciding. Mutation says it is inert; the
+    # tables say it is load-bearing the moment they change.
+    if _is_technical(quantity):
+        try:
+            key = tuple(sorted(quantity.dimensionality.items()))
+        except Exception:
+            key = ()
+        if (
+            key in _AUTHORITATIVE_TECHNICAL_DIMENSIONS
+            and str(quantity.units) not in settings.written_units
+        ):
+            return False
 
     own_shape = _factor_shape(quantity)
     if own_shape:
@@ -776,7 +834,7 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     if declared and own_figures > 0:
         return quantity
 
-    if _unit_is_the_engineers(quantity):
+    if _unit_is_the_engineers(quantity, settings):
         # ``tonf``, ``kN/mm``: kept unless it says nothing at all.
         return quantity if own_figures > 0 else _best_in_family(quantity, family, settings)
 
@@ -2158,7 +2216,7 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
     family = _unit_family(physical[0])
     if not family:
         return fallback
-    if _unit_is_the_engineers(physical[0]) and all(
+    if _unit_is_the_engineers(physical[0], settings) and all(
         _is_genuine_zero(quantity, settings)
         or _significant_figures(quantity.to(fallback).magnitude, settings.precision) > 0
         for quantity in physical

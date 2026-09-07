@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 import re
 from html import escape
 
@@ -127,6 +128,17 @@ class EngMagics(Magics):
         self.engine = EngineeringEngine()
         self.render_settings = RenderSettings()
 
+    def _settings(self) -> RenderSettings:
+        """The page's settings, carrying the units this sheet has written so far.
+
+        Read fresh at each use rather than once per cell: a `:=` line adds to the
+        set as the cell runs, and a value rendered after it must see it.
+        """
+        return replace(
+            self.render_settings,
+            written_units=frozenset(self.engine.written_units),
+        )
+
     @cell_magic
     def eng(self, line: str, cell: str):
         pending_results: list[CalculationResult] = []
@@ -135,7 +147,7 @@ class EngMagics(Magics):
                 if isinstance(item, ParsedHeading):
                     _display_equation_group(
                         pending_results,
-                        self.render_settings,
+                        self._settings(),
                     )
                     pending_results.clear()
                     display(_render_heading(item))
@@ -144,7 +156,7 @@ class EngMagics(Magics):
                 if isinstance(item, ParsedNarrative):
                     _display_equation_group(
                         pending_results,
-                        self.render_settings,
+                        self._settings(),
                     )
                     pending_results.clear()
                     display(_render_narrative(item))
@@ -154,7 +166,7 @@ class EngMagics(Magics):
                 if isinstance(result, PlotResult):
                     _display_equation_group(
                         pending_results,
-                        self.render_settings,
+                        self._settings(),
                     )
                     pending_results.clear()
                     display(render_presented_plot(result))
@@ -163,14 +175,14 @@ class EngMagics(Magics):
                 if isinstance(result, TableResult):
                     _display_equation_group(
                         pending_results,
-                        self.render_settings,
+                        self._settings(),
                     )
                     pending_results.clear()
                     display(
                         HTML(
                             render_table(
                                 result,
-                                settings=self.render_settings,
+                                settings=self._settings(),
                             )
                         )
                     )
@@ -185,25 +197,25 @@ class EngMagics(Magics):
                 if isinstance(result, HtmlBlockResult):
                     _display_equation_group(
                         pending_results,
-                        self.render_settings,
+                        self._settings(),
                     )
                     pending_results.clear()
                     display(
-                        HTML(render_result(result, settings=self.render_settings))
+                        HTML(render_result(result, settings=self._settings()))
                     )
                     continue
 
                 if isinstance(result, CharacteristicResult):
                     _display_equation_group(
                         pending_results,
-                        self.render_settings,
+                        self._settings(),
                     )
                     pending_results.clear()
                     display(
                         HTML(
                             render_characteristic_result(
                                 result,
-                                settings=self.render_settings,
+                                settings=self._settings(),
                             )
                         )
                     )
@@ -213,12 +225,12 @@ class EngMagics(Magics):
 
             _display_equation_group(
                 pending_results,
-                self.render_settings,
+                self._settings(),
             )
         except EngCalcError as exc:
             _display_equation_group(
                 pending_results,
-                self.render_settings,
+                self._settings(),
             )
             print(f"engcalc: {exc}")
         return None
