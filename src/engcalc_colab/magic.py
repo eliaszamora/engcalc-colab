@@ -80,9 +80,18 @@ _NARRATIVE_MATH = re.compile(r"\$(\S|\S[^$]*?\S)\$")
 # fixing a rendering defect would have traded a formula that does not typeset for a
 # paragraph that can inject markup, which is a worse page and a worse bargain. Entities
 # survive markdown and render as the characters they name.
+#
+# `[` is an entity too, and for a different reason: `\[` is MathJax's *default* display
+# delimiter. Escaping a bracket the markdown way would turn `el vector U [doce
+# componentes]` into `\[doce componentes\]`, and the notebook lifts its mathematics out
+# before the markdown converter runs, so that pair reaches MathJax intact and the prose
+# becomes a centred formula. `&#91;` never looks like a delimiter. `]` needs no escape at
+# all once `[` cannot open a link - it was in this set until a mutant removed it and
+# every contract still passed, which was the right answer to a question about `]` and
+# the wrong answer about `[`.
 _MARKDOWN_ESCAPES = str.maketrans(
-    {"&": "&amp;", "<": "&lt;", ">": "&gt;"}
-    | {character: "\\" + character for character in "\\`*_[]#$"}
+    {"&": "&amp;", "<": "&lt;", ">": "&gt;", "[": "&#91;"}
+    | {character: "\\" + character for character in "\\`*_#$"}
 )
 
 

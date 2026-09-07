@@ -102,12 +102,15 @@ for obj in CAPTURED:
             + "</div>"
         )
 
-page = """<!doctype html>
+page = r"""<!doctype html>
 <meta charset="utf-8">
 <title>memoria</title>
 <script>
+// MathJax's own defaults, which is what a notebook leaves them at. Writing only
+// `[['$$','$$']]` here would have hidden a defect this file was rewritten to catch:
+// `\[` is a display delimiter whether or not anyone remembers it is.
 window.MathJax = {
-  tex: {inlineMath: [['$','$']], displayMath: [['$$','$$']]},
+  tex: {inlineMath: [['$','$']], displayMath: [['$$','$$'], ['\\[','\\]']]},
   options: {ignoreHtmlClass: 'no-mathjax'},
   startup: {typeset: false}
 };
@@ -123,24 +126,29 @@ window.MathJax = {
  .unknown {color: #b00; font-weight: 600; padding: 6px; border: 2px solid #b00;}
  img {max-width: 100%;}
 </style>
-""" + "\n".join(parts) + """
+""" + "\n".join(parts) + r"""
 <script>
-// The notebook's order, not the convenient one: the mathematics is lifted out before
-// the markdown converter runs, because markdown would otherwise read `A_e = R_e L_e T`
-// as emphasis and eat the underscores. `\\$` is protected first and restored as `\\$`,
-// so MathJax prints a literal dollar instead of pairing two prices into a formula.
+// The notebook's order, not the convenient one: every delimiter MathJax knows is lifted
+// out before the markdown converter runs, and put back verbatim afterwards. That order
+// is not a detail - it is why `$A_e = R_e\,L_e\,T$` keeps its underscores and its thin
+// spaces, and equally why a `\[` that the prose never meant as mathematics still reaches
+// MathJax as an opening delimiter. A harness that converted markdown first would eat the
+// backslash and quietly report that the prose was fine.
+//
+// `\$` is protected first and restored as `\$`, so MathJax prints a literal dollar
+// instead of pairing two prices into one formula.
 for (const el of document.querySelectorAll('.md')) {
   const raw = new TextDecoder().decode(
     Uint8Array.from(atob(el.dataset.src), c => c.charCodeAt(0)));
-  let text = raw.replace(/\\\\\\$/g, '@@ESCDOLLAR@@');
+  let text = raw.replace(/\\\$/g, '@@ESCDOLLAR@@');
   const maths = [];
-  text = text.replace(/\\$([^$\\n]+)\\$/g, (m, body) => {
-    maths.push(body);
-    return '@@MATH' + (maths.length - 1) + '@@';
-  });
+  const stash = (m) => { maths.push(m); return '@@MATH' + (maths.length - 1) + '@@'; };
+  text = text.replace(/\$\$[\s\S]+?\$\$/g, stash);
+  text = text.replace(/\\\[[\s\S]+?\\\]/g, stash);
+  text = text.replace(/\$[^$\n]+\$/g, stash);
   let out = marked.parse(text);
-  out = out.replace(/@@MATH(\\d+)@@/g, (m, i) => '$' + maths[Number(i)] + '$');
-  el.innerHTML = out.replace(/@@ESCDOLLAR@@/g, '\\\\$');
+  out = out.replace(/@@MATH(\d+)@@/g, (m, i) => maths[Number(i)]);
+  el.innerHTML = out.replace(/@@ESCDOLLAR@@/g, '\\$');
 }
 MathJax.startup.promise.then(() => MathJax.typesetPromise());
 </script>

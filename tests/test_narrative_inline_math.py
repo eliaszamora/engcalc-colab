@@ -125,6 +125,53 @@ def test_an_underscore_in_prose_does_not_become_emphasis(cell):
     assert r"R\_e" in out, out
 
 
+@pytest.mark.parametrize(
+    "character, meaning",
+    [
+        ("_", "emphasis"),
+        ("*", "emphasis"),
+        ("`", "code"),
+        ("#", "a heading"),
+        ("\\", "an escape"),
+    ],
+)
+def test_every_markdown_special_stays_literal_in_prose(cell, character, meaning):
+    """One rule, not a list of remembered characters: a narrative is text the author
+    typed, and it reads back the way it was typed. The HTML path guaranteed that by
+    escaping everything; markdown keeps the guarantee only if the whole set is escaped,
+    and a set is exactly the kind of thing a later edit trims a member from.
+
+    `#` is the one that looks like padding and is not - `estribos #3 @ 20 cm` is how a
+    Chilean sheet writes rebar, and at the start of a paragraph markdown reads it as a
+    heading.
+    """
+    out = cell(narrative(f"Un texto con {character} en medio."))
+    assert "\\" + character in out, out
+
+
+def test_a_bracket_is_an_entity_and_never_a_backslash(cell):
+    r"""The one member of the set that cannot take a backslash. `\[` is MathJax's
+    default display delimiter, and the notebook lifts mathematics out before markdown
+    runs, so `el vector U [doce componentes]` escaped the markdown way arrives as
+    `\[doce componentes\]` and the sentence turns into a centred formula.
+
+    Found by a mutant: removing `]` from the escape set killed nothing, and asking why
+    `]` was there at all was what exposed what `[` was doing.
+    """
+    out = cell(narrative("El vector U [doce componentes] se toma aparte."))
+    assert "&#91;doce componentes] se toma" in out, out
+    assert "\\[" not in out, out
+
+
+def test_the_mathematics_itself_is_not_escaped(cell):
+    """The other half of the same rule, and the one an over-eager escape breaks. LaTeX
+    is read whole by MathJax: `\\,` is a thin space and `<` is a relation, and escaping
+    either turns a formula into rubble."""
+    out = cell(narrative(r"Se cumple $A_e = R_e\,L_e\,T$ cuando $a < b$."))
+    assert r"$A_e = R_e\,L_e\,T$" in out, out
+    assert "$a < b$" in out, out
+
+
 # --- the dollars that are not mathematics -------------------------------------------------
 
 def test_a_lone_dollar_stays_a_dollar(cell):
