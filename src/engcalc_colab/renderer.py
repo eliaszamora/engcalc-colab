@@ -551,29 +551,6 @@ def _unit_family(quantity) -> tuple[str, ...]:
     return table.get(key, ())
 
 
-def _unit_terms(quantity) -> int:
-    """How much unit the reader has to hold at once.
-
-    ``m`` and ``tonf`` are one, ``tonf/m`` and ``kN*m`` are two, and the deflection's
-    ``kN/(GPa*m)`` is three. The count is what separates a unit the engineer's own
-    inputs produced from one only the algebra invented.
-
-    Exponents count. Counting symbols alone made ``MPa*mm^3`` cost two, the same as
-    ``kN*m``, so a flexural capacity written as ``phi*As*fy*z`` tied with the unit an
-    engineer would actually read and kept the one the algebra had produced: the memoria
-    said ``2.84e8 MPa*mm^3`` for ``284.30 kN*m``. A cube is more to hold than a length,
-    which is the same thing this function was already measuring.
-
-    It stays a comparison against the family's own canonical member rather than an
-    absolute limit, so ``mm^4`` costs four and the inertia family's ``cm^4`` costs four
-    as well, and an inertia written in mm^4 is left where the engineer put it.
-    """
-    try:
-        return sum(abs(exponent) for exponent in quantity.units._units.values())
-    except Exception:
-        return 1
-
-
 def _factor_shape(quantity) -> tuple[str, ...]:
     """The dimensions a unit is spelled out of, ignoring prefix and exponent.
 
@@ -593,26 +570,37 @@ def _factor_shape(quantity) -> tuple[str, ...]:
 def _unit_is_the_engineers(quantity) -> bool:
     """True when the unit came from the engineer's own inputs rather than the algebra.
 
-    A family member is *not* the engineer's in this sense: metres are the family's
-    own unit, so a value in metres is subject to the family's choice. A unit outside
-    the family that is no more complex than the family's canonical member came from
-    what was typed - ``tonf``, ``kN/mm`` - and is kept.
+    A family member is *not* the engineer's in this sense: metres are the family's own
+    unit, so a value in metres is subject to the family's choice. A unit outside the
+    family whose factors are shaped like one of the family's came from what was typed -
+    ``tonf/m``, ``kN/mm``, ``kgf*cm`` - and is kept.
 
-    This opened with an empty-family shortcut. Its only caller returns before reaching
-    here when the family is empty, so the branch was unreachable: turned into a raised
-    error it never fired across the whole suite, and `min(..., default=...)` below
-    already answers the same way if a second caller ever arrives without one.
+    Two questions, in order, and both about the unit rather than about the number:
 
-    The count alone could not settle `GPa*mm` against `kN/m`, which was the last of the
-    seven display findings. Both cost two, so a plate stiffness `E*t` was judged to be
-    the engineer's own unit and printed `1680.00 GPa*mm`. Tightening the count was never
-    available, because the same two protects `kN/mm`, which *is* an engineer's unit.
+    1. Is it the family's own unit? Then the family chooses.
+    2. Are its factors shaped like the family's? `kN/mm`, `tonf/m` and `kgf*cm` reach
+       their dimension through a force, because that is how a line load or a moment is
+       spelled. `GPa*mm` reaches the same dimension through a *pressure*, which is what
+       `E*t` leaves behind rather than anything a person writes.
 
-    So the shape decides first. `kN/mm`, `tonf/m` and `kgf*cm` reach their dimension
-    through a force, because that is how a line load or a moment is spelled; `GPa*mm`
-    reaches it through a pressure, which is what `E*t` leaves behind rather than
-    anything a person writes. A unit whose factors are not shaped like any of the
-    family's is the algebra's, whatever it costs to read.
+    For most of this renderer's life the second question was `_unit_terms`, which summed
+    a unit's exponents and kept the value's own unit when that cost no more than the
+    family's canonical member. It was the source of every tie in the seven-places series
+    and it is gone. What settled that it could go was not the suite falling quiet:
+
+    * Both jobs its own docstring claimed are done by the shape. `MPa*mm^3` - the #78
+      capacity that printed `2.84e8 MPa*mm^3` for `284.30 kN*m` - is a pressure and a
+      length against `kN*m`'s force and length, so the shapes differ. `mm^4` and the
+      inertia family's `cm^4` are each a single length, so they match and an inertia
+      written in mm^4 is still left where the engineer put it.
+    * An exhaustive search over twenty base units in six composite forms against all
+      three family tables finds no unit with a family member's shape and a larger count,
+      which is what the dimensional equation predicts: the shape fixes which dimensions
+      appear, and the exponents then follow.
+
+    This also opened with an empty-family shortcut, unreachable because its only caller
+    returns first when the family is empty. That branch went the same way, for the same
+    reason recorded in `HOW-THIS-WORK-GOES-WRONG.md` section 6.
     """
     family = _unit_family(quantity)
     own = str(quantity.units)
@@ -634,11 +622,7 @@ def _unit_is_the_engineers(quantity) -> bool:
         if shapes and own_shape not in shapes:
             return False
 
-    canonical = min(
-        (_unit_terms(quantity.to(name)) for name in family),
-        default=_unit_terms(quantity),
-    )
-    return _unit_terms(quantity) <= canonical
+    return True
 
 
 def _is_genuine_zero(quantity, settings: RenderSettings) -> bool:

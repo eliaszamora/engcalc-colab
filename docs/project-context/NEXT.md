@@ -79,9 +79,8 @@ All four findings of the external trial are closed, and so are two of the three 
 that came out of working RC-1. A matrix frame analysis run as a benchmark then produced
 seven more, of which four are fixed. What is open, in the order I would take it:
 
-- **`_unit_terms` is now inert** — #109 closed the last of the seven-places findings
-  and, in doing so, left the term count deciding nothing. Removing it is the next
-  change, and the measurements are in the first section below
+- ~~`_unit_terms` is now inert~~ — **removed by #110.** All seven of the display
+  findings are closed and the heuristic behind every one of their ties is gone
 - ~~the factors of a compound unit are ordered alphabetically~~ — **fixed by #104.**
   Not a formatter to rewrite: Pint exposes the sort as
   `registry.formatter.default_sort_func`, and `_units` had kept the written order all
