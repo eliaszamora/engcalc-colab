@@ -95,6 +95,30 @@ _MARKDOWN_ESCAPES = str.maketrans(
 )
 
 
+# A paragraph that opens with a list marker becomes a list item, and an ordered one is
+# *renumbered*: two paragraphs opening "3." and "5." print as 3 and 4. A number in a
+# memoria changing on its way to the page is the worst thing markdown can do here, and it
+# is worse than the underscore because nothing looks wrong - it looks like a tidy list.
+#
+# Found by rendering the verification cell written to check the underscores, which opened
+# its own points "1.", "2.", "3." and came back as an ordered list.
+#
+# The marker has to be followed by a space to be one, which is what keeps `3.7 m es la
+# altura libre` a sentence. `*` needs nothing here; it is escaped everywhere already.
+_LIST_MARKER = re.compile(r"^([-+]|\d{1,9}[.)])(?=\s|$)")
+
+
+def _escape_list_marker(paragraph: str) -> str:
+    match = _LIST_MARKER.match(paragraph)
+    if match is None:
+        return paragraph
+    marker = match.group(1)
+    if marker[0].isdigit():
+        # `1\.` keeps the digit and disarms the marker; `\1.` would print a backslash.
+        return marker[:-1] + "\\" + marker[-1] + paragraph[len(marker):]
+    return "\\" + paragraph
+
+
 def _narrative_paragraph_markdown(paragraph: str) -> str:
     """Escape the prose and leave the marked spans as `$...$` for MathJax.
 
@@ -110,7 +134,7 @@ def _narrative_paragraph_markdown(paragraph: str) -> str:
         parts.append("$" + match.group(1) + "$")
         index = match.end()
     parts.append(paragraph[index:].translate(_MARKDOWN_ESCAPES))
-    return "".join(parts)
+    return _escape_list_marker("".join(parts))
 
 
 def _render_narrative(narrative: ParsedNarrative) -> Markdown:

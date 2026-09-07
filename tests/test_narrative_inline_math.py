@@ -149,6 +149,31 @@ def test_every_markdown_special_stays_literal_in_prose(cell, character, meaning)
     assert "\\" + character in out, out
 
 
+def test_a_numbered_paragraph_keeps_its_own_number(cell):
+    """The worst thing markdown can do to a memoria, because nothing looks wrong.
+
+    Two paragraphs opening "3." and "5." are one ordered list to markdown, and an ordered
+    list renumbers: `<ol start="3">` with items 3 and *4*. The paragraph the engineer
+    numbered 5 prints as 4. Measured with the same markdown converter the notebook uses,
+    not assumed.
+    """
+    out = cell(narrative("3. Tercera etapa.\n\n5. Quinta etapa."))
+    assert out == "3\\. Tercera etapa.\n\n5\\. Quinta etapa.", out
+
+
+def test_a_paragraph_opening_with_a_dash_is_not_a_bullet(cell):
+    out = cell(narrative("- El acero llega en barras."))
+    assert out == "\\- El acero llega en barras.", out
+
+
+def test_a_decimal_at_the_start_is_left_alone(cell):
+    """`3.` is a list marker only when a space follows it, so the escape must not fire
+    here - `3\\.7 m` would put a backslash on the page of every sheet that opens a
+    paragraph with a measurement."""
+    out = cell(narrative("3.7 m es la altura libre del piso."))
+    assert out == "3.7 m es la altura libre del piso.", out
+
+
 def test_a_bracket_is_an_entity_and_never_a_backslash(cell):
     r"""The one member of the set that cannot take a backslash. `\[` is MathJax's
     default display delimiter, and the notebook lifts mathematics out before markdown
