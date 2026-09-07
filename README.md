@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.29.1**.
+Current version: **0.29.2**.
 
 
 ## Help, inside the notebook
@@ -24,6 +24,27 @@ their own typing.
 `examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
 reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
+## v0.29.2 a name means one thing
+
+A correction and the contracts that would have caught it.
+
+`redefinition conflict` refused a symbolic scalar being redefined as a function and let a
+numeric one through, in both directions, because it checked the symbolic namespace and
+`a := 2*m` stores elsewhere. A sheet could carry `a = 2.00 m`, `a(x) = x^2` and `a = a`
+together, without a word. Both directions are guarded now; correcting a value -
+`a := 2*m` then `a := 3*m` - is not this and stays allowed.
+
+It was found by asking a question the suite had never been asked: **which guards does it
+never even reach?** Sixty-three `raise` statements in the engine and the parser had never
+been executed, each carrying a message somebody wrote and nobody had ever seen. Typing
+the mistake each was written for turned up this one - and found that every other message
+is a sentence that helps, and that nothing crashes out of the magic.
+
+Seventy-six contracts now hold those messages in place. They pin the part of each
+sentence that tells you what to do differently, not its exact wording, so a message that
+gets clearer will not fail them.
 
 
 ## v0.29.1 two cosines that read alike
@@ -1828,6 +1849,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.29.2** — a name is a value or a function and never both: `a := 2*m` followed by `a(x) = x` now says so instead of leaving the sheet with two meanings for `a`. Found by a coverage hunt for guards the suite never reaches, which also produced seventy-six contracts over the error messages the engine and parser give back.
 - **0.29.1** — a value whose second decimal is a zero is no longer given extra precision its neighbour does not get: a brace's two direction cosines read `0.80` and `-0.59` rather than `0.804` and `-0.59`.
 - **0.29.0** — the sheet is shown in the units it was written in. A page in kgf/cm² stays there instead of being converted to MPa and GPa; `numeric(expr, unit)` shows the unit it was asked for; a compound unit keeps its written order, so `N*mm` and `kip*ft` rather than `mm*N` and `ft*kip`; `E*t` reads as a stiffness in kN/m rather than `GPa*mm`; `MN` and `ton` can be written; an unnamed evaluation opens a relation instead of a loose row; and a substituted value reads in the unit its own result uses.
 - **0.28.0** — what a matrix frame analysis found. `%eng_config figures=3` gives a number reduced to one digit or none its figures back, so a 0.016756 s period reads `0.0168 s` rather than `0.02 s`; a matrix takes a common power of ten outside its brackets and the unit families stop at kilo, so a page no longer mixes kilo and mega; prose between `"""` marks typesets inline `$...$`; `keep` reaches inside a matrix; and a value reads the same in a matrix as it does on its own.
@@ -1875,4 +1897,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.29.1`.
+Version: `0.29.2`.

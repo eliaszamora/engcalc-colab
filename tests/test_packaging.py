@@ -22,12 +22,12 @@ def test_ipython_is_a_runtime_dependency():
     assert "ipython" in _dependency_names()
 
 
-def test_pyproject_version_is_0_29_1():
-    assert _project_metadata()["version"] == "0.29.1"
+def test_pyproject_version_is_0_29_2():
+    assert _project_metadata()["version"] == "0.29.2"
 
 
-def test_runtime_version_is_0_29_1():
-    assert engcalc_colab.__version__ == "0.29.1"
+def test_runtime_version_is_0_29_2():
+    assert engcalc_colab.__version__ == "0.29.2"
 
 
 def test_pint_is_a_runtime_dependency():
