@@ -15,3 +15,11 @@ memoria-preview.html
 
 # local preview server config, not part of the package
 .claude/
+
+# Coverage artefacts. `.coverage` is a binary SQLite file and `cov.json` a report;
+# both are outputs of a measurement, not part of the package, and both were committed
+# by a `git add -A` during the guard hunt in #115.
+.coverage
+cov.json
+coverage.xml
+htmlcov/
