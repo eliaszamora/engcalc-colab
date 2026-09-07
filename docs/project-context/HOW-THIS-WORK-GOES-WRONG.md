@@ -213,7 +213,12 @@ failed was the thing whose job was to notice failure.
   return the shape of a good answer. The mutation harness now raises on a missing summary
   line rather than printing "SURVIVED".
 - Do not silence a checker's stderr. `2>/dev/null` on a query whose output you are about
-  to branch on converts a bug into a wrong answer.
+  to branch on converts a bug into a wrong answer. In a background monitor the stderr is
+  silenced *for* you - only stdout becomes a notification - so the loop has to print
+  something itself on the path where it got nothing parseable. A polling loop written
+  during this very session spun for twenty minutes and reported nothing, because it piped
+  `gh api` into a `jq` that is not installed on the machine; "no data" and "not finished"
+  were the same silence again, one section after this one was written.
 - Prefer a query that names what you are asking about. `gh pr checks` asks about a pull
   request; the rule is about a commit.
 - Never configure a harness from the thing under test. Its settings come from the target
