@@ -528,6 +528,13 @@ class EngineeringEngine:
                 self.kept_names.add(statement.target)
 
             if isinstance(statement, ParsedNumericAssignment):
+                # The same conflict a symbolic assignment has always refused, from the
+                # other side. `a(x) = x` then `a := 2*m` left the sheet with `a` as a
+                # length *and* a function of x, and said nothing.
+                if statement.target in self.functions:
+                    raise EngEvaluationError(
+                        f"redefinition conflict: '{statement.target}' is already a function"
+                    )
                 # Before the assignment, not after: `assign` stores the target, and a
                 # name this statement is defining must not read back as a value the
                 # arithmetic never saw.
@@ -555,7 +562,14 @@ class EngineeringEngine:
                     raise EngEvaluationError(
                         f"redefinition conflict: '{statement.target}' is already a function"
                     )
-                if statement.parameters is not None and statement.target in self.namespace:
+                # `self.namespace` holds the symbolic scalars and `numeric_context` the
+                # numeric ones, and this asked only the first. `a := 2*m` then
+                # `a(x) = x` was accepted in silence, and the page then showed `a` as
+                # `2.00 m`, as `a(x) = x^2`, and as `a = a`.
+                if statement.parameters is not None and (
+                    statement.target in self.namespace
+                    or self.numeric_context.get(statement.target) is not None
+                ):
                     raise EngEvaluationError(
                         f"redefinition conflict: '{statement.target}' is already a scalar"
                     )

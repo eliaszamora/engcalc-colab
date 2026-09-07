@@ -88,8 +88,8 @@ seven more, of which four are fixed. What is open, in the order I would take it:
   compound units in the whole suite that moved
 - **a wide substitution is split into additive terms** by the wrapping path, in the RC-3
   section directly below
-- **the hunt for guards nobody is checking**, never run on the symbolic engine, the
-  numeric layer or the parser, at the end of this section
+- ~~the hunt for guards nobody is checking~~ — **run on the engine and the parser by
+  #115.** What it found, and what is left of it, is a section of its own below
 
 The finished ones are kept rather than deleted: each says what the answer turned out to
 be and what it cost to find, which is the part a summary would lose.
@@ -273,6 +273,38 @@ survivors and had not run pytest at all: one path in its subset named a module t
 not exist, and a run with no summary line reads exactly like a run where nothing failed.
 The harness now stops instead. Any harness in this repository should refuse to report a
 verdict it did not measure.
+
+### The hunt for guards nobody is checking: engine and parser
+
+Run at last, and with a different question from the usual mutation pass: not "is this
+change held up" but "which guards does the suite never even reach". Coverage answers that
+in one run where mutation would have taken four hours - 158 `raise` statements at a
+hundred seconds each.
+
+    engine.py    87 raises, 39 never executed
+    parser.py    71 raises, 25 never executed
+
+Twenty-eight of the sixty-four were then reached deliberately, by typing the mistake each
+was written for. **Nothing crashed out of the magic, and every message that appeared was
+a sentence that helps.** That is worth recording as a result rather than as an absence.
+
+Two things came out of it.
+
+**A real hole, fixed by #115.** `redefinition conflict` refused a symbolic scalar being
+redefined as a function and let a numeric one through, in both directions, because it
+checked `self.namespace` and `a := 2*m` stores in `numeric_context.values`. The page then
+showed `a = 2.00 m`, `a(x) = x^2` and `a = a` together.
+
+**One message that misdescribes its own guard, not fixed.** `assume takes one comparison
+at a time, like assume(L > 0)` guards *chained* comparisons - `assume(0 < L < 10)` - and
+`assume(L > 0, b > 0)` is accepted and works. The sentence reads as a limit that is not
+there. Cosmetic, and left alone rather than changed without being asked.
+
+**What is left.** Thirty-six unreached guards were not exercised by hand. They are
+plausible mistakes with messages already written, and the evidence from the twenty-eight
+that were is that they behave. Contracts for them would be cheap and would stop the next
+edit from silently removing one; that is the shape of the remaining work here, and it is
+maintenance rather than a defect hunt.
 
 ### Re-running the benchmark found one more
 
