@@ -58,6 +58,11 @@ The presentation polish therefore changes only the HTML margins around visible p
 - level-3 heading: `margin: 0.46rem 0 0.24rem 0`;
 - narrative block: `margin: 0.36rem 0 0.60rem 0`.
 
+The narrative's own margin is gone since the block became a `Markdown` output: Colab does
+not typeset a `display(HTML(...))`, so the relations a memoria explains reached the page
+as raw text. A markdown output takes the notebook's paragraph spacing instead, and the
+way to get the old margins back — raw HTML inside the markdown — is the defect itself.
+
 The mathematical MathJax spacing policy is deliberately unchanged. Existing 8-point spacing between ordinary calculation rows and 16-point spacing after explicit blank source lines remain part of the regression suite.
 
 ## Non-goals
