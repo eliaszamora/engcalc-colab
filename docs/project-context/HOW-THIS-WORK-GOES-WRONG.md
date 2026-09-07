@@ -176,12 +176,22 @@ produced the reassuring answer rather than an error:
   empty result failed the loop's own guard; and the symptom was "CI is slow". The
   engineer noticed before I did.
 
+- **Pint accepted a unit redefinition, reported nothing, and kept its own.**
+  `registry.define("ton = 1000 * kilogram")` returns without complaint and `5*ton` stays
+  4536 kg, the US short ton. Trusting that silence would have shipped a ten per cent
+  error on every mass of a Spanish-language sheet - a wrong *number*, which review does
+  not catch the way it catches a wrong unit. Found only because the value was asserted
+  rather than the unit.
+
 **What they share.** None of them raised. Each degraded into the answer that invites you
 to move on, and two of the three were about *verification itself* - so the thing that
 failed was the thing whose job was to notice failure.
 
 **The checks.**
 
+- Assert the value, not only the label. Three of these were caught by a name and the
+  fourth only by a number; a wrong unit is visible on the page and a wrong quantity is
+  not.
 - A verifier must fail loudly. If it cannot produce a verdict, say so and stop; never
   return the shape of a good answer. The mutation harness now raises on a missing summary
   line rather than printing "SURVIVED".

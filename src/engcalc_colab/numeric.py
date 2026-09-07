@@ -36,6 +36,16 @@ _UNIT_ALIASES = {
     "MPa": "megapascal",
     "GPa": "gigapascal",
     "kg": "kilogram",
+    # `metric_ton`, never Pint's `ton`, which is the US short ton of 907.18 kg. Pointing
+    # at that would have taken ten per cent off every mass on a Spanish-language sheet -
+    # a wrong number rather than a wrong unit, and one that survives review by looking
+    # plausible. `kip` two entries down carries the same warning about `kilopound`.
+    #
+    # Defining our own the way `tonf` is defined does not work, and fails silently:
+    # `registry.define("ton = 1000 * kilogram")` is accepted without complaint and Pint
+    # keeps its own, so `5*ton` stays 4536 kg. The page therefore shows `t`, which is
+    # the symbol every code uses for a tonne, rather than the `ton` that was typed.
+    "ton": "metric_ton",
     "s": "second",
     "rad": "radian",
     "deg": "degree",
