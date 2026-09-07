@@ -8,9 +8,9 @@ describes a tree that no longer exists._
 
 | | |
 |---|---|
-| `main` | `6e8284f` (#100 merged) |
-| declared version | **0.28.0** — released by #101, carrying #94 through #100 |
-| default suite (`pytest -q`) | **1688 passing**, under 2 minutes — `tests` plus `quality_tests/fast` |
+| `main` | `79c4630` (#109 merged) |
+| declared version | **0.28.0** — #102 through #110 have landed since, so a release is due |
+| default suite (`pytest -q`) | **1758 passing**, under 2 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
 
@@ -79,9 +79,8 @@ All four findings of the external trial are closed, and so are two of the three 
 that came out of working RC-1. A matrix frame analysis run as a benchmark then produced
 seven more, of which four are fixed. What is open, in the order I would take it:
 
-- **`_unit_terms` is now inert** — #109 closed the last of the seven-places findings
-  and, in doing so, left the term count deciding nothing. Removing it is the next
-  change, and the measurements are in the first section below
+- ~~`_unit_terms` is now inert~~ — **removed by #110.** All seven of the display
+  findings are closed and the heuristic behind every one of their ties is gone
 - ~~the factors of a compound unit are ordered alphabetically~~ — **fixed by #104.**
   Not a formatter to rewrite: Pint exposes the sort as
   `registry.formatter.default_sort_func`, and `_units` had kept the written order all
@@ -97,22 +96,22 @@ be and what it cost to find, which is the part a summary would lose.
 
 ### The display unit is decided in seven places
 
-**This is the one to settle before adding another surface.** A matrix frame analysis, run
+**Closed.** A matrix frame analysis, run
 as a benchmark, asked one question - *in what unit is this shown?* - of seven different
 code paths and got seven answers. Four of them had already drifted and were reconciled one
-at a time; of the remaining three, #99 settled one, #102 fixed another, and one is left.
+at a time; #99 settled one, #102 and #109 fixed the last two. All seven are closed, and
+#110 removed the heuristic behind every one of their ties.
 
 | where | what decides | state |
 |---|---|---|
-| a scalar | `_display_quantity`: family, then `_unit_terms` | the reference behaviour |
+| a scalar | `_display_quantity`: family, then the factors' shape | the reference behaviour |
 | a homogeneous matrix, a table column | `_aggregate_unit` | a tie handed the fallback the win, fixed |
 | a heterogeneous matrix cell | `_quantity_latex`, `declared` defaulting True | fixed |
 | the substitution stage | `declared` per name, from what the `:=` wrote | fixed by #102 |
 | a family with one member | stops at kilo on purpose; the matrix factors instead | settled by #99 |
 | `GPa*mm` against `kN/m` | the shape of the factors, not their number | fixed by #109 |
 
-The one still open, and the two with the answers they got, each with what it costs on a
-real page:
+All three, with the answers they got and what each cost on a real page:
 
 - ~~**The substitution stage** shows a value in the unit it was stored in.~~ **Fixed by
   #102.** The question it was waiting on - which substituted values count as declared -
