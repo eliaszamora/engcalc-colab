@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.29.0**.
+Current version: **0.29.1**.
 
 
 ## Help, inside the notebook
@@ -24,6 +24,21 @@ their own typing.
 `examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
 reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
+## v0.29.1 two cosines that read alike
+
+A correction, found by re-running the braced-frame benchmark against 0.29.0 rather than
+by anyone reporting it. Its two direction cosines, one line apart:
+
+    c_d =  0.804
+    s_d = -0.59
+
+Same brace, same computation, and the only difference between them is whether the second
+decimal happens to be a zero. The rule that gives a value back its digits when the page's
+decimals have flattened it was counting `0.80` as one figure, because the count it used
+strips zeros from both ends. A leading zero carries nothing; a trailing one is a digit the
+renderer chose to print.
 
 
 ## v0.29.0 the sheet is shown in the units it was written in
@@ -1813,6 +1828,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.29.1** — a value whose second decimal is a zero is no longer given extra precision its neighbour does not get: a brace's two direction cosines read `0.80` and `-0.59` rather than `0.804` and `-0.59`.
 - **0.29.0** — the sheet is shown in the units it was written in. A page in kgf/cm² stays there instead of being converted to MPa and GPa; `numeric(expr, unit)` shows the unit it was asked for; a compound unit keeps its written order, so `N*mm` and `kip*ft` rather than `mm*N` and `ft*kip`; `E*t` reads as a stiffness in kN/m rather than `GPa*mm`; `MN` and `ton` can be written; an unnamed evaluation opens a relation instead of a loose row; and a substituted value reads in the unit its own result uses.
 - **0.28.0** — what a matrix frame analysis found. `%eng_config figures=3` gives a number reduced to one digit or none its figures back, so a 0.016756 s period reads `0.0168 s` rather than `0.02 s`; a matrix takes a common power of ten outside its brackets and the unit families stop at kilo, so a page no longer mixes kilo and mega; prose between `"""` marks typesets inline `$...$`; `keep` reaches inside a matrix; and a value reads the same in a matrix as it does on its own.
 - **0.27.1** — one Pint registry for the process rather than one per numeric context. The suite went from 453 seconds to 179 and each CI job from about six minutes to two, and quantities from two contexts can now be combined at all.
@@ -1859,4 +1875,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.29.0`.
+Version: `0.29.1`.
