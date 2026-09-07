@@ -194,11 +194,23 @@ mutation harness now checks that it bites.
 
 The gate is not an orphan: fifteen tests fail when it is disabled.
 
-**What it does not fix.** `25000 kgf / (100 mm x 100 mm)` still reads `2.50 kgf/mm^2`
-rather than `250.00 kgf/cm^2`. The system is detected correctly; `_unit_is_the_engineers`
-never hands it to the family, because `kgf/mm^2` and `kgf/cm^2` both cost two unit terms.
-That is the same tie that keeps `GPa*mm` out of `kN/m` - the last of the seven - and
-sections written in centimetres, which is what this engineer writes, are unaffected.
+~~**What it does not fix.** `25000 kgf / (100 mm x 100 mm)` still reads `2.50 kgf/mm^2`
+rather than `250.00 kgf/cm^2` ... sections written in centimetres, which is what this
+engineer writes, are unaffected.~~
+
+**Fixed by #119, and that last clause was the mistake.** A structural section is written
+in *millimetres* - this repository's own benchmark opens `b := 300*mm` - so the case was
+not the corner this note called it. Shown it, the engineer said `kgf/mm^2` is not a unit
+he has ever used. It also cost more than a unit: `25000 kgf / (300 mm x 450 mm)` printed
+`0.19` where the stress is `18.52 kgf/cm^2`.
+
+There is no rule, and three were tried before admitting it: "the sheet never wrote this
+composite" sends `mm^2` built from two declared `mm` to `cm^2`; "the family member has
+several factors" and "a one-member family is authoritative" each break one of `N*mm`,
+`kN/mm` and an inertia in `mm^4`. What is true is a convention - a stress in the technical
+system is written `kgf/cm^2` - and it is recorded as one, yielding to any unit the sheet
+actually wrote. Writing the note as a remainder was easier than finding that out, and the
+reason it survived is that the reason given for it was never checked.
 
 ### Two tables, two questions
 
