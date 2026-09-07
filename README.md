@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.28.0**.
+Current version: **0.29.0**.
 
 
 ## Help, inside the notebook
@@ -24,6 +24,65 @@ their own typing.
 `examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
 reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
+## v0.29.0 the sheet is shown in the units it was written in
+
+0.28.0 fixed what a benchmark page showed. This release answers the question underneath
+it, which the engineer put plainly when asked which units he works in:
+
+> "si te los doy en kgf, entonces que sea kgf, si te los doy en MPa entonces que sea
+>  MPa, si te los doy en ambos, elige kgf cm2."
+
+**A sheet written in kilogram-force stays in kilogram-force.** A page in `psi`, `ksi`,
+`kip` and `ft` was already detected and kept, because US customary has its own family
+table. The metric-technical system - the one half the Spanish-speaking world writes a
+memoria in, where Peru and Mexico put the steel modulus at 2.1×10⁶ kgf/cm² - never got
+one, so such a sheet was converted to SI under its author. `fc := 250*kgf/cm**2` printed
+`24.52 MPa`; `E := 2100000*kgf/cm**2` printed `205.94 GPa`. A whole sheet now reads in
+its own system:
+
+```
+fc  = 250.00 kgf/cm²      Ec = 237170.82 kgf/cm²
+M   = 9.00 tonf·m         A_g = 1250.00 cm²      σ = 86.40 kgf/cm²
+```
+
+**`numeric(expr, unit)` shows the unit that was asked for.** The one place in the
+language where the display unit is stated outright, documented and used by this
+repository's own example notebook, was silently ignored: the engine converted and the
+unit family converted back. `numeric(M, N*m)` printed `45.00 kN*m`.
+
+**A compound unit keeps the order its factors were written in.** Pint sorts them by
+name, which is right often enough to hide that it is not a rule anybody writes by: a
+moment survives as `kN*m` because k precedes m, while the same moment in newtons printed
+`m*N` and an imperial one `ft*kip`. Now `N*mm` and `kip*ft`, as Eurocode and US practice
+write them.
+
+**A pressure times a length is not how anyone spells a force per length.** `E*t`, a
+plate's axial stiffness, printed `1680.00 GPa*mm`. `kN/mm`, `tonf/m` and `kgf*cm` reach
+their dimension through a force, because that is how a line load or a moment is spelled;
+`GPa*mm` reaches it through a pressure. Comparing what the factors *are* settles what
+counting them could not, and the heuristic that did the counting is gone with it.
+
+**Two units that could not be written now can.** `MN`, because a bridge reaction is
+written in meganewtons and the family stopping at kilo is a rule about what the system
+*chooses*, not about what you may type. And `ton`, pointing at the metric tonne - Pint's
+own `ton` is the US short ton of 907.18 kg, and an alias pointing there would have taken
+ten per cent off every mass on the page.
+
+**An evaluation with no name on its left opens a relation.** `numeric(subs(M(x), x,
+L/2))` put `q L^2 / 8` on a row with no `=` and no subject, which is what a wrapped
+continuation looks like everywhere else, so on the reference memoria it read as part of
+the line above. It is its own subject now.
+
+**A substituted value reads in the unit its own result uses.** A period derived from a
+circular frequency showed `2 pi / (11.86 GPa^0.5*mm/(kg^0.5*m^0.5))` above a result of
+`0.0168 s`. That is also where the fractional unit exponents came from.
+
+`docs/project-context/` carries the reasoning: `HOW-OTHERS-FORMAT-NUMBERS.md` for how
+siunitx, Mathcad, MATLAB, NumPy, handcalcs, Pint and forallpeople each decide this, and
+`HOW-THIS-WORK-GOES-WRONG.md` section 9 for the failure mode that cost the most time in
+building it - a check that fails towards "fine".
 
 
 ## v0.28.0 what a matrix frame analysis found
@@ -1754,6 +1813,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.29.0** — the sheet is shown in the units it was written in. A page in kgf/cm² stays there instead of being converted to MPa and GPa; `numeric(expr, unit)` shows the unit it was asked for; a compound unit keeps its written order, so `N*mm` and `kip*ft` rather than `mm*N` and `ft*kip`; `E*t` reads as a stiffness in kN/m rather than `GPa*mm`; `MN` and `ton` can be written; an unnamed evaluation opens a relation instead of a loose row; and a substituted value reads in the unit its own result uses.
 - **0.28.0** — what a matrix frame analysis found. `%eng_config figures=3` gives a number reduced to one digit or none its figures back, so a 0.016756 s period reads `0.0168 s` rather than `0.02 s`; a matrix takes a common power of ten outside its brackets and the unit families stop at kilo, so a page no longer mixes kilo and mega; prose between `"""` marks typesets inline `$...$`; `keep` reaches inside a matrix; and a value reads the same in a matrix as it does on its own.
 - **0.27.1** — one Pint registry for the process rather than one per numeric context. The suite went from 453 seconds to 179 and each CI job from about six minutes to two, and quantities from two contexts can now be combined at all.
 - **0.27.0** — the formula on the page is the one you wrote: a coefficient in a denominator stays there rather than returning as its reciprocal, and `keep d = ...` marks a name a later formula shows instead of expanding, so a capacity reads `phi As fy (d - a/2)` and not in `cover`, `db_st` and `h`.
@@ -1799,4 +1859,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.28.0`.
+Version: `0.29.0`.
