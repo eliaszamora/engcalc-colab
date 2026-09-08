@@ -71,6 +71,13 @@ def test_the_ipython_surface_stays_small():
 
     If a newer IPython feature is ever imported, this fails and the floor has to be
     reconsidered deliberately rather than raised by habit.
+
+    It has fired once, for `Markdown`, when the narrative had to stop being an `HTML`
+    output because Colab does not typeset one. Reconsidered rather than waved through:
+    `Markdown` is listed in `IPython.core.display.__all__` in 7.34.0 - the version Colab
+    pins - and re-exported by `IPython.display`, which was checked inside that wheel
+    rather than against the interpreter this suite happens to run on. The `ipython==7.34.0`
+    job in CI is what keeps the answer true.
     """
     magic = (PYPROJECT.parent / "src" / "engcalc_colab" / "magic.py").read_text(
         encoding="utf-8"
@@ -82,7 +89,7 @@ def test_the_ipython_surface_stays_small():
     )
     assert imports == [
         "from IPython.core.magic import Magics, cell_magic, line_magic, magics_class",
-        "from IPython.display import HTML, Math, display",
+        "from IPython.display import HTML, Markdown, Math, display",
     ], imports
 
 

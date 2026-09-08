@@ -155,9 +155,9 @@ no-op looks exactly like success.
 
 ## 9. A check that fails towards "fine"
 
-Section 7 is about harnesses. This is the shape underneath it, and it showed up three
-times in one session, in three different kinds of tool. Every time, the broken check
-produced the reassuring answer rather than an error:
+Section 7 is about harnesses. This is the shape underneath it, and it has shown up five
+times now, in five different kinds of tool. Every time, the broken check produced the
+reassuring answer rather than an error:
 
 - **`gh pr checks` reported six green from a stale run.** After a force-push it answered
   for the commit that had been replaced, while the new one was still `in_progress`. The
@@ -183,8 +183,25 @@ produced the reassuring answer rather than an error:
   not catch the way it catches a wrong unit. Found only because the value was asserted
   rather than the unit.
 
+- **The rendering harness was configured to accept whatever the code emitted.** #96 put a
+  narrative's mathematics on the page with `\(...\)`, and `tools/render_memoria.py` set
+  MathJax's `inlineMath` to `[['\\(','\\)']]` - the delimiters the magic had just been
+  taught to emit. The page rendered, the screenshot was checked, and four releases later
+  the engineer's own frame memoria was still printing `\(A_e = R_e\,L_e\,T\)` as raw text
+  in Colab, across eight relations that exist nowhere else on the page. The harness was
+  not measuring the notebook; it was measuring itself, and it was the *only* check that
+  could have seen this, because every contract asks whether a string contains a
+  substring and the string was perfect.
+
+  This is the most expensive one, and the only one whose fix is not a smarter check. The
+  harness now mirrors what Colab does - measured in Colab: an HTML output does not
+  typeset at all; markdown is converted with the mathematics lifted out first; MathJax
+  keeps its default delimiters. Re-rendering the benchmark against the #96 code
+  reproduces the engineer's screenshot exactly, which is the only evidence that the
+  harness can now fail.
+
 **What they share.** None of them raised. Each degraded into the answer that invites you
-to move on, and two of the three were about *verification itself* - so the thing that
+to move on, and three of the five were about *verification itself* - so the thing that
 failed was the thing whose job was to notice failure.
 
 **The checks.**
@@ -196,9 +213,19 @@ failed was the thing whose job was to notice failure.
   return the shape of a good answer. The mutation harness now raises on a missing summary
   line rather than printing "SURVIVED".
 - Do not silence a checker's stderr. `2>/dev/null` on a query whose output you are about
-  to branch on converts a bug into a wrong answer.
+  to branch on converts a bug into a wrong answer. In a background monitor the stderr is
+  silenced *for* you - only stdout becomes a notification - so the loop has to print
+  something itself on the path where it got nothing parseable. A polling loop written
+  during this very session spun for twenty minutes and reported nothing, because it piped
+  `gh api` into a `jq` that is not installed on the machine; "no data" and "not finished"
+  were the same silence again, one section after this one was written.
 - Prefer a query that names what you are asking about. `gh pr checks` asks about a pull
   request; the rule is about a commit.
+- Never configure a harness from the thing under test. Its settings come from the target
+  - the notebook, the platform, the library's defaults - and if a change to the code
+  needs a matching change to the harness to keep rendering, that is the finding, not a
+  chore. The one question worth asking of any harness is: what would make this fail?
+  Answer it by breaking the code on purpose and watching the page break too.
 - When something takes much longer than every previous run of the same thing, that is
   data. Twenty-four minutes against a two-minute baseline was the signal, and it was
   read as patience for three-quarters of an hour.

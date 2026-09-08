@@ -6,7 +6,7 @@ import re
 from html import escape
 
 from IPython.core.magic import Magics, cell_magic, line_magic, magics_class
-from IPython.display import HTML, Math, display
+from IPython.display import HTML, Markdown, Math, display
 
 from .engine import EngineeringEngine
 from .errors import EngCalcError
@@ -46,11 +46,10 @@ _HEADING_STYLE = {
     ),
     3: "font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;",
 }
-_NARRATIVE_STYLE = (
-    "font-size:0.95rem;line-height:1.55;"
-    "margin:0.36rem 0 0.60rem 0;"
-)
-_NARRATIVE_PARAGRAPH_STYLE = "margin:0 0 0.42rem 0;"
+# A narrative used to carry its own font size and margins, in a styled `<div>`. It does
+# not any more: a markdown output takes the notebook's paragraph styling, and the
+# alternative - raw HTML inside the markdown - is the thing that stopped the mathematics
+# typesetting in the first place. The spacing was a nicety; the relations are the page.
 
 
 def _render_heading(heading: ParsedHeading) -> HTML:
@@ -70,29 +69,99 @@ def _render_heading(heading: ParsedHeading) -> HTML:
 _NARRATIVE_MATH = re.compile(r"\$(\S|\S[^$]*?\S)\$")
 
 
-def _narrative_paragraph_html(paragraph: str) -> str:
-    """Escape the prose and hand the marked spans to MathJax.
+# Prose is markdown now, so what markdown would eat has to be escaped. Measured on this
+# repository's own benchmark rather than guessed: its narrative carries seven underscores
+# outside the formulas, in `L_e`, `R_e`, `A_e`, `theta_1` and `theta_4`, and markdown
+# reads the span between two of them as emphasis - "la cadena T, L_e, R_e" would print
+# with "e, R" in italics and the underscores gone.
+#
+# `<`, `>` and `&` go as entities rather than as backslash escapes, because markdown
+# passes raw HTML straight through and the old HTML path escaped them. Losing that while
+# fixing a rendering defect would have traded a formula that does not typeset for a
+# paragraph that can inject markup, which is a worse page and a worse bargain. Entities
+# survive markdown and render as the characters they name.
+#
+# `[` is an entity too, and for a different reason: `\[` is MathJax's *default* display
+# delimiter. Escaping a bracket the markdown way would turn `el vector U [doce
+# componentes]` into `\[doce componentes\]`, and the notebook lifts its mathematics out
+# before the markdown converter runs, so that pair reaches MathJax intact and the prose
+# becomes a centred formula. `&#91;` never looks like a delimiter. `]` needs no escape at
+# all once `[` cannot open a link - it was in this set until a mutant removed it and
+# every contract still passed, which was the right answer to a question about `]` and
+# the wrong answer about `[`.
+_MARKDOWN_ESCAPES = str.maketrans(
+    {"&": "&amp;", "<": "&lt;", ">": "&gt;", "[": "&#91;"}
+    | {character: "\\" + character for character in "\\`*_#$"}
+)
 
-    Everything is escaped, the mathematics included. MathJax reads the DOM's text
-    content, which decodes entities, so a `<` inside a formula survives as a `<` and a
-    paragraph still cannot inject markup.
+
+# A paragraph that opens with a list marker becomes a list item, and an ordered one is
+# *renumbered*: two paragraphs opening "3." and "5." print as 3 and 4. A number in a
+# memoria changing on its way to the page is the worst thing markdown can do here, and it
+# is worse than the underscore because nothing looks wrong - it looks like a tidy list.
+#
+# Found by rendering the verification cell written to check the underscores, which opened
+# its own points "1.", "2.", "3." and came back as an ordered list.
+#
+# The marker has to be followed by a space to be one, which is what keeps `3.7 m es la
+# altura libre` a sentence. `*` needs nothing here; it is escaped everywhere already.
+_LIST_MARKER = re.compile(r"^([-+]|\d{1,9}[.)])(?=\s|$)")
+
+
+def _escape_list_marker(paragraph: str) -> str:
+    match = _LIST_MARKER.match(paragraph)
+    if match is None:
+        return paragraph
+    marker = match.group(1)
+    if marker[0].isdigit():
+        # `1\.` keeps the digit and disarms the marker; `\1.` would print a backslash.
+        return marker[:-1] + "\\" + marker[-1] + paragraph[len(marker):]
+    return "\\" + paragraph
+
+
+def _narrative_paragraph_markdown(paragraph: str) -> str:
+    """Escape the prose and leave the marked spans as `$...$` for MathJax.
+
+    The mathematics is *not* escaped: it is LaTeX and MathJax has to read it whole, and
+    `$a < b$` needs its `<`. Everything around it is, the `$` of a price included -
+    `cuesta $5 el kilo y $10 el metro` typesets as one formula otherwise, which is what
+    Colab does with it.
     """
     parts: list[str] = []
     index = 0
     for match in _NARRATIVE_MATH.finditer(paragraph):
-        parts.append(escape(paragraph[index:match.start()]))
-        parts.append(r"\(" + escape(match.group(1)) + r"\)")
+        parts.append(paragraph[index:match.start()].translate(_MARKDOWN_ESCAPES))
+        parts.append("$" + match.group(1) + "$")
         index = match.end()
-    parts.append(escape(paragraph[index:]))
-    return "".join(parts)
+    parts.append(paragraph[index:].translate(_MARKDOWN_ESCAPES))
+    return _escape_list_marker("".join(parts))
 
 
-def _render_narrative(narrative: ParsedNarrative) -> HTML:
-    paragraphs = "".join(
-        f'<p style="{_NARRATIVE_PARAGRAPH_STYLE}">{_narrative_paragraph_html(paragraph)}</p>'
-        for paragraph in narrative.paragraphs
+def _render_narrative(narrative: ParsedNarrative) -> Markdown:
+    """Markdown, not HTML, because Colab does not typeset a `display(HTML(...))` at all.
+
+    #96 made a narrative's marked spans reach the page as MathJax's parenthesis
+    delimiters, and it was verified against a rendering harness this repository writes -
+    which configures MathJax with exactly those delimiters, so it could not have failed.
+    In Colab the relations came out as raw text, across a memoria that explains a matrix
+    formulation and has nowhere else to put them.
+
+    Measured in Colab rather than reasoned about, and the answer was not a delimiter. Of
+    the parenthesis form, the dollar form, the bracket form and an explicit
+    `MathJax.typeset()` call, *none* renders inside an HTML output; Colab isolates it.
+    `Markdown`, `Latex` and `Math` outputs all typeset. Markdown is the one that keeps
+    prose as prose rather than wrapping every sentence in `\\text{}`.
+
+    The cost is the paragraph styling this used to set, which a markdown output does not
+    take. Correctness over cosmetics: a relation that does not render is a memoria that
+    does not say what it means.
+    """
+    return Markdown(
+        "\n\n".join(
+            _narrative_paragraph_markdown(paragraph)
+            for paragraph in narrative.paragraphs
+        )
     )
-    return HTML(f'<div style="{_NARRATIVE_STYLE}">{paragraphs}</div>')
 
 
 CalculationResult = (

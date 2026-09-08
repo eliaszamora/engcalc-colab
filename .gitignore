@@ -10,8 +10,10 @@ build/
 # byproduct of tools/gap_map.py, regenerated on every run
 gapmap.json
 
-# local render preview, not part of the package
-memoria-preview.html
+# local render previews, not part of the package. A pattern rather than the one name,
+# since `tools/render_memoria.py` takes the sheet and the output path as arguments and
+# a page per sheet is the normal way to use it.
+*-preview.html
 
 # local preview server config, not part of the package
 .claude/
