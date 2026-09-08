@@ -109,8 +109,11 @@ def test_the_family_lookup_does_not_depend_on_how_the_dimensionality_prints():
     moment = dict([("[time]", -2), ("[mass]", 1), ("[length]", 2)])
     assert _unit_family(_Quantity(moment)) == ("N * m", "kN * m")
 
+    # `("MPa",)` since GPa left the family; what is being tested here is that the lookup
+    # finds an entry at all when the dimensionality is spelled in an awkward order, not
+    # which members that entry holds.
     pressure = dict([("[time]", -2), ("[length]", -1), ("[mass]", 1)])
-    assert _unit_family(_Quantity(pressure)) == ("MPa", "GPa")
+    assert _unit_family(_Quantity(pressure)) == ("MPa",)
 
     assert _unit_family(_Quantity({"[length]": 3})) == ()
 

@@ -127,8 +127,13 @@ All three, with the answers they got and what each cost on a real page:
   `209.67 MN`. The engineer was asked and wanted the reverse: *"prefiero que nos quedemos
   con kN, m, s ... no me gusta que hayan algunos en kilo y otros en mega"*. So the
   families now **stop at kilo** and a matrix takes the largeness outside as `10^3 x []`,
-  which is MATLAB's `format short` and siunitx's `fixed-exponent`. `MPa`/`GPa` keep both
-  steps deliberately. A large scalar outside a matrix does stay a large number - `517195.95
+  which is MATLAB's `format short` and siunitx's `fixed-exponent`. ~~`MPa`/`GPa` keep both
+  steps deliberately.~~ **Amended: only `MPa` does.** That exemption was granted on the
+  strength of what the codes on the shelf print, before the engineer had been asked; told
+  about it he said he has never used GPa, twice, and the same argument that stopped the
+  other families at kilo applies. The pressure family is `("MPa",)`, and a sheet that
+  writes GPa still reads in GPa - the shape rule keeps it, no mechanism was added.
+  A large scalar outside a matrix does stay a large number - `517195.95
   kN*m` - and that is the accepted cost, not an open defect.
 - ~~**`_unit_terms` cannot separate `GPa*mm` from `kN/m`.**~~ **Fixed by #109, and not
   the way this note predicted.** Both halves of the difficulty were real - both cost 2,

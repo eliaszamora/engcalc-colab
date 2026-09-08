@@ -305,9 +305,8 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[length]", 4),): ("cm ** 4",),
     # Kilo is the top step, by the engineer's preference: a sheet stays in kN, m and s,
     # and a value too large for kN has its scale taken outside the brackets by
-    # `_matrix_scale_exponent` rather than climbing to mega. MPa and GPa below are
-    # the deliberate exception - a concrete strength is 25 MPa and a modulus
-    # 210 GPa in every code on the shelf, and nobody writes 25000 kPa.
+    # `_matrix_scale_exponent` rather than climbing to mega. Pressure keeps its own step
+    # below - mega, not kilo - because nobody writes 25000 kPa for a concrete strength.
     (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("N", "kN"),
     # The same three steps forces have. With `kN * m` alone a family can change the
     # unit to one an engineer writes but cannot move the magnitude into the readable
@@ -315,7 +314,18 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     # that had reached `209.67 MN` - one matrix, two scales, for no reason but a
     # missing member. Given the steps the band rule lands them together.
     (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("N * m", "kN * m"),
-    (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("MPa", "GPa"),
+    # One member, and `GPa` is deliberately not the second. The exemption that put it
+    # here was written from what the codes on the shelf print - "a modulus is 210 GPa" -
+    # and the engineer has since said twice, unprompted, that he has never used it:
+    # "el E del acero nunca lo he trabajado en GPa", "GPa nunca lo he usado". The code
+    # on the shelf is not the sheet on his screen, and the sheet is the product.
+    #
+    # A sheet that writes GPa still reads in GPa, and nothing was added to make that so:
+    # `GPa` is no longer a family member, so `_unit_is_the_engineers` reaches its shape
+    # rule - a pressure against the family's own pressure - and keeps it. Removing a
+    # member from a family is how a unit stops being *chosen*, not how it stops being
+    # allowed.
+    (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("MPa",),
     (("[mass]", 1), ("[time]", -2)): ("N / m", "kN / m"),
     # Time, and its reciprocal. A dynamics sheet ends in a frequency and a period,
     # and `sqrt(k/m)` produces fractional exponents - `GPa^0.5*mm/(kg^0.5*m^0.5)` -
