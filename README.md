@@ -156,8 +156,11 @@ K = 10^3 [ 517.20 kN*m   209.67 kN     0           ]
 The unit families stop at kilo, so nothing reaches mega and a page does not mix the two;
 the matrix then takes the largeness outside as a power of ten, the way MATLAB's `format
 short` and siunitx's `fixed-exponent` have always done. The exponent is a multiple of
-three and is only taken when every cell survives it. `MPa` and `GPa` are left alone
-deliberately: a concrete strength is 25 MPa in every code on the shelf.
+three and is only taken when every cell survives it. Pressure keeps its own step at mega,
+because nobody writes 25000 kPa for a concrete strength — but only mega: a value derived
+on a sheet written in MPa reads `76923.08 MPa`, not `76.92 GPa`. A sheet that writes
+`E := 200*GPa` still reads in GPa throughout, because a unit the sheet wrote is kept
+whether or not the family would have chosen it.
 
 **Prose can typeset the relation it is explaining.** Text between `"""` marks was escaped
 and nothing else, so a memoria explaining a matrix formulation had to write `A_e = R_e
