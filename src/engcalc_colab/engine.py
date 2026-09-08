@@ -3136,7 +3136,19 @@ class _Evaluator(ast.NodeVisitor):
 # written pass runs the evaluator a second time, and a call that solves, plots or
 # summarises would do that work twice and record its effects twice.
 _WRITTEN_FORM_SAFE_CALLS = frozenset(
-    {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "abs"}
+    {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "abs",
+     # `transpose`, because `K_e = transpose(A_e)*k_e*A_e` is how a stiffness matrix is
+     # assembled and the call was the only thing keeping a written form off it. Without
+     # it the frame benchmark printed every entry in nodal coordinates,
+     # `b_c d_c^3 E / (3 sqrt((-x_1 + x_2)^2 + (-y_1 + y_2)^2))`, where with it the same
+     # entry reads `4 E I_c / L_c` - the form the textbooks print. The page loses a fifth
+     # of its characters and renders *faster*, 0.65 s to 0.52 s, because the written form
+     # is smaller than the expansion it replaces.
+     #
+     # The list is about a second walk being free of consequence, and a transpose has
+     # none. `inv` was measured alongside it and changed nothing on any sheet here, so it
+     # is not on the list: an entry that cannot be shown to matter is furniture.
+     "transpose"}
 )
 
 

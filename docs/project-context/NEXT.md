@@ -428,6 +428,33 @@ told not to expand it — `_resolve_symbolic_names` replaced every free symbol t
 namespace defined, before values were consulted. The kept names are shared by reference
 the way the symbolic namespace already was, so nothing that does not use `keep` changes.
 
+**Amended: the barrier held for one step and was gone at the second.** Found by rendering
+the frame benchmark and reading it, six months of releases later. `R_1` printed with
+`c_c` and `s_c`; `R_2 = R_1`, one line down, printed both expanded into `x_1, x_2, y_1,
+y_2`. The same matrix, twice, two ways. Isolated, it was not a matrix problem at all -
+`x = 2*L` kept `L` and `y = x` did not.
+
+Two separate causes, both now fixed:
+
+- **`_written_form` abandoned the whole written form** when a statement mentioned a name
+  that was defined and not kept - and the fallback is the fully evaluated expression,
+  with the kept names expanded inside it. The branch written to keep a page narrow was
+  throwing the barrier away. `written_namespace` already held every name's written form,
+  with its kept names standing, and only `numeric(name)` was reading it.
+
+  A first fix substituted a written form only where it *held* a kept name. Twenty-two
+  sheets could not tell that apart from substituting every one, so the case was built on
+  purpose - and the narrow rule was the worse of the two, folding the 0.85 of ACI 318
+  §22.2.2.4.1 into a `1.18` one formula below a `keep`. Containment is one line instead:
+  a sheet with no `keep` in it renders exactly as before.
+
+- **`transpose` was not on `_WRITTEN_FORM_SAFE_CALLS`**, so `K_e = transpose(A_e)*k_e*A_e`
+  got no written form at all. It does now, and the assembled stiffness reads
+  `4 E I_c / L_c` where it read `b_c d_c^3 E / (3 sqrt((-x_1 + x_2)^2 + ...))`. The page
+  loses a fifth of its characters and renders *faster*, 0.65 s to 0.52 s, because the
+  written form is smaller than the expansion. `inv` was measured beside it, changed
+  nothing on any sheet, and was left off.
+
 **One rough edge is left, and it is not `keep`'s.** A substitution wide enough to wrap is
 split into additive terms by the wrapping path, so `phi*As*fy*(d - a/2)` shows its numbers
 spread over two lines instead of inside the brackets. A wide formula with no kept name
