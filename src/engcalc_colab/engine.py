@@ -298,6 +298,45 @@ class EngineeringEngine:
             return
         self.numeric_context.values[name] = quantity
 
+    def _shows_its_written_form(self, name: str) -> bool:
+        """True when this name should be shown as it was written rather than expanded.
+
+        `written_namespace` has held each name's written form - the expression with its
+        kept names still standing - since RC-3, and only `numeric(name)` was reading it.
+        Reading it here is what lets the barrier survive more than one step: a name that
+        is not itself kept can be replaced by its written form, and the kept names inside
+        come through to the next formula, and the one after that.
+
+        **Only on a sheet that uses `keep` at all.** That is the whole containment, and
+        it is what keeps this opt-in: a sheet with no `keep` in it renders exactly as
+        before, because the guard in `_written_form` still fires there.
+
+        A first version asked the narrower question - whether *this* name's written form
+        holds a kept name - and it did not survive being measured. Twenty-two sheets
+        render identically either way, including all four in the repository that use
+        `keep`; the one case that separates them was built on purpose from the README's
+        own example, and the narrow answer is the worse one:
+
+            narrow:  phiMn = fy phi As (-1.18 fy As / (2 b fc) + d)
+            wide:    phiMn = fy phi As (-fy As / (2 0.85 b fc) + d)
+
+        The 0.85 is ACI 318 §22.2.2.4.1, and "a coefficient written in a denominator
+        stays there" is the change this repository made one release before RC-3. The
+        narrow rule folded it back into a 1.18 one formula further down.
+        """
+        if not self.kept_names:
+            return False
+        return self.written_namespace.get(name) is not None
+
+    def _reaches_a_kept_name(self, expression) -> bool:
+        """True when this statement mentions a kept name, directly or through one."""
+        for node in ast.walk(expression):
+            if not isinstance(node, ast.Name):
+                continue
+            if node.id in self.kept_names or self._shows_its_written_form(node.id):
+                return True
+        return False
+
     def _written_form(self, statement, evaluator, value):
         """The definition's expression as it was typed, or None to show the evaluated one.
 
@@ -322,6 +361,7 @@ class EngineeringEngine:
         # widening changed nothing, and it is not here.
         if not isinstance(value, sp.Expr):
             return None
+        carries_kept = self._reaches_a_kept_name(statement.expression)
         for node in ast.walk(statement.expression):
             if isinstance(node, ast.Call):
                 name = getattr(node.func, "id", None)
@@ -340,11 +380,21 @@ class EngineeringEngine:
             # fractions. That was `sp.latex`; the renderer's own printer collects those
             # denominators correctly, and the reason above is what the page shows.
             #
-            # So a written form is offered only where every name stands for itself.
-            # That is the boundary RC-3 moves; until a definition can be shown without
-            # expanding the names inside it, there is nothing here to preserve.
+            # So a written form is offered only where every name stands for itself -
+            # *unless* this statement reaches a kept name, which is the case the guard
+            # was silently costing. Abandoning the written form falls back on the fully
+            # evaluated expression, and that expression has the kept names expanded
+            # inside it, so the branch written to keep a page narrow was the one
+            # throwing the barrier away. On the frame benchmark it printed `A_1` in
+            # `x_1, x_2, y_1, y_2` where `R_1` one line above printed `c_c` and `s_c`,
+            # and it is why the assembled stiffness matrix runs off the side of the page.
+            #
+            # The measurement behind the guard still stands, and a sheet with no `keep`
+            # in it renders exactly as before: `carries_kept` is False there and this
+            # returns None as it always did.
             if (
-                isinstance(node, ast.Name)
+                not carries_kept
+                and isinstance(node, ast.Name)
                 and node.id in self.namespace
                 and node.id not in self.kept_names
             ):
@@ -3179,6 +3229,13 @@ class _WrittenFormEvaluator(_Evaluator):
         # and the formula an engineer would check against the code is not on the page.
         if node.id in self.engine.kept_names:
             return self.engine.resolve_symbol(node.id)
+        # And a name that is *not* kept but was written in terms of one stands for its
+        # written form, so the kept names inside it reach this formula too. Without this
+        # the barrier held for one step and was gone at the second: `x = 2*L` kept `L`
+        # and `y = x` printed `2 sqrt(a^2 + b^2)`.
+        #
+        if self.engine._shows_its_written_form(node.id):
+            return self.engine.written_namespace[node.id]
         return super().visit_Name(node)
 
     def _combine(self, op, left, right):
