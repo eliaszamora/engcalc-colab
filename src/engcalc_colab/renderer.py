@@ -823,10 +823,36 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     if not declared and _is_a_dimensionless_ratio(quantity):
         return quantity.to_base_units()
 
-    if abs(magnitude) < settings.zero_tolerance:
+    family = _unit_family(quantity)
+
+    # Zero-ness is decided in a unit the reader will actually see, not in whatever the
+    # arithmetic left behind. The rule that a zero is judged in its stored unit is right
+    # and is why this returns early at all - rescaling metres to millimetres must not
+    # lift a value its author already accepted as zero back out of the band. It just has
+    # to be a unit its author would recognise.
+    #
+    # `P*L^3/(3*E*I)` carries `kN*m^3/(MPa*mm^4)`, which is 10^9 metres, so a deflection
+    # of 3.95 mm has a magnitude of 3.95e-12 and every deflection under about 100 mm fell
+    # under a 1e-10 tolerance. The page said `0.00`, and a deflection check is a
+    # comparison against a limit, so a wrong zero passes it.
+    #
+    # The same argument is already made ten lines above for a dimensionless ratio, which
+    # sits above this return for exactly that reason. It had never been extended to a
+    # value with a dimension.
+    #
+    # Three arms, because "a unit the reader will see" is three different things here and
+    # the first draft used only two. `_unit_is_the_engineers` answers *False* for a family
+    # member - metres are the family's own unit, so the family chooses - which left every
+    # zero anyone would actually write resting on `declared` alone, and `numeric(gap)`
+    # reaches this with `declared` False.
+    own_is_family_member = any(
+        str(quantity.to(name).units) == str(quantity.units) for name in family
+    )
+    if abs(magnitude) < settings.zero_tolerance and (
+        declared or own_is_family_member or _unit_is_the_engineers(quantity, settings)
+    ):
         return quantity
 
-    family = _unit_family(quantity)
     if not family:
         return quantity
 
@@ -838,9 +864,8 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
         # ``tonf``, ``kN/mm``: kept unless it says nothing at all.
         return quantity if own_figures > 0 else _best_in_family(quantity, family, settings)
 
-    own_is_family_member = any(
-        str(quantity.to(name).units) == str(quantity.units) for name in family
-    )
+    # `own_is_family_member` is computed once, above the zero-tolerance return that now
+    # also needs it.
     start = quantity if own_is_family_member and own_figures > 0 else None
     return _best_in_family(quantity, family, settings, start=start)
 
