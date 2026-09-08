@@ -2,7 +2,7 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.29.2**.
+Current version: **0.29.3**.
 
 
 ## Help, inside the notebook
@@ -24,6 +24,48 @@ their own typing.
 `examples/memoria-viga.ipynb` is a worked sheet to open in Colab - installation, help,
 reactions, moment law, a diagram, an inequality and a summary. Its cells are executed by
 the suite too, in order and against one engine, because cell 5 uses what cell 4 solved.
+
+
+## v0.29.3 what the page said and the memoria did not
+
+Four corrections, and every one of them was found by rendering a page and reading it.
+None was found by the suite, which was 1855 tests at the time.
+
+**The mathematics in a narrative reaches the page.** Since 0.28.0 the relations a memoria
+explains had been arriving in Colab as raw text — `\(A_e = R_e\,L_e\,T\)`, verbatim, on
+the one sheet whose whole subject is a matrix formulation and which has eight of them.
+The delimiter was never the problem: inside a `display(HTML(...))` Colab typesets
+*nothing*, whatever delimiter it carries. A narrative is a `Markdown` output now, its
+spans written `$...$`, and the prose around them escaped for markdown as well as for
+HTML — including the list markers, because two paragraphs opening "3." and "5." are one
+ordered list to markdown and an ordered list renumbers.
+
+Why no check caught it: the harness this repository renders pages with was configured
+with the delimiters the magic emitted, so it could not have failed. It mirrors Colab now,
+and re-rendering the benchmark against the old code reproduces the defect exactly.
+
+**A deflection of 3.95 mm is not a zero.** `P*L^3/(3*E*I)` carries `kN*m^3/(MPa*mm^4)`,
+which is 10⁹ metres, so the magnitude fell under the zero tolerance and the page said
+`0.00`. Every deflection under about 100 mm did. Zero-ness is decided in a unit the
+reader will actually see.
+
+**A modulus is written in megapascals.** The unit families stop at kilo by request, and
+pressure was exempted before anyone had been asked; `G = E/2.6` on a sheet written in MPa
+came out `76.92 GPa`. It reads `76923.08 MPa`. A sheet that writes `E := 200*GPa` still
+reads in GPa throughout, and no mechanism was added for that — it is what falls out of
+keeping a unit the sheet wrote.
+
+**A kept name survives every formula after it, not only the first.** `R_1` printed with
+`c_c` and `s_c`; `R_2 = R_1`, one line down, printed both expanded into nodal
+coordinates. The barrier held for one step. With that fixed, and `transpose` admitted to
+the calls a written form may contain, an assembled stiffness reads
+
+    K_1  =  [ 4 E I_c / L_c        6 s_c E I_c / L_c^2   0 ]
+            [ 6 s_c E I_c / L_c^2  ...
+
+where it read `b_c d_c^3 E / (3 sqrt((-x_1 + x_2)^2 + (-y_1 + y_2)^2))`. The page loses a
+fifth of its characters and renders faster, because a written form is smaller than the
+expansion it replaces.
 
 
 ## v0.29.2 a name means one thing
@@ -1852,6 +1894,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.29.3** — what the page said and the memoria did not, in four corrections all found by rendering a page and reading it: a narrative's mathematics typesets in Colab instead of arriving as `\(A_e = R_e\,L_e\,T\)` in raw text; a 3.95 mm deflection no longer prints `0.00` because the unit the algebra left behind put it under the zero tolerance; a modulus derived on a sheet written in MPa reads `76923.08 MPa` rather than `76.92 GPa`; and a `keep` name survives every formula after it, so an assembled stiffness reads `4 E I_c / L_c` rather than in nodal coordinates.
 - **0.29.2** — a name is a value or a function and never both: `a := 2*m` followed by `a(x) = x` now says so instead of leaving the sheet with two meanings for `a`. Found by a coverage hunt for guards the suite never reaches, which also produced seventy-six contracts over the error messages the engine and parser give back.
 - **0.29.1** — a value whose second decimal is a zero is no longer given extra precision its neighbour does not get: a brace's two direction cosines read `0.80` and `-0.59` rather than `0.804` and `-0.59`.
 - **0.29.0** — the sheet is shown in the units it was written in. A page in kgf/cm² stays there instead of being converted to MPa and GPa; `numeric(expr, unit)` shows the unit it was asked for; a compound unit keeps its written order, so `N*mm` and `kip*ft` rather than `mm*N` and `ft*kip`; `E*t` reads as a stiffness in kN/m rather than `GPa*mm`; `MN` and `ton` can be written; an unnamed evaluation opens a relation instead of a loose row; and a substituted value reads in the unit its own result uses.
@@ -1900,4 +1943,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.29.2`.
+Version: `0.29.3`.
