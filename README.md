@@ -2,7 +2,32 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.0**.
+Current version: **0.30.1**.
+
+
+## v0.30.1 what a visual audit found
+
+Three corrections, all found by rendering the frame benchmark and reading it rather than
+by the suite, which was 1917 tests at the time.
+
+**An inverse keeps the names its formula was written with.** The memoria's last two
+matrices were the only ones still printed in nodal coordinates, where the condensation
+coefficient is `-3 s_c / (2 L_c)`. Two layers had to move: `inv` was not on the list of
+calls a written form may contain, and behind it the verification refused a form that was
+correct — `is_zero_matrix` answers `None` for a symbolic inverse, which is not "no" but
+"I will not prove this without work". The work is `cancel`, cell by cell, at 0.04 s
+against `simplify`'s 0.53 s, and it runs only where the plain question could not answer.
+
+The comment that had left `inv` off said it "changed nothing on any sheet here" when one
+sheet had been measured. It was true of the benchmark and false as written.
+
+**A 1×1 matrix reads as the number it holds.** A static condensation stays 1×1 all the
+way down, so the answer read `[70303.22] kN/m`. Three stages bracket separately — the
+definition, the substitution and the value — and a page that brackets its formula but not
+its answer would be worse than one that brackets both.
+
+**A palette report is not an error.** `%eng_units` announced two of its successes with
+`engcalc:`, the prefix this package uses for failures.
 
 
 ## v0.30.0 a declared unit palette
@@ -1939,6 +1964,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.1** — what a visual audit found, in three corrections none of which the suite could see: an inverse keeps the names its formula was written with, so a static condensation reads `-3 s_c / (2 L_c)` rather than in nodal coordinates; a 1×1 matrix reads as the number it holds, so a lateral stiffness is `70303.22 kN/m` and not `[70303.22] kN/m`; and `%eng_units` no longer announces its successes with the prefix reserved for failures.
 - **0.30.0** — a declared unit palette. `%eng_units kN` fixes one unit per dimension for the whole sheet, whatever the inputs were written in: `b := 500*mm` reads `0.50 m`, `fc := 250*kgf/cm**2` reads `24.52 MPa`. `%eng_units kgf` does the same in cm, kgf and kgf/cm². It is opt-in — a sheet that declares no palette renders as it always has — and `numeric(delta, mm)` still shows the unit it is asked for, which is the escape for the lengths a renderer cannot recognise as deflections.
 - **0.29.3** — what the page said and the memoria did not, in four corrections all found by rendering a page and reading it: a narrative's mathematics typesets in Colab instead of arriving as `\(A_e = R_e\,L_e\,T\)` in raw text; a 3.95 mm deflection no longer prints `0.00` because the unit the algebra left behind put it under the zero tolerance; a modulus derived on a sheet written in MPa reads `76923.08 MPa` rather than `76.92 GPa`; and a `keep` name survives every formula after it, so an assembled stiffness reads `4 E I_c / L_c` rather than in nodal coordinates.
 - **0.29.2** — a name is a value or a function and never both: `a := 2*m` followed by `a(x) = x` now says so instead of leaving the sheet with two meanings for `a`. Found by a coverage hunt for guards the suite never reaches, which also produced seventy-six contracts over the error messages the engine and parser give back.
@@ -1989,4 +2015,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.30.0`.
+Version: `0.30.1`.
