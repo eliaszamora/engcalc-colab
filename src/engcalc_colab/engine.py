@@ -3145,10 +3145,22 @@ _WRITTEN_FORM_SAFE_CALLS = frozenset(
      # of its characters and renders *faster*, 0.65 s to 0.52 s, because the written form
      # is smaller than the expansion it replaces.
      #
-     # The list is about a second walk being free of consequence, and a transpose has
-     # none. `inv` was measured alongside it and changed nothing on any sheet here, so it
-     # is not on the list: an entry that cannot be shown to matter is furniture.
-     "transpose"}
+     # The list is about a second walk being free of consequence, and neither a transpose
+     # nor an inverse has one.
+     #
+     # `inv` was left off here at first, on a measurement that said adding it changed
+     # nothing on any sheet. The measurement was right about the frame benchmark and the
+     # sentence recorded was wrong: on a smaller sheet `P = inv(K)*N` keeps its kept names
+     # the moment `inv` is allowed. What was actually happening on the benchmark is
+     # underneath, in `_agrees_with` - the written form for `C = -inv(K_ii)*K_id` was
+     # built and then refused, because `is_zero_matrix` answers None for a symbolic
+     # inverse. Both halves had to move for the condensation to read in `E`, `I_c`, `L_c`.
+     #
+     # It is not free: a symbolic inverse is computed twice, and the frame sheet goes from
+     # 0.32 s to about 0.7 s. Before the verification was fixed that bought nothing at
+     # all; now it buys the last two matrices of the memoria.
+     "transpose",
+     "inv"}
 )
 
 
@@ -3201,7 +3213,30 @@ def _agrees_with(written, value, expansions: dict | None = None) -> bool:
             # give. `is True` because the property is True, False or None for a symbolic
             # matrix; returning it raw is indistinguishable to the one caller, measured,
             # and this says what is meant.
-            return difference.is_zero_matrix is True
+            verdict = difference.is_zero_matrix
+            if verdict is not None:
+                return verdict is True
+
+            # `None` is not "no", it is "I will not prove this without work", and for a
+            # symbolic inverse it is a *false negative*: the written form for
+            # `C = -inv(K_ii)*K_id` is correct and gets thrown away, so the last two
+            # matrices of a condensation print in nodal coordinates while everything
+            # above them reads in `E`, `I_c` and `L_c`.
+            #
+            # `cancel` rather than `simplify`, measured on that exact difference:
+            # `cancel` answers True in 0.04 s, `simplify` in 0.53 s, `radsimp` not at
+            # all. `simplify` is the push this function already refuses for scalars - ~33
+            # ms each, and it failed three of seven real formulas - so thirteen times its
+            # cost is not the trade. Normalising a rational function is.
+            #
+            # Only on the `None` branch, so it can add time only where the answer was
+            # about to be "no". A difference that is genuinely non-zero still cancels to
+            # something non-zero, which is what keeps this a verification rather than a
+            # rubber stamp.
+            try:
+                return difference.applyfunc(sp.cancel).is_zero_matrix is True
+            except Exception:
+                return False
         return difference == 0
     except Exception:
         return False
