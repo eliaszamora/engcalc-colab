@@ -360,10 +360,16 @@ class EngMagics(Magics):
         """
         name = line.strip()
         if not name:
+            # `engcalc units:`, not `engcalc:`. The bare prefix is what this module says
+            # when something went wrong - an unknown option, a token it cannot parse -
+            # and `engcalc config:` and `engcalc units:` are what it says when reporting.
+            # Both of these are reports and both wore the error prefix, which was found
+            # by a filter looking for failures in a notebook run and finding "palette
+            # cleared". A person skimming the page reads it the same way.
             if self.units:
-                print(f"engcalc: unit palette cleared (was {self.units})")
+                print(f"engcalc units: cleared (was {self.units})")
             else:
-                print("engcalc: no unit palette; " + _palette_help())
+                print("engcalc units: none; " + _palette_help())
             self.units = ""
             return None
 
