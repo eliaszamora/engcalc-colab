@@ -107,6 +107,24 @@ class _EngineeringLatexPrinter(LatexPrinter):
         self.unit_literals = frozenset(unit_literals)
         self.render_settings = render_settings or _DEFAULT_RENDER_SETTINGS
 
+    def _print_MatrixBase(self, expr):
+        """A 1x1 is the number it holds. Every other shape prints as a matrix.
+
+        A static condensation stays 1x1 all the way down - `K_dd + K_id^T C` is a 1x1
+        plus a 1x1 - so the frame memoria's answer read `[70303.22] kN/m`, and its author
+        wrote `keep k_e = k_eq[1, 1]` on the next line to get at the number. MATLAB and
+        Mathcad both print a 1x1 as a scalar, and so does anyone writing the line by
+        hand.
+
+        Here rather than at each call site because `_NumericSubstitutionLatexPrinter`
+        inherits it, which covers the definition and the substitution in one place. The
+        third stage - a matrix of already-rendered quantity cells - is assembled by
+        `_matrix_from_cells_latex` and carries the same rule.
+        """
+        if expr.shape == (1, 1):
+            return self._print(expr[0, 0])
+        return super()._print_MatrixBase(expr)
+
     def _print_Float(self, expr):
         r"""Shorten a number that is longer than the page's precision. Never reshape one.
 
@@ -1062,6 +1080,11 @@ def _magnitude_latex(quantity, settings: RenderSettings) -> str:
 
 
 def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
+    # A 1x1 is the number it holds, the same rule `_print_MatrixBase` applies to the
+    # symbolic stages. Both are needed: a page that brackets its formula and not its
+    # answer is worse than one that brackets both.
+    if len(rows) == 1 and len(rows[0]) == 1:
+        return rows[0][0]
     body = r"\\".join(" & ".join(row) for row in rows)
     return rf"\left[\begin{{matrix}}{body}\end{{matrix}}\right]"
 
