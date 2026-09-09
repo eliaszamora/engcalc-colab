@@ -5,6 +5,51 @@
 Current version: **0.29.3**.
 
 
+## A declared unit palette
+
+`%eng_units kN` fixes one unit per dimension for the whole sheet, whatever the inputs
+were written in:
+
+```text
+%eng_units kN
+
+b := 500*mm          reads   0.50 m
+fc := 250*kgf/cm**2  reads   24.52 MPa
+P := 25*tonf         reads   245.17 kN
+```
+
+Two palettes, named after the force unit the sheet is anchored on:
+
+| | `kN` | `kgf` |
+|---|---|---|
+| length | m | cm |
+| force | kN | kgf |
+| stress | MPa | kgf/cm² |
+| moment | kN·m | kgf·cm |
+| line load | kN/m | kgf/cm |
+| area, inertia | m², m⁴ | cm², cm⁴ |
+| mass, time | kg, s | kg, s |
+
+`%eng_units` with no name clears it, and a sheet that never declares one renders exactly
+as it always has. A dimension with no entry — an angle, a temperature — is left alone.
+
+**Why one unit per dimension, and not something cleverer.** A span, a section depth and a
+deflection are the same dimension, and the renderer cannot tell them apart; every rule
+for guessing which is which is a convention dressed as a law. So the sheet says once what
+its units are, and where that is the wrong answer for a particular line, `numeric(delta,
+mm)` shows the unit it is asked for. The palette deliberately does not override it.
+
+This is not the same as the units a sheet is *shown* in without a palette, which follow
+what it wrote — kgf in and kgf out, MPa in and MPa out, and kgf when it wrote both. That
+inference answers "which family". The palette answers "which unit", and answers it by
+decree.
+
+Nor is it a coherent system in the sense the finite-element codes publish. Those pair kN
+with GPa and milliseconds, and N with mm and tonnes to get MPa; the combination an
+engineer actually writes — kN, m and MPa together — is conventional, not coherent, which
+is exactly why it has to be named rather than derived.
+
+
 ## Help, inside the notebook
 
 A notebook cannot help with this language on its own. `Shift+Tab` reads a Python
