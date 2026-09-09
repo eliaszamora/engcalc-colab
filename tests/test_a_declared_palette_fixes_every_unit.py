@@ -146,6 +146,49 @@ def test_an_unknown_palette_says_so_and_changes_nothing(cell, monkeypatch):
     assert magics.units == "", magics.units
 
 
+@pytest.mark.parametrize(
+    "line, expected",
+    [
+        ("kN", "engcalc units:"),
+        ("", "engcalc units:"),
+        ("kgf/cm2", "engcalc:"),
+    ],
+)
+def test_a_report_is_prefixed_as_a_report_and_an_error_as_an_error(
+    monkeypatch, line, expected
+):
+    """`engcalc:` means something went wrong; `engcalc units:` and `engcalc config:` are
+    reports. `%eng_units` announced two of its successes with the error prefix, and it
+    was found by a filter written to check something else reading "palette cleared" as a
+    failure. A person skimming a notebook does the same thing the filter did.
+    """
+    printed = []
+    monkeypatch.setattr(
+        "builtins.print", lambda *args: printed.append(" ".join(map(str, args)))
+    )
+    magics = magic.EngMagics()
+    if line == "":
+        magics.eng_units("kN")
+        printed.clear()
+    magics.eng_units(line)
+    assert printed, (line, printed)
+    assert printed[-1].startswith(expected), (line, printed[-1])
+    if expected == "engcalc units:":
+        assert not printed[-1].startswith("engcalc: "), printed[-1]
+
+
+def test_clearing_a_palette_that_was_never_set_reports_too(monkeypatch):
+    """The other half of the same branch, which the parametrised case cannot reach
+    because it has to declare a palette first in order to clear one."""
+    printed = []
+    monkeypatch.setattr(
+        "builtins.print", lambda *args: printed.append(" ".join(map(str, args)))
+    )
+    magic.EngMagics().eng_units("")
+    assert printed[-1].startswith("engcalc units:"), printed[-1]
+    assert "kN" in printed[-1] and "kgf" in printed[-1], printed[-1]
+
+
 def test_a_dimension_outside_the_palette_is_left_alone(cell):
     """An angle has no entry, and inventing one for every dimension anybody might reach
     is how a palette turns back into the rules it replaced."""
