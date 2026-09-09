@@ -225,9 +225,11 @@ Both came out of asking a question the engineer had asked first: he wondered whe
 *palettes* - `%kgf`, `%kN`, declared at the top of a sheet - were the right way to get
 uniform units, and said he did not know how other tools solve it.
 
-**The palette is not needed for the rule he stated, and that is measured rather than
-argued.** Three sheets, each rendered in its own interpreter so the written units cannot
-leak between them:
+~~**The palette is not needed for the rule he stated.**~~ **The measurement below stands
+and the conclusion drawn from it was wrong, because it answered a question he had not
+asked.** `%eng_units` exists; the amendment is at the end of this section. The three
+sheets, each rendered in its own interpreter so the written units cannot leak between
+them:
 
 | the sheet | the stress it printed |
 |---|---|
@@ -241,6 +243,36 @@ entonces que sea MPa, si te los doy en ambos, elige kgf cm2"*, already implement
 Unit System dialog and forallpeople's `environment('structural')` are both palettes, so
 the idea is not exotic - it is what the two most memoria-like tools do. It is just that
 here the sheet already says which system it is in, on every line.
+
+**The amendment, and it is the more useful half.** That measurement answers *"does
+inference give the units the sheet wrote?"* - yes. He was asking *"can I stop the sheet
+mixing units at all?"*, and inference cannot answer that, because it follows the input
+and the input is mixed. He said so three times while being shown the measurement; the
+third time settled it:
+
+    "¿cómo sabrás tú qué es secciones o deflexiones?"
+
+Nothing can. A span, a section depth and a deflection are one dimension, so every rule
+separating them is a guess in a convention's clothes - and this file is full of those
+rules. So `%eng_units kN` fixes one unit per dimension for the whole sheet, and
+`numeric(delta, mm)` is the escape on the line where one unit is the wrong answer.
+
+Two things measured on the way, both of which changed the design:
+
+* **The combination is conventional, not coherent.** kN pairs coherently with kPa if
+  lengths are metres and GPa if they are millimetres; the FEA tables pair N with mm and
+  tonnes to get MPa. Nobody's physics gives kN with m and MPa together, so a palette
+  cannot be derived from one anchor unit - it has to be named. Mathcad ships named
+  systems for the same reason.
+* **The kgf palette measures length in centimetres, and that is why it reads well.** With
+  metres its sections printed `0.30 m`; with centimetres they print `30.00 cm`, which is
+  how a technical sheet is written. The kN palette's `0.30 m` is the accepted cost, taken
+  knowingly after both pages were rendered and looked at.
+
+What it did *not* remove: `_is_technical`, `_is_us_customary` and the family tables are
+all still there, for every sheet that declares no palette. A palette is additive, which
+is what makes it opt-in and safe, and is the honest answer to "will this reduce the
+rules" - it will not; it lets a sheet step around them.
 
 A fourth sheet, written to check the two things he named himself, found both:
 

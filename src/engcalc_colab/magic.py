@@ -27,6 +27,8 @@ from .models import (
 from .parser import parse_cell
 from .presentation import render_presented_plot
 from .renderer import (
+    PALETTE_NAMES,
+    PALETTES,
     RenderSettings,
     render_aligned_results,
     CharacteristicResult,
@@ -181,6 +183,15 @@ def _display_equation_group(
     display(Math(render_aligned_results(results, settings=settings)))
 
 
+def _palette_help() -> str:
+    return "available: " + ", ".join(PALETTE_NAMES) + " (or none to clear)"
+
+
+def _palette_summary(name: str) -> str:
+    """The units that palette fixes, read off the table rather than written twice."""
+    return ", ".join(sorted(set(PALETTES[name].values())))
+
+
 def _config_summary(settings: RenderSettings) -> str:
     return (
         "engcalc config: "
@@ -196,6 +207,8 @@ class EngMagics(Magics):
         super().__init__(shell)
         self.engine = EngineeringEngine()
         self.render_settings = RenderSettings()
+        # The palette `%eng_units` declared, by name; "" until one is.
+        self.units = ""
 
     def _settings(self) -> RenderSettings:
         """The page's settings, carrying the units this sheet has written so far.
@@ -206,6 +219,7 @@ class EngMagics(Magics):
         return replace(
             self.render_settings,
             written_units=frozenset(self.engine.written_units),
+            palette=self.units,
         )
 
     @cell_magic
@@ -328,6 +342,37 @@ class EngMagics(Magics):
             return None
 
         display(HTML(render_call_help(entry)))
+        return None
+
+    @line_magic
+    def eng_units(self, line: str):
+        """`%eng_units kN` fixes one unit per dimension for the whole sheet.
+
+        The input stays free: `b := 500*mm` on a kN sheet is still five hundred
+        millimetres and still computes as such, and reads `0.50 m`. `%eng_units` with no
+        name clears it and the sheet reads as it always has.
+
+        Where one unit per dimension is the wrong answer for a particular line - a
+        deflection is a length and so is a span - `numeric(delta, mm)` shows the unit it
+        is asked for, and the palette does not override it. That is the trade the
+        engineer chose after seeing both pages, and the reason he gave for it is the one
+        this feature rests on: the renderer cannot know which lengths are deflections.
+        """
+        name = line.strip()
+        if not name:
+            if self.units:
+                print(f"engcalc: unit palette cleared (was {self.units})")
+            else:
+                print("engcalc: no unit palette; " + _palette_help())
+            self.units = ""
+            return None
+
+        if name not in PALETTE_NAMES:
+            print(f"engcalc: unknown unit palette '{name}'; {_palette_help()}")
+            return None
+
+        self.units = name
+        print(f"engcalc units: {name} — {_palette_summary(name)}")
         return None
 
     @line_magic

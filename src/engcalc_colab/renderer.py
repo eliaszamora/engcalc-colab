@@ -57,6 +57,11 @@ class RenderSettings:
     # The composite units this sheet's `:=` lines spelled. Read only by the
     # technical-stress convention, which yields to anything the engineer wrote.
     written_units: frozenset[str] = frozenset()
+    # The palette `%eng_units` declared, by name; "" when none. A name rather than the
+    # table itself, because this dataclass is frozen and a dict inside one is not
+    # hashable. The tables live beside the family tables, which is where a reader looking
+    # for "what unit does this sheet use" will go.
+    palette: str = ""
 
     def __post_init__(self) -> None:
         if isinstance(self.precision, bool) or not isinstance(self.precision, int):
@@ -581,6 +586,69 @@ def _is_technical(quantity) -> bool:
         return False
 
 
+# A palette is one unit per dimension, declared up front, and it beats everything that
+# follows: the families, the bands, the shape rule, the technical convention. The engineer
+# asked for it three times and the argument that settled it is his own -
+#
+#     "¿cómo sabrás tú qué es secciones o deflexiones?"
+#
+# It cannot be known. A span, a section depth and a deflection are one dimension, and
+# every rule for telling them apart is a guess wearing a convention's clothes. So a sheet
+# that declares a palette gets one unit per dimension and converts by hand where that is
+# wrong, with `numeric(delta, mm)`, which the palette deliberately does not override.
+#
+# Keyed and spelled exactly like the family tables above, so the two read together. Same
+# sorted-dimensionality key, for the same reason: `str(dimensionality)` is not stable and
+# depending on it was #78.
+#
+# A dimension with no entry is left alone. Inventing one for everything anybody might
+# reach - an angle, a temperature, a rate - is how a palette turns back into the rules it
+# was brought in to replace.
+_PALETTES: dict[str, dict[tuple[tuple[str, int], ...], str]] = {
+    "kN": {
+        (("[length]", 1),): "m",
+        (("[length]", 2),): "m ** 2",
+        (("[length]", 4),): "m ** 4",
+        (("[length]", 1), ("[mass]", 1), ("[time]", -2)): "kN",
+        (("[length]", 2), ("[mass]", 1), ("[time]", -2)): "kN * m",
+        (("[length]", -1), ("[mass]", 1), ("[time]", -2)): "MPa",
+        (("[mass]", 1), ("[time]", -2)): "kN / m",
+        (("[mass]", 1),): "kg",
+        (("[time]", 1),): "s",
+        (("[time]", -1),): "1 / s",
+    },
+    "kgf": {
+        (("[length]", 1),): "cm",
+        (("[length]", 2),): "cm ** 2",
+        (("[length]", 4),): "cm ** 4",
+        (("[length]", 1), ("[mass]", 1), ("[time]", -2)): "kgf",
+        (("[length]", 2), ("[mass]", 1), ("[time]", -2)): "kgf * cm",
+        (("[length]", -1), ("[mass]", 1), ("[time]", -2)): "kgf / cm ** 2",
+        (("[mass]", 1), ("[time]", -2)): "kgf / cm",
+        (("[mass]", 1),): "kg",
+        (("[time]", 1),): "s",
+        (("[time]", -1),): "1 / s",
+    },
+}
+
+# Public so the magic's `%eng_units` summary can read the units off the table
+# rather than repeat them in a second place that would drift.
+PALETTES = _PALETTES
+PALETTE_NAMES = tuple(_PALETTES)
+
+
+def _palette_unit(quantity, settings: RenderSettings) -> str | None:
+    """The unit this sheet's palette fixes for that dimension, or None."""
+    palette = _PALETTES.get(settings.palette)
+    if not palette:
+        return None
+    try:
+        key = tuple(sorted(quantity.dimensionality.items()))
+    except Exception:
+        return None
+    return palette.get(key)
+
+
 def _unit_family(quantity) -> tuple[str, ...]:
     """The units this dimensionality is shown in, in the system the value is already in.
 
@@ -832,6 +900,20 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     # `_magnitude_text` still applies the tolerance, now to the honest magnitude.
     if not declared and _is_a_dimensionless_ratio(quantity):
         return quantity.to_base_units()
+
+    # A declared palette decides, and it decides before everything below: the zero
+    # tolerance, the family, the band, the shape rule. That is the whole point of it -
+    # `b := 500*mm` on a kN sheet reads `0.50 m` even though `mm` is what was written,
+    # because the sheet said once what its units are and meant it.
+    #
+    # `numeric(b, mm)` still wins, and not by a check here: the five call sites that know
+    # a unit was asked for hand this function a settings with the palette cleared.
+    palette_unit = _palette_unit(quantity, settings)
+    if palette_unit is not None:
+        try:
+            return quantity.to(palette_unit)
+        except DimensionalityError:
+            pass
 
     family = _unit_family(quantity)
 
@@ -1293,6 +1375,19 @@ def _shows_as_stored(result) -> bool:
     return bool(getattr(result, "unit_was_requested", False))
 
 
+def _settings_for(result, settings: RenderSettings) -> RenderSettings:
+    """The settings this result is shown with: the palette yields to a requested unit.
+
+    `numeric(delta, mm)` is the whole answer to the question that decided the palette's
+    shape - the renderer cannot know a length is a deflection, so the engineer says so on
+    the line where it matters. A palette that overruled it would take away the only
+    escape and make itself unusable on the first sheet with a deflection in it.
+    """
+    if _shows_as_stored(result) and settings.palette:
+        return replace(settings, palette="")
+    return settings
+
+
 def _shown_substitutions(result, settings: RenderSettings) -> dict[str, object]:
     """The substituted values, each already converted to the unit it will be shown in.
 
@@ -1649,7 +1744,7 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
     )
     final_latex = _quantity_latex(
         result.quantity,
-        settings=settings,
+        settings=_settings_for(result, settings),
         declared=_shows_as_stored(result),
     )
     lhs = _display_lhs(result)
@@ -1748,7 +1843,7 @@ def _numeric_matrix_evaluation_rows(
                 settings,
             )
         )
-    stages.append(_quantity_matrix_latex(result.quantity_matrix, settings, declared=_shows_as_stored(result)))
+    stages.append(_quantity_matrix_latex(result.quantity_matrix, _settings_for(result, settings), declared=_shows_as_stored(result)))
     return _matrix_stage_rows(_display_lhs(result), stages)
 
 
@@ -2028,7 +2123,7 @@ def _value_row_spacings(
             )
         final_latex = _quantity_latex(
             result.quantity,
-            settings=settings,
+            settings=_settings_for(result, settings),
             declared=_shows_as_stored(result),
         )
         lhs = _display_lhs(result)
@@ -2247,6 +2342,18 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
     ]
     if not physical or fallback is None:
         return fallback
+
+    # The second of the two places a display unit is chosen. A palette that reached only
+    # scalars would leave a frame analysis half converted, its matrices in whatever the
+    # algebra left and its scalars in the declared units.
+    palette_unit = _palette_unit(physical[0], settings)
+    if palette_unit is not None:
+        # A Pint unit, not the table's string: this returns the unit the whole matrix is
+        # printed with, and the printer formats it. The family path returns one too.
+        try:
+            return physical[0].to(palette_unit).units
+        except DimensionalityError:
+            pass
 
     family = _unit_family(physical[0])
     if not family:
@@ -2657,7 +2764,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
                     active_settings,
                 )
             )
-        stages.append(_quantity_matrix_latex(result.quantity_matrix, active_settings, declared=_shows_as_stored(result)))
+        stages.append(_quantity_matrix_latex(result.quantity_matrix, _settings_for(result, active_settings), declared=_shows_as_stored(result)))
         right = " = ".join(stages)
         lhs = _display_lhs(result)
         return rf"{lhs} = {right}" if lhs is not None else right
@@ -2699,7 +2806,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         formula_latex = _latex(result.symbolic_expression)
         final_latex = _quantity_latex(
             result.quantity,
-            settings=active_settings,
+            settings=_settings_for(result, active_settings),
             declared=_shows_as_stored(result),
         )
         chain = [formula_latex]
