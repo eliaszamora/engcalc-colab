@@ -2,10 +2,10 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.29.3**.
+Current version: **0.30.0**.
 
 
-## A declared unit palette
+## v0.30.0 a declared unit palette
 
 `%eng_units kN` fixes one unit per dimension for the whole sheet, whatever the inputs
 were written in:
@@ -1939,6 +1939,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.0** — a declared unit palette. `%eng_units kN` fixes one unit per dimension for the whole sheet, whatever the inputs were written in: `b := 500*mm` reads `0.50 m`, `fc := 250*kgf/cm**2` reads `24.52 MPa`. `%eng_units kgf` does the same in cm, kgf and kgf/cm². It is opt-in — a sheet that declares no palette renders as it always has — and `numeric(delta, mm)` still shows the unit it is asked for, which is the escape for the lengths a renderer cannot recognise as deflections.
 - **0.29.3** — what the page said and the memoria did not, in four corrections all found by rendering a page and reading it: a narrative's mathematics typesets in Colab instead of arriving as `\(A_e = R_e\,L_e\,T\)` in raw text; a 3.95 mm deflection no longer prints `0.00` because the unit the algebra left behind put it under the zero tolerance; a modulus derived on a sheet written in MPa reads `76923.08 MPa` rather than `76.92 GPa`; and a `keep` name survives every formula after it, so an assembled stiffness reads `4 E I_c / L_c` rather than in nodal coordinates.
 - **0.29.2** — a name is a value or a function and never both: `a := 2*m` followed by `a(x) = x` now says so instead of leaving the sheet with two meanings for `a`. Found by a coverage hunt for guards the suite never reaches, which also produced seventy-six contracts over the error messages the engine and parser give back.
 - **0.29.1** — a value whose second decimal is a zero is no longer given extra precision its neighbour does not get: a brace's two direction cosines read `0.80` and `-0.59` rather than `0.804` and `-0.59`.
@@ -1988,4 +1989,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.29.3`.
+Version: `0.30.0`.
