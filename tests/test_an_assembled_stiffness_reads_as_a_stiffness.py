@@ -95,8 +95,13 @@ def test_the_value_is_untouched(cell):
 
 
 def test_a_call_that_is_not_on_the_list_still_stops_the_written_form(cell):
-    """The rule the list is, which must not turn into "every call is fine". `inv` was
-    measured and left off deliberately; this pins that leaving a call off still means
-    what it meant."""
-    final = _last(cell(COLUMN + "K = inv(k)\n"))
+    """The rule the list is, which must not turn into "every call is fine".
+
+    This used `inv` as its example, on the strength of a measurement that said adding
+    `inv` changed nothing. The measurement was true of the frame sheet and false as a
+    general claim, `inv` is on the list now, and the test was pinning an absence that had
+    become a presence - so it names `det`, which is off the list and pure, and the
+    property it is actually about is unchanged.
+    """
+    final = _last(cell(COLUMN + "d = det(k)\n"))
     assert "I_{c}" not in final, final
