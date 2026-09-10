@@ -2,7 +2,49 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.2**.
+Current version: **0.30.3**.
+
+
+## v0.30.3 what a third reference sheet found
+
+Two corrections, both found the same way: by writing a beam memoria — `tools/viga.eng`,
+the third reference sheet — and rendering it. It was written because 36 of the 47 calls
+in the language had never appeared on a rendered page, and it found three defects the
+first time it ran.
+
+**A block Colab renders as HTML carries no LaTeX.** `extrema`, `governing`, `summary`
+and the table cells emitted mathematics with `\(...\)` delimiters, and a
+`display(HTML(...))` output in Colab typesets none of them — not `\(...\)`, not `$...$`,
+not an explicit `MathJax.typeset()`. The reader saw the backslashes:
+
+    Summary
+    \(M_{u}\)          \(183.60\,\mathrm{kN} \cdot \mathrm{m}\)
+
+Those blocks are plain text now, escaped, and a cell needing a power of ten writes
+`3.51 × 10⁻⁸` rather than `3.51 \times 10^{-8}`. The Math rows, where LaTeX is the whole
+point, are untouched.
+
+**One quantity is spelled one way down a page.** Two lines apart, the same memoria said
+
+    Extrema — U1(x)
+    ... value = 183.60 m·kN
+    M_u  =  183.60 kN·m
+
+Pint spells a compound unit in the order it was built, so `meter * kilonewton` and
+`kilonewton * meter` are two *strings* and one *unit*. The family test compared the
+strings, decided the moment was not its family's own, and kept whatever the arithmetic
+had left. It compares units now.
+
+That uncovered two more of the same defect wearing different clothes. A zero kept its
+stored spelling along with its stored scale, so a beam's supports read `0.00 m·kN` under
+a maximum reading `183.60 kN·m`. And a characteristic block shows *computed* values, so
+each coordinate chose the unit that said the most about itself — right for a value
+standing alone, wrong for three points the reader is placing along one beam, where a
+region came out `(763.93 mm, 5.24 m)`. Every coordinate in a block takes one unit now,
+and the domain chooses it, so `governing`, `roots`, `extrema` and `solve` agree with each
+other and with a `table` of the same beam.
+
+A patch release: corrections only.
 
 
 ## v0.30.2 a matrix cell is not smaller than the cell beside it
@@ -1987,6 +2029,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.3** — what a third reference sheet found, in two corrections. A block Colab renders as HTML carries no LaTeX: `extrema`, `governing`, `summary` and the table cells printed `\(M_{u}\)` and `3.51 \times 10^{-8}` as raw text, because a `display(HTML(...))` output in Colab typesets nothing. And one quantity is spelled one way down a page: an extrema block read `183.60 m·kN` two lines from `183.60 kN·m`, because a family test compared unit *strings* where Pint spells `meter * kilonewton` and `kilonewton * meter` differently for the same unit. Every coordinate in a characteristic block now takes one unit, chosen by its domain.
 - **0.30.2** — a matrix cell is not smaller than the cell beside it. A `matrix` environment typesets in text style, where a fraction shrinks and a plain zero does not, so `[4EI_c/L_c, 0; 0, 4EI_c/L_c]` printed two sizes inside one bracket. Every cell is in display style now. Reported from the first end-to-end run of a memoria in Colab.
 - **0.30.1** — what a visual audit found, in three corrections none of which the suite could see: an inverse keeps the names its formula was written with, so a static condensation reads `-3 s_c / (2 L_c)` rather than in nodal coordinates; a 1×1 matrix reads as the number it holds, so a lateral stiffness is `70303.22 kN/m` and not `[70303.22] kN/m`; and `%eng_units` no longer announces its successes with the prefix reserved for failures.
 - **0.30.0** — a declared unit palette. `%eng_units kN` fixes one unit per dimension for the whole sheet, whatever the inputs were written in: `b := 500*mm` reads `0.50 m`, `fc := 250*kgf/cm**2` reads `24.52 MPa`. `%eng_units kgf` does the same in cm, kgf and kgf/cm². It is opt-in — a sheet that declares no palette renders as it always has — and `numeric(delta, mm)` still shows the unit it is asked for, which is the escape for the lengths a renderer cannot recognise as deflections.
@@ -2039,4 +2082,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.30.2`.
+Version: `0.30.3`.
