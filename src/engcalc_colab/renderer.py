@@ -12,6 +12,7 @@ from sympy.printing.latex import LatexPrinter
 from pint.errors import DimensionalityError
 
 from .matrix_numeric import QuantityMatrix
+from .unit_text import unit_text
 from .models import (
     AssumptionResult,
     CharacteristicInterval,
@@ -2386,9 +2387,13 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
 
 
 def _table_unit_text(unit) -> str:
-    if str(unit) == "dimensionless":
-        return ""
-    return format(unit, "~P")
+    """A unit as the page writes it, through the one module that decides that.
+
+    Kept as a name here because a dozen call sites in this file read as `_table_unit_text`
+    and the concept is the table's: the unit chosen once, printed as text. See
+    ``unit_text``.
+    """
+    return unit_text(unit)
 
 
 def _table_header(label: str, unit) -> str:

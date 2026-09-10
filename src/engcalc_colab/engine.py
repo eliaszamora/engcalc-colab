@@ -86,6 +86,7 @@ from .matrix_solve import solve_linear_system
 from .numeric import _UNIT_ALIASES, NumericContext
 from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
 from .tables import normalize_explicit_points, normalize_uniform_points
+from .unit_text import normalise
 
 
 _SCALAR_SYMBOLIC_FUNCTIONS = {
@@ -3020,7 +3021,7 @@ class _Evaluator(ast.NodeVisitor):
         value = f"{magnitude:g}"
         if quantity.dimensionless:
             return value
-        return f"{value} {quantity.units:~P}"
+        return normalise(f"{value} {quantity.units:~P}")
 
     @staticmethod
     def _require_user_function_arity(name: str, function: UserFunction, args: list) -> None:

@@ -10,6 +10,8 @@ from typing import Any
 import sympy as sp
 from pint import UnitRegistry
 from pint.errors import DimensionalityError, PintError
+
+from .unit_text import normalise
 from sympy.polys.polyerrors import PolynomialError
 
 from .errors import EngEvaluationError, diagnostic_hint
@@ -532,7 +534,9 @@ class NumericContext:
                 rel_tol=1e-12,
                 abs_tol=1e-12,
             ):
-                unit = f" {right.units:~P}" if not right.dimensionless else ""
+                unit = (
+                    normalise(f" {right.units:~P}") if not right.dimensionless else ""
+                )
                 raise EngEvaluationError(
                     "derivative is undefined at explicit Piecewise breakpoint "
                     f"{variable} = {float(right.magnitude):g}{unit}"
