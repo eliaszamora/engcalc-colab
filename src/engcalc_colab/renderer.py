@@ -993,6 +993,18 @@ def _scientific_latex(magnitude: float, precision: int) -> str:
     return rf"{mantissa:.{precision}f} \times 10^{{{exponent}}}"
 
 
+# The same power of ten for a place LaTeX cannot reach. Colab does not typeset anything
+# inside an HTML output, so a table cell that received `3.51 \times 10^{-8}` showed the
+# backslash to the reader.
+_SUPERSCRIPTS = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
+
+
+def _scientific_text(magnitude: float, precision: int) -> str:
+    exponent = int(math.floor(math.log10(abs(magnitude))))
+    mantissa = magnitude / (10.0**exponent)
+    return f"{mantissa:.{precision}f}×10{str(exponent).translate(_SUPERSCRIPTS)}"
+
+
 # Above this, a fixed-decimal render stops being readable: `I_z := 80e6*mm**4` printed
 # as `80000000.00`, eight zeros nobody writes or counts. The ceiling is a million rather
 # than a hundred thousand because a steel modulus is written `200000 MPa`, and rendering
@@ -1000,8 +1012,15 @@ def _scientific_latex(magnitude: float, precision: int) -> str:
 _FIXED_DECIMAL_CEILING = 1e6
 
 
-def _magnitude_text(magnitude, settings: RenderSettings) -> str:
-    """Format one magnitude, in scientific notation outside the readable band.
+def _magnitude_text(magnitude, settings: RenderSettings, *, scientific=None) -> str:
+    r"""Format one magnitude, in scientific notation outside the readable band.
+
+    `scientific` is the notation the power of ten is written in, and it exists so this
+    decision has one implementation rather than two. LaTeX by default; an HTML block -
+    a table cell, a summary row - passes `_scientific_text`, because Colab typesets
+    nothing inside an HTML output and `3.51 \times 10^{-8}` reached the reader with its
+    backslash. Everything above the escape is shared, which is the point: the rules
+    below were hard to get right and a second copy of them would drift.
 
     Only values above ``zero_tolerance`` are owed a readable form; below it a value
     is a genuine zero by an existing approved contract and still renders as zero.
@@ -1033,7 +1052,7 @@ def _magnitude_text(magnitude, settings: RenderSettings) -> str:
     if magnitude == 0.0 or abs(magnitude) < settings.zero_tolerance:
         return f"{0.0:.{settings.precision}f}"
     if abs(magnitude) >= _FIXED_DECIMAL_CEILING:
-        return _scientific_latex(magnitude, settings.precision)
+        return (scientific or _scientific_latex)(magnitude, settings.precision)
     text = f"{magnitude:.{_decimals_for(magnitude, settings)}f}"
     # Leading zeros only. A trailing zero here was printed on purpose and is a figure:
     # `0.0300` shows three, and counting it as one sent a 0.0300394 s period back to
@@ -1042,11 +1061,11 @@ def _magnitude_text(magnitude, settings: RenderSettings) -> str:
     # a trailing zero genuinely carries nothing.
     shown = len(text.replace(".", "").replace("-", "").lstrip("0"))
     if shown == 0:
-        return _scientific_latex(magnitude, settings.precision)
+        return (scientific or _scientific_latex)(magnitude, settings.precision)
     if _is_reduced(magnitude, settings) and shown < settings.figures:
         tolerance = abs(magnitude) * 10.0 ** (-settings.figures)
         if abs(float(text) - magnitude) > tolerance:
-            return _scientific_latex(magnitude, settings.precision)
+            return (scientific or _scientific_latex)(magnitude, settings.precision)
     return text
 
 
@@ -2367,9 +2386,15 @@ def _in_unit(quantity, unit, settings: RenderSettings):
 
 
 def _table_magnitude(quantity, settings: RenderSettings) -> str:
-    """A table column carries its unit in the header, so the unit is chosen once
-    for the column and this only formats. See ``_aggregate_unit``."""
-    return _magnitude_text(quantity.magnitude, settings)
+    r"""A table column carries its unit in the header, so the unit is chosen once
+    for the column and this only formats. See ``_aggregate_unit``.
+
+    `_scientific_text`, because a table is an HTML output and Colab typesets nothing
+    inside one: a cell that needed a power of ten showed `3.51 \times 10^{-8}` with its
+    backslash. The column headers already read as plain text; this makes the cells
+    agree with them.
+    """
+    return _magnitude_text(quantity.magnitude, settings, scientific=_scientific_text)
 
 
 def _aggregate_unit(quantities, settings: RenderSettings, fallback):
@@ -2514,16 +2539,70 @@ def _characteristic_role_text(role: str) -> str:
     return role.replace("_", " ")
 
 
-def _characteristic_math(latex: str) -> str:
-    return rf"\({latex}\)"
+def _characteristic_math(text: str) -> str:
+    r"""One piece of mathematics inside a characteristic block, as text.
+
+    It used to be `rf"\({latex}\)"`, and every characteristic block funnels through here -
+    `governing`, `extrema`, `roots`, `intersections`, `summary`. They are HTML outputs,
+    and #120 measured that Colab typesets nothing inside one, so the reader saw
+
+        Summary
+        \(M_{u}\)          \(183.60\,\mathrm{kN} \cdot \mathrm{m}\)
+
+    Escaped, because this is still HTML and plain text is not the same as unescaped text.
+    Losing that while removing a delimiter would trade a rendering defect for an
+    injection, which is the trade #120 nearly made in the other direction.
+    """
+    return escape(text)
 
 
-def _characteristic_quantity_math(quantity, settings: RenderSettings) -> str:
-    return _characteristic_math(_quantity_latex(quantity, settings=settings))
+def _characteristic_quantity_math(
+    quantity, settings: RenderSettings, *, declared: bool = True
+) -> str:
+    """A quantity as `183.60 kN·m`, the way the table's own headers already read.
+
+    `declared` is the same word it is everywhere else, and it has to be passed through
+    rather than assumed: a summary row shows a *computed* value and so chooses the unit
+    of its dimension, which is why `report(d)` on `L/300` reads `20.00 mm` there and not
+    `0.02 m`. The first draft of this function formatted the stored quantity directly and
+    put the metres back - caught by the contract that release left behind, which is what
+    it was left for.
+    """
+    quantity = _display_quantity(quantity, settings, declared=declared)
+    magnitude = _magnitude_text(
+        quantity.magnitude, settings, scientific=_scientific_text
+    )
+    unit_text = _table_unit_text(quantity.units)
+    # The escape is inert today and kept deliberately, which is a different thing from
+    # the unreachable branches section 6 says to remove. A magnitude is digits and a unit
+    # name comes from Pint: all 1090 units in the registry were checked and none renders
+    # a `<`, `>` or `&`. Nothing here can inject - until a unit is named that can, and
+    # then this is the line that stops it. Mutation calls it inert; the registry says it
+    # is load-bearing the moment that changes.
+    return escape(f"{magnitude} {unit_text}".strip())
 
 
 def _characteristic_symbolic_math(value) -> str:
-    return _characteristic_math(_latex(value))
+    """An exact expression as one line of text: `L/2`, `x`, `L**2*(0.15*qD + 0.2*qL)`.
+
+    Two printers, and the line that divides them is measured rather than chosen: SymPy's
+    `pretty` gives a bare symbol its Greek letter and its subscript - `delta` becomes `δ`,
+    `theta_1` becomes `θ₁`, `w_n` becomes `wₙ`, and it falls back to `A_c` where Unicode
+    has no subscript - but it draws anything with a fraction or a power over two or three
+    lines of box characters, which inside a table cell is worse than the LaTeX it
+    replaces. A symbol is always one line; an expression is not.
+    """
+    if isinstance(value, sp.Symbol):
+        return escape(sp.pretty(value, use_unicode=True))
+    return escape(sp.sstr(value))
+
+
+def _characteristic_name(name: str) -> str:
+    """A reported name, with the letter an engineer wrote: `delta` reads `δ`."""
+    try:
+        return _characteristic_symbolic_math(sp.Symbol(name))
+    except Exception:
+        return escape(name)
 
 
 def _characteristic_point_coordinate(
@@ -2567,9 +2646,10 @@ def _characteristic_interval_text(
 ) -> str:
     left = "[" if interval.lower_closed else "("
     right = "]" if interval.upper_closed else ")"
-    lower = _quantity_latex(interval.lower_quantity, settings=settings)
-    upper = _quantity_latex(interval.upper_quantity, settings=settings)
-    return _characteristic_math(rf"{left}{lower},\;{upper}{right}")
+    lower = _characteristic_quantity_math(interval.lower_quantity, settings)
+    upper = _characteristic_quantity_math(interval.upper_quantity, settings)
+    # Already escaped by the helper, so this assembles rather than escaping again.
+    return f"{left}{lower}, {upper}{right}"
 
 
 def _characteristic_heading(result: CharacteristicResult) -> str:
@@ -2745,8 +2825,8 @@ def render_summary_result(
     # quantity. The name was plain text for the same reason - nobody checked the two
     # against each other, because nobody had seen them side by side.
     rows = "".join(
-        f"<tr><td>{_characteristic_math(_render_lhs(name, None))}</td>"
-        f"<td>{_characteristic_math(_quantity_latex(quantity, settings=active_settings, declared=False))}</td></tr>"
+        f"<tr><td>{_characteristic_name(name)}</td>"
+        f"<td>{_characteristic_quantity_math(quantity, active_settings, declared=False)}</td></tr>"
         for name, quantity in result.entries
     )
     return (
