@@ -108,22 +108,25 @@ class _EngineeringLatexPrinter(LatexPrinter):
         self.render_settings = render_settings or _DEFAULT_RENDER_SETTINGS
 
     def _print_MatrixBase(self, expr):
-        """A 1x1 is the number it holds. Every other shape prints as a matrix.
+        """Print a matrix the way this renderer builds every other one.
 
-        A static condensation stays 1x1 all the way down - `K_dd + K_id^T C` is a 1x1
-        plus a 1x1 - so the frame memoria's answer read `[70303.22] kN/m`, and its author
-        wrote `keep k_e = k_eq[1, 1]` on the next line to get at the number. MATLAB and
-        Mathcad both print a 1x1 as a scalar, and so does anyone writing the line by
-        hand.
+        Overridden so the symbolic stages go through `_matrix_from_cells_latex` rather
+        than SymPy's own matrix printer, which puts every rule about how a matrix reads
+        in one place: the 1x1 that is really a number, and the display style each cell
+        needs. `_NumericSubstitutionLatexPrinter` inherits this, so the definition and the
+        substitution are covered together.
 
-        Here rather than at each call site because `_NumericSubstitutionLatexPrinter`
-        inherits it, which covers the definition and the substitution in one place. The
-        third stage - a matrix of already-rendered quantity cells - is assembled by
-        `_matrix_from_cells_latex` and carries the same rule.
+        It held its own copy of the 1x1 rule at first. A mutant that disabled it passed
+        the whole suite, because the shared builder decides the same thing one call later
+        - the copy could not be made to fire, which is section 6 of
+        HOW-THIS-WORK-GOES-WRONG.md, and it is gone.
         """
-        if expr.shape == (1, 1):
-            return self._print(expr[0, 0])
-        return super()._print_MatrixBase(expr)
+        return _matrix_from_cells_latex(
+            [
+                [self._print(expr[row, col]) for col in range(expr.cols)]
+                for row in range(expr.rows)
+            ]
+        )
 
     def _print_Float(self, expr):
         r"""Shorten a number that is longer than the page's precision. Never reshape one.
@@ -1085,7 +1088,25 @@ def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
     # answer is worse than one that brackets both.
     if len(rows) == 1 and len(rows[0]) == 1:
         return rows[0][0]
-    body = r"\\".join(" & ".join(row) for row in rows)
+
+    # Every cell in display style, because a `matrix` environment typesets in *text*
+    # style and a `\frac` shrinks there while the plain `0` beside it does not - so the
+    # two sizes end up inside one bracket. The engineer ran the memoria in Colab and this
+    # was the only thing he did not like about it.
+    #
+    # `\displaystyle` rather than `\dfrac`: it levels every construct that shrinks in
+    # text style, sums and integrals included, and needs no interception of what SymPy
+    # emits. Both matrix builders funnel here so the symbolic and numeric stages cannot
+    # disagree.
+    #
+    # It costs width, and the wide matrices on this page were already a finding he chose
+    # to live with, so it was measured per block before it was written: the condensation
+    # and the transformation matrices do not get wider at all - their width is set by a
+    # substitution row and the taller fractions fit inside it - and only the assembly
+    # grows, 1224 px to 1696, which was past the notebook's output width either way.
+    body = r"\\".join(
+        " & ".join(rf"\displaystyle {cell}" for cell in row) for row in rows
+    )
     return rf"\left[\begin{{matrix}}{body}\end{{matrix}}\right]"
 
 

@@ -35,8 +35,11 @@ def test_symbolic_matrix_rendering_is_native_mathjax_in_direct_and_aligned_paths
 
     _matrix_markers(direct)
     _matrix_markers(aligned)
-    assert "a & b" in direct
-    assert "c & d" in direct
+    # Cells carry `\displaystyle` since a `matrix` environment typesets in text style,
+    # where a fraction shrinks beside a plain zero. What this asserts is the separator,
+    # so it is matched around the prefix rather than without it.
+    assert r"a & \displaystyle b" in direct
+    assert r"c & \displaystyle d" in direct
     assert r"\\" in direct
     assert r"\begin{array}{lcl}" in aligned
 
@@ -48,8 +51,8 @@ def test_row_and_column_vectors_keep_their_orientation():
 
     _matrix_markers(row)
     _matrix_markers(column)
-    assert "a & b & c" in row
-    assert r"a\\b\\c" in column
+    assert r"a & \displaystyle b & \displaystyle c" in row
+    assert r"a\\\displaystyle b\\\displaystyle c" in column
 
 
 def test_homogeneous_quantity_matrix_uses_one_common_unit_and_bare_cells():
