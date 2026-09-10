@@ -749,10 +749,13 @@ def _unit_is_the_engineers(quantity, settings: RenderSettings) -> bool:
     reason recorded in `HOW-THIS-WORK-GOES-WRONG.md` section 6.
     """
     family = _unit_family(quantity)
-    own = str(quantity.units)
+    # Units rather than their spellings, for the reason `_display_quantity` gives at its
+    # own copy of this question: `meter * kilonewton` and `kilonewton * meter` are one
+    # unit written two ways, and only the string comparison disagreed.
+    own = quantity.units
     for name in family:
         try:
-            if str(quantity.to(name).units) == own:
+            if quantity.to(name).units == own:
                 return False
         except DimensionalityError:
             continue
@@ -958,13 +961,40 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     # member - metres are the family's own unit, so the family chooses - which left every
     # zero anyone would actually write resting on `declared` alone, and `numeric(gap)`
     # reaches this with `declared` False.
-    own_is_family_member = any(
-        str(quantity.to(name).units) == str(quantity.units) for name in family
-    )
+    # Units, not their spellings. Pint writes a compound unit in the order it was built,
+    # so a moment that came out of the arithmetic as `meter * kilonewton` is a different
+    # *string* from `kilonewton * meter` and the same *unit* - `a.units == b.units` is
+    # True. Comparing the strings said "not a family member", the value fell through to
+    # the factor-shape rule, and one page carried `183.60 m·kN` in an extrema block two
+    # lines from `183.60 kN·m` in its own working.
+    #
+    # Nothing wrote `m·kN`; it is an accident of which evaluator multiplied first, and
+    # #104's rule about keeping the order a unit was *written* in was never about that.
+    # And the family's own spelling of it, not the value's. `_best_in_family` is handed
+    # this as its starting candidate and a band tie keeps the first one, so passing the
+    # quantity as it arrived kept `m·kN` even once the comparison above recognised it.
+    def _as_family_member(quantity):
+        for name in family:
+            try:
+                converted = quantity.to(name)
+            except DimensionalityError:
+                continue
+            if converted.units == quantity.units:
+                return converted
+        return None
+
+    canonical = _as_family_member(quantity)
+    own_is_family_member = canonical is not None
     if abs(magnitude) < settings.zero_tolerance and (
         declared or own_is_family_member or _unit_is_the_engineers(quantity, settings)
     ):
-        return quantity
+        # In the family's spelling, when the family is what recognised it. This return
+        # is about *scale* - an approved zero must not be rescaled out of the band - and
+        # a spelling is not a scale: `canonical` is the same magnitude in the same unit,
+        # written the way the rest of the page writes it. The extrema block of a beam
+        # names three points and two of them are the zero-moment supports, so leaving
+        # this arm out fixed `183.60 kN·m` and left `0.00 m·kN` on the same six lines.
+        return quantity if declared or not own_is_family_member else canonical
 
     if not family:
         return quantity
@@ -979,7 +1009,7 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
 
     # `own_is_family_member` is computed once, above the zero-tolerance return that now
     # also needs it.
-    start = quantity if own_is_family_member and own_figures > 0 else None
+    start = canonical if own_is_family_member and own_figures > 0 else None
     return _best_in_family(quantity, family, settings, start=start)
 
 
@@ -2557,18 +2587,29 @@ def _characteristic_math(text: str) -> str:
 
 
 def _characteristic_quantity_math(
-    quantity, settings: RenderSettings, *, declared: bool = True
+    quantity, settings: RenderSettings, *, declared: bool = False, unit=None
 ) -> str:
     """A quantity as `183.60 kN·m`, the way the table's own headers already read.
 
-    `declared` is the same word it is everywhere else, and it has to be passed through
-    rather than assumed: a summary row shows a *computed* value and so chooses the unit
-    of its dimension, which is why `report(d)` on `L/300` reads `20.00 mm` there and not
-    `0.02 m`. The first draft of this function formatted the stored quantity directly and
-    put the metres back - caught by the contract that release left behind, which is what
-    it was left for.
+    `declared` is the same word it is everywhere else, and it defaults to False because
+    everything a characteristic block shows is *computed*: an extremum, a crossing, a
+    reported value. Nobody wrote a unit on it, so the family chooses one, which is why
+    `report(d)` on `L/300` reads `20.00 mm` and not `0.02 m`.
+
+    It defaulted to True at first, matching the call it replaced, and that kept whatever
+    spelling the arithmetic left behind: an extrema block read `183.60 m·kN` two lines
+    from `183.60 kN·m` in its own working. "Keep it as stored" is the right answer for a
+    unit an author wrote and the wrong one for a unit nobody did.
+
+    `unit` is the table's arrangement - the unit chosen once for a set, and this only
+    formats - for the callers that place several coordinates of one variable along one
+    block, where each choosing for itself is precisely wrong. See
+    ``_characteristic_domain_unit``.
     """
-    quantity = _display_quantity(quantity, settings, declared=declared)
+    if unit is not None:
+        quantity = _in_unit(quantity, unit, settings)
+    else:
+        quantity = _display_quantity(quantity, settings, declared=declared)
     magnitude = _magnitude_text(
         quantity.magnitude, settings, scientific=_scientific_text
     )
@@ -2609,16 +2650,24 @@ def _characteristic_point_coordinate(
     point: CharacteristicPoint,
     variable: str,
     settings: RenderSettings,
+    unit=None,
 ) -> str:
+    """A point's coordinate, in the block's domain unit.
+
+    Not its own: a beam with a root at 0.3 m printed `Domain: 0.00 m to 6.00 m` and then
+    `x = 0.3*m (300.00 mm)` two lines under `x = L (6.00 m)`. Three coordinates of one
+    variable, on one block, in two units - and the reader has to convert before they can
+    tell which root is where.
+    """
     variable_html = _characteristic_symbolic_math(sp.Symbol(variable))
     if point.provenance == "numeric":
         return (
             f"{variable_html} ≈ "
-            f"{_characteristic_quantity_math(point.x_quantity, settings)}"
+            f"{_characteristic_quantity_math(point.x_quantity, settings, unit=unit)}"
         )
 
     symbolic = _characteristic_symbolic_math(point.x_symbolic)
-    evaluated = _characteristic_quantity_math(point.x_quantity, settings)
+    evaluated = _characteristic_quantity_math(point.x_quantity, settings, unit=unit)
     return f"{variable_html} = {symbolic} ({evaluated})"
 
 
@@ -2640,14 +2689,41 @@ def _characteristic_point_value(
     return f"value = {symbolic} ({evaluated})"
 
 
+def _characteristic_domain_unit(lower, upper, settings: RenderSettings):
+    """The unit every coordinate in one characteristic block is shown in.
+
+    A lone computed quantity should choose the unit that says the most about itself;
+    the two ends of a span must not, because the reader subtracts them by eye. `0.76 m
+    to 5.24 m` came out `(763.93 mm, 5.24 m)` the moment each end was allowed to choose
+    - both correct, and the width of the region no longer visible.
+
+    *Which* unit is the second half of the question, and the answer is the domain's,
+    not the interior points'. `InequalityResult` says it in its own docstring: the
+    domain "is where the variable gets its unit". Scoring the interior points too was
+    measured first and was wrong in a way worth recording - a boundary at 0.326 m on a
+    six-metre beam pulled the whole block into millimetres and printed `6000.00 mm`,
+    while `table(...)` of that same beam headed its column `x [m]`. One page, one
+    variable, two units: the defect this file is fixing, one level up.
+
+    The domain is two numbers an engineer wrote, `0` and `L`, so `_aggregate_unit`
+    reaches the same answer here as it does for the table column that spans them - and
+    a declared palette still decides, because that is the first thing it checks.
+    """
+    bounds = [quantity for quantity in (lower, upper) if quantity is not None]
+    if not bounds:
+        return None
+    return _aggregate_unit(bounds, settings, getattr(bounds[0], "units", None))
+
+
 def _characteristic_interval_text(
     interval: CharacteristicInterval,
     settings: RenderSettings,
+    unit=None,
 ) -> str:
     left = "[" if interval.lower_closed else "("
     right = "]" if interval.upper_closed else ")"
-    lower = _characteristic_quantity_math(interval.lower_quantity, settings)
-    upper = _characteristic_quantity_math(interval.upper_quantity, settings)
+    lower = _characteristic_quantity_math(interval.lower_quantity, settings, unit=unit)
+    upper = _characteristic_quantity_math(interval.upper_quantity, settings, unit=unit)
     # Already escaped by the helper, so this assembles rather than escaping again.
     return f"{left}{lower}, {upper}{right}"
 
@@ -2672,10 +2748,17 @@ def render_characteristic_result(
 ) -> str:
     """Render one standalone exact-characteristic result as compact HTML/MathJax."""
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    domain_unit = _characteristic_domain_unit(
+        result.lower_quantity, result.upper_quantity, active_settings
+    )
     domain = (
-        _characteristic_quantity_math(result.lower_quantity, active_settings)
+        _characteristic_quantity_math(
+            result.lower_quantity, active_settings, unit=domain_unit
+        )
         + " to "
-        + _characteristic_quantity_math(result.upper_quantity, active_settings)
+        + _characteristic_quantity_math(
+            result.upper_quantity, active_settings, unit=domain_unit
+        )
     )
 
     rows: list[str] = []
@@ -2685,6 +2768,7 @@ def render_characteristic_result(
                 point,
                 result.variable,
                 active_settings,
+                domain_unit,
             )
         ]
         value_text = _characteristic_point_value(point, active_settings)
@@ -2699,7 +2783,9 @@ def render_characteristic_result(
         rows.append("<div class=\"engcalc-characteristic-row\">" + " · ".join(parts) + "</div>")
 
     for interval in result.intervals:
-        interval_text = _characteristic_interval_text(interval, active_settings)
+        interval_text = _characteristic_interval_text(
+            interval, active_settings, domain_unit
+        )
         if isinstance(result, InequalityResult) or interval.role == "satisfies":
             text = f"{escape(result.variable)} in {interval_text}"
         elif isinstance(result, RootsResult) or interval.role == "roots":
@@ -2789,12 +2875,24 @@ def render_governing_result(
     intervals, and it is read as one.
     """
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
+    # The domain, which the rows partition. `GoverningResult` does not carry it as a
+    # field because its intervals cover it by construction - the model refuses a
+    # governing result that does not.
+    span_unit = _characteristic_domain_unit(
+        result.intervals[0].lower_quantity,
+        result.intervals[-1].upper_quantity,
+        active_settings,
+    )
     rows: list[str] = []
     for interval in result.intervals:
         span = (
-            _characteristic_quantity_math(interval.lower_quantity, active_settings)
+            _characteristic_quantity_math(
+                interval.lower_quantity, active_settings, unit=span_unit
+            )
             + " to "
-            + _characteristic_quantity_math(interval.upper_quantity, active_settings)
+            + _characteristic_quantity_math(
+                interval.upper_quantity, active_settings, unit=span_unit
+            )
         )
         rows.append(
             f"<tr><td>{span}</td><td>{escape(interval.label)}</td></tr>"
