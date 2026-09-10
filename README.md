@@ -2,7 +2,30 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.1**.
+Current version: **0.30.2**.
+
+
+## v0.30.2 a matrix cell is not smaller than the cell beside it
+
+The first end-to-end run of a memoria in Colab, by the engineer it is for, and the one
+thing he did not like about it:
+
+    K_ii  =  [ 4EI_c/L_c        0      ]      the fraction small, the zero full size
+             [     0        4EI_c/L_c  ]
+
+Not a defect anybody wrote. A `matrix` environment typesets its cells in *text* style,
+where a fraction is drawn smaller than in display style, and a cell with no fraction is
+unaffected — so the two sizes end up inside one bracket. Every cell is in display style
+now, which levels sums and integrals along with fractions.
+
+It costs width, and the wide matrices on this page were already a finding he had looked
+at and chosen to live with, so it was measured per block first: the condensation and the
+transformation matrices do not get wider at all, because their width is already set by a
+substitution row. Only the assembly grows, and it was past the notebook's output width
+either way.
+
+Both matrix builders funnel through one place now, so every rule about how a matrix
+reads — the 1×1 that is really a number, the size of each cell — lives together.
 
 
 ## v0.30.1 what a visual audit found
@@ -1964,6 +1987,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.2** — a matrix cell is not smaller than the cell beside it. A `matrix` environment typesets in text style, where a fraction shrinks and a plain zero does not, so `[4EI_c/L_c, 0; 0, 4EI_c/L_c]` printed two sizes inside one bracket. Every cell is in display style now. Reported from the first end-to-end run of a memoria in Colab.
 - **0.30.1** — what a visual audit found, in three corrections none of which the suite could see: an inverse keeps the names its formula was written with, so a static condensation reads `-3 s_c / (2 L_c)` rather than in nodal coordinates; a 1×1 matrix reads as the number it holds, so a lateral stiffness is `70303.22 kN/m` and not `[70303.22] kN/m`; and `%eng_units` no longer announces its successes with the prefix reserved for failures.
 - **0.30.0** — a declared unit palette. `%eng_units kN` fixes one unit per dimension for the whole sheet, whatever the inputs were written in: `b := 500*mm` reads `0.50 m`, `fc := 250*kgf/cm**2` reads `24.52 MPa`. `%eng_units kgf` does the same in cm, kgf and kgf/cm². It is opt-in — a sheet that declares no palette renders as it always has — and `numeric(delta, mm)` still shows the unit it is asked for, which is the escape for the lengths a renderer cannot recognise as deflections.
 - **0.29.3** — what the page said and the memoria did not, in four corrections all found by rendering a page and reading it: a narrative's mathematics typesets in Colab instead of arriving as `\(A_e = R_e\,L_e\,T\)` in raw text; a 3.95 mm deflection no longer prints `0.00` because the unit the algebra left behind put it under the zero tolerance; a modulus derived on a sheet written in MPa reads `76923.08 MPa` rather than `76.92 GPa`; and a `keep` name survives every formula after it, so an assembled stiffness reads `4 E I_c / L_c` rather than in nodal coordinates.
@@ -2015,4 +2039,4 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
-Version: `0.30.1`.
+Version: `0.30.2`.
