@@ -88,10 +88,17 @@ def test_the_summary_renders_a_row_per_entry():
     engine = EngineeringEngine()
     html = renderer.render_result(run_cell(engine, _MEMORIA)[-1])
     assert html.count("<tr>") == 2
-    # As mathematics, matching the working above rather than as the literal source text.
-    # A memoria that writes M_max one way in the derivation and another in the summary
-    # reads like two different quantities.
-    assert r"\(M_{max}\)" in html and r"\(R_{A}\)" in html
+    # The names the working used, so the reader is not asked to match up two spellings.
+    # This asserted `\(M_{max}\)` until the engineer ran a memoria in Colab and found the
+    # summary printing those delimiters verbatim: a `display(HTML(...))` output typesets
+    # nothing there. The names are plain text now, so `M_max` loses its subscript against
+    # the typeset working - which is the accepted cost of the only route that renders at
+    # all, and a great deal better than showing the reader a backslash.
+    # `Mₘₐₓ` and `R_A`: SymPy's own pretty printer gives a symbol its subscript where
+    # Unicode has one and leaves the underscore where it does not, which is why these two
+    # names read differently from each other.
+    assert "Mₘₐₓ" in html and "R_A" in html
+    assert r"\(" not in html
     assert not [char for char in html if ord(char) < 32]
 
 

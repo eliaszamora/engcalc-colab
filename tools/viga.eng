@@ -1,0 +1,107 @@
+## Viga simplemente apoyada con combinaciones de carga
+
+"""
+Una viga de hormigón armado de un vano, con carga permanente distribuida, sobrecarga
+distribuida y una sobrecarga puntual de montaje al centro. El objetivo es la envolvente
+de momentos de diseño, qué combinación gobierna en cada tramo, y la verificación de
+flecha bajo carga de servicio.
+
+Esta hoja existe para ejercitar lo que la memoria del pórtico no toca: casos de carga,
+combinaciones, envolvente, intervalos gobernantes y tablas.
+"""
+
+### Geometría y materiales
+
+L := 6.00*m
+b := 300*mm
+h := 600*mm
+rec := 40*mm
+
+fc := 250*kgf/cm**2
+E := 23500*MPa
+
+keep d = h - rec
+keep I = b*h^3/12
+
+numeric(d)
+numeric(I)
+
+### Cargas
+
+"""
+La permanente incluye el peso propio. La sobrecarga distribuida es de uso, y la puntual
+representa un equipo de montaje que puede situarse en cualquier punto del vano; aquí se
+la evalúa al centro, que es su posición más desfavorable para momento.
+"""
+
+qD := 18*kN/m
+qL := 12*kN/m
+P := 40*kN
+
+### Casos de carga
+
+"""
+Cada caso es el momento flector que produce esa carga, escrito como función de la
+coordenada del vano. Una carga distribuida da la parábola $M = q x (L - x) / 2$ y la
+puntual al centro da los dos tramos rectos $M = P x / 2$ hasta el centro.
+"""
+
+M_D(x) = qD*x*(L - x)/2
+M_L(x) = qL*x*(L - x)/2
+M_P(x) = P*x/2
+
+case D = M_D(x)
+case Lv = M_L(x)
+case Mo = M_P(x)
+
+### Combinaciones
+
+"""
+Las dos combinaciones mayoradas del código, escritas con sus factores para que un
+revisor pueda contrastarlas contra la norma sin rehacer la aritmética.
+"""
+
+combo U1 = 1.2*D + 1.6*Lv
+combo U2 = 1.2*D + 1.6*Mo
+
+### Qué combinación gobierna
+
+governing(U1(x), U2(x), x, 0, L)
+
+### Envolvente
+
+envelope(U1(x), U2(x), x, 0, L)
+
+### La tabla de momentos
+
+"""
+Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del otro.
+"""
+
+table(U1(x), U2(x), x, 0, L, 11)
+
+### Momento máximo de diseño
+
+extrema(U1(x), x, 0, L)
+
+keep M_u = U1(L/2)
+report(M_u)
+
+### Flecha bajo servicio
+
+"""
+La flecha se verifica con la carga de servicio sin mayorar, y el límite habitual es
+$L/300$ para el vano completo.
+"""
+
+keep q_s = qD + qL
+keep delta = 5*q_s*L^4/(384*E*I)
+keep delta_adm = L/300
+
+report(delta)
+report(delta_adm)
+
+numeric(delta)
+numeric(delta_adm)
+
+summary()
