@@ -3238,7 +3238,31 @@ def _agrees_with(written, value, expansions: dict | None = None) -> bool:
                 return difference.applyfunc(sp.cancel).is_zero_matrix is True
             except Exception:
                 return False
-        return difference == 0
+        if difference == 0:
+            return True
+
+        # The same argument the matrix branch above makes, on the branch it was never
+        # extended to. `difference == 0` is a *structural* test, and a coefficient is
+        # exactly what breaks the structure: SymPy distributes a Number over an Add as it
+        # builds, so `5*q_s` evaluates to `5*qD + 5*qL` while the written form still says
+        # `5*q_s`, and the two shapes of one value do not subtract to a literal zero.
+        #
+        #     60*(qD + qL)/(b*h³) - (60*qD + 60*qL)/(b*h³)  ==  0   ->  False
+        #
+        # `keep` exists to stop precisely that, and it was failing on the most ordinary
+        # formula in the trade: a memoria wrote `5*q_s*L^4/(384*E*I)` and the page printed
+        # `L⁴(5 qD + 5 qL)/(32 b h³ E)`. Every deflection leads with a coefficient.
+        #
+        # `cancel` rather than `simplify`, for the reason recorded above: it normalises a
+        # rational function instead of searching, and this file measured `simplify` at
+        # ~33 ms a definition while failing three of seven real formulas. Only on the
+        # branch that was about to answer "no", so a formula that already verified pays
+        # nothing - and a written form that is genuinely wrong still cancels to something
+        # non-zero, which is what keeps this a verification rather than a rubber stamp.
+        try:
+            return sp.cancel(difference) == 0
+        except Exception:
+            return False
     except Exception:
         return False
 
