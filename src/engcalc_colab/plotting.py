@@ -8,6 +8,7 @@ import sympy as sp
 from typing import Any
 
 from .models import PlotResult, PlotSeries
+from .unit_text import PRODUCT_DOT, normalise, unit_text
 
 
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
@@ -30,17 +31,30 @@ def _is_moment_plot(label: str) -> bool:
 
 
 def _force_length_unit_order(unit: str) -> str:
-    """Prefer the structural convention force·length for simple moments."""
-    parts = unit.split("·")
+    """Prefer the structural convention force·length for simple moments.
+
+    Splits on `PRODUCT_DOT` rather than a literal, because this reads back a string a
+    formatter produced and Pint 0.26 changed which character that is - handed `kN⋅m` the
+    split finds nothing and the swap silently stops happening. See ``unit_text``.
+
+    **Nothing on a page reaches this today**, and a mutant breaking the split survives
+    the whole suite on both Pint versions. Measured rather than argued: nine expressions
+    across kN·m, kgf·cm, N·mm and tonf·m, written force-first and length-first, with a
+    palette and through `envelope`, all arrive here already force-first, because the
+    registry's `_keep_written_unit_order` and the display path settle the order before
+    this is called. It is furniture under section 6 and is left for its own change rather
+    than removed inside a fix about a character.
+    """
+    parts = unit.split(PRODUCT_DOT)
     if len(parts) == 2 and parts[0] in _LENGTH_UNITS and parts[1] in _FORCE_UNITS:
-        return f"{parts[1]}·{parts[0]}"
+        return f"{parts[1]}{PRODUCT_DOT}{parts[0]}"
     return unit
 
 
 def _unit_label(quantity, *, moment: bool = False) -> str:
-    if quantity.dimensionless:
+    unit = unit_text(quantity.units)
+    if not unit:
         return ""
-    unit = f"{quantity.units:~P}"
     return _force_length_unit_order(unit) if moment else unit
 
 
