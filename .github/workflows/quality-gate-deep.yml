@@ -60,7 +60,7 @@ jobs:
             hypothesis-deep-${{ runner.os }}-py314-
 
       - name: Deep property gate
-        run: python -m pytest -q quality_tests/deep --durations=0
+        run: python -m pytest -q quality_tests/deep --durations=0 -n auto
 
       # The database lives under a dot-directory, so its absence and its presence
       # look identical in a green log. State it explicitly: this finding existed
@@ -138,7 +138,7 @@ jobs:
             hypothesis-deep-${{ runner.os }}-py${{ matrix.python-version }}-
 
       - name: Deep property qualification
-        run: python -m pytest -q quality_tests/deep --durations=0
+        run: python -m pytest -q quality_tests/deep --durations=0 -n auto
 
       # The database lives under a dot-directory, so its absence and its presence
       # look identical in a green log. State it explicitly: this finding existed

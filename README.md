@@ -2082,4 +2082,17 @@ python -m pip install -e '.[dev]'
 pytest -q
 ```
 
+`pytest -q` with no path is the whole suite — `tests/` plus `quality_tests/fast`. Running
+`tests/` alone silently skips the second set. The property gate is separate and slower:
+
+```bash
+pytest -q quality_tests/deep
+```
+
+Both take about two minutes on one core. Add `-n auto` to spread them across every core —
+on a sixteen-core machine the suite goes from 112 s to 40 s and the deep gate from 137 s
+to 56 s, which is what CI does. It is not the default, because sixteen workers each import
+SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
+suite and a waste for anything smaller.
+
 Version: `0.30.3`.

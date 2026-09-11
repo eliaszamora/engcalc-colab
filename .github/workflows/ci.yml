@@ -20,7 +20,7 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e '.[dev]'
       - run: python -m compileall -q src/engcalc_colab
-      - run: python -m pytest -q
+      - run: python -m pytest -q -n auto
 
   colab-ipython:
     # Colab pins ipython==7.34.0. EngCalc declared a floor above it, so the first real
@@ -49,4 +49,4 @@ jobs:
           assert IPython.__version__ == "7.34.0", IPython.__version__
           print("still on Colab's IPython")
           PY
-      - run: python -m pytest -q
+      - run: python -m pytest -q -n auto
