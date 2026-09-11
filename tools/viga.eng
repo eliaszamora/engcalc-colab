@@ -42,13 +42,16 @@ P := 40*kN
 
 """
 Cada caso es el momento flector que produce esa carga, escrito como función de la
-coordenada del vano. Una carga distribuida da la parábola $M = q x (L - x) / 2$ y la
-puntual al centro da los dos tramos rectos $M = P x / 2$ hasta el centro.
+coordenada del vano. Una carga distribuida da la parábola $M = q x (L - x) / 2$.
+
+La puntual al centro da dos tramos rectos, y hay que escribirlos como tales: $M = P x / 2$
+hasta el centro y $M = P (L - x) / 2$ después. Escrita como una sola recta la hoja decía
+$M(L) = P L / 2$, un momento flector en un apoyo simple, que no existe.
 """
 
 M_D(x) = qD*x*(L - x)/2
 M_L(x) = qL*x*(L - x)/2
-M_P(x) = P*x/2
+M_P(x) = piecewise(P*x/2, x <= L/2, P*(L - x)/2, x <= L, 0*kN*m)
 
 case D = M_D(x)
 case Lv = M_L(x)
@@ -100,8 +103,5 @@ keep delta_adm = L/300
 
 report(delta)
 report(delta_adm)
-
-numeric(delta)
-numeric(delta_adm)
 
 summary()
