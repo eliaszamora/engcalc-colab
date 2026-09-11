@@ -21,6 +21,12 @@ dependencies = ["sympy>=1.13", "pint>=0.24", "matplotlib>=3.8", "ipython>=7.34"]
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
+    # The suite is 1981 tests and runs on one core in about two minutes; on this
+    # machine's sixteen it takes forty seconds, and the deep gate halves too. It is a
+    # dev dependency rather than an `addopts` entry on purpose: sixteen workers each
+    # import SymPy, so one file goes from 3.9 s to 9.3 s. CI passes `-n auto`; running
+    # one file by hand should not.
+    "pytest-xdist>=3",
     "hypothesis==6.167.1",
     # Read by tests/test_quality_gate_workflow.py. Declared rather than relied on
     # transitively: that test guards an automation whose absence is invisible, so it
