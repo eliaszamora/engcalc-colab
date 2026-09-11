@@ -653,10 +653,44 @@ _PALETTES: dict[str, dict[tuple[tuple[str, int], ...], str]] = {
     },
 }
 
-# Public so the magic's `%eng_units` summary can read the units off the table
-# rather than repeat them in a second place that would drift.
+# Public so the `%eng_units` summary is read off the table rather than repeated in a
+# second place that would drift. `palette_unit_names` below is what the magic calls;
+# the table itself stays public for the contracts that check the two against each other.
 PALETTES = _PALETTES
 PALETTE_NAMES = tuple(_PALETTES)
+
+
+def palette_unit_names(name: str) -> tuple[str, ...]:
+    """The units a palette fixes, spelled the way the page spells them.
+
+    The table above stores each unit as a string Pint can *parse*, because
+    `quantity.to("cm ** 2")` is what it exists for. `%eng_units kgf` printed those
+    strings straight to the reader:
+
+        engcalc units: kgf — 1 / s, cm, cm ** 2, cm ** 4, kg, kgf, kgf * cm, kgf …
+
+    `cm ** 2` on a page that says `cm²` everywhere else - and this is the line where the
+    sheet *declares* its units, so it is exactly where the two spellings get read against
+    each other. It also ran past the width of a notebook cell and was cut off at `kgf …`,
+    so the reader could not see the palette they had just declared. `kgf/cm²` is four
+    characters shorter than `kgf / cm ** 2`, and the whole line fits.
+
+    `_table_unit_text` rather than a second formatter: it is what a table header and a
+    characteristic value already use, so all three agree by construction.
+
+    In the table's order, not sorted. `_PALETTES` is written the way an engineer would
+    list them - length, area, second moment, force, moment, stress, line load, mass,
+    time, frequency - where `sorted` opened with `1 / s` and put the stress unit between
+    the line load and the second. `dict.fromkeys` keeps that order while removing the
+    duplicate two dimensions would share.
+    """
+    from .numeric import engineering_registry
+
+    registry = engineering_registry()
+    return tuple(
+        _table_unit_text(registry.Unit(stored))
+        for stored in dict.fromkeys(_PALETTES[name].values())
+    )
 
 
 def _palette_unit(quantity, settings: RenderSettings) -> str | None:

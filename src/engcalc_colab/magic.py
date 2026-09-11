@@ -28,8 +28,8 @@ from .parser import parse_cell
 from .presentation import render_presented_plot
 from .renderer import (
     PALETTE_NAMES,
-    PALETTES,
     RenderSettings,
+    palette_unit_names,
     render_aligned_results,
     CharacteristicResult,
     HtmlBlockResult,
@@ -188,8 +188,13 @@ def _palette_help() -> str:
 
 
 def _palette_summary(name: str) -> str:
-    """The units that palette fixes, read off the table rather than written twice."""
-    return ", ".join(sorted(set(PALETTES[name].values())))
+    """The units that palette fixes, read off the table rather than written twice.
+
+    And spelled the way the page spells them. This printed Pint's *parseable* strings -
+    `cm ** 2`, `kgf * cm`, `1 / s` - to a reader whose every other line says `cm²`.
+    See ``palette_unit_names``.
+    """
+    return ", ".join(palette_unit_names(name))
 
 
 def _config_summary(settings: RenderSettings) -> str:
