@@ -1136,7 +1136,9 @@ def _scientific_text(magnitude: float, precision: int) -> str:
 _FIXED_DECIMAL_CEILING = 1e6
 
 
-def _magnitude_text(magnitude, settings: RenderSettings, *, scientific=None) -> str:
+def _magnitude_text(
+    magnitude, settings: RenderSettings, *, scientific=None, exponent: bool = False
+) -> str:
     r"""Format one magnitude, in scientific notation outside the readable band.
 
     `scientific` is the notation the power of ten is written in, and it exists so this
@@ -1171,10 +1173,20 @@ def _magnitude_text(magnitude, settings: RenderSettings, *, scientific=None) -> 
 
     The ceiling is the same failure from the other side - every digit is kept and none
     of them can be read.
+
+    `exponent` is a column speaking for its rows. Everything above answers for one value
+    standing alone, which is right for a value standing alone and wrong for a column the
+    reader compares downwards: a beam's moments in `kgf·cm` straddle a million, so one
+    column printed `673991.63` directly above `1.20×10⁶`. See ``_column_wants_exponent``.
     """
     magnitude = float(magnitude)
     if magnitude == 0.0 or abs(magnitude) < settings.zero_tolerance:
         return f"{0.0:.{settings.precision}f}"
+    if exponent:
+        # A column decided, and it decided for the rows together. A zero is still a
+        # zero - it has no exponent to take and `0.00×10⁰` is not a number anybody
+        # writes - which is why this sits below the return above and not beside it.
+        return (scientific or _scientific_latex)(magnitude, settings.precision)
     if abs(magnitude) >= _FIXED_DECIMAL_CEILING:
         return (scientific or _scientific_latex)(magnitude, settings.precision)
     text = f"{magnitude:.{_decimals_for(magnitude, settings)}f}"
@@ -2513,7 +2525,37 @@ def _in_unit(quantity, unit, settings: RenderSettings):
         return quantity
 
 
-def _table_magnitude(quantity, settings: RenderSettings) -> str:
+def _column_wants_exponent(quantities, settings: RenderSettings, unit) -> bool:
+    """Would any row of this column be written as a power of ten?
+
+    Asked of `_magnitude_text` rather than re-derived from its rules. Those rules are
+    four paragraphs of measured special cases - a ceiling, a floor, a figures count, a
+    relative agreement test - and that function's own docstring says why a second copy of
+    them must not exist: it would drift, and the drift would show up as exactly the
+    mismatch this is fixing.
+
+    So the question is put to the decision itself, with a sentinel standing in for the
+    notation: if `_magnitude_text` reaches for it, the answer is yes.
+    """
+    marker = object()
+
+    def sentinel(magnitude, precision):
+        return marker
+
+    for quantity in quantities:
+        if quantity is None:
+            continue
+        converted = _in_unit(quantity, unit, settings)
+        try:
+            magnitude = float(converted.magnitude)
+        except (TypeError, ValueError):
+            continue
+        if _magnitude_text(magnitude, settings, scientific=sentinel) is marker:
+            return True
+    return False
+
+
+def _table_magnitude(quantity, settings: RenderSettings, *, exponent: bool = False) -> str:
     r"""A table column carries its unit in the header, so the unit is chosen once
     for the column and this only formats. See ``_aggregate_unit``.
 
@@ -2521,8 +2563,14 @@ def _table_magnitude(quantity, settings: RenderSettings) -> str:
     inside one: a cell that needed a power of ten showed `3.51 \times 10^{-8}` with its
     backslash. The column headers already read as plain text; this makes the cells
     agree with them.
+
+    The notation is chosen once for the column too, and for the same reason the unit is:
+    `673991.63` printed directly above `1.20×10⁶` in one column of eleven rows. See
+    ``_column_wants_exponent``.
     """
-    return _magnitude_text(quantity.magnitude, settings, scientific=_scientific_text)
+    return _magnitude_text(
+        quantity.magnitude, settings, scientific=_scientific_text, exponent=exponent
+    )
 
 
 def _aggregate_unit(quantities, settings: RenderSettings, fallback):
@@ -2618,14 +2666,35 @@ def render_table(
     ]
     header_html = "".join(f"<th>{header}</th>" for header in headers)
 
+    # Per column, like the unit above it and for the same reason. A span in centimetres
+    # reads perfectly well in decimals while the moment beside it needs an exponent, and
+    # one answer for the whole table would fix a column by breaking its neighbour.
+    point_exponent = _column_wants_exponent(
+        result.point_values, active_settings, point_unit
+    )
+    column_exponents = [
+        _column_wants_exponent(column.values, active_settings, unit)
+        for column, unit in zip(result.columns, column_units)
+    ]
+
     rows: list[str] = []
     for row_index, point in enumerate(result.point_values):
-        cells = [_table_magnitude(_in_unit(point, point_unit, active_settings), active_settings)]
+        cells = [
+            _table_magnitude(
+                _in_unit(point, point_unit, active_settings),
+                active_settings,
+                exponent=point_exponent,
+            )
+        ]
         cells.extend(
             _table_magnitude(
-                _in_unit(column.values[row_index], unit, active_settings), active_settings
+                _in_unit(column.values[row_index], unit, active_settings),
+                active_settings,
+                exponent=column_exponent,
             )
-            for column, unit in zip(result.columns, column_units)
+            for column, unit, column_exponent in zip(
+                result.columns, column_units, column_exponents
+            )
         )
         rows.append(
             "<tr>"
