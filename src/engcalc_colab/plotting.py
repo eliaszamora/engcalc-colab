@@ -9,6 +9,10 @@ from typing import Any
 
 from .models import PlotResult, PlotSeries
 from .unit_text import PRODUCT_DOT, normalise, unit_text
+# A number on a figure reads the way a number on the page reads. `renderer` is where
+# that was decided and where the ceiling is documented; importing it keeps one rule
+# rather than two that drift. It does not import this module, so there is no cycle.
+from .renderer import _FIXED_DECIMAL_CEILING, _scientific_text
 
 
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
@@ -71,8 +75,21 @@ def _quantity_label(quantity, *, moment: bool = False) -> str:
 
 
 def _compact_number(value: float) -> str:
+    """A coordinate the reader reads off the axes, in the economy the axes have.
+
+    Fixed decimals below a million and a power of ten above it - not a new rule, but the
+    page's own `_FIXED_DECIMAL_CEILING`, which every table and every value has followed
+    since `I_z := 80e6*mm**4` printed eight zeros nobody counts. The annotation is the one
+    place it never reached.
+
+    Reached commonly once a declared palette started reaching the figure: on a `kgf` sheet
+    the beam's envelope annotated `(447, 2211787.72)` beside an axis whose own ticks read
+    `0.0, 0.5, 1.0 … ×10⁶`. Eleven significant figures on a chart showing two.
+    """
     if math.isclose(value, 0.0, rel_tol=0.0, abs_tol=5e-13):
         value = 0.0
+    if abs(value) >= _FIXED_DECIMAL_CEILING:
+        return _scientific_text(value, 2)
     return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
