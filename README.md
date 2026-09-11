@@ -2,7 +2,49 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.3**.
+Current version: **0.30.4**.
+
+
+## v0.30.4 one page, one set of units
+
+Four corrections, and the first of them arrived without anybody touching this repository.
+
+**The page decides which dot goes between two units.** Pint 0.26 was released and changed
+the separator `~P` puts between two unit factors, from U+00B7 MIDDLE DOT to U+22C5 DOT
+OPERATOR — `product_fmt="⋅"`, hard-coded, with no knob on the formatter. Ten contracts
+went red on a commit that had been green an hour earlier: table headers, plot axis
+labels, characteristic values, the summary. The install line an engineer runs carries
+`--upgrade`, so the next run of a first cell would have changed the character under a
+memoria that was already written.
+
+The quiet half was worse. `plotting.py` reads the formatted string back to apply the
+convention that a moment is written force·length, by splitting on the middle dot; handed
+`kN⋅m` that split finds nothing, the rule stops being applied, and the plot is drawn
+anyway. How a unit reads is a decision this project makes, and it was being made by
+whichever version of a dependency resolved. It is made in one place now, `unit_text.py`,
+and there is no version pin — with the decision here, the version stops mattering.
+
+**A palette announces itself in the page's spelling.** `%eng_units kgf` printed
+`1 / s, cm, cm ** 2, kgf * cm, …` — Python's spelling of a unit, on the line where the
+sheet *declares* its units, and long enough that the notebook cut it off. It reads
+`cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1/s` now, in the order an engineer
+would list them.
+
+**A declared palette reaches the plot.** The figure came out byte-identical with and
+without `%eng_units kgf`: `Comparison [kN·m]` and `x [m]` on a page whose every other
+block said `kgf·cm` and `cm`. Every drawn quantity is converted now — the x values, each
+series, and the source curves an envelope draws underneath — and the annotation follows
+the page's own ceiling, so `(447, 2211787.72)` reads `(447, 2.21×10⁶)`.
+
+**A table column is written one way.** `673991.63` sat directly above `1.20×10⁶` in one
+column of eleven rows: the same order of magnitude written two ways. The notation is
+chosen once per column now, from the values the column holds, exactly where its unit
+already was.
+
+The suite also runs on every core. It is 1995 tests; `-n auto` takes it from 112 s to
+40 s and the property gate from 137 s to 56 s, which is what CI does.
+
+A patch release: corrections only.
 
 
 ## v0.30.3 what a third reference sheet found
@@ -2029,6 +2071,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.4** — one page, one set of units, in four corrections. Pint 0.26 changed `~P`'s separator between two unit factors from `·` to `⋅` and ten contracts went red on an untouched tree, so the character is decided here now rather than by whichever version resolves — including the rule that reads the string back to write a moment force·length, which had stopped applying silently. `%eng_units kgf` announced itself as `1 / s, cm, cm ** 2, kgf * cm` and now reads `cm, cm², cm⁴, kgf, kgf·cm, …`. A declared palette reaches the figure, which until now came out identical with and without one. And a table column is written one way, where `673991.63` sat above `1.20×10⁶`.
 - **0.30.3** — what a third reference sheet found, in two corrections. A block Colab renders as HTML carries no LaTeX: `extrema`, `governing`, `summary` and the table cells printed `\(M_{u}\)` and `3.51 \times 10^{-8}` as raw text, because a `display(HTML(...))` output in Colab typesets nothing. And one quantity is spelled one way down a page: an extrema block read `183.60 m·kN` two lines from `183.60 kN·m`, because a family test compared unit *strings* where Pint spells `meter * kilonewton` and `kilonewton * meter` differently for the same unit. Every coordinate in a characteristic block now takes one unit, chosen by its domain.
 - **0.30.2** — a matrix cell is not smaller than the cell beside it. A `matrix` environment typesets in text style, where a fraction shrinks and a plain zero does not, so `[4EI_c/L_c, 0; 0, 4EI_c/L_c]` printed two sizes inside one bracket. Every cell is in display style now. Reported from the first end-to-end run of a memoria in Colab.
 - **0.30.1** — what a visual audit found, in three corrections none of which the suite could see: an inverse keeps the names its formula was written with, so a static condensation reads `-3 s_c / (2 L_c)` rather than in nodal coordinates; a 1×1 matrix reads as the number it holds, so a lateral stiffness is `70303.22 kN/m` and not `[70303.22] kN/m`; and `%eng_units` no longer announces its successes with the prefix reserved for failures.
@@ -2095,4 +2138,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.30.3`.
+Version: `0.30.4`.
