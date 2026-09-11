@@ -71,7 +71,10 @@ def test_a_summary_reaches_the_notebook_as_a_table(monkeypatch):
     displayed = run_cell(monkeypatch, BEAM + "d = L/300\nreport(d)\nsummary()")
 
     assert type(displayed[-1]) is HTML
-    assert "<table>" in displayed[-1].data
+    # `<table` rather than `<table>`: the element is what this pins, and the tag now
+    # carries the inline styling that the class it used to name never actually had.
+    assert "<table" in displayed[-1].data
+    assert "<tr>" in displayed[-1].data
     assert "Summary" in displayed[-1].data
 
 
