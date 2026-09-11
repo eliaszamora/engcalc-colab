@@ -32,6 +32,8 @@ from .models import (
     NumericMatrixEvaluationResult,
     PartialMatrixNumericEvaluationResult,
     PartialNumericEvaluationResult,
+    PlotResult,
+    PlotSeries,
     RootsResult,
     SummaryResult,
     SystemSolveResult,
@@ -658,6 +660,63 @@ _PALETTES: dict[str, dict[tuple[tuple[str, int], ...], str]] = {
 # the table itself stays public for the contracts that check the two against each other.
 PALETTES = _PALETTES
 PALETTE_NAMES = tuple(_PALETTES)
+
+
+def plot_in_palette(result: PlotResult, settings: RenderSettings) -> PlotResult:
+    """The same plot, with every quantity in the unit the sheet declared.
+
+    The plotting path takes no `RenderSettings` at all - it is handed a `PlotResult` and
+    draws it - so a declared palette never reached a figure. Measured: the envelope on the
+    engineer's beam memoria came out **byte-identical** with and without `%eng_units kgf`,
+    labelled `Comparison [kN·m]` and `x [m]` on a page whose every other block said
+    `kgf·cm` and `cm`. `magic.py` had `self._settings()` on the very line that rendered it.
+
+    Converting here rather than inside `plotting.py` keeps the palette in one file with
+    the rest of it, and keeps the drawing code about drawing.
+
+    Every quantity that is *drawn*: the x values, each series' y values, and the unsigned
+    source series an envelope draws underneath. Relabelling an axis while the numbers
+    stayed in the old unit would be worse than not converting at all - a figure that is
+    wrong rather than one that disagrees with the text beside it, and leaving the source
+    series behind drew two curves peaking at 184 and 217 on an axis where the other two
+    peaked at 2.2 million.
+
+    The characteristic points are *not* converted, and that was measured rather than
+    assumed: `_characteristic_requests` already puts each point into its series' unit
+    with `point.x_quantity.to(x_unit)`, so converting them here changed no annotation on
+    either an envelope or a plot. A mutant removing it survived the whole suite, which is
+    the right answer to furniture.
+
+    A dimension the palette does not name is left exactly as it was, which is the rule
+    everywhere else it applies, and a sheet that declared no palette is not touched at
+    all - `%eng_units` shipped opt-in and that promise covers the figure too.
+    """
+    if not settings.palette:
+        return result
+
+    def convert(quantity):
+        if quantity is None:
+            return None
+        unit = _palette_unit(quantity, settings)
+        if unit is None:
+            return quantity
+        try:
+            return quantity.to(unit)
+        except (DimensionalityError, AttributeError):
+            return quantity
+
+    def convert_series(series: PlotSeries) -> PlotSeries:
+        return replace(
+            series,
+            y_values=tuple(convert(value) for value in series.y_values),
+        )
+
+    return replace(
+        result,
+        x_values=tuple(convert(value) for value in result.x_values),
+        series=tuple(convert_series(series) for series in result.series),
+        source_series=tuple(convert_series(series) for series in result.source_series),
+    )
 
 
 def palette_unit_names(name: str) -> tuple[str, ...]:

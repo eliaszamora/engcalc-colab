@@ -30,6 +30,7 @@ from .renderer import (
     PALETTE_NAMES,
     RenderSettings,
     palette_unit_names,
+    plot_in_palette,
     render_aligned_results,
     CharacteristicResult,
     HtmlBlockResult,
@@ -257,7 +258,11 @@ class EngMagics(Magics):
                         self._settings(),
                     )
                     pending_results.clear()
-                    display(render_presented_plot(result))
+                    display(
+                        render_presented_plot(
+                            plot_in_palette(result, self._settings())
+                        )
+                    )
                     continue
 
                 if isinstance(result, TableResult):
