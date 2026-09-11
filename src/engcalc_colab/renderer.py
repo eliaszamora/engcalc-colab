@@ -2491,6 +2491,41 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
 
 
+# The look `engcalc-table` already has, in values rather than a rule, because `governing`
+# and `summary` need the same one and there is no third place for it to drift to.
+_SHORT_TABLE_FONT = "0.92rem"
+_SHORT_TABLE_CELL = (
+    f"padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);"
+    f"text-align:left;white-space:nowrap;"
+)
+
+
+def _short_table_cell(content: str) -> str:
+    return f'<td style="{_SHORT_TABLE_CELL}">{content}</td>'
+
+
+def _short_table_block(title: str, body: str) -> str:
+    """A titled two-column table: `governing`'s intervals, `summary`'s reported values.
+
+    Both used to emit `class="engcalc-characteristic"` - singular - while the only rules
+    anyone wrote are for `engcalc-characteristics`, plural, on the block `extrema` uses.
+    One letter, nothing matched, and both fell back to the browser: 16 px against the
+    14.72 px of the table beside them, and `padding:1px`, which is why a span and its
+    label sat against each other. Three tables on one page in two sizes.
+
+    Inline attributes rather than a `<style>`, and deliberately: a `<style>` does not
+    survive a `Markdown` output - measured in Colab - and these blocks are about to become
+    one so their mathematics finally typesets. This is the spelling that works in both.
+    """
+    return (
+        f'<div style="margin:0.35rem 0 0.55rem 0;font-size:{_SHORT_TABLE_FONT};'
+        'line-height:1.35;">'
+        f'<div style="font-weight:600;margin-bottom:0.15rem;">{title}</div>'
+        '<table style="border-collapse:collapse;">'
+        f"<tbody>{body}</tbody></table></div>"
+    )
+
+
 def _table_unit_text(unit) -> str:
     """A unit as the page writes it, through the one module that decides that.
 
@@ -3050,7 +3085,7 @@ def render_governing_result(
         result.intervals[-1].upper_quantity,
         active_settings,
     )
-    rows: list[str] = []
+    rows: list[tuple[str, str]] = []
     for interval in result.intervals:
         span = (
             _characteristic_quantity_math(
@@ -3061,15 +3096,12 @@ def render_governing_result(
                 interval.upper_quantity, active_settings, unit=span_unit
             )
         )
-        rows.append(
-            f"<tr><td>{span}</td><td>{escape(interval.label)}</td></tr>"
-        )
-    body = "".join(rows)
-    return (
-        '<div class="engcalc-characteristic">'
-        f"<div><strong>Governing — {escape(result.variable)}</strong></div>"
-        f"<table><tbody>{body}</tbody></table></div>"
+        rows.append((span, escape(interval.label)))
+    body = "".join(
+        f"<tr>{_short_table_cell(span)}{_short_table_cell(label)}</tr>"
+        for span, label in rows
     )
+    return _short_table_block(f"Governing — {escape(result.variable)}", body)
 
 
 def render_summary_result(
@@ -3090,15 +3122,15 @@ def render_summary_result(
     # quantity. The name was plain text for the same reason - nobody checked the two
     # against each other, because nobody had seen them side by side.
     rows = "".join(
-        f"<tr><td>{_characteristic_name(name)}</td>"
-        f"<td>{_characteristic_quantity_math(quantity, active_settings, declared=False)}</td></tr>"
+        "<tr>"
+        + _short_table_cell(_characteristic_name(name))
+        + _short_table_cell(
+            _characteristic_quantity_math(quantity, active_settings, declared=False)
+        )
+        + "</tr>"
         for name, quantity in result.entries
     )
-    return (
-        '<div class="engcalc-characteristic">'
-        "<div><strong>Summary</strong></div>"
-        f"<table><tbody>{rows}</tbody></table></div>"
-    )
+    return _short_table_block("Summary", rows)
 
 
 def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:
