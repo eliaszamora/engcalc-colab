@@ -18,6 +18,7 @@ from .unit_text import unit_text
 # this module, so there is no cycle.
 from .renderer import (
     _FIXED_DECIMAL_CEILING,
+    _brace_group,
     _latex_unit_text,
     _scientific_latex,
 )
@@ -114,21 +115,6 @@ def _inline_quotient(latex: str) -> str:
     if denominator is None or denominator[1] != len(latex):
         return latex
     return f"{numerator[0]}/{denominator[0]}"
-
-
-def _brace_group(text: str, start: int) -> tuple[str, int] | None:
-    """What is inside the `{...}` beginning at `start`, and where it ends."""
-    if start >= len(text) or text[start] != "{":
-        return None
-    depth = 0
-    for index in range(start, len(text)):
-        if text[index] == "{":
-            depth += 1
-        elif text[index] == "}":
-            depth -= 1
-            if depth == 0:
-                return text[start + 1 : index], index + 1
-    return None
 
 
 def _scientific_mathtext(magnitude: float, precision: int) -> str:
