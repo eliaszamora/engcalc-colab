@@ -1,5 +1,6 @@
 import pytest
 
+from conftest import figure_text
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.label_layout import _build_dense_summary_groups
 from engcalc_colab.parser import parse_cell
@@ -104,7 +105,7 @@ def test_dense_summary_formats_shared_units_once():
     summary = summaries[0]
 
     headers = [
-        text.get_text()
+        figure_text(text.get_text())
         for text in summary.texts
         if text.get_gid() == "engcalc-summary-group-header"
     ]
@@ -117,4 +118,4 @@ def test_dense_summary_formats_shared_units_once():
     ]
     assert len(values) == 12
     assert all("tonf" not in value for value in values)
-    assert sum(text.get_text() == "Value [tonf·m]" for text in summary.texts) == 2
+    assert sum(figure_text(text.get_text()) == "Value [tonf·m]" for text in summary.texts) == 2

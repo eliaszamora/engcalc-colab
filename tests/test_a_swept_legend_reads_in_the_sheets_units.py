@@ -32,6 +32,8 @@ import matplotlib.figure  # noqa: E402
 
 import engcalc_colab.magic as magic  # noqa: E402
 
+from conftest import figure_text  # noqa: E402
+
 
 @pytest.fixture
 def cell(monkeypatch):
@@ -81,11 +83,15 @@ def test_the_legend_is_in_the_declared_units(cell, capsys):
 def test_the_legend_agrees_with_the_axis_beside_it(cell, capsys):
     """Stated as the property rather than the unit: whatever the figure says its forces
     are, the legend says the same. A contract naming `kgf` alone would pass on a figure
-    whose axis had quietly moved somewhere else."""
+    whose axis had quietly moved somewhere else.
+
+    Stronger since the axis typesets and the legend does not: this now reads one spelling
+    back against the other, which is the drift it exists to catch.
+    """
     figure = cell(SWEEP, palette="kgf")
     capsys.readouterr()
 
-    axis_unit = figure.axes[0].get_ylabel().split("[")[-1].rstrip("]")
+    axis_unit = figure_text(figure.axes[0].get_ylabel()).split("[")[-1].rstrip("]")
     force_unit = axis_unit.split("·")[0]
     for label in legend_of(figure):
         assert force_unit in label, (force_unit, label)
@@ -137,4 +143,5 @@ def test_a_plot_with_no_sweep_still_has_no_legend_entry_to_convert(cell, capsys)
     labels."""
     figure = cell("L := 6*m\nP := 40*kN\nM(x) = P*x\nplot(M(x), x, 0, L)\n", palette="kgf")
     capsys.readouterr()
-    assert "[kgf·cm]" in figure.axes[0].get_ylabel(), figure.axes[0].get_ylabel()
+    label = figure_text(figure.axes[0].get_ylabel())
+    assert "[kgf·cm]" in label, label

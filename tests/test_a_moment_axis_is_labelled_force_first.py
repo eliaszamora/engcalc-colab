@@ -20,6 +20,9 @@ second thing that could go wrong with it.
 What the page needs is the property, not the mechanism: a moment is labelled force
 first. That is asserted here directly, over the units an engineer actually writes, so
 removing the code cannot quietly remove the guarantee.
+
+The label typesets now - `$\mathrm{kN} \cdot \mathrm{m}$` - so these read it back through
+`figure_text`. The question is unchanged: which factor does the reader see first.
 """
 
 import matplotlib
@@ -30,6 +33,8 @@ matplotlib.use("Agg")
 import matplotlib.figure  # noqa: E402
 
 import engcalc_colab.magic as magic  # noqa: E402
+
+from conftest import figure_text  # noqa: E402
 
 
 @pytest.fixture
@@ -65,14 +70,15 @@ def cell(monkeypatch):
 )
 def test_a_moment_axis_names_the_force_first(cell, sheet, expected):
     """Written either way round, in four unit systems."""
-    label = cell(sheet).axes[0].get_ylabel()
+    label = figure_text(cell(sheet).axes[0].get_ylabel())
     assert f"[{expected}]" in label, label
 
 
 def test_a_palette_does_not_change_the_order(cell, capsys):
     figure = cell("L := 6*m\nP := 40*kN\nM(x) = x*P\nplot(M(x), x, 0, L)\n", palette="kgf")
     capsys.readouterr()
-    assert "[kgf·cm]" in figure.axes[0].get_ylabel(), figure.axes[0].get_ylabel()
+    label = figure_text(figure.axes[0].get_ylabel())
+    assert "[kgf·cm]" in label, label
 
 
 def test_an_envelope_names_it_the_same_way(cell):
@@ -80,7 +86,8 @@ def test_an_envelope_names_it_the_same_way(cell):
         "L := 6*m\nP := 40*kN\nA(x) = x*P\nB(x) = x*P*0.8\n"
         "envelope(A(x), B(x), x, 0, L)\n"
     )
-    assert "[kN·m]" in figure.axes[0].get_ylabel(), figure.axes[0].get_ylabel()
+    label = figure_text(figure.axes[0].get_ylabel())
+    assert "[kN·m]" in label, label
 
 
 def test_the_rule_that_was_removed_is_gone(cell):

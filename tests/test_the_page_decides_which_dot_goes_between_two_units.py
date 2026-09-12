@@ -35,7 +35,7 @@ version that matters and the reason this file exists.
 import pytest
 
 import engcalc_colab.magic as magic
-from conftest import block_text
+from conftest import block_text, figure_text
 from engcalc_colab.renderer import _table_unit_text
 
 DOT_OPERATOR = "⋅"
@@ -129,7 +129,11 @@ def test_a_plot_axis_carries_the_page_s_dot_too(cell):
 
     label = figures[-1].axes[0].get_ylabel()
     assert DOT_OPERATOR not in label, label
-    assert MIDDLE_DOT in label, label
+    # The axis typesets now, so its dot is `\cdot` - the same glyph, and
+    # `figure_text` reads it back as one. The assertion above is about the
+    # character itself and stays on the raw label; this one is about what the
+    # reader sees, exactly as the page contract above this one is written.
+    assert MIDDLE_DOT in figure_text(label), figure_text(label)
 
 
 def test_a_swept_parameter_s_legend_carries_the_page_s_dot(cell):

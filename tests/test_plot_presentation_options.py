@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use("Agg")
 import pytest
 
+from conftest import figure_text
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.errors import EngSyntaxError
 from engcalc_colab.parser import parse_cell
@@ -120,8 +121,8 @@ def test_custom_plot_labels_keep_units_automatic():
     axis = render_presented_plot(result).axes[0]
 
     assert axis.get_title() == "Diagrama de momento flector"
-    assert axis.get_xlabel() == "Longitud [m]"
-    assert axis.get_ylabel() == "Momento [kN·m]"
+    assert figure_text(axis.get_xlabel()) == "Longitud [m]"
+    assert figure_text(axis.get_ylabel()) == "Momento [kN·m]"
     assert axis.yaxis_inverted()
 
 
@@ -142,8 +143,8 @@ def test_custom_signed_envelope_labels_keep_units_automatic():
     axis = render_presented_plot(result).axes[0]
 
     assert axis.get_title() == "Envolvente última"
-    assert axis.get_xlabel() == "Longitud [m]"
-    assert axis.get_ylabel() == "Momento [kN·m]"
+    assert figure_text(axis.get_xlabel()) == "Longitud [m]"
+    assert figure_text(axis.get_ylabel()) == "Momento [kN·m]"
 
 
 def test_custom_magnitude_envelope_title_and_labels_override_only_requested_text():
@@ -165,5 +166,5 @@ def test_custom_magnitude_envelope_title_and_labels_override_only_requested_text
     axis = render_presented_plot(result).axes[0]
 
     assert axis.get_title() == "Envolvente de corte"
-    assert axis.get_xlabel() == "x [m]"
-    assert axis.get_ylabel() == "Corte [kN]"
+    assert figure_text(axis.get_xlabel()) == "x [m]"
+    assert figure_text(axis.get_ylabel()) == "Corte [kN]"

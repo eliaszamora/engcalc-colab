@@ -4,6 +4,7 @@ matplotlib.use("Agg")
 from matplotlib.collections import PathCollection, PolyCollection
 from matplotlib.text import Annotation
 
+from conftest import figure_text
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.plotting import render_plot
@@ -51,11 +52,11 @@ def annotations(axis):
 def test_render_plot_labels_axes_title_and_zero_reference():
     figure = render_plot(moment_plot_result())
     axis = figure.axes[0]
-    assert axis.get_xlabel().startswith("x [")
-    assert "m" in axis.get_xlabel()
-    assert axis.get_ylabel().startswith("M(x) [")
-    assert "tonf" in axis.get_ylabel()
-    assert "m" in axis.get_ylabel()
+    assert figure_text(axis.get_xlabel()).startswith("x [")
+    assert "m" in figure_text(axis.get_xlabel())
+    assert figure_text(axis.get_ylabel()).startswith("M(x) [")
+    assert "tonf" in figure_text(axis.get_ylabel())
+    assert "m" in figure_text(axis.get_ylabel())
     assert axis.get_title() == "M(x)"
     assert len(axis.lines) == 2
 
@@ -92,7 +93,7 @@ def test_render_plot_deduplicates_equal_maximum_and_minimum():
 def test_moment_units_remain_on_axis_not_characteristic_labels():
     axis = render_plot(moment_plot_result()).axes[0]
     labels = [item.get_text() for item in annotations(axis)]
-    assert axis.get_ylabel() == "M(x) [tonf·m]"
+    assert figure_text(axis.get_ylabel()) == "M(x) [tonf·m]"
     assert set(labels) == {"(2.5, 3.15)", "(0, -5.6)"}
     assert all("tonf" not in label and "m" not in label for label in labels)
 
@@ -157,7 +158,7 @@ def test_multiseries_render_uses_lines_legend_and_no_area_fills():
 def test_multiseries_moment_axis_keeps_positive_down_convention():
     axis = render_plot(multi_moment_plot_result()).axes[0]
     assert axis.yaxis_inverted()
-    assert axis.get_ylabel() == "M(x) [kN·m]"
+    assert figure_text(axis.get_ylabel()) == "M(x) [kN·m]"
 
 
 def test_multiseries_uses_one_restrained_extrema_marker_collection_per_series():

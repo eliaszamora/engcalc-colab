@@ -78,5 +78,28 @@ def block_text(html: str) -> str:
     return _re.sub(r"\s+", " ", text).strip()
 
 
+def figure_text(label: str) -> str:
+    r"""One figure's label, annotation or axis offset as the reader sees it.
+
+    A figure typesets through matplotlib's mathtext, which is the same LaTeX subset the
+    page uses, so the reading is `block_text`'s with one addition: matplotlib wraps the
+    numbers it writes itself in `\mathdefault{...}`, so the axis offset arrives as
+    `$\times\mathdefault{10^{6}}\mathdefault{}$` and nothing in the package emitted that.
+
+    `\mathbf` is the second: a formula is set in mathtext's own font and ignores the
+    weight of the text around it, so the one label on a figure that is bold asks for its
+    unit in upright *bold* rather than upright. It is the same unit, and reads the same.
+
+    It exists for the same reason `block_text` does. A contract that asks *what the
+    figure says* - "the moment axis reads kgf·cm" - is still asking the right question
+    once the label typesets, and can no longer find its answer by substring. The
+    contracts about *form* - that the unit is inside `$...$`, that a quotient is not
+    stacked, that a bold label's unit is bold - are separate and explicit, in
+    `tests/test_a_figure_typesets_like_the_page.py`.
+    """
+    plain = label.replace(r"\mathdefault", "").replace(r"\mathbf", r"\mathrm")
+    return block_text(plain)
+
+
 def _superscript(digits: str) -> str:
     return digits.translate(str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹"))

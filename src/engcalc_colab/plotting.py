@@ -4,15 +4,23 @@ import math
 import re
 from dataclasses import dataclass
 
+from matplotlib.mathtext import MathTextParser
 import sympy as sp
 from typing import Any
 
 from .models import PlotResult, PlotSeries
 from .unit_text import unit_text
-# A number on a figure reads the way a number on the page reads. `renderer` is where
-# that was decided and where the ceiling is documented; importing it keeps one rule
-# rather than two that drift. It does not import this module, so there is no cycle.
-from .renderer import _FIXED_DECIMAL_CEILING, _scientific_text
+# A figure writes its mathematics the way the page writes it, and `renderer` is where the
+# page's spellings live: the ceiling a number is written above, the `\times 10^{6}` it is
+# written as, and `\mathrm{kgf} \cdot \mathrm{cm}`. Matplotlib reads that same LaTeX
+# subset through mathtext, so a figure is handed the page's own strings rather than a
+# second spelling of them - the drift #135 and #138 were about. `renderer` does not import
+# this module, so there is no cycle.
+from .renderer import (
+    _FIXED_DECIMAL_CEILING,
+    _latex_unit_text,
+    _scientific_latex,
+)
 
 
 _PLOT_Y_MARGIN = 0.30
@@ -28,7 +36,7 @@ _ANNOTATION_CANDIDATES = tuple(
 
 
 def _unit_label(quantity) -> str:
-    """The unit on an axis, exactly as the page spells it.
+    """The unit on an axis, typeset exactly as the page typesets it. See `_unit_mathtext`.
 
     There used to be a `moment` flag here, selecting a rule that read this string back
     and swapped its factors when a moment had come out length-first. Nothing on a page
@@ -44,10 +52,125 @@ def _unit_label(quantity) -> str:
     `_FORCE_UNITS`/`_LENGTH_UNITS` existed only to be split against. `series.is_moment`
     stays - it decides the positive-down convention, which is a different question.
     """
-    return unit_text(quantity.units)
+    return _unit_mathtext(quantity.units)
+
+
+# One parser, and not one per call: matplotlib caches a parse on the parser object, so a
+# fresh one costs 5.5 ms a label instead of nothing. Imported at the top rather than
+# deferred like `pyplot`: `label_layout` already imports `matplotlib.text` at module
+# level, which imports this, so by the time `%load_ext` returns it is loaded either way -
+# measured, after writing the deferred version on a 0.17 s figure taken in isolation.
+_MATHTEXT = MathTextParser("agg")
+
+
+def _unit_mathtext(unit) -> str:
+    r"""A unit as a figure writes it: `$\mathrm{kgf} \cdot \mathrm{cm}$`.
+
+    The page's own `_latex_unit_text`, wrapped so matplotlib typesets it. Two spellings
+    of one unit on one page is the defect #135 removed from the text and this removes
+    from the figure, where the axis read `kgf·cm` two centimetres from a table header
+    reading `kgf · cm`.
+
+    `""` for a dimensionless unit, like `unit_text`: an axis reads `f(x)` rather than
+    `f(x) [$$]`.
+
+    **A quotient is written inline**, which is the one place a figure departs from the
+    page. `~L` puts `kgf/cm` in a `\frac`, and a `\frac` on a rotated y label sets its
+    numerator and denominator at about six points - measured, and worse than the plain
+    text it replaces. The page renders the same fraction at body size, where it reads.
+
+    The fallback is for the unit nobody enumerated. Mathtext is a subset of LaTeX, so a
+    unit it cannot parse raises *at draw time* and takes the whole cell with it, where
+    today there is a label. Thirty-eight units were measured - both palettes, four moment
+    systems, imperial, velocity, density - and every one parses; that is the reason to
+    expect this never fires, and no reason to let a figure die if it does.
+    """
+    plain = unit_text(unit)
+    if not plain:
+        return ""
+    maths = f"${_inline_quotient(_latex_unit_text(unit))}$"
+    try:
+        _MATHTEXT.parse(maths)
+    except Exception:  # noqa: BLE001 - any parse failure means "draw it as text"
+        return plain
+    return maths
+
+
+def _inline_quotient(latex: str) -> str:
+    r"""`\frac{a}{b}` written `a/b`, and everything else left exactly as it came.
+
+    Brace matching rather than a regular expression because the halves nest:
+    `\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}`. A unit is a single product of powers, so
+    Pint's LaTeX has at most one `\frac` and it is the whole string; anything else falls
+    through untouched.
+    """
+    prefix = r"\frac"
+    if not latex.startswith(prefix):
+        return latex
+    numerator = _brace_group(latex, len(prefix))
+    if numerator is None:
+        return latex
+    denominator = _brace_group(latex, numerator[1])
+    if denominator is None or denominator[1] != len(latex):
+        return latex
+    return f"{numerator[0]}/{denominator[0]}"
+
+
+def _brace_group(text: str, start: int) -> tuple[str, int] | None:
+    """What is inside the `{...}` beginning at `start`, and where it ends."""
+    if start >= len(text) or text[start] != "{":
+        return None
+    depth = 0
+    for index in range(start, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1 : index], index + 1
+    return None
+
+
+def _scientific_mathtext(magnitude: float, precision: int) -> str:
+    r"""A power of ten as a figure writes it: `$1.97 \times 10^{6}$`.
+
+    The page's `_scientific_latex`, for the same reason the unit is. An HTML block needs
+    the Unicode spelling because Colab typesets nothing inside one; a figure does not,
+    and the two were visibly different beside each other - the Unicode `⁶` sits low and
+    small next to the axis offset's mathtext superscript on the same axis.
+    """
+    return f"${_scientific_latex(magnitude, precision)}$"
+
+
+def _in_bold(label: str) -> str:
+    r"""Every `$...$` in a label, set at the weight of the text around it.
+
+    Mathtext sets a formula in its own font and ignores the weight of the `Text` it sits
+    in, so a semibold label came out with a light unit after it: `x = 300 cm` in two
+    weights, one phrase, visible at the summary panel's own 8.2 pt. That panel's group
+    header is the one bold label on a figure, and this is applied to the finished string
+    rather than threaded through the two functions that built it - `\mathrm` is upright
+    and `\mathbf` is upright bold, and a formula with no `\mathrm` in it, which is what a
+    power of ten is, takes the wrapper instead.
+    """
+
+    def bolden(match: "re.Match[str]") -> str:
+        maths = match.group(1)
+        if r"\mathrm" in maths:
+            return "$" + maths.replace(r"\mathrm", r"\mathbf") + "$"
+        return r"$\mathbf{" + maths + "}$"
+
+    return re.sub(r"\$(.+?)\$", bolden, label)
 
 
 def _axis_label(name: str, quantity) -> str:
+    """`Comparison [$\\mathrm{kgf} \\cdot \\mathrm{cm}$]`.
+
+    The unit typesets and the name does not, which is `_table_header`'s decision applied
+    to the figure so that a column header and the axis above it are built the same way:
+    the unit comes from Pint and is mathematics, while the name is the text the engineer
+    typed - `M(x)`, `Comparison`, `q_s(x)` - and turning that into LaTeX means parsing it.
+    """
     unit = _unit_label(quantity)
     return name if not unit else f"{name} [{unit}]"
 
@@ -115,7 +238,7 @@ def _compact_number(value: float, *, exponent: bool = False) -> str:
     if value == 0.0:
         return "0"
     if exponent or abs(value) >= _FIXED_DECIMAL_CEILING:
-        return _scientific_text(value, 2)
+        return _scientific_mathtext(value, 2)
     return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
@@ -523,6 +646,12 @@ def _style_axes(axis) -> None:
     axis.spines["right"].set_visible(False)
     axis.set_axisbelow(True)
     axis.grid(True, which="major", alpha=0.22)
+    # When the ticks share a power of ten matplotlib puts it in the corner and spells it
+    # `1e6`, which is programmer notation and appears nowhere else in a memoria - two
+    # centimetres above an annotation on the same axis reading `1.97×10⁶`, and below a
+    # table reading `1.87 × 10⁶`. This changes the spelling only; whether an offset
+    # appears at all is matplotlib's decision from the data, unchanged.
+    axis.ticklabel_format(useMathText=True)
 
 
 def _segment_slices(series: PlotSeries, count: int) -> tuple[tuple[int, int], ...]:

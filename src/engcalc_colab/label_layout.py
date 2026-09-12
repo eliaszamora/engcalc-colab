@@ -13,6 +13,7 @@ from .plotting import (
     _annotation_exponents,
     _characteristic_requests,
     _compact_number,
+    _in_bold,
     _quantity_label,
     _unit_label,
 )
@@ -168,10 +169,18 @@ def _summary_height_inches(groups: tuple[_DenseSummaryGroup, ...]) -> float:
 
 
 def _group_x_header(group: _DenseSummaryGroup, *, exponent: bool) -> str:
+    """`x = 300 cm`, the one label on a figure whose mathematics sits inside bold text.
+
+    Hence `_in_bold`: mathtext ignores the weight of the text around it, so both halves
+    arrived light beside a semibold `x =` - one phrase in two weights, visible at the
+    panel's own 8.2 pt. The unit is always typeset here and the value is once the
+    abscissa passes a million, which a twenty-kilometre span in centimetres reaches.
+    """
     quantity = group.x_quantity
     value = _compact_number(float(quantity.magnitude), exponent=exponent)
     unit = _unit_label(quantity)
-    return f"x = {value}" if not unit else f"x = {value} {unit}"
+    header = f"x = {value}" if not unit else f"x = {value} {unit}"
+    return _in_bold(header)
 
 
 def _common_y_unit(groups: tuple[_DenseSummaryGroup, ...]) -> str | None:
