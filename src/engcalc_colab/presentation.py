@@ -20,14 +20,7 @@ def render_presented_plot(result: PlotResult):
     if result.xlabel is not None:
         axis.set_xlabel(_axis_label(result.xlabel, result.x_values[0]))
     if result.ylabel is not None:
-        first_series = result.series[0]
-        axis.set_ylabel(
-            _axis_label(
-                result.ylabel,
-                first_series.y_values[0],
-                moment=first_series.is_moment,
-            )
-        )
+        axis.set_ylabel(_axis_label(result.ylabel, result.series[0].y_values[0]))
 
     if has_text_override:
         figure.tight_layout()
