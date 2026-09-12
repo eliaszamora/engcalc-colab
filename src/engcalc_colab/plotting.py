@@ -8,16 +8,13 @@ import sympy as sp
 from typing import Any
 
 from .models import PlotResult, PlotSeries
-from .unit_text import PRODUCT_DOT, normalise, unit_text
+from .unit_text import unit_text
 # A number on a figure reads the way a number on the page reads. `renderer` is where
 # that was decided and where the ceiling is documented; importing it keeps one rule
 # rather than two that drift. It does not import this module, so there is no cycle.
 from .renderer import _FIXED_DECIMAL_CEILING, _scientific_text
 
 
-_MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
-_FORCE_UNITS = {"N", "kN", "MN", "GN", "kgf", "tonf"}
-_LENGTH_UNITS = {"mm", "cm", "m", "km"}
 _PLOT_Y_MARGIN = 0.30
 _CALLOUT_CLEARANCE_X = 1.08
 _CALLOUT_CLEARANCE_Y = 1.16
@@ -30,46 +27,34 @@ _ANNOTATION_CANDIDATES = tuple(
 )
 
 
-def _is_moment_plot(label: str) -> bool:
-    return _MOMENT_LABEL.match(label.strip()) is not None
+def _unit_label(quantity) -> str:
+    """The unit on an axis, exactly as the page spells it.
 
+    There used to be a `moment` flag here, selecting a rule that read this string back
+    and swapped its factors when a moment had come out length-first. Nothing on a page
+    reached it - measured over nine sheets in four unit systems, with each palette and
+    without, through `plot`, `envelope` and a sweep - because the registry's
+    `_keep_written_unit_order` and the display path settle the order long before a label
+    is built. `tests/test_a_moment_axis_is_labelled_force_first.py` asserts the property
+    the rule was supposed to provide, over those same units, so the guarantee is stated
+    rather than implemented twice.
 
-def _force_length_unit_order(unit: str) -> str:
-    """Prefer the structural convention force·length for simple moments.
-
-    Splits on `PRODUCT_DOT` rather than a literal, because this reads back a string a
-    formatter produced and Pint 0.26 changed which character that is - handed `kN⋅m` the
-    split finds nothing and the swap silently stops happening. See ``unit_text``.
-
-    **Nothing on a page reaches this today**, and a mutant breaking the split survives
-    the whole suite on both Pint versions. Measured rather than argued: nine expressions
-    across kN·m, kgf·cm, N·mm and tonf·m, written force-first and length-first, with a
-    palette and through `envelope`, all arrive here already force-first, because the
-    registry's `_keep_written_unit_order` and the display path settle the order before
-    this is called. It is furniture under section 6 and is left for its own change rather
-    than removed inside a fix about a character.
+    Removing it took a cluster with it: the flag was threaded through five functions
+    across two modules, `_is_moment_plot` and its regex duplicated the engine's, and
+    `_FORCE_UNITS`/`_LENGTH_UNITS` existed only to be split against. `series.is_moment`
+    stays - it decides the positive-down convention, which is a different question.
     """
-    parts = unit.split(PRODUCT_DOT)
-    if len(parts) == 2 and parts[0] in _LENGTH_UNITS and parts[1] in _FORCE_UNITS:
-        return f"{parts[1]}{PRODUCT_DOT}{parts[0]}"
-    return unit
+    return unit_text(quantity.units)
 
 
-def _unit_label(quantity, *, moment: bool = False) -> str:
-    unit = unit_text(quantity.units)
-    if not unit:
-        return ""
-    return _force_length_unit_order(unit) if moment else unit
-
-
-def _axis_label(name: str, quantity, *, moment: bool = False) -> str:
-    unit = _unit_label(quantity, moment=moment)
+def _axis_label(name: str, quantity) -> str:
+    unit = _unit_label(quantity)
     return name if not unit else f"{name} [{unit}]"
 
 
-def _quantity_label(quantity, *, moment: bool = False) -> str:
+def _quantity_label(quantity) -> str:
     magnitude = float(quantity.magnitude)
-    unit = _unit_label(quantity, moment=moment)
+    unit = _unit_label(quantity)
     value = f"{magnitude:.2f}"
     return value if not unit else f"{value} {unit}"
 
@@ -569,7 +554,7 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
     if inverted:
         axis.invert_yaxis()
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(_axis_label(result.display_label, series.y_values[0], moment=series.is_moment))
+    axis.set_ylabel(_axis_label(result.display_label, series.y_values[0]))
     axis.set_title(result.display_label, pad=10, fontweight=700)
     _style_axes(axis)
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)
@@ -620,7 +605,7 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
     if moment:
         axis.invert_yaxis()
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(_axis_label(result.display_label, result.series[0].y_values[0], moment=moment))
+    axis.set_ylabel(_axis_label(result.display_label, result.series[0].y_values[0]))
     axis.set_title(result.display_label, pad=10, fontweight=700)
     _style_axes(axis)
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)
@@ -704,7 +689,7 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
     if moment:
         axis.invert_yaxis()
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(_axis_label(result.display_label, maximum_series.y_values[0], moment=moment))
+    axis.set_ylabel(_axis_label(result.display_label, maximum_series.y_values[0]))
     axis.set_title(f"{result.display_label} envelope", pad=10, fontweight=700)
     _style_axes(axis)
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)
@@ -771,7 +756,7 @@ def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
     if moment:
         axis.invert_yaxis()
     axis.set_xlabel(_axis_label(result.variable, result.x_values[0]))
-    axis.set_ylabel(_axis_label(result.display_label, magnitude_series.y_values[0], moment=moment))
+    axis.set_ylabel(_axis_label(result.display_label, magnitude_series.y_values[0]))
     axis.set_title(f"|{result.display_label}| envelope", pad=10, fontweight=700)
     _style_axes(axis)
     axis.margins(x=0.02, y=_PLOT_Y_MARGIN)

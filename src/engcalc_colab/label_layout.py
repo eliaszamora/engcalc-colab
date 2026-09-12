@@ -173,13 +173,9 @@ def _group_x_header(group: _DenseSummaryGroup) -> str:
     return f"x = {value}" if not unit else f"x = {value} {unit}"
 
 
-def _common_y_unit(
-    groups: tuple[_DenseSummaryGroup, ...],
-    *,
-    moment: bool,
-) -> str | None:
+def _common_y_unit(groups: tuple[_DenseSummaryGroup, ...]) -> str | None:
     units = {
-        _unit_label(entry.request.y_quantity, moment=moment)
+        _unit_label(entry.request.y_quantity)
         for group in groups
         for entry in group.entries
     }
@@ -189,12 +185,11 @@ def _common_y_unit(
 def _entry_value_text(
     entry: _DenseSummaryEntry,
     *,
-    moment: bool,
     common_unit: str | None,
 ) -> str:
     if common_unit is not None:
         return _compact_number(float(entry.request.y_quantity.magnitude))
-    return _quantity_label(entry.request.y_quantity, moment=moment)
+    return _quantity_label(entry.request.y_quantity)
 
 
 def _render_summary_panel(
@@ -203,7 +198,6 @@ def _render_summary_panel(
     groups: tuple[_DenseSummaryGroup, ...],
     *,
     summary_height_in: float,
-    moment: bool,
 ) -> None:
     _figure_width, figure_height = (
         float(value) for value in figure.get_size_inches()
@@ -225,7 +219,7 @@ def _render_summary_panel(
     summary.set_ylim(0.0, 1.0)
     summary.set_axis_off()
 
-    common_unit = _common_y_unit(groups, moment=moment)
+    common_unit = _common_y_unit(groups)
     title_fraction = _SUMMARY_TITLE_HEIGHT_IN / panel_height_in
     group_header_fraction = _SUMMARY_GROUP_HEADER_HEIGHT_IN / panel_height_in
     row_fraction = _SUMMARY_ROW_HEIGHT_IN / panel_height_in
@@ -348,11 +342,7 @@ def _render_summary_panel(
                 value = summary.text(
                     value_x,
                     row_y,
-                    _entry_value_text(
-                        entry,
-                        moment=moment,
-                        common_unit=common_unit,
-                    ),
+                    _entry_value_text(entry, common_unit=common_unit),
                     transform=summary.transAxes,
                     ha="right",
                     va="center",
@@ -391,7 +381,6 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
             axis,
             groups,
             summary_height_in=summary_height_in,
-            moment=all(series.is_moment for series in result.series),
         )
         figure.canvas.draw()
     finally:
