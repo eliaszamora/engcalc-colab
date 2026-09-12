@@ -10,6 +10,7 @@ from matplotlib.text import Annotation
 from .models import PlotResult
 from .plotting import (
     _CharacteristicRequest,
+    _annotation_exponents,
     _characteristic_requests,
     _compact_number,
     _quantity_label,
@@ -166,9 +167,9 @@ def _summary_height_inches(groups: tuple[_DenseSummaryGroup, ...]) -> float:
     )
 
 
-def _group_x_header(group: _DenseSummaryGroup) -> str:
+def _group_x_header(group: _DenseSummaryGroup, *, exponent: bool) -> str:
     quantity = group.x_quantity
-    value = _compact_number(float(quantity.magnitude))
+    value = _compact_number(float(quantity.magnitude), exponent=exponent)
     unit = _unit_label(quantity)
     return f"x = {value}" if not unit else f"x = {value} {unit}"
 
@@ -186,9 +187,10 @@ def _entry_value_text(
     entry: _DenseSummaryEntry,
     *,
     common_unit: str | None,
+    exponent: bool,
 ) -> str:
     if common_unit is not None:
-        return _compact_number(float(entry.request.y_quantity.magnitude))
+        return _compact_number(float(entry.request.y_quantity.magnitude), exponent=exponent)
     return _quantity_label(entry.request.y_quantity)
 
 
@@ -198,6 +200,7 @@ def _render_summary_panel(
     groups: tuple[_DenseSummaryGroup, ...],
     *,
     summary_height_in: float,
+    exponents: tuple[bool, bool],
 ) -> None:
     _figure_width, figure_height = (
         float(value) for value in figure.get_size_inches()
@@ -258,7 +261,7 @@ def _render_summary_panel(
             header = summary.text(
                 cell_left,
                 cursor_y,
-                _group_x_header(group),
+                _group_x_header(group, exponent=exponents[0]),
                 transform=summary.transAxes,
                 ha="left",
                 va="top",
@@ -342,7 +345,11 @@ def _render_summary_panel(
                 value = summary.text(
                     value_x,
                     row_y,
-                    _entry_value_text(entry, common_unit=common_unit),
+                    _entry_value_text(
+                        entry,
+                        common_unit=common_unit,
+                        exponent=exponents[1],
+                    ),
                     transform=summary.transAxes,
                     ha="right",
                     va="center",
@@ -381,6 +388,7 @@ def reflow_dense_characteristic_labels(figure, result: PlotResult) -> None:
             axis,
             groups,
             summary_height_in=summary_height_in,
+            exponents=_annotation_exponents(result),
         )
         figure.canvas.draw()
     finally:

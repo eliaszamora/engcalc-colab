@@ -59,7 +59,41 @@ def _quantity_label(quantity) -> str:
     return value if not unit else f"{value} {unit}"
 
 
-def _compact_number(value: float) -> str:
+def _wants_exponent(values) -> bool:
+    """Would any of these be written as a power of ten?
+
+    Asked once for an axis, from the values the figure *draws*, and the answer is then
+    used for every annotation on it. Annotated points lie on those curves, and matplotlib
+    computes its own axis offset from the same data, so the label and the axis behind it
+    cannot disagree.
+    """
+    for value in values:
+        try:
+            magnitude = abs(float(getattr(value, "magnitude", value)))
+        except (TypeError, ValueError):
+            continue
+        if magnitude >= _FIXED_DECIMAL_CEILING:
+            return True
+    return False
+
+
+def _annotation_exponents(result: PlotResult) -> tuple[bool, bool]:
+    """`(abscissa, ordinate)`: how this figure writes each axis's annotations.
+
+    Per axis and not per figure, for the reason #141 gave for a table's columns. A beam's
+    abscissa runs 0 to 600 cm and reads perfectly well in decimals while its ordinate is
+    in the millions; one answer for the whole figure would print `3.00×10²` for the
+    mid-span station in order to tidy the moment beside it.
+    """
+    ordinates = [
+        value
+        for series in (*result.series, *result.source_series)
+        for value in series.y_values
+    ]
+    return _wants_exponent(result.x_values), _wants_exponent(ordinates)
+
+
+def _compact_number(value: float, *, exponent: bool = False) -> str:
     """A coordinate the reader reads off the axes, in the economy the axes have.
 
     Fixed decimals below a million and a power of ten above it - not a new rule, but the
@@ -70,23 +104,37 @@ def _compact_number(value: float) -> str:
     Reached commonly once a declared palette started reaching the figure: on a `kgf` sheet
     the beam's envelope annotated `(447, 2211787.72)` beside an axis whose own ticks read
     `0.0, 0.5, 1.0 … ×10⁶`. Eleven significant figures on a chart showing two.
+
+    `exponent` is the axis speaking for its annotations. Answering per value put
+    `(300, 611829.73)` on one curve of a sweep and `(300, 1.22×10⁶)` on the other, on one
+    axis - the same defect #141 fixed for a table column, asked about a figure. A zero
+    stays a zero: it has no exponent to take, which is why that return sits above this.
     """
     if math.isclose(value, 0.0, rel_tol=0.0, abs_tol=5e-13):
         value = 0.0
-    if abs(value) >= _FIXED_DECIMAL_CEILING:
+    if value == 0.0:
+        return "0"
+    if exponent or abs(value) >= _FIXED_DECIMAL_CEILING:
         return _scientific_text(value, 2)
     return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
-def _compact_exact_x_label(symbolic, numeric: float) -> str:
+def _compact_exact_x_label(symbolic, numeric: float, *, exponent: bool = False) -> str:
     if isinstance(symbolic, sp.Rational) and symbolic.q != 1:
         return f"{symbolic.p}/{symbolic.q}"
-    return _compact_number(numeric)
+    return _compact_number(numeric, exponent=exponent)
 
 
-def _coordinate_label(x: float, y: float, x_symbolic=None) -> str:
-    x_text = _compact_exact_x_label(x_symbolic, x)
-    return f"({x_text}, {_compact_number(y)})"
+def _coordinate_label(
+    x: float,
+    y: float,
+    x_symbolic=None,
+    *,
+    exponents: tuple[bool, bool] = (False, False),
+) -> str:
+    x_exponent, y_exponent = exponents
+    x_text = _compact_exact_x_label(x_symbolic, x, exponent=x_exponent)
+    return f"({x_text}, {_compact_number(y, exponent=y_exponent)})"
 
 
 def _extreme_indices(values: list[float]) -> tuple[int, int]:
@@ -454,10 +502,11 @@ def _annotate_characteristic(
     line_color,
     occupied_boxes: list,
     x_symbolic=None,
+    exponents: tuple[bool, bool] = (False, False),
 ) -> None:
     x = float(x_quantity.magnitude)
     y = float(y_quantity.magnitude)
-    text = _coordinate_label(x, y, x_symbolic)
+    text = _coordinate_label(x, y, x_symbolic, exponents=exponents)
     annotation = _create_annotation(axis, text, x, y, _ANNOTATION_CANDIDATES[0], line_color)
     _place_annotation(
         annotation,
@@ -519,6 +568,7 @@ def _fill_segmented_between(
 
 
 def _render_single_series(figure, axis, result: PlotResult) -> None:
+    exponents = _annotation_exponents(result)
     series = result.series[0]
     x_values = [float(value.magnitude) for value in result.x_values]
     y_values = [float(value.magnitude) for value in series.y_values]
@@ -572,9 +622,11 @@ def _render_single_series(figure, axis, result: PlotResult) -> None:
             line_color=line_color,
             occupied_boxes=occupied_boxes,
             x_symbolic=request.x_symbolic,
+            exponents=exponents,
         )
 
 def _render_multi_series(figure, axis, result: PlotResult) -> None:
+    exponents = _annotation_exponents(result)
     x_values = [float(value.magnitude) for value in result.x_values]
     requests = _characteristic_requests(result)
     requests_by_series = {
@@ -623,6 +675,7 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
             line_color=line_colors[request.series_index],
             occupied_boxes=occupied_boxes,
             x_symbolic=request.x_symbolic,
+            exponents=exponents,
         )
 
 
@@ -636,6 +689,7 @@ def _render_envelope_sources(axis, result: PlotResult, x_values):
 
 
 def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
+    exponents = _annotation_exponents(result)
     x_values = [float(value.magnitude) for value in result.x_values]
     _render_envelope_sources(axis, result, x_values)
     maximum_series, minimum_series = result.series
@@ -706,6 +760,7 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
         inverted=moment,
         line_color=maximum_line.get_color(),
         occupied_boxes=occupied_boxes,
+        exponents=exponents,
     )
     if not coincident_extrema:
         _annotate_characteristic(
@@ -717,10 +772,12 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
             inverted=moment,
             line_color=minimum_line.get_color(),
             occupied_boxes=occupied_boxes,
+            exponents=exponents,
         )
 
 
 def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
+    exponents = _annotation_exponents(result)
     x_values = [float(value.magnitude) for value in result.x_values]
     _render_envelope_sources(axis, result, x_values)
     magnitude_series = result.series[0]
@@ -772,6 +829,7 @@ def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
         inverted=moment,
         line_color=magnitude_line.get_color(),
         occupied_boxes=[],
+        exponents=exponents,
     )
 
 
