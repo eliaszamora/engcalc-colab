@@ -2,7 +2,50 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.5**.
+Current version: **0.30.6**.
+
+
+## v0.30.6 a condition keeps the side it was written on
+
+One correction, found by rendering the beam memoria the way the engineer runs it — with
+a declared palette — and reading the page. Four lines apart:
+
+    M_P(x) = { x P / 2        for x ≤ L/2
+               P (L − x) / 2  for x ≤ L
+               0              otherwise }
+
+    Mo(x)  = { x P / 2        for x ≤ L/2
+               P (L − x) / 2  for L ≥ x        the same condition, reversed
+               0              otherwise }
+
+Worse inside one block than between two: the first branch keeps the variable on the left
+and the second moves it to the right, so a reader following the branches down watches it
+change sides between adjacent lines.
+
+**The builder already prevented this and substitution undid it.** `build_relation` and
+`build_piecewise` both pass `evaluate=False`, deliberately, so a stored piecewise says
+what the sheet said. `Relational` has a canonical form that swaps a comparison when both
+sides are bare symbols — `Le(x, L)` becomes `Ge(L, x)`, while `Le(x, L/2)` is left alone
+because `L/2` is not a symbol — and rebuilding a `Piecewise` with evaluation on applies
+it. A bare relational survives substitution unchanged; only the reassembly canonicalises,
+so a piecewise is now substituted branch by branch and put back together the way it was
+built.
+
+It is not the `case` path. A plain `N(x) = M_P(x)` reversed it too, and so did `combo`.
+A comparison outside a piecewise — `solve(M(x) > 20*kN*m, x, 0, L)` — is a different
+feature and is untouched.
+
+The reference sheet also pairs each definition with its own evaluation. Four rows were
+still printing twice, and the renderer was not at fault: its rule is *"the block's opening
+row is, character for character, the row immediately above it"*, and it deliberately
+exempts an evaluation written far from its definition. The sheet was declaring its `keep`s
+in one group and evaluating them in a second, so nothing was ever immediately above
+anything.
+
+`tools/render_memoria.py` takes a palette as a third argument. Without one it renders a
+page the engineer does not have, and this defect was only visible in the units he reads.
+
+A patch release: corrections only.
 
 
 ## v0.30.5 what the engineer saw on his own page
@@ -2113,6 +2156,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.6** — a piecewise condition keeps the interval variable on the side it was written. `Mo(x)` restated `M_P(x)` with `for x ≤ L` reversed to `for L ≥ x`, one branch after a branch that kept it on the left. The builder already passed `evaluate=False` to prevent exactly this; rebuilding a `Piecewise` during substitution applied SymPy's canonical form, which swaps a comparison whose sides are both bare symbols. A piecewise is substituted branch by branch now. The reference sheet also pairs each definition with its own evaluation, which stops four rows printing twice, and `render_memoria.py` can declare a palette.
 - **0.30.5** — what the engineer saw on his own page, in four corrections. A `keep` name now survives a numeric coefficient, so `5*q_s*L^4/(384*E*I)` reads as written instead of `L⁴(5 qD + 5 qL)/(32 b h³ E)` — the written form was correct and the structural verification was discarding it, which `cancel` settles. The four blocks are `Markdown` outputs and typeset: `L**2*(0.15*qD + 0.2*qL)` reads `L²(0.15 qD + 0.2 qL)`, in the same face as the working beside it, after measuring in Colab that a `Markdown` output typesets `$...$` where an HTML one typesets nothing. `governing` and `summary` no longer wear a class nobody defines. And `tools/viga.eng` models a beam that exists: its point-load moment is `piecewise` and returns to zero at the supports.
 - **0.30.4** — one page, one set of units, in four corrections. Pint 0.26 changed `~P`'s separator between two unit factors from `·` to `⋅` and ten contracts went red on an untouched tree, so the character is decided here now rather than by whichever version resolves — including the rule that reads the string back to write a moment force·length, which had stopped applying silently. `%eng_units kgf` announced itself as `1 / s, cm, cm ** 2, kgf * cm` and now reads `cm, cm², cm⁴, kgf, kgf·cm, …`. A declared palette reaches the figure, which until now came out identical with and without one. And a table column is written one way, where `673991.63` sat above `1.20×10⁶`.
 - **0.30.3** — what a third reference sheet found, in two corrections. A block Colab renders as HTML carries no LaTeX: `extrema`, `governing`, `summary` and the table cells printed `\(M_{u}\)` and `3.51 \times 10^{-8}` as raw text, because a `display(HTML(...))` output in Colab typesets nothing. And one quantity is spelled one way down a page: an extrema block read `183.60 m·kN` two lines from `183.60 kN·m`, because a family test compared unit *strings* where Pint spells `meter * kilonewton` and `kilonewton * meter` differently for the same unit. Every coordinate in a characteristic block now takes one unit, chosen by its domain.
@@ -2181,4 +2225,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.30.5`.
+Version: `0.30.6`.
