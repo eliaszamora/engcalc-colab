@@ -1666,22 +1666,90 @@ _NUMERIC_ROW_VISUAL_BUDGET = 64.0
 _COMPLETE_ROW_VISUAL_BUDGET = 104.0
 
 
+def _brace_group(text: str, start: int) -> tuple[str, int] | None:
+    r"""What is inside the `{...}` beginning at `start`, and where it ends.
+
+    Brace matching rather than a regular expression, because the groups nest:
+    `\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}`.
+
+    One copy. `plotting` needs the same walk to write a unit inline on an axis and had
+    its own from #154; a mutant that made this one keep the braces it matched survived
+    the whole suite, because a width estimate does not notice one character and the two
+    implementations could drift apart without anything saying so.
+    """
+    if start >= len(text) or text[start] != "{":
+        return None
+    depth = 0
+    for index in range(start, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1 : index], index + 1
+    return None
+
+
+# What a fraction costs beyond its wider half: the rule and the air around it.
+_FRACTION_RULE_WIDTH = 6.0
+
+
 def _latex_visual_width(latex: str) -> float:
-    """Estimate rendered MathJax width from visual LaTeX complexity."""
+    r"""Estimate rendered MathJax width from visual LaTeX complexity.
+
+    **A fraction is measured across, not end to end.** MathJax stacks it, so what the
+    reader sees is as wide as its wider half. Charging numerator *plus* denominator
+    overstated every fraction on the page, and that overstatement is what decided the
+    engineer's deflection did not fit:
+
+        5 q_s L⁴ / (384 E I)      estimated 83 against a budget of 64
+                                  what he sees is 44
+
+    Judged over budget it went to `_bounded_product_rows`, which splits a product at
+    factor boundaries - and SymPy's `A/B` is `Mul(A, Pow(B, -1))`, so the split fell
+    between numerator and denominator and printed `\cdot \frac{1}{...}` on a row of its
+    own, four lines under a symbolic line that was one clean fraction. The splitter was
+    doing what it says; it was never supposed to be reached.
+
+    It also closes the remainder `NEXT.md` records: a formula too wide to sit beside its
+    own value is not promoted, `5 k q L^4 / (384 E I)` "measures 124 against a budget of
+    104". Stacked it is well inside, and measured on the page at Colab's 900 px the
+    promoted block is 4 px narrower and 135 px shorter than the loose row it replaces.
+    """
     normalized = latex
     normalized = normalized.replace(r"\left", "").replace(r"\right", "")
     normalized = normalized.replace(r"\,", "").replace(r"\!", "")
     normalized = normalized.replace(r"\quad", "  ")
     normalized = normalized.replace(r"\cdot", "·")
     normalized = re.sub(r"\\mathrm\{([^{}]+)\}", r"\1", normalized)
+    return _stacked_width(normalized)
 
-    fraction_count = normalized.count(r"\frac")
-    normalized = normalized.replace(r"\frac", "")
-    normalized = re.sub(r"\\(?:displaystyle|textstyle|scriptstyle)", "", normalized)
+
+def _stacked_width(latex: str) -> float:
+    r"""The width of one stretch of LaTeX, with every `\frac` measured across."""
+    total = 0.0
+    index = 0
+    while True:
+        found = latex.find(r"\frac", index)
+        if found < 0:
+            break
+        numerator = _brace_group(latex, found + len(r"\frac"))
+        denominator = _brace_group(latex, numerator[1]) if numerator else None
+        if denominator is None:
+            break
+        total += _flat_width(latex[index:found])
+        total += max(_stacked_width(numerator[0]), _stacked_width(denominator[0]))
+        total += _FRACTION_RULE_WIDTH
+        index = denominator[1]
+    return total + _flat_width(latex[index:])
+
+
+def _flat_width(latex: str) -> float:
+    """A stretch with no fraction left in it, counted straight across."""
+    normalized = re.sub(r"\\(?:displaystyle|textstyle|scriptstyle)", "", latex)
     normalized = re.sub(r"\\[A-Za-z]+", "X", normalized)
     normalized = normalized.replace("{", "").replace("}", "")
-
-    return float(len(normalized) + 6 * fraction_count)
+    return float(len(normalized))
 
 
 def _render_signed_term(term: sp.Expr, *, substitutions: dict[str, object] | None, settings: RenderSettings, unit_literals: frozenset[str] = frozenset()) -> tuple[bool, str]:
