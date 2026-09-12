@@ -34,6 +34,8 @@ import matplotlib.figure  # noqa: E402
 
 import engcalc_colab.magic as magic  # noqa: E402
 
+from conftest import figure_text  # noqa: E402
+
 BEAM = (
     "L := 6*m\n"
     "qD := 18*kN/m\n"
@@ -75,8 +77,10 @@ def test_a_declared_palette_labels_the_axes(cell, capsys):
     capsys.readouterr()
     axis = _figure(cell).axes[0]
 
-    assert "[kgf·cm]" in axis.get_ylabel(), axis.get_ylabel()
-    assert "[cm]" in axis.get_xlabel(), axis.get_xlabel()
+    # The axis typesets its unit now, so this reads it back the way the reader sees
+    # it. What the sheet declared and what the axis says is the same question.
+    assert "[kgf·cm]" in figure_text(axis.get_ylabel()), axis.get_ylabel()
+    assert "[cm]" in figure_text(axis.get_xlabel()), axis.get_xlabel()
 
 
 def test_the_curve_is_drawn_in_the_unit_its_axis_names(cell, capsys):
@@ -117,7 +121,7 @@ def test_an_annotated_point_agrees_with_the_axes_it_sits_on(cell, capsys):
     capsys.readouterr()
     axis = _figure(cell).axes[0]
 
-    annotations = [text.get_text() for text in axis.texts]
+    annotations = [figure_text(text.get_text()) for text in axis.texts]
     assert annotations, "the envelope annotated nothing"
 
     # A first draft asserted only that each x sat inside `[0, 600]`, which `4.47` also
@@ -161,8 +165,8 @@ def test_a_sheet_with_no_palette_draws_exactly_what_it_always_did(cell, capsys):
     capsys.readouterr()
     axis = _figure(cell).axes[0]
 
-    assert "[kN·m]" in axis.get_ylabel(), axis.get_ylabel()
-    assert "[m]" in axis.get_xlabel(), axis.get_xlabel()
+    assert "[kN·m]" in figure_text(axis.get_ylabel()), axis.get_ylabel()
+    assert "[m]" in figure_text(axis.get_xlabel()), axis.get_xlabel()
     assert max(axis.lines[0].get_xdata()) == pytest.approx(6.0), max(
         axis.lines[0].get_xdata()
     )

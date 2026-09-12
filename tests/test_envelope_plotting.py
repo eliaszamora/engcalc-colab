@@ -4,6 +4,7 @@ matplotlib.use("Agg")
 from matplotlib.collections import PathCollection, PolyCollection
 from matplotlib.text import Annotation
 
+from conftest import figure_text
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.plotting import render_plot
@@ -66,7 +67,7 @@ def test_envelope_source_curves_have_no_source_markers_or_source_callouts():
 def test_envelope_preserves_moment_positive_down_and_engineering_units():
     axis = render_plot(moment_envelope_result()).axes[0]
     assert axis.yaxis_inverted()
-    assert axis.get_ylabel() == "M(x) [kN·m]"
+    assert figure_text(axis.get_ylabel()) == "M(x) [kN·m]"
     assert axis.get_title() == "M(x) envelope"
 
 
@@ -115,7 +116,7 @@ def test_magnitude_envelope_shows_signed_sources_and_one_nonnegative_boundary():
     assert any(min(line.get_ydata()) < 0 for line in faint)
     assert len(boundaries) == 1
     assert min(boundaries[0].get_ydata()) >= 0.0
-    assert axis.get_ylabel() == "V(x) [kN]"
+    assert figure_text(axis.get_ylabel()) == "V(x) [kN]"
     assert axis.get_title() == "|V(x)| envelope"
     assert not axis.yaxis_inverted()
 

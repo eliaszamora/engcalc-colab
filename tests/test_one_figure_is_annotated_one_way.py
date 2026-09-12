@@ -33,6 +33,8 @@ import matplotlib.figure  # noqa: E402
 
 import engcalc_colab.magic as magic  # noqa: E402
 
+from conftest import figure_text  # noqa: E402
+
 EXPONENT = "×10"
 
 
@@ -58,10 +60,15 @@ def cell(monkeypatch):
 
 
 def coordinates(figure) -> list[tuple[str, str]]:
-    """Every `(x, y)` annotation on the axes, as the two strings the reader sees."""
+    """Every `(x, y)` annotation on the axes, as the two strings the reader sees.
+
+    An annotation typesets its power of ten now - `$1.22 \times 10^{6}$`, the page's
+    own spelling - so `figure_text` reads it back. This file asks whether one axis is
+    written two ways, which is the same question in either spelling.
+    """
     pairs = []
     for text in figure.axes[0].texts:
-        body = text.get_text().strip()
+        body = figure_text(text.get_text()).strip()
         if not (body.startswith("(") and body.endswith(")")):
             continue
         parts = body[1:-1].split(",")
@@ -153,9 +160,9 @@ def test_the_dense_summary_panel_answers_the_same_way(cell, capsys):
     assert panels, [axes.get_gid() for axes in figure.axes]
 
     values = [
-        text.get_text()
+        figure_text(text.get_text())
         for text in panels[0].texts
-        if text.get_text() and text.get_text()[0].isdigit()
+        if text.get_text() and text.get_text().lstrip('$')[0].isdigit()
     ]
     written = [value for value in values if value not in {"0", "0.00"}]
     assert written, values
