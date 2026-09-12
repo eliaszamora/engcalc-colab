@@ -2,7 +2,69 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.8**.
+Current version: **0.30.9**.
+
+
+## v0.30.9 what an audit of one notebook found
+
+Three corrections, all of them found by reading the engineer's own notebook rather than
+by a contract: a frame memoria with a matrix formulation, a beam memoria, and the figures
+on both.
+
+### A palette fixes every power of its own unit
+
+The static condensation, three lines one under the other on a sheet that declared
+`%eng_units kgf`:
+
+    C  =  -3 s_c / (2 L_c)
+       =  -3 (1.00) / (2 (370.00 cm))     the working, in centimetres
+       =  [-0.41  -0.41]  1/m             the answer, in reciprocal metres
+
+`-3 / (2 × 370 cm)` is `-0.00405`, not `-0.41`. The number was right — `-0.41 1/m` *is*
+`-0.00405 1/cm` — and the page was unreadable anyway, because a reviewer redoing the
+arithmetic as written gets a different figure and nothing says why. Every unit that page
+prints was swept: 93 of them, all the palette's, and one `1/m`.
+
+The table enumerated `[length]^1`, `^2` and `^4` by hand — a length, an area, an inertia,
+the three somebody needed. A curvature is `[length]^-1` and a **section modulus** is
+`[length]^3`, and `W = I/c` is as ordinary as reinforced concrete gets; on the `kN`
+palette it came out `18000.00 cm³` under a working in metres. A power of a dimension the
+palette names is derived now, so the family closes rather than the two cases reported.
+
+### A fraction is measured across, not end to end
+
+The deflection, four lines apart:
+
+    delta  =  5 q_s L⁴ / (384 E I)                      one clean fraction
+           =  5 (30.59 kgf/cm) (600.00 cm)⁴
+              · 1/(384 (239633.31 kgf/cm²) (540000.00 cm⁴))
+           =  0.40 cm
+
+Nobody writes that. The row splitter was never supposed to be reached: the width estimate
+that gates it charged a fraction its numerator *plus* its denominator, and MathJax stacks
+a fraction, so what the reader sees is the wider half. That deflection measured 83 against
+a budget of 64 where what he sees is 44. Judged over budget it went to the splitter, which
+divides a product at factor boundaries — and `A/B` is `Mul(A, Pow(B, -1))`, so the split
+fell between numerator and denominator.
+
+The same wrong number had been recorded as a deliberate trade: a formula too wide to sit
+beside its own value was left in a loose row rather than promoted into the identity
+column. Measured on the rendered page at Colab's width, promoting it makes the block 4 px
+narrower and 135 px shorter.
+
+### A legend writes the number the page writes
+
+    the page     P_2  =  20394.32 kgf
+    the legend   P2   =  20394.3 kgf
+
+Same load, same page, two spellings — and not only in the converted case: with no palette
+the page writes `200.00 kN` where the legend wrote `200 kN`. v0.30.7 chose `%g` there
+deliberately, because a swept parameter is a value the engineer typed and `40` is what he
+wrote; true of the sheet, and not of the page, which writes that same typed value with the
+sheet's precision in the row above the figure. The legend takes that precision now, so
+`%eng_config precision=3` moves both together.
+
+A patch release: corrections only.
 
 
 ## v0.30.8 the figure typesets like the page around it
@@ -2266,6 +2328,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.9** — what an audit of one notebook found, in three corrections. A declared palette fixes a length and every power of it follows: the table enumerated `[length]^1`, `^2` and `^4` by hand, so a condensation matrix printed `-0.41 1/m` three lines under `370.00 cm` and a section modulus `W = I/c` printed `18000.00 cm³` under a working in metres. A substituted fraction stays a fraction: the width estimate that decides when a row is split charged a fraction numerator *plus* denominator where MathJax stacks it, so a deflection measured 83 against a budget of 64 when what the reader sees is 44, and the splitter turned `A/B` into `A · 1/B` — the same wrong number had been recorded as a deliberate trade against promoting a wide formula, which is 4 px narrower and 135 px shorter promoted. And a swept legend writes the number the page writes: `20394.32 kgf`, not `20394.3`, with the sheet's own precision rather than `%g`.
 - **0.30.8** — a figure typesets like the page around it. The axis corner read `1e6`, programmer notation appearing nowhere else in a memoria and two centimetres above an annotation on the same axis reading `1.97×10⁶`; the unit read `kgf·cm` beside a table header reading `kgf · cm`. Both are the page's own LaTeX now, through matplotlib's mathtext, and the name still does not typeset — a unit is mathematics and a name is what the engineer typed. The face is unchanged: the default `dejavusans` fontset sets a unit in the same sans as the ticks, which retracts an earlier claim that mathtext meant serif labels. Two deliberate departures: a quotient is written inline, because a `\frac` on a rotated y label sets at about six points, and a bold label asks for a bold unit, because mathtext ignores the weight of the text around it.
 - **0.30.7** — the figure reads in one language, in three corrections found by looking at a two-curve sweep on a `kgf` sheet. A swept parameter's legend said `P = 40 kN` beside axes in `kgf·cm` and `cm`: the engine builds that entry as text before any render settings exist, so the series carries the swept value now and the label is written where the units are known — and under it, `_normalize_response_series` was rebuilding a series by listing its fields, dropping in silence any field added later. The annotations on one axis read `611829.73` on one curve and `1.22×10⁶` on the next; the notation is chosen once per axis now, from the values the figure draws, so the label cannot disagree with the axis offset beside it, with the dense summary panel answering the same way and a zero staying `0`. And `_force_length_unit_order` was removed: nine sheets across four moment units, both orders, with and without a palette, all arrive at the axis force-first already, and the rule's own mechanism — splitting a formatted string on the product dot — had stopped applying when Pint 0.26 changed that character, silently.
 - **0.30.6** — a piecewise condition keeps the interval variable on the side it was written. `Mo(x)` restated `M_P(x)` with `for x ≤ L` reversed to `for L ≥ x`, one branch after a branch that kept it on the left. The builder already passed `evaluate=False` to prevent exactly this; rebuilding a `Piecewise` during substitution applied SymPy's canonical form, which swaps a comparison whose sides are both bare symbols. A piecewise is substituted branch by branch now. The reference sheet also pairs each definition with its own evaluation, which stops four rows printing twice, and `render_memoria.py` can declare a palette.
@@ -2337,4 +2400,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.30.8`.
+Version: `0.30.9`.
