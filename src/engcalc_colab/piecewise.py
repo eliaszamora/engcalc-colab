@@ -35,6 +35,39 @@ def build_piecewise(
     return sp.Piecewise(*args, evaluate=False)
 
 
+def substitute_keeping_condition_sides(expression, bindings):
+    """Substitute into a Piecewise without letting SymPy reorder its conditions.
+
+    `build_relation` and `build_piecewise` both pass `evaluate=False`, deliberately, so a
+    stored piecewise says what the sheet said. Substitution undid it: `xreplace` on a
+    `Piecewise` reassembles it *with* evaluation, and `Relational` has a canonical form
+    that swaps a comparison when both sides are bare symbols. `Le(x, L)` becomes
+    `Ge(L, x)`; `Le(x, L/2)` is left alone, because `L/2` is not a symbol.
+
+    So one branch kept the variable on the left and the next moved it to the right,
+    inside a single block:
+
+        Mo(x) = { x P / 2        for x ≤ L/2
+                  P (L − x) / 2  for L ≥ x
+                  0              otherwise }
+
+    A bare relational survives substitution unchanged - measured; it is only the
+    reassembly that canonicalises - so this substitutes into each branch's value and
+    condition separately and puts the piecewise back together the way it was built.
+
+    Only Piecewise. Everything else substitutes as it always did, and a comparison
+    outside one - `solve(M(x) > 20*kN*m, x, 0, L)` - is a different feature and is not
+    touched.
+    """
+    if not isinstance(expression, sp.Piecewise):
+        return None
+    branches = []
+    for value, condition in expression.args:
+        substituted = condition if condition is sp.true else condition.xreplace(bindings)
+        branches.append((value.xreplace(bindings), substituted))
+    return sp.Piecewise(*branches, evaluate=False)
+
+
 def inspect_piecewise_variable(conditions: tuple[ast.Compare, ...]) -> str:
     """Return the one direct interval variable shared by all conditions."""
     if not conditions:
