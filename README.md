@@ -2,7 +2,64 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.6**.
+Current version: **0.30.7**.
+
+
+## v0.30.7 the figure reads in one language
+
+Three corrections, all of them on the figure, all of them found by looking at one — a
+two-curve sweep on a sheet that had declared `%eng_units kgf`.
+
+**The legend was the last thing still in kN.** The axes read `M(x) [kgf·cm]` and
+`x [cm]`, and beside them the legend said `P = 40 kN`. v0.30.4 made a declared palette
+reach every quantity the figure *draws*, and could not reach this one, because by the
+time the renderer sees it the legend entry is no longer a quantity: the engine builds it
+as text, `f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"`, before any
+render settings exist, and nothing downstream can turn a string back into 40 kN. The
+series carries the swept value now and the entry is written where the units are known:
+`P = 4078.86 kgf`.
+
+Under it, a finding worth more than the defect. Carrying the value was not enough — the
+series arrived at `_normalize_response_series` with it and left without it, because that
+function rebuilt the series by listing its fields, so any field added later is dropped in
+silence. It uses `replace` now. Every mutant in that change was killed except the one
+that paragraph is about, which is why it is a paragraph.
+
+**One figure was annotated two ways.** On the same axis:
+
+    (300, 611829.73)
+    (300, 1.22×10⁶)
+
+The same quantity, one curve written in full and the next as a power of ten.
+`_compact_number` answers for one value — fixed decimals below a ceiling, an exponent
+above it — which is right for a value standing alone and wrong for a figure, where the
+whole point of an annotation is that the reader compares it with the curve beside it and
+the axis behind it. It is v0.30.4's table column asked about a figure: *the choice is
+made once per column, from the values the column holds*. Here the column is an axis.
+
+Per axis, not per figure. A beam's abscissa runs 0 to 600 cm and reads perfectly well in
+decimals while its ordinate is in the millions; one answer for the whole figure would
+print `3.00×10²` for the mid-span station in order to tidy the moment. The decision comes
+from the values the figure *draws*, not from the annotated points alone, so the label and
+the axis offset matplotlib computes from the same data cannot disagree. The dense summary
+panel that four or more curves fall back to gets the same answer, and a zero stays `0`.
+
+**And a rule nothing reaches was removed.** `_force_length_unit_order` read a formatted
+unit string back and swapped its factors when a moment had come out length-first. Nine
+sheets across `kN·m`, `kgf·cm`, `N·mm` and `tonf·m`, written both ways, with each palette
+and without, through `plot`, `envelope` and a sweep: every one arrives at the axis already
+force-first, because the registry and the display path settle the order long before a
+label is built. It was not harmless — it worked by splitting the formatted string on the
+dot, so when Pint 0.26 changed which dot that is, the rule stopped applying and the plot
+went on drawing, silently. The property it was meant to provide is asserted directly now,
+over the units an engineer writes; seven of its eight contracts passed before a line was
+deleted, which is the evidence that the guarantee never lived in the rule. Removing it
+took a `moment` flag threaded through five functions and discarded at the end of every
+path, a regex duplicating the engine's own, and two unit tables that existed only to be
+split against. `series.is_moment` stays: it decides the positive-down convention, which is
+a different question and still answered.
+
+A patch release: corrections only.
 
 
 ## v0.30.6 a condition keeps the side it was written on
@@ -2156,6 +2213,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.7** — the figure reads in one language, in three corrections found by looking at a two-curve sweep on a `kgf` sheet. A swept parameter's legend said `P = 40 kN` beside axes in `kgf·cm` and `cm`: the engine builds that entry as text before any render settings exist, so the series carries the swept value now and the label is written where the units are known — and under it, `_normalize_response_series` was rebuilding a series by listing its fields, dropping in silence any field added later. The annotations on one axis read `611829.73` on one curve and `1.22×10⁶` on the next; the notation is chosen once per axis now, from the values the figure draws, so the label cannot disagree with the axis offset beside it, with the dense summary panel answering the same way and a zero staying `0`. And `_force_length_unit_order` was removed: nine sheets across four moment units, both orders, with and without a palette, all arrive at the axis force-first already, and the rule's own mechanism — splitting a formatted string on the product dot — had stopped applying when Pint 0.26 changed that character, silently.
 - **0.30.6** — a piecewise condition keeps the interval variable on the side it was written. `Mo(x)` restated `M_P(x)` with `for x ≤ L` reversed to `for L ≥ x`, one branch after a branch that kept it on the left. The builder already passed `evaluate=False` to prevent exactly this; rebuilding a `Piecewise` during substitution applied SymPy's canonical form, which swaps a comparison whose sides are both bare symbols. A piecewise is substituted branch by branch now. The reference sheet also pairs each definition with its own evaluation, which stops four rows printing twice, and `render_memoria.py` can declare a palette.
 - **0.30.5** — what the engineer saw on his own page, in four corrections. A `keep` name now survives a numeric coefficient, so `5*q_s*L^4/(384*E*I)` reads as written instead of `L⁴(5 qD + 5 qL)/(32 b h³ E)` — the written form was correct and the structural verification was discarding it, which `cancel` settles. The four blocks are `Markdown` outputs and typeset: `L**2*(0.15*qD + 0.2*qL)` reads `L²(0.15 qD + 0.2 qL)`, in the same face as the working beside it, after measuring in Colab that a `Markdown` output typesets `$...$` where an HTML one typesets nothing. `governing` and `summary` no longer wear a class nobody defines. And `tools/viga.eng` models a beam that exists: its point-load moment is `piecewise` and returns to zero at the supports.
 - **0.30.4** — one page, one set of units, in four corrections. Pint 0.26 changed `~P`'s separator between two unit factors from `·` to `⋅` and ten contracts went red on an untouched tree, so the character is decided here now rather than by whichever version resolves — including the rule that reads the string back to write a moment force·length, which had stopped applying silently. `%eng_units kgf` announced itself as `1 / s, cm, cm ** 2, kgf * cm` and now reads `cm, cm², cm⁴, kgf, kgf·cm, …`. A declared palette reaches the figure, which until now came out identical with and without one. And a table column is written one way, where `673991.63` sat above `1.20×10⁶`.
@@ -2225,4 +2283,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.30.6`.
+Version: `0.30.7`.
