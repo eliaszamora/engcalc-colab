@@ -1,6 +1,6 @@
 """Render a memoria the way a notebook would, so a person can look at it.
 
-    python tools/render_memoria.py memoria-preview.html [una-hoja.eng]
+    python tools/render_memoria.py memoria-preview.html [una-hoja.eng] [paleta]
 
 The sheet defaults to `tools/memoria.eng`. It is an argument because the frame benchmark
 was rendered by a copy of this file kept in a scratch directory, and a copy is a second
@@ -71,7 +71,15 @@ SHEET = (
 )
 MEMORIA = SHEET.read_text(encoding="utf-8")
 
+# A third argument declares a palette, the way `%eng_units kgf` does in its own cell
+# before the sheet. Without it this renders a page the engineer does not have: he
+# declares kgf, and the defects found by looking have mostly been visible only in the
+# units he actually reads.
+PALETTE = sys.argv[3] if len(sys.argv) > 3 else ""
+
 magics = magic.EngMagics()
+if PALETTE:
+    magics.eng_units(PALETTE)
 magics.eng("", MEMORIA)
 
 parts = []

@@ -21,9 +21,9 @@ fc := 250*kgf/cm**2
 E := 23500*MPa
 
 keep d = h - rec
-keep I = b*h^3/12
-
 numeric(d)
+
+keep I = b*h^3/12
 numeric(I)
 
 ### Cargas
@@ -98,10 +98,11 @@ $L/300$ para el vano completo.
 """
 
 keep q_s = qD + qL
-keep delta = 5*q_s*L^4/(384*E*I)
-keep delta_adm = L/300
 
+keep delta = 5*q_s*L^4/(384*E*I)
 report(delta)
+
+keep delta_adm = L/300
 report(delta_adm)
 
 summary()

@@ -113,3 +113,41 @@ def test_no_value_is_derived_twice():
 
     assert marked, "the sheet no longer reports anything"
     assert not marked & computed, sorted(marked & computed)
+
+
+def test_no_formula_is_printed_twice(page):
+    r"""The rest of the same problem, found by rendering the page and reading it.
+
+    Removing the `report`/`numeric` pair left four rows still printing twice - `d`,
+    `I`, `δ` and `δ_adm` - and the renderer is not at fault. Its rule is exactly *"the
+    block's opening row is, character for character, the row immediately above it"*, and
+    that rule's own docstring exempts an evaluation written far from its definition,
+    because there the formula row is the only thing saying what is being evaluated.
+
+    The sheet was declaring its `keep`s in a group and evaluating them in a second group,
+    so nothing was ever immediately above anything. Pairing each definition with its own
+    evaluation is what the rule was written for, and it costs the page four rows.
+    """
+    import re
+    from collections import Counter
+
+    rows = []
+    for chunk in page.split(r"\\[8pt]"):
+        for piece in chunk.split(r"\\[16pt]"):
+            collapsed = " ".join(piece.split())
+            head, separator, tail = collapsed.partition("&")
+            if not separator:
+                continue
+            left = head.replace(r"\displaystyle", "").strip()
+            right = (
+                tail.split("&")[-1]
+                .replace(r"\end{array}", "")
+                .replace(r"\displaystyle", "")
+                .strip()
+            )
+            if left:
+                rows.append((left, right))
+
+    assert rows, page[:200]
+    repeated = {row: count for row, count in Counter(rows).items() if count > 1}
+    assert not repeated, sorted(repeated)

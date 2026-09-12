@@ -84,7 +84,12 @@ from .matrix_analysis import (
 from .matrix_numeric import ensure_common_scale
 from .matrix_solve import solve_linear_system
 from .numeric import _UNIT_ALIASES, NumericContext
-from .piecewise import build_piecewise, build_relation, extract_symbolic_breakpoints
+from .piecewise import (
+    build_piecewise,
+    build_relation,
+    extract_symbolic_breakpoints,
+    substitute_keeping_condition_sides,
+)
 from .tables import normalize_explicit_points, normalize_uniform_points
 from .unit_text import normalise
 
@@ -134,6 +139,12 @@ def substitute_symbolic_value(value, bindings):
         for item in sp.preorder_traversal(expression)
     ):
         return _substitute_preserving_inverse_trig(expression, bindings)
+    # A piecewise is reassembled branch by branch, so SymPy's reassembly does not
+    # canonicalise its conditions and move the interval variable across the comparison.
+    # See ``substitute_keeping_condition_sides``.
+    piecewise = substitute_keeping_condition_sides(expression, bindings)
+    if piecewise is not None:
+        return piecewise
     return expression.xreplace(bindings)
 
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
