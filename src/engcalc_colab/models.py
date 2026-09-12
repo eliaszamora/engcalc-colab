@@ -576,6 +576,11 @@ class PlotSeries:
     is_moment: bool
     segment_starts: tuple[int, ...] = ()
     characteristics: tuple[CharacteristicPoint, ...] = ()
+    # The swept parameter this curve stands for, carried as a name and a *quantity* so a
+    # declared palette can reach the legend. The engine builds `display_label` before any
+    # `RenderSettings` exists, and a string cannot be converted back into 40 kN.
+    sweep_parameter: str | None = None
+    sweep_value: Any | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "y_values", tuple(self.y_values))

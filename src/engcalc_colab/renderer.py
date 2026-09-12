@@ -12,7 +12,7 @@ from sympy.printing.latex import LatexPrinter
 from pint.errors import DimensionalityError
 
 from .matrix_numeric import QuantityMatrix
-from .unit_text import unit_text
+from .unit_text import quantity_text, unit_text
 from .models import (
     AssumptionResult,
     CharacteristicInterval,
@@ -706,9 +706,21 @@ def plot_in_palette(result: PlotResult, settings: RenderSettings) -> PlotResult:
             return quantity
 
     def convert_series(series: PlotSeries) -> PlotSeries:
-        return replace(
+        converted = replace(
             series,
             y_values=tuple(convert(value) for value in series.y_values),
+        )
+        if series.sweep_value is None or series.sweep_parameter is None:
+            return converted
+        # The legend of a swept parameter. It is the one thing on a figure the engine
+        # writes as *text* - before any settings exist - so #140 could convert every
+        # curve and leave `P = 40 kN` beside an axis reading `kgf·cm`. The series carries
+        # the quantity now, and the entry is written here, where the units are known.
+        swept = convert(series.sweep_value)
+        return replace(
+            converted,
+            sweep_value=swept,
+            display_label=f"{series.sweep_parameter} = {quantity_text(swept)}",
         )
 
     return replace(
