@@ -114,10 +114,17 @@ def test_the_value_is_the_same_force_it_always_was(cell, capsys):
 # --- what must not move ---------------------------------------------------------------
 
 
-def test_a_sheet_with_no_palette_reads_as_it_always_did(cell):
-    """`%eng_units` is opt-in, and that promise covers the legend like everything else."""
+def test_a_sheet_with_no_palette_keeps_the_units_it_wrote(cell):
+    """`%eng_units` is opt-in, and that promise covers the legend like everything else.
+
+    The promise is about the *unit*: nothing is converted, and `kN` is what the sheet
+    wrote. The number reads `40.00` rather than `40` now, because the page writes
+    `40.00 kN` for that same value in the row above the figure and one quantity on one
+    page is written one way. See
+    `tests/test_a_legend_writes_the_number_the_page_writes.py`.
+    """
     labels = legend_of(cell(SWEEP))
-    assert labels == ["P = 40 kN", "P = 80 kN"], labels
+    assert labels == ["P = 40.00 kN", "P = 80.00 kN"], labels
 
 
 def test_a_dimension_the_palette_does_not_name_is_left_alone(cell, capsys):
