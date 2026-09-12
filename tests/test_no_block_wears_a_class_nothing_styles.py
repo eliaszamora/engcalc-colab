@@ -31,6 +31,7 @@ import re
 import pytest
 
 import engcalc_colab.magic as magic
+from conftest import block_text
 
 
 @pytest.fixture
@@ -116,16 +117,21 @@ def test_the_cells_of_every_table_are_given_room(blocks):
 
 def test_the_blocks_still_say_what_they_said(blocks):
     """Styling is not content. Every one of these was on the page before."""
-    page = "".join(blocks(SHEET))
-    for text in ("Governing", "Summary", "Extrema", "kgf" if False else "kN·m"):
+    page = block_text("".join(blocks(SHEET)))
+    for text in ("Governing", "Summary", "Extrema", "kN·m"):
         assert text in page, (text, page[:200])
 
 
-def test_the_table_block_keeps_the_style_that_works(blocks):
-    """`engcalc-table` is not part of this defect - its class *is* styled - so it is left
-    exactly as it is. The two blocks being fixed use inline attributes instead, because a
-    `<style>` does not survive a `Markdown` output (measured in Colab) and the next change
-    moves them there; writing them with a rule block would be writing them twice."""
-    tables = [block for block in blocks(SHEET) if "engcalc-table" in block]
-    assert tables, "no table block"
-    assert "<style>" in tables[0], tables[0][:200]
+def test_every_block_is_styled_the_way_a_markdown_output_can_be(blocks):
+    """This file's own prediction, now carried out.
+
+    It said the fix used inline attributes because a `<style>` does not survive a
+    `Markdown` output, and that the next change would move these blocks there - so it
+    pinned the *table* block keeping its rule block, being the one not yet moved. All four
+    are moved now, and the rule this file exists for applies to every one of them: no
+    class nobody defines, and no rule block that will be dropped on the way to the reader.
+    """
+    for block in blocks(SHEET):
+        assert "<style>" not in block, block[:200]
+        assert 'class="' not in block, block[:200]
+        assert "style=" in block, block[:200]

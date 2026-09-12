@@ -35,6 +35,7 @@ version that matters and the reason this file exists.
 import pytest
 
 import engcalc_colab.magic as magic
+from conftest import block_text
 from engcalc_colab.renderer import _table_unit_text
 
 DOT_OPERATOR = "⋅"
@@ -106,7 +107,10 @@ def test_no_page_carries_a_dot_operator(cell):
         + "summary()\n"
     )
     assert DOT_OPERATOR not in page, page
-    assert f"kN{MIDDLE_DOT}m" in page, page
+    # The blocks typeset now, so their spelling of the dot is `\cdot` - which is the
+    # same glyph, and `block_text` reads it back as one. The assertion above is about the
+    # character itself and stays on the raw page; this one is about what the reader sees.
+    assert f"kN{MIDDLE_DOT}m" in block_text(page), block_text(page)
 
 
 def test_a_plot_axis_carries_the_page_s_dot_too(cell):

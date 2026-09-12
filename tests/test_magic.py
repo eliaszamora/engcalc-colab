@@ -1,4 +1,4 @@
-from IPython.display import HTML, Math
+from IPython.display import HTML, Markdown, Math
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
 
 
@@ -223,8 +223,8 @@ def test_eng_magic_flushes_math_before_table_and_resumes_after(monkeypatch):
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "A = 1\ntable(x, x, 0, 1, 3)\nB = 2")
 
-    assert [type(item) for item in displayed] == [Math, HTML, Math]
-    assert "engcalc-table" in displayed[1].data
+    assert [type(item) for item in displayed] == [Math, Markdown, Math]
+    assert "<table" in displayed[1].data
 
 
 def test_eng_magic_preserves_heading_equation_table_heading_equation_order(monkeypatch):
@@ -239,7 +239,7 @@ def test_eng_magic_preserves_heading_equation_table_heading_equation_order(monke
         "## Beam\nA = 1\ntable(x, x, 0, 1, 3)\n### Checks\nB = 2",
     )
 
-    assert [type(item) for item in displayed] == [HTML, Math, HTML, HTML, Math]
+    assert [type(item) for item in displayed] == [HTML, Math, Markdown, HTML, Math]
     assert "Beam" in displayed[0].data
-    assert "engcalc-table" in displayed[2].data
+    assert "<table" in displayed[2].data
     assert "Checks" in displayed[3].data

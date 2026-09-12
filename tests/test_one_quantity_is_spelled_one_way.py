@@ -32,6 +32,7 @@ still not a family member, and one that differs by nothing at all was already on
 import pytest
 
 import engcalc_colab.magic as magic
+from conftest import block_text
 
 
 @pytest.fixture
@@ -41,9 +42,17 @@ def cell(monkeypatch):
     magics = magic.EngMagics()
 
     def run(source: str) -> str:
+        r"""The page as the reader sees it.
+
+        Through `block_text`, because the four block renderers are `Markdown` outputs now
+        and their mathematics typesets: a unit that reads `kN·m` on the page is
+        `\mathrm{kN} \cdot \mathrm{m}` in the markup. The question this file asks is
+        unchanged - whether one quantity is spelled two ways where the reader can see
+        both - and the answer is in what the reader sees.
+        """
         captured.clear()
         magics.eng("", source)
-        return "".join(getattr(obj, "data", "") for obj in captured)
+        return block_text("".join(getattr(obj, "data", "") for obj in captured))
 
     run.objects = captured
     run.magics = magics
@@ -178,8 +187,11 @@ def test_a_pressure_times_a_length_is_still_not_a_line_load(cell):
     """#109's case. `GPa*mm` reaches force-per-length through a pressure, so it is not a
     family member however its factors are ordered, and it still reads in kN/m."""
     page = cell("E := 210*GPa\nt := 8*mm\nk = E*t\nnumeric(k)\n")
+    # Through the reader's view like everything else in this file, so the unit reads `kN`
+    # rather than `\mathrm{kN}`. This one is a Math row and not a block, and the row
+    # separator survives `block_text` because it is not markup.
     assert "GPa" not in page.split("& = &")[-1], page
-    assert r"\mathrm{kN}" in page, page
+    assert "kN" in page, page
 
 
 def test_a_unit_that_only_shares_a_dimension_is_not_a_family_member(cell):

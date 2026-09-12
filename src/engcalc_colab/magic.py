@@ -272,7 +272,7 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     display(
-                        HTML(
+                        Markdown(
                             render_table(
                                 result,
                                 settings=self._settings(),
@@ -294,7 +294,7 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     display(
-                        HTML(render_result(result, settings=self._settings()))
+                        Markdown(render_result(result, settings=self._settings()))
                     )
                     continue
 
@@ -305,7 +305,7 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     display(
-                        HTML(
+                        Markdown(
                             render_characteristic_result(
                                 result,
                                 settings=self._settings(),

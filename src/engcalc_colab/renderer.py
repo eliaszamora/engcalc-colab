@@ -2500,6 +2500,21 @@ _SHORT_TABLE_CELL = (
 )
 
 
+def _wide_table_cell(index: int, *, header: bool = False) -> str:
+    """One cell of a `table(...)`: the variable's column reads left, the responses right.
+
+    `th:first-child` and `td:first-child` did that as a rule, and a rule is exactly what
+    a `Markdown` output drops, so the column index decides it here instead.
+    """
+    rule = "rgba(127,127,127,0.42)" if header else "rgba(127,127,127,0.20)"
+    weight = "font-weight:600;" if header else ""
+    align = "left" if index == 0 else "right"
+    return (
+        f"padding:0.28rem 0.62rem;border-bottom:1px solid {rule};"
+        f"text-align:{align};white-space:nowrap;{weight}"
+    )
+
+
 def _short_table_cell(content: str) -> str:
     return f'<td style="{_SHORT_TABLE_CELL}">{content}</td>'
 
@@ -2526,6 +2541,19 @@ def _short_table_block(title: str, body: str) -> str:
     )
 
 
+def _latex_unit_text(unit) -> str:
+    r"""A unit as LaTeX: `\mathrm{kgf} \cdot \mathrm{cm}`.
+
+    The sibling of `unit_text`, for the blocks that typeset. Pint's `~L` rather than a
+    hand-rolled one, which is what every Math row already uses - so a summary row and the
+    working that produced it are printed by the same code, and cannot drift into the two
+    spellings this project spent #135 removing.
+    """
+    if str(unit) == "dimensionless":
+        return ""
+    return format(unit, "~L")
+
+
 def _table_unit_text(unit) -> str:
     """A unit as the page writes it, through the one module that decides that.
 
@@ -2537,11 +2565,18 @@ def _table_unit_text(unit) -> str:
 
 
 def _table_header(label: str, unit) -> str:
+    r"""`U1(x) [$\mathrm{kgf} \cdot \mathrm{cm}$]`.
+
+    The unit typesets and the label does not, and that is a decision rather than an
+    oversight: the unit comes from Pint and is mathematics, while the label is the text
+    the sheet typed - `U1(x)`, `M(x)`, whatever the engineer called it - and turning that
+    into LaTeX means parsing it. A name the reader wrote is shown as the reader wrote it.
+    """
     safe_label = escape(label)
-    unit_text = _table_unit_text(unit)
-    if not unit_text:
+    unit_latex = _latex_unit_text(unit)
+    if not unit_latex:
         return safe_label
-    return f"{safe_label} [{escape(unit_text)}]"
+    return f"{safe_label} [${unit_latex}$]"
 
 
 def _in_unit(quantity, unit, settings: RenderSettings):
@@ -2603,9 +2638,9 @@ def _table_magnitude(quantity, settings: RenderSettings, *, exponent: bool = Fal
     `673991.63` printed directly above `1.20×10⁶` in one column of eleven rows. See
     ``_column_wants_exponent``.
     """
-    return _magnitude_text(
-        quantity.magnitude, settings, scientific=_scientific_text, exponent=exponent
-    )
+    return "$" + _magnitude_text(
+        quantity.magnitude, settings, scientific=_scientific_latex, exponent=exponent
+    ) + "$"
 
 
 def _aggregate_unit(quantities, settings: RenderSettings, fallback):
@@ -2699,7 +2734,10 @@ def render_table(
             for column, unit in zip(result.columns, column_units)
         ),
     ]
-    header_html = "".join(f"<th>{header}</th>" for header in headers)
+    header_html = "".join(
+        f'<th style="{_wide_table_cell(index, header=True)}">{header}</th>'
+        for index, header in enumerate(headers)
+    )
 
     # Per column, like the unit above it and for the same reason. A span in centimetres
     # reads perfectly well in decimals while the moment beside it needs an exponent, and
@@ -2733,25 +2771,24 @@ def render_table(
         )
         rows.append(
             "<tr>"
-            + "".join(f"<td>{cell}</td>" for cell in cells)
+            + "".join(
+                f'<td style="{_wide_table_cell(index)}">{cell}</td>'
+                for index, cell in enumerate(cells)
+            )
             + "</tr>"
         )
 
     body_html = "".join(rows)
+    # Inline, because a `<style>` block does not survive a `Markdown` output - measured
+    # in Colab - and this is one now so its cells typeset. The values are the ones the
+    # rule block carried, moved rather than chosen.
     return (
-        '<style>'
-        '.engcalc-table{margin:0.35rem 0 0.55rem 0;overflow-x:auto;}'
-        '.engcalc-table table{border-collapse:collapse;font-size:0.92rem;line-height:1.35;}'
-        '.engcalc-table th,.engcalc-table td{'
-        'padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);'
-        'text-align:right;white-space:nowrap;}'
-        '.engcalc-table th{font-weight:600;border-bottom:1px solid rgba(127,127,127,0.42);}'
-        '.engcalc-table th:first-child,.engcalc-table td:first-child{text-align:left;}'
-        '</style>'
-        '<div class="engcalc-table"><table>'
-        f'<thead><tr>{header_html}</tr></thead>'
-        f'<tbody>{body_html}</tbody>'
-        '</table></div>'
+        '<div style="margin:0.35rem 0 0.55rem 0;overflow-x:auto;">'
+        f'<table style="border-collapse:collapse;font-size:{_SHORT_TABLE_FONT};'
+        'line-height:1.35;">'
+        f"<thead><tr>{header_html}</tr></thead>"
+        f"<tbody>{body_html}</tbody>"
+        "</table></div>"
     )
 
 
@@ -2771,21 +2808,11 @@ def _characteristic_role_text(role: str) -> str:
     return role.replace("_", " ")
 
 
-def _characteristic_math(text: str) -> str:
-    r"""One piece of mathematics inside a characteristic block, as text.
-
-    It used to be `rf"\({latex}\)"`, and every characteristic block funnels through here -
-    `governing`, `extrema`, `roots`, `intersections`, `summary`. They are HTML outputs,
-    and #120 measured that Colab typesets nothing inside one, so the reader saw
-
-        Summary
-        \(M_{u}\)          \(183.60\,\mathrm{kN} \cdot \mathrm{m}\)
-
-    Escaped, because this is still HTML and plain text is not the same as unescaped text.
-    Losing that while removing a delimiter would trade a rendering defect for an
-    injection, which is the trade #120 nearly made in the other direction.
-    """
-    return escape(text)
+# `_characteristic_math` stood here. #133 wrote it as the one funnel every characteristic
+# block would pass its mathematics through, and then never routed anything to it - the
+# blocks call `_characteristic_quantity_math`, `_characteristic_symbolic_math` and
+# `_characteristic_name` directly. It had no callers on the day it was written and none
+# since, and the contract guarding it tested a function nothing used. Both are gone.
 
 
 def _characteristic_quantity_math(
@@ -2812,36 +2839,35 @@ def _characteristic_quantity_math(
         quantity = _in_unit(quantity, unit, settings)
     else:
         quantity = _display_quantity(quantity, settings, declared=declared)
+    # LaTeX again, and a `$...$` around it. #133 made these blocks plain text because a
+    # `display(HTML(...))` typesets nothing in Colab, which was right about HTML and
+    # wrong about what could be done: a `Markdown` output *does* typeset, and it
+    # typesets the dollar form. Measured in Colab, in one cell, against the parenthesis
+    # form (which markdown eats) and an HTML control (which still renders nothing).
     magnitude = _magnitude_text(
-        quantity.magnitude, settings, scientific=_scientific_text
+        quantity.magnitude, settings, scientific=_scientific_latex
     )
-    unit_text = _table_unit_text(quantity.units)
-    # The escape is inert today and kept deliberately, which is a different thing from
-    # the unreachable branches section 6 says to remove. A magnitude is digits and a unit
-    # name comes from Pint: all 1090 units in the registry were checked and none renders
-    # a `<`, `>` or `&`. Nothing here can inject - until a unit is named that can, and
-    # then this is the line that stops it. Mutation calls it inert; the registry says it
-    # is load-bearing the moment that changes.
-    return escape(f"{magnitude} {unit_text}".strip())
+    unit_latex = _latex_unit_text(quantity.units)
+    if not unit_latex:
+        return f"${magnitude}$"
+    return rf"${magnitude}\,{unit_latex}$"
 
 
 def _characteristic_symbolic_math(value) -> str:
-    """An exact expression as one line of text: `L/2`, `x`, `L**2*(0.15*qD + 0.2*qL)`.
+    r"""An exact expression, typeset: `rac{L}{2}`, `x`, `L^{2}(0.15 qD + 0.2 qL)`.
 
-    Two printers, and the line that divides them is measured rather than chosen: SymPy's
-    `pretty` gives a bare symbol its Greek letter and its subscript - `delta` becomes `δ`,
-    `theta_1` becomes `θ₁`, `w_n` becomes `wₙ`, and it falls back to `A_c` where Unicode
-    has no subscript - but it draws anything with a fraction or a power over two or three
-    lines of box characters, which inside a table cell is worse than the LaTeX it
-    replaces. A symbol is always one line; an expression is not.
+    One printer now, and it is the one the working beside it already uses. #133 chose
+    between SymPy's `pretty` and `sstr` because neither LaTeX nor a two-line box drawing
+    could go inside an HTML output; the cost was that an extrema block printed
+    `L**2*(0.15*qD + 0.2*qL)` - Python, in a memoria - two lines above the same result
+    written `0.15\,qD\,L^2 + 0.2\,qL\,L^2`. A `Markdown` output typesets, so the
+    expression can simply be the expression.
     """
-    if isinstance(value, sp.Symbol):
-        return escape(sp.pretty(value, use_unicode=True))
-    return escape(sp.sstr(value))
+    return f"${sp.latex(value)}$"
 
 
 def _characteristic_name(name: str) -> str:
-    """A reported name, with the letter an engineer wrote: `delta` reads `δ`."""
+    r"""A reported name, with the letter an engineer wrote: `delta` reads `\delta`."""
     try:
         return _characteristic_symbolic_math(sp.Symbol(name))
     except Exception:
@@ -2930,6 +2956,9 @@ def _characteristic_interval_text(
     return f"{left}{lower}, {upper}{right}"
 
 
+_CHARACTERISTIC_ROW_OPEN = '<div style="margin:0.08rem 0;">'
+
+
 def _characteristic_heading(result: CharacteristicResult) -> str:
     if isinstance(result, InequalityResult):
         return "Where " + escape(result.variable) + " satisfies the inequality"
@@ -2982,7 +3011,7 @@ def render_characteristic_result(
             )
         if point.side != "at":
             parts.append(escape(point.side))
-        rows.append("<div class=\"engcalc-characteristic-row\">" + " · ".join(parts) + "</div>")
+        rows.append(_CHARACTERISTIC_ROW_OPEN + " · ".join(parts) + "</div>")
 
     for interval in result.intervals:
         interval_text = _characteristic_interval_text(
@@ -3005,28 +3034,27 @@ def render_characteristic_result(
                         active_settings,
                     )
                 )
-        rows.append(f'<div class="engcalc-characteristic-row">{text}</div>')
+        rows.append(_CHARACTERISTIC_ROW_OPEN + f"{text}</div>")
 
     if isinstance(result, ExtremaResult):
         if result.unbounded_above:
-            rows.append('<div class="engcalc-characteristic-row">unbounded above</div>')
+            rows.append(_CHARACTERISTIC_ROW_OPEN + 'unbounded above</div>')
         if result.unbounded_below:
-            rows.append('<div class="engcalc-characteristic-row">unbounded below</div>')
+            rows.append(_CHARACTERISTIC_ROW_OPEN + 'unbounded below</div>')
 
     if not rows:
-        rows.append('<div class="engcalc-characteristic-row">no finite characteristic points</div>')
+        rows.append(_CHARACTERISTIC_ROW_OPEN + 'no finite characteristic points</div>')
 
+    # Inline, because a `<style>` block does not survive a `Markdown` output - measured
+    # in Colab - and this is one now so its mathematics typesets. The values are the ones
+    # the rule block carried.
     return (
-        '<style>'
-        '.engcalc-characteristics{margin:0.35rem 0 0.55rem 0;'
-        'font-size:0.94rem;line-height:1.45;}'
-        '.engcalc-characteristics-title{font-weight:600;margin-bottom:0.15rem;}'
-        '.engcalc-characteristics-domain{opacity:0.78;margin-bottom:0.18rem;}'
-        '.engcalc-characteristic-row{margin:0.08rem 0;}'
-        '</style>'
-        '<div class="engcalc-characteristics">'
-        f'<div class="engcalc-characteristics-title">{_characteristic_heading(result)}</div>'
-        f'<div class="engcalc-characteristics-domain">Domain: {domain}</div>'
+        f'<div style="margin:0.35rem 0 0.55rem 0;font-size:{_SHORT_TABLE_FONT};'
+        'line-height:1.45;">'
+        '<div style="font-weight:600;margin-bottom:0.15rem;">'
+        f'{_characteristic_heading(result)}</div>'
+        '<div style="opacity:0.78;margin-bottom:0.18rem;">'
+        f'Domain: {domain}</div>'
         + "".join(rows)
         + '</div>'
     )

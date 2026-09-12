@@ -1,4 +1,4 @@
-from IPython.display import HTML, Math
+from IPython.display import Markdown, Math
 from matplotlib.figure import Figure
 import engcalc_colab.magic as magic_module
 from engcalc_colab.magic import EngMagics
@@ -16,5 +16,5 @@ def test_eng_magic_displays_equations_then_table_then_plot_in_source_order(monke
     assert magic.eng("", cell) is None
     assert len(displayed) == 3
     assert isinstance(displayed[0], Math)
-    assert isinstance(displayed[1], HTML)
+    assert isinstance(displayed[1], Markdown)
     assert isinstance(displayed[2], Figure)
