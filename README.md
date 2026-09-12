@@ -2,7 +2,49 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.4**.
+Current version: **0.30.5**.
+
+
+## v0.30.5 what the engineer saw on his own page
+
+Four corrections, all of them found by him running 0.30.4 in Colab and by reading every
+screenshot of it rather than only the thing he pointed at.
+
+**A kept name survives a coefficient.** He wrote `keep delta = 5*q_s*L^4/(384*E*I)` and
+the page printed `δ = L⁴(5 qD + 5 qL) / (32 b h³ E)`. Both `q_s` and `I` are `keep` names
+and both were gone — which is the whole of what `keep` exists to prevent, failing on the
+most ordinary shape in the trade, since every deflection leads with a coefficient.
+
+The written form was built correctly; the *verification* threw it away. SymPy distributes
+a Number over an Add as it builds, so the evaluated expression is the same value in a
+different shape and `difference == 0` — a structural test — says no. `cancel` settles it,
+which is the answer this same function already reached for matrices in #128, on the scalar
+branch it had never been extended to. Measured: no cost on either reference sheet.
+
+**An HTML block typesets after all.** He noticed that half his page was in the notebook's
+font and half in MathJax's serif. The larger half of the same defect is that an extrema
+block printed `value = L**2*(0.15*qD + 0.2*qL)` — Python, in a memoria — two lines above
+the same result written `0.15 qD L² + 0.2 qL L²`.
+
+#133 had made these blocks plain text on a measurement that was right and incomplete:
+Colab typesets nothing inside a `display(HTML(...))`, and nobody asked whether some other
+output does. A `Markdown` output does, and it typesets `$...$` — measured in Colab against
+an HTML control, along with two findings that shape the fix: markdown eats `\(...\)`, and
+it drops a `<style>` block. So the four blocks are `Markdown` now, their mathematics is
+delimited, and their styling is inline.
+
+**No block wears a class nothing styles.** `governing` and `summary` named
+`engcalc-characteristic`; every rule ever written is for `engcalc-characteristics`. One
+letter, so both fell back to the browser: 16 px beside the table's 14.72, and cells with
+a single pixel of padding. Three tables on one page in two sizes.
+
+**And the reference beam is a real beam.** `tools/viga.eng` wrote the moment of a central
+point load as `M_P(x) = P*x/2`, which is right up to mid-span and nothing after it, so the
+table reported a bending moment at a simple support. It uses `piecewise` now — the call
+whose whole purpose is a response that changes form along the span — and the corrected
+page finds three governing intervals rather than two, which is the actual answer.
+
+A patch release: corrections only.
 
 
 ## v0.30.4 one page, one set of units
@@ -2071,6 +2113,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.5** — what the engineer saw on his own page, in four corrections. A `keep` name now survives a numeric coefficient, so `5*q_s*L^4/(384*E*I)` reads as written instead of `L⁴(5 qD + 5 qL)/(32 b h³ E)` — the written form was correct and the structural verification was discarding it, which `cancel` settles. The four blocks are `Markdown` outputs and typeset: `L**2*(0.15*qD + 0.2*qL)` reads `L²(0.15 qD + 0.2 qL)`, in the same face as the working beside it, after measuring in Colab that a `Markdown` output typesets `$...$` where an HTML one typesets nothing. `governing` and `summary` no longer wear a class nobody defines. And `tools/viga.eng` models a beam that exists: its point-load moment is `piecewise` and returns to zero at the supports.
 - **0.30.4** — one page, one set of units, in four corrections. Pint 0.26 changed `~P`'s separator between two unit factors from `·` to `⋅` and ten contracts went red on an untouched tree, so the character is decided here now rather than by whichever version resolves — including the rule that reads the string back to write a moment force·length, which had stopped applying silently. `%eng_units kgf` announced itself as `1 / s, cm, cm ** 2, kgf * cm` and now reads `cm, cm², cm⁴, kgf, kgf·cm, …`. A declared palette reaches the figure, which until now came out identical with and without one. And a table column is written one way, where `673991.63` sat above `1.20×10⁶`.
 - **0.30.3** — what a third reference sheet found, in two corrections. A block Colab renders as HTML carries no LaTeX: `extrema`, `governing`, `summary` and the table cells printed `\(M_{u}\)` and `3.51 \times 10^{-8}` as raw text, because a `display(HTML(...))` output in Colab typesets nothing. And one quantity is spelled one way down a page: an extrema block read `183.60 m·kN` two lines from `183.60 kN·m`, because a family test compared unit *strings* where Pint spells `meter * kilonewton` and `kilonewton * meter` differently for the same unit. Every coordinate in a characteristic block now takes one unit, chosen by its domain.
 - **0.30.2** — a matrix cell is not smaller than the cell beside it. A `matrix` environment typesets in text style, where a fraction shrinks and a plain zero does not, so `[4EI_c/L_c, 0; 0, 4EI_c/L_c]` printed two sizes inside one bracket. Every cell is in display style now. Reported from the first end-to-end run of a memoria in Colab.
@@ -2138,4 +2181,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.30.4`.
+Version: `0.30.5`.
