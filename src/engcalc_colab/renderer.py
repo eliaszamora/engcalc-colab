@@ -773,7 +773,45 @@ def _palette_unit(quantity, settings: RenderSettings) -> str | None:
         key = tuple(sorted(quantity.dimensionality.items()))
     except Exception:
         return None
-    return palette.get(key)
+    named = palette.get(key)
+    if named is not None:
+        return named
+    return _palette_power(key, palette)
+
+
+def _palette_power(
+    key: tuple[tuple[str, int], ...], palette: dict[tuple[tuple[str, int], ...], str]
+) -> str | None:
+    r"""A power of a dimension the palette names, in the unit it named.
+
+    The table enumerates `[length]^1`, `^2` and `^4` because those are the ones somebody
+    needed - a length, an area, an inertia - and a page reaches others. A curvature is
+    `[length]^-1` and a section modulus is `[length]^3`, and both kept whatever system
+    the arithmetic left them in: the engineer's frame memoria printed a condensation
+    matrix as `-0.41 1/m` three lines under `370.00 cm`, so the working and the answer
+    disagreed by a factor of a hundred and nothing on the page said so.
+
+    Deriving rather than enumerating closes the family instead of the two cases that were
+    reported. The table still answers first, which matters for `[time]^-1`: it is in
+    there by hand as `1 / s`, this would reach the same unit, and the table is also the
+    list `%eng_units` announces.
+
+    Only one dimension raised to one *whole* power. Stress, moment and line load are
+    compound keys the table names outright, and a velocity is a compound key it does not
+    name; none of them is a power of anything and none of them comes through here. And
+    `sqrt(L)` is `[length]^0.5`, which is not a unit any palette named: a first draft
+    rounded that exponent to zero, handed Pint `(cm) ** 0`, and killed the cell with a
+    `KeyError` that the caller's `except DimensionalityError` does not catch.
+    """
+    if len(key) != 1:
+        return None
+    dimension, exponent = key[0]
+    if exponent != int(exponent):
+        return None
+    base = palette.get(((dimension, 1),))
+    if base is None:
+        return None
+    return f"({base}) ** {int(exponent)}"
 
 
 def _unit_family(quantity) -> tuple[str, ...]:
