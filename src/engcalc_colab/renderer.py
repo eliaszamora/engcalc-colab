@@ -662,6 +662,19 @@ PALETTES = _PALETTES
 PALETTE_NAMES = tuple(_PALETTES)
 
 
+def _relabelled(series: PlotSeries, settings: RenderSettings) -> PlotSeries:
+    """A swept series' legend entry, written where the page's precision is known.
+
+    The engine builds this entry as text before any `RenderSettings` exists, which is why
+    it is rewritten here at all - see `plot_in_palette`. A series that is not swept
+    carries no value and keeps the label it came with.
+    """
+    if series.sweep_value is None or series.sweep_parameter is None:
+        return series
+    written = quantity_text(series.sweep_value, decimals=settings.precision)
+    return replace(series, display_label=f"{series.sweep_parameter} = {written}")
+
+
 def plot_in_palette(result: PlotResult, settings: RenderSettings) -> PlotResult:
     """The same plot, with every quantity in the unit the sheet declared.
 
@@ -688,11 +701,22 @@ def plot_in_palette(result: PlotResult, settings: RenderSettings) -> PlotResult:
     the right answer to furniture.
 
     A dimension the palette does not name is left exactly as it was, which is the rule
-    everywhere else it applies, and a sheet that declared no palette is not touched at
-    all - `%eng_units` shipped opt-in and that promise covers the figure too.
+    everywhere else it applies, and a sheet that declared no palette has none of its
+    quantities converted - `%eng_units` shipped opt-in and that promise covers the figure
+    too. The one thing that happens either way is the swept legend's *number*: the page
+    writes `200.00 kN` for the value the sheet typed, and the legend wrote `200 kN`, so
+    the disagreement was there before any palette widened it. Writing a number to the
+    page's precision is not converting a unit, and the early return still spares the
+    conversions themselves, which cost 22 ms on a two-curve sweep.
     """
     if not settings.palette:
-        return result
+        return replace(
+            result,
+            series=tuple(_relabelled(series, settings) for series in result.series),
+            source_series=tuple(
+                _relabelled(series, settings) for series in result.source_series
+            ),
+        )
 
     def convert(quantity):
         if quantity is None:
@@ -716,12 +740,7 @@ def plot_in_palette(result: PlotResult, settings: RenderSettings) -> PlotResult:
         # writes as *text* - before any settings exist - so #140 could convert every
         # curve and leave `P = 40 kN` beside an axis reading `kgf·cm`. The series carries
         # the quantity now, and the entry is written here, where the units are known.
-        swept = convert(series.sweep_value)
-        return replace(
-            converted,
-            sweep_value=swept,
-            display_label=f"{series.sweep_parameter} = {quantity_text(swept)}",
-        )
+        return _relabelled(replace(converted, sweep_value=convert(series.sweep_value)), settings)
 
     return replace(
         result,

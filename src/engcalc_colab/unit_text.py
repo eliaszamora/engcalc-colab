@@ -59,8 +59,8 @@ def normalise(text: str) -> str:
     return text
 
 
-def quantity_text(quantity) -> str:
-    """A quantity as plain text: `40 kN`, `4078.86 kgf`, `2 m/s`, `30`.
+def quantity_text(quantity, *, decimals: int | None = None) -> str:
+    """A quantity as plain text: `200.00 kN`, `20394.32 kgf`, `2.00 m/s`, `2.00`.
 
     The spelling a figure's legend uses for a swept parameter. It lived in the engine,
     which builds that legend entry before any `RenderSettings` exists - so when the
@@ -69,11 +69,16 @@ def quantity_text(quantity) -> str:
     the renderer) and writing the format a second time. A quantity spelled as plain text
     is this module's subject, so it lives here and both callers agree by construction.
 
-    `%g` rather than the page's precision, because a swept parameter is a value the
-    engineer typed - `P=[40*kN, 80*kN]` - and `40` is what he wrote. A dimensionless
-    value keeps its number and drops the empty unit.
+    `decimals` is the page's precision, and the renderer passes it. #151 used `%g` here
+    instead, deliberately: *a swept parameter is a value the engineer typed, and `40` is
+    what he wrote*. True of the sheet and not of the page - the row above the figure
+    writes that same typed value `200.00 kN` - and false outright once a palette converts
+    it, where the legend read `20394.3 kgf` beside a page reading `20394.32`.
+
+    `%g` is still what this produces with no `decimals`, for the caller that has no
+    settings to offer. A dimensionless value keeps its number and drops the empty unit.
     """
     magnitude = float(quantity.magnitude)
-    value = f"{magnitude:g}"
+    value = f"{magnitude:g}" if decimals is None else f"{magnitude:.{decimals}f}"
     unit = unit_text(quantity.units)
     return value if not unit else f"{value} {unit}"
