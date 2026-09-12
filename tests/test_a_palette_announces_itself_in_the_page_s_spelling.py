@@ -143,7 +143,16 @@ def test_the_announcement_agrees_with_a_table_header_on_the_same_sheet(printed):
         "L := 6*m\nq := 18*kN/m\nM(x) = q*x*(L - x)/2\ntable(M(x), x, 0, L, 3)\n",
     )
     page = "".join(getattr(obj, "data", "") for obj in captured)
-    headers = re.findall(r"<th>.*?\[(.*?)\]</th>", page)
+    # Through the reader's view. A header carries its unit as `[$\mathrm{cm}$]` now,
+    # because the table is a `Markdown` output and its units typeset - and the property
+    # being checked is that the reader sees the same spelling in both places.
+    from conftest import block_text
+
+    headers = [
+        unit
+        for header in re.findall(r"<th[^>]*>(.*?)</th>", page)
+        for unit in re.findall(r"\[(.*?)\]", block_text(header))
+    ]
 
     assert headers, page
     for header_unit in headers:

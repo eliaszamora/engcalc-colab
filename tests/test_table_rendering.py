@@ -1,6 +1,7 @@
 from dataclasses import replace
 
 import engcalc_colab.renderer as renderer_module
+from conftest import block_text
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.renderer import RenderSettings
@@ -27,9 +28,12 @@ def test_render_table_places_units_once_in_headers_not_cells():
 
     html = render_table(result)
 
-    assert "x [m]" in html
-    assert "M(x) [kN·m]" in html
-    body = html.split("<tbody>", 1)[1]
+    # Through the reader's view: the header is `x [$\mathrm{m}$]` in the markup now,
+    # because the block is a `Markdown` output and its units typeset. What this pins is
+    # unchanged - the unit is named once, in the header, and never in a cell.
+    assert "x [m]" in block_text(html)
+    assert "M(x) [kN·m]" in block_text(html)
+    body = block_text(html.split("<tbody>", 1)[1])
     assert "kN" not in body
     assert "[m]" not in body
 
@@ -46,9 +50,10 @@ def test_render_table_uses_render_settings_precision_and_zero_tolerance():
         settings=RenderSettings(precision=3, zero_tolerance=1e-6),
     )
 
-    assert html.count("<td>0.000</td>") == 2
-    assert html.count("<td>0.500</td>") == 2
-    assert html.count("<td>1.000</td>") == 2
+    text = block_text(html)
+    assert text.count("0.000") == 2, text
+    assert text.count("0.500") == 2, text
+    assert text.count("1.000") == 2, text
 
 
 def test_render_table_omits_dimensionless_unit_suffixes():
@@ -79,7 +84,10 @@ def test_render_table_preserves_response_and_row_order():
     html = render_table(result)
 
     assert html.index("M_D(x)") < html.index("M_L(x)")
-    assert "<tr><td>2.00</td><td>8.00</td><td>4.00</td></tr>" in html
+    # The row as the reader reads it. A cell is `$8.00$` in the markup now, so the
+    # literal `<td>` spelling this used cannot be matched - and the order of the three
+    # numbers across the row is what it was about.
+    assert "2.00 8.00 4.00" in block_text(html)
 
 
 def test_render_table_escapes_variable_and_response_labels():

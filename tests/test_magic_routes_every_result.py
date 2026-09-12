@@ -24,7 +24,9 @@ caught all three.
 
 import matplotlib
 import pytest
-from IPython.display import HTML, Math
+
+from conftest import block_text
+from IPython.display import HTML, Markdown, Math
 
 matplotlib.use("Agg")
 
@@ -48,9 +50,9 @@ M(x) = q*x*(L-x)/2
 def test_an_inequality_reaches_the_notebook_instead_of_killing_the_cell(monkeypatch):
     displayed = run_cell(monkeypatch, BEAM + "solve(M(x) > 20*kN*m, x, 0, L)")
 
-    assert [type(item) for item in displayed] == [Math, HTML]
+    assert [type(item) for item in displayed] == [Math, Markdown]
     assert "satisfies the inequality" in displayed[-1].data
-    assert "0.76" in displayed[-1].data
+    assert "0.76" in block_text(displayed[-1].data)
 
 
 def test_governing_reaches_the_notebook_as_its_own_block(monkeypatch):
@@ -63,14 +65,14 @@ def test_governing_reaches_the_notebook_as_its_own_block(monkeypatch):
         "governing(M1(x), M2(x), x, 0, L)",
     )
 
-    assert type(displayed[-1]) is HTML
+    assert type(displayed[-1]) is Markdown
     assert "Governing" in displayed[-1].data
 
 
 def test_a_summary_reaches_the_notebook_as_a_table(monkeypatch):
     displayed = run_cell(monkeypatch, BEAM + "d = L/300\nreport(d)\nsummary()")
 
-    assert type(displayed[-1]) is HTML
+    assert type(displayed[-1]) is Markdown
     # `<table` rather than `<table>`: the element is what this pins, and the tag now
     # carries the inline styling that the class it used to name never actually had.
     assert "<table" in displayed[-1].data
@@ -87,7 +89,7 @@ def test_equation_rows_before_and_after_a_block_stay_in_source_order(monkeypatch
         monkeypatch,
         BEAM + "d = L/300\nreport(d)\nsummary()\nz = 2*L",
     )
-    assert [type(item) for item in displayed] == [Math, HTML, Math]
+    assert [type(item) for item in displayed] == [Math, Markdown, Math]
     assert "z" in displayed[-1].data
 
 
@@ -145,7 +147,7 @@ def test_every_result_the_engine_produces_is_routed_somewhere(monkeypatch):
         "summary()",
     )
 
-    blocks = [item.data for item in displayed if isinstance(item, HTML)]
+    blocks = [item.data for item in displayed if isinstance(item, Markdown)]
     assert len(blocks) == 3
     assert any("Roots" in block for block in blocks)
     assert any("satisfies the inequality" in block for block in blocks)

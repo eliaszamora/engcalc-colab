@@ -89,15 +89,19 @@ def test_the_summary_renders_a_row_per_entry():
     html = renderer.render_result(run_cell(engine, _MEMORIA)[-1])
     assert html.count("<tr>") == 2
     # The names the working used, so the reader is not asked to match up two spellings.
-    # This asserted `\(M_{max}\)` until the engineer ran a memoria in Colab and found the
+    # This line has been rewritten twice and the history is the point.
+    #
+    # It asserted `\(M_{max}\)` until the engineer ran a memoria in Colab and found the
     # summary printing those delimiters verbatim: a `display(HTML(...))` output typesets
-    # nothing there. The names are plain text now, so `M_max` loses its subscript against
-    # the typeset working - which is the accepted cost of the only route that renders at
-    # all, and a great deal better than showing the reader a backslash.
-    # `Mₘₐₓ` and `R_A`: SymPy's own pretty printer gives a symbol its subscript where
-    # Unicode has one and leaves the underscore where it does not, which is why these two
-    # names read differently from each other.
-    assert "Mₘₐₓ" in html and "R_A" in html
+    # nothing. So it became SymPy's pretty printer - `Mₘₐₓ` where Unicode has a subscript
+    # and `R_A` where it does not - which was the best a plain-text block could do, and
+    # left `M_max` reading differently from the typeset working two lines above.
+    #
+    # What that measurement never asked is whether some *other* output typesets. A
+    # `Markdown` output does, and it typesets `$...$` - measured in Colab against an HTML
+    # control. So the names are mathematics again, and the two spellings that the accepted
+    # cost created are one spelling.
+    assert "$M_{max}$" in html and "$R_{A}$" in html, html
     assert r"\(" not in html
     assert not [char for char in html if ord(char) < 32]
 
