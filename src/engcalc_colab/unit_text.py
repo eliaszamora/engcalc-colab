@@ -57,3 +57,23 @@ def normalise(text: str) -> str:
     for dot in _FORMATTER_PRODUCT_DOTS:
         text = text.replace(dot, PRODUCT_DOT)
     return text
+
+
+def quantity_text(quantity) -> str:
+    """A quantity as plain text: `40 kN`, `4078.86 kgf`, `2 m/s`, `30`.
+
+    The spelling a figure's legend uses for a swept parameter. It lived in the engine,
+    which builds that legend entry before any `RenderSettings` exists - so when the
+    renderer had to rebuild the entry in the sheet's declared units, the choice was
+    between importing from the engine (the wrong direction; the engine does not import
+    the renderer) and writing the format a second time. A quantity spelled as plain text
+    is this module's subject, so it lives here and both callers agree by construction.
+
+    `%g` rather than the page's precision, because a swept parameter is a value the
+    engineer typed - `P=[40*kN, 80*kN]` - and `40` is what he wrote. A dimensionless
+    value keeps its number and drops the empty unit.
+    """
+    magnitude = float(quantity.magnitude)
+    value = f"{magnitude:g}"
+    unit = unit_text(quantity.units)
+    return value if not unit else f"{value} {unit}"

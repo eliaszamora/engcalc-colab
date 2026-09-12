@@ -91,7 +91,7 @@ from .piecewise import (
     substitute_keeping_condition_sides,
 )
 from .tables import normalize_explicit_points, normalize_uniform_points
-from .unit_text import normalise
+from .unit_text import normalise, quantity_text
 
 
 _SCALAR_SYMBOLIC_FUNCTIONS = {
@@ -2905,6 +2905,8 @@ class _Evaluator(ast.NodeVisitor):
             comparison_series.append(
                 PlotSeries(
                     display_label=case_label,
+                    sweep_parameter=parameter_name,
+                    sweep_value=sweep_value,
                     y_values=comparison_y_values,
                     is_moment=is_moment,
                     segment_starts=segment_starts,
@@ -2914,6 +2916,8 @@ class _Evaluator(ast.NodeVisitor):
             source_series.append(
                 PlotSeries(
                     display_label=case_label,
+                    sweep_parameter=parameter_name,
+                    sweep_value=sweep_value,
                     y_values=source_y_values,
                     is_moment=is_moment,
                     segment_starts=source_segment_starts,
@@ -2972,12 +2976,15 @@ class _Evaluator(ast.NodeVisitor):
                 raise EngEvaluationError(
                     f"{call_name} series have incompatible y dimensions"
                 ) from exc
+            # `replace`, not a fresh `PlotSeries`: this rebuilds a series to put its y
+            # values in one unit, and listing the fields to carry over means every field
+            # added later is silently dropped here. One was - a sweep's parameter and
+            # value reached this and did not leave it, so the legend could not be
+            # rewritten in the sheet's units.
             normalized.append(
-                PlotSeries(
-                    display_label=item.display_label,
+                replace(
+                    item,
                     y_values=y_values,
-                    is_moment=item.is_moment,
-                    segment_starts=item.segment_starts,
                     characteristics=characteristics,
                 )
             )
@@ -3028,11 +3035,8 @@ class _Evaluator(ast.NodeVisitor):
 
     @staticmethod
     def _format_plot_quantity(quantity) -> str:
-        magnitude = float(quantity.magnitude)
-        value = f"{magnitude:g}"
-        if quantity.dimensionless:
-            return value
-        return normalise(f"{value} {quantity.units:~P}")
+        """See ``quantity_text``, which the renderer needs too."""
+        return quantity_text(quantity)
 
     @staticmethod
     def _require_user_function_arity(name: str, function: UserFunction, args: list) -> None:
