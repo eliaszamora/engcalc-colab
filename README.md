@@ -2,7 +2,60 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.7**.
+Current version: **0.30.8**.
+
+
+## v0.30.8 the figure typesets like the page around it
+
+One correction, and it is the one the previous release left on the table. The beam
+memoria on a declared palette, figure and table one below the other:
+
+    figure   Comparison [kgf·cm]      1e6 in the corner      (300, 1.97×10⁶)
+    table    U1(x) [kgf · cm]                                1.87 × 10⁶
+
+`1e6` is the worst of the three. It is programmer notation, it appears nowhere else in
+the memoria, and it sits two centimetres above an annotation on the same axis writing the
+same power of ten as `1.97×10⁶`. That is v0.30.7's *one figure is annotated one way*, one
+level down — between the annotation and the axis it hangs on.
+
+The page's spellings already existed and every block that typesets uses them:
+`\mathrm{kgf} \cdot \mathrm{cm}` for a unit, `1.97 \times 10^{6}` for a power of ten.
+Matplotlib reads that same LaTeX subset through mathtext, so the figure is handed the
+page's own strings rather than a second spelling of them.
+
+**The name does not typeset and the unit does**, which is not a new decision but the one
+a table header already documents: a unit comes from Pint and is mathematics, while
+`M(x)`, `Comparison`, `q_s(x)` is the text the engineer typed, and turning that into LaTeX
+means parsing it. An axis label is now built exactly the way the column header beside it
+is.
+
+**The face does not change.** Matplotlib's default `mathtext.fontset` is `dejavusans`, so
+a typeset unit is set in the same sans as the ticks, the title and the legend — measured
+against `cm`, `stix`, `stixsans` and `dejavuserif`, which are the fontsets that would put
+a serif unit next to a sans word inside one label. This release note exists partly to
+retract the opposite claim, made twice: matplotlib can typeset, and doing so costs the
+figure nothing typographically.
+
+Two places where a figure deliberately does *not* do what the page does, both found by
+looking at a rendered figure rather than by a contract:
+
+- **A quotient is written inline.** Pint's LaTeX puts `kgf/cm` in a `\frac`, which the
+  page renders at body size and a rotated y label renders at about six points — worse
+  than the plain text it replaced. Products, powers and the exponent all improve; the
+  stacked fraction was the one that did not.
+- **A bold label is bold all the way across.** Mathtext sets a formula in its own font and
+  ignores the weight of the text around it, so the dense summary panel's group header came
+  out `x = 300 cm` in two weights. The correction is applied to the finished header rather
+  than threaded as a flag through the two functions that build it — which is what a
+  twenty-kilometre span showed: the value is typeset by a different function and would
+  have needed a flag of its own.
+
+A unit mathtext cannot parse would raise at draw time and take the cell with it, so the
+spelling is parsed before it is used and falls back to plain text. Thirty-eight units were
+measured — both palettes, four moment systems, imperial, velocity, density — and every one
+parses; the guard is for the one nobody enumerated.
+
+A patch release: corrections only.
 
 
 ## v0.30.7 the figure reads in one language
@@ -2213,6 +2266,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.8** — a figure typesets like the page around it. The axis corner read `1e6`, programmer notation appearing nowhere else in a memoria and two centimetres above an annotation on the same axis reading `1.97×10⁶`; the unit read `kgf·cm` beside a table header reading `kgf · cm`. Both are the page's own LaTeX now, through matplotlib's mathtext, and the name still does not typeset — a unit is mathematics and a name is what the engineer typed. The face is unchanged: the default `dejavusans` fontset sets a unit in the same sans as the ticks, which retracts an earlier claim that mathtext meant serif labels. Two deliberate departures: a quotient is written inline, because a `\frac` on a rotated y label sets at about six points, and a bold label asks for a bold unit, because mathtext ignores the weight of the text around it.
 - **0.30.7** — the figure reads in one language, in three corrections found by looking at a two-curve sweep on a `kgf` sheet. A swept parameter's legend said `P = 40 kN` beside axes in `kgf·cm` and `cm`: the engine builds that entry as text before any render settings exist, so the series carries the swept value now and the label is written where the units are known — and under it, `_normalize_response_series` was rebuilding a series by listing its fields, dropping in silence any field added later. The annotations on one axis read `611829.73` on one curve and `1.22×10⁶` on the next; the notation is chosen once per axis now, from the values the figure draws, so the label cannot disagree with the axis offset beside it, with the dense summary panel answering the same way and a zero staying `0`. And `_force_length_unit_order` was removed: nine sheets across four moment units, both orders, with and without a palette, all arrive at the axis force-first already, and the rule's own mechanism — splitting a formatted string on the product dot — had stopped applying when Pint 0.26 changed that character, silently.
 - **0.30.6** — a piecewise condition keeps the interval variable on the side it was written. `Mo(x)` restated `M_P(x)` with `for x ≤ L` reversed to `for L ≥ x`, one branch after a branch that kept it on the left. The builder already passed `evaluate=False` to prevent exactly this; rebuilding a `Piecewise` during substitution applied SymPy's canonical form, which swaps a comparison whose sides are both bare symbols. A piecewise is substituted branch by branch now. The reference sheet also pairs each definition with its own evaluation, which stops four rows printing twice, and `render_memoria.py` can declare a palette.
 - **0.30.5** — what the engineer saw on his own page, in four corrections. A `keep` name now survives a numeric coefficient, so `5*q_s*L^4/(384*E*I)` reads as written instead of `L⁴(5 qD + 5 qL)/(32 b h³ E)` — the written form was correct and the structural verification was discarding it, which `cancel` settles. The four blocks are `Markdown` outputs and typeset: `L**2*(0.15*qD + 0.2*qL)` reads `L²(0.15 qD + 0.2 qL)`, in the same face as the working beside it, after measuring in Colab that a `Markdown` output typesets `$...$` where an HTML one typesets nothing. `governing` and `summary` no longer wear a class nobody defines. And `tools/viga.eng` models a beam that exists: its point-load moment is `piecewise` and returns to zero at the supports.
@@ -2283,4 +2337,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.30.7`.
+Version: `0.30.8`.
