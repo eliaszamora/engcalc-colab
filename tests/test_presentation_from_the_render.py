@@ -119,17 +119,20 @@ def test_a_power_of_ten_and_a_wrapped_product_use_different_marks():
     a continuation line read `\\cdot 1/(8.00 \\cdot 10^7 mm^4)` and the reader had no way
     to tell the break marker from the power of ten. Scientific notation now uses
     `\\times`, which is its conventional mark anyway.
+
+    The sheet is a long product now. It used to be that deflection, and the deflection
+    stopped wrapping once a fraction was measured across instead of end to end - its
+    wrapping *was* a defect. A product with no denominator has no fraction to stack, so
+    the row budget is the only thing holding the line and the continuation is real.
     """
     latex = rendered(
-        "L := 6*m\n"
-        "q := 10*kN/m\n"
-        "E := 200*GPa\n"
+        "a := 1.11*m\nb := 2.22*m\nc := 3.33*m\nd := 4.44*m\ne := 5.55*m\n"
+        "f := 6.66*m\ng := 7.77*m\nh := 8.88*m\ni := 9.99*m\n"
         "I_z := 80e6*mm**4\n"
-        "d = 5*q*L^4/(384*E*I_z)\n"
-        "numeric(d)"
+        "numeric(a*b*c*d*e*f*g*h*i*I_z)"
     )
 
-    assert r"\times 10^{7}" in latex, latex
+    assert r"\times 10^{" in latex, latex
     assert r"\quad \cdot " in latex, latex
     # The continuation carries the break mark and the power of ten, and they differ.
     continuation = [row for row in latex.split(r"\\") if r"\quad \cdot" in row]

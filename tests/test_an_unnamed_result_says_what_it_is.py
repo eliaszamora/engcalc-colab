@@ -101,20 +101,22 @@ WIDE = (
 )
 
 
-def test_a_formula_too_wide_to_sit_beside_its_value_is_not_promoted(cell):
-    """The width guard, and the one place this change deliberately leaves the old shape.
+def test_a_deep_formula_is_promoted_too(cell):
+    """The remainder this file used to record, closed.
 
-    `5 k q L^4 / (384 E I)` beside its own substitution measures 124 against a budget of
-    104, so promoting it would give the array an identity column the width of the page
-    and push every other row's `=` off to the right. It keeps the rows it had.
+    `5 k q L^4 / (384 E I)` was left in a loose row on a measurement of 124 against a
+    budget of 104, and the note said an identity column that wide "pushes every other
+    row's `=` across the page". The measurement was wrong: `_latex_visual_width` charged
+    a fraction its numerator plus its denominator, and MathJax stacks it, so the identity
+    is a fraction about 150 px wide and not a line 124 characters long.
 
-    That means a wide unnamed evaluation still opens with a loose row. It is a smaller
-    set than the one being fixed - the reference memoria has none - and the alternative
-    costs the whole page, so it is recorded as a remainder in NEXT.md rather than traded
-    for a worse layout.
+    Measured on the rendered page at Colab's 900 px, promoting it makes the block **4 px
+    narrower and 135 px shorter** - the loose row it replaces ran the full width. See
+    `tests/test_a_fraction_is_measured_across.py`.
     """
     latex = cell(WIDE + "numeric(5*k_apoyo*q_serv*L_vano^4/(384*E_acero*I_seccion))\n")
-    assert r"& & \displaystyle \frac{5 k_{apoyo}" in latex, latex
+    assert r"& & \displaystyle \frac{5 k_{apoyo}" not in latex, latex
+    assert r"\displaystyle \frac{5 k_{apoyo}" in latex, latex
 
 
 def test_a_narrow_formula_of_the_same_page_is_promoted(cell):

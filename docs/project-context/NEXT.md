@@ -358,11 +358,16 @@ landed under the previous statement and read as part of it. Not about `subs`:
 #103 puts the expression where a subject goes, so the next stage's `=` attaches to it.
 Older than the session that found it: present in 0.27.1 at `a1b9cf5`, from `8b5f95a`.
 
-**The remainder.** A formula too wide to sit beside its own value is not promoted -
-`5 k q L^4 / (384 E I)` measures 124 against a budget of 104 - because an identity
-column that wide pushes every other row's `=` across the page. Those still open with a
-loose row. The reference memoria has none, and the trade was taken deliberately rather
-than overlooked; the contract that pins it says so.
+**The remainder — closed, and it was never a real trade.** A formula too wide to sit
+beside its own value was not promoted: `5 k q L^4 / (384 E I)` "measures 124 against a
+budget of 104", so an identity column that wide would push every other row's `=` across
+the page. The measurement was wrong. `_latex_visual_width` charged a fraction its
+numerator *plus* its denominator, and MathJax stacks it — the identity is about 150 px
+wide, not 124 characters long. Measured on the rendered page at Colab's 900 px, promoting
+it makes the block **4 px narrower and 135 px shorter**, because the loose row it replaces
+ran the full width. The same wrong number was splitting a substituted fraction into
+`numerator · 1/denominator` on the engineer's own deflection. See
+`tests/test_a_fraction_is_measured_across.py`.
 
 **Worth keeping from how it was built.** The mutation harness reported six clean
 survivors and had not run pytest at all: one path in its subset named a module that does

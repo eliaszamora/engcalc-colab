@@ -148,17 +148,23 @@ def test_a_suppressed_block_keeps_its_own_row_spacings(cell):
     """The spacings are computed from the whole block and then the first row is
     dropped, so the rows that remain keep the spacing they would have had.
 
-    A mutation survived the first draft for want of this. The deflection's substitution
-    wraps, and its continuation is marked `4pt` where a new stage is `8pt` - the
-    difference between a line that continues and a line that says something new.
-    Replacing them all with the between-results `8pt` changed the page and no test saw
-    it, because every other test here uses a block short enough not to wrap.
+    A mutation survived the first draft for want of this. A wrapped substitution marks
+    its continuation `4pt` where a new stage is `8pt` - the difference between a line
+    that continues and a line that says something new. Replacing them all with the
+    between-results `8pt` changed the page and no test saw it, because every other test
+    here uses a block short enough not to wrap.
+
+    The block used to be the deflection, and the deflection stopped wrapping once a
+    fraction was measured across instead of end to end - its wrapping *was* a defect. A
+    long product has no fraction to stack, so it still needs the rows.
     """
     latex = cell(
-        "q := 10*kN/m\nL := 6*m\nE := 200*GPa\nI_z := 80e6*mm**4\n"
-        "d = 5*q*L**4/(384*E*I_z)\nnumeric(d)\n"
+        "a := 1.11*m\nb := 2.22*m\nc := 3.33*m\nd := 4.44*m\ne := 5.55*m\n"
+        "f := 6.66*m\ng := 7.77*m\nh := 8.88*m\ni := 9.99*m\n"
+        "I_z := 80e6*mm**4\n"
+        "p = a*b*c*d*e*f*g*h*i*I_z\nnumeric(p)\n"
     )
-    body = latex.split(r"\frac{5 q L^{4}}{384 E I_{z}}")[-1]
+    body = latex.split(r"\displaystyle a b c d e f g h i I_{z}")[-1]
     spacings = re.findall(r"\\\\\[(\d+pt)\]", body)
     assert spacings == ["8pt", "4pt", "8pt"], spacings
 
