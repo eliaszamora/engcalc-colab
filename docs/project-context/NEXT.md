@@ -667,7 +667,7 @@ Constraints that held all session and should keep holding:
 - **And do not trust yourself to look at the right part of it.** 0.30.10 was rendered and
   read before release, and still shipped `x = 0.5 L`: what was read was the value being
   changed, not the coordinate beside it. `tests/test_the_reference_pages_do_not_move.py`
-  compares three reference pages whole against stored copies in `tests/snapshots/` and
+  compares four reference pages whole against stored copies in `tests/snapshots/` and
   fails on any difference, with the diff. When a change is meant to move a page,
   regenerate with `ENGCALC_UPDATE_SNAPSHOTS=1 python -m pytest
   tests/test_the_reference_pages_do_not_move.py` and **read the diff before committing
@@ -675,4 +675,10 @@ Constraints that held all session and should keep holding:
   0.30.11 it catches 30 on its own; the ten it misses need a configuration no reference
   page uses, and each is held by its own contract. `tools/formas.eng` exists only to put
   shapes on a page that the beam and the memoria lack - add to it when a defect is found
-  in a shape no reference page contains.
+  in a shape no reference page contains. It is rendered twice, with the kgf palette and
+  with none: the zero written `0.00 kN·mm²/m` beside `490.00 N·m` existed only without a
+  palette, and with the kgf route alone nine of that fix's ten mutants went past the test.
+  **The palette-less copy stores two things that are wrong today** and were read, not
+  missed: `κ = 0.00 kN·m/(MPa·mm⁴)` - a curvature of 1.45×10⁻³ 1/m under the zero
+  tolerance in a unit nobody writes, a false zero - and `W = 1.80×10⁸ mm⁴/cm`. When
+  either is fixed, that is the diff to expect.

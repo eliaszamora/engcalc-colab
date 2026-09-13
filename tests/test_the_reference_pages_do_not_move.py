@@ -78,6 +78,11 @@ REFERENCE_PAGES = [
     ("viga-kgf", ROOT / "tools" / "viga.eng", "kgf"),
     ("memoria", ROOT / "tools" / "memoria.eng", ""),
     ("formas-kgf", ROOT / "tools" / "formas.eng", "kgf"),
+    # `formas.eng` a second time, with no palette. A zero written `0.00 kN·mm²/m` beside
+    # `490.00 N·m` showed on every sheet without one that typed a load per metre and a
+    # span in millimetres, and on none with one - so with only the kgf route, nine of the
+    # ten mutants of that fix went past this test.
+    ("formas", ROOT / "tools" / "formas.eng", ""),
 ]
 
 _SUMMARY_GID = "engcalc-characteristic-summary"

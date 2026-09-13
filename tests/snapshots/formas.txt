@@ -1,7 +1,6 @@
-# formas.eng, palette: kgf
+# formas.eng, palette: none
 
 === console ===
-engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1/s
 
 === 0 · HTML ===
 <div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Formas que las otras dos hojas no tocan</div>
@@ -16,17 +15,17 @@ Esta hoja no es una memoria: existe para que la comparación de páginas de refe
 Un módulo resistente es una longitud al cubo y una curvatura es una longitud a la menos uno. Con la paleta kgf salían en otro sistema que el trabajo de la línea de arriba.
 
 === 4 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle L & = & \displaystyle 600.00\,\mathrm{cm} \\[8pt]
-\displaystyle b & = & \displaystyle 30.00\,\mathrm{cm} \\[8pt]
-\displaystyle h & = & \displaystyle 60.00\,\mathrm{cm} \\[8pt]
-\displaystyle E & = & \displaystyle 239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}} \\[8pt]
-\displaystyle \mathrm{qD} & = & \displaystyle 18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
-\displaystyle \mathrm{qL} & = & \displaystyle 12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[16pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle L & = & \displaystyle 6.00\,\mathrm{m} \\[8pt]
+\displaystyle b & = & \displaystyle 300.00\,\mathrm{mm} \\[8pt]
+\displaystyle h & = & \displaystyle 600.00\,\mathrm{mm} \\[8pt]
+\displaystyle E & = & \displaystyle 23500.00\,\mathrm{MPa} \\[8pt]
+\displaystyle \mathrm{qD} & = & \displaystyle 18.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
+\displaystyle \mathrm{qL} & = & \displaystyle 12.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[16pt]
 \displaystyle I & = & \displaystyle \frac{b h^{3}}{12} \\[8pt]
 \displaystyle c & = & \displaystyle 30.00\,\mathrm{cm} \\[16pt]
 \displaystyle W & = & \displaystyle \frac{I}{c} \\[8pt]
-& = & \displaystyle \frac{\left(540000.00\,\mathrm{cm}^{4}\right)}{\left(30.00\,\mathrm{cm}\right)} \\[8pt]
-& = & \displaystyle 18000.00\,\mathrm{cm}^{3} \\[16pt]
+& = & \displaystyle \frac{\left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)}{\left(30.00\,\mathrm{cm}\right)} \\[8pt]
+& = & \displaystyle 1.80 \times 10^{8}\,\frac{\mathrm{mm}^{4}}{\mathrm{cm}} \\[16pt]
 \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
 \displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x \left(L - x\right)}{2} \\[8pt]
 \displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
@@ -34,8 +33,8 @@ Un módulo resistente es una longitud al cubo y una curvatura es una longitud a 
 \displaystyle U_{1}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathrm{Lv}\left(x\right) \\[16pt]
 \displaystyle M_{u} & = & \displaystyle 0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2} \\[8pt]
 \displaystyle \kappa & = & \displaystyle \frac{M_{u}}{E I} \\[8pt]
-& = & \displaystyle \frac{\left(1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right)}{\left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(540000.00\,\mathrm{cm}^{4}\right)} \\[8pt]
-& = & \displaystyle 1.45 \times 10^{-5}\,\frac{1}{\mathrm{cm}} \end{array}
+& = & \displaystyle \frac{\left(183.60\,\mathrm{kN} \cdot \mathrm{m}\right)}{\left(23500.00\,\mathrm{MPa}\right) \left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)} \\[8pt]
+& = & \displaystyle 0.00\,\frac{\mathrm{kN} \cdot \mathrm{m}}{\left(\mathrm{MPa} \cdot \mathrm{mm}^{4}\right)} \end{array}
 
 === 5 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un eje con cociente</div>
@@ -49,11 +48,11 @@ Una carga distribuida en el eje: \`kgf/cm\` en una línea y no como fracción ap
 
 === 8 · Figure ===
 title: w(x)
-xlabel: x [$\mathrm{cm}$]
+xlabel: x [$\mathrm{m}$]
 ylabel: w(x) [$\mathrm{kgf}/\mathrm{cm}$]
 offset: 
 annotation: (0, 30)
-annotation: (600, 60)
+annotation: (6, 60)
 
 === 9 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un barrido de cuatro curvas</div>
@@ -62,44 +61,44 @@ annotation: (600, 60)
 La leyenda con la precisión de la página y el panel resumen con sus encabezados en negrita, que solo aparece con cuatro curvas o más.
 
 === 11 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle P_{2} & = & \displaystyle 20394.32\,\mathrm{kgf} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle P_{2} & = & \displaystyle 200.00\,\mathrm{kN} \\[8pt]
 \displaystyle \mathrm{Md}\left(x\right) & = & \displaystyle \frac{x P_{2} \left(L - x\right)}{L} \end{array}
 
 === 12 · Figure ===
 title: Md(x)
-xlabel: x [$\mathrm{cm}$]
-ylabel: Md(x) [$\mathrm{kgf} \cdot \mathrm{cm}$]
-offset: ×10⁷
-legend: P2 = 20394.32 kgf | P2 = 40788.65 kgf | P2 = 61182.97 kgf | P2 = 81577.30 kgf
+xlabel: x [$\mathrm{m}$]
+ylabel: Md(x) [$\mathrm{kN} \cdot \mathrm{m}$]
+offset: 
+legend: P2 = 200.00 kN | P2 = 400.00 kN | P2 = 600.00 kN | P2 = 800.00 kN
 summary: Characteristic points
-summary: x = 0 $\mathbf{cm}$
-summary: Value [$\mathrm{kgf} \cdot \mathrm{cm}$]
-summary: x = 300 $\mathbf{cm}$
-summary: Value [$\mathrm{kgf} \cdot \mathrm{cm}$]
-summary: P2 = 20394.32 kgf
+summary: x = 0 $\mathbf{m}$
+summary: Value [$\mathrm{kN} \cdot \mathrm{m}$]
+summary: x = 3 $\mathbf{m}$
+summary: Value [$\mathrm{kN} \cdot \mathrm{m}$]
+summary: P2 = 200.00 kN
 summary: min
 summary: 0
-summary: P2 = 40788.65 kgf
+summary: P2 = 400.00 kN
 summary: min
 summary: 0
-summary: P2 = 61182.97 kgf
+summary: P2 = 600.00 kN
 summary: min
 summary: 0
-summary: P2 = 81577.30 kgf
+summary: P2 = 800.00 kN
 summary: min
 summary: 0
-summary: P2 = 20394.32 kgf
+summary: P2 = 200.00 kN
 summary: max
-summary: $3.06 \times 10^{6}$
-summary: P2 = 40788.65 kgf
+summary: 300
+summary: P2 = 400.00 kN
 summary: max
-summary: $6.12 \times 10^{6}$
-summary: P2 = 61182.97 kgf
+summary: 600
+summary: P2 = 600.00 kN
 summary: max
-summary: $9.18 \times 10^{6}$
-summary: P2 = 81577.30 kgf
+summary: 900
+summary: P2 = 800.00 kN
 summary: max
-summary: $1.22 \times 10^{7}$
+summary: 1200
 
 === 13 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un voladizo</div>
@@ -116,9 +115,9 @@ El empotramiento es un borde y no vale cero, así que distingue la expresión es
 
 === 16 · Markdown ===
 <div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Extrema — U3(x)</div>
-<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{cm}$ to $600.00\,\mathrm{cm}$</div>
-<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{cm}$) · value = $0$ ($0.00\,\mathrm{kgf} \cdot \mathrm{cm}$) · boundary, global min</div>
-<div style="margin:0.08rem 0;">$x$ = $L$ ($600.00\,\mathrm{cm}$) · value = $0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}$ ($7.49 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}$) · boundary, global max</div>
+<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $6.00\,\mathrm{m}$</div>
+<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{m}$) · value = $0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
+<div style="margin:0.08rem 0;">$x$ = $L$ ($6.00\,\mathrm{m}$) · value = $0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}$ ($734.40\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global max</div>
 </div>
 
 === 17 · HTML ===
@@ -128,16 +127,16 @@ El empotramiento es un borde y no vale cero, así que distingue la expresión es
 Un cortante que no cambia de signo en el tramo: el valor absoluto se resuelve, y con el signo que corresponde.
 
 === 19 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle R_{uso} & = & \displaystyle -917.74\,\mathrm{kgf} \\[8pt]
-\displaystyle q_{uso} & = & \displaystyle 1.02\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
-\displaystyle L_{c} & = & \displaystyle 200.00\,\mathrm{cm} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle R_{uso} & = & \displaystyle -9.00\,\mathrm{kN} \\[8pt]
+\displaystyle q_{uso} & = & \displaystyle 1.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
+\displaystyle L_{c} & = & \displaystyle 2.00\,\mathrm{m} \\[8pt]
 \displaystyle V_{uso}\left(x\right) & = & \displaystyle R_{uso} + q_{uso} x \end{array}
 
 === 20 · Markdown ===
 <div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Extrema — |V_uso(x)|</div>
-<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{cm}$ to $200.00\,\mathrm{cm}$</div>
-<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{cm}$) · value = $- R_{uso}$ ($917.74\,\mathrm{kgf}$) · boundary, global max</div>
-<div style="margin:0.08rem 0;">$x$ = $L_{c}$ ($200.00\,\mathrm{cm}$) · value = $- q_{uso} L_{c} - R_{uso}$ ($713.80\,\mathrm{kgf}$) · boundary, global min</div>
+<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $2.00\,\mathrm{m}$</div>
+<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{m}$) · value = $- R_{uso}$ ($9.00\,\mathrm{kN}$) · boundary, global max</div>
+<div style="margin:0.08rem 0;">$x$ = $L_{c}$ ($2.00\,\mathrm{m}$) · value = $- q_{uso} L_{c} - R_{uso}$ ($7.00\,\mathrm{kN}$) · boundary, global min</div>
 </div>
 
 === 21 · HTML ===
@@ -147,14 +146,14 @@ Un cortante que no cambia de signo en el tramo: el valor absoluto se resuelve, y
 La carga por metro y la luz en milímetros dejan el momento en una unidad que nadie escribe. Sin paleta, los apoyos salían en ella al lado del máximo; con paleta nunca se vio, por eso esta hoja se compara también sin paleta. Seis metros y no setenta centímetros: así el máximo sale en kN·m, y un cero que eligiera solo, sin mirar a su vecino, saldría en N·m.
 
 === 23 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle L_{mm} & = & \displaystyle 600.00\,\mathrm{cm} \\[8pt]
-\displaystyle q_{mm} & = & \displaystyle 18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle L_{mm} & = & \displaystyle 6000.00\,\mathrm{mm} \\[8pt]
+\displaystyle q_{mm} & = & \displaystyle 18.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
 \displaystyle M_{mm}\left(x\right) & = & \displaystyle \frac{q_{mm} x \left(L_{mm} - x\right)}{2} \end{array}
 
 === 24 · Markdown ===
 <div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Extrema — M_mm(x)</div>
-<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{cm}$ to $600.00\,\mathrm{cm}$</div>
-<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{cm}$) · value = $0$ ($0.00\,\mathrm{kgf} \cdot \mathrm{cm}$) · boundary, global min</div>
-<div style="margin:0.08rem 0;">$x$ = $\frac{L_{mm}}{2}$ ($300.00\,\mathrm{cm}$) · value = $\frac{q_{mm} L_{mm}^{2}}{8}$ ($825970.13\,\mathrm{kgf} \cdot \mathrm{cm}$) · local max, global max</div>
-<div style="margin:0.08rem 0;">$x$ = $L_{mm}$ ($600.00\,\mathrm{cm}$) · value = $0$ ($0.00\,\mathrm{kgf} \cdot \mathrm{cm}$) · boundary, global min</div>
+<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $6.00\,\mathrm{m}$</div>
+<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{m}$) · value = $0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
+<div style="margin:0.08rem 0;">$x$ = $\frac{L_{mm}}{2}$ ($3.00\,\mathrm{m}$) · value = $\frac{q_{mm} L_{mm}^{2}}{8}$ ($81.00\,\mathrm{kN} \cdot \mathrm{m}$) · local max, global max</div>
+<div style="margin:0.08rem 0;">$x$ = $L_{mm}$ ($6.00\,\mathrm{m}$) · value = $0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
 </div>
