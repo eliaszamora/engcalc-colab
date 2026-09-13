@@ -2,7 +2,44 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.9**.
+Current version: **0.30.10**.
+
+
+## v0.30.10 one value is arranged one way
+
+One correction, and the engineer had to ask for it twice. His memoria wrote the design
+moment two ways, four lines apart:
+
+    Extrema — U1(x)
+      x = L/2 (300.00 cm) · value = L² (0.15 qD + 0.2 qL)   (1.87×10⁶ kgf·cm)
+
+    M_u  =  0.15 qD L² + 0.2 qL L²  =  1.87×10⁶ kgf·cm
+
+`U1(L/2)` both times. Neither form is wrong, which is what makes this different from
+`m·kN` beside `kN·m` or `1e6` beside `×10⁶` — and a reader still has to do the algebra to
+see that the block naming the design moment and the block computing it are the same
+thing. It was reported as an observation and not proposed as a fix; he said it bothered
+him, so it is one.
+
+**Three causes.** The extrema path rearranged the value twice — once when it simplified
+the response *before* substituting, so the value was born collected, and once when it
+simplified again on the way out. The ordinary evaluation path runs no `simplify` at all,
+so the majority form wins. Measured over nine shapes an engineer writes — a udl moment at
+midspan, a cantilever at the root, a point load, a deflection, a ratio, an absolute value,
+a shear through zero — simplifying changed the arrangement of exactly one: two symbols
+against the same power, which is his.
+
+And the block printed through the wrong printer. It called SymPy's `latex` while every
+other block calls the page's own, and the two disagree about a multi-letter name: SymPy
+sets `qD` in italic, which MathJax then spaces as a product of `q` and `D`, where v0.28
+made this page write it upright. So the same moment was italic in one block and upright in
+the next.
+
+Resolving an absolute value whose sign the sheet can decide is why that function exists,
+and it is untouched: a magnitude envelope's value still reaches the page without an
+`|...|` standing in it.
+
+A patch release: corrections only.
 
 
 ## v0.30.9 what an audit of one notebook found
@@ -2328,6 +2365,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.30.10** — one value is arranged one way, wherever the page writes it. An extrema block wrote the design moment `L² (0.15 qD + 0.2 qL)` four lines above the report block's `0.15 qD L² + 0.2 qL L²`, the same `U1(L/2)` twice. Three causes: the extrema path simplified the response before substituting, so the value was born collected; it simplified again on the way out; and it printed through SymPy's own printer rather than the page's, which sets a multi-letter name like `qD` in italic where this page writes it upright. Resolving an absolute value whose sign the sheet can decide is untouched — that is why the function exists.
 - **0.30.9** — what an audit of one notebook found, in three corrections. A declared palette fixes a length and every power of it follows: the table enumerated `[length]^1`, `^2` and `^4` by hand, so a condensation matrix printed `-0.41 1/m` three lines under `370.00 cm` and a section modulus `W = I/c` printed `18000.00 cm³` under a working in metres. A substituted fraction stays a fraction: the width estimate that decides when a row is split charged a fraction numerator *plus* denominator where MathJax stacks it, so a deflection measured 83 against a budget of 64 when what the reader sees is 44, and the splitter turned `A/B` into `A · 1/B` — the same wrong number had been recorded as a deliberate trade against promoting a wide formula, which is 4 px narrower and 135 px shorter promoted. And a swept legend writes the number the page writes: `20394.32 kgf`, not `20394.3`, with the sheet's own precision rather than `%g`.
 - **0.30.8** — a figure typesets like the page around it. The axis corner read `1e6`, programmer notation appearing nowhere else in a memoria and two centimetres above an annotation on the same axis reading `1.97×10⁶`; the unit read `kgf·cm` beside a table header reading `kgf · cm`. Both are the page's own LaTeX now, through matplotlib's mathtext, and the name still does not typeset — a unit is mathematics and a name is what the engineer typed. The face is unchanged: the default `dejavusans` fontset sets a unit in the same sans as the ticks, which retracts an earlier claim that mathtext meant serif labels. Two deliberate departures: a quotient is written inline, because a `\frac` on a rotated y label sets at about six points, and a bold label asks for a bold unit, because mathtext ignores the weight of the text around it.
 - **0.30.7** — the figure reads in one language, in three corrections found by looking at a two-curve sweep on a `kgf` sheet. A swept parameter's legend said `P = 40 kN` beside axes in `kgf·cm` and `cm`: the engine builds that entry as text before any render settings exist, so the series carries the swept value now and the label is written where the units are known — and under it, `_normalize_response_series` was rebuilding a series by listing its fields, dropping in silence any field added later. The annotations on one axis read `611829.73` on one curve and `1.22×10⁶` on the next; the notation is chosen once per axis now, from the values the figure draws, so the label cannot disagree with the axis offset beside it, with the dense summary panel answering the same way and a zero staying `0`. And `_force_length_unit_order` was removed: nine sheets across four moment units, both orders, with and without a palette, all arrive at the axis force-first already, and the rule's own mechanism — splitting a formatted string on the product dot — had stopped applying when Pint 0.26 changed that character, silently.
@@ -2400,4 +2438,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.30.9`.
+Version: `0.30.10`.
