@@ -38,6 +38,8 @@ class EigenvalueEntry:
 class EigenvalueSet:
     entries: tuple[EigenvalueEntry, ...]
     source_matrix: Any
+    unit_requested: bool = False
+    """True when `numeric(lam, unit)` named the unit, so the page keeps it."""
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,8 @@ class EigenvectorEntry:
 class EigenvectorSet:
     entries: tuple[EigenvectorEntry, ...]
     source_matrix: Any
+    unit_requested: bool = False
+    """True when `numeric(phi, unit)` named the unit of the eigenvalues."""
 
 
 @dataclass(frozen=True)
