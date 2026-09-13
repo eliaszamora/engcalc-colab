@@ -30,15 +30,48 @@ from .roots import solve_roots_exact
 
 
 
-def _simplify_decidable_abs(
+def _resolve_decidable_abs(
     expression: sp.Expr,
     context,
     *,
     overrides: dict[str, Any] | None,
 ) -> sp.Expr:
-    simplified = sp.simplify(sp.sympify(expression))
+    r"""Resolve every `|...|` whose sign this sheet can decide, and rearrange nothing.
+
+    This is what a characteristic point shows for its value, so what it does to the shape
+    of an expression is what the reader sees. It used to call `sp.simplify` on the way in
+    and again on the way out, and the second one collected: his beam memoria printed the
+    design moment as
+
+        extrema   value = L² (0.15 qD + 0.2 qL)
+        report    M_u   = 0.15 qD L² + 0.2 qL L²
+
+    four lines apart, the same `U1(L/2)` twice. Neither is wrong, which is what made it
+    different from `m·kN` beside `kN·m`; a reader still has to do the algebra to see that
+    the block naming the design moment and the block computing it are the same thing. The
+    ordinary evaluation path runs no `simplify` at all, so the majority form wins - and
+    the name changed with the body, because this no longer simplifies anything.
+
+    Measured over nine shapes an engineer writes - a udl moment at midspan, a cantilever
+    at the root, a point load, a deflection, a ratio, an absolute value, a shear through
+    zero - `simplify` changed the arrangement of exactly one: two different symbols
+    against the same power, which is his. Everywhere else SymPy's own automatic
+    evaluation had already produced the same expression, so dropping it costs nothing and
+    the `|...|` resolution, which is why this function exists, is untouched.
+
+    **Two drafts of this put something here that nothing reaches.** Simplifying can pull a
+    positive factor out of an absolute value - `|L²qD/8 + L²qL/8|` becomes `L²|qD + qL|/8`
+    - so an atom found on a simplified copy need not appear in the expression as written.
+    The first draft guarded that with a branch; the second scanned both sets. Mutation
+    killed neither, and six shapes agreed nothing produces the divergence: `sqrt(u²)`,
+    `|sqrt(u²)|`, `|-2u|`, `|a| + |b|`, and the two the language rejects outright, since
+    `|a|·|b|` and `|a|/|b|` are an "unsupported piecewise relation" before they arrive.
+    An absolute value reaches here already in the form SymPy keeps it in, so the atoms of
+    the expression as written are the whole set.
+    """
+    original = sp.sympify(expression)
     replacements: dict[sp.Expr, sp.Expr] = {}
-    for absolute in simplified.atoms(sp.Abs):
+    for absolute in original.atoms(sp.Abs):
         argument = sp.sympify(absolute.args[0])
         fixed_overrides = context.unit_literal_overrides(argument, overrides)
         try:
@@ -57,9 +90,9 @@ def _simplify_decidable_abs(
             replacements[absolute] = -argument
         else:
             replacements[absolute] = sp.Integer(0)
-    if replacements:
-        simplified = simplified.xreplace(replacements)
-    return sp.simplify(simplified)
+    if not replacements:
+        return original
+    return original.xreplace(replacements)
 
 def _extrema_quantity_is_finite(quantity) -> bool:
     try:
@@ -113,7 +146,7 @@ def _evaluate_extrema_candidate(
     if not _candidate_in_domain(x_quantity, domain):
         return None
 
-    symbolic_value = _simplify_decidable_abs(
+    symbolic_value = _resolve_decidable_abs(
         expression.subs(variable, candidate),
         context,
         overrides=fixed_overrides,
@@ -335,7 +368,7 @@ def _constant_extrema_interval(
         upper_quantity=domain.upper_quantity,
         role="global_max_min",
         provenance="exact",
-        value_symbolic=_simplify_decidable_abs(
+        value_symbolic=_resolve_decidable_abs(
             expression, context, overrides=overrides
         ),
         value_quantity=value_quantity,
@@ -407,7 +440,7 @@ def _solve_continuous_extrema_exact(
     overrides: dict[str, Any] | None = None,
     source_label: str | None = None,
 ):
-    expression = sp.simplify(sp.sympify(expression))
+    expression = sp.sympify(expression)
     variable = _analysis_variable(variable, expression)
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("extrema variable must be a symbolic identifier")
@@ -585,7 +618,7 @@ def _constant_piecewise_region_interval(
         upper_quantity=region.upper_quantity,
         role="constant",
         provenance="exact",
-        value_symbolic=_simplify_decidable_abs(
+        value_symbolic=_resolve_decidable_abs(
             expression, context, overrides=overrides
         ),
         value_quantity=value_quantity,
@@ -636,7 +669,7 @@ def _piecewise_one_sided_point(
     point = CharacteristicPoint(
         x_symbolic=sp.sympify(breakpoint_symbolic),
         x_quantity=breakpoint_quantity,
-        value_symbolic=_simplify_decidable_abs(
+        value_symbolic=_resolve_decidable_abs(
             value_symbolic, context, overrides=overrides
         ),
         value_quantity=value_quantity,
