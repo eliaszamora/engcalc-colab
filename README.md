@@ -28,6 +28,18 @@ A two-by-two keeps its closed form, and a matrix of plain numbers keeps SymPy's 
 answer. A repeated eigenvalue is counted once with its multiplicity, a unit asked for with
 `numeric(lam, unit)` is kept, and complex eigenvalues are refused by name.
 
+One mode is taken by its number — ascending, a repeated eigenvalue counted as many times as
+it repeats — and the page writes it as the textbooks do:
+
+```text
+w_1 = sqrt(lam[1])             →  w₁ = √λ₁ = √(897.61 1/s²) = 29.96 1/s
+T_1 = 2*pi/w_1                 →  T₁ = 2π/√λ₁ = 0.21 s
+phi_1 = phi[1]                 →  φ₁ = [φ₁,₁; φ₂,₁; φ₃,₁] = [0.36; 0.73; 1.00]
+M_1 = transpose(phi_1)*M*phi_1
+```
+
+The list of eigenvalues follows the same numbering once it has numbers.
+
 
 ## v0.30.12 a zero reads in the unit beside it
 

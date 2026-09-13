@@ -14,8 +14,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import mpmath
+import sympy as sp
 
 from .errors import EngEvaluationError
+from .matrix_numeric import QuantityMatrix, ensure_common_scale
+from .models import EigenvalueSet, EigenvectorSet
 
 # Two eigenvalues this close, relative to their size, are one eigenvalue counted twice.
 # Floating point splits a repeated root by about the machine epsilon times the condition
@@ -84,3 +87,98 @@ def _mode(group: list[tuple[float, list[float]]]) -> NumericMode:
         multiplicity=len(group),
         vectors=tuple(_normalised(vector) for _, vector in group),
     )
+
+
+def modes_of(quantity_matrix: QuantityMatrix, *, operation: str):
+    """The modes of a matrix of quantities, and the unit its eigenvalues carry - the one
+    unit its entries share, or None for a matrix of plain numbers."""
+    scale = ensure_common_scale(quantity_matrix, operation)
+    magnitudes = [
+        [
+            float(
+                quantity.to(scale).magnitude
+                if scale is not None and not quantity.dimensionless
+                else quantity.to_base_units().magnitude
+            )
+            for quantity in (
+                quantity_matrix.entry(row, col) for col in range(quantity_matrix.cols)
+            )
+        ]
+        for row in range(quantity_matrix.rows)
+    ]
+    return numeric_modes(magnitudes, operation=operation), scale
+
+
+class ModeEigenvalue(sp.Function):
+    r"""`lam[i]`: the i-th eigenvalue of a matrix, ascending, a repeated one counted as
+    many times as it repeats. Written `\lambda_{i}` and computed from the numbers - the
+    closed form of even a two-by-two is a quadratic formula, and a matrix of three rows
+    has none. Arguments: the index, then the matrix."""
+
+    nargs = 2
+
+    @classmethod
+    def eval(cls, index, matrix):
+        return None
+
+    def _eval_is_commutative(self):
+        # A scalar. SymPy infers commutativity from the arguments and a matrix is not
+        # commutative, so `2*pi/sqrt(lam[1])` printed `2 π · 1/√λ₁`: a non-commutative
+        # factor is never moved below a fraction bar.
+        return True
+
+
+class ModeShapeEntry(sp.Function):
+    r"""Row `j` of `phi[i]`, the i-th mode shape, scaled as the list of modes scales it.
+    Written `\phi_{j,i}`. Arguments: the mode, the row, then the matrix."""
+
+    nargs = 3
+
+    @classmethod
+    def eval(cls, mode, row, matrix):
+        return None
+
+    def _eval_is_commutative(self):
+        return True
+
+
+def take_mode(value: EigenvalueSet | EigenvectorSet, indices: tuple[object, ...]):
+    """What `lam[i]` and `phi[i]` stand for, before any number is known."""
+    if len(indices) != 1:
+        raise EngEvaluationError(
+            "a mode is taken with one index: lam[1] for the first eigenvalue, "
+            "phi[2] for the second mode shape"
+        )
+    index = indices[0]
+    if not isinstance(index, sp.Integer) or index <= 0:
+        raise EngEvaluationError("a mode number must be a positive integer")
+    matrix = value.source_matrix
+    if int(index) > matrix.rows:
+        raise EngEvaluationError(
+            f"mode {int(index)} does not exist: a {matrix.rows}x{matrix.cols} matrix has "
+            f"{matrix.rows} modes"
+        )
+    if isinstance(value, EigenvalueSet):
+        return ModeEigenvalue(index, matrix)
+    return sp.ImmutableMatrix(
+        [[ModeShapeEntry(index, sp.Integer(row), matrix)] for row in range(1, matrix.rows + 1)]
+    )
+
+
+def mode_key(expr) -> str:
+    """Where a mode's value is kept among a numeric result's substitutions, so the
+    substitution stage writes `(897.61 1/s²)` for `λ₁` the way it writes `(3.70 m)` for a
+    name. Not a name, so it cannot collide with one."""
+    return "mode:" + sp.srepr(expr)
+
+
+def mode_atoms(expr) -> set:
+    """The modes an expression or matrix takes."""
+    return set(sp.sympify(expr).atoms(ModeEigenvalue, ModeShapeEntry))
+
+
+def numbered(modes: tuple[NumericMode, ...]) -> tuple[list[float], list[tuple[float, ...]]]:
+    """The eigenvalues and mode shapes one per mode number, a repeated one repeated."""
+    values = [mode.value for mode in modes for _ in mode.vectors]
+    vectors = [vector for mode in modes for vector in mode.vectors]
+    return values, vectors
