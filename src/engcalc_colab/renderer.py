@@ -1543,6 +1543,11 @@ def _matrix_shape_latex(value: MatrixShape) -> str:
 
 
 def _eigenvalue_set_latex(value: EigenvalueSet, settings: RenderSettings) -> str:
+    if not value.closed_form and not value.entries:
+        # What a set with no closed form shows until it has numbers: the problem it
+        # solves, for the matrix the sheet built. A cubic formula here was 7 KB of
+        # radicals that could not be evaluated. See `_seeks_no_closed_form`.
+        return rf"\det\left({_matrix_latex(value.source_matrix)} - \lambda I\right) = 0"
     entries = [
         rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)},"
         rf"\;m={entry.multiplicity}"
@@ -1552,6 +1557,8 @@ def _eigenvalue_set_latex(value: EigenvalueSet, settings: RenderSettings) -> str
 
 
 def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> str:
+    if not value.closed_form and not value.entries:
+        return rf"\left({_matrix_latex(value.source_matrix)} - \lambda I\right) \mathbf{{v}} = 0"
     entries: list[str] = []
     for entry in value.entries:
         vectors: list[str] = []

@@ -39,8 +39,24 @@ def matrix_norm(value):
     return sp.simplify(sp.sqrt(sp.Add(*terms)))
 
 
+def _seeks_no_closed_form(matrix: sp.MatrixBase) -> bool:
+    """Three rows or more, and names in the entries.
+
+    The frequency equation of such a matrix is a polynomial of degree three or more in
+    those names. A cubic with three real roots - a shear building's always has them - is
+    written in radicals only through complex numbers, so the formula SymPy found could
+    not be evaluated, and a quartic took 81 s and 760 KB of page to fail differently.
+    Nobody reads those formulas; the modes are computed from the numbers, which is what
+    `numeric(...)` now does. A two-by-two keeps its quadratic, and a matrix of plain
+    numbers keeps SymPy's exact answer.
+    """
+    return matrix.rows >= 3 and bool(matrix.free_symbols)
+
+
 def matrix_eigenvals(value) -> EigenvalueSet:
     matrix = sp.ImmutableMatrix(_require_square(value, "eigenvals"))
+    if _seeks_no_closed_form(matrix):
+        return EigenvalueSet(entries=(), source_matrix=matrix, closed_form=False)
     eigenvalues = matrix.eigenvals()
     entries = tuple(
         EigenvalueEntry(value=eigenvalue, multiplicity=int(multiplicity))
@@ -54,6 +70,8 @@ def matrix_eigenvals(value) -> EigenvalueSet:
 
 def matrix_eigenvects(value) -> EigenvectorSet:
     matrix = sp.ImmutableMatrix(_require_square(value, "eigenvects"))
+    if _seeks_no_closed_form(matrix):
+        return EigenvectorSet(entries=(), source_matrix=matrix, closed_form=False)
     raw_entries = sorted(
         matrix.eigenvects(),
         key=lambda item: sp.default_sort_key(item[0]),

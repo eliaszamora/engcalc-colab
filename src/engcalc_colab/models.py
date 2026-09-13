@@ -40,6 +40,9 @@ class EigenvalueSet:
     source_matrix: Any
     unit_requested: bool = False
     """True when `numeric(lam, unit)` named the unit, so the page keeps it."""
+    closed_form: bool = True
+    """False for a matrix of three rows or more with names in it: no formula is sought,
+    `entries` is empty until `numeric(...)` computes them from the numbers."""
 
 
 @dataclass(frozen=True)
@@ -55,6 +58,8 @@ class EigenvectorSet:
     source_matrix: Any
     unit_requested: bool = False
     """True when `numeric(phi, unit)` named the unit of the eigenvalues."""
+    closed_form: bool = True
+    """As on `EigenvalueSet`."""
 
 
 @dataclass(frozen=True)
