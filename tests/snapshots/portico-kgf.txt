@@ -1,0 +1,311 @@
+# portico.eng, palette: kgf
+
+=== console ===
+engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1/s
+
+=== 0 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Pórtico plano arriostrado de un nivel</div>
+
+=== 1 · Markdown ===
+Se analiza un pórtico plano de un nivel y un vano con dos columnas empotradas a la viga superior y articuladas en sus bases, arriostrado por una diagonal que trabaja sólo axialmente. La viga superior se supone infinitamente rígida a flexión, de modo que impone un único desplazamiento lateral en su nivel.
+El objetivo es obtener la rigidez lateral equivalente y el período natural mediante la formulación matricial completa, sin recurrir a ninguna fórmula cerrada: la rigidez debe salir del ensamblaje de los elementos.
+
+=== 2 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Geometría y coordenadas nodales</div>
+
+=== 3 · Markdown ===
+Los cuatro nodos se numeran 1 y 4 en las bases y 2 y 3 en el nivel superior. Fijar sus coordenadas permite derivar longitudes y cosenos directores de la geometría en vez de introducirlos a mano.
+
+=== 4 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle h & = & \displaystyle 370.00\,\mathrm{cm} \\[8pt]
+\displaystyle B & = & \displaystyle 500.00\,\mathrm{cm} \\[16pt]
+\displaystyle x_{1} & = & \displaystyle 0.00\,\mathrm{cm} \\[8pt]
+\displaystyle y_{1} & = & \displaystyle 0.00\,\mathrm{cm} \\[8pt]
+\displaystyle x_{2} & = & \displaystyle 0.00\,\mathrm{cm} \\[8pt]
+\displaystyle y_{2} & = & \displaystyle 370.00\,\mathrm{cm} \\[8pt]
+\displaystyle x_{3} & = & \displaystyle 500.00\,\mathrm{cm} \\[8pt]
+\displaystyle y_{3} & = & \displaystyle 370.00\,\mathrm{cm} \\[8pt]
+\displaystyle x_{4} & = & \displaystyle 500.00\,\mathrm{cm} \\[8pt]
+\displaystyle y_{4} & = & \displaystyle 0.00\,\mathrm{cm} \end{array}
+
+=== 5 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Material y secciones</div>
+
+=== 6 · Markdown ===
+Las columnas son rectangulares de 300 mm por 450 mm, con los 450 mm en el plano de flexión del pórtico. La diagonal es cuadrada de 25 mm de lado y sólo transmite fuerza axial.
+
+=== 7 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle E & = & \displaystyle 2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}} \\[8pt]
+\displaystyle b_{c} & = & \displaystyle 30.00\,\mathrm{cm} \\[8pt]
+\displaystyle d_{c} & = & \displaystyle 45.00\,\mathrm{cm} \\[8pt]
+\displaystyle a_{d} & = & \displaystyle 2.50\,\mathrm{cm} \\[8pt]
+\displaystyle m_{s} & = & \displaystyle 500.00\,\mathrm{kg} \\[16pt]
+\displaystyle A_{c} & = & \displaystyle b_{c} d_{c} \\[8pt]
+\displaystyle I_{c} & = & \displaystyle \frac{b_{c} d_{c}^{3}}{12} \\[8pt]
+\displaystyle A_{d} & = & \displaystyle a_{d}^{2} \\[16pt]
+\displaystyle A_{c} & = & \displaystyle b_{c} d_{c} \\[8pt]
+& = & \displaystyle \left(30.00\,\mathrm{cm}\right) \left(45.00\,\mathrm{cm}\right) \\[8pt]
+& = & \displaystyle 1350.00\,\mathrm{cm}^{2} \\[8pt]
+\displaystyle I_{c} & = & \displaystyle \frac{b_{c} d_{c}^{3}}{12} \\[8pt]
+& = & \displaystyle \frac{\left(30.00\,\mathrm{cm}\right) \left(45.00\,\mathrm{cm}\right)^{3}}{12} \\[8pt]
+& = & \displaystyle 227812.50\,\mathrm{cm}^{4} \\[8pt]
+\displaystyle A_{d} & = & \displaystyle a_{d}^{2} \\[8pt]
+& = & \displaystyle \left(2.50\,\mathrm{cm}\right)^{2} \\[8pt]
+& = & \displaystyle 6.25\,\mathrm{cm}^{2} \end{array}
+
+=== 8 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Longitudes y cosenos directores</div>
+
+=== 9 · Markdown ===
+Cada elemento necesita su longitud y la orientación de su eje local respecto del global. Ambas salen de las coordenadas nodales.
+
+=== 10 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle L_{c} & = & \displaystyle \sqrt{\left(- x_{1} + x_{2}\right)^{2} + \left(- y_{1} + y_{2}\right)^{2}} \\[8pt]
+\displaystyle c_{c} & = & \displaystyle \frac{- x_{1} + x_{2}}{L_{c}} \\[8pt]
+\displaystyle s_{c} & = & \displaystyle \frac{- y_{1} + y_{2}}{L_{c}} \\[16pt]
+\displaystyle L_{d} & = & \displaystyle \sqrt{\left(- x_{2} + x_{4}\right)^{2} + \left(- y_{2} + y_{4}\right)^{2}} \\[8pt]
+\displaystyle c_{d} & = & \displaystyle \frac{- x_{2} + x_{4}}{L_{d}} \\[8pt]
+\displaystyle s_{d} & = & \displaystyle \frac{- y_{2} + y_{4}}{L_{d}} \\[16pt]
+\displaystyle L_{c} & = & \displaystyle \sqrt{\left(- x_{1} + x_{2}\right)^{2} + \left(- y_{1} + y_{2}\right)^{2}} \\[8pt]
+& = & \displaystyle \sqrt{\left(- \left(0.00\,\mathrm{cm}\right) + \left(0.00\,\mathrm{cm}\right)\right)^{2} + \left(- \left(0.00\,\mathrm{cm}\right) + \left(370.00\,\mathrm{cm}\right)\right)^{2}} \\[8pt]
+& = & \displaystyle 370.00\,\mathrm{cm} \\[8pt]
+\displaystyle L_{d} & = & \displaystyle \sqrt{\left(- x_{2} + x_{4}\right)^{2} + \left(- y_{2} + y_{4}\right)^{2}} \\[8pt]
+& = & \displaystyle \sqrt{\left(- \left(0.00\,\mathrm{cm}\right) + \left(500.00\,\mathrm{cm}\right)\right)^{2} + \left(- \left(370.00\,\mathrm{cm}\right) + \left(0.00\,\mathrm{cm}\right)\right)^{2}} \\[8pt]
+& = & \displaystyle 622.01\,\mathrm{cm} \\[8pt]
+\displaystyle c_{d} & = & \displaystyle \frac{- x_{2} + x_{4}}{L_{d}} \\[8pt]
+& = & \displaystyle \frac{- \left(0.00\,\mathrm{cm}\right) + \left(500.00\,\mathrm{cm}\right)}{\left(622.01\,\mathrm{cm}\right)} \\[8pt]
+& = & \displaystyle 0.80 \\[8pt]
+\displaystyle s_{d} & = & \displaystyle \frac{- y_{2} + y_{4}}{L_{d}} \\[8pt]
+& = & \displaystyle \frac{- \left(370.00\,\mathrm{cm}\right) + \left(0.00\,\mathrm{cm}\right)}{\left(622.01\,\mathrm{cm}\right)} \\[8pt]
+& = & \displaystyle -0.59 \end{array}
+
+=== 11 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">El vector nodal completo y las coordenadas independientes</div>
+
+=== 12 · Markdown ===
+El pórtico tiene cuatro nodos con tres grados de libertad cada uno, de modo que el vector nodal completo tiene doce componentes:
+$U = [u_1,\ v_1,\ \theta_1,\ u_2,\ v_2,\ \theta_2,\ u_3,\ v_3,\ \theta_3,\ u_4,\ v_4,\ \theta_4]^T$
+De esos doce, la mayoría están determinados. Las bases están articuladas, así que sus traslaciones son nulas pero sus giros no. La viga rígida obliga a que ambos nodos superiores compartan el mismo desplazamiento lateral, sin descenso ni giro. Quedan tres coordenadas independientes:
+$q = [\theta_1,\ \Delta,\ \theta_4]^T$
+donde Delta es el desplazamiento lateral del nivel.
+
+=== 13 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q & = & \displaystyle \left[\begin{matrix}\displaystyle \theta_{1}\\
+\displaystyle \Delta\\
+\displaystyle \theta_{4}\end{matrix}\right] \end{array}
+
+=== 14 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">La matriz T</div>
+
+=== 15 · Markdown ===
+T resuelve el primer problema de la cadena: qué desplaza cada nodo cuando se mueven las coordenadas independientes. Cada fila de T corresponde a una componente de U y dice cómo depende de q, de modo que
+$U = T\,q$
+reproduce automáticamente los apoyos y las restricciones cinemáticas. Las filas nulas son los grados de libertad impedidos; las filas con un uno son los que siguen directamente a una coordenada independiente.
+
+=== 16 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle T & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 1 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 1 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1\end{matrix}\right] \\[16pt]
+\displaystyle U & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\
+\displaystyle 0\\
+\displaystyle \theta_{1}\\
+\displaystyle \Delta\\
+\displaystyle 0\\
+\displaystyle 0\\
+\displaystyle \Delta\\
+\displaystyle 0\\
+\displaystyle 0\\
+\displaystyle 0\\
+\displaystyle 0\\
+\displaystyle \theta_{4}\end{matrix}\right] \end{array}
+
+=== 17 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Las matrices de localización</div>
+
+=== 18 · Markdown ===
+Cada elemento sólo ve los grados de libertad de sus propios nodos. L\_e extrae del vector nodal completo el subvector que corresponde al elemento, en el orden en que su matriz de rigidez los espera:
+$u_e^g = L_e\,U$
+Se construye desde la conectividad: la columna izquierda une los nodos 1 y 2, la derecha une el 4 con el 3, y la diagonal une el 2 con el 4. Para las columnas el subvector tiene seis componentes y para la diagonal, que es una barra, sólo cuatro traslaciones.
+
+=== 19 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle L_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[16pt]
+\displaystyle L_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[16pt]
+\displaystyle L_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0\end{matrix}\right] \\[16pt]
+\displaystyle u_{1g} & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\
+\displaystyle 0\\
+\displaystyle \theta_{1}\\
+\displaystyle \Delta\\
+\displaystyle 0\\
+\displaystyle 0\end{matrix}\right] \\[8pt]
+\displaystyle u_{2g} & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\
+\displaystyle 0\\
+\displaystyle \theta_{4}\\
+\displaystyle \Delta\\
+\displaystyle 0\\
+\displaystyle 0\end{matrix}\right] \\[8pt]
+\displaystyle u_{3g} & = & \displaystyle \left[\begin{matrix}\displaystyle \Delta\\
+\displaystyle 0\\
+\displaystyle 0\\
+\displaystyle 0\end{matrix}\right] \end{array}
+
+=== 20 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Las matrices de rotación</div>
+
+=== 21 · Markdown ===
+La matriz de rigidez de un elemento está escrita en sus ejes locales, con el primer eje a lo largo de la barra. R\_e gira el subvector global a esos ejes:
+$u_e^l = R_e\,u_e^g$
+Para un elemento de pórtico plano la rotación actúa sobre las dos traslaciones de cada nodo y deja el giro intacto. Para la diagonal, que sólo tiene rigidez axial, basta proyectar las traslaciones de cada extremo sobre la dirección de la barra: dos filas para dos desplazamientos axiales.
+
+=== 22 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle R_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1\end{matrix}\right] \\[16pt]
+\displaystyle R_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1\end{matrix}\right] \\[16pt]
+\displaystyle R_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{d} & \displaystyle s_{d} & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle c_{d} & \displaystyle s_{d}\end{matrix}\right] \end{array}
+
+=== 23 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Las matrices A_e</div>
+
+=== 24 · Markdown ===
+Encadenando las tres transformaciones se llega directamente de las coordenadas independientes a los desplazamientos locales de cada elemento:
+$A_e = R_e\,L_e\,T$        y        $u_e^l = A_e\,q$
+A\_e es la única matriz que hace falta después. Cada columna suya es la deformada local del elemento cuando una coordenada independiente vale la unidad y las demás cero, que es exactamente lo que su matriz de rigidez necesita saber.
+
+=== 25 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle A_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle c_{c} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle - s_{c} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[8pt]
+\displaystyle A_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1\\
+\displaystyle 0 & \displaystyle c_{c} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle - s_{c} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[8pt]
+\displaystyle A_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle c_{d} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \end{array}
+
+=== 26 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Matrices de rigidez locales</div>
+
+=== 27 · Markdown ===
+Las columnas son elementos de pórtico plano con rigidez axial y flexional. La diagonal es una barra: su matriz es de 2x2 y sólo relaciona los dos desplazamientos axiales de sus extremos.
+
+=== 28 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle k_{c} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{A_{c} E}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle - \frac{A_{c} E}{L_{c}} & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle 0 & \displaystyle - \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}}\\
+\displaystyle 0 & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle 0 & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 E I_{c}}{L_{c}}\\
+\displaystyle - \frac{A_{c} E}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle \frac{A_{c} E}{L_{c}} & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle - \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle 0 & \displaystyle \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}}\\
+\displaystyle 0 & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 E I_{c}}{L_{c}} & \displaystyle 0 & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[16pt]
+\displaystyle k_{d} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{A_{d} E}{L_{d}} & \displaystyle - \frac{A_{d} E}{L_{d}}\\
+\displaystyle - \frac{A_{d} E}{L_{d}} & \displaystyle \frac{A_{d} E}{L_{d}}\end{matrix}\right] \end{array}
+
+=== 29 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Contribución de cada elemento y ensamblaje</div>
+
+=== 30 · Markdown ===
+El trabajo interno de un elemento escrito en las coordenadas independientes da su contribución a la rigidez del conjunto:
+$K_e = A_e^{T}\,k_e\,A_e$
+Las tres contribuciones se suman porque comparten las mismas coordenadas q, que es justamente lo que consiguió la cadena T, L\_e, R\_e.
+
+=== 31 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle K_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\
+\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{c_{c}^{2} A_{c} E}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[8pt]
+\displaystyle K_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle \frac{c_{c}^{2} A_{c} E}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
+\displaystyle 0 & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
+\displaystyle K_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle \frac{c_{d}^{2} A_{d} E}{L_{d}} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[16pt]
+\displaystyle K & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\
+\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
+\displaystyle 0 & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
+& = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)} & \displaystyle \frac{6 \left(1.00\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle 0\\
+\displaystyle \frac{6 \left(1.00\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{2 \left(0.00\right)^{2} \left(1350.00\,\mathrm{cm}^{2}\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2} \left(6.25\,\mathrm{cm}^{2}\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{24 \left(1.00\right)^{2} \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} & \displaystyle \frac{6 \left(1.00\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}}\\
+\displaystyle 0 & \displaystyle \frac{6 \left(1.00\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{4 \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
+& = & \displaystyle \left[\begin{matrix}\displaystyle 5.27 \times 10^{9}\,\mathrm{kgf} \cdot \mathrm{cm} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 0.00\\
+\displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 245047.18\,\frac{\mathrm{kgf}}{\mathrm{cm}} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf}\\
+\displaystyle 0.00 & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 5.27 \times 10^{9}\,\mathrm{kgf} \cdot \mathrm{cm}\end{matrix}\right] \end{array}
+
+=== 32 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Condensación estática</div>
+
+=== 33 · Markdown ===
+Las rotaciones de las bases no tienen masa asociada, de modo que las ecuaciones que les corresponden son de equilibrio estático puro. Separando las coordenadas internas theta\_1 y theta\_4 del grado de libertad dinámico Delta mediante matrices de selección, el equilibrio de las internas da
+$\theta = C\,\Delta$          con    $C = -K_{ii}^{-1}\,K_{id}$
+y sustituyendo en la ecuación de Delta queda la rigidez lateral equivalente.
+
+=== 34 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle S_{i} & = & \displaystyle \left[\begin{matrix}\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1\end{matrix}\right] \\[16pt]
+\displaystyle S_{d} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 1 & \displaystyle 0\end{matrix}\right] \\[16pt]
+\displaystyle K_{ii} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
+\displaystyle K_{id} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
+\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\end{matrix}\right] \\[8pt]
+\displaystyle K_{dd} & = & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[16pt]
+\displaystyle C & = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3 s_{c}}{2 L_{c}}\\
+\displaystyle - \frac{3 s_{c}}{2 L_{c}}\end{matrix}\right] \\[8pt]
+& = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3 \left(1.00\right)}{2 \left(370.00\,\mathrm{cm}\right)}\\
+\displaystyle - \frac{3 \left(1.00\right)}{2 \left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
+& = & \displaystyle 10^{-3}\,\left[\begin{matrix}\displaystyle -4.05\\
+\displaystyle -4.05\end{matrix}\right]\,\frac{1}{\mathrm{cm}} \\[16pt]
+\displaystyle k_{eq} & = & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{6 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[8pt]
+& = & \displaystyle \frac{2 \left(0.00\right)^{2} \left(1350.00\,\mathrm{cm}^{2}\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2} \left(6.25\,\mathrm{cm}^{2}\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{6 \left(1.00\right)^{2} \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} \\[8pt]
+& = & \displaystyle 71689.33\,\frac{\mathrm{kgf}}{\mathrm{cm}} \end{array}
+
+=== 35 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Dinámica</div>
+
+=== 36 · Markdown ===
+Con la rigidez condensada y la masa concentrada en el nivel se obtienen la frecuencia circular, la frecuencia natural y el período.
+
+=== 37 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle k_{e} & = & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{6 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[8pt]
+\displaystyle w_{n} & = & \displaystyle \sqrt{\frac{k_{e}}{m_{s}}} \\[16pt]
+\displaystyle f_{n} & = & \displaystyle \frac{w_{n}}{2 \pi} \\[8pt]
+\displaystyle T_{n} & = & \displaystyle \frac{2 \pi}{w_{n}} \\[16pt]
+\displaystyle w_{n} & = & \displaystyle \sqrt{\frac{k_{e}}{m_{s}}} \\[8pt]
+& = & \displaystyle \sqrt{\frac{\left(71689.33\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)}{\left(500.00\,\mathrm{kg}\right)}} \\[8pt]
+& = & \displaystyle 374.98\,\frac{1}{\mathrm{s}} \\[8pt]
+\displaystyle f_{n} & = & \displaystyle \frac{w_{n}}{2 \pi} \\[8pt]
+& = & \displaystyle \frac{\left(374.98\,\frac{1}{\mathrm{s}}\right)}{2 \pi} \\[8pt]
+& = & \displaystyle 59.68\,\frac{1}{\mathrm{s}} \\[8pt]
+\displaystyle T_{n} & = & \displaystyle \frac{2 \pi}{w_{n}} \\[8pt]
+& = & \displaystyle \frac{2 \pi}{\left(374.98\,\frac{1}{\mathrm{s}}\right)} \\[8pt]
+& = & \displaystyle 0.0168\,\mathrm{s} \end{array}
