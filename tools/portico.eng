@@ -1,0 +1,290 @@
+## Pórtico plano arriostrado de un nivel
+
+"""
+Se analiza un pórtico plano de un nivel y un vano con dos columnas empotradas
+a la viga superior y articuladas en sus bases, arriostrado por una diagonal
+que trabaja sólo axialmente. La viga superior se supone infinitamente rígida
+a flexión, de modo que impone un único desplazamiento lateral en su nivel.
+
+El objetivo es obtener la rigidez lateral equivalente y el período natural
+mediante la formulación matricial completa, sin recurrir a ninguna fórmula
+cerrada: la rigidez debe salir del ensamblaje de los elementos.
+"""
+
+### Geometría y coordenadas nodales
+
+"""
+Los cuatro nodos se numeran 1 y 4 en las bases y 2 y 3 en el nivel superior.
+Fijar sus coordenadas permite derivar longitudes y cosenos directores de la
+geometría en vez de introducirlos a mano.
+"""
+
+h := 3.70*m
+B := 5.00*m
+
+x_1 := 0*m
+y_1 := 0*m
+x_2 := 0*m
+y_2 := 3.70*m
+x_3 := 5.00*m
+y_3 := 3.70*m
+x_4 := 5.00*m
+y_4 := 0*m
+
+### Material y secciones
+
+"""
+Las columnas son rectangulares de 300 mm por 450 mm, con los 450 mm en el
+plano de flexión del pórtico. La diagonal es cuadrada de 25 mm de lado y sólo
+transmite fuerza axial.
+"""
+
+E := 210*GPa
+b_c := 300*mm
+d_c := 450*mm
+a_d := 25*mm
+m_s := 500*kg
+
+keep A_c = b_c*d_c
+keep I_c = b_c*d_c^3/12
+keep A_d = a_d^2
+
+numeric(A_c)
+numeric(I_c)
+numeric(A_d)
+
+### Longitudes y cosenos directores
+
+"""
+Cada elemento necesita su longitud y la orientación de su eje local respecto
+del global. Ambas salen de las coordenadas nodales.
+"""
+
+keep L_c = sqrt((x_2 - x_1)^2 + (y_2 - y_1)^2)
+keep c_c = (x_2 - x_1)/L_c
+keep s_c = (y_2 - y_1)/L_c
+
+keep L_d = sqrt((x_4 - x_2)^2 + (y_4 - y_2)^2)
+keep c_d = (x_4 - x_2)/L_d
+keep s_d = (y_4 - y_2)/L_d
+
+numeric(L_c)
+numeric(L_d)
+numeric(c_d)
+numeric(s_d)
+
+### El vector nodal completo y las coordenadas independientes
+
+"""
+El pórtico tiene cuatro nodos con tres grados de libertad cada uno, de modo
+que el vector nodal completo tiene doce componentes:
+
+$U = [u_1,\ v_1,\ \theta_1,\ u_2,\ v_2,\ \theta_2,\ u_3,\ v_3,\ \theta_3,\ u_4,\ v_4,\ \theta_4]^T$
+
+De esos doce, la mayoría están determinados. Las bases están articuladas, así
+que sus traslaciones son nulas pero sus giros no. La viga rígida obliga a que
+ambos nodos superiores compartan el mismo desplazamiento lateral, sin descenso
+ni giro. Quedan tres coordenadas independientes:
+
+$q = [\theta_1,\ \Delta,\ \theta_4]^T$
+
+donde Delta es el desplazamiento lateral del nivel.
+"""
+
+q = [theta_1; Delta; theta_4]
+
+### La matriz T
+
+"""
+T resuelve el primer problema de la cadena: qué desplaza cada nodo cuando se
+mueven las coordenadas independientes. Cada fila de T corresponde a una
+componente de U y dice cómo depende de q, de modo que
+
+$U = T\,q$
+
+reproduce automáticamente los apoyos y las restricciones cinemáticas. Las
+filas nulas son los grados de libertad impedidos; las filas con un uno son
+los que siguen directamente a una coordenada independiente.
+"""
+
+T = [0, 0, 0;
+     0, 0, 0;
+     1, 0, 0;
+     0, 1, 0;
+     0, 0, 0;
+     0, 0, 0;
+     0, 1, 0;
+     0, 0, 0;
+     0, 0, 0;
+     0, 0, 0;
+     0, 0, 0;
+     0, 0, 1]
+
+U = T*q
+
+### Las matrices de localización
+
+"""
+Cada elemento sólo ve los grados de libertad de sus propios nodos. L_e
+extrae del vector nodal completo el subvector que corresponde al elemento,
+en el orden en que su matriz de rigidez los espera:
+
+$u_e^g = L_e\,U$
+
+Se construye desde la conectividad: la columna izquierda une los nodos 1 y 2,
+la derecha une el 4 con el 3, y la diagonal une el 2 con el 4. Para las
+columnas el subvector tiene seis componentes y para la diagonal, que es una
+barra, sólo cuatro traslaciones.
+"""
+
+L_1 = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+       0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+       0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0;
+       0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0;
+       0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0;
+       0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]
+
+L_2 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0;
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0;
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1;
+       0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0;
+       0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0;
+       0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]
+
+L_3 = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0;
+       0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0;
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0;
+       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]
+
+u_1g = L_1*T*q
+u_2g = L_2*T*q
+u_3g = L_3*T*q
+
+### Las matrices de rotación
+
+"""
+La matriz de rigidez de un elemento está escrita en sus ejes locales, con el
+primer eje a lo largo de la barra. R_e gira el subvector global a esos ejes:
+
+$u_e^l = R_e\,u_e^g$
+
+Para un elemento de pórtico plano la rotación actúa sobre las dos
+traslaciones de cada nodo y deja el giro intacto. Para la diagonal, que sólo
+tiene rigidez axial, basta proyectar las traslaciones de cada extremo sobre
+la dirección de la barra: dos filas para dos desplazamientos axiales.
+"""
+
+R_1 = [ c_c, s_c, 0,   0,   0, 0;
+       -s_c, c_c, 0,   0,   0, 0;
+          0,   0, 1,   0,   0, 0;
+          0,   0, 0, c_c, s_c, 0;
+          0,   0, 0,-s_c, c_c, 0;
+          0,   0, 0,   0,   0, 1]
+
+R_2 = R_1
+
+R_3 = [c_d, s_d,   0,   0;
+         0,   0, c_d, s_d]
+
+### Las matrices A_e
+
+"""
+Encadenando las tres transformaciones se llega directamente de las
+coordenadas independientes a los desplazamientos locales de cada elemento:
+
+$A_e = R_e\,L_e\,T$        y        $u_e^l = A_e\,q$
+
+A_e es la única matriz que hace falta después. Cada columna suya es la
+deformada local del elemento cuando una coordenada independiente vale la
+unidad y las demás cero, que es exactamente lo que su matriz de rigidez
+necesita saber.
+"""
+
+A_1 = R_1*L_1*T
+A_2 = R_2*L_2*T
+A_3 = R_3*L_3*T
+
+### Matrices de rigidez locales
+
+"""
+Las columnas son elementos de pórtico plano con rigidez axial y flexional.
+La diagonal es una barra: su matriz es de 2x2 y sólo relaciona los dos
+desplazamientos axiales de sus extremos.
+"""
+
+k_c = [ E*A_c/L_c,               0,              0, -E*A_c/L_c,               0,              0;
+                0,  12*E*I_c/L_c^3,  6*E*I_c/L_c^2,          0, -12*E*I_c/L_c^3,  6*E*I_c/L_c^2;
+                0,   6*E*I_c/L_c^2,    4*E*I_c/L_c,          0,  -6*E*I_c/L_c^2,    2*E*I_c/L_c;
+       -E*A_c/L_c,               0,              0,  E*A_c/L_c,               0,              0;
+                0, -12*E*I_c/L_c^3, -6*E*I_c/L_c^2,          0,  12*E*I_c/L_c^3, -6*E*I_c/L_c^2;
+                0,   6*E*I_c/L_c^2,    2*E*I_c/L_c,          0,  -6*E*I_c/L_c^2,    4*E*I_c/L_c]
+
+k_d = [ E*A_d/L_d, -E*A_d/L_d;
+       -E*A_d/L_d,  E*A_d/L_d]
+
+### Contribución de cada elemento y ensamblaje
+
+"""
+El trabajo interno de un elemento escrito en las coordenadas independientes
+da su contribución a la rigidez del conjunto:
+
+$K_e = A_e^{T}\,k_e\,A_e$
+
+Las tres contribuciones se suman porque comparten las mismas coordenadas q,
+que es justamente lo que consiguió la cadena T, L_e, R_e.
+"""
+
+K_1 = transpose(A_1)*k_c*A_1
+K_2 = transpose(A_2)*k_c*A_2
+K_3 = transpose(A_3)*k_d*A_3
+
+K = K_1 + K_2 + K_3
+
+numeric(K)
+
+### Condensación estática
+
+"""
+Las rotaciones de las bases no tienen masa asociada, de modo que las
+ecuaciones que les corresponden son de equilibrio estático puro. Separando
+las coordenadas internas theta_1 y theta_4 del grado de libertad dinámico Delta
+mediante matrices de selección, el equilibrio de las internas da
+
+$\theta = C\,\Delta$          con    $C = -K_{ii}^{-1}\,K_{id}$
+
+y sustituyendo en la ecuación de Delta queda la rigidez lateral equivalente.
+"""
+
+S_i = [1, 0, 0;
+       0, 0, 1]
+
+S_d = [0, 1, 0]
+
+K_ii = S_i*K*transpose(S_i)
+K_id = S_i*K*transpose(S_d)
+K_dd = S_d*K*transpose(S_d)
+
+C = -inv(K_ii)*K_id
+
+numeric(C)
+
+k_eq = K_dd + transpose(K_id)*C
+
+numeric(k_eq)
+
+### Dinámica
+
+"""
+Con la rigidez condensada y la masa concentrada en el nivel se obtienen la
+frecuencia circular, la frecuencia natural y el período.
+"""
+
+keep k_e = k_eq[1, 1]
+keep w_n = sqrt(k_e/m_s)
+
+f_n = w_n/(2*pi)
+T_n = 2*pi/w_n
+
+numeric(w_n)
+numeric(f_n)
+numeric(T_n)

@@ -83,6 +83,11 @@ REFERENCE_PAGES = [
     # span in millimetres, and on none with one - so with only the kgf route, nine of the
     # ten mutants of that fix went past this test.
     ("formas", ROOT / "tools" / "formas.eng", ""),
+    # His frame memoria, as he ran it: kgf, and word for word the cell he sent. The other
+    # pages hold no matrix at all, and matrices are where half of what he writes lives - a
+    # transformation chain `T`, `L_e`, `R_e`, `A_e`, element stiffnesses, an assembly, a
+    # static condensation through `inv`, and a period at the end.
+    ("portico-kgf", ROOT / "tools" / "portico.eng", "kgf"),
 ]
 
 _SUMMARY_GID = "engcalc-characteristic-summary"
