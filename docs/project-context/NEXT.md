@@ -664,3 +664,15 @@ Constraints that held all session and should keep holding:
   writes the HTML a notebook would show. Everything else in this repository checks that a
   LaTeX string contains a substring, and a string that renders as garbage contains all
   the same substrings.
+- **And do not trust yourself to look at the right part of it.** 0.30.10 was rendered and
+  read before release, and still shipped `x = 0.5 L`: what was read was the value being
+  changed, not the coordinate beside it. `tests/test_the_reference_pages_do_not_move.py`
+  compares three reference pages whole against stored copies in `tests/snapshots/` and
+  fails on any difference, with the diff. When a change is meant to move a page,
+  regenerate with `ENGCALC_UPDATE_SNAPSHOTS=1 python -m pytest
+  tests/test_the_reference_pages_do_not_move.py` and **read the diff before committing
+  it** - that diff is the review. Measured against the 40 mutants written for 0.30.8 to
+  0.30.11 it catches 30 on its own; the ten it misses need a configuration no reference
+  page uses, and each is held by its own contract. `tools/formas.eng` exists only to put
+  shapes on a page that the beam and the memoria lack - add to it when a defect is found
+  in a shape no reference page contains.

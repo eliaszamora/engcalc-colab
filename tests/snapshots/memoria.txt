@@ -1,0 +1,72 @@
+# memoria.eng, palette: none
+
+=== console ===
+
+=== 0 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Viga simplemente apoyada con carga distribuida</div>
+
+=== 1 · Markdown ===
+Se calculan las reacciones, la ley de momentos, la zona donde se supera el momento admisible y la flecha maxima de una viga de acero de 6 m con carga uniforme de servicio.
+
+=== 2 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Datos</div>
+
+=== 3 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle L & = & \displaystyle 6.00\,\mathrm{m} \\[8pt]
+\displaystyle q & = & \displaystyle 10.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
+\displaystyle E & = & \displaystyle 200.00\,\mathrm{GPa} \\[8pt]
+\displaystyle I_{z} & = & \displaystyle 8.00 \times 10^{7}\,\mathrm{mm}^{4} \end{array}
+
+=== 4 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Reacciones</div>
+
+=== 5 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle \mathrm{eqFy} & = & \displaystyle R_{A} + R_{B} = q L \\[8pt]
+\displaystyle \mathrm{eqMA} & = & \displaystyle L R_{B} = \frac{q L^{2}}{2} \\[8pt]
+\displaystyle R_{A} & = & \displaystyle \frac{q L}{2} \\[4pt]
+\displaystyle R_{B} & = & \displaystyle \frac{q L}{2} \end{array}
+
+=== 6 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Ley de momentos</div>
+
+=== 7 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M\left(x\right) & = & \displaystyle \frac{q x L}{2} - \frac{q x^{2}}{2} \\[8pt]
+\displaystyle \frac{q L^{2}}{8} & = & \displaystyle \frac{\left(10.00\,\frac{\mathrm{kN}}{\mathrm{m}}\right) \left(6.00\,\mathrm{m}\right)^{2}}{8} \\[8pt]
+& = & \displaystyle 45.00\,\mathrm{kN} \cdot \mathrm{m} \end{array}
+
+=== 8 · Figure ===
+title: M(x)
+xlabel: x [$\mathrm{m}$]
+ylabel: M(x) [$\mathrm{kN} \cdot \mathrm{m}$]
+offset: 
+annotation: (0, 0)
+annotation: (3, 45)
+
+=== 9 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Zona donde se supera el momento admisible</div>
+
+=== 10 · Markdown ===
+<div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Where x satisfies the inequality</div>
+<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $6.00\,\mathrm{m}$</div>
+<div style="margin:0.08rem 0;">x in ($0.76\,\mathrm{m}$, $5.24\,\mathrm{m}$)</div>
+</div>
+
+=== 11 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Flecha</div>
+
+=== 12 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle d_{max} & = & \displaystyle \frac{5 q L^{4}}{384 E I_{z}} \\[8pt]
+& = & \displaystyle \frac{5 \left(10.00\,\frac{\mathrm{kN}}{\mathrm{m}}\right) \left(6.00\,\mathrm{m}\right)^{4}}{384 \left(200.00\,\mathrm{GPa}\right) \left(8.00 \times 10^{7}\,\mathrm{mm}^{4}\right)} \\[8pt]
+& = & \displaystyle 10.55\,\mathrm{mm} \\[8pt]
+\displaystyle d_{adm} & = & \displaystyle \frac{L}{300} \\[8pt]
+& = & \displaystyle \frac{\left(6.00\,\mathrm{m}\right)}{300} \\[8pt]
+& = & \displaystyle 20.00\,\mathrm{mm} \end{array}
+
+=== 13 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Resumen</div>
+
+=== 14 · Markdown ===
+<div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.35;"><div style="font-weight:600;margin-bottom:0.15rem;">Summary</div>
+<table style="border-collapse:collapse;"><tbody><tr><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$d_{max}$</td><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$10.55\,\mathrm{mm}$</td></tr>
+<tr><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$d_{adm}$</td><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$20.00\,\mathrm{mm}$</td></tr>
+</tbody></table></div>
