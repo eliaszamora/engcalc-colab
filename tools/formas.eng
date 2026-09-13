@@ -1,0 +1,86 @@
+## Formas que las otras dos hojas no tocan
+
+"""
+Esta hoja no es una memoria: existe para que la comparación de páginas de referencia vea
+formas que ni la viga ni la memoria contienen. Medido contra los mutantes de las
+correcciones 0.30.8 a 0.30.11, esas dos hojas dejaban pasar 21 de 40, y casi todos por
+la misma razón - la forma no estaba en ninguna página. Cada bloque dice cuál cubre.
+"""
+
+### Potencias de la longitud en la paleta
+
+"""
+Un módulo resistente es una longitud al cubo y una curvatura es una longitud a la menos
+uno. Con la paleta kgf salían en otro sistema que el trabajo de la línea de arriba.
+"""
+
+L := 6.00*m
+b := 300*mm
+h := 600*mm
+E := 23500*MPa
+qD := 18*kN/m
+qL := 12*kN/m
+
+keep I = b*h^3/12
+c := 30*cm
+
+keep W = I/c
+report(W)
+
+M_D(x) = qD*x*(L - x)/2
+M_L(x) = qL*x*(L - x)/2
+case D = M_D(x)
+case Lv = M_L(x)
+combo U1 = 1.2*D + 1.6*Lv
+
+keep M_u = U1(L/2)
+keep kappa = M_u/(E*I)
+report(kappa)
+
+### Un eje con cociente
+
+"""
+Una carga distribuida en el eje: `kgf/cm` en una línea y no como fracción apilada.
+"""
+
+q := 30*kgf/cm
+w(x) = q*(1 + x/L)
+plot(w(x), x, 0, L)
+
+### Un barrido de cuatro curvas
+
+"""
+La leyenda con la precisión de la página y el panel resumen con sus encabezados en
+negrita, que solo aparece con cuatro curvas o más.
+"""
+
+P2 := 200*kN
+Md(x) = P2*x*(L - x)/L
+plot(Md(x), x, 0, L, P2=[200*kN, 400*kN, 600*kN, 800*kN])
+
+### Un voladizo
+
+"""
+El empotramiento es un borde y no vale cero, así que distingue la expresión escrita de
+la simplificada donde la viga, con sus dos bordes en cero, no puede.
+"""
+
+M_Dv(x) = qD*x^2/2
+M_Lv(x) = qL*x^2/2
+case Dv = M_Dv(x)
+case Lvv = M_Lv(x)
+combo U3 = 1.2*Dv + 1.6*Lvv
+extrema(U3(x), x, 0, L)
+
+### Un valor absoluto
+
+"""
+Un cortante que no cambia de signo en el tramo: el valor absoluto se resuelve, y con el
+signo que corresponde.
+"""
+
+R_uso := -9*kN
+q_uso := 1*kN/m
+L_c := 2*m
+V_uso(x) = R_uso + q_uso*x
+extrema(abs(V_uso(x)), x, 0, L_c)

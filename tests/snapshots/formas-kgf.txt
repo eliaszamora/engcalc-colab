@@ -1,0 +1,141 @@
+# formas.eng, palette: kgf
+
+=== console ===
+engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1/s
+
+=== 0 · HTML ===
+<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Formas que las otras dos hojas no tocan</div>
+
+=== 1 · Markdown ===
+Esta hoja no es una memoria: existe para que la comparación de páginas de referencia vea formas que ni la viga ni la memoria contienen. Medido contra los mutantes de las correcciones 0.30.8 a 0.30.11, esas dos hojas dejaban pasar 21 de 40, y casi todos por la misma razón - la forma no estaba en ninguna página. Cada bloque dice cuál cubre.
+
+=== 2 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Potencias de la longitud en la paleta</div>
+
+=== 3 · Markdown ===
+Un módulo resistente es una longitud al cubo y una curvatura es una longitud a la menos uno. Con la paleta kgf salían en otro sistema que el trabajo de la línea de arriba.
+
+=== 4 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle L & = & \displaystyle 600.00\,\mathrm{cm} \\[8pt]
+\displaystyle b & = & \displaystyle 30.00\,\mathrm{cm} \\[8pt]
+\displaystyle h & = & \displaystyle 60.00\,\mathrm{cm} \\[8pt]
+\displaystyle E & = & \displaystyle 239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}} \\[8pt]
+\displaystyle \mathrm{qD} & = & \displaystyle 18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\displaystyle \mathrm{qL} & = & \displaystyle 12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[16pt]
+\displaystyle I & = & \displaystyle \frac{b h^{3}}{12} \\[8pt]
+\displaystyle c & = & \displaystyle 30.00\,\mathrm{cm} \\[16pt]
+\displaystyle W & = & \displaystyle \frac{I}{c} \\[8pt]
+& = & \displaystyle \frac{\left(540000.00\,\mathrm{cm}^{4}\right)}{\left(30.00\,\mathrm{cm}\right)} \\[8pt]
+& = & \displaystyle 18000.00\,\mathrm{cm}^{3} \\[16pt]
+\displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
+\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x \left(L - x\right)}{2} \\[8pt]
+\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
+\displaystyle \mathrm{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x \left(L - x\right)}{2} \\[8pt]
+\displaystyle U_{1}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathrm{Lv}\left(x\right) \\[16pt]
+\displaystyle M_{u} & = & \displaystyle 0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2} \\[8pt]
+\displaystyle \kappa & = & \displaystyle \frac{M_{u}}{E I} \\[8pt]
+& = & \displaystyle \frac{\left(1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right)}{\left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(540000.00\,\mathrm{cm}^{4}\right)} \\[8pt]
+& = & \displaystyle 1.45 \times 10^{-5}\,\frac{1}{\mathrm{cm}} \end{array}
+
+=== 5 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un eje con cociente</div>
+
+=== 6 · Markdown ===
+Una carga distribuida en el eje: \`kgf/cm\` en una línea y no como fracción apilada.
+
+=== 7 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q & = & \displaystyle 30.00\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\displaystyle w\left(x\right) & = & \displaystyle q \left(1 + \frac{x}{L}\right) \end{array}
+
+=== 8 · Figure ===
+title: w(x)
+xlabel: x [$\mathrm{cm}$]
+ylabel: w(x) [$\mathrm{kgf}/\mathrm{cm}$]
+offset: 
+annotation: (0, 30)
+annotation: (600, 60)
+
+=== 9 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un barrido de cuatro curvas</div>
+
+=== 10 · Markdown ===
+La leyenda con la precisión de la página y el panel resumen con sus encabezados en negrita, que solo aparece con cuatro curvas o más.
+
+=== 11 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle P_{2} & = & \displaystyle 20394.32\,\mathrm{kgf} \\[8pt]
+\displaystyle \mathrm{Md}\left(x\right) & = & \displaystyle \frac{x P_{2} \left(L - x\right)}{L} \end{array}
+
+=== 12 · Figure ===
+title: Md(x)
+xlabel: x [$\mathrm{cm}$]
+ylabel: Md(x) [$\mathrm{kgf} \cdot \mathrm{cm}$]
+offset: ×10⁷
+legend: P2 = 20394.32 kgf | P2 = 40788.65 kgf | P2 = 61182.97 kgf | P2 = 81577.30 kgf
+summary: Characteristic points
+summary: x = 0 $\mathbf{cm}$
+summary: Value [$\mathrm{kgf} \cdot \mathrm{cm}$]
+summary: x = 300 $\mathbf{cm}$
+summary: Value [$\mathrm{kgf} \cdot \mathrm{cm}$]
+summary: P2 = 20394.32 kgf
+summary: min
+summary: 0
+summary: P2 = 40788.65 kgf
+summary: min
+summary: 0
+summary: P2 = 61182.97 kgf
+summary: min
+summary: 0
+summary: P2 = 81577.30 kgf
+summary: min
+summary: 0
+summary: P2 = 20394.32 kgf
+summary: max
+summary: $3.06 \times 10^{6}$
+summary: P2 = 40788.65 kgf
+summary: max
+summary: $6.12 \times 10^{6}$
+summary: P2 = 61182.97 kgf
+summary: max
+summary: $9.18 \times 10^{6}$
+summary: P2 = 81577.30 kgf
+summary: max
+summary: $1.22 \times 10^{7}$
+
+=== 13 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un voladizo</div>
+
+=== 14 · Markdown ===
+El empotramiento es un borde y no vale cero, así que distingue la expresión escrita de la simplificada donde la viga, con sus dos bordes en cero, no puede.
+
+=== 15 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{Dv}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x^{2}}{2} \\[8pt]
+\displaystyle M_{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x^{2}}{2} \\[8pt]
+\displaystyle \mathrm{Dv}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x^{2}}{2} \\[8pt]
+\displaystyle \mathrm{Lvv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x^{2}}{2} \\[8pt]
+\displaystyle U_{3}\left(x\right) & = & \displaystyle 1.2 \, \mathrm{Dv}\left(x\right) + 1.6 \, \mathrm{Lvv}\left(x\right) \end{array}
+
+=== 16 · Markdown ===
+<div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Extrema — U3(x)</div>
+<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{cm}$ to $600.00\,\mathrm{cm}$</div>
+<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{cm}$) · value = $0$ ($0.00\,\mathrm{kgf} \cdot \mathrm{cm}$) · boundary, global min</div>
+<div style="margin:0.08rem 0;">$x$ = $L$ ($600.00\,\mathrm{cm}$) · value = $0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}$ ($7.49 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}$) · boundary, global max</div>
+</div>
+
+=== 17 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un valor absoluto</div>
+
+=== 18 · Markdown ===
+Un cortante que no cambia de signo en el tramo: el valor absoluto se resuelve, y con el signo que corresponde.
+
+=== 19 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle R_{uso} & = & \displaystyle -917.74\,\mathrm{kgf} \\[8pt]
+\displaystyle q_{uso} & = & \displaystyle 1.02\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\displaystyle L_{c} & = & \displaystyle 200.00\,\mathrm{cm} \\[8pt]
+\displaystyle V_{uso}\left(x\right) & = & \displaystyle R_{uso} + q_{uso} x \end{array}
+
+=== 20 · Markdown ===
+<div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Extrema — |V_uso(x)|</div>
+<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{cm}$ to $200.00\,\mathrm{cm}$</div>
+<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{cm}$) · value = $- R_{uso}$ ($917.74\,\mathrm{kgf}$) · boundary, global max</div>
+<div style="margin:0.08rem 0;">$x$ = $L_{c}$ ($200.00\,\mathrm{cm}$) · value = $- q_{uso} L_{c} - R_{uso}$ ($713.80\,\mathrm{kgf}$) · boundary, global min</div>
+</div>
