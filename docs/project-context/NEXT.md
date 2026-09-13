@@ -678,7 +678,8 @@ Constraints that held all session and should keep holding:
   in a shape no reference page contains. It is rendered twice, with the kgf palette and
   with none: the zero written `0.00 kN·mm²/m` beside `490.00 N·m` existed only without a
   palette, and with the kgf route alone nine of that fix's ten mutants went past the test.
-  **The palette-less copy stores two things that are wrong today** and were read, not
-  missed: `κ = 0.00 kN·m/(MPa·mm⁴)` - a curvature of 1.45×10⁻³ 1/m under the zero
-  tolerance in a unit nobody writes, a false zero - and `W = 1.80×10⁸ mm⁴/cm`. When
-  either is fixed, that is the diff to expect.
+  The palette-less copy stored two things that were wrong, read rather than missed:
+  `κ = 0.00 kN·m/(MPa·mm⁴)`, a false zero, now `0.00145 1/m` (no family held
+  `[length]⁻¹`, so the algebra's unit was treated as the engineer's), and
+  `W = 1.80×10⁸ mm⁴/cm`, **still stored as it is** - a section modulus has no family
+  either. When it is fixed, that line is the diff to expect.

@@ -332,6 +332,13 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[length]", 1),): ("mm", "m"),
     (("[length]", 2),): ("cm ** 2", "m ** 2"),
     (("[length]", 4),): ("cm ** 4",),
+    # A curvature. With no entry here the dimension had no family, and with no family
+    # `_unit_is_the_engineers` has no shape to compare and calls any unit the engineer's -
+    # so `M/(E*I)` kept `kN·m/(MPa·mm⁴)`, which is 10⁹ per metre, and a curvature of
+    # 1.45×10⁻³ 1/m arrived as 1.45e-12, under the zero tolerance: the reference sheet
+    # printed `κ = 0.00`. One member, the way time has one; `1/mm` wins nothing a reader
+    # wants. See `test_a_curvature_is_not_a_zero`.
+    (("[length]", -1),): ("1 / m",),
     # Kilo is the top step, by the engineer's preference: a sheet stays in kN, m and s,
     # and a value too large for kN has its scale taken outside the brackets by
     # `_matrix_scale_exponent` rather than climbing to mega. Pressure keeps its own step
@@ -505,6 +512,8 @@ _US_CUSTOMARY_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] 
     (("[length]", 1),): ("inch", "ft"),
     (("[length]", 2),): ("inch ** 2",),
     (("[length]", 4),): ("inch ** 4",),
+    # Per inch, because that is how a US section's curvature is written.
+    (("[length]", -1),): ("1 / inch",),
     (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("lbf", "kip"),
     (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("kip * ft",),
     (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("psi", "ksi"),
@@ -553,6 +562,7 @@ _TECHNICAL_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[length]", 1),): ("mm", "m"),
     (("[length]", 2),): ("cm ** 2", "m ** 2"),
     (("[length]", 4),): ("cm ** 4",),
+    (("[length]", -1),): ("1 / m",),
     (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("kgf", "tonf"),
     (("[length]", 2), ("[mass]", 1), ("[time]", -2)): ("kgf * m", "tonf * m"),
     (("[length]", -1), ("[mass]", 1), ("[time]", -2)): ("kgf / cm ** 2",),

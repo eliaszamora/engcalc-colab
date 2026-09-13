@@ -34,7 +34,7 @@ Un módulo resistente es una longitud al cubo y una curvatura es una longitud a 
 \displaystyle M_{u} & = & \displaystyle 0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2} \\[8pt]
 \displaystyle \kappa & = & \displaystyle \frac{M_{u}}{E I} \\[8pt]
 & = & \displaystyle \frac{\left(183.60\,\mathrm{kN} \cdot \mathrm{m}\right)}{\left(23500.00\,\mathrm{MPa}\right) \left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)} \\[8pt]
-& = & \displaystyle 0.00\,\frac{\mathrm{kN} \cdot \mathrm{m}}{\left(\mathrm{MPa} \cdot \mathrm{mm}^{4}\right)} \end{array}
+& = & \displaystyle 0.00145\,\frac{1}{\mathrm{m}} \end{array}
 
 === 5 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un eje con cociente</div>
