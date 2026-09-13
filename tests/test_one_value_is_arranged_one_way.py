@@ -145,6 +145,47 @@ def test_the_resolution_lands_on_the_expression_as_written(cell, capsys):
     assert "183.60" in page, page
 
 
+def test_a_boundary_value_is_arranged_the_same_way(cell, capsys):
+    """A cantilever's root, which is a boundary point with a value worth arranging.
+
+    His beam's two boundaries are both zero, so nothing there could tell the expression
+    as written from the simplified one, and a mutant that stopped handing the written
+    form to the boundary path survived the whole suite. A cantilever is as ordinary as
+    his beam and its root is not zero.
+    """
+    page = cell(
+        "L := 6*m\nqD := 18*kN/m\nqL := 12*kN/m\n"
+        "M_D(x) = qD*x^2/2\nM_L(x) = qL*x^2/2\n"
+        "case D = M_D(x)\ncase Lv = M_L(x)\n"
+        "combo U1 = 1.2*D + 1.6*Lv\n"
+        "extrema(U1(x), x, 0, L)\n"
+        "keep M_emp = U1(L)\nreport(M_emp)\n",
+        palette="kgf",
+    )
+    capsys.readouterr()
+
+    written = r"0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}"
+    assert page.count(written) >= 2, page
+    assert r"L^{2} \left(0.6" not in page, page
+
+
+def test_the_coordinate_is_still_written_as_a_fraction(cell, capsys):
+    """`x = L/2`, not `x = 0.5 L`.
+
+    The contract this file did not have, and the regression it let through: a draft that
+    stopped simplifying the response for *both* jobs fixed the value and broke the
+    coordinate, because the derivative of the form as written solves to a float where the
+    derivative of the simplified form solves to the rational. He found it on his own page
+    after the release. The analysis keeps its simplified copy; only the value shown comes
+    from the expression the sheet wrote.
+    """
+    page = cell(HIS_SHEET, palette="kgf")
+    capsys.readouterr()
+
+    assert r"\frac{L}{2}" in page, page
+    assert "0.5 L" not in page, page
+
+
 def test_a_zero_is_still_a_zero(cell, capsys):
     """A boundary value that is exactly zero prints `0`, not `0.0 L² qD`."""
     page = block_text(cell(HIS_SHEET, palette="kgf"))

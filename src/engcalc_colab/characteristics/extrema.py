@@ -129,7 +129,22 @@ def _evaluate_extrema_candidate(
     roles: tuple[str, ...],
     candidate_quantity=None,
     provenance: str = "exact",
+    written: sp.Expr | None = None,
 ) -> CharacteristicPoint | None:
+    r"""One candidate as a characteristic point.
+
+    `expression` is what the analysis works on and `written` is what the sheet wrote,
+    and they are not always the same: solving for a stationary point wants a simplified
+    response, because the derivative of the simplified form solves to the rational `L/2`
+    where the derivative of the form as written solves to the float `0.5 L` - and `L/2`
+    is how a midspan is written. The *value* shown at that point comes from `written`,
+    so it reads the way the same evaluation reads anywhere else on the page.
+
+    Both, because a first draft simplified once for both jobs and then a second draft
+    stopped simplifying for both. The first made the value disagree with `report(M_u)`
+    four lines below; the second fixed that and turned `x = L/2` into `x = 0.5 L`, which
+    he found on his own page.
+    """
     candidate = sp.sympify(candidate)
     fixed_overrides = context.unit_literal_overrides(candidate, overrides)
     if candidate_quantity is None:
@@ -147,7 +162,7 @@ def _evaluate_extrema_candidate(
         return None
 
     symbolic_value = _resolve_decidable_abs(
-        expression.subs(variable, candidate),
+        (expression if written is None else written).subs(variable, candidate),
         context,
         overrides=fixed_overrides,
     )
@@ -440,7 +455,11 @@ def _solve_continuous_extrema_exact(
     overrides: dict[str, Any] | None = None,
     source_label: str | None = None,
 ):
-    expression = sp.sympify(expression)
+    written = sp.sympify(expression)
+    # The analysis wants the simplified response and the page wants the one the sheet
+    # wrote. See `_evaluate_extrema_candidate`: `L/2` against `0.5 L` for the coordinate,
+    # and the value against what `report` prints for the same point.
+    expression = sp.simplify(written)
     variable = _analysis_variable(variable, expression)
     if not isinstance(variable, sp.Symbol):
         raise EngEvaluationError("extrema variable must be a symbolic identifier")
@@ -479,6 +498,7 @@ def _solve_continuous_extrema_exact(
             overrides=overrides,
             source_label=source_label,
             roles=("boundary",),
+            written=written,
         )
         if point is not None:
             points.append(point)
@@ -545,6 +565,7 @@ def _solve_continuous_extrema_exact(
             roles=(),
             candidate_quantity=stationary.x_quantity,
             provenance=stationary.provenance,
+            written=written,
         )
         if point is None:
             continue
