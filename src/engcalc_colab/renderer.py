@@ -1170,9 +1170,20 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
         # ``tonf``, ``kN/mm``: kept unless it says nothing at all.
         return quantity if own_figures > 0 else _best_in_family(quantity, family, settings)
 
+    if not own_is_family_member:
+        # A unit nobody wrote reads in the unit a table column holding it would, and not
+        # through `_best_in_family`, whose floor keeps a value "where the engineer left
+        # it" when no member shows a figure. A zero shows none in any unit, so every zero
+        # stopped there - and for this unit, where the engineer left it is the algebra: a
+        # 700 mm beam under 8 kN/m printed its supports `0.00 kN·mm²/m` on either side of
+        # `490.00 N·m`. Above the floor the two agree, because one value's score here is
+        # its band distance there; below it, a zero scores nothing anywhere and the column
+        # rule takes the family's first member. See `test_a_zero_reads_in_the_unit_beside_it`.
+        return quantity.to(_aggregate_unit([quantity], settings, quantity.units))
+
     # `own_is_family_member` is computed once, above the zero-tolerance return that now
     # also needs it.
-    start = canonical if own_is_family_member and own_figures > 0 else None
+    start = canonical if own_figures > 0 else None
     return _best_in_family(quantity, family, settings, start=start)
 
 
@@ -3046,19 +3057,60 @@ def _characteristic_point_coordinate(
 def _characteristic_point_value(
     point: CharacteristicPoint,
     settings: RenderSettings,
+    zero_unit=None,
 ) -> str | None:
     if point.value_symbolic is None and point.value_quantity is None:
         return None
     if point.provenance == "numeric" or point.value_symbolic is None:
         if point.value_quantity is None:
             return None
-        return "value ≈ " + _characteristic_quantity_math(point.value_quantity, settings)
+        return "value ≈ " + _characteristic_value_math(
+            point.value_quantity, settings, zero_unit
+        )
 
     symbolic = _characteristic_symbolic_math(point.value_symbolic)
     if point.value_quantity is None:
         return "value = " + symbolic
-    evaluated = _characteristic_quantity_math(point.value_quantity, settings)
+    evaluated = _characteristic_value_math(point.value_quantity, settings, zero_unit)
     return f"value = {symbolic} ({evaluated})"
+
+
+def _characteristic_zero_unit(points, settings: RenderSettings):
+    """The unit a zero in this block is written in: the one its largest value is shown in.
+
+    A zero has no magnitude, so it cannot choose a unit the way every other value on the
+    page does, and no fixed answer is right. A six-metre beam typed in millimetres reads
+    `81.00 kN·m` at midspan and the family's first member would put `0.00 N·m` on either
+    side of it; a 700 mm deflection reads `0.0156 mm` and the family's last would put
+    `0.00 m` there. The value the reader compares a support against is the one beside it.
+
+    Largest, in base units, because the values of one block need not share a unit - an
+    overhanging beam reads `2.23 kN·m` in the span and `-450.00 N·m` over the support -
+    and the one furthest from zero is the one the zero is read against. A block whose
+    values are all zero gets the unit any one of them would choose alone.
+    """
+    shown = [
+        _display_quantity(point.value_quantity, settings, declared=False)
+        for point in points
+        if point.value_quantity is not None
+    ]
+    if not shown:
+        return None
+    return max(shown, key=lambda quantity: abs(quantity.to_base_units().magnitude)).units
+
+
+def _characteristic_value_math(quantity, settings: RenderSettings, zero_unit) -> str:
+    """A point's value, in the block's `zero_unit` when it is written as a zero.
+
+    Written as a zero, not stored as one: a 1.33 mm deflection that arrives carrying
+    `kN·m³/(MPa·mm⁴)` has a magnitude of 1.33e-12, under the tolerance, and it is not a
+    zero - which is the whole of `test_a_deflection_is_not_a_zero`. So the question is put
+    to the value in the unit it would be shown in.
+    """
+    shown = _display_quantity(quantity, settings, declared=False)
+    if abs(float(shown.magnitude)) < settings.zero_tolerance:
+        return _characteristic_quantity_math(quantity, settings, unit=zero_unit)
+    return _characteristic_quantity_math(quantity, settings)
 
 
 def _characteristic_domain_unit(lower, upper, settings: RenderSettings):
@@ -3136,6 +3188,8 @@ def render_characteristic_result(
         )
     )
 
+    zero_unit = _characteristic_zero_unit(result.points, active_settings)
+
     rows: list[str] = []
     for point in result.points:
         parts = [
@@ -3146,7 +3200,7 @@ def render_characteristic_result(
                 domain_unit,
             )
         ]
-        value_text = _characteristic_point_value(point, active_settings)
+        value_text = _characteristic_point_value(point, active_settings, zero_unit)
         if value_text is not None and not isinstance(result, RootsResult):
             parts.append(value_text)
         if point.roles:

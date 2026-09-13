@@ -84,3 +84,18 @@ q_uso := 1*kN/m
 L_c := 2*m
 V_uso(x) = R_uso + q_uso*x
 extrema(abs(V_uso(x)), x, 0, L_c)
+
+### Una luz escrita en milímetros
+
+"""
+La carga por metro y la luz en milímetros dejan el momento en una unidad que nadie
+escribe. Sin paleta, los apoyos salían en ella al lado del máximo; con paleta nunca se
+vio, por eso esta hoja se compara también sin paleta. Seis metros y no setenta
+centímetros: así el máximo sale en kN·m, y un cero que eligiera solo, sin mirar a su
+vecino, saldría en N·m.
+"""
+
+L_mm := 6000*mm
+q_mm := 18*kN/m
+M_mm(x) = q_mm*x*(L_mm - x)/2
+extrema(M_mm(x), x, 0, L_mm)
