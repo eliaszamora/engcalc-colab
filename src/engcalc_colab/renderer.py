@@ -2993,14 +2993,21 @@ def _characteristic_quantity_math(
 def _characteristic_symbolic_math(value) -> str:
     r"""An exact expression, typeset: `rac{L}{2}`, `x`, `L^{2}(0.15 qD + 0.2 qL)`.
 
-    One printer now, and it is the one the working beside it already uses. #133 chose
-    between SymPy's `pretty` and `sstr` because neither LaTeX nor a two-line box drawing
-    could go inside an HTML output; the cost was that an extrema block printed
+    One printer, and it is the one the working beside it already uses. #133 chose between
+    SymPy's `pretty` and `sstr` because neither LaTeX nor a two-line box drawing could go
+    inside an HTML output; the cost was that an extrema block printed
     `L**2*(0.15*qD + 0.2*qL)` - Python, in a memoria - two lines above the same result
     written `0.15\,qD\,L^2 + 0.2\,qL\,L^2`. A `Markdown` output typesets, so the
     expression can simply be the expression.
+
+    **That claim was not true until now.** This called `sp.latex` while every other block
+    calls `_latex`, and the two disagree about a multi-letter name: SymPy sets `qD` in
+    italic, which MathJax then spaces as a product of `q` and `D`, and #96 made this page
+    write `\mathrm{qD}`. So the design moment read `0.15 L² qD` in the extrema block and
+    `0.15 qD L² ` in the report four lines below - one value, two spellings, which is the
+    defect this project has removed from units, from powers of ten and from a figure.
     """
-    return f"${sp.latex(value)}$"
+    return f"${_latex(value)}$"
 
 
 def _characteristic_name(name: str) -> str:
