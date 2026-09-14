@@ -76,6 +76,17 @@ The condensation of the frame memoria, `S_i*K*transpose(S_i)`, is the same matri
 `K[[1, 3], [1, 3]]`. A range with a step, a range that runs backwards, and an index past
 the edge are refused, each by its own sentence.
 
+A part can also be assigned, which is the assembly step of the direct stiffness method:
+
+```text
+K = zeros(3, 3)
+K[[1, 2], [1, 2]] = K[[1, 2], [1, 2]] + k_1*k_e
+K[[2, 3], [2, 3]] = K[[2, 3], [2, 3]] + k_2*k_e
+```
+
+The right-hand side reads the matrix as the line above left it, and the page shows the
+matrix after the assignment. The part and the value must be the same shape.
+
 
 ## v0.30.12 a zero reads in the unit beside it
 

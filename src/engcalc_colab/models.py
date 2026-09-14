@@ -74,6 +74,8 @@ class ParsedStatement:
     matrix_literals: tuple[MatrixLiteralBinding, ...] = ()
     declaration: str | None = None
     """`"case"` or `"combo"` when the line declared one; `None` for every other line."""
+    target_index: ast.AST | None = None
+    """`K[[1, 2], [1, 2]] = ...`: the index of the part assigned, and `target` is `K`."""
 
     @property
     def parameter(self) -> str | None:

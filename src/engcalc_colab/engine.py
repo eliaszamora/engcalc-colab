@@ -62,6 +62,7 @@ from .matrix_core import (
     map_matrix_entries,
     matrix_add,
     IndexRange,
+    matrix_assign,
     matrix_det,
     matrix_diag,
     matrix_identity,
@@ -306,6 +307,29 @@ class EngineeringEngine:
         except (EngEvaluationError, TypeError, ValueError):
             return None
         return quantity
+
+    def _assign_part(self, statement: ParsedStatement, evaluator) -> EvaluationResult:
+        """`K[[1, 2], [1, 2]] = K[[1, 2], [1, 2]] + k_1*k_e`: the direct stiffness method's
+        assembly step. The right-hand side reads the matrix as it stands, the part is
+        replaced, and the page shows the matrix after it.
+
+        The matrix's written form is dropped, not kept: it was the formula of the matrix
+        before this line, and a formula the matrix no longer equals must not be shown."""
+        name = statement.target
+        current = self.namespace.get(name)
+        if not is_matrix(current):
+            raise EngEvaluationError(
+                f"{name} has no matrix to assign into; start it as one, for example "
+                f"{name} = zeros(3, 3)"
+            )
+        replacement = evaluator.visit(statement.expression.body)
+        value = matrix_assign(
+            current, evaluator.index_values(statement.target_index), replacement, name
+        )
+        self.namespace[name] = value
+        self.written_namespace.pop(name, None)
+        self.numeric_guards.pop(name, None)
+        return EvaluationResult(statement=statement, display_input=None, value=value)
 
     def _store_kept_value(self, name: str, value) -> None:
         """Give a kept name a number of its own, so an evaluation substitutes the name.
@@ -661,6 +685,9 @@ class EngineeringEngine:
                     raise EngEvaluationError(
                         f"redefinition conflict: '{statement.target}' is already a scalar"
                     )
+
+            if getattr(statement, "target_index", None) is not None:
+                return self._assign_part(statement, evaluator)
 
             if statement.parameters is not None:
                 value = evaluator.visit_function_body(
@@ -1210,11 +1237,18 @@ class _Evaluator(ast.NodeVisitor):
 
     def visit_Subscript(self, node: ast.Subscript):
         value = self.visit(node.value)
-        if isinstance(node.slice, ast.Tuple):
-            index_nodes = tuple(node.slice.elts)
+        indices = self.index_values(node.slice)
+        if isinstance(value, (EigenvalueSet, EigenvectorSet)):
+            return take_mode(value, indices)
+        return matrix_index(value, indices)
+
+    def index_values(self, index_node: ast.AST) -> tuple:
+        """The indices a subscript names: numbers, lists, and `IndexRange` for `1:2`."""
+        if isinstance(index_node, ast.Tuple):
+            index_nodes = tuple(index_node.elts)
         else:
-            index_nodes = (node.slice,)
-        indices = tuple(
+            index_nodes = (index_node,)
+        return tuple(
             IndexRange(
                 lower=None if item.lower is None else self.visit(item.lower),
                 upper=None if item.upper is None else self.visit(item.upper),
@@ -1223,9 +1257,6 @@ class _Evaluator(ast.NodeVisitor):
             else self.visit(item)
             for item in index_nodes
         )
-        if isinstance(value, (EigenvalueSet, EigenvectorSet)):
-            return take_mode(value, indices)
-        return matrix_index(value, indices)
 
     def visit_Constant(self, node: ast.Constant):
         if isinstance(node.value, bool) or node.value is None:
