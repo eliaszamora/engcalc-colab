@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import sympy as sp
 
 from .errors import EngEvaluationError
@@ -109,8 +111,39 @@ def matrix_power(base, exponent):
 
 def _positive_index(value) -> int:
     if not isinstance(value, sp.Integer) or value <= 0:
-        raise EngEvaluationError("matrix indices must be positive integers")
+        raise EngEvaluationError("matrix indices must be positive integers, counted from 1")
     return int(value)
+
+
+@dataclass(frozen=True)
+class IndexRange:
+    """`1:2`, `2:` or `:` inside a matrix index. Both ends are included and counted from
+    one, as `K[1, 1]` already counts: `K[1:2, 1:2]` is rows 1 and 2."""
+
+    lower: object | None
+    upper: object | None
+
+
+def _positions(index, size: int) -> list[int] | None:
+    """The zero-based rows or columns a range or a list of indices takes, or None for a
+    single index, which keeps the scalar path it has always had."""
+    if isinstance(index, IndexRange):
+        lower = 1 if index.lower is None else _positive_index(index.lower)
+        upper = size if index.upper is None else _positive_index(index.upper)
+        if upper < lower:
+            raise EngEvaluationError(f"the range {lower}:{upper} runs backwards")
+        if upper > size:
+            raise EngEvaluationError(f"the range {lower}:{upper} is out of range for {size}")
+        return list(range(lower - 1, upper))
+    if is_matrix(index):
+        if index.rows != 1 and index.cols != 1:
+            raise EngEvaluationError("a list of indices is one row, [1, 3]")
+        positions = [_positive_index(entry) for entry in index]
+        for position in positions:
+            if position > size:
+                raise EngEvaluationError(f"index {position} is out of range for {size}")
+        return [position - 1 for position in positions]
+    return None
 
 
 def matrix_index(value, indices: tuple[object, ...]):
@@ -120,6 +153,23 @@ def matrix_index(value, indices: tuple[object, ...]):
         raise EngEvaluationError(
             "matrix indexing expects one vector index or two matrix indices"
         )
+
+    if len(indices) == 1 and (value.rows == 1 or value.cols == 1):
+        # A part of a vector keeps the vector's orientation.
+        positions = _positions(indices[0], max(value.rows, value.cols))
+        if positions is not None:
+            if value.rows == 1:
+                return value.extract([0], positions)
+            return value.extract(positions, [0])
+
+    if len(indices) == 2:
+        rows = _positions(indices[0], value.rows)
+        cols = _positions(indices[1], value.cols)
+        if rows is not None or cols is not None:
+            return value.extract(
+                rows if rows is not None else [_in_range(indices[0], value.rows) - 1],
+                cols if cols is not None else [_in_range(indices[1], value.cols) - 1],
+            )
 
     if len(indices) == 1:
         index = _positive_index(indices[0])
@@ -146,6 +196,13 @@ def matrix_index(value, indices: tuple[object, ...]):
             f"matrix index [{row},{col}] is out of range for shape {_shape(value)}"
         )
     return value[row - 1, col - 1]
+
+
+def _in_range(index, size: int) -> int:
+    position = _positive_index(index)
+    if position > size:
+        raise EngEvaluationError(f"index {position} is out of range for {size}")
+    return position
 
 
 def _positive_dimension(value) -> int:

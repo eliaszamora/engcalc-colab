@@ -412,20 +412,25 @@ def _validate_normal_node(
             piecewise_parameters=piecewise_parameters,
         )
         index_node = node.slice
-        if isinstance(index_node, ast.Slice) or any(
-            isinstance(child, ast.Slice) for child in ast.walk(index_node)
-        ):
-            raise EngSyntaxError(f"line {line_no}: matrix slicing is unsupported")
-        if isinstance(index_node, ast.Tuple):
-            for element in index_node.elts:
-                _validate_normal_node(
-                    element,
-                    line_no,
-                    piecewise_parameters=piecewise_parameters,
-                )
-        else:
+        elements = index_node.elts if isinstance(index_node, ast.Tuple) else [index_node]
+        for element in elements:
+            if isinstance(element, ast.Slice):
+                # `K[1:2, 1:2]`, a part of a matrix. A step is Python, not a partition.
+                if element.step is not None:
+                    raise EngSyntaxError(
+                        f"line {line_no}: a matrix range has no step; write the rows "
+                        "you want as a list, K[[1, 3], [1, 3]]"
+                    )
+                for bound in (element.lower, element.upper):
+                    if bound is not None:
+                        _validate_normal_node(
+                            bound,
+                            line_no,
+                            piecewise_parameters=piecewise_parameters,
+                        )
+                continue
             _validate_normal_node(
-                index_node,
+                element,
                 line_no,
                 piecewise_parameters=piecewise_parameters,
             )
