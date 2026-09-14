@@ -7,6 +7,7 @@ from dataclasses import dataclass, replace
 import sympy as sp
 from pint.errors import DimensionalityError
 
+from .characteristics.candidates import closed_form_factors
 from .characteristics import (
     normalize_analysis_domain,
     solve_extrema_exact,
@@ -1683,6 +1684,16 @@ class _Evaluator(ast.NodeVisitor):
             # Same rule as the system form.
             if not self._already_on_the_page(node.args[0]):
                 self.display_input = equation
+            solvable, degree = closed_form_factors(equation.lhs - equation.rhs, unknown)
+            if degree and not solvable:
+                # Only when nothing in it has a closed form: `(x - a)(x⁵ + b x + 1) = 0`
+                # still answers `a`, as it did.
+                raise EngEvaluationError(
+                    f"this equation is a polynomial of degree {degree} in {unknown} with "
+                    "other names in it, and has no closed form worth writing. For its "
+                    f"values inside a range write roots(expression, {unknown}, lower, "
+                    "upper); for the frequencies of a building, eigenvals(inv(M)*K)"
+                )
             solutions = sp.solve(equation, unknown)
             if len(solutions) == 0:
                 raise EngEvaluationError(f"solve found no solution for {unknown}")

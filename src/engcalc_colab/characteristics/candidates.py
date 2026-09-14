@@ -42,7 +42,63 @@ def _coerce_exact_discovery(result) -> _ExactDiscovery:
     return _ExactDiscovery(tuple(candidates), complete=not bool(unresolved))
 
 
+def closed_form_factors(expression, variable: sp.Symbol):
+    """The factors of a polynomial in `variable` worth solving in closed form, and the
+    highest degree among those that are not - or `(None, None)` when there is nothing to
+    set aside and SymPy is asked as it always was.
+
+    Not worth it: degree five or more, with names besides `variable` in the coefficients.
+    A three-storey building's frequency equation `det(K - ω² M)` is of degree six in `ω`
+    with six names in it, and SymPy's exact solver expanded Cardano's formula for it until
+    the notebook was killed - sampled in `solveset` → `roots` → `_try_decompose` →
+    `expand`. Abel and Ruffini say a quintic has no formula in general, and where one
+    exists nobody reads it. A quartic keeps its closed form: a two-storey building's
+    equation is one and solves in under a second. Plain-number coefficients are left to
+    SymPy, which handles them with `CRootOf`.
+
+    By factor and not by the whole: `(x - a)(x⁵ + b x + 1)` has the exact root `a`, and a
+    contract from the 0.9.2 audit holds it. Factoring the four-storey equation takes
+    0.1 s; the degree test before it takes 5 ms.
+    """
+    expression = sp.sympify(expression)
+    if not expression.is_polynomial(variable):
+        return None, None
+    # A fast path, and only that: the factor loop below decides the same thing for a
+    # polynomial with no names or a degree under five, after factoring it. Mutation says
+    # so - lowering this bound or dropping the names test changes no answer - and it is
+    # kept for the reason #143 kept its structural fast path: every root, extremum and
+    # intersection on a page passes through here.
+    if not (expression.free_symbols - {variable}) or sp.degree(expression, variable) < 5:
+        return None, None
+    try:
+        factors = sp.factor_list(expression, variable)[1]
+    except Exception:
+        # SymPy's factoriser raises on some Float coefficients - "unsupported operand
+        # type(s) for *: 'PolyElement' and 'PolyElement'" for `x⁵ + b x + 1.0`. Then the
+        # whole polynomial is the one factor, and the numeric search finds its roots.
+        factors = [(expression, 1)]
+    solvable: list[sp.Expr] = []
+    missing = 0
+    for factor, _multiplicity in factors:
+        degree = sp.degree(factor, variable)
+        if degree <= 0:
+            continue
+        if degree >= 5 and factor.free_symbols - {variable}:
+            missing = max(missing, int(degree))
+        else:
+            solvable.append(factor)
+    return (tuple(solvable), missing) if missing else (None, None)
+
+
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
+    solvable, missing = closed_form_factors(expression, variable)
+    if missing:
+        # The factors that have a closed form are solved as ever, and the discovery is
+        # incomplete, so the numeric search the caller falls back to finds the rest.
+        candidates: list[sp.Expr] = []
+        for factor in solvable:
+            candidates.extend(_exact_real_solution_set(factor, variable).candidates)
+        return _ExactDiscovery(tuple(candidates), complete=False)
     equation = sp.Eq(expression, 0)
     try:
         solution_set = sp.solveset(equation, variable, domain=sp.S.Reals)

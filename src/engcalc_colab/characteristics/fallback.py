@@ -246,16 +246,32 @@ def _fallback_roots(
         if abs(value) / denominator <= _FALLBACK_REL_RESIDUAL_TOL:
             candidate_magnitudes.append(x_magnitude)
 
-    def refine(left: float, right: float):
+    def refine(left: float, right: float, *, bracketed: bool = False):
         if not (math.isfinite(left) and math.isfinite(right)) or left == right:
             return
         try:
-            root = mp.findroot(
-                residual_callback,
-                (mp.mpf(str(left)), mp.mpf(str(right))),
-                tol=mp.mpf("1e-14"),
-                maxsteps=100,
-            )
+            if bracketed:
+                # A bracketing method, and the tolerance left to `_fallback_root_point`.
+                # `findroot` verifies |f(root)| against an absolute 1e-14, which the
+                # rounding of a large response never meets: a three-storey frequency
+                # equation reaches 10²³, its roots lost ten decimal digits to rounding,
+                # and two of its three were refused while every sign change was found.
+                # The residual that decides is the one below, relative to the response.
+                root = mp.findroot(
+                    residual_callback,
+                    (mp.mpf(str(left)), mp.mpf(str(right))),
+                    solver="anderson",
+                    tol=mp.mpf("1e-14"),
+                    maxsteps=200,
+                    verify=False,
+                )
+            else:
+                root = mp.findroot(
+                    residual_callback,
+                    (mp.mpf(str(left)), mp.mpf(str(right))),
+                    tol=mp.mpf("1e-14"),
+                    maxsteps=100,
+                )
             root_float = float(root)
         except (ValueError, TypeError, ZeroDivisionError, OverflowError, ArithmeticError):
             return
@@ -270,7 +286,7 @@ def _fallback_roots(
         if left_value is None or right_value is None:
             continue
         if left_value * right_value < 0.0:
-            refine(x_magnitudes[index], x_magnitudes[index + 1])
+            refine(x_magnitudes[index], x_magnitudes[index + 1], bracketed=True)
 
     # Even-multiplicity roots do not change sign. Strict local minima of |f|
     # supply deterministic neighboring starting values for the same refinement.
