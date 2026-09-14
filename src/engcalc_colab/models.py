@@ -460,10 +460,14 @@ class SystemSolveResult:
     equations: tuple[Any, ...]
     solutions: tuple[tuple[str, Any], ...]
     discarded: DiscardedSolutions | None = None
+    quantities: tuple[Any, ...] = ()
+    """Several answers for one unknown: the number of each, or None where it has none.
+    Empty for a system, whose unknowns `numeric(...)` reads."""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "equations", tuple(self.equations))
         object.__setattr__(self, "solutions", tuple(self.solutions))
+        object.__setattr__(self, "quantities", tuple(self.quantities))
         if not self.solutions:
             raise ValueError("a system solve result must carry at least one unknown")
 

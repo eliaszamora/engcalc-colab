@@ -2340,10 +2340,19 @@ def _system_solve_rows(result: SystemSolveResult, settings: RenderSettings) -> l
     which is the whole point of the aligned array.
     """
     rows = [rf" & & \displaystyle {_latex(equation)}" for equation in result.equations]
-    for name, value in result.solutions:
+    quantities = result.quantities or (None,) * len(result.solutions)
+    for (name, value), quantity in zip(result.solutions, quantities):
         lhs = _render_lhs(name, None)
+        # Several answers for one unknown carry their numbers, the way a characteristic
+        # point writes `x = L/2 (300.00 cm)`: they cannot be named, so `numeric(...)` can
+        # never show them. A system's unknowns are defined, and that is where to read them.
+        number = (
+            ""
+            if quantity is None
+            else rf"\;\;\left({_quantity_latex(quantity, settings=settings, declared=False)}\right)"
+        )
         rows.append(
-            rf"\displaystyle {lhs} & = & \displaystyle {_value_latex(value, settings)}"
+            rf"\displaystyle {lhs} & = & \displaystyle {_value_latex(value, settings)}{number}"
         )
     rows.extend(_discard_note_rows(result.discarded))
     return rows

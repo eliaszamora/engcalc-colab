@@ -293,6 +293,19 @@ class EngineeringEngine:
             )
         return free[0]
 
+    def _solution_quantity(self, value):
+        """The number of one of several answers, or None when it has none: a name with no
+        value, or a complex root. Several answers cannot be named, so this is the only
+        place the reader is shown them as numbers."""
+        try:
+            _substitutions, quantity = self.numeric_context.evaluate_symbolic(value)
+            # A complex root evaluates - `sqrt(-4)` is Python's `2j` - and fails only
+            # where the page turns it into digits, so it is refused here.
+            float(quantity.magnitude)
+        except (EngEvaluationError, TypeError, ValueError):
+            return None
+        return quantity
+
     def _store_kept_value(self, name: str, value) -> None:
         """Give a kept name a number of its own, so an evaluation substitutes the name.
 
@@ -752,6 +765,11 @@ class EngineeringEngine:
                     equations=system.equations,
                     solutions=system.solutions,
                     discarded=system.discarded,
+                    quantities=(
+                        tuple(self._solution_quantity(value) for _, value in system.solutions)
+                        if system.kind == "multi"
+                        else ()
+                    ),
                 )
 
             if evaluator.table_evaluation is not None:
