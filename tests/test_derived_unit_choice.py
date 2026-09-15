@@ -115,7 +115,10 @@ def test_the_family_lookup_does_not_depend_on_how_the_dimensionality_prints():
     pressure = dict([("[time]", -2), ("[length]", -1), ("[mass]", 1)])
     assert _unit_family(_Quantity(pressure)) == ("MPa",)
 
-    assert _unit_family(_Quantity({"[length]": 3})) == ()
+    # A dimension with no entry finds none. This was `[length]³` until a section modulus
+    # got a family (`test_a_section_modulus_reads_in_cubic_centimetres`); a velocity still
+    # has none.
+    assert _unit_family(_Quantity(dict([("[time]", -1), ("[length]", 1)]))) == ()
 
 
 def test_a_fresh_session_computing_only_the_capacity_still_reads_kn_m():

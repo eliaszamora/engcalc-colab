@@ -371,6 +371,12 @@ def _substitution_latex(expr, substitutions: dict[str, object], settings: Render
 _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[length]", 1),): ("mm", "m"),
     (("[length]", 2),): ("cm ** 2", "m ** 2"),
+    # A section modulus, and a volume. With no entry the unit was whatever the division
+    # left - `W = M_u/f_y` read `0.72 kN·m/MPa` and the reference sheet's `I/c` read
+    # `1.80×10⁸ mm⁴/cm` - for the reason the curvature below gives. The square's two
+    # steps, so the band sends 0.00072 m³ to `720.00 cm³` and leaves 3 m³ of concrete
+    # in cubic metres. See `test_a_section_modulus_reads_in_cubic_centimetres`.
+    (("[length]", 3),): ("cm ** 3", "m ** 3"),
     (("[length]", 4),): ("cm ** 4",),
     # A curvature. With no entry here the dimension had no family, and with no family
     # `_unit_is_the_engineers` has no shape to compare and calls any unit the engineer's -
@@ -556,6 +562,7 @@ def _significant_figures(magnitude, precision: int) -> int:
 _US_CUSTOMARY_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[length]", 1),): ("inch", "ft"),
     (("[length]", 2),): ("inch ** 2",),
+    (("[length]", 3),): ("inch ** 3",),
     (("[length]", 4),): ("inch ** 4",),
     # Per inch, because that is how a US section's curvature is written.
     (("[length]", -1),): ("1 / inch",),
@@ -607,6 +614,12 @@ def _is_us_customary(quantity) -> bool:
 _TECHNICAL_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[length]", 1),): ("mm", "m"),
     (("[length]", 2),): ("cm ** 2", "m ** 2"),
+    # Reached, unlike a bare length cubed would suggest: `tonf·m` over `kgf/cm²` keeps
+    # both forces in its unit, so the value reads as technical until this converts it.
+    # One member. A moment over a stress is the only way here, and cubic metres would
+    # take a modulus of several of them: 500 tonf·m over 1400 kgf/cm² is 35714 cm³. A
+    # volume of `P/gamma` cancels its forces and reads as SI, which has both steps.
+    (("[length]", 3),): ("cm ** 3",),
     (("[length]", 4),): ("cm ** 4",),
     (("[length]", -1),): ("1 / m",),
     (("[length]", 1), ("[mass]", 1), ("[time]", -2)): ("kgf", "tonf"),
