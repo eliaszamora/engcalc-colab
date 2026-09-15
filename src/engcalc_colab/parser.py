@@ -62,7 +62,7 @@ _ALLOWED_CALLS = {
     "assume",
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",
     "piecewise", "identity", "zeros", "diag", "transpose", "det", "inv", "trace", "size",
-    "rank", "rref", "norm", "eigenvals", "eigenvects",
+    "rank", "rref", "norm", "eigenvals", "eigenvects", "dot", "cross",
 } | _SCALAR_CALLS | _CHARACTERISTIC_CALLS
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")

@@ -64,7 +64,9 @@ from .matrix_core import (
     IndexRange,
     matrix_assign,
     matrix_det,
+    matrix_cross,
     matrix_diag,
+    matrix_dot,
     matrix_identity,
     matrix_index,
     matrix_inv,
@@ -1785,6 +1787,10 @@ class _Evaluator(ast.NodeVisitor):
 
         if name == "diag":
             return matrix_diag(args)
+
+        if name in {"dot", "cross"}:
+            self._require_arity(name, args, 2, "two vectors")
+            return (matrix_dot if name == "dot" else matrix_cross)(args[0], args[1])
 
         if name == "transpose":
             self._require_arity(name, args, 1, "matrix")

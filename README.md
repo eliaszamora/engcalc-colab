@@ -104,6 +104,18 @@ blocks is a 1x1 block. Blocks that do not meet — a row of different heights, r
 different widths — are refused with their shapes named.
 
 
+## Dot and cross products
+
+```text
+d   = dot(u, v)                 u₁v₁ + u₂v₂ + …, a scalar
+M_O = cross(r, F)               the moment of a force, r × F
+```
+
+`dot` takes two vectors of one length in either orientation; `cross` takes two of length
+three and gives a vector in the first one's orientation. Units carry through as for any
+product: `cross([2*m; 0*m; 1*m], [0*kN; 5*kN; 0*kN])` is `[−5.00; 0.00; 10.00] kN·m`.
+
+
 ## v0.30.12 a zero reads in the unit beside it
 
 One correction. On a sheet with no palette that types a load per metre and a span in

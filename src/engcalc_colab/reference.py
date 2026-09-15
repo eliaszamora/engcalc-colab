@@ -417,6 +417,20 @@ _ENTRIES: tuple[CallHelp, ...] = (
         arguments=(("matrix", "a square matrix"),),
         example="A = [2, 0; 0, 4]\nv = eigenvects(A)",
     ),
+    CallHelp(
+        name="dot",
+        summary="The dot product of two vectors, a scalar.",
+        forms=("dot(u, v)",),
+        arguments=(("u, v", "two vectors of one length, written as rows or columns"),),
+        example="u = [1; 2; 3]\nv = [4; 5; 6]\nd = dot(u, v)",
+    ),
+    CallHelp(
+        name="cross",
+        summary="The cross product of two vectors of length three, as the moment r × F.",
+        forms=("cross(u, v)",),
+        arguments=(("u, v", "two vectors of length 3; the result takes u's orientation"),),
+        example="r = [2*m; 0*m; 1*m]\nF = [0*kN; 5*kN; 0*kN]\nM_O = cross(r, F)",
+    ),
 )
 
 CATALOGUE: dict[str, CallHelp] = {entry.name: entry for entry in _ENTRIES}

@@ -280,6 +280,44 @@ def _in_range(index, size: int) -> int:
     return position
 
 
+def _vector_entries(value, name: str, which: str) -> list:
+    if not is_matrix(value):
+        raise EngEvaluationError(f"{name} takes two vectors; the {which} is not a matrix")
+    if value.rows != 1 and value.cols != 1:
+        raise EngEvaluationError(f"{name} takes two vectors; the {which} is {_shape(value)}")
+    return list(value)
+
+
+def matrix_dot(left, right):
+    """`dot(u, v)`: the scalar `u₁v₁ + u₂v₂ + ...`, whatever way either vector is written."""
+    a = _vector_entries(left, "dot", "first")
+    b = _vector_entries(right, "dot", "second")
+    if len(a) != len(b):
+        raise EngEvaluationError(
+            f"dot takes two vectors of one length; they are {len(a)} and {len(b)} long"
+        )
+    return sp.Add(*(x * y for x, y in zip(a, b)))
+
+
+def matrix_cross(left, right):
+    """`cross(u, v)`: the right-handed cross product of two vectors of length three, in
+    the first vector's orientation - the moment of a force, `cross(r, F)`."""
+    a = _vector_entries(left, "cross", "first")
+    b = _vector_entries(right, "cross", "second")
+    if len(a) != 3 or len(b) != 3:
+        raise EngEvaluationError(
+            f"cross takes two vectors of length 3; they are {len(a)} and {len(b)} long"
+        )
+    entries = [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+    if left.rows == 1:
+        return sp.ImmutableMatrix([entries])
+    return sp.ImmutableMatrix([[entry] for entry in entries])
+
+
 def _positive_dimension(value) -> int:
     if not isinstance(value, sp.Integer) or value <= 0:
         raise EngEvaluationError(
