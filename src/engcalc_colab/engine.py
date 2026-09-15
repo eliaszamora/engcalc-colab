@@ -61,6 +61,7 @@ from .matrix_core import (
     is_matrix,
     map_matrix_entries,
     matrix_add,
+    IndexRange,
     matrix_det,
     matrix_diag,
     matrix_identity,
@@ -1213,7 +1214,15 @@ class _Evaluator(ast.NodeVisitor):
             index_nodes = tuple(node.slice.elts)
         else:
             index_nodes = (node.slice,)
-        indices = tuple(self.visit(item) for item in index_nodes)
+        indices = tuple(
+            IndexRange(
+                lower=None if item.lower is None else self.visit(item.lower),
+                upper=None if item.upper is None else self.visit(item.upper),
+            )
+            if isinstance(item, ast.Slice)
+            else self.visit(item)
+            for item in index_nodes
+        )
         if isinstance(value, (EigenvalueSet, EigenvectorSet)):
             return take_mode(value, indices)
         return matrix_index(value, indices)

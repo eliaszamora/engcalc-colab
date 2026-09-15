@@ -76,6 +76,10 @@ def test_indexing_non_matrix_is_rejected():
         eval_cell(engine, "y = a[1]")
 
 
-def test_python_slice_syntax_remains_rejected():
-    with pytest.raises(EngSyntaxError, match="matrix slicing is unsupported"):
-        parse_cell("x = A[1:2]")
+def test_a_range_with_a_step_is_rejected():
+    """0.9.0 rejected every slice. A part of a matrix - `K[1:2, 1:2]` - is accepted since
+    the engineer's condensation needed one (`test_a_part_of_a_matrix`); a Python step is
+    still not how a partition is written, and says so."""
+    parse_cell("x = A[1:2]")
+    with pytest.raises(EngSyntaxError, match="step"):
+        parse_cell("x = A[1:3:2]")

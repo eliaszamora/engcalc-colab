@@ -57,6 +57,26 @@ answer with no value to evaluate — an undefined name, a complex root — is wr
 a number.
 
 
+## A part of a matrix
+
+A partition is written the way structural texts write it. Indices count from one, and a
+range includes both ends:
+
+```text
+K_ii = K[[1, 3], [1, 3]]       rows 1 and 3, columns 1 and 3
+K_id = K[[1, 3], 2]            a column
+K_11 = K[1:2, 1:2]             the upper-left 2x2
+r    = K[2, :]                 the whole second row
+u_f  = u[2:3]                  part of a vector, same orientation
+dofs = [1, 3]
+K_ff = K[dofs, dofs]           a list kept in a name
+```
+
+The condensation of the frame memoria, `S_i*K*transpose(S_i)`, is the same matrix as
+`K[[1, 3], [1, 3]]`. A range with a step, a range that runs backwards, and an index past
+the edge are refused, each by its own sentence.
+
+
 ## v0.30.12 a zero reads in the unit beside it
 
 One correction. On a sheet with no palette that types a load per metre and a span in
