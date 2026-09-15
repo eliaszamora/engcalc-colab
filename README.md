@@ -41,6 +41,22 @@ M_1 = transpose(phi_1)*M*phi_1
 The list of eigenvalues follows the same numbering once it has numbers.
 
 
+## A solution has a number
+
+When `solve` finds several answers for one unknown, each is written with its number, the
+way a characteristic point already is:
+
+```text
+solve(k - w^2*m = 0, w)        →  w = −√(k/m)  (−63.25 1/s)
+                                  w =  √(k/m)  (63.25 1/s)
+```
+
+Several answers cannot be assigned to a name, so `numeric(...)` could never show them; a
+single answer and a system's unknowns still read through `numeric(...)` as before. An
+answer with no value to evaluate — an undefined name, a complex root — is written without
+a number.
+
+
 ## v0.30.12 a zero reads in the unit beside it
 
 One correction. On a sheet with no palette that types a load per metre and a span in
