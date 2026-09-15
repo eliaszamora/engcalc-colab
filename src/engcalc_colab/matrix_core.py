@@ -198,6 +198,46 @@ def matrix_index(value, indices: tuple[object, ...]):
     return value[row - 1, col - 1]
 
 
+def matrix_assign(value, indices: tuple[object, ...], replacement, name: str):
+    """`value` with the part `indices` names replaced by `replacement`, which must be the
+    part's shape - a scalar for one entry. Indices count as they do when reading a part."""
+    if len(indices) == 1 and (value.rows == 1 or value.cols == 1):
+        size = max(value.rows, value.cols)
+        positions = _positions(indices[0], size)
+        if positions is None:
+            positions = [_in_range(indices[0], size) - 1]
+        rows, cols = ([0], positions) if value.rows == 1 else (positions, [0])
+    elif len(indices) == 2:
+        rows = _positions(indices[0], value.rows)
+        rows = rows if rows is not None else [_in_range(indices[0], value.rows) - 1]
+        cols = _positions(indices[1], value.cols)
+        cols = cols if cols is not None else [_in_range(indices[1], value.cols) - 1]
+    else:
+        raise EngEvaluationError(
+            "a part of a matrix is assigned with two indices, or one for a vector"
+        )
+
+    if is_matrix(replacement):
+        if replacement.shape != (len(rows), len(cols)):
+            raise EngEvaluationError(
+                f"{name}[...] is {len(rows)}x{len(cols)} and the value is "
+                f"{replacement.rows}x{replacement.cols}"
+            )
+        entries = replacement
+    else:
+        if (len(rows), len(cols)) != (1, 1):
+            raise EngEvaluationError(
+                f"{name}[...] is {len(rows)}x{len(cols)} and the value is a scalar"
+            )
+        entries = sp.ImmutableMatrix([[sp.sympify(replacement)]])
+
+    updated = value.as_mutable()
+    for i, row in enumerate(rows):
+        for j, col in enumerate(cols):
+            updated[row, col] = entries[i, j]
+    return sp.ImmutableMatrix(updated)
+
+
 def _in_range(index, size: int) -> int:
     position = _positive_index(index)
     if position > size:

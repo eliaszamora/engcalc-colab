@@ -66,6 +66,7 @@ _ALLOWED_CALLS = {
 } | _SCALAR_CALLS | _CHARACTERISTIC_CALLS
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
+_PART_TARGET = re.compile(r"^([A-Za-z_]\w*)\s*\[(.*)\]$")
 _FUNCTION_TARGET_HEAD = re.compile(r"^([A-Za-z_]\w*)\s*\((.*)\)$")
 _HEADING = re.compile(r"^(#{2,3})\s+(.+)$")
 _RESULT_CALL = re.compile(r"\bresult\s*(?=\()")
@@ -258,12 +259,26 @@ def parse_cell(
             target: str | None = None
             parameters: tuple[str, ...] | None = None
             declaration: str | None = None
+            target_index: ast.AST | None = None
             if lhs is not None:
                 declaration, lhs = _split_declaration(lhs, line_no)
             if lhs is not None:
                 function_target = _parse_function_target(lhs.strip(), line_no)
+                part_target = (
+                    _PART_TARGET.fullmatch(lhs.strip()) if declaration is None else None
+                )
                 if function_target is not None:
                     target, parameters = function_target
+                elif part_target is not None:
+                    # `K[[1, 2], [1, 2]] = ...`: a part of a matrix, assigned.
+                    target = part_target.group(1)
+                    _validate_target(target, line_no)
+                    try:
+                        subscript = ast.parse(lhs.strip(), mode="eval").body
+                    except SyntaxError as exc:
+                        raise _invalid_syntax(line_no, lhs.strip()) from exc
+                    _validate_normal_node(subscript, line_no)
+                    target_index = subscript.slice
                 else:
                     target = lhs.strip()
                     if not _IDENTIFIER.fullmatch(target):
@@ -303,6 +318,7 @@ def parse_cell(
                 blank_before=pending_blank,
                 display_options=display_options,
                 matrix_literals=matrix_literals,
+                target_index=target_index,
             ))
             pending_blank = False
             index = next_index
