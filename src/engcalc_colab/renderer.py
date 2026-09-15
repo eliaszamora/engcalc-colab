@@ -272,9 +272,19 @@ class _EngineeringLatexPrinter(LatexPrinter):
             term_latex = self._print(term)
             if self._needs_mul_brackets(term, first=(index == 0), last=(index == len(args) - 1)):
                 term_latex = rf"\left({term_latex}\right)"
+            if index:
+                # A unit is set apart from what it multiplies, `10\,\mathrm{kN}`: the plain
+                # separator is a LaTeX space, which MathJax does not show, and the
+                # engineer's load vector read `10kN`.
+                apart = self._is_unit_literal(term) or self._is_unit_literal(args[index - 1])
+                rendered.append(r"\," if apart else separator)
             rendered.append(term_latex)
 
-        return separator.join(rendered)
+        return "".join(rendered)
+
+    def _is_unit_literal(self, term) -> bool:
+        base = term.base if term.is_Pow else term
+        return isinstance(base, sp.Symbol) and base.name in self.unit_literals
 
 
 class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
@@ -1392,8 +1402,8 @@ def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
     return rf"\left[\begin{{matrix}}{body}\end{{matrix}}\right]"
 
 
-def _matrix_latex(matrix) -> str:
-    return _latex(sp.ImmutableMatrix(matrix))
+def _matrix_latex(matrix, unit_literals: frozenset[str] = frozenset()) -> str:
+    return _latex(sp.ImmutableMatrix(matrix), unit_literals)
 
 
 def _matrix_substitution_latex(
@@ -1606,7 +1616,7 @@ def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> s
     return r"\left\{" + r"\; ; \;".join(entries) + r"\right\}"
 
 
-def _value_latex(value, settings: RenderSettings) -> str:
+def _value_latex(value, settings: RenderSettings, unit_literals: frozenset[str] = frozenset()) -> str:
     if isinstance(value, MatrixShape):
         return _matrix_shape_latex(value)
     if isinstance(value, EigenvalueSet):
@@ -1616,8 +1626,8 @@ def _value_latex(value, settings: RenderSettings) -> str:
     if isinstance(value, QuantityMatrix):
         return _quantity_matrix_latex(value, settings)
     if isinstance(value, sp.MatrixBase):
-        return _matrix_latex(value)
-    return _latex(value)
+        return _matrix_latex(value, unit_literals)
+    return _latex(value, unit_literals)
 
 
 def _partial_polynomial_latex(evaluated_terms: tuple[tuple[int, object], ...] | None, variable: str, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> str | None:
@@ -2277,10 +2287,14 @@ def _standard_result_row(result: CalculationResult, settings: RenderSettings) ->
     return rf"\displaystyle {rendered} & &"
 
 
-def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -> list[str]:
+def _equality_stage_rows(
+    display_input: sp.Equality,
+    settings: RenderSettings,
+    unit_literals: frozenset[str] = frozenset(),
+) -> list[str]:
     """Render the equation being solved entirely in the right-hand block."""
-    lhs_rows = _bounded_expression_rows(display_input.lhs, settings=settings)
-    rhs_latex = _latex(display_input.rhs, settings=settings)
+    lhs_rows = _bounded_expression_rows(display_input.lhs, settings=settings, unit_literals=unit_literals)
+    rhs_latex = _latex(display_input.rhs, unit_literals, settings)
     rows: list[str] = []
     for index, equation_row in enumerate(lhs_rows):
         if index == len(lhs_rows) - 1:
@@ -2384,8 +2398,9 @@ def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> 
     value = sp.sympify(_shown_expression(result))
     display_input = result.display_input
 
+    units = result.unit_literals
     if display_input is None or sp.sstr(display_input) == sp.sstr(value):
-        value_rows = _bounded_expression_rows(value, settings=settings)
+        value_rows = _bounded_expression_rows(value, settings=settings, unit_literals=units)
         if len(value_rows) == 1:
             standard = _standard_result_row(result, settings)
             if _latex_visual_width(standard) <= _COMPLETE_ROW_VISUAL_BUDGET:
@@ -2395,13 +2410,13 @@ def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> 
         return rows
 
     if isinstance(display_input, sp.Equality):
-        rows = _equality_stage_rows(display_input, settings)
-        value_rows = _bounded_expression_rows(value, settings=settings)
+        rows = _equality_stage_rows(display_input, settings, units)
+        value_rows = _bounded_expression_rows(value, settings=settings, unit_literals=units)
         _append_assignment_stage(rows, lhs, value_rows)
         return rows
 
-    input_latex = _latex(display_input)
-    value_rows = _bounded_expression_rows(value, settings=settings)
+    input_latex = _latex(display_input, units)
+    value_rows = _bounded_expression_rows(value, settings=settings, unit_literals=units)
     lhs_width = _latex_visual_width(lhs) + 3.0 if lhs is not None else 0.0
     chain_width = lhs_width + _latex_visual_width(input_latex) + sum(_latex_visual_width(row) for row in value_rows) + 6.0
     if len(value_rows) == 1 and chain_width <= _NUMERIC_ROW_VISUAL_BUDGET:
@@ -3545,15 +3560,16 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
 
     statement = result.statement
     lhs = _render_lhs(statement.target, statement.parameters)
-    value_latex = _value_latex(_shown_expression(result), active_settings)
+    units = getattr(result, "unit_literals", frozenset())
+    value_latex = _value_latex(_shown_expression(result), active_settings, units)
 
     if lhs is None:
         if result.display_input is not None:
-            return rf"{_latex(result.display_input)} = {value_latex}"
+            return rf"{_latex(result.display_input, units)} = {value_latex}"
         return value_latex
 
     if result.display_input is not None:
-        input_latex = _latex(result.display_input)
+        input_latex = _latex(result.display_input, units)
         if sp.sstr(result.display_input) != sp.sstr(_shown_expression(result)):
             return rf"{lhs} = {input_latex} = {value_latex}"
     return rf"{lhs} = {value_latex}"
