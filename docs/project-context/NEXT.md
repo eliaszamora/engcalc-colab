@@ -681,5 +681,5 @@ Constraints that held all session and should keep holding:
   The palette-less copy stored two things that were wrong, read rather than missed:
   `κ = 0.00 kN·m/(MPa·mm⁴)`, a false zero, now `0.00145 1/m` (no family held
   `[length]⁻¹`, so the algebra's unit was treated as the engineer's), and
-  `W = 1.80×10⁸ mm⁴/cm`, **still stored as it is** - a section modulus has no family
-  either. When it is fixed, that line is the diff to expect.
+  `W = 1.80×10⁸ mm⁴/cm`, now `18000.00 cm³` - a length cubed had no family either, and
+  the required modulus `M_u/f_y` had been printing `0.72 kN·m/MPa` for the same reason.
