@@ -81,7 +81,8 @@ from .matrix_analysis import (
     matrix_rank,
     matrix_rref,
 )
-from .matrix_numeric import ensure_common_scale
+from .matrix_modes import numeric_modes
+from .matrix_numeric import QuantityMatrix, ensure_common_scale
 from .matrix_solve import solve_linear_system
 from .numeric import _UNIT_ALIASES, NumericContext
 from .piecewise import (
@@ -1020,7 +1021,49 @@ class _Evaluator(ast.NodeVisitor):
                 return scale
         return None
 
+    def _numeric_modes(self, source_matrix, operation: str):
+        """The eigenvalues and mode shapes of a matrix that has no closed form, from its
+        numbers, in the one unit its entries share. See `matrix_modes`."""
+        context = self.engine.numeric_context
+        _substitutions, unresolved, quantity_matrix = context.evaluate_matrix(source_matrix)
+        if unresolved:
+            hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(unresolved))
+            raise EngEvaluationError(
+                "numeric evaluation requires values for: " + ", ".join(unresolved) + f". {hint}"
+            )
+        scale = ensure_common_scale(quantity_matrix, operation)
+        magnitudes = [
+            [
+                float(
+                    quantity.to(scale).magnitude
+                    if scale is not None and not quantity.dimensionless
+                    else quantity.to_base_units().magnitude
+                )
+                for quantity in (
+                    quantity_matrix.entry(row, col) for col in range(quantity_matrix.cols)
+                )
+            ]
+            for row in range(quantity_matrix.rows)
+        ]
+        modes = numeric_modes(magnitudes, operation=operation)
+        unit = scale if scale is not None else context.ureg.dimensionless
+        return modes, unit
+
     def _numeric_eigenvalue_set(self, value: EigenvalueSet, validations, target_unit=None):
+        if not value.closed_form:
+            modes, unit = self._numeric_modes(value.source_matrix, "eigenvals")
+            entries = []
+            for mode in modes:
+                quantity = self.engine.numeric_context.ureg.Quantity(mode.value, unit)
+                if target_unit is not None:
+                    quantity = self.engine.numeric_context.convert_quantity(quantity, target_unit)
+                entries.append(EigenvalueEntry(value=quantity, multiplicity=mode.multiplicity))
+            return EigenvalueSet(
+                entries=tuple(entries),
+                source_matrix=value.source_matrix,
+                unit_requested=target_unit is not None,
+                closed_form=False,
+            )
         scale = self._guard_scale(validations, "eigenvals", value.source_matrix)
         entries = []
         for entry in value.entries:
@@ -1041,6 +1084,33 @@ class _Evaluator(ast.NodeVisitor):
         )
 
     def _numeric_eigenvector_set(self, value: EigenvectorSet, validations, target_unit=None):
+        if not value.closed_form:
+            context = self.engine.numeric_context
+            modes, unit = self._numeric_modes(value.source_matrix, "eigenvects")
+            entries = []
+            for mode in modes:
+                quantity = context.ureg.Quantity(mode.value, unit)
+                if target_unit is not None:
+                    quantity = context.convert_quantity(quantity, target_unit)
+                vectors = tuple(
+                    QuantityMatrix(
+                        rows=len(vector),
+                        cols=1,
+                        entries=tuple(context.ureg.Quantity(entry) for entry in vector),
+                    )
+                    for vector in mode.vectors
+                )
+                entries.append(
+                    EigenvectorEntry(
+                        value=quantity, multiplicity=mode.multiplicity, vectors=vectors
+                    )
+                )
+            return EigenvectorSet(
+                entries=tuple(entries),
+                source_matrix=value.source_matrix,
+                unit_requested=target_unit is not None,
+                closed_form=False,
+            )
         scale = self._guard_scale(validations, "eigenvects", value.source_matrix)
         entries = []
         for entry in value.entries:

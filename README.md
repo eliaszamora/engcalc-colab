@@ -5,6 +5,30 @@
 Current version: **0.30.12**.
 
 
+## The modes of a building with many storeys
+
+A shear building of two storeys already worked: `eigenvals(inv(M)*K)` found the quadratic's
+closed form and `numeric(...)` evaluated it. Three storeys and more did not. A cubic with
+three real roots — which a building's frequency equation always is — can only be written
+in radicals through complex numbers, so the formula could not be evaluated; four storeys
+took 81 s and 760 KB of page to fail.
+
+A matrix of three rows or more with names in it now seeks no closed form. The page shows
+the problem, and `numeric(...)` computes the eigenvalues and mode shapes from the numbers,
+in ascending order, each mode scaled so its last entry is one:
+
+```text
+lam = eigenvals(inv(M)*K)      →  det([ (k₁+k₂)/m₁  −k₂/m₁  0 ; … ] − λI) = 0
+numeric(lam)                   →  λ = 897.61 1/s² ; λ = 5634.70 1/s² ; λ = 11982.85 1/s²
+phi = eigenvects(inv(M)*K)
+numeric(phi)                   →  v = [0.36; 0.73; 1.00] ; [−0.99; −0.69; 1.00] ; [2.48; −2.59; 1.00]
+```
+
+A two-by-two keeps its closed form, and a matrix of plain numbers keeps SymPy's exact
+answer. A repeated eigenvalue is counted once with its multiplicity, a unit asked for with
+`numeric(lam, unit)` is kept, and complex eigenvalues are refused by name.
+
+
 ## v0.30.12 a zero reads in the unit beside it
 
 One correction. On a sheet with no palette that types a load per metre and a span in
