@@ -163,6 +163,9 @@ class _ResolvedExpression:
     signed_expression: object
     comparison_expression: object
     is_absolute: bool
+    # What a characteristic heading typesets, or None where the label is already how a
+    # person writes it - `M(x)`. See `_heading_expression`.
+    label_expression: object = None
 
 
 @dataclass(frozen=True)
@@ -231,6 +234,9 @@ class _CharacteristicEvaluation:
     right_label: str | None = None
     unbounded_above: bool = False
     unbounded_below: bool = False
+    label_expression: object = None
+    left_expression: object = None
+    right_expression: object = None
 
 
 class EngineeringEngine:
@@ -843,6 +849,7 @@ class EngineeringEngine:
                         upper_quantity=characteristic.upper_quantity,
                         points=characteristic.points,
                         intervals=characteristic.intervals,
+                        label_expression=characteristic.label_expression,
                     )
                 if characteristic.kind == "intersections":
                     return IntersectionsResult(
@@ -854,6 +861,8 @@ class EngineeringEngine:
                         upper_quantity=characteristic.upper_quantity,
                         points=characteristic.points,
                         intervals=characteristic.intervals,
+                        left_expression=characteristic.left_expression,
+                        right_expression=characteristic.right_expression,
                     )
                 if characteristic.kind == "extrema":
                     return ExtremaResult(
@@ -866,6 +875,7 @@ class EngineeringEngine:
                         intervals=characteristic.intervals,
                         unbounded_above=characteristic.unbounded_above,
                         unbounded_below=characteristic.unbounded_below,
+                        label_expression=characteristic.label_expression,
                     )
                 raise EngEvaluationError(
                     f"unsupported characteristic result '{characteristic.kind}'"
@@ -2209,6 +2219,7 @@ class _Evaluator(ast.NodeVisitor):
                 intervals=tuple(intervals),
                 first_symbolic_expression=response.comparison_expression,
                 display_label=response.display_label,
+                label_expression=response.label_expression,
             )
             return response.comparison_expression
 
@@ -2238,6 +2249,8 @@ class _Evaluator(ast.NodeVisitor):
                 first_symbolic_expression=left.comparison_expression,
                 left_label=left.display_label,
                 right_label=right.display_label,
+                left_expression=left.label_expression,
+                right_expression=right.label_expression,
             )
             return left.comparison_expression
 
@@ -2266,6 +2279,7 @@ class _Evaluator(ast.NodeVisitor):
             display_label=response.display_label,
             unbounded_above=unbounded_above,
             unbounded_below=unbounded_below,
+            label_expression=response.label_expression,
         )
         return response.comparison_expression
 
@@ -2767,6 +2781,9 @@ class _Evaluator(ast.NodeVisitor):
                 signed_expression,
             )
             display_label = f"|{source_label}|"
+            label_expression = self._heading_expression(signed_node, signed_expression)
+            if label_expression is not None:
+                label_expression = sp.Abs(label_expression, evaluate=False)
         else:
             signed_expression = self.visit(node)
             comparison_expression = signed_expression
@@ -2776,6 +2793,7 @@ class _Evaluator(ast.NodeVisitor):
                 signed_expression,
             )
             display_label = source_label
+            label_expression = self._heading_expression(node, signed_expression)
 
         return _ResolvedExpression(
             source_label=source_label,
@@ -2783,7 +2801,27 @@ class _Evaluator(ast.NodeVisitor):
             signed_expression=signed_expression,
             comparison_expression=comparison_expression,
             is_absolute=is_absolute,
+            label_expression=label_expression,
         )
+
+    def _heading_expression(self, node: ast.AST, expression):
+        """The response a characteristic heading typesets.
+
+        The label text beside it is `str()` of the expression - Python, `w**4` - and
+        for a defined name it is the whole expression the name stands for. A figure's
+        legend and a governing block still read that text, so this is carried beside
+        it rather than replacing it. A user function has no expression here: its label
+        is already `M(x)`.
+        """
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in self.engine.functions
+        ):
+            return None
+        if isinstance(node, ast.Name):
+            return self.engine.resolve_symbol(node.id)
+        return expression
 
     def _resolve_response_series(
         self,
