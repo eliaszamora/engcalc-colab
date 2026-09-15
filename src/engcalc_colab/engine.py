@@ -1034,7 +1034,11 @@ class _Evaluator(ast.NodeVisitor):
             if target_unit is not None:
                 quantity = self.engine.numeric_context.convert_quantity(quantity, target_unit)
             entries.append(EigenvalueEntry(value=quantity, multiplicity=entry.multiplicity))
-        return EigenvalueSet(entries=tuple(entries), source_matrix=value.source_matrix)
+        return EigenvalueSet(
+            entries=tuple(entries),
+            source_matrix=value.source_matrix,
+            unit_requested=target_unit is not None,
+        )
 
     def _numeric_eigenvector_set(self, value: EigenvectorSet, validations, target_unit=None):
         scale = self._guard_scale(validations, "eigenvects", value.source_matrix)
@@ -1064,7 +1068,11 @@ class _Evaluator(ast.NodeVisitor):
                     vectors=tuple(numeric_vectors),
                 )
             )
-        return EigenvectorSet(entries=tuple(entries), source_matrix=value.source_matrix)
+        return EigenvectorSet(
+            entries=tuple(entries),
+            source_matrix=value.source_matrix,
+            unit_requested=target_unit is not None,
+        )
 
     def visit_function_body(self, node: ast.AST, parameters: tuple[str, ...]):
         previous = dict(self.symbol_overrides)

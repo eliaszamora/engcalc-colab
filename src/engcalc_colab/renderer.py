@@ -376,6 +376,11 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     # precision question, answered by `%eng_config precision=4`, not a unit one.
     (("[time]", 1),): ("s",),
     (("[time]", -1),): ("1 / s",),
+    # Its square: the `ω²` of each mode that `eigenvals(inv(M)*K)` answers with, and
+    # `k/m` for a single degree of freedom. With no entry, `kN/(kg·m)` - a thousand per
+    # second squared - was treated as a unit the engineer wrote and kept. See
+    # `test_an_eigenvalue_reads_per_second_squared`.
+    (("[time]", -2),): ("1 / s ** 2",),
 }
 
 
@@ -521,6 +526,7 @@ _US_CUSTOMARY_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] 
     # A second is a second in either system.
     (("[time]", 1),): ("s",),
     (("[time]", -1),): ("1 / s",),
+    (("[time]", -2),): ("1 / s ** 2",),
 }
 
 # Pint's own names for the units the alias table exposes, plus the two spellings a
@@ -569,6 +575,7 @@ _TECHNICAL_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[mass]", 1), ("[time]", -2)): ("kgf / m", "tonf / m"),
     (("[time]", 1),): ("s",),
     (("[time]", -1),): ("1 / s",),
+    (("[time]", -2),): ("1 / s ** 2",),
 }
 
 # Pint's own names. `tonf` is defined by this package; `force_kilogram` is Pint's
@@ -1521,9 +1528,13 @@ def _quantity_matrix_latex(
     return matrix_latex
 
 
-def _analysis_scalar_latex(value, settings: RenderSettings) -> str:
+def _analysis_scalar_latex(value, settings: RenderSettings, *, declared: bool) -> str:
+    """An eigenvalue. `declared` only when `numeric(lam, unit)` asked for one: an
+    eigenvalue is computed, and it defaulted to True, which kept `kN/(kg·m)` - the unit
+    `inv(M)*K` builds - for what is a squared frequency in `1/s²`. The word means here
+    what it means at `_characteristic_quantity_math`."""
     if hasattr(value, "magnitude") and hasattr(value, "units"):
-        return _quantity_latex(value, settings=settings)
+        return _quantity_latex(value, settings=settings, declared=declared)
     return _latex(value)
 
 
@@ -1533,7 +1544,8 @@ def _matrix_shape_latex(value: MatrixShape) -> str:
 
 def _eigenvalue_set_latex(value: EigenvalueSet, settings: RenderSettings) -> str:
     entries = [
-        rf"\lambda={_analysis_scalar_latex(entry.value, settings)},\;m={entry.multiplicity}"
+        rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)},"
+        rf"\;m={entry.multiplicity}"
         for entry in value.entries
     ]
     return r"\left\{" + r"\; ; \;".join(entries) + r"\right\}"
@@ -1551,7 +1563,7 @@ def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> s
             vectors.append(rf"\mathbf{{v}}_{{{index}}}={vector_latex}")
         vector_block = r",\;".join(vectors)
         entries.append(
-            rf"\lambda={_analysis_scalar_latex(entry.value, settings)},"
+            rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)},"
             rf"\;m={entry.multiplicity},\;{vector_block}"
         )
     return r"\left\{" + r"\; ; \;".join(entries) + r"\right\}"
