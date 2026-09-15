@@ -88,6 +88,22 @@ The right-hand side reads the matrix as the line above left it, and the page sho
 matrix after the assignment. The part and the value must be the same shape.
 
 
+## A matrix of blocks
+
+A cell of a matrix literal may be a matrix, so a matrix is assembled from the parts the
+method is written in:
+
+```text
+r = [c, s, 0; -s, c, 0; 0, 0, 1]
+R = [r, zeros(3, 3); zeros(3, 3), r]        a frame element's rotation
+K = [K_ff, K_fr; K_rf, K_rr]                a partitioned stiffness
+```
+
+A row places its blocks side by side and the rows are stacked; a plain number among
+blocks is a 1x1 block. Blocks that do not meet — a row of different heights, rows of
+different widths — are refused with their shapes named.
+
+
 ## v0.30.12 a zero reads in the unit beside it
 
 One correction. On a sheet with no palette that types a load per metre and a span in

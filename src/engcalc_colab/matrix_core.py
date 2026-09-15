@@ -22,15 +22,50 @@ def _shape(value: sp.MatrixBase) -> str:
 
 
 def build_matrix(rows) -> sp.ImmutableMatrix:
+    if any(is_matrix(cell) for row in rows for cell in row):
+        return _build_from_blocks(rows)
     normalized = []
     for row in rows:
         normalized_row = []
         for cell in row:
-            if is_matrix(cell):
-                raise EngEvaluationError("matrix literal cells must be scalar")
             normalized_row.append(sp.sympify(cell))
         normalized.append(normalized_row)
     return sp.ImmutableMatrix(normalized)
+
+
+def _build_from_blocks(rows) -> sp.ImmutableMatrix:
+    """`[r, zeros(3, 3); zeros(3, 3), r]`: a row places its blocks side by side, and the
+    rows are stacked. A scalar among blocks is a 1x1 block. A frame element's rotation is
+    its nodal block twice down a diagonal, and an element stiffness is four quadrants;
+    until this a literal with a matrix in it was refused, so both had to be typed out."""
+    stacked = []
+    for number, row in enumerate(rows, start=1):
+        blocks = [
+            sp.ImmutableMatrix(cell) if is_matrix(cell) else sp.ImmutableMatrix([[sp.sympify(cell)]])
+            for cell in row
+        ]
+        heights = [block.rows for block in blocks]
+        if len(set(heights)) != 1:
+            raise EngEvaluationError(
+                f"row {number} of the matrix has blocks "
+                + " and ".join(str(height) for height in heights)
+                + " rows tall; the blocks of a row must be as tall as each other"
+            )
+        joined = blocks[0]
+        for block in blocks[1:]:
+            joined = joined.row_join(block)
+        stacked.append(joined)
+    widths = [row.cols for row in stacked]
+    if len(set(widths)) != 1:
+        raise EngEvaluationError(
+            "the rows of the matrix are "
+            + " and ".join(str(width) for width in widths)
+            + " columns wide; each row of blocks must be as wide as the others"
+        )
+    result = stacked[0]
+    for row in stacked[1:]:
+        result = result.col_join(row)
+    return sp.ImmutableMatrix(result)
 
 
 def matrix_add(left, right):
