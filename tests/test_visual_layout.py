@@ -66,9 +66,12 @@ def test_three_column_layout_keeps_extra_equals_on_right_side(monkeypatch):
     assert math.count(" & = & ") == 1
 
 
-def test_standalone_expression_uses_left_column_without_fake_equals(monkeypatch):
+def test_standalone_expression_uses_value_column_without_fake_equals(monkeypatch):
+    """The value column since the engineer's modal memoria: a wide standalone value in the
+    name column widened it for the whole block (`test_a_value_with_no_name_is_written_on_the_right`).
+    The part of this contract that was about the page - no `=` nobody wrote - stays."""
     displayed = _capture("### Resultado\nx^2 + 1", monkeypatch)
 
     math = displayed[1].data
-    assert r"\displaystyle x^{2} + 1 & &" in math
+    assert r" & & \displaystyle x^{2} + 1" in math
     assert " & = & " not in math
