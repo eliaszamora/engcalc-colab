@@ -483,6 +483,8 @@ class RootsResult:
     upper_quantity: Any
     points: tuple[CharacteristicPoint, ...]
     intervals: tuple[CharacteristicInterval, ...] = ()
+    # The response the heading typesets; None where `display_label` is already `M(x)`.
+    label_expression: Any = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
@@ -561,6 +563,8 @@ class IntersectionsResult:
     upper_quantity: Any
     points: tuple[CharacteristicPoint, ...]
     intervals: tuple[CharacteristicInterval, ...] = ()
+    left_expression: Any = None
+    right_expression: Any = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
@@ -578,6 +582,7 @@ class ExtremaResult:
     intervals: tuple[CharacteristicInterval, ...] = ()
     unbounded_above: bool = False
     unbounded_below: bool = False
+    label_expression: Any = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
