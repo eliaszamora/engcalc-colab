@@ -2,10 +2,30 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.30.12**.
+Current version: **0.31.0**.
 
 
-## The modes of a building with many storeys
+## v0.31.0 the matrix side of a structural analysis
+
+The engineer asked whether the matrix side of the language was complete. Measured against
+what a course in matrix structural analysis and structural dynamics asks, it was not, and
+this release is what that measurement found: a building of three storeys had no modes, a
+mode could not be taken out of the list, a partition needed hand-built selection matrices,
+an element could not be assembled into its degrees of freedom, and a cross product could
+not be written.
+
+Four corrections came with it, each found on the way:
+
+- **a curvature is not a zero** — `M/(E*I)` with `E` in MPa and `I` in mm⁴ printed
+  `0.00 kN·m/(MPa·mm⁴)` for 1.45×10⁻³ 1/m on a sheet with no palette; it reads `1/m` now;
+- **an eigenvalue reads per second squared** — `eigenvals(inv(M)*K)` and `k/m` printed
+  `kN/(kg·m)` for what is `1/s²`;
+- **a tall frequency equation does not hang** — `det(K - ω² M) = 0` for three storeys never
+  came back, and once it did, the numeric search had lost two of its three roots;
+- **a linear system is solved in its simplest form** — `solve(K, F)` printed the nested
+  steps of Gaussian elimination where `inv(K)*F` printed `15 kN/k₁`.
+
+### The modes of a building with many storeys
 
 A shear building of two storeys already worked: `eigenvals(inv(M)*K)` found the quadratic's
 closed form and `numeric(...)` evaluated it. Three storeys and more did not. A cubic with
@@ -41,7 +61,7 @@ M_1 = transpose(phi_1)*M*phi_1
 The list of eigenvalues follows the same numbering once it has numbers.
 
 
-## A solution has a number
+### A solution has a number
 
 When `solve` finds several answers for one unknown, each is written with its number, the
 way a characteristic point already is:
@@ -57,7 +77,7 @@ answer with no value to evaluate — an undefined name, a complex root — is wr
 a number.
 
 
-## A part of a matrix
+### A part of a matrix
 
 A partition is written the way structural texts write it. Indices count from one, and a
 range includes both ends:
@@ -88,7 +108,7 @@ The right-hand side reads the matrix as the line above left it, and the page sho
 matrix after the assignment. The part and the value must be the same shape.
 
 
-## A matrix of blocks
+### A matrix of blocks
 
 A cell of a matrix literal may be a matrix, so a matrix is assembled from the parts the
 method is written in:
@@ -104,7 +124,7 @@ blocks is a 1x1 block. Blocks that do not meet — a row of different heights, r
 different widths — are refused with their shapes named.
 
 
-## Dot and cross products
+### Dot and cross products
 
 ```text
 d   = dot(u, v)                 u₁v₁ + u₂v₂ + …, a scalar
@@ -114,6 +134,8 @@ M_O = cross(r, F)               the moment of a force, r × F
 `dot` takes two vectors of one length in either orientation; `cross` takes two of length
 three and gives a vector in the first one's orientation. Units carry through as for any
 product: `cross([2*m; 0*m; 1*m], [0*kN; 5*kN; 0*kN])` is `[−5.00; 0.00; 10.00] kN·m`.
+
+A minor release: new capabilities, and four corrections.
 
 
 ## v0.30.12 a zero reads in the unit beside it
@@ -2529,6 +2551,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.0** — the matrix side of a structural analysis. The modes of a building of three storeys or more are computed from the numbers (`det(A - λI) = 0` on the page, `numeric(...)` ascending), where a cubic's closed form could not be evaluated and a quartic took 81 s; `lam[i]` and `phi[i]` take one mode and the page writes `√λ₁`; several answers of `solve` carry their numbers; `K[[1,3],[1,3]]`, `K[1:2, 1:2]` and `K[2, :]` take a part and `K[dofs, dofs] = K[dofs, dofs] + k_e` assembles one; a literal may hold blocks, `[r, zeros(3,3); zeros(3,3), r]`; `dot` and `cross`. Corrections: a curvature no longer prints a false zero, an eigenvalue reads `1/s²`, a three-storey frequency equation neither hangs nor loses roots, and `solve(K, F)` is written in its simplest form.
 - **0.30.12** — a zero reads in the unit beside it. On a sheet with no palette mixing a load per metre with a span in millimetres, a support's moment printed `0.00 kN·mm²/m` beside `490.00 N·m`, and a deflection's `0.00 kN/(m·GPa)` beside `0.0156 mm`: a zero shows no figure in any unit, so the rule that leaves such a value where the engineer put it left it where the algebra did. In a block a zero takes the unit of the block's largest value; alone, the unit a table column of zeros gets. The engineer's frame memoria joins the reference pages, where it catches nine of ten past matrix corrections broken again against two without it.
 - **0.30.11** — a characteristic point's coordinate is written as a fraction again. 0.30.10 removed a simplification from the top of the extrema analysis so the *value* shown would read the way `report` prints it, and the analysis needed that simplification: the derivative of the simplified response solves to the rational `L/2` where the derivative of the response as written solves to the float `0.5 L`. The two jobs are separated now. Found by the engineer in his own memoria after the release — the page had been rendered, and what was read was the value being changed rather than the coordinate beside it.
 - **0.30.10** — one value is arranged one way, wherever the page writes it. An extrema block wrote the design moment `L² (0.15 qD + 0.2 qL)` four lines above the report block's `0.15 qD L² + 0.2 qL L²`, the same `U1(L/2)` twice. Three causes: the extrema path simplified the response before substituting, so the value was born collected; it simplified again on the way out; and it printed through SymPy's own printer rather than the page's, which sets a multi-letter name like `qD` in italic where this page writes it upright. Resolving an absolute value whose sign the sheet can decide is untouched — that is why the function exists.
@@ -2604,4 +2627,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.30.12`.
+Version: `0.31.0`.
