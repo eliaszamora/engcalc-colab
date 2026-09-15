@@ -270,6 +270,9 @@ class EngineeringEngine:
         # its definition showed instead of contradicting it a line later.
         self.written_namespace: dict[str, object] = {}
         self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
+        # The unit of a definition whose value simplified to an exact zero, which a
+        # SymPy zero cannot carry. See `_unit_of_a_zero`.
+        self.zero_quantities: dict[str, object] = {}
         self.numeric_context = NumericContext()
         # Shared by reference, so a name defined symbolically later is visible when a
         # numeric evaluation needs it. See NumericContext._resolve_symbolic_names.
@@ -369,7 +372,41 @@ class EngineeringEngine:
             _, quantity = self.numeric_context.evaluate_symbolic(sp.sympify(value))
         except Exception:
             return
-        self.numeric_context.values[name] = quantity
+        self.numeric_context.values[name] = self.zero_in_its_unit(name, quantity)
+
+    def _unit_of_a_zero(self, statement, value):
+        """The quantity a definition that simplified to zero is, unit included.
+
+        `M_B = M(L)` substitutes into `q*x*(L - x)/2`, and SymPy simplifies as it
+        substitutes: the value is `0` before anything numeric sees it, and a SymPy zero
+        has no dimension, so `numeric(M_B)` printed `0.00` beside moments in kN·m.
+        `numeric(M(L))` never meets that zero - it substitutes quantities into the
+        function, and Pint keeps the unit through `(6 m) - (6 m)` - so the definition
+        asks that same evaluation, once, and only for an exact zero. A zero with no
+        dimension - `f(L)` for `f(x) = x/L - 1` - comes back as the plain zero it was.
+        """
+        if not isinstance(value, sp.Expr) or value.is_zero is not True:
+            return None
+        probe = _Evaluator(self, getattr(statement, "matrix_literals", ()))
+        call = ast.Call(
+            func=ast.Name(id="numeric", ctx=ast.Load()),
+            args=[statement.expression.body],
+            keywords=[],
+        )
+        # A sheet whose function mixes units - `G(x) = q*x - x` - defines `G(0*m)` as a
+        # zero today and must go on doing so; asking for its unit is what would fail.
+        try:
+            probe.visit(call)
+            return probe.numeric_evaluation[2]
+        except Exception:
+            return None
+
+    def zero_in_its_unit(self, name: str, quantity):
+        """`quantity`, or the zero `name` was defined as when the arithmetic lost its unit."""
+        zero = self.zero_quantities.get(name)
+        if zero is None or not getattr(quantity, "dimensionless", False):
+            return quantity
+        return zero
 
     def _shows_its_written_form(self, name: str) -> bool:
         """True when this name should be shown as it was written rather than expanded.
@@ -675,6 +712,7 @@ class EngineeringEngine:
                     self.declared_unit_names.add(statement.target)
                 else:
                     self.declared_unit_names.discard(statement.target)
+                self.zero_quantities.pop(statement.target, None)
                 quantity = self.numeric_context.assign(
                     statement.target,
                     statement.expression,
@@ -990,6 +1028,11 @@ class EngineeringEngine:
                     )
                 else:
                     self.namespace[statement.target] = value
+                    zero = self._unit_of_a_zero(statement, value)
+                    if zero is None:
+                        self.zero_quantities.pop(statement.target, None)
+                    else:
+                        self.zero_quantities[statement.target] = zero
                     if declaration == "keep":
                         self._store_kept_value(statement.target, value)
                     written_form = self._written_form(statement, evaluator, value)
@@ -1723,6 +1766,8 @@ class _Evaluator(ast.NodeVisitor):
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
                     symbolic_expression
                 )
+                if isinstance(argument, ast.Name):
+                    quantity = self.engine.zero_in_its_unit(argument.id, quantity)
 
             if target_unit is not None:
                 quantity = self.engine.numeric_context.convert_quantity(
