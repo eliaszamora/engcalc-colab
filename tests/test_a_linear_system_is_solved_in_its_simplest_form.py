@@ -55,9 +55,9 @@ def test_two_springs_read_as_the_inverse_reads(cell, capsys):
 
     definition = raw.rsplit("\\\\[8pt]", 1)[-1]
     assert r"k_{2}^{2}" not in definition, definition
-    assert r"\frac{15 \mathrm{kN}}{k_{1}}" in definition, definition
+    assert r"\frac{15\,\mathrm{kN}}{k_{1}}" in definition, definition
     # Factored: the common `5 kN` outside, as it would be written by hand.
-    assert r"\frac{5 \mathrm{kN} \left(k_{1} + 3 k_{2}\right)}{k_{1} k_{2}}" in definition, definition
+    assert r"\frac{5\,\mathrm{kN}\,\left(k_{1} + 3 k_{2}\right)}{k_{1} k_{2}}" in definition, definition
 
 
 def test_the_numbers_do_not_move(cell, capsys):

@@ -55,8 +55,10 @@ def test_a_substituted_metre_is_upright(cell):
         "M(x) = q*x*L/2 - q*x**2/2\n"
         "numeric(subs(M(x), x, 3*m))\n"
     )
-    assert r"3 \mathrm{m} q L" in latex, latex
-    assert r"9 \mathrm{m}^{2} q" in latex, latex
+    # With the thin space a unit takes from what it multiplies since the engineer's load
+    # vector read `10kN` (`test_a_unit_in_a_formula_is_typeset_as_a_unit`).
+    assert r"3\,\mathrm{m}\,q L" in latex, latex
+    assert r"9\,\mathrm{m}^{2}\,q" in latex, latex
 
 
 def test_the_substitution_stage_keeps_the_metre_upright(cell):
