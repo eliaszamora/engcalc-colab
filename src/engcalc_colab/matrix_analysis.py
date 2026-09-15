@@ -53,6 +53,18 @@ def _seeks_no_closed_form(matrix: sp.MatrixBase) -> bool:
     return matrix.rows >= 3 and bool(matrix.free_symbols)
 
 
+def _ascending(eigenvalue) -> tuple:
+    """Ascending by value where the eigenvalue is a real number, which is how modes are
+    numbered and what `lam[i]` counts. SymPy's own order listed `2` before `2 - √2`, so
+    the first eigenvalue on the page was not `lam[1]`. An eigenvalue written in names has
+    no value to sort by here and keeps SymPy's order, after the numbers."""
+    if not eigenvalue.free_symbols:
+        number = sp.N(eigenvalue)
+        if number.is_real:
+            return (0, float(number), sp.default_sort_key(eigenvalue))
+    return (1, 0.0, sp.default_sort_key(eigenvalue))
+
+
 def matrix_eigenvals(value) -> EigenvalueSet:
     matrix = sp.ImmutableMatrix(_require_square(value, "eigenvals"))
     if _seeks_no_closed_form(matrix):
@@ -62,7 +74,7 @@ def matrix_eigenvals(value) -> EigenvalueSet:
         EigenvalueEntry(value=eigenvalue, multiplicity=int(multiplicity))
         for eigenvalue, multiplicity in sorted(
             eigenvalues.items(),
-            key=lambda item: sp.default_sort_key(item[0]),
+            key=lambda item: _ascending(item[0]),
         )
     )
     return EigenvalueSet(entries=entries, source_matrix=matrix)
@@ -74,7 +86,7 @@ def matrix_eigenvects(value) -> EigenvectorSet:
         return EigenvectorSet(entries=(), source_matrix=matrix, closed_form=False)
     raw_entries = sorted(
         matrix.eigenvects(),
-        key=lambda item: sp.default_sort_key(item[0]),
+        key=lambda item: _ascending(item[0]),
     )
     entries = tuple(
         EigenvectorEntry(

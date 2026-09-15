@@ -15,6 +15,14 @@ from .unit_text import normalise
 from sympy.polys.polyerrors import PolynomialError
 
 from .errors import EngEvaluationError, diagnostic_hint
+from .matrix_modes import (
+    ModeEigenvalue,
+    ModeShapeEntry,
+    mode_atoms,
+    mode_key,
+    modes_of,
+    numbered,
+)
 from .matrix_numeric import QuantityMatrix
 
 
@@ -673,6 +681,9 @@ class NumericContext:
             if name in overrides or name in self.values
         }
         try:
+            substitutions.update(
+                self._mode_substitutions(expr, {**resolved_units, **substitutions})
+            )
             value = self._evaluate_sympy(expr, {**resolved_units, **substitutions})
             quantity = self._as_quantity(value)
         except EngEvaluationError:
@@ -784,6 +795,9 @@ class NumericContext:
             cols=matrix.cols,
             entries=tuple(entries),
             adaptable_zeros=frozenset(adaptable_zeros),
+        )
+        substitutions.update(
+            self._mode_substitutions(matrix, {**resolved_units, **substitutions})
         )
 
         if target_unit is not None:
@@ -1053,6 +1067,11 @@ class NumericContext:
         if expr == sp.pi:
             return math.pi
 
+        if isinstance(expr, (ModeEigenvalue, ModeShapeEntry)):
+            # Before the closed-number branch below, which a mode of a matrix of plain
+            # numbers would otherwise reach and hand to `sp.N`, which cannot evaluate it.
+            return self._evaluate_mode(expr, substitutions)
+
         if expr.is_Number:
             if expr.is_real is not True or expr.is_finite is not True:
                 raise EngEvaluationError(
@@ -1202,6 +1221,33 @@ class NumericContext:
         raise EngEvaluationError(
             f"numeric evaluation does not support symbolic type '{type(expr).__name__}'"
         )
+
+    def _mode_substitutions(self, expr, substitutions: dict[str, Any]) -> dict[str, Any]:
+        """Each mode the expression takes, by `mode_key`, as the quantity it evaluates to."""
+        return {
+            mode_key(atom): self._as_quantity(self._evaluate_mode(atom, substitutions))
+            for atom in mode_atoms(expr)
+        }
+
+    def _evaluate_mode(self, expr, substitutions: dict[str, Any]):
+        """`lam[i]` or a row of `phi[i]`, from the numbers of the matrix it was taken from."""
+        matrix = expr.args[-1]
+        quantity_matrix = QuantityMatrix(
+            rows=matrix.rows,
+            cols=matrix.cols,
+            entries=tuple(
+                self._as_quantity(self._evaluate_sympy(entry, substitutions))
+                for entry in matrix
+            ),
+        )
+        operation = "eigenvals" if isinstance(expr, ModeEigenvalue) else "eigenvects"
+        modes, scale = modes_of(quantity_matrix, operation=operation)
+        values, vectors = numbered(modes)
+        if isinstance(expr, ModeEigenvalue):
+            value = values[int(expr.args[0]) - 1]
+            return self.ureg.Quantity(value, scale) if scale is not None else value
+        mode, row = int(expr.args[0]), int(expr.args[1])
+        return vectors[mode - 1][row - 1]
 
     def _as_quantity(self, value):
         if isinstance(value, numbers.Number):

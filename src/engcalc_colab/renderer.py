@@ -11,6 +11,7 @@ from sympy.printing.latex import LatexPrinter
 
 from pint.errors import DimensionalityError
 
+from .matrix_modes import mode_key
 from .matrix_numeric import QuantityMatrix
 from .unit_text import quantity_text, unit_text
 from .models import (
@@ -219,6 +220,21 @@ class _EngineeringLatexPrinter(LatexPrinter):
             name += "_{%s}" % " ".join(subs)
         return name
 
+    def _print_ModeEigenvalue(self, expr, exp=None):
+        r"""`lam[1]` as `\lambda_{1}`: a mode is numbered, and the matrix it came from is
+        already on the page where `eigenvals` wrote its problem.
+
+        `exp` because SymPy prints a power of a function by handing the exponent to the
+        function's own printer: the modal mass `transpose(phi_1)*M*phi_1` squares every
+        entry of a mode shape, and without it the page raised instead of rendering."""
+        written = rf"\lambda_{{{expr.args[0]}}}"
+        return written if exp is None else rf"{written}^{{{exp}}}"
+
+    def _print_ModeShapeEntry(self, expr, exp=None):
+        r"""Row `j` of mode `i` as `\phi_{j,i}`, the textbooks' order of the two indices."""
+        written = rf"\phi_{{{expr.args[1]},{expr.args[0]}}}"
+        return written if exp is None else rf"{written}^{{{exp}}}"
+
     def _sympy_spells_it_back(self, base: str) -> bool:
         """True when SymPy has a symbol for ``base`` and it still reads as ``base``."""
         rendered = super()._print_Symbol(sp.Symbol(base))
@@ -276,6 +292,20 @@ class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
         if quantity is None:
             return super()._print_Symbol(expr)
         return rf"\left({_quantity_latex(quantity, settings=self.render_settings)}\right)"
+
+    def _print_mode(self, expr, written, exp):
+        """A mode in the substitution stage is its value, like any name there."""
+        quantity = self.substitutions.get(mode_key(expr))
+        if quantity is None:
+            return written(expr, exp)
+        value = rf"\left({_quantity_latex(quantity, settings=self.render_settings)}\right)"
+        return value if exp is None else rf"{value}^{{{exp}}}"
+
+    def _print_ModeEigenvalue(self, expr, exp=None):
+        return self._print_mode(expr, super()._print_ModeEigenvalue, exp)
+
+    def _print_ModeShapeEntry(self, expr, exp=None):
+        return self._print_mode(expr, super()._print_ModeShapeEntry, exp)
 
 
 def _engineering_factor_key(term):

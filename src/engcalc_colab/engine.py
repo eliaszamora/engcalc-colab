@@ -81,7 +81,7 @@ from .matrix_analysis import (
     matrix_rank,
     matrix_rref,
 )
-from .matrix_modes import numeric_modes
+from .matrix_modes import modes_of, take_mode
 from .matrix_numeric import QuantityMatrix, ensure_common_scale
 from .matrix_solve import solve_linear_system
 from .numeric import _UNIT_ALIASES, NumericContext
@@ -1031,21 +1031,7 @@ class _Evaluator(ast.NodeVisitor):
             raise EngEvaluationError(
                 "numeric evaluation requires values for: " + ", ".join(unresolved) + f". {hint}"
             )
-        scale = ensure_common_scale(quantity_matrix, operation)
-        magnitudes = [
-            [
-                float(
-                    quantity.to(scale).magnitude
-                    if scale is not None and not quantity.dimensionless
-                    else quantity.to_base_units().magnitude
-                )
-                for quantity in (
-                    quantity_matrix.entry(row, col) for col in range(quantity_matrix.cols)
-                )
-            ]
-            for row in range(quantity_matrix.rows)
-        ]
-        modes = numeric_modes(magnitudes, operation=operation)
+        modes, scale = modes_of(quantity_matrix, operation=operation)
         unit = scale if scale is not None else context.ureg.dimensionless
         return modes, unit
 
@@ -1078,7 +1064,7 @@ class _Evaluator(ast.NodeVisitor):
                 quantity = self.engine.numeric_context.convert_quantity(quantity, target_unit)
             entries.append(EigenvalueEntry(value=quantity, multiplicity=entry.multiplicity))
         return EigenvalueSet(
-            entries=tuple(entries),
+            entries=_in_mode_order(entries),
             source_matrix=value.source_matrix,
             unit_requested=target_unit is not None,
         )
@@ -1139,7 +1125,7 @@ class _Evaluator(ast.NodeVisitor):
                 )
             )
         return EigenvectorSet(
-            entries=tuple(entries),
+            entries=_in_mode_order(entries),
             source_matrix=value.source_matrix,
             unit_requested=target_unit is not None,
         )
@@ -1209,6 +1195,8 @@ class _Evaluator(ast.NodeVisitor):
         else:
             index_nodes = (node.slice,)
         indices = tuple(self.visit(item) for item in index_nodes)
+        if isinstance(value, (EigenvalueSet, EigenvectorSet)):
+            return take_mode(value, indices)
         return matrix_index(value, indices)
 
     def visit_Constant(self, node: ast.Constant):
@@ -3274,6 +3262,13 @@ def _flattened(kind, *args):
         else:
             flat.append(arg)
     return kind(*flat, evaluate=False)
+
+
+def _in_mode_order(entries) -> tuple:
+    """A closed form's eigenvalues once they are numbers, ascending - the order `lam[i]`
+    counts in. A two-by-two written in names lists its roots in SymPy's order, which the
+    numbers need not follow."""
+    return tuple(sorted(entries, key=lambda entry: float(entry.value.to_base_units().magnitude)))
 
 
 def _agrees_with(written, value, expansions: dict | None = None) -> bool:
