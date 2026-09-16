@@ -2,7 +2,37 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.1**.
+Current version: **0.31.2**.
+
+
+## v0.31.2 what reviewing 0.31.1 found
+
+Five corrections, from the engineer's review of 0.31.1 in Colab and from the findings
+listed when it was released.
+
+- **Two numbers are not read as one.** A definition keeps the coefficients it was written
+  with, and two of them were joined by a space MathJax does not show: `P = 2*3*kN` read
+  `23 kN`, `A_c = 0.30*m*0.60*m` read `0.30.6 m m`. Two numeric factors are joined by `·`
+  now: `2 · 3 kN`.
+- **A mass reads in kilograms or tonnes.** `m = P/g` printed `12.23 kN·s²/m`: a mass had
+  no unit family. It reads in kg, and in t once it runs to five figures - the engineer's
+  rule, "1000kg o 2500kg usar kg, pero si ya se extiende a 15000kg mejor pasarlo a ton".
+  Kilograms read to 9999, so `2497.45 kg` and `15.29 t`, and a mass matrix follows the
+  same step without taking a `10³` outside its brackets. A palette still fixes kg.
+- **A zero keeps its unit through a formula.** 0.31.1 gave `M_B = M(L)` its `0.00 kN·m`;
+  `2*M(L)`, `M(L) + M(0*m)`, `V(L/2)*L` and `subs(q*(L - x), x, L)` still read a bare
+  `0.00`. The unit of an exact zero is asked of the formula as written, evaluated over
+  quantities, so the cancellation happens where Pint keeps the unit.
+- **A numeric value can call a function.** `M_max := M(L/2)` stopped the cell with
+  `unsupported numeric function`. It is evaluated as `numeric(M(L/2))` is and stored:
+  `M_max = 45.00 kN·m`. A name that is no function is refused by name.
+- **A characteristic block reads at the page's size.** The two frequencies of a frame,
+  `w = √2 √(k₁/m₁ + …)/2`, set their letters at 3.8 px beside 11.9 px in the working above,
+  and the rows were 1 px apart: the block wrote its mathematics inline, where every nested
+  fraction shrinks. Its formulas are in display style with full-size fractions now, and its
+  rows have room between them.
+
+A patch release: corrections only.
 
 
 ## v0.31.1 what the first modal memoria on 0.31.0 showed
@@ -2585,6 +2615,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.2** — what reviewing 0.31.1 found, in five corrections. Two numeric factors are joined by `·`, because a space between them is invisible to MathJax and `2*3*kN` read `23 kN`. A mass has a unit family, kg up to 9999 and t from 10 000, as the engineer asked, so `m = P/g` reads `2497.45 kg` or `15.29 t` rather than `kN·s²/m`. An exact zero reached through a sum, a factor or `subs` keeps its unit, not only one reached by a single call. `M_max := M(L/2)` is evaluated as `numeric(M(L/2))` is, instead of stopping the cell. And a characteristic block sets its formulas in display style with full-size fractions and rows apart, so a frame's frequencies read at the page's size.
 - **0.31.1** — what the first modal memoria on 0.31.0 showed, in five corrections. A row with no name, `numeric(lam)`, was written in the name column and pushed every `=` of its block off the right edge; it goes in the value column. A unit written into a formula reads as one: `10 kN` with a thin space rather than `10kN`, and an upright metre rather than the variable `m`, in definition, written, input and equation rows. A length cubed has a unit family, so a section modulus `M_u/f_y` reads `720.00 cm³` rather than `0.72 kN·m/MPa`. The heading of `roots`, `extrema` and `intersections` is typeset rather than printed in Python syntax. And a definition that simplifies to an exact zero, `M_B = M(L)`, asks the evaluation `numeric(M(L))` already used for its unit and reads `0.00 kN·m`, not `0.00`.
 - **0.31.0** — the matrix side of a structural analysis. The modes of a building of three storeys or more are computed from the numbers (`det(A - λI) = 0` on the page, `numeric(...)` ascending), where a cubic's closed form could not be evaluated and a quartic took 81 s; `lam[i]` and `phi[i]` take one mode and the page writes `√λ₁`; several answers of `solve` carry their numbers; `K[[1,3],[1,3]]`, `K[1:2, 1:2]` and `K[2, :]` take a part and `K[dofs, dofs] = K[dofs, dofs] + k_e` assembles one; a literal may hold blocks, `[r, zeros(3,3); zeros(3,3), r]`; `dot` and `cross`. Corrections: a curvature no longer prints a false zero, an eigenvalue reads `1/s²`, a three-storey frequency equation neither hangs nor loses roots, and `solve(K, F)` is written in its simplest form.
 - **0.30.12** — a zero reads in the unit beside it. On a sheet with no palette mixing a load per metre with a span in millimetres, a support's moment printed `0.00 kN·mm²/m` beside `490.00 N·m`, and a deflection's `0.00 kN/(m·GPa)` beside `0.0156 mm`: a zero shows no figure in any unit, so the rule that leaves such a value where the engineer put it left it where the algebra did. In a block a zero takes the unit of the block's largest value; alone, the unit a table column of zeros gets. The engineer's frame memoria joins the reference pages, where it catches nine of ten past matrix corrections broken again against two without it.
@@ -2662,4 +2693,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.1`.
+Version: `0.31.2`.
