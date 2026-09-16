@@ -25,7 +25,7 @@ Un módulo resistente es una longitud al cubo y una curvatura es una longitud a 
 \displaystyle c & = & \displaystyle 30.00\,\mathrm{cm} \\[16pt]
 \displaystyle W & = & \displaystyle \frac{I}{c} \\[8pt]
 & = & \displaystyle \frac{\left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)}{\left(30.00\,\mathrm{cm}\right)} \\[8pt]
-& = & \displaystyle 1.80 \times 10^{8}\,\frac{\mathrm{mm}^{4}}{\mathrm{cm}} \\[16pt]
+& = & \displaystyle 18000.00\,\mathrm{cm}^{3} \\[16pt]
 \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
 \displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x \left(L - x\right)}{2} \\[8pt]
 \displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
