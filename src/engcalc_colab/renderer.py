@@ -277,7 +277,13 @@ class _EngineeringLatexPrinter(LatexPrinter):
                 # separator is a LaTeX space, which MathJax does not show, and the
                 # engineer's load vector read `10kN`.
                 apart = self._is_unit_literal(term) or self._is_unit_literal(args[index - 1])
-                rendered.append(r"\," if apart else separator)
+                if term.is_Number:
+                    # Two numbers joined by a space are one number to MathJax: `2*3*kN`
+                    # printed `2 3 kN` and read `23 kN`. The sort puts numbers first, so a
+                    # number past the first factor always follows another number.
+                    rendered.append(r" \cdot ")
+                else:
+                    rendered.append(r"\," if apart else separator)
             rendered.append(term_latex)
 
         return "".join(rendered)
