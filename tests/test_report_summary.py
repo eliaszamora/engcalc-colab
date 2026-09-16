@@ -101,7 +101,8 @@ def test_the_summary_renders_a_row_per_entry():
     # `Markdown` output does, and it typesets `$...$` - measured in Colab against an HTML
     # control. So the names are mathematics again, and the two spellings that the accepted
     # cost created are one spelling.
-    assert "$M_{max}$" in html and "$R_{A}$" in html, html
+    # `\displaystyle` since the block reads at the page's size; a name looks the same.
+    assert r"$\displaystyle M_{max}$" in html and r"$\displaystyle R_{A}$" in html, html
     assert r"\(" not in html
     assert not [char for char in html if ord(char) < 32]
 

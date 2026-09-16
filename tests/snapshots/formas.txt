@@ -116,8 +116,8 @@ El empotramiento es un borde y no vale cero, así que distingue la expresión es
 === 16 · Markdown ===
 <div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Extrema — U3(x)</div>
 <div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $6.00\,\mathrm{m}$</div>
-<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{m}$) · value = $0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
-<div style="margin:0.08rem 0;">$x$ = $L$ ($6.00\,\mathrm{m}$) · value = $0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}$ ($734.40\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global max</div>
+<div style="margin:0.45rem 0;">$\displaystyle x$ = $\displaystyle 0$ ($0.00\,\mathrm{m}$) · value = $\displaystyle 0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
+<div style="margin:0.45rem 0;">$\displaystyle x$ = $\displaystyle L$ ($6.00\,\mathrm{m}$) · value = $\displaystyle 0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}$ ($734.40\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global max</div>
 </div>
 
 === 17 · HTML ===
@@ -135,8 +135,8 @@ Un cortante que no cambia de signo en el tramo: el valor absoluto se resuelve, y
 === 20 · Markdown ===
 <div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Extrema — |V_uso(x)|</div>
 <div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $2.00\,\mathrm{m}$</div>
-<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{m}$) · value = $- R_{uso}$ ($9.00\,\mathrm{kN}$) · boundary, global max</div>
-<div style="margin:0.08rem 0;">$x$ = $L_{c}$ ($2.00\,\mathrm{m}$) · value = $- q_{uso} L_{c} - R_{uso}$ ($7.00\,\mathrm{kN}$) · boundary, global min</div>
+<div style="margin:0.45rem 0;">$\displaystyle x$ = $\displaystyle 0$ ($0.00\,\mathrm{m}$) · value = $\displaystyle - R_{uso}$ ($9.00\,\mathrm{kN}$) · boundary, global max</div>
+<div style="margin:0.45rem 0;">$\displaystyle x$ = $\displaystyle L_{c}$ ($2.00\,\mathrm{m}$) · value = $\displaystyle - q_{uso} L_{c} - R_{uso}$ ($7.00\,\mathrm{kN}$) · boundary, global min</div>
 </div>
 
 === 21 · HTML ===
@@ -153,7 +153,7 @@ La carga por metro y la luz en milímetros dejan el momento en una unidad que na
 === 24 · Markdown ===
 <div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Extrema — M_mm(x)</div>
 <div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $6.00\,\mathrm{m}$</div>
-<div style="margin:0.08rem 0;">$x$ = $0$ ($0.00\,\mathrm{m}$) · value = $0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
-<div style="margin:0.08rem 0;">$x$ = $\frac{L_{mm}}{2}$ ($3.00\,\mathrm{m}$) · value = $\frac{q_{mm} L_{mm}^{2}}{8}$ ($81.00\,\mathrm{kN} \cdot \mathrm{m}$) · local max, global max</div>
-<div style="margin:0.08rem 0;">$x$ = $L_{mm}$ ($6.00\,\mathrm{m}$) · value = $0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
+<div style="margin:0.45rem 0;">$\displaystyle x$ = $\displaystyle 0$ ($0.00\,\mathrm{m}$) · value = $\displaystyle 0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
+<div style="margin:0.45rem 0;">$\displaystyle x$ = $\displaystyle \dfrac{L_{mm}}{2}$ ($3.00\,\mathrm{m}$) · value = $\displaystyle \dfrac{q_{mm} L_{mm}^{2}}{8}$ ($81.00\,\mathrm{kN} \cdot \mathrm{m}$) · local max, global max</div>
+<div style="margin:0.45rem 0;">$\displaystyle x$ = $\displaystyle L_{mm}$ ($6.00\,\mathrm{m}$) · value = $\displaystyle 0$ ($0.00\,\mathrm{kN} \cdot \mathrm{m}$) · boundary, global min</div>
 </div>

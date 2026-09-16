@@ -46,7 +46,7 @@ def test_the_frequencies_of_a_frame(monkeypatch, capsys):
     capsys.readouterr()
 
     assert "**" not in heading and "*" not in heading, heading
-    assert heading.startswith("Roots — $") and heading.endswith("$"), heading
+    assert heading.startswith("Roots — $\\displaystyle ") and heading.endswith("$"), heading
     assert r"m_{1} m_{2} w^{4}" in heading, heading
 
 
@@ -54,21 +54,22 @@ def test_a_defined_name_is_named(monkeypatch, capsys):
     (heading,) = headings(monkeypatch, FRAME + "p = det(K - w^2*M)\nroots(p, w, 0, 200/s)\n")
     capsys.readouterr()
 
-    assert heading == "Roots — $p$", heading
+    assert heading == r"Roots — $\displaystyle p$", heading
 
 
 def test_an_expression_reads_as_it_is_typeset(monkeypatch, capsys):
     (heading,) = headings(monkeypatch, BEAM + "extrema(q*x*(L - x)/2, x, 0, L)\n")
     capsys.readouterr()
 
-    assert heading == r"Extrema — $\frac{q x \left(L - x\right)}{2}$", heading
+    # Display style and `\dfrac` since test_a_characteristic_block_reads_at_the_page_s_size.
+    assert heading == r"Extrema — $\displaystyle \dfrac{q x \left(L - x\right)}{2}$", heading
 
 
 def test_an_absolute_value_keeps_its_bars(monkeypatch, capsys):
     (heading,) = headings(monkeypatch, BEAM + "extrema(abs(q*x*(L - x)/2 - 20*kN*m), x, 0, L)\n")
     capsys.readouterr()
 
-    assert heading.startswith(r"Extrema — $\left|"), heading
+    assert heading.startswith(r"Extrema — $\displaystyle \left|"), heading
     assert heading.endswith(r"\right|$"), heading
 
 
@@ -82,8 +83,8 @@ def test_both_sides_of_an_intersection(monkeypatch, capsys):
     capsys.readouterr()
 
     assert found == [
-        r"Intersections — V(x) / $\frac{q x}{3}$",
-        r"Intersections — $\frac{q x}{3}$ / V(x)",
+        r"Intersections — V(x) / $\displaystyle \dfrac{q x}{3}$",
+        r"Intersections — $\displaystyle \dfrac{q x}{3}$ / V(x)",
     ], found
 
 

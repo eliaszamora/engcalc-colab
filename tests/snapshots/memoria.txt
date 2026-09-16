@@ -48,7 +48,7 @@ annotation: (3, 45)
 === 10 · Markdown ===
 <div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Where x satisfies the inequality</div>
 <div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $6.00\,\mathrm{m}$</div>
-<div style="margin:0.08rem 0;">x in ($0.76\,\mathrm{m}$, $5.24\,\mathrm{m}$)</div>
+<div style="margin:0.45rem 0;">x in ($0.76\,\mathrm{m}$, $5.24\,\mathrm{m}$)</div>
 </div>
 
 === 11 · HTML ===
@@ -67,6 +67,6 @@ annotation: (3, 45)
 
 === 14 · Markdown ===
 <div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.35;"><div style="font-weight:600;margin-bottom:0.15rem;">Summary</div>
-<table style="border-collapse:collapse;"><tbody><tr><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$d_{max}$</td><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$10.55\,\mathrm{mm}$</td></tr>
-<tr><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$d_{adm}$</td><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$20.00\,\mathrm{mm}$</td></tr>
+<table style="border-collapse:collapse;"><tbody><tr><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$\displaystyle d_{max}$</td><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$10.55\,\mathrm{mm}$</td></tr>
+<tr><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$\displaystyle d_{adm}$</td><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$20.00\,\mathrm{mm}$</td></tr>
 </tbody></table></div>

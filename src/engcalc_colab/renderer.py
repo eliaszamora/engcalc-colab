@@ -3152,7 +3152,14 @@ def _characteristic_symbolic_math(value) -> str:
     `0.15 qD L² ` in the report four lines below - one value, two spellings, which is the
     defect this project has removed from units, from powers of ten and from a figure.
     """
-    return f"${_latex(value)}$"
+    # Display style, and every fraction at full size. Inline mathematics steps each
+    # fraction inside a fraction or a root down a size, and the frequency of a frame is
+    # three deep: its letters measured 3.8 px beside the 11.9 px of the working above
+    # it. The equation blocks write every cell `\displaystyle`; this is the same size.
+    # `\dfrac` as well, unlike the matrix cells: `\displaystyle` sizes only the outermost
+    # fraction, and measured on that frame the fractions inside the root stayed at 3.8 px.
+    latex = _latex(value).replace(r"\frac", r"\dfrac")
+    return rf"$\displaystyle {latex}$"
 
 
 def _characteristic_name(name: str) -> str:
@@ -3286,7 +3293,9 @@ def _characteristic_interval_text(
     return f"{left}{lower}, {upper}{right}"
 
 
-_CHARACTERISTIC_ROW_OPEN = '<div style="margin:0.08rem 0;">'
+# Room for a fraction, not only for a line of text: at 0.08 rem the two roots of a frame
+# were 1 px apart.
+_CHARACTERISTIC_ROW_OPEN = '<div style="margin:0.45rem 0;">'
 
 
 def _characteristic_label(label: str, expression) -> str:

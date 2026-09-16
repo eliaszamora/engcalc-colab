@@ -110,7 +110,7 @@ def test_two_storeys_keep_their_closed_form(cell, capsys):
     capsys.readouterr()
 
     expected, _ = reference(stiffness, mass)
-    assert r"w = \frac\sqrt2" in page, page
+    assert r"w = \dfrac\sqrt2" in page, page  # `\dfrac` since the block reads at the page's size (test_a_characteristic_block_reads_at_the_page_s_size).
     for value in np.sqrt(expected):
         assert f"({value:.2f} 1/s) · root" in page, page
 
