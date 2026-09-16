@@ -70,8 +70,11 @@ _LATEX_TEXT = {
 def block_text(html: str) -> str:
     """One rendered block as the reader sees it: tags gone, LaTeX read back as text."""
     text = _re.sub(r"<[^>]+>", " ", html)
+    # A characteristic block sets its formulas `$\displaystyle ...$` with `\dfrac`, so they
+    # read at the page's size; both are sizes, not words.
+    text = text.replace(r"$\displaystyle ", "$")
     text = _re.sub(r"\\mathrm\{([^}]*)\}", r"\1", text)
-    text = _re.sub(r"\\frac\{([^}]*)\}\{([^}]*)\}", r"\1/\2", text)
+    text = _re.sub(r"\\d?frac\{([^}]*)\}\{([^}]*)\}", r"\1/\2", text)
     text = _re.sub(r"\^\{?(-?\d+)\}?", lambda m: _superscript(m.group(1)), text)
     for latex, plain in _LATEX_TEXT.items():
         text = text.replace(latex, plain)

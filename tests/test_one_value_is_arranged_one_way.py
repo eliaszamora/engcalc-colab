@@ -182,7 +182,7 @@ def test_the_coordinate_is_still_written_as_a_fraction(cell, capsys):
     page = cell(HIS_SHEET, palette="kgf")
     capsys.readouterr()
 
-    assert r"\frac{L}{2}" in page, page
+    assert r"\dfrac{L}{2}" in page, page  # `\dfrac` since the block reads at the page's size (test_a_characteristic_block_reads_at_the_page_s_size).
     assert "0.5 L" not in page, page
 
 
@@ -211,7 +211,7 @@ def test_the_ordinary_shapes_are_untouched(cell, capsys):
     page = cell("L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L - x)/2\nextrema(M(x), x, 0, L)\n")
     capsys.readouterr()
 
-    assert r"\frac{q L^{2}}{8}" in page, page
+    assert r"\dfrac{q L^{2}}{8}" in page, page  # `\dfrac` since the block reads at the page's size (test_a_characteristic_block_reads_at_the_page_s_size).
     assert "45.00" in page, page
 
 
