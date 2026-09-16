@@ -186,6 +186,10 @@ class EvaluationResult:
     # where SymPy rewrote the arithmetic - `As*fy/(0.85*fc*b)` becomes
     # `1.18*fy*As/(b*fc)`, and the 0.85 the code requires leaves the page.
     written: Any | None = None
+    # Names this line reads as units, by the precedence the arithmetic uses: `m` is a metre
+    # unless the sheet stored a value under it. The numeric results always carried this;
+    # a definition row printed without it, so `2*m` set the metre in italic.
+    unit_literals: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)

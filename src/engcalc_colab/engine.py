@@ -331,7 +331,20 @@ class EngineeringEngine:
         self.namespace[name] = value
         self.written_namespace.pop(name, None)
         self.numeric_guards.pop(name, None)
-        return EvaluationResult(statement=statement, display_input=None, value=value)
+        return EvaluationResult(
+            statement=statement,
+            display_input=None,
+            value=value,
+            unit_literals=self._unit_literals_of(value),
+        )
+
+    def _unit_literals_of(self, *values) -> frozenset[str]:
+        """The names a definition row reads as units, by the rule its numeric row uses."""
+        names: set[str] = set()
+        for value in values:
+            if isinstance(value, (sp.Basic, sp.MatrixBase)):
+                names |= self.numeric_context.unit_literal_names(value)
+        return frozenset(names)
 
     def _store_kept_value(self, name: str, value) -> None:
         """Give a kept name a number of its own, so an evaluation substitutes the name.
@@ -978,16 +991,20 @@ class EngineeringEngine:
                         self.numeric_guards[statement.target] = tuple(evaluator.numeric_guards)
                     else:
                         self.numeric_guards.pop(statement.target, None)
+            written = (
+                self.written_namespace.get(statement.target)
+                if statement.target is not None
+                else self._written_form(statement, evaluator, value)
+            )
             return EvaluationResult(
                 statement=statement,
                 display_input=evaluator.display_input,
                 value=value,
                 discarded=evaluator.discarded_solutions,
-                written=(
-                    self.written_namespace.get(statement.target)
-                    if statement.target is not None
-                    else self._written_form(statement, evaluator, value)
-                ),
+                written=written,
+                # Every form the row can print. `n = 6*m/(2*m)` is worth 3 and is shown
+                # as written, so asked of the value alone its metres were set as variables.
+                unit_literals=self._unit_literals_of(value, evaluator.display_input, written),
             )
         except EngCalcError as exc:
             message = str(exc)
