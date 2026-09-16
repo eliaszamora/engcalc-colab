@@ -2274,7 +2274,12 @@ def _standard_result_row(result: CalculationResult, settings: RenderSettings) ->
     if " = " in rendered:
         left, right = rendered.split(" = ", 1)
         return rf"\displaystyle {left} & = & \displaystyle {right}"
-    return rf"\displaystyle {rendered} & &"
+    # Nothing to put left of an `=`, so the row goes in the value column, where an equation
+    # `solve` shows already sits. In the name column, `numeric(lam)`'s eigenvalue set made
+    # that column 700 px wide for the whole block, and in a 900 px notebook every `=` below
+    # it went to the right edge with its value cut off. See
+    # `test_a_value_with_no_name_is_written_on_the_right`.
+    return rf" & & \displaystyle {rendered}"
 
 
 def _equality_stage_rows(display_input: sp.Equality, settings: RenderSettings) -> list[str]:
