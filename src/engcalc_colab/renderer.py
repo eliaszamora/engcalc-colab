@@ -433,6 +433,9 @@ _UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     # second squared - was treated as a unit the engineer wrote and kept. See
     # `test_an_eigenvalue_reads_per_second_squared`.
     (("[time]", -2),): ("1 / s ** 2",),
+    # A mass, `m = P/g`. With no entry `(120 kN)/(9.81 m/s²)` kept `12.23 kN·s²/m`. The
+    # step to tonnes is the engineer's, not the band's - see `_BAND_TOP`.
+    (("[mass]", 1),): ("kg", "t"),
 }
 
 
@@ -635,6 +638,8 @@ _TECHNICAL_UNIT_FAMILIES: dict[tuple[tuple[str, int], ...], tuple[str, ...]] = {
     (("[time]", 1),): ("s",),
     (("[time]", -1),): ("1 / s",),
     (("[time]", -2),): ("1 / s ** 2",),
+    # A weight in kgf divided by g is a mass in kilograms, as the palette writes it.
+    (("[mass]", 1),): ("kg", "t"),
 }
 
 # Pint's own names. `tonf` is defined by this package; `force_kilogram` is Pint's
@@ -1046,18 +1051,33 @@ def _is_genuine_zero(quantity, settings: RenderSettings) -> bool:
         return False
 
 
-def _band_distance(magnitude):
+# Where a unit's readable band ends, for a unit whose engineers do not step at 1000. Asked
+# how a mass should read, the engineer: "si es un numero razonable por ejemplo 1000kg o
+# 2500kg usar kg, pero si ya se extiende a 15000kg mejor pasarlo a ton". The common band
+# would have written his 2500 kg as `2.50 t`; kilograms read to 9999 here, and a tie inside
+# both bands keeps the family's first member.
+_BAND_TOP = {"kilogram": 10000.0}
+
+
+def _band_top(units) -> float:
+    return _BAND_TOP.get(str(units), 1000.0)
+
+
+def _band_distance(magnitude, units=None):
     """How far a magnitude sits from the readable band [1, 1000). Design 4.5.
 
     Significant figures cannot make this choice. `0.02 m` and `20.00 mm` retain one
     figure each, so the comparison ties and the value stays in metres at a display
     resolution of 25% - EP-1. Measured over the cases that reach this function, the
     band rule is right 10 times out of 10 where counting figures is right 8.
+
+    The top of the band is 1000 unless `_BAND_TOP` names the unit.
     """
+    top = _band_top(units)
     magnitude = abs(float(magnitude))
     if magnitude == 0.0:
         return (2, 0.0)
-    if 1.0 <= magnitude < 1000.0:
+    if 1.0 <= magnitude < top:
         return (0, 0.0)
     if magnitude < 1.0:
         return (1, abs(math.log10(magnitude)))
@@ -1096,7 +1116,9 @@ def _best_in_family(quantity, family, settings: RenderSettings, *, start=None):
     # imperial families were added, on the full suite rather than a subset: removing
     # ``start`` still changes no test. Kept as the correct behaviour for any future
     # family whose members sit closer together, and no longer credited to a step size.
-    return min(candidates, key=lambda candidate: _band_distance(candidate.magnitude))
+    return min(
+        candidates, key=lambda candidate: _band_distance(candidate.magnitude, candidate.units)
+    )
 
 
 # Pint calls these dimensionless, and they are, but an angle is not a ratio anyone
@@ -1464,7 +1486,7 @@ def _quantity_matrix_common_unit(quantity_matrix: QuantityMatrix):
     return common_unit, True
 
 
-def _matrix_scale_exponent(magnitudes, settings: RenderSettings) -> int:
+def _matrix_scale_exponent(magnitudes, settings: RenderSettings, units=None) -> int:
     """A power of ten to take outside the brackets, or zero to leave the matrix alone.
 
     An assembled stiffness runs to six digits a cell, and a matrix is where that is worst:
@@ -1496,7 +1518,10 @@ def _matrix_scale_exponent(magnitudes, settings: RenderSettings) -> int:
     # what matters is whether the number still says anything: `-0.41` reads perfectly
     # and does not want to become `10^-3 [-405.41]`, while `0.0008` shows `0.00` and
     # does. The second test is the one the family rule already uses for a single value.
-    if largest < 1000.0 and _significant_figures(largest, settings.precision) > 0:
+    #
+    # The band is the unit's own: a mass matrix of 2500 kg storeys read `10^3 [2.50 ...] kg`
+    # beside a scalar `2497.45 kg`, because this asked the common band's 1000.
+    if largest < _band_top(units) and _significant_figures(largest, settings.precision) > 0:
         return 0
     exponent = int(math.floor(math.log10(largest) / 3.0)) * 3
     if exponent == 0:
@@ -1547,7 +1572,9 @@ def _quantity_matrix_latex(
             quantity = _display_quantity(quantity, settings, declared=False)
         shown.append(quantity)
     exponent = _matrix_scale_exponent(
-        [quantity.magnitude for quantity in shown], settings
+        [quantity.magnitude for quantity in shown],
+        settings,
+        common_unit if homogeneous else None,
     )
 
     rows: list[list[str]] = []
@@ -2945,7 +2972,7 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
                 return None
             if abs(float(converted.magnitude)) < settings.zero_tolerance:
                 continue
-            band, distance = _band_distance(converted.magnitude)
+            band, distance = _band_distance(converted.magnitude, converted.units)
             total += band + distance
         return total
 
