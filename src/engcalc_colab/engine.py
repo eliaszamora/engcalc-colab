@@ -438,6 +438,54 @@ class EngineeringEngine:
         # `n = 0` evaluates to the Python integer it was written as, which is no quantity.
         return quantity if hasattr(quantity, "units") else None
 
+    def _as_numeric(self, statement) -> "_Evaluator":
+        """`numeric(<the statement's right side>)`, evaluated and handed back unread."""
+        probe = _Evaluator(self, getattr(statement, "matrix_literals", ()))
+        probe.visit(
+            ast.Call(
+                func=ast.Name(id="numeric", ctx=ast.Load()),
+                args=[statement.expression.body],
+                keywords=[],
+            )
+        )
+        return probe
+
+    def _calls_a_function_of_the_sheet(self, expression: ast.AST) -> bool:
+        return any(
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in self.functions
+            for node in ast.walk(expression)
+        )
+
+    def _assign_through_the_sheet(self, statement):
+        """The value of `M_max := M(L/2)`, as `numeric(M(L/2))` computes it.
+
+        `NumericContext` evaluates a `:=` over Pint quantities and knows the functions
+        mathematics has - `sqrt`, `sin`, `log` - and none the sheet defined, so the cell
+        stopped at `unsupported numeric function`. The engine owns those functions and
+        the evaluation that substitutes quantities into one, guards and piecewise branches
+        included, so it answers and the value is stored as any `:=` value is.
+        """
+        probe = self._as_numeric(statement)
+        if probe.numeric_evaluation is None:
+            unresolved = (
+                probe.partial_numeric_evaluation[2]
+                if probe.partial_numeric_evaluation is not None
+                else ()
+            )
+            if not unresolved:
+                raise EngEvaluationError(
+                    f"'{statement.target} := ...' needs a single numeric value"
+                )
+            hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(unresolved))
+            raise EngEvaluationError(
+                "numeric evaluation requires values for: " + ", ".join(unresolved) + f". {hint}"
+            )
+        quantity = probe.numeric_evaluation[2]
+        self.numeric_context.values[statement.target] = quantity
+        return quantity
+
     def zero_in_its_unit(self, name: str, quantity):
         """`quantity`, or the zero `name` was defined as when the arithmetic lost its unit."""
         zero = self.zero_quantities.get(name)
@@ -750,10 +798,13 @@ class EngineeringEngine:
                 else:
                     self.declared_unit_names.discard(statement.target)
                 self.zero_quantities.pop(statement.target, None)
-                quantity = self.numeric_context.assign(
-                    statement.target,
-                    statement.expression,
-                )
+                if self._calls_a_function_of_the_sheet(statement.expression):
+                    quantity = self._assign_through_the_sheet(statement)
+                else:
+                    quantity = self.numeric_context.assign(
+                        statement.target,
+                        statement.expression,
+                    )
                 if written_units:
                     try:
                         self.written_units.add(str(quantity.units))
