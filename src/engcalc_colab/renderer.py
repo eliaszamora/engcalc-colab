@@ -3256,17 +3256,30 @@ def _characteristic_interval_text(
 _CHARACTERISTIC_ROW_OPEN = '<div style="margin:0.08rem 0;">'
 
 
+def _characteristic_label(label: str, expression) -> str:
+    """A heading's response: typeset, unless its label is already how a person writes it.
+
+    The label is `str()` of the expression, so `det(K - w^2*M)` headed its roots as
+    `k_1*k_2 - k_1*m_2*w**2 - ...` while the roots under it were typeset. A user function
+    carries no expression and keeps `M(x)`.
+    """
+    if expression is None:
+        return escape(label)
+    return _characteristic_symbolic_math(expression)
+
+
 def _characteristic_heading(result: CharacteristicResult) -> str:
     if isinstance(result, InequalityResult):
         return "Where " + escape(result.variable) + " satisfies the inequality"
     if isinstance(result, RootsResult):
-        return f"Roots — {escape(result.display_label)}"
+        return f"Roots — {_characteristic_label(result.display_label, result.label_expression)}"
     if isinstance(result, IntersectionsResult):
         return (
             "Intersections — "
-            f"{escape(result.left_label)} / {escape(result.right_label)}"
+            f"{_characteristic_label(result.left_label, result.left_expression)} / "
+            f"{_characteristic_label(result.right_label, result.right_expression)}"
         )
-    return f"Extrema — {escape(result.display_label)}"
+    return f"Extrema — {_characteristic_label(result.display_label, result.label_expression)}"
 
 
 def render_characteristic_result(
