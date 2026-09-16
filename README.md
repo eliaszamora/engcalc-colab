@@ -2,7 +2,41 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.0**.
+Current version: **0.31.1**.
+
+
+## v0.31.1 what the first modal memoria on 0.31.0 showed
+
+Five corrections. The engineer ran his first modal memoria on 0.31.0 in Colab and sent the
+output as screenshots; two defects were on them, and three more came out of reviewing them.
+
+- **A value with no name is written on the right.** `numeric(lam)` answers with a set and
+  no name, and its row was written entirely in the name column. The set is about 700 px
+  wide, so every `=` in the block moved to the right edge and every result was cut off:
+  `lam = de|`, `T₁ = 2|`. Such a row goes in the value column now; measured at 900 px the
+  name column went from 580 px to 36 px.
+- **A unit in a formula is typeset as a unit.** `F = [10*kN; 5*kN]` read `10kN`, and the
+  metre of `10 kN m` was set in italic, as the variable `m`. A definition row is now told
+  which names are units - the value, the written form, the input row and the equation of a
+  `solve` - and a unit is set apart from what it multiplies with a thin space,
+  `10 kN`. A name the sheet gave a value to (`m := 500*kg`) is still that value.
+- **A section modulus reads in cubic centimetres.** `W = M_u/f_y` printed
+  `0.72 kN·m/MPa`, `(12 tonf·m)/(1400 kgf/cm²)` printed `0.00857 tonf·m·cm²/kgf`, and the
+  reference sheet's `I/c` printed `1.80×10⁸ mm⁴/cm`: a length cubed had no unit family. It
+  has `cm³` then `m³` now (`cm³` in the metric-technical system, `in³` in US customary),
+  so they read `720.00 cm³`, `857.14 cm³` and `18000.00 cm³`, while 3 m³ of concrete stays
+  `3.00 m³` and `b*h²/6` built in millimetres stays `mm³`.
+- **A characteristic heading is typeset.** `roots(det(K - w^2*M), w, 0, 200/s)` headed its
+  typeset roots with `Roots — k_1*k_2 - k_1*m_2*w**2 - ...`. The heading of `roots`,
+  `extrema` and `intersections` is written as mathematics now, a defined name as that name
+  (`Roots — p`); a user function still reads `M(x)`.
+- **A zero from a function keeps its unit.** `M_B = M(L)` printed `0.00` beside moments in
+  kN·m, in `numeric`, `report` and the summary: SymPy simplifies `q L (L - L)/2` to a zero
+  with no dimension before anything numeric sees it. A definition that is an exact zero now
+  asks the evaluation `numeric(M(L))` already used - quantities substituted into the
+  function - for its unit, once, and reads `0.00 kN·m`.
+
+A patch release: corrections only.
 
 
 ## v0.31.0 the matrix side of a structural analysis
@@ -2551,6 +2585,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.1** — what the first modal memoria on 0.31.0 showed, in five corrections. A row with no name, `numeric(lam)`, was written in the name column and pushed every `=` of its block off the right edge; it goes in the value column. A unit written into a formula reads as one: `10 kN` with a thin space rather than `10kN`, and an upright metre rather than the variable `m`, in definition, written, input and equation rows. A length cubed has a unit family, so a section modulus `M_u/f_y` reads `720.00 cm³` rather than `0.72 kN·m/MPa`. The heading of `roots`, `extrema` and `intersections` is typeset rather than printed in Python syntax. And a definition that simplifies to an exact zero, `M_B = M(L)`, asks the evaluation `numeric(M(L))` already used for its unit and reads `0.00 kN·m`, not `0.00`.
 - **0.31.0** — the matrix side of a structural analysis. The modes of a building of three storeys or more are computed from the numbers (`det(A - λI) = 0` on the page, `numeric(...)` ascending), where a cubic's closed form could not be evaluated and a quartic took 81 s; `lam[i]` and `phi[i]` take one mode and the page writes `√λ₁`; several answers of `solve` carry their numbers; `K[[1,3],[1,3]]`, `K[1:2, 1:2]` and `K[2, :]` take a part and `K[dofs, dofs] = K[dofs, dofs] + k_e` assembles one; a literal may hold blocks, `[r, zeros(3,3); zeros(3,3), r]`; `dot` and `cross`. Corrections: a curvature no longer prints a false zero, an eigenvalue reads `1/s²`, a three-storey frequency equation neither hangs nor loses roots, and `solve(K, F)` is written in its simplest form.
 - **0.30.12** — a zero reads in the unit beside it. On a sheet with no palette mixing a load per metre with a span in millimetres, a support's moment printed `0.00 kN·mm²/m` beside `490.00 N·m`, and a deflection's `0.00 kN/(m·GPa)` beside `0.0156 mm`: a zero shows no figure in any unit, so the rule that leaves such a value where the engineer put it left it where the algebra did. In a block a zero takes the unit of the block's largest value; alone, the unit a table column of zeros gets. The engineer's frame memoria joins the reference pages, where it catches nine of ten past matrix corrections broken again against two without it.
 - **0.30.11** — a characteristic point's coordinate is written as a fraction again. 0.30.10 removed a simplification from the top of the extrema analysis so the *value* shown would read the way `report` prints it, and the analysis needed that simplification: the derivative of the simplified response solves to the rational `L/2` where the derivative of the response as written solves to the float `0.5 L`. The two jobs are separated now. Found by the engineer in his own memoria after the release — the page had been rendered, and what was read was the value being changed rather than the coordinate beside it.
@@ -2627,4 +2662,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.0`.
+Version: `0.31.1`.
