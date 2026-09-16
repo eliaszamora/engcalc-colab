@@ -89,7 +89,7 @@ from .matrix_analysis import (
 from .matrix_modes import modes_of, take_mode
 from .matrix_numeric import QuantityMatrix, ensure_common_scale
 from .matrix_solve import solve_linear_system
-from .numeric import _UNIT_ALIASES, NumericContext
+from .numeric import _UNIT_ALIASES, NumericContext, _NumericAstEvaluator
 from .piecewise import (
     build_piecewise,
     build_relation,
@@ -239,6 +239,48 @@ class _CharacteristicEvaluation:
     right_expression: object = None
 
 
+class _QuantityOfTheFormula(_NumericAstEvaluator):
+    """A right side evaluated over quantities as it is written, calls and `subs` included.
+
+    What `_unit_of_a_zero` asks. #184 asked `numeric(<right side>)`, which substitutes
+    quantities into a function only when the right side is a single call: `M(L)` kept its
+    kN·m and `2*M(L)`, `M(L) + M(0*m)`, `V(L/2)*L` and `subs(q*(L - x), x, L)` did not,
+    because around the call the formula is simplified symbolically first. Here nothing is
+    simplified before Pint: a name is its quantity, a function of the sheet is its
+    expression with the arguments' quantities substituted, and `subs` sets its variable to
+    the value's quantity.
+    """
+
+    def __init__(self, engine: "EngineeringEngine", overrides=None) -> None:
+        super().__init__(engine.numeric_context)
+        self.engine = engine
+        self.overrides = dict(overrides or {})
+
+    def visit_Name(self, node: ast.Name):
+        if node.id in self.overrides:
+            return self.overrides[node.id]
+        if node.id in self.engine.namespace and node.id not in self.context.values:
+            _, quantity = self.context.evaluate_symbolic(self.engine.resolve_symbol(node.id))
+            return self.engine.zero_in_its_unit(node.id, quantity)
+        return super().visit_Name(node)
+
+    def visit_Call(self, node: ast.Call):
+        name = node.func.id if isinstance(node.func, ast.Name) else None
+        if name in self.engine.functions:
+            function = self.engine.functions[name]
+            arguments = {
+                parameter: self.visit(argument)
+                for parameter, argument in zip(function.parameters, node.args, strict=True)
+            }
+            _, quantity = self.context.evaluate_symbolic(function.expression, overrides=arguments)
+            return quantity
+        if name == "subs" and len(node.args) == 3 and isinstance(node.args[1], ast.Name):
+            expression, variable, value = node.args
+            inner = _QuantityOfTheFormula(self.engine, {variable.id: self.visit(value)})
+            return inner.visit(expression)
+        return super().visit_Call(node)
+
+
 class EngineeringEngine:
     def __init__(self) -> None:
         self.namespace: dict[str, object] = {}
@@ -379,27 +421,22 @@ class EngineeringEngine:
 
         `M_B = M(L)` substitutes into `q*x*(L - x)/2`, and SymPy simplifies as it
         substitutes: the value is `0` before anything numeric sees it, and a SymPy zero
-        has no dimension, so `numeric(M_B)` printed `0.00` beside moments in kN·m.
-        `numeric(M(L))` never meets that zero - it substitutes quantities into the
-        function, and Pint keeps the unit through `(6 m) - (6 m)` - so the definition
-        asks that same evaluation, once, and only for an exact zero. A zero with no
-        dimension - `f(L)` for `f(x) = x/L - 1` - comes back as the plain zero it was.
+        has no dimension, so `numeric(M_B)` printed `0.00` beside moments in kN·m. The
+        formula as written is evaluated over quantities instead - see
+        `_QuantityOfTheFormula` - and Pint keeps the unit through `(6 m) - (6 m)`. Once,
+        and only for an exact zero. A zero with no dimension - `f(L)` for
+        `f(x) = x/L - 1` - comes back as the plain zero it was.
         """
         if not isinstance(value, sp.Expr) or value.is_zero is not True:
             return None
-        probe = _Evaluator(self, getattr(statement, "matrix_literals", ()))
-        call = ast.Call(
-            func=ast.Name(id="numeric", ctx=ast.Load()),
-            args=[statement.expression.body],
-            keywords=[],
-        )
         # A sheet whose function mixes units - `G(x) = q*x - x` - defines `G(0*m)` as a
         # zero today and must go on doing so; asking for its unit is what would fail.
         try:
-            probe.visit(call)
-            return probe.numeric_evaluation[2]
+            quantity = _QuantityOfTheFormula(self).visit(statement.expression.body)
         except Exception:
             return None
+        # `n = 0` evaluates to the Python integer it was written as, which is no quantity.
+        return quantity if hasattr(quantity, "units") else None
 
     def zero_in_its_unit(self, name: str, quantity):
         """`quantity`, or the zero `name` was defined as when the arithmetic lost its unit."""
