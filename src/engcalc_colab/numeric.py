@@ -1289,7 +1289,9 @@ class _NumericAstEvaluator(ast.NodeVisitor):
             return abs(value)
         if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"}:
             return self.context.evaluate_scalar_function(name, value)
-        raise EngEvaluationError("unsupported numeric function")
+        # Named: the message used to be the same for every function, and the engineer
+        # could not tell which one it meant.
+        raise EngEvaluationError(f"unsupported numeric function '{name}'")
 
     def visit_UnaryOp(self, node: ast.UnaryOp):
         value = self.visit(node.operand)
