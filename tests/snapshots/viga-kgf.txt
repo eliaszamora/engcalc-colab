@@ -46,14 +46,14 @@ Cada caso es el momento flector que produce esa carga, escrito como función de 
 La puntual al centro da dos tramos rectos, y hay que escribirlos como tales: $M = P x / 2$ hasta el centro y $M = P (L - x) / 2$ después. Escrita como una sola recta la hoja decía $M(L) = P L / 2$, un momento flector en un apoyo simple, que no existe.
 
 === 9 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
-\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x \left(L - x\right)}{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle M_{P}\left(x\right) & = & \\[4pt]
 & & \displaystyle \begin{cases} \frac{x P}{2} & \text{for}\: x \leq \frac{L}{2} \\
 \frac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\
 0 & \text{otherwise} \end{cases} \\[16pt]
-\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
-\displaystyle \mathrm{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x \left(L - x\right)}{2} \\[8pt]
+\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle \mathrm{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle \mathrm{Mo}\left(x\right) & = & \\[4pt]
 & & \displaystyle \begin{cases} \frac{x P}{2} & \text{for}\: x \leq \frac{L}{2} \\
 \frac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\
@@ -122,14 +122,14 @@ Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del
 \displaystyle \textbf{Extrema} \text{ — } U_{1}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
-\displaystyle x = \dfrac{L}{2}\,\left(300.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2}\,\left(1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{local max, global max} \\[8pt]
+\displaystyle x = \dfrac{L}{2}\,\left(300.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2}\,\left(1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{local max, global max} \\[8pt]
 \displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[4pt]
 \phantom{0} \end{array}
 
 === 22 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle 0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2} \\[8pt]
-& = & \displaystyle 0.15 \left(18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right) \left(600.00\,\mathrm{cm}\right)^{2} \\[4pt]
-& & \displaystyle \quad + 0.2 \left(12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right) \left(600.00\,\mathrm{cm}\right)^{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2} \\[8pt]
+& = & \displaystyle 0.15\,\left(18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[4pt]
+& & \displaystyle \quad + 0.2\,\left(12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[8pt]
 & = & \displaystyle 1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}
 
 === 23 · HTML ===
