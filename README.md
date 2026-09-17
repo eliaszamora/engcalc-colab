@@ -2,7 +2,31 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.2**.
+Current version: **0.31.3**.
+
+
+## v0.31.3 a computed block is written like the working
+
+Two corrections, from the engineer's memoria on 0.31.2 in Colab: "sigo sintiendo que se ve
+como un poco amontonado, hay fuentes distintas, no se ve ordenado".
+
+- **A computed block is written like the working.** The equation blocks are `Math` outputs:
+  MathJax's font, one left edge, and a row too wide for the cell scrolls sideways. Roots,
+  extrema, intersections, `governing`, `table` and `summary` were markdown carrying HTML,
+  which typesets the mathematics and sets everything around it in the notebook's text font,
+  wraps a wide line as prose wraps, and starts at the text's edge. A frequency of a frame
+  came out on three lines - its name, its formula, its value - in two fonts, with no space
+  before the block after it. They are `Math` outputs now, in the frame the working has:
+  words in `\text{}`, headings in `\textbf{}`, a response named as its definition row names
+  it (`U₁(x)`), one row per point, a table drawn as an array with its rules, a summary row
+  read as a result (`M_u = 183.60 kN·m`), and room above and below. Headings and narrative
+  prose stay text, and every block says exactly what it said.
+- **A root is written as a fraction.** `roots` on a shear built from factored load cases -
+  `1.2 qD (L/2 − x) + 1.6 qL (L/2 − x)` - wrote its midspan `0.5L` where the extrema block
+  a few lines above writes `L/2`, because a factor of `1.2` makes SymPy solve in floating
+  point. The common factors come out first now, so the solver meets `L/2 − x` on its own.
+
+A patch release: corrections only.
 
 
 ## v0.31.2 what reviewing 0.31.1 found
@@ -2615,6 +2639,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.3** — a computed block is written like the working. Roots, extrema, intersections, `governing`, `table` and `summary` were markdown carrying HTML: the mathematics typeset and the words around it did not, a row too wide for the cell wrapped as prose instead of scrolling, and the block began at the text's edge rather than the working's, with nothing between it and its neighbours. They are `Math` outputs now, in the working's own frame - words as text, headings in bold, a response named as its definition names it, one row per point, a table as an array with its rules, a summary row read as `M_u = 183.60 kN·m` - and what each block says is unchanged, checked block by block against the previous release. With it, a root of a factored combination is written `L/2` and not `0.5L`, as the extrema block a few lines above already wrote the same point.
 - **0.31.2** — what reviewing 0.31.1 found, in five corrections. Two numeric factors are joined by `·`, because a space between them is invisible to MathJax and `2*3*kN` read `23 kN`. A mass has a unit family, kg up to 9999 and t from 10 000, as the engineer asked, so `m = P/g` reads `2497.45 kg` or `15.29 t` rather than `kN·s²/m`. An exact zero reached through a sum, a factor or `subs` keeps its unit, not only one reached by a single call. `M_max := M(L/2)` is evaluated as `numeric(M(L/2))` is, instead of stopping the cell. And a characteristic block sets its formulas in display style with full-size fractions and rows apart, so a frame's frequencies read at the page's size.
 - **0.31.1** — what the first modal memoria on 0.31.0 showed, in five corrections. A row with no name, `numeric(lam)`, was written in the name column and pushed every `=` of its block off the right edge; it goes in the value column. A unit written into a formula reads as one: `10 kN` with a thin space rather than `10kN`, and an upright metre rather than the variable `m`, in definition, written, input and equation rows. A length cubed has a unit family, so a section modulus `M_u/f_y` reads `720.00 cm³` rather than `0.72 kN·m/MPa`. The heading of `roots`, `extrema` and `intersections` is typeset rather than printed in Python syntax. And a definition that simplifies to an exact zero, `M_B = M(L)`, asks the evaluation `numeric(M(L))` already used for its unit and reads `0.00 kN·m`, not `0.00`.
 - **0.31.0** — the matrix side of a structural analysis. The modes of a building of three storeys or more are computed from the numbers (`det(A - λI) = 0` on the page, `numeric(...)` ascending), where a cubic's closed form could not be evaluated and a quartic took 81 s; `lam[i]` and `phi[i]` take one mode and the page writes `√λ₁`; several answers of `solve` carry their numbers; `K[[1,3],[1,3]]`, `K[1:2, 1:2]` and `K[2, :]` take a part and `K[dofs, dofs] = K[dofs, dofs] + k_e` assembles one; a literal may hold blocks, `[r, zeros(3,3); zeros(3,3), r]`; `dot` and `cross`. Corrections: a curvature no longer prints a false zero, an eigenvalue reads `1/s²`, a three-storey frequency equation neither hangs nor loses roots, and `solve(K, F)` is written in its simplest form.
@@ -2693,4 +2718,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.2`.
+Version: `0.31.3`.
