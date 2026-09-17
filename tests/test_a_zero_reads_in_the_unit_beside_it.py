@@ -181,7 +181,8 @@ def test_a_zero_standing_alone_reads_in_its_family(cell, capsys):
 
     # `numeric`, `report`, and the summary row.
     assert page.count("0.00 N·m") == 3, page
-    assert page.rstrip().endswith("M_a 0.00 N·m"), page
+    # A summary row reads `name = value` since test_a_computed_block_is_written_like_the_working.
+    assert page.rstrip().endswith("M_a = 0.00 N·m"), page
 
 
 # --- what must not move ---------------------------------------------------------------

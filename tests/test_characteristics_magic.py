@@ -1,5 +1,5 @@
 import pytest
-from IPython.display import Markdown, Math
+from IPython.display import Math
 
 
 def test_eng_magic_flushes_equations_before_characteristic_block_and_resumes(monkeypatch):
@@ -20,12 +20,10 @@ def test_eng_magic_flushes_equations_before_characteristic_block_and_resumes(mon
     except Exception as exc:  # RED should report missing routing as a test failure, not an error.
         pytest.fail(f"characteristic magic routing is missing or broken: {exc}")
 
-    assert [type(item) for item in displayed] == [Math, Markdown, Math]
-    # The class name this used to look for is gone - a `<style>` rule does not survive a
-    # markdown output, so the block carries its own inline styling instead. What the
-    # assertion was about is that a characteristic block is its own output, and `Roots`
-    # below says that better than a class ever did.
-    assert "style=" in displayed[1].data
+    assert [type(item) for item in displayed] == [Math, Math, Math]
+    # Its own output, and a computed block rather than equation rows: it carries the
+    # block's spacer row. See test_a_computed_block_is_written_like_the_working.
+    assert r"\phantom{0} \\[-4pt]" in displayed[1].data
     assert "Roots" in displayed[1].data
 
 
@@ -47,6 +45,6 @@ def test_eng_magic_displays_consecutive_characteristic_results_in_source_order(m
     except Exception as exc:
         pytest.fail(f"characteristic magic routing is missing or broken: {exc}")
 
-    assert [type(item) for item in displayed] == [Math, Markdown, Markdown]
+    assert [type(item) for item in displayed] == [Math, Math, Math]
     assert "Roots" in displayed[1].data
     assert "Intersections" in displayed[2].data

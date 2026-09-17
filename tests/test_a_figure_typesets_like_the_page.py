@@ -160,13 +160,12 @@ def test_the_figure_spells_the_unit_the_way_the_table_beside_it_does(cell, capsy
     axis_maths = re.findall(r"\$(.*?)\$", figure.axes[0].get_ylabel())
     assert axis_maths, figure.axes[0].get_ylabel()
 
-    headers = re.findall(r"<th[^>]*>(.*?)</th>", cell.page, re.S)
-    header_maths = [
-        maths for header in headers for maths in re.findall(r"\$(.*?)\$", header)
-    ]
-    assert header_maths, headers
+    # The table's header row, in the array it is now: the unit sits in brackets there.
+    header = cell.page.split(r"\begin{array}{l|", 1)[1].split(r"\\ \hline", 1)[0]
+    header_units = re.findall(r"\[(.*?)\]", header)
+    assert header_units, header
 
-    assert axis_maths[0] in header_maths, (axis_maths, header_maths)
+    assert axis_maths[0] in header_units, (axis_maths, header_units)
 
 
 def test_an_annotated_power_of_ten_is_typeset(cell, capsys):

@@ -45,11 +45,12 @@ annotation: (3, 45)
 === 9 · HTML ===
 <div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Zona donde se supera el momento admisible</div>
 
-=== 10 · Markdown ===
-<div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.45;"><div style="font-weight:600;margin-bottom:0.15rem;">Where x satisfies the inequality</div>
-<div style="opacity:0.78;margin-bottom:0.18rem;">Domain: $0.00\,\mathrm{m}$ to $6.00\,\mathrm{m}$</div>
-<div style="margin:0.45rem 0;">x in ($0.76\,\mathrm{m}$, $5.24\,\mathrm{m}$)</div>
-</div>
+=== 10 · Math ===
+\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\displaystyle \textbf{Where}\ x\ \textbf{satisfies the inequality} \\[8pt]
+\displaystyle \text{Domain: } 0.00\,\mathrm{m} \text{ to } 6.00\,\mathrm{m} \\[8pt]
+\displaystyle x \text{ in } \left(0.76\,\mathrm{m}, 5.24\,\mathrm{m}\right) \\[4pt]
+\phantom{0} \end{array}
 
 === 11 · HTML ===
 <div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Flecha</div>
@@ -65,8 +66,9 @@ annotation: (3, 45)
 === 13 · HTML ===
 <div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Resumen</div>
 
-=== 14 · Markdown ===
-<div style="margin:0.35rem 0 0.55rem 0;font-size:0.92rem;line-height:1.35;"><div style="font-weight:600;margin-bottom:0.15rem;">Summary</div>
-<table style="border-collapse:collapse;"><tbody><tr><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$\displaystyle d_{max}$</td><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$10.55\,\mathrm{mm}$</td></tr>
-<tr><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$\displaystyle d_{adm}$</td><td style="padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);text-align:left;white-space:nowrap;">$20.00\,\mathrm{mm}$</td></tr>
-</tbody></table></div>
+=== 14 · Math ===
+\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\displaystyle \textbf{Summary} \\[8pt]
+\displaystyle \begin{array}{lcl} \displaystyle d_{max} & = & \displaystyle 10.55\,\mathrm{mm} \\[8pt]
+\displaystyle d_{adm} & = & \displaystyle 20.00\,\mathrm{mm} \end{array} \\[4pt]
+\phantom{0} \end{array}

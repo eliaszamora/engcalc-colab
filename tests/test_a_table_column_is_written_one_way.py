@@ -35,7 +35,7 @@ import re
 import pytest
 
 import engcalc_colab.magic as magic
-from conftest import block_text
+from conftest import table_cells
 
 
 @pytest.fixture
@@ -74,17 +74,11 @@ EXPONENT = "×10"
 def _columns(page: str) -> list[list[str]]:
     """The cells as the reader sees them.
 
-    Each one is `$1.20 \times 10^{6}$` in the markup now - the blocks are `Markdown`
-    outputs and their mathematics typesets - so this reads them back through
-    `block_text`. What the file asks is unchanged: whether one column is written two
-    ways.
+    The table is an array in a `Math` output now, read cell by cell through
+    `conftest.table_cells`. What the file asks is unchanged: whether one column is written
+    two ways.
     """
-    rows = re.findall(r"<tr>(.*?)</tr>", page, re.S)
-    cells = [
-        [block_text(cell) for cell in re.findall(r"<td[^>]*>(.*?)</td>", row)]
-        for row in rows
-    ]
-    cells = [row for row in cells if row]
+    _, cells = table_cells(page)
     assert cells, page
     return [list(column) for column in zip(*cells)]
 

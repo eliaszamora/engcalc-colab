@@ -34,12 +34,17 @@ delimited, is the styling of a kind that survives - and they exist because the h
 that lets the *content* contracts keep working (`block_text` in `conftest.py`) strips
 exactly the things they check. One file answers "does it typeset"; the helper answers
 "what does it say".
+
+**Superseded in part by `test_a_computed_block_is_written_like_the_working`.** Markdown
+typeset the mathematics and set the words around it in the notebook's text font, wrapped a
+wide row as prose wraps, and started at the text's edge - the engineer on 0.31.2: "hay
+fuentes distintas, no se ve ordenado". The blocks are `Math` outputs now. The contracts here
+that were about markdown - a markdown output, `$...$` per cell, inline `style=` - went with
+it; the ones about what the blocks must still be stay, asked of the `Math` output.
 """
 
-import re
-
 import pytest
-from IPython.display import Markdown
+from IPython.display import Markdown, Math
 
 import engcalc_colab.magic as magic
 
@@ -78,54 +83,13 @@ SHEET = (
 
 def _blocks(displayed) -> list[str]:
     items = displayed(SHEET)
-    blocks = [item.data for item in items if isinstance(item, Markdown)]
+    blocks = [
+        item.data
+        for item in items
+        if isinstance(item, Math) and r"\phantom{0} \\[-4pt]" in item.data
+    ]
     assert len(blocks) == 4, [type(item).__name__ for item in items]
     return blocks
-
-
-def test_every_block_is_a_markdown_output(displayed):
-    """The whole change in one line. An HTML output typesets nothing, whatever is in it."""
-    _blocks(displayed)
-
-
-def test_every_block_delimits_its_mathematics(displayed):
-    """`$...$` and not `\\(...\\)`: markdown eats the parenthesis form, measured."""
-    for block in _blocks(displayed):
-        assert "$" in block, block[:200]
-        assert r"\(" not in block, block[:200]
-        assert r"\[" not in block, block[:200]
-
-
-def test_every_cell_of_a_table_delimits_its_own(displayed):
-    """Per cell, not per block.
-
-    A first draft asked only whether a `$` appeared anywhere in the block, and the
-    header's `[$\\mathrm{m}$]` satisfied that on its own - so two mutants survived it:
-    one that stripped the delimiters from every *cell*, and one that put the header's
-    unit back to plain text. A block is not typeset because one thing in it is.
-    """
-    table = next(block for block in _blocks(displayed) if "<thead>" in block)
-
-    cells = re.findall(r"<td[^>]*>(.*?)</td>", table)
-    assert cells, table
-    for cell in cells:
-        assert cell.startswith("$") and cell.endswith("$"), cell
-
-    headers = re.findall(r"<th[^>]*>(.*?)</th>", table)
-    assert headers, table
-    units = [header for header in headers if "[" in header]
-    assert units, headers
-    for header in units:
-        assert "[$" in header and "$]" in header, header
-
-
-def test_no_block_carries_a_style_rule(displayed):
-    """A `<style>` is dropped by the markdown conversion, so a class it defines is inert
-    and the block renders unstyled - which is #144's defect arriving by another road."""
-    for block in _blocks(displayed):
-        assert "<style>" not in block, block[:200]
-        assert 'class="' not in block, block[:200]
-        assert "style=" in block, block[:200]
 
 
 def test_the_exact_expression_is_mathematics_and_not_python(displayed):
@@ -175,8 +139,7 @@ def test_a_unit_name_cannot_smuggle_markup(displayed):
     blocks = displayed(
         "L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\ntable(M(x), x, 0, L, 3)\n"
     )
-    table = next(item.data for item in blocks if isinstance(item, Markdown))
-    labels = re.findall(r"<th[^>]*>(.*?)</th>", table)
-    assert labels, table
-    for label in labels:
-        assert "<script" not in label, label
+    table = next(item.data for item in blocks if isinstance(item, Math) and r"\hline" in item.data)
+    header = table.split(r"\hline")[0]
+    assert r"M\left(x\right)" in header, header
+    assert "<" not in table, table

@@ -70,6 +70,8 @@ _LATEX_TEXT = {
 def block_text(html: str) -> str:
     """One rendered block as the reader sees it: tags gone, LaTeX read back as text."""
     text = _re.sub(r"<[^>]+>", " ", html)
+    if r"\phantom{0} \\[-4pt]" in text:
+        text = _computed_block_text(text)
     # A characteristic block sets its formulas `$\displaystyle ...$` with `\dfrac`, so they
     # read at the page's size; both are sizes, not words.
     text = text.replace(r"$\displaystyle ", "$")
@@ -79,6 +81,47 @@ def block_text(html: str) -> str:
     for latex, plain in _LATEX_TEXT.items():
         text = text.replace(latex, plain)
     return _re.sub(r"\s+", " ", text).strip()
+
+
+def table_cells(latex: str) -> tuple[list[str], list[list[str]]]:
+    r"""A `table(...)` block's header cells and body rows, each cell read by `block_text`.
+
+    The table is an array now - header `\\ \hline`, rows `\\[3pt]`, cells `&` - where it
+    was `<th>` and `<td>`; the contracts that read one cell at a time read these instead.
+    """
+    start = latex.index(r"\begin{array}{l|")
+    inner = latex[latex.index("}", start + len(r"\begin{array}{")) + 1 :]
+    inner = inner[: inner.index(r"\end{array}")]
+    header, body = inner.split(r"\\ \hline", 1)
+    body = body.replace(r"\rule{0pt}{1.4em}", "")
+    read = lambda cells: [  # noqa: E731
+        block_text(_computed_block_text(cell)) for cell in cells.split("&")
+    ]
+    return read(header), [read(row) for row in body.split(r"\\[3pt]")]
+
+
+def _computed_block_text(latex: str) -> str:
+    r"""A computed block - roots, extrema, `governing`, `table`, `summary` - read as its lines.
+
+    These are `Math` outputs, so their words are `\text{}` and their rows are an array's.
+    The frame, the sizes and the column separators are how it is set, not what it says;
+    the rows come back one after another, the way the HTML block's lines did.
+    """
+    text = _re.sub(r"\\rule\{[^}]*\}\{[^}]*\}", "", latex).replace(r"\phantom{0}", "")
+    text = _re.sub(r"\\hspace\{[^}]*\}", "", text)
+    text = _re.sub(r"\\begin\{array\}\{[^}]*\}|\\end\{array\}", " ", text)
+    text = _re.sub(r"\\text(?:bf)?\{([^}]*)\}", r"\1", text)
+    text = _re.sub(r"\\\\(?:\[-?\d+pt\])?", " ", text)
+    for latex_word, plain in (
+        (r"\displaystyle", ""),
+        (r"\hline", ""),
+        (r"\qquad", " "),
+        (r"\quad", " "),
+        (r"\approx", "≈"),
+        ("&", " "),
+    ):
+        text = text.replace(latex_word, plain)
+    return text
 
 
 def figure_text(label: str) -> str:

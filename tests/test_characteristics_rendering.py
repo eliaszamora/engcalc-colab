@@ -49,9 +49,10 @@ def test_root_renderer_uses_exact_and_approximate_symbols_with_units():
     exact_html = _render(_roots_result(provenance="exact"))
     numeric_html = _render(_roots_result(provenance="numeric"))
 
+    # `\approx` in the block's LaTeX since it is a `Math` output.
     assert "=" in exact_html
-    assert "≈" not in exact_html
-    assert "≈" in numeric_html
+    assert r"\approx" not in exact_html
+    assert r"\approx" in numeric_html
     assert "m" in exact_html
     assert "CharacteristicPoint(" not in exact_html
     assert "CharacteristicPoint(" not in numeric_html
@@ -138,8 +139,9 @@ def test_intersection_coincident_interval_is_rendered_explicitly():
     html = _render(result)
 
     assert "coincident on" in html.lower()
-    assert "f(x)" in html
-    assert "g(x)" in html
+    # Named as their definitions name them since it is a `Math` output.
+    assert r"f\left(x\right)" in html
+    assert r"g\left(x\right)" in html
     assert "CharacteristicInterval(" not in html
 
 
