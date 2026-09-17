@@ -276,13 +276,28 @@ class _EngineeringLatexPrinter(LatexPrinter):
                 # A unit is set apart from what it multiplies, `10\,\mathrm{kN}`: the plain
                 # separator is a LaTeX space, which MathJax does not show, and the
                 # engineer's load vector read `10kN`.
-                apart = self._is_unit_literal(term) or self._is_unit_literal(args[index - 1])
-                if term.is_Number:
-                    # Two numbers joined by a space are one number to MathJax: `2*3*kN`
-                    # printed `2 3 kN` and read `23 kN`. The sort puts numbers first, so a
-                    # number past the first factor always follows another number.
+                previous = args[index - 1]
+                # Two numbers joined by a space are one number to MathJax: `2*3*kN`
+                # printed `2 3 kN` and read `23 kN`. The sort puts numbers first, so a
+                # number past the first factor always follows another number.
+                #
+                # Two units joined by a space have the same failure and one more reason
+                # besides. `m*m` printed `m m`, which on the page is `mm` with a gap -
+                # off by a thousand - and the page has already decided how it spells a
+                # compound unit: every quantity Pint prints comes out
+                # `\mathrm{kN} \cdot \mathrm{m}`, so a space here made one unit read two
+                # ways on one sheet, `20 kN m` in the formula and `20.00 kN·m` in its
+                # result.
+                both_units = self._is_unit_literal(term) and self._is_unit_literal(
+                    previous
+                )
+                if term.is_Number or both_units:
                     rendered.append(r" \cdot ")
                 else:
+                    # One unit meeting something that is not a unit: a space, and only a
+                    # space. A dot between `10` and `kN` would read as a multiplication
+                    # nobody wrote.
+                    apart = self._is_unit_literal(term) or self._is_unit_literal(previous)
                     rendered.append(r"\," if apart else separator)
             rendered.append(term_latex)
 

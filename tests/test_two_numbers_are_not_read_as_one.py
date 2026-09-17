@@ -38,7 +38,9 @@ def test_an_area_from_two_dimensions(monkeypatch, capsys):
     math = page(monkeypatch, "A_c = 0.30*m*0.60*m\nnumeric(A_c)\n")
     capsys.readouterr()
 
-    assert r"0.3 \cdot 0.6\,\mathrm{m}\,\mathrm{m}" in math, math
+    # `m \, m` until test_two_units_multiplied_read_as_one_unit, which is this same
+    # question one factor to the right: two metres separated by a space read `mm`.
+    assert r"0.3 \cdot 0.6\,\mathrm{m} \cdot \mathrm{m}" in math, math
     assert "0.3 0.6" not in math, math
 
 

@@ -55,7 +55,10 @@ def test_a_moment_reads_kilonewton_metres(monkeypatch, capsys):
     math = page(monkeypatch, "p = cross([2*m; 0*m; 1*m], [0*kN; 5*kN; 0*kN])\n")
     capsys.readouterr()
 
-    assert r"10\,\mathrm{kN}\,\mathrm{m}" in math, math
+    # The two units are joined by a centred dot since
+    # test_two_units_multiplied_read_as_one_unit; what this file asks is whether they
+    # are upright.
+    assert r"10\,\mathrm{kN} \cdot \mathrm{m}" in math, math
 
 
 def test_the_formula_of_a_numeric_row_is_set_the_same_way(monkeypatch, capsys):

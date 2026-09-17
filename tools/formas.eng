@@ -99,3 +99,18 @@ L_mm := 6000*mm
 q_mm := 18*kN/m
 M_mm(x) = q_mm*x*(L_mm - x)/2
 extrema(M_mm(x), x, 0, L_mm)
+
+### Dos unidades multiplicadas en una fórmula
+
+"""
+Un momento límite escrito con sus dos unidades, y un área escrita como largo por ancho.
+Ninguna de las tres hojas tenía un producto de dos unidades dentro de una fórmula, así
+que la comparación de páginas no podía ver cómo se separan. Se separaban con un espacio:
+la fórmula decía 20 kN m al lado de su propio resultado 20.00 kN·m, y el área decía
+0.30 m 0.60 m, donde m m es mm con un hueco.
+"""
+
+M_lim = 20*kN*m
+numeric(M_lim)
+A_c = 0.30*m*0.60*m
+numeric(A_c)

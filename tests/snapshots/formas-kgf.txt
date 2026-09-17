@@ -161,3 +161,17 @@ La carga por metro y la luz en milímetros dejan el momento en una unidad que na
 \displaystyle x = \dfrac{L_{mm}}{2}\,\left(300.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = \dfrac{q_{mm} L_{mm}^{2}}{8}\,\left(825970.13\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{local max, global max} \\[8pt]
 \displaystyle x = L_{mm}\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[4pt]
 \phantom{0} \end{array}
+
+=== 25 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Dos unidades multiplicadas en una fórmula</div>
+
+=== 26 · Markdown ===
+Un momento límite escrito con sus dos unidades, y un área escrita como largo por ancho. Ninguna de las tres hojas tenía un producto de dos unidades dentro de una fórmula, así que la comparación de páginas no podía ver cómo se separan. Se separaban con un espacio: la fórmula decía 20 kN m al lado de su propio resultado 20.00 kN·m, y el área decía 0.30 m 0.60 m, donde m m es mm con un hueco.
+
+=== 27 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{lim} & = & \displaystyle 20\,\mathrm{kN} \cdot \mathrm{m} \\[8pt]
+& = & \displaystyle 20\,\mathrm{kN} \cdot \mathrm{m} \\[8pt]
+& = & \displaystyle 203943.24\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
+\displaystyle A_{c} & = & \displaystyle 0.3 \cdot 0.6\,\mathrm{m} \cdot \mathrm{m} \\[8pt]
+& = & \displaystyle 0.3 \cdot 0.6\,\mathrm{m} \cdot \mathrm{m} \\[8pt]
+& = & \displaystyle 1800.00\,\mathrm{cm}^{2} \end{array}
