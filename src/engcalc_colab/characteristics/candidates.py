@@ -91,6 +91,12 @@ def closed_form_factors(expression, variable: sp.Symbol):
 
 
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
+    # Common factors out first. `1.2 qD (L/2 - x) + 1.6 qL (L/2 - x)` solved as written is
+    # floating point, `0.5 L`, a block away from an extrema that writes the same midspan
+    # `L/2`; as `(L/2 - x)(1.2 qD + 1.6 qL)` the root is `L/2`. `factor_terms` and not
+    # `simplify`, which the extrema analysis uses: a thousandth of a second on a
+    # four-storey frequency equation where `simplify` takes a seventh.
+    expression = sp.factor_terms(expression)
     solvable, missing = closed_form_factors(expression, variable)
     if missing:
         # The factors that have a closed form are solved as ever, and the discovery is
