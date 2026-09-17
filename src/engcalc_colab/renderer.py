@@ -3127,7 +3127,9 @@ def _characteristic_quantity_math(
     return rf"{magnitude}\,{unit_latex}"
 
 
-def _characteristic_symbolic_math(value) -> str:
+def _characteristic_symbolic_math(
+    value, unit_literals: frozenset[str] = frozenset()
+) -> str:
     r"""An exact expression, typeset: `rac{L}{2}`, `x`, `L^{2}(0.15 qD + 0.2 qL)`.
 
     One printer, and it is the one the working beside it already uses. #133 chose between
@@ -3151,7 +3153,7 @@ def _characteristic_symbolic_math(value) -> str:
     # `\dfrac` as well, unlike the matrix cells: `\displaystyle` sizes only the outermost
     # fraction, and measured on that frame the fractions inside the root stayed at 3.8 px.
     # Display style comes from the block's row, which sets every row `\displaystyle`.
-    return _latex(value).replace(r"\frac", r"\dfrac")
+    return _latex(value, unit_literals).replace(r"\frac", r"\dfrac")
 
 
 def _characteristic_name(name: str) -> str:
@@ -3284,22 +3286,37 @@ def _characteristic_interval_text(
     return rf"\left{left}{lower}, {upper}\right{right}"
 
 
-def _characteristic_label(label: str, expression) -> str:
+def _characteristic_label(
+    label: str, expression, unit_literals: frozenset[str] = frozenset()
+) -> str:
     """A heading's response: typeset, unless its label is already how a person writes it.
 
     The label is `str()` of the expression, so `det(K - w^2*M)` headed its roots as
     `k_1*k_2 - k_1*m_2*w**2 - ...` while the roots under it were typeset. A user function
     carries no expression and is named as its definition row names it.
+
+    `unit_literals` is for the side of an inequality that is a limit rather than a
+    response. Without them `20*kN*m` sets as a product of three italic names, where a
+    unit on this page is upright. What still separates the two units is a space and not
+    a centred dot - that is how the symbolic printer joins any two unit literals
+    anywhere, a defect of its own rather than of this heading.
     """
     if expression is None:
         return _response_label_latex(label)
-    return _characteristic_symbolic_math(expression)
+    return _characteristic_symbolic_math(expression, unit_literals)
 
 
 def _characteristic_heading(result: CharacteristicResult) -> str:
     if isinstance(result, InequalityResult):
-        variable = _characteristic_symbolic_math(sp.Symbol(result.variable))
-        return rf"\textbf{{Where}}\ {variable}\ \textbf{{satisfies the inequality}}"
+        # "Where x satisfies the inequality" named the variable and never the
+        # inequality, so the memoria's zone had no condition on the page. The family's
+        # own shape - `Roots — V(x)` - says it, and `relation` was already here.
+        literals = result.unit_literals
+        left = _characteristic_label(result.left_label, result.left_expression, literals)
+        right = _characteristic_label(
+            result.right_label, result.right_expression, literals
+        )
+        return rf"\textbf{{Where}} \text{{ — }} {left} {result.relation} {right}"
     if isinstance(result, RootsResult):
         label = _characteristic_label(result.display_label, result.label_expression)
         return rf"\textbf{{Roots}} \text{{ — }} {label}"

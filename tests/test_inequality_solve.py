@@ -198,7 +198,11 @@ def test_the_region_is_rendered_with_its_brackets():
     _engine, results = run_lines(BEAM + "solve(M(x) > 20*kN*m, x, 0, L)")
     rendered = render_characteristic_result(results[-1])
 
-    assert "satisfies the inequality" in rendered
+    # The heading used to say "Where x satisfies the inequality" and never say which
+    # inequality. It names it now; what that heading reads is pinned in
+    # `test_an_inequality_block_names_the_inequality.py`, and what this file is about is
+    # the region under it.
+    assert r"\textbf{Where}" in rendered
     # The brackets are the answer's open/closed ends, so they have to survive rendering.
     assert "(" in rendered and ")" in rendered
     assert "0.76" in rendered and "5.24" in rendered

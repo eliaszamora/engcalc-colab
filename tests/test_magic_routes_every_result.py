@@ -52,7 +52,10 @@ def test_an_inequality_reaches_the_notebook_instead_of_killing_the_cell(monkeypa
 
     # A `Math` output since test_a_computed_block_is_written_like_the_working.
     assert [type(item) for item in displayed] == [Math, Math]
-    assert "satisfies the inequality" in displayed[-1].data
+    # The heading names the inequality since
+    # test_an_inequality_block_names_the_inequality; what this file asks is whether the
+    # magic routes the block at all.
+    assert r"\textbf{Where}" in displayed[-1].data
     assert "0.76" in block_text(displayed[-1].data)
 
 
@@ -157,5 +160,5 @@ def test_every_result_the_engine_produces_is_routed_somewhere(monkeypatch):
     ]
     assert len(blocks) == 3
     assert any("Roots" in block for block in blocks)
-    assert any("satisfies the inequality" in block for block in blocks)
+    assert any(r"\textbf{Where}" in block for block in blocks)
     assert any("Summary" in block for block in blocks)

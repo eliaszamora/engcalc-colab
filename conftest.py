@@ -59,6 +59,10 @@ _LATEX_TEXT = {
     r" \times ": "×",
     r"\times": "×",
     r"\,": " ",
+    # A relation an inequality's heading writes. `>` and `<` are already their own
+    # characters; these two are not, and read as `\geq` without this.
+    r"\geq": "≥",
+    r"\leq": "≤",
     r"\left": "",
     r"\right": "",
     "{": "",
