@@ -114,7 +114,9 @@ def test_both_ends_of_an_interval_wear_one_unit(cell):
     where the moment exceeds 20 kN·m came out `(763.93 mm, 5.24 m)`.
     """
     page = cell(BEAM + "solve(U1(x) > 100*kN*m, x, 0, L)\n")
-    region = page[page.index("satisfies the inequality"):]
+    # From the domain rather than from the heading: the heading names the inequality
+    # now, and `100*kN*m` is a moment whose unit is not the length this is about.
+    region = page[page.index("Domain:"):]
     assert "mm" not in region, region
     assert region.count(" m") >= 2, region
 

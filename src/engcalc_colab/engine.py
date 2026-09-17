@@ -889,7 +889,7 @@ class EngineeringEngine:
                 )
 
             if evaluator.inequality_evaluation is not None:
-                variable, relation, domain, intervals, difference = (
+                variable, relation, domain, intervals, difference, sides = (
                     evaluator.inequality_evaluation
                 )
                 if statement.target is not None:
@@ -905,6 +905,11 @@ class EngineeringEngine:
                     lower_quantity=domain.lower_quantity,
                     upper_quantity=domain.upper_quantity,
                     intervals=intervals,
+                    left_label=sides[0],
+                    right_label=sides[1],
+                    left_expression=sides[2],
+                    right_expression=sides[3],
+                    unit_literals=sides[4],
                 )
 
             if evaluator.assume_evaluation is not None:
@@ -2686,6 +2691,16 @@ class _Evaluator(ast.NodeVisitor):
             )
         difference = sp.sympify(left) - sp.sympify(right)
 
+        # What the heading names. The same two questions `roots` and `extrema` ask of
+        # their response - what does a person call this, and what does a heading typeset
+        # - asked of each side, so `solve(M(x) > 20*kN*m, ...)` is headed with the line
+        # the engineer wrote rather than with a region whose condition is nowhere.
+        left_node, right_node = comparison.left, comparison.comparators[0]
+        left_label = self._plot_expression_label(left_node, variable_name, left)
+        right_label = self._plot_expression_label(right_node, variable_name, right)
+        left_heading = self._heading_expression(left_node, left)
+        right_heading = self._heading_expression(right_node, right)
+
         points, _intervals, unresolved = solve_roots_exact(
             difference,
             variable_symbol,
@@ -2752,6 +2767,13 @@ class _Evaluator(ast.NodeVisitor):
             domain,
             intervals,
             difference,
+            (
+                left_label,
+                right_label,
+                left_heading,
+                right_heading,
+                self.engine._unit_literals_of(left, right),
+            ),
         )
         return None
 

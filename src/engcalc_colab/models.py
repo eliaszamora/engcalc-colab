@@ -541,6 +541,11 @@ class InequalityResult:
     The domain is not ceremony borrowed from `roots`. It is where the variable gets its
     unit, and an answer of "between 0.76 and 5.24" with no unit is not an engineering
     answer.
+
+    The two sides are carried the way `IntersectionsResult` carries its two responses -
+    a label, and the expression a heading typesets when the label is not already how a
+    person writes it. Without them the block could say a region and not the condition
+    that defines it.
     """
 
     statement: ParsedStatement
@@ -551,6 +556,11 @@ class InequalityResult:
     upper_quantity: Any
     intervals: tuple[CharacteristicInterval, ...] = ()
     points: tuple[CharacteristicPoint, ...] = ()
+    left_label: str = ""
+    right_label: str = ""
+    left_expression: Any = None
+    right_expression: Any = None
+    unit_literals: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "intervals", tuple(self.intervals))

@@ -47,7 +47,7 @@ annotation: (3, 45)
 
 === 10 · Math ===
 \hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
-\displaystyle \textbf{Where}\ x\ \textbf{satisfies the inequality} \\[8pt]
+\displaystyle \textbf{Where} \text{ — } M\left(x\right) > 20\,\mathrm{kN}\,\mathrm{m} \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{m} \text{ to } 6.00\,\mathrm{m} \\[8pt]
 \displaystyle x \text{ in } \left(0.76\,\mathrm{m}, 5.24\,\mathrm{m}\right) \\[4pt]
 \phantom{0} \end{array}
