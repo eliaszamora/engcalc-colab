@@ -294,10 +294,10 @@ class _EngineeringLatexPrinter(LatexPrinter):
                 if term.is_Number or both_units:
                     rendered.append(r" \cdot ")
                 else:
-                    # One unit meeting something that is not a unit: a space, and only a
+                    # One upright token meeting something else: a space, and only a
                     # space. A dot between `10` and `kN` would read as a multiplication
                     # nobody wrote.
-                    apart = self._is_unit_literal(term) or self._is_unit_literal(previous)
+                    apart = self._is_set_apart(term) or self._is_set_apart(previous)
                     rendered.append(r"\," if apart else separator)
             rendered.append(term_latex)
 
@@ -306,6 +306,32 @@ class _EngineeringLatexPrinter(LatexPrinter):
     def _is_unit_literal(self, term) -> bool:
         base = term.base if term.is_Pow else term
         return isinstance(base, sp.Symbol) and base.name in self.unit_literals
+
+    def _is_upright_name(self, term) -> bool:
+        """A name of several letters, which `_print_Symbol` sets upright: `qD`, `eqFy`.
+
+        The same test that printer makes, asked here so the answer cannot drift from it.
+        """
+        base_term = term.base if term.is_Pow else term
+        if not isinstance(base_term, sp.Symbol):
+            return False
+        if base_term.name in self.unit_literals:
+            return False
+        base, _supers, _subs = split_super_sub(base_term.name)
+        return len(base) > 1 and not self._sympy_spells_it_back(base)
+
+    def _is_set_apart(self, term) -> bool:
+        r"""True for a token printed upright, which needs a space beside its neighbour.
+
+        A unit and a multi-letter name are one thing typographically: an upright label
+        rather than an italic quantity. LaTeX collapses the plain space between two
+        factors - which is what makes `b h` read as `bh`, correctly, for the single
+        italic letters it was designed for - so an upright block butted against the next
+        factor gives the reader one word to take apart by font alone: `10kN`, and then
+        `qDx` and `0.15qDL^2`. `10\,\mathrm{kN}` was the first half of this answer; this
+        is the rest of it.
+        """
+        return self._is_unit_literal(term) or self._is_upright_name(term)
 
 
 class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):

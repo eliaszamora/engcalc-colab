@@ -81,7 +81,7 @@ def test_the_value_behind_it_is_unchanged(cell):
         ("d = h - cover - db_st - db/2",
          r"- \mathrm{cover} - \frac{\mathrm{db}}{2} - \mathrm{db}_{st} + h"),
         ("w = 1.2*D + 1.6*L", "1.2 D + 1.6 L"),
-        ("Vc = 0.17*fc*b", r"0.17 b \mathrm{fc}"),
+        ("Vc = 0.17*fc*b", r"0.17 b\,\mathrm{fc}"),
     ],
 )
 def test_a_formula_that_already_read_correctly_does_not_move(cell, source, expected):
@@ -138,7 +138,7 @@ def test_a_definition_built_on_other_definitions_is_left_alone(cell):
         "phiMn = phi*As*fy*(d - a/2)\n"
     )
     assert r"\mathrm{As}^{2}" not in latex, latex
-    assert r"\mathrm{fy} \phi \mathrm{As} \left(" in latex, latex
+    assert r"\mathrm{fy}\,\phi\,\mathrm{As}\,\left(" in latex, latex
     # `a`'s own row is still fixed - the restriction is per definition, not per sheet.
     assert "0.85" in latex, latex
 
