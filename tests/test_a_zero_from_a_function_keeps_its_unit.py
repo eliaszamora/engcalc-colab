@@ -66,7 +66,8 @@ def test_a_kept_zero_in_report_and_summary(monkeypatch, capsys):
 
     assert text.count("490.00 N·m") == 2, text
     assert len(re.findall(r"(?<![\d.])0\.00 N·m", text)) == 2, text
-    assert text.rstrip().endswith("M_0 0.00 N·m"), text
+    # A summary row reads `name = value` since test_a_computed_block_is_written_like_the_working.
+    assert text.rstrip().endswith("M_0 = 0.00 N·m"), text
 
 
 def test_a_kept_zero_substitutes_with_its_unit(monkeypatch, capsys):

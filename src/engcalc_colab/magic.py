@@ -33,7 +33,7 @@ from .renderer import (
     plot_in_palette,
     render_aligned_results,
     CharacteristicResult,
-    HtmlBlockResult,
+    ComputedBlockResult,
     render_characteristic_result,
     render_call_help,
     render_call_index,
@@ -272,7 +272,7 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     display(
-                        Markdown(
+                        Math(
                             render_table(
                                 result,
                                 settings=self._settings(),
@@ -287,14 +287,14 @@ class EngMagics(Magics):
                 # raised AttributeError in the notebook while every contract passed:
                 # they called render_characteristic_result directly and never asked
                 # whether the magic would route anything to it.
-                if isinstance(result, HtmlBlockResult):
+                if isinstance(result, ComputedBlockResult):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
                     )
                     pending_results.clear()
                     display(
-                        Markdown(render_result(result, settings=self._settings()))
+                        Math(render_result(result, settings=self._settings()))
                     )
                     continue
 
@@ -305,7 +305,7 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     display(
-                        Markdown(
+                        Math(
                             render_characteristic_result(
                                 result,
                                 settings=self._settings(),

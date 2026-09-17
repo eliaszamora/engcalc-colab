@@ -22,6 +22,10 @@ size, and its rows have room between them**: 7.5 - 11.7 px letters and a 7 px ga
 same frame, 649 px wide in a 900 px cell; `x = L/2` on a beam reads at the size `L/2` has
 in the working above it. A quantity - `(3.00 m)`, `0.00 1/s` - stays inline, as a value
 in a line of text.
+
+Since `test_a_computed_block_is_written_like_the_working` the block is a `Math` output, whose
+rows are each `displaystyle` and `8pt` apart - the frame the working has - so display style
+and room come from the row now; the `dfrac` is still this file's.
 """
 
 import re
@@ -47,27 +51,27 @@ def test_the_frequencies_of_a_frame_are_set_at_full_size(monkeypatch, capsys):
     page = raw(monkeypatch, FRAME + "roots(det(K - w^2*M), w, 0, 200/s)\n")
     capsys.readouterr()
 
-    roots = re.findall(r"w\$ = (\$[^$]*\$)", page)
+    roots = re.findall(r"\\displaystyle w = (.*?)\\,\\left\(", page)
     assert len(roots) == 2, page
     for root in roots:
-        assert root.startswith(r"$\displaystyle \dfrac{\sqrt{2}"), root
-        assert r"\frac" not in root, root
+        assert root.startswith(r"\dfrac{\sqrt{2}"), root
+        assert r"\frac" not in root.replace(r"\dfrac", ""), root
 
 
 def test_a_beam_s_midspan_reads_as_its_working_does(monkeypatch, capsys):
     page = raw(monkeypatch, BEAM + "extrema(M(x), x, 0, L)\n")
     capsys.readouterr()
 
-    assert r"$\displaystyle x$ = $\displaystyle \dfrac{L}{2}$" in page, page
-    assert r"$\displaystyle \dfrac{q L^{2}}{8}$" in page, page
+    assert r"\displaystyle x = \dfrac{L}{2}\,\left(" in page, page
+    assert r"\text{value} = \dfrac{q L^{2}}{8}\,\left(" in page, page
 
 
 def test_the_rows_have_room_between_them(monkeypatch, capsys):
     page = raw(monkeypatch, BEAM + "extrema(M(x), x, 0, L)\n")
     capsys.readouterr()
 
-    assert '<div style="margin:0.45rem 0;">' in page, page
-    assert "margin:0.08rem" not in page, page
+    assert r"\\[8pt] \displaystyle x = \dfrac{L}{2}" in page, page
+    assert "margin:" not in page, page
 
 
 # --- what must not move ---------------------------------------------------------------
@@ -77,5 +81,5 @@ def test_a_quantity_stays_inline(monkeypatch, capsys):
     page = raw(monkeypatch, BEAM + "extrema(M(x), x, 0, L)\n")
     capsys.readouterr()
 
-    assert r"($3.00\,\mathrm{m}$)" in page, page
-    assert r"Domain: $0.00\,\mathrm{m}$ to $6.00\,\mathrm{m}$" in page, page
+    assert r"\left(3.00\,\mathrm{m}\right)" in page, page
+    assert r"\text{Domain: } 0.00\,\mathrm{m} \text{ to } 6.00\,\mathrm{m}" in page, page

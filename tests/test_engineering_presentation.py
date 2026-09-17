@@ -328,10 +328,11 @@ def test_p1_inside_a_table_column_never_collapses_a_whole_column():
     assert genuine_zeros == 1, "guard: exactly one sampled value is genuinely zero"
 
     html = renderer.render_table(result)
-    # Through the reader's view: a cell is `$0.00$` in the markup now, because the
-    # block is a `Markdown` output and its numbers typeset.
-    cells = [block_text(cell) for cell in re.findall(r"<td[^>]*>([^<]*)</td>", html)]
-    ordinate = [cell for index, cell in enumerate(cells) if index % 2 == 1]
+    # Through the reader's view, one cell at a time.
+    from conftest import table_cells
+
+    _, rows = table_cells(html)
+    ordinate = [row[1] for row in rows]
 
     shown_zeros = sum(1 for cell in ordinate if float(cell) == 0.0)
     assert shown_zeros == genuine_zeros, (
@@ -410,12 +411,13 @@ def test_zero_tolerance_is_decided_in_the_stored_unit_not_the_display_unit():
     assert genuine_zeros == 2, "guard: two sampled points are zero at this tolerance"
 
     html = renderer.render_table(result, settings=settings)
-    # Through the reader's view: a cell is `$0.00$` in the markup now, because the
-    # block is a `Markdown` output and its numbers typeset.
-    cells = [block_text(cell) for cell in re.findall(r"<td[^>]*>([^<]*)</td>", html)]
-    abscissa = cells[::2]
+    # Through the reader's view, one cell at a time.
+    from conftest import table_cells
 
-    assert "mm" in block_text(re.findall(r"<th[^>]*>([^<]*)</th>", html)[0]), (
+    header, rows = table_cells(html)
+    abscissa = [row[0] for row in rows]
+
+    assert "mm" in header[0], (
         "guard: this column must actually change unit, or the test proves nothing"
     )
     assert sum(1 for cell in abscissa if float(cell) == 0.0) == genuine_zeros, (

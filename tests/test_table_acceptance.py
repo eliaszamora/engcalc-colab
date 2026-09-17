@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from IPython.display import HTML, Markdown, Math
+from IPython.display import HTML, Math
 
 from conftest import block_text
 from conftest import figure_text
@@ -135,9 +135,9 @@ def test_acceptance_real_eng_mixes_heading_equations_table_plot_in_source_order(
         "A = q*L",
     )
 
-    assert [type(item) for item in displayed] == [HTML, Math, Markdown, Figure, Math]
+    assert [type(item) for item in displayed] == [HTML, Math, Math, Figure, Math]
     assert "Simply supported beam" in displayed[0].data
-    assert "<table" in displayed[2].data
+    assert r"\hline" in displayed[2].data
     assert "x [m]" in block_text(displayed[2].data)
     assert "M(x) [kN·m]" in block_text(displayed[2].data)
     assert figure_text(displayed[3].axes[0].get_xlabel()) == "x [m]"

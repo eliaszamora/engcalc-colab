@@ -146,12 +146,17 @@ def test_the_announcement_agrees_with_a_table_header_on_the_same_sheet(printed):
     # Through the reader's view. A header carries its unit as `[$\mathrm{cm}$]` now,
     # because the table is a `Markdown` output and its units typeset - and the property
     # being checked is that the reader sees the same spelling in both places.
-    from conftest import block_text
+    from conftest import table_cells
 
+    table = next(
+        str(getattr(obj, "data", ""))
+        for obj in captured
+        if r"\hline" in str(getattr(obj, "data", ""))
+    )
     headers = [
         unit
-        for header in re.findall(r"<th[^>]*>(.*?)</th>", page)
-        for unit in re.findall(r"\[(.*?)\]", block_text(header))
+        for header in table_cells(table)[0]
+        for unit in re.findall(r"\[(.*?)\]", header)
     ]
 
     assert headers, page

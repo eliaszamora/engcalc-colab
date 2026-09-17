@@ -87,7 +87,9 @@ def test_the_summary_renders_a_row_per_entry():
 
     engine = EngineeringEngine()
     html = renderer.render_result(run_cell(engine, _MEMORIA)[-1])
-    assert html.count("<tr>") == 2
+    # One row each, aligned `name = value` like the working (a `Math` output since
+    # test_a_computed_block_is_written_like_the_working).
+    assert html.count("& = &") == 2, html
     # The names the working used, so the reader is not asked to match up two spellings.
     # This line has been rewritten twice and the history is the point.
     #
@@ -101,8 +103,8 @@ def test_the_summary_renders_a_row_per_entry():
     # `Markdown` output does, and it typesets `$...$` - measured in Colab against an HTML
     # control. So the names are mathematics again, and the two spellings that the accepted
     # cost created are one spelling.
-    # `\displaystyle` since the block reads at the page's size; a name looks the same.
-    assert r"$\displaystyle M_{max}$" in html and r"$\displaystyle R_{A}$" in html, html
+    # A `Math` output since then, where the names are simply mathematics.
+    assert r"\displaystyle M_{max} & = &" in html and r"\displaystyle R_{A} & = &" in html, html
     assert r"\(" not in html
     assert not [char for char in html if ord(char) < 32]
 

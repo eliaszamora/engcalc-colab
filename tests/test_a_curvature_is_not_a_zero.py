@@ -68,7 +68,8 @@ def test_the_reference_sheet_s_curvature_is_not_a_zero(cell, capsys):
     capsys.readouterr()
 
     assert "0.00145 1/m" in page, page
-    assert page.rstrip().endswith("\\kappa 0.00145 1/m"), page
+    # A summary row reads `name = value` since test_a_computed_block_is_written_like_the_working.
+    assert page.rstrip().endswith("\\kappa = 0.00145 1/m"), page
     assert "MPa·mm⁴" not in page.split("5.40×10⁹ mm⁴)")[-1], page
 
 

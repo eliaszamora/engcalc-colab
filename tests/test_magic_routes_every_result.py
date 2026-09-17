@@ -26,7 +26,7 @@ import matplotlib
 import pytest
 
 from conftest import block_text
-from IPython.display import HTML, Markdown, Math
+from IPython.display import HTML, Math
 
 matplotlib.use("Agg")
 
@@ -50,7 +50,8 @@ M(x) = q*x*(L-x)/2
 def test_an_inequality_reaches_the_notebook_instead_of_killing_the_cell(monkeypatch):
     displayed = run_cell(monkeypatch, BEAM + "solve(M(x) > 20*kN*m, x, 0, L)")
 
-    assert [type(item) for item in displayed] == [Math, Markdown]
+    # A `Math` output since test_a_computed_block_is_written_like_the_working.
+    assert [type(item) for item in displayed] == [Math, Math]
     assert "satisfies the inequality" in displayed[-1].data
     assert "0.76" in block_text(displayed[-1].data)
 
@@ -65,19 +66,20 @@ def test_governing_reaches_the_notebook_as_its_own_block(monkeypatch):
         "governing(M1(x), M2(x), x, 0, L)",
     )
 
-    assert type(displayed[-1]) is Markdown
+    # A `Math` output since test_a_computed_block_is_written_like_the_working.
+    assert type(displayed[-1]) is Math
     assert "Governing" in displayed[-1].data
 
 
 def test_a_summary_reaches_the_notebook_as_a_table(monkeypatch):
     displayed = run_cell(monkeypatch, BEAM + "d = L/300\nreport(d)\nsummary()")
 
-    assert type(displayed[-1]) is Markdown
-    # `<table` rather than `<table>`: the element is what this pins, and the tag now
-    # carries the inline styling that the class it used to name never actually had.
-    assert "<table" in displayed[-1].data
-    assert "<tr>" in displayed[-1].data
-    assert "Summary" in displayed[-1].data
+    # A `Math` output since test_a_computed_block_is_written_like_the_working.
+    # A table of results: its rows are aligned `name = value`, the way the working is.
+    assert type(displayed[-1]) is Math
+    assert r"\begin{array}{lcl}" in displayed[-1].data
+    assert "& = &" in displayed[-1].data
+    assert r"\textbf{Summary}" in displayed[-1].data
 
 
 def test_equation_rows_before_and_after_a_block_stay_in_source_order(monkeypatch):
@@ -89,7 +91,8 @@ def test_equation_rows_before_and_after_a_block_stay_in_source_order(monkeypatch
         monkeypatch,
         BEAM + "d = L/300\nreport(d)\nsummary()\nz = 2*L",
     )
-    assert [type(item) for item in displayed] == [Math, Markdown, Math]
+    assert [type(item) for item in displayed] == [Math, Math, Math]
+    assert r"\textbf{Summary}" in displayed[1].data
     assert "z" in displayed[-1].data
 
 
@@ -133,7 +136,7 @@ def test_every_result_the_engine_produces_is_routed_somewhere(monkeypatch):
 
     A type the magic does not know falls through to the equation group, where it is
     either mangled or raises. Both happened. This asserts the positive: each block
-    feature produces an HTML block of its own.
+    feature produces a block of its own.
     """
     displayed = run_cell(
         monkeypatch,
@@ -147,7 +150,11 @@ def test_every_result_the_engine_produces_is_routed_somewhere(monkeypatch):
         "summary()",
     )
 
-    blocks = [item.data for item in displayed if isinstance(item, Markdown)]
+    blocks = [
+        item.data
+        for item in displayed
+        if isinstance(item, Math) and r"\phantom{0} \\[-4pt]" in item.data
+    ]
     assert len(blocks) == 3
     assert any("Roots" in block for block in blocks)
     assert any("satisfies the inequality" in block for block in blocks)

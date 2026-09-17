@@ -24,9 +24,12 @@ deliberate. A `<style>` does not survive a `Markdown` output - measured in Colab
 next change moves these blocks to `Markdown` so their mathematics finally typesets.
 Inline styles work in both, so this is the implementation that does not have to be written
 twice.
-"""
 
-import re
+**The blocks are `Math` outputs now** (`test_a_computed_block_is_written_like_the_working`),
+so there is no class and no inline style left to get wrong, and "the same size" is MathJax's
+for all of them. What this file asked stays asked, of the form a `Math` block can take: one
+frame for every block, and room between a table's cells.
+"""
 
 import pytest
 
@@ -45,8 +48,8 @@ def blocks(monkeypatch):
         magics.eng("", source)
         return [
             data
-            for data in (getattr(obj, "data", "") for obj in captured)
-            if data.startswith("<")
+            for data in (str(getattr(obj, "data", "")) for obj in captured)
+            if r"\phantom{0} \\[-4pt]" in data
         ]
 
     return run
@@ -75,41 +78,28 @@ SHEET = (
 
 
 def test_no_block_wears_a_class_nothing_styles(blocks):
-    """The general statement. A class name promises a rule exists; nothing checked it."""
-    for block in blocks(SHEET):
-        used = set(re.findall(r'class="([^"]+)"', block))
-        used = {name for value in used for name in value.split()}
-        defined = set(re.findall(r"\.([A-Za-z][A-Za-z0-9_-]*)\s*\{", block))
-        assert used <= defined, (sorted(used - defined), block[:200])
+    """The general statement, which a `Math` block keeps by carrying no markup at all."""
+    found = blocks(SHEET)
+    assert len(found) == 4, len(found)
+    for block in found:
+        assert "class=" not in block and "<" not in block, block[:200]
 
 
 def test_every_table_on_a_page_is_the_same_size(blocks):
-    """Three tables in two sizes is what the reader actually sees.
-
-    A first draft collected the sizes into one set and asked for a single element, and
-    passed before the fix - because only one of the three declared a size at all, so the
-    set had one member and the other two were at the browser's 16 px. Each has to state
-    one, and they have to agree.
-    """
-    sizes = []
-    for block in blocks(SHEET):
-        if "<table" not in block:
-            continue
-        declared = re.findall(r"font-size:\s*([0-9.]+rem)", block)
-        assert declared, block[:200]
-        sizes.append(declared[0])
-    assert len(sizes) >= 3, sizes
-    assert len(set(sizes)) == 1, sizes
+    """Three tables in two sizes is what the reader saw. Every block now opens with the one
+    frame, so none of them can be set at a size of its own."""
+    frames = {block.split(r"\textbf")[0].split(r"\begin{array}{l|")[0] for block in blocks(SHEET)}
+    assert frames == {r"\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt] \displaystyle "}, frames
 
 
 def test_the_cells_of_every_table_are_given_room(blocks):
-    """`padding:1px` is the browser's default, which is what a cell gets when nobody
-    says otherwise - and it is why `0.00 cm to 266.67 cm` and `U1(x)` sat against each
-    other."""
-    for block in blocks(SHEET):
-        if "<table" not in block:
-            continue
-        assert "padding:" in block, block[:200]
+    """`0.00 cm to 266.67 cm` and `U1(x)` sat against each other. A span and the response
+    that governs it are a quad apart, and a table's rows are spaced."""
+    found = blocks(SHEET)
+    governing = next(block for block in found if "Governing" in block)
+    assert r"& \qquad" in governing, governing
+    table = next(block for block in found if r"\hline" in block)
+    assert r"\\[3pt]" in table, table
 
 
 # --- what must not move ---------------------------------------------------------------
@@ -120,18 +110,3 @@ def test_the_blocks_still_say_what_they_said(blocks):
     page = block_text("".join(blocks(SHEET)))
     for text in ("Governing", "Summary", "Extrema", "kN·m"):
         assert text in page, (text, page[:200])
-
-
-def test_every_block_is_styled_the_way_a_markdown_output_can_be(blocks):
-    """This file's own prediction, now carried out.
-
-    It said the fix used inline attributes because a `<style>` does not survive a
-    `Markdown` output, and that the next change would move these blocks there - so it
-    pinned the *table* block keeping its rule block, being the one not yet moved. All four
-    are moved now, and the rule this file exists for applies to every one of them: no
-    class nobody defines, and no rule block that will be dropped on the way to the reader.
-    """
-    for block in blocks(SHEET):
-        assert "<style>" not in block, block[:200]
-        assert 'class="' not in block, block[:200]
-        assert "style=" in block, block[:200]

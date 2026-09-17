@@ -17,6 +17,10 @@ than `p`.
 **So the heading typesets its response**: a name as that name, any other expression with
 the printer the block's values use. The label *text* is untouched - a figure's legend and a
 governing block still read it - and a user function still reads `M(x)`.
+
+Since `test_a_computed_block_is_written_like_the_working` the block is a `Math` output: the
+heading is its first row, its words in `textbf`/`text`, and a user function is named as its
+definition row names it, `M(x)` typeset, rather than as the text `M(x)`.
 """
 
 import re
@@ -29,7 +33,7 @@ def headings(monkeypatch, source: str) -> list[str]:
     monkeypatch.setattr(magic, "display", captured.append)
     magic.EngMagics().eng("", source)
     raw = "".join(str(getattr(obj, "data", "")) for obj in captured)
-    found = re.findall(r'font-weight:600;margin-bottom:0\.15rem;">(.*?)</div>', raw)
+    found = re.findall(r"\\phantom\{0\} \\\\\[-4pt\] \\displaystyle (.*?) \\\\\[8pt\]", raw)
     assert found, raw
     return found
 
@@ -46,7 +50,7 @@ def test_the_frequencies_of_a_frame(monkeypatch, capsys):
     capsys.readouterr()
 
     assert "**" not in heading and "*" not in heading, heading
-    assert heading.startswith("Roots — $\\displaystyle ") and heading.endswith("$"), heading
+    assert heading.startswith(r"\textbf{Roots} \text{ — } k_{1}"), heading
     assert r"m_{1} m_{2} w^{4}" in heading, heading
 
 
@@ -54,23 +58,23 @@ def test_a_defined_name_is_named(monkeypatch, capsys):
     (heading,) = headings(monkeypatch, FRAME + "p = det(K - w^2*M)\nroots(p, w, 0, 200/s)\n")
     capsys.readouterr()
 
-    assert heading == r"Roots — $\displaystyle p$", heading
+    assert heading == r"\textbf{Roots} \text{ — } p", heading
 
 
 def test_an_expression_reads_as_it_is_typeset(monkeypatch, capsys):
     (heading,) = headings(monkeypatch, BEAM + "extrema(q*x*(L - x)/2, x, 0, L)\n")
     capsys.readouterr()
 
-    # Display style and `\dfrac` since test_a_characteristic_block_reads_at_the_page_s_size.
-    assert heading == r"Extrema — $\displaystyle \dfrac{q x \left(L - x\right)}{2}$", heading
+    # `\dfrac` since test_a_characteristic_block_reads_at_the_page_s_size.
+    assert heading == r"\textbf{Extrema} \text{ — } \dfrac{q x \left(L - x\right)}{2}", heading
 
 
 def test_an_absolute_value_keeps_its_bars(monkeypatch, capsys):
     (heading,) = headings(monkeypatch, BEAM + "extrema(abs(q*x*(L - x)/2 - 20*kN*m), x, 0, L)\n")
     capsys.readouterr()
 
-    assert heading.startswith(r"Extrema — $\displaystyle \left|"), heading
-    assert heading.endswith(r"\right|$"), heading
+    assert heading.startswith(r"\textbf{Extrema} \text{ — } \left|"), heading
+    assert heading.endswith(r"\right|"), heading
 
 
 def test_both_sides_of_an_intersection(monkeypatch, capsys):
@@ -83,8 +87,8 @@ def test_both_sides_of_an_intersection(monkeypatch, capsys):
     capsys.readouterr()
 
     assert found == [
-        r"Intersections — V(x) / $\displaystyle \dfrac{q x}{3}$",
-        r"Intersections — $\displaystyle \dfrac{q x}{3}$ / V(x)",
+        r"\textbf{Intersections} \text{ — } V\left(x\right) \text{ / } \dfrac{q x}{3}",
+        r"\textbf{Intersections} \text{ — } \dfrac{q x}{3} \text{ / } V\left(x\right)",
     ], found
 
 
@@ -98,4 +102,7 @@ def test_a_user_function_still_reads_as_written(monkeypatch, capsys):
     )
     capsys.readouterr()
 
-    assert found == ["Extrema — M(x)", "Extrema — |M(x)|"], found
+    assert found == [
+        r"\textbf{Extrema} \text{ — } M\left(x\right)",
+        r"\textbf{Extrema} \text{ — } \left|M\left(x\right)\right|",
+    ], found

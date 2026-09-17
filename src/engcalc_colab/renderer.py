@@ -2773,53 +2773,67 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
     return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
 
 
-# The look `engcalc-table` already has, in values rather than a rule, because `governing`
-# and `summary` need the same one and there is no third place for it to drift to.
-_SHORT_TABLE_FONT = "0.92rem"
-_SHORT_TABLE_CELL = (
-    f"padding:0.28rem 0.62rem;border-bottom:1px solid rgba(127,127,127,0.20);"
-    f"text-align:left;white-space:nowrap;"
-)
+# --- computed blocks -------------------------------------------------------------------
+#
+# Roots, extrema, intersections, `governing`, `table` and `summary` are `Math` outputs,
+# the output the working is. They were `Markdown` carrying HTML, because #146 needed them
+# to typeset and a markdown output does - but it typesets only the mathematics. The words
+# were in the notebook's sans-serif beside MathJax's serif, a line too wide for the cell
+# wrapped as prose wraps, and the block started at the text's edge rather than the
+# working's. The engineer, on 0.31.2: "se ve como un poco amontonado, hay fuentes
+# distintas, no se ve ordenado".
+
+# What `\text{}` cannot hold. A label is text the sheet typed, and inside a `Math` output a
+# brace unbalances the array, `&` opens a column, `%` starts a comment and `$` switches to
+# mathematics; `<` and `>` too, for a front end that hands the output to the page as markup
+# before MathJax reads it. None of them is in a name anybody writes, so they are left out,
+# not escaped: how an escape reads inside `\text{}` differs between MathJax versions.
+_NOT_TEXT = frozenset("\\{}$&%#^~<>")
+
+# A response as a sheet names it: `U1(x)`, and `|M(x)|` for its absolute value.
+_RESPONSE_LABEL = re.compile(r"(\|?)([A-Za-z][A-Za-z0-9_]*)\(([A-Za-z][A-Za-z0-9_]*)\)(\|?)")
+_NAME = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 
 
-def _wide_table_cell(index: int, *, header: bool = False) -> str:
-    """One cell of a `table(...)`: the variable's column reads left, the responses right.
+def _block_words(words: str) -> str:
+    """Words in a computed block, set as text in the block's own font."""
+    kept = "".join(character for character in words if character not in _NOT_TEXT)
+    return rf"\text{{{kept}}}"
 
-    `th:first-child` and `td:first-child` did that as a rule, and a rule is exactly what
-    a `Markdown` output drops, so the column index decides it here instead.
+
+def _response_label_latex(label: str) -> str:
+    r"""A response named the way its definition row names it: `U_{1}\left(x\right)`.
+
+    The label is the text the sheet typed. It was printed as that text - `U1(x)` in a
+    heading, one line under the row that defines `U_{1}(x)` - because in an HTML block
+    anything else meant parsing it. A name and a call of one name are all a label is, so
+    those are typeset by the function that writes a definition's left-hand side, and
+    anything else stays words.
     """
-    rule = "rgba(127,127,127,0.42)" if header else "rgba(127,127,127,0.20)"
-    weight = "font-weight:600;" if header else ""
-    align = "left" if index == 0 else "right"
-    return (
-        f"padding:0.28rem 0.62rem;border-bottom:1px solid {rule};"
-        f"text-align:{align};white-space:nowrap;{weight}"
-    )
+    match = _RESPONSE_LABEL.fullmatch(label)
+    if match is not None and match.group(1) == match.group(4):
+        call = _render_function_call_lhs(match.group(2), (sp.Symbol(match.group(3)),))
+        return rf"\left|{call}\right|" if match.group(1) else call
+    if _NAME.fullmatch(label):
+        return _latex(sp.Symbol(label))
+    return _block_words(label)
 
 
-def _short_table_cell(content: str) -> str:
-    return f'<td style="{_SHORT_TABLE_CELL}">{content}</td>'
+def _computed_block(rows: list[str]) -> str:
+    r"""One computed block, in the frame the working has.
 
-
-def _short_table_block(title: str, body: str) -> str:
-    """A titled two-column table: `governing`'s intervals, `summary`'s reported values.
-
-    Both used to emit `class="engcalc-characteristic"` - singular - while the only rules
-    anyone wrote are for `engcalc-characteristics`, plural, on the block `extrema` uses.
-    One letter, nothing matched, and both fell back to the browser: 16 px against the
-    14.72 px of the table beside them, and `padding:1px`, which is why a span and its
-    label sat against each other. Three tables on one page in two sizes.
-
-    Inline attributes rather than a `<style>`, and deliberately: a `<style>` does not
-    survive a `Markdown` output - measured in Colab - and these blocks are about to become
-    one so their mathematics finally typesets. This is the spelling that works in both.
+    `\hspace{0.2em}` and an array, so it starts at the working's edge; every row in display
+    style, `\\[8pt]` apart, as the working's rows are. An empty row above the first and below
+    the last gives it room from the blocks around it. Measured, not assumed: a strut in the
+    first row put the room *under* a table, whose array is centred on its row, and a
+    trailing `\\` alone is dropped by MathJax. And one row per point: a row too wide for the
+    cell scrolls sideways, which is what the engineer asked of a long term.
     """
+    body = r" \\[8pt] ".join(rf"\displaystyle {row}" for row in rows)
     return (
-        f'<div style="margin:0.35rem 0 0.55rem 0;font-size:{_SHORT_TABLE_FONT};'
-        'line-height:1.35;">'
-        f'<div style="font-weight:600;margin-bottom:0.15rem;">{title}</div>'
-        '<table style="border-collapse:collapse;">'
-        f"<tbody>{body}</tbody></table></div>"
+        r"\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt] "
+        + body
+        + r" \\[4pt] \phantom{0} \end{array}"
     )
 
 
@@ -2847,18 +2861,15 @@ def _table_unit_text(unit) -> str:
 
 
 def _table_header(label: str, unit) -> str:
-    r"""`U1(x) [$\mathrm{kgf} \cdot \mathrm{cm}$]`.
+    r"""`U_{1}\left(x\right)\,[\mathrm{kgf} \cdot \mathrm{cm}]`.
 
-    The unit typesets and the label does not, and that is a decision rather than an
-    oversight: the unit comes from Pint and is mathematics, while the label is the text
-    the sheet typed - `U1(x)`, `M(x)`, whatever the engineer called it - and turning that
-    into LaTeX means parsing it. A name the reader wrote is shown as the reader wrote it.
+    The label is named as its definition names it, and the unit follows in brackets.
     """
-    safe_label = escape(label)
+    name = _response_label_latex(label)
     unit_latex = _latex_unit_text(unit)
     if not unit_latex:
-        return safe_label
-    return f"{safe_label} [${unit_latex}$]"
+        return name
+    return rf"{name}\,[{unit_latex}]"
 
 
 def _in_unit(quantity, unit, settings: RenderSettings):
@@ -2911,18 +2922,15 @@ def _table_magnitude(quantity, settings: RenderSettings, *, exponent: bool = Fal
     r"""A table column carries its unit in the header, so the unit is chosen once
     for the column and this only formats. See ``_aggregate_unit``.
 
-    `_scientific_text`, because a table is an HTML output and Colab typesets nothing
-    inside one: a cell that needed a power of ten showed `3.51 \times 10^{-8}` with its
-    backslash. The column headers already read as plain text; this makes the cells
-    agree with them.
+    A cell of the table's array, so its power of ten is LaTeX, `3.51 \times 10^{-8}`.
 
     The notation is chosen once for the column too, and for the same reason the unit is:
     `673991.63` printed directly above `1.20×10⁶` in one column of eleven rows. See
     ``_column_wants_exponent``.
     """
-    return "$" + _magnitude_text(
+    return _magnitude_text(
         quantity.magnitude, settings, scientific=_scientific_latex, exponent=exponent
-    ) + "$"
+    )
 
 
 def _aggregate_unit(quantities, settings: RenderSettings, fallback):
@@ -3002,7 +3010,7 @@ def render_table(
     *,
     settings: RenderSettings | None = None,
 ) -> str:
-    """Render a unit-aware engineering table as compact scoped HTML."""
+    """A unit-aware table: an array with a rule under its header and between its columns."""
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
     point_unit = _aggregate_unit(result.point_values, active_settings, result.point_unit)
     column_units = [
@@ -3016,10 +3024,7 @@ def render_table(
             for column, unit in zip(result.columns, column_units)
         ),
     ]
-    header_html = "".join(
-        f'<th style="{_wide_table_cell(index, header=True)}">{header}</th>'
-        for index, header in enumerate(headers)
-    )
+    header = " & ".join(headers)
 
     # Per column, like the unit above it and for the same reason. A span in centimetres
     # reads perfectly well in decimals while the moment beside it needs an exponent, and
@@ -3051,43 +3056,35 @@ def render_table(
                 result.columns, column_units, column_exponents
             )
         )
-        rows.append(
-            "<tr>"
-            + "".join(
-                f'<td style="{_wide_table_cell(index)}">{cell}</td>'
-                for index, cell in enumerate(cells)
-            )
-            + "</tr>"
-        )
+        rows.append(" & ".join(cells))
 
-    body_html = "".join(rows)
-    # Inline, because a `<style>` block does not survive a `Markdown` output - measured
-    # in Colab - and this is one now so its cells typeset. The values are the ones the
-    # rule block carried, moved rather than chosen.
-    return (
-        '<div style="margin:0.35rem 0 0.55rem 0;overflow-x:auto;">'
-        f'<table style="border-collapse:collapse;font-size:{_SHORT_TABLE_FONT};'
-        'line-height:1.35;">'
-        f"<thead><tr>{header_html}</tr></thead>"
-        f"<tbody>{body_html}</tbody>"
-        "</table></div>"
+    # The variable's column reads left and the responses right, as the HTML table's cells
+    # were aligned; a rule under the header and between columns, as its borders were.
+    columns = "l" + "|r" * len(result.columns)
+    # A strut on the first row keeps it off the rule above it.
+    rows[0] = r"\rule{0pt}{1.4em}" + rows[0]
+    body = r" \\[3pt] ".join(rows)
+    return _computed_block(
+        [rf"\begin{{array}}{{{columns}}} {header} \\ \hline {body} \end{{array}}"]
     )
-
 
 
 CharacteristicResult = RootsResult | IntersectionsResult | ExtremaResult | InequalityResult
 
-# Results that are their own HTML block rather than a row in the aligned LaTeX array.
-# `render_result` returns finished HTML for these, so anything that drops one into
-# `render_aligned_results` embeds a <div> inside \begin{array} and the reader sees the
-# markup as text. That is exactly what a notebook showed for `governing(...)` and
-# `summary()`, in every release since 0.19.0, while the contracts stayed green by
-# calling the renderers directly.
-HtmlBlockResult = SummaryResult | GoverningResult
+# Results that are a block of their own rather than rows in the aligned array. They were
+# HTML, and anything that dropped one into `render_aligned_results` embedded a <div>
+# inside \begin{array}: a notebook showed the markup as text for `governing(...)` and
+# `summary()` in every release from 0.19.0 while the contracts, calling the renderers
+# directly, stayed green. They are `Math` outputs now, and still their own block.
+ComputedBlockResult = SummaryResult | GoverningResult
 
 
 def _characteristic_role_text(role: str) -> str:
     return role.replace("_", " ")
+
+
+# Between the parts of one row - a coordinate, its value, its role - as `·` was.
+_BLOCK_SEPARATOR = r" \quad\cdot\quad "
 
 
 # `_characteristic_math` stood here. #133 wrote it as the one funnel every characteristic
@@ -3121,18 +3118,13 @@ def _characteristic_quantity_math(
         quantity = _in_unit(quantity, unit, settings)
     else:
         quantity = _display_quantity(quantity, settings, declared=declared)
-    # LaTeX again, and a `$...$` around it. #133 made these blocks plain text because a
-    # `display(HTML(...))` typesets nothing in Colab, which was right about HTML and
-    # wrong about what could be done: a `Markdown` output *does* typeset, and it
-    # typesets the dollar form. Measured in Colab, in one cell, against the parenthesis
-    # form (which markdown eats) and an HTML control (which still renders nothing).
     magnitude = _magnitude_text(
         quantity.magnitude, settings, scientific=_scientific_latex
     )
     unit_latex = _latex_unit_text(quantity.units)
     if not unit_latex:
-        return f"${magnitude}$"
-    return rf"${magnitude}\,{unit_latex}$"
+        return magnitude
+    return rf"{magnitude}\,{unit_latex}"
 
 
 def _characteristic_symbolic_math(value) -> str:
@@ -3158,8 +3150,8 @@ def _characteristic_symbolic_math(value) -> str:
     # it. The equation blocks write every cell `\displaystyle`; this is the same size.
     # `\dfrac` as well, unlike the matrix cells: `\displaystyle` sizes only the outermost
     # fraction, and measured on that frame the fractions inside the root stayed at 3.8 px.
-    latex = _latex(value).replace(r"\frac", r"\dfrac")
-    return rf"$\displaystyle {latex}$"
+    # Display style comes from the block's row, which sets every row `\displaystyle`.
+    return _latex(value).replace(r"\frac", r"\dfrac")
 
 
 def _characteristic_name(name: str) -> str:
@@ -3167,7 +3159,7 @@ def _characteristic_name(name: str) -> str:
     try:
         return _characteristic_symbolic_math(sp.Symbol(name))
     except Exception:
-        return escape(name)
+        return _block_words(name)
 
 
 def _characteristic_point_coordinate(
@@ -3183,16 +3175,16 @@ def _characteristic_point_coordinate(
     variable, on one block, in two units - and the reader has to convert before they can
     tell which root is where.
     """
-    variable_html = _characteristic_symbolic_math(sp.Symbol(variable))
+    variable_latex = _characteristic_symbolic_math(sp.Symbol(variable))
     if point.provenance == "numeric":
         return (
-            f"{variable_html} ≈ "
+            rf"{variable_latex} \approx "
             f"{_characteristic_quantity_math(point.x_quantity, settings, unit=unit)}"
         )
 
     symbolic = _characteristic_symbolic_math(point.x_symbolic)
     evaluated = _characteristic_quantity_math(point.x_quantity, settings, unit=unit)
-    return f"{variable_html} = {symbolic} ({evaluated})"
+    return rf"{variable_latex} = {symbolic}\,\left({evaluated}\right)"
 
 
 def _characteristic_point_value(
@@ -3205,15 +3197,15 @@ def _characteristic_point_value(
     if point.provenance == "numeric" or point.value_symbolic is None:
         if point.value_quantity is None:
             return None
-        return "value ≈ " + _characteristic_value_math(
+        return r"\text{value} \approx " + _characteristic_value_math(
             point.value_quantity, settings, zero_unit
         )
 
     symbolic = _characteristic_symbolic_math(point.value_symbolic)
     if point.value_quantity is None:
-        return "value = " + symbolic
+        return r"\text{value} = " + symbolic
     evaluated = _characteristic_value_math(point.value_quantity, settings, zero_unit)
-    return f"value = {symbolic} ({evaluated})"
+    return rf"\text{{value}} = {symbolic}\,\left({evaluated}\right)"
 
 
 def _characteristic_zero_unit(points, settings: RenderSettings):
@@ -3289,13 +3281,7 @@ def _characteristic_interval_text(
     right = "]" if interval.upper_closed else ")"
     lower = _characteristic_quantity_math(interval.lower_quantity, settings, unit=unit)
     upper = _characteristic_quantity_math(interval.upper_quantity, settings, unit=unit)
-    # Already escaped by the helper, so this assembles rather than escaping again.
-    return f"{left}{lower}, {upper}{right}"
-
-
-# Room for a fraction, not only for a line of text: at 0.08 rem the two roots of a frame
-# were 1 px apart.
-_CHARACTERISTIC_ROW_OPEN = '<div style="margin:0.45rem 0;">'
+    return rf"\left{left}{lower}, {upper}\right{right}"
 
 
 def _characteristic_label(label: str, expression) -> str:
@@ -3303,25 +3289,26 @@ def _characteristic_label(label: str, expression) -> str:
 
     The label is `str()` of the expression, so `det(K - w^2*M)` headed its roots as
     `k_1*k_2 - k_1*m_2*w**2 - ...` while the roots under it were typeset. A user function
-    carries no expression and keeps `M(x)`.
+    carries no expression and is named as its definition row names it.
     """
     if expression is None:
-        return escape(label)
+        return _response_label_latex(label)
     return _characteristic_symbolic_math(expression)
 
 
 def _characteristic_heading(result: CharacteristicResult) -> str:
     if isinstance(result, InequalityResult):
-        return "Where " + escape(result.variable) + " satisfies the inequality"
+        variable = _characteristic_symbolic_math(sp.Symbol(result.variable))
+        return rf"\textbf{{Where}}\ {variable}\ \textbf{{satisfies the inequality}}"
     if isinstance(result, RootsResult):
-        return f"Roots — {_characteristic_label(result.display_label, result.label_expression)}"
+        label = _characteristic_label(result.display_label, result.label_expression)
+        return rf"\textbf{{Roots}} \text{{ — }} {label}"
     if isinstance(result, IntersectionsResult):
-        return (
-            "Intersections — "
-            f"{_characteristic_label(result.left_label, result.left_expression)} / "
-            f"{_characteristic_label(result.right_label, result.right_expression)}"
-        )
-    return f"Extrema — {_characteristic_label(result.display_label, result.label_expression)}"
+        left = _characteristic_label(result.left_label, result.left_expression)
+        right = _characteristic_label(result.right_label, result.right_expression)
+        return rf"\textbf{{Intersections}} \text{{ — }} {left} \text{{ / }} {right}"
+    label = _characteristic_label(result.display_label, result.label_expression)
+    return rf"\textbf{{Extrema}} \text{{ — }} {label}"
 
 
 def render_characteristic_result(
@@ -3329,16 +3316,17 @@ def render_characteristic_result(
     *,
     settings: RenderSettings | None = None,
 ) -> str:
-    """Render one standalone exact-characteristic result as compact HTML/MathJax."""
+    """One standalone exact-characteristic result, as a computed block."""
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
     domain_unit = _characteristic_domain_unit(
         result.lower_quantity, result.upper_quantity, active_settings
     )
     domain = (
-        _characteristic_quantity_math(
+        r"\text{Domain: } "
+        + _characteristic_quantity_math(
             result.lower_quantity, active_settings, unit=domain_unit
         )
-        + " to "
+        + r" \text{ to } "
         + _characteristic_quantity_math(
             result.upper_quantity, active_settings, unit=domain_unit
         )
@@ -3361,57 +3349,49 @@ def render_characteristic_result(
             parts.append(value_text)
         if point.roles:
             parts.append(
-                ", ".join(_characteristic_role_text(role) for role in point.roles)
+                _block_words(
+                    ", ".join(_characteristic_role_text(role) for role in point.roles)
+                )
             )
         if point.side != "at":
-            parts.append(escape(point.side))
-        rows.append(_CHARACTERISTIC_ROW_OPEN + " · ".join(parts) + "</div>")
+            parts.append(_block_words(point.side))
+        rows.append(_BLOCK_SEPARATOR.join(parts))
 
     for interval in result.intervals:
         interval_text = _characteristic_interval_text(
             interval, active_settings, domain_unit
         )
         if isinstance(result, InequalityResult) or interval.role == "satisfies":
-            text = f"{escape(result.variable)} in {interval_text}"
+            variable = _characteristic_symbolic_math(sp.Symbol(result.variable))
+            text = rf"{variable} \text{{ in }} {interval_text}"
         elif isinstance(result, RootsResult) or interval.role == "roots":
-            text = f"all x in {interval_text}"
+            text = rf"\text{{all x in }} {interval_text}"
         elif isinstance(result, IntersectionsResult) or interval.role == "coincident":
-            text = f"coincident on {interval_text}"
+            text = rf"\text{{coincident on }} {interval_text}"
         else:
-            role = escape(_characteristic_role_text(interval.role))
-            text = f"{role} on {interval_text}"
+            role = _characteristic_role_text(interval.role)
+            text = _block_words(f"{role} on ") + f" {interval_text}"
             if interval.value_quantity is not None:
                 text += (
-                    " · value = "
+                    _BLOCK_SEPARATOR
+                    + r"\text{value} = "
                     + _characteristic_quantity_math(
                         interval.value_quantity,
                         active_settings,
                     )
                 )
-        rows.append(_CHARACTERISTIC_ROW_OPEN + f"{text}</div>")
+        rows.append(text)
 
     if isinstance(result, ExtremaResult):
         if result.unbounded_above:
-            rows.append(_CHARACTERISTIC_ROW_OPEN + 'unbounded above</div>')
+            rows.append(_block_words("unbounded above"))
         if result.unbounded_below:
-            rows.append(_CHARACTERISTIC_ROW_OPEN + 'unbounded below</div>')
+            rows.append(_block_words("unbounded below"))
 
     if not rows:
-        rows.append(_CHARACTERISTIC_ROW_OPEN + 'no finite characteristic points</div>')
+        rows.append(_block_words("no finite characteristic points"))
 
-    # Inline, because a `<style>` block does not survive a `Markdown` output - measured
-    # in Colab - and this is one now so its mathematics typesets. The values are the ones
-    # the rule block carried.
-    return (
-        f'<div style="margin:0.35rem 0 0.55rem 0;font-size:{_SHORT_TABLE_FONT};'
-        'line-height:1.45;">'
-        '<div style="font-weight:600;margin-bottom:0.15rem;">'
-        f'{_characteristic_heading(result)}</div>'
-        '<div style="opacity:0.78;margin-bottom:0.18rem;">'
-        f'Domain: {domain}</div>'
-        + "".join(rows)
-        + '</div>'
-    )
+    return _computed_block([_characteristic_heading(result), domain, *rows])
 
 _ASSUMPTION_RELATIONS = {
     "positive": ">",
@@ -3452,12 +3432,7 @@ def render_governing_result(
     *,
     settings: RenderSettings | None = None,
 ) -> str:
-    """One row per interval: the span, then the response that governs it.
-
-    HTML rather than a MathJax array, to match how the other standalone analyses -
-    roots, extrema, intersections - already present themselves. This is a table of
-    intervals, and it is read as one.
-    """
+    """One row per interval: the span, then the response that governs it."""
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
     # The domain, which the rows partition. `GoverningResult` does not carry it as a
     # field because its intervals cover it by construction - the model refuses a
@@ -3467,23 +3442,21 @@ def render_governing_result(
         result.intervals[-1].upper_quantity,
         active_settings,
     )
-    rows: list[tuple[str, str]] = []
+    rows: list[str] = []
     for interval in result.intervals:
         span = (
             _characteristic_quantity_math(
                 interval.lower_quantity, active_settings, unit=span_unit
             )
-            + " to "
+            + r" \text{ to } "
             + _characteristic_quantity_math(
                 interval.upper_quantity, active_settings, unit=span_unit
             )
         )
-        rows.append((span, escape(interval.label)))
-    body = "".join(
-        f"<tr>{_short_table_cell(span)}{_short_table_cell(label)}</tr>"
-        for span, label in rows
-    )
-    return _short_table_block(f"Governing — {escape(result.variable)}", body)
+        rows.append(rf"\displaystyle {span} & \qquad \displaystyle {_response_label_latex(interval.label)}")
+    variable = _characteristic_symbolic_math(sp.Symbol(result.variable))
+    table = r"\begin{array}{ll} " + r" \\[8pt] ".join(rows) + r" \end{array}"
+    return _computed_block([rf"\textbf{{Governing}} \text{{ — }} {variable}", table])
 
 
 def render_summary_result(
@@ -3491,10 +3464,10 @@ def render_summary_result(
     *,
     settings: RenderSettings | None = None,
 ) -> str:
-    """The reported values, in the order they were first marked.
+    """The reported values, in the order they were first marked, as the working writes a result.
 
-    HTML, like the tables and the standalone analyses, because that is what it is: a
-    short table the reader looks at instead of scrolling back through the working.
+    A short table the reader looks at instead of scrolling back through the working, so
+    each row reads the way that working does: `M_{u} = 183.60 kN·m`.
     """
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
     # The name as mathematics and the value with `declared=False`, both to agree with
@@ -3503,16 +3476,14 @@ def render_summary_result(
     # put `0.02 m` in the summary two lines under `20.00 mm` in the working, for the same
     # quantity. The name was plain text for the same reason - nobody checked the two
     # against each other, because nobody had seen them side by side.
-    rows = "".join(
-        "<tr>"
-        + _short_table_cell(_characteristic_name(name))
-        + _short_table_cell(
-            _characteristic_quantity_math(quantity, active_settings, declared=False)
-        )
-        + "</tr>"
+    rows = r" \\[8pt] ".join(
+        rf"\displaystyle {_characteristic_name(name)} & = & \displaystyle "
+        + _characteristic_quantity_math(quantity, active_settings, declared=False)
         for name, quantity in result.entries
     )
-    return _short_table_block("Summary", rows)
+    return _computed_block(
+        [r"\textbf{Summary}", r"\begin{array}{lcl} " + rows + r" \end{array}"]
+    )
 
 
 def render_result(result: CalculationResult, *, settings: RenderSettings | None = None) -> str:

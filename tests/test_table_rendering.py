@@ -1,7 +1,7 @@
 from dataclasses import replace
 
 import engcalc_colab.renderer as renderer_module
-from conftest import block_text
+from conftest import block_text, table_cells
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.renderer import RenderSettings
@@ -28,12 +28,11 @@ def test_render_table_places_units_once_in_headers_not_cells():
 
     html = render_table(result)
 
-    # Through the reader's view: the header is `x [$\mathrm{m}$]` in the markup now,
-    # because the block is a `Markdown` output and its units typeset. What this pins is
-    # unchanged - the unit is named once, in the header, and never in a cell.
-    assert "x [m]" in block_text(html)
-    assert "M(x) [kN·m]" in block_text(html)
-    body = block_text(html.split("<tbody>", 1)[1])
+    # Through the reader's view, one cell at a time. What this pins is unchanged - the
+    # unit is named once, in the header, and never in a cell.
+    header, rows = table_cells(html)
+    assert header == ["x [m]", "M(x) [kN·m]"], header
+    body = " ".join(cell for row in rows for cell in row)
     assert "kN" not in body
     assert "[m]" not in body
 
@@ -61,12 +60,9 @@ def test_render_table_omits_dimensionless_unit_suffixes():
     result = eval_cell(engine, "table(x^2, x, 0, 2, 3)")[-1]
 
     html = render_table(result)
-    header = html.split("<thead>", 1)[1].split("</thead>", 1)[0]
+    header, _ = table_cells(html)
 
-    assert "dimensionless" not in header
-    assert "[" not in header
-    assert ">x<" in header
-    assert ">x**2<" in header
+    assert header == ["x", "x**2"], header
 
 
 def test_render_table_preserves_response_and_row_order():
@@ -83,11 +79,10 @@ def test_render_table_preserves_response_and_row_order():
 
     html = render_table(result)
 
-    assert html.index("M_D(x)") < html.index("M_L(x)")
-    # The row as the reader reads it. A cell is `$8.00$` in the markup now, so the
-    # literal `<td>` spelling this used cannot be matched - and the order of the three
-    # numbers across the row is what it was about.
-    assert "2.00 8.00 4.00" in block_text(html)
+    header, rows = table_cells(html)
+    assert header == ["x [m]", "M_D(x) [kN·m]", "M_L(x) [kN·m]"], header
+    # The order of the three numbers across the row is what this was about.
+    assert ["2.00", "8.00", "4.00"] in rows, rows
 
 
 def test_render_table_escapes_variable_and_response_labels():
@@ -103,7 +98,8 @@ def test_render_table_escapes_variable_and_response_labels():
 
     html = render_table(escaped_result)
 
-    assert "<x&>" not in html
-    assert "<b>M&</b>" not in html
-    assert "&lt;x&amp;&gt;" in html
-    assert "&lt;b&gt;M&amp;&lt;/b&gt;" in html
+    # A `Math` output now: a label can carry no markup into the page and no `&` into the
+    # array, where it would open a column that is not there.
+    assert "<" not in html and ">" not in html, html
+    header, rows = table_cells(html)
+    assert len(header) == 2 and all(len(row) == 2 for row in rows), (header, rows)
