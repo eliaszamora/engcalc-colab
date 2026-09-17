@@ -73,12 +73,12 @@ Las dos combinaciones mayoradas del código, escritas con sus factores para que 
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Qué combinación gobierna</div>
 
 === 14 · Math ===
-\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
 \displaystyle \textbf{Governing} \text{ — } x \\[8pt]
 \displaystyle \begin{array}{ll} \displaystyle 0.00\,\mathrm{cm} \text{ to } 266.67\,\mathrm{cm} & \qquad \displaystyle U_{1}\left(x\right) \\[8pt]
 \displaystyle 266.67\,\mathrm{cm} \text{ to } 333.33\,\mathrm{cm} & \qquad \displaystyle U_{2}\left(x\right) \\[8pt]
 \displaystyle 333.33\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} & \qquad \displaystyle U_{1}\left(x\right) \end{array} \\[4pt]
-\phantom{0} \end{array}
+\rule{0pt}{0.7em} \end{array}
 
 === 15 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Envolvente</div>
@@ -99,7 +99,7 @@ annotation: (300, $1.97 \times 10^{6}$)
 Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del otro.
 
 === 19 · Math ===
-\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
 \displaystyle \begin{array}{l|r|r} x\,[\mathrm{cm}] & U_{1}\left(x\right)\,[\mathrm{kgf} \cdot \mathrm{cm}] & U_{2}\left(x\right)\,[\mathrm{kgf} \cdot \mathrm{cm}] \\
 \hline \rule{0pt}{1.4em}0.00 & 0.00 & 0.00 \\[3pt]
 60.00 & 6.74 \times 10^{5} & 5.53 \times 10^{5} \\[3pt]
@@ -112,19 +112,19 @@ Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del
 480.00 & 1.20 \times 10^{6} & 1.03 \times 10^{6} \\[3pt]
 540.00 & 6.74 \times 10^{5} & 5.53 \times 10^{5} \\[3pt]
 600.00 & 0.00 & 0.00 \end{array} \\[4pt]
-\phantom{0} \end{array}
+\rule{0pt}{0.7em} \end{array}
 
 === 20 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Momento máximo de diseño</div>
 
 === 21 · Math ===
-\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
 \displaystyle \textbf{Extrema} \text{ — } U_{1}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
 \displaystyle x = \dfrac{L}{2}\,\left(300.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2}\,\left(1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{local max, global max} \\[8pt]
 \displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[4pt]
-\phantom{0} \end{array}
+\rule{0pt}{0.7em} \end{array}
 
 === 22 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle 0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2} \\[8pt]
@@ -148,9 +148,9 @@ La flecha se verifica con la carga de servicio sin mayorar, y el límite habitua
 & = & \displaystyle 2.00\,\mathrm{cm} \end{array}
 
 === 26 · Math ===
-\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
 \displaystyle \textbf{Summary} \\[8pt]
 \displaystyle \begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle 1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
 \displaystyle \delta & = & \displaystyle 0.40\,\mathrm{cm} \\[8pt]
 \displaystyle \delta_{adm} & = & \displaystyle 2.00\,\mathrm{cm} \end{array} \\[4pt]
-\phantom{0} \end{array}
+\rule{0pt}{0.7em} \end{array}

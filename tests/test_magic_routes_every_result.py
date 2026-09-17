@@ -156,7 +156,7 @@ def test_every_result_the_engine_produces_is_routed_somewhere(monkeypatch):
     blocks = [
         item.data
         for item in displayed
-        if isinstance(item, Math) and r"\phantom{0} \\[-4pt]" in item.data
+        if isinstance(item, Math) and r"\rule{0pt}{0.7em} \\[-4pt]" in item.data
     ]
     assert len(blocks) == 3
     assert any("Roots" in block for block in blocks)

@@ -102,9 +102,9 @@ def test_every_block_starts_at_the_working_s_edge(outputs):
 def test_every_block_has_room_above_and_below(outputs):
     for kind, output in blocks(outputs).items():
         assert output.data.startswith(
-            r"\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt] \displaystyle "
+            r"\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt] \displaystyle "
         ), (kind, output.data[:120])
-        assert output.data.endswith(r"\\[4pt] \phantom{0} \end{array}"), (kind, output.data[-60:])
+        assert output.data.endswith(r"\\[4pt] \rule{0pt}{0.7em} \end{array}"), (kind, output.data[-60:])
 
 
 def test_the_words_of_a_block_are_set_as_text(outputs):

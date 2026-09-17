@@ -74,7 +74,7 @@ _LATEX_TEXT = {
 def block_text(html: str) -> str:
     """One rendered block as the reader sees it: tags gone, LaTeX read back as text."""
     text = _re.sub(r"<[^>]+>", " ", html)
-    if r"\phantom{0} \\[-4pt]" in text:
+    if r"\rule{0pt}{0.7em} \\[-4pt]" in text:
         text = _computed_block_text(text)
     # A characteristic block sets its formulas `$\displaystyle ...$` with `\dfrac`, so they
     # read at the page's size; both are sizes, not words.
@@ -111,7 +111,7 @@ def _computed_block_text(latex: str) -> str:
     The frame, the sizes and the column separators are how it is set, not what it says;
     the rows come back one after another, the way the HTML block's lines did.
     """
-    text = _re.sub(r"\\rule\{[^}]*\}\{[^}]*\}", "", latex).replace(r"\phantom{0}", "")
+    text = _re.sub(r"\\rule\{[^}]*\}\{[^}]*\}", "", latex)
     text = _re.sub(r"\\hspace\{[^}]*\}", "", text)
     text = _re.sub(r"\\begin\{array\}\{[^}]*\}|\\end\{array\}", " ", text)
     text = _re.sub(r"\\text(?:bf)?\{([^}]*)\}", r"\1", text)

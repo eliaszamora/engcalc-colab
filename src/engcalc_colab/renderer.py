@@ -2828,12 +2828,21 @@ def _computed_block(rows: list[str]) -> str:
     first row put the room *under* a table, whose array is centred on its row, and a
     trailing `\\` alone is dropped by MathJax. And one row per point: a row too wide for the
     cell scrolls sideways, which is what the engineer asked of a long term.
+
+    Those two rows hold a strut and not a `\phantom{0}`. A phantom reserves the space of
+    a character by *being* that character with the ink left off, so the zero was in the
+    block's text: selecting a roots block and copying it gave
+    `0Roots — V(x)Domain: …root0`, and anything reading the page as text - a reader
+    pasting a block into a report, a search - got two zeros that say nothing. A screen
+    reader was never affected; MathJax emits `<mphantom>`, which is skipped. Measured in
+    MathJax at the page's own width: a block with `\rule{0pt}{0.7em}` in those rows is
+    101.8 px against the phantom's 101.8 px, row for row.
     """
     body = r" \\[8pt] ".join(rf"\displaystyle {row}" for row in rows)
     return (
-        r"\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt] "
+        r"\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt] "
         + body
-        + r" \\[4pt] \phantom{0} \end{array}"
+        + r" \\[4pt] \rule{0pt}{0.7em} \end{array}"
     )
 
 

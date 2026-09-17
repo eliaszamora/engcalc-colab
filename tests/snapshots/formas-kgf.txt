@@ -115,12 +115,12 @@ El empotramiento es un borde y no vale cero, así que distingue la expresión es
 \displaystyle U_{3}\left(x\right) & = & \displaystyle 1.2 \, \mathrm{Dv}\left(x\right) + 1.6 \, \mathrm{Lvv}\left(x\right) \end{array}
 
 === 16 · Math ===
-\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
 \displaystyle \textbf{Extrema} \text{ — } U_{3}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
 \displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}\,\left(7.49 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global max} \\[4pt]
-\phantom{0} \end{array}
+\rule{0pt}{0.7em} \end{array}
 
 === 17 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un valor absoluto</div>
@@ -135,12 +135,12 @@ Un cortante que no cambia de signo en el tramo: el valor absoluto se resuelve, y
 \displaystyle V_{uso}\left(x\right) & = & \displaystyle R_{uso} + q_{uso} x \end{array}
 
 === 20 · Math ===
-\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
 \displaystyle \textbf{Extrema} \text{ — } \left|V_{uso}\left(x\right)\right| \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 200.00\,\mathrm{cm} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = - R_{uso}\,\left(917.74\,\mathrm{kgf}\right) \quad\cdot\quad \text{boundary, global max} \\[8pt]
 \displaystyle x = L_{c}\,\left(200.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = - q_{uso} L_{c} - R_{uso}\,\left(713.80\,\mathrm{kgf}\right) \quad\cdot\quad \text{boundary, global min} \\[4pt]
-\phantom{0} \end{array}
+\rule{0pt}{0.7em} \end{array}
 
 === 21 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Una luz escrita en milímetros</div>
@@ -154,10 +154,10 @@ La carga por metro y la luz en milímetros dejan el momento en una unidad que na
 \displaystyle M_{mm}\left(x\right) & = & \displaystyle \frac{q_{mm} x \left(L_{mm} - x\right)}{2} \end{array}
 
 === 24 · Math ===
-\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt]
+\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
 \displaystyle \textbf{Extrema} \text{ — } M_{mm}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
 \displaystyle x = \dfrac{L_{mm}}{2}\,\left(300.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = \dfrac{q_{mm} L_{mm}^{2}}{8}\,\left(825970.13\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{local max, global max} \\[8pt]
 \displaystyle x = L_{mm}\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[4pt]
-\phantom{0} \end{array}
+\rule{0pt}{0.7em} \end{array}
