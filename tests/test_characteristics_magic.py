@@ -23,7 +23,7 @@ def test_eng_magic_flushes_equations_before_characteristic_block_and_resumes(mon
     assert [type(item) for item in displayed] == [Math, Math, Math]
     # Its own output, and a computed block rather than equation rows: it carries the
     # block's spacer row. See test_a_computed_block_is_written_like_the_working.
-    assert r"\phantom{0} \\[-4pt]" in displayed[1].data
+    assert r"\rule{0pt}{0.7em} \\[-4pt]" in displayed[1].data
     assert "Roots" in displayed[1].data
 
 

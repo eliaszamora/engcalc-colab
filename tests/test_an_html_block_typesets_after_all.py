@@ -86,7 +86,7 @@ def _blocks(displayed) -> list[str]:
     blocks = [
         item.data
         for item in items
-        if isinstance(item, Math) and r"\phantom{0} \\[-4pt]" in item.data
+        if isinstance(item, Math) and r"\rule{0pt}{0.7em} \\[-4pt]" in item.data
     ]
     assert len(blocks) == 4, [type(item).__name__ for item in items]
     return blocks

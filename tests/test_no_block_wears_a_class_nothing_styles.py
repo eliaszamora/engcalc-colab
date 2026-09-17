@@ -49,7 +49,7 @@ def blocks(monkeypatch):
         return [
             data
             for data in (str(getattr(obj, "data", "")) for obj in captured)
-            if r"\phantom{0} \\[-4pt]" in data
+            if r"\rule{0pt}{0.7em} \\[-4pt]" in data
         ]
 
     return run
@@ -89,7 +89,7 @@ def test_every_table_on_a_page_is_the_same_size(blocks):
     """Three tables in two sizes is what the reader saw. Every block now opens with the one
     frame, so none of them can be set at a size of its own."""
     frames = {block.split(r"\textbf")[0].split(r"\begin{array}{l|")[0] for block in blocks(SHEET)}
-    assert frames == {r"\hspace{0.2em}\begin{array}{l} \phantom{0} \\[-4pt] \displaystyle "}, frames
+    assert frames == {r"\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt] \displaystyle "}, frames
 
 
 def test_the_cells_of_every_table_are_given_room(blocks):
