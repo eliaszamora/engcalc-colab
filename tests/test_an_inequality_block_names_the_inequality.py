@@ -53,12 +53,12 @@ def heading(source: str) -> str:
     return rendered(source).split("Domain:")[0].strip()
 
 
-# `kN m` and not `kN·m`. Two unit literals multiplied are separated by a LaTeX space
-# wherever the symbolic printer meets them - `M_lim = 20*kN*m` reads `20 kN m` on a
-# working line today, and `3*m*m` reads `3 m m` - which is a defect of its own, found
-# by this change and corrected in its own one. Pinned here as it is so that correction
-# has to come back and say so.
-LIMIT = "20 kN m"
+# `kN·m`, the way the page spells a compound unit everywhere else. It read `kN m` when
+# this heading was written: two unit literals multiplied were separated by a LaTeX space
+# wherever the symbolic printer met them. That was pinned here as `20 kN m` so the
+# correction would have to come back and say so, and this is it saying so - see
+# `test_two_units_multiplied_read_as_one_unit.py`.
+LIMIT = "20 kN·m"
 
 
 def test_the_heading_names_the_inequality_the_sheet_wrote():
