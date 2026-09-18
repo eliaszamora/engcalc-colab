@@ -2,7 +2,39 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.3**.
+Current version: **0.31.4**.
+
+
+## v0.31.4 what reading the rendered memoria found
+
+Six corrections, from rendering the reference pages and the engineer's own cell on 0.31.3
+and reading them - an audit he asked for, "¿hiciste una auditoría visual del output?" -
+and from the one remaining piece of "hay fuentes distintas".
+
+- **An inequality block names the inequality.** `solve(M(x) > 20*kN*m, x, 0, L)` was
+  headed *Where x satisfies the inequality* and never said which: the `20*kN*m` was
+  nowhere on the page. It is headed like its siblings now, `Where — M(x) > 20 kN·m`.
+- **Two units multiplied read as one unit.** `20*kN*m` read `20 kN m` in its formula and
+  `20.00 kN·m` in its result, and `0.30*m*0.60*m` read `0.3 · 0.6 m m` - two metres and a
+  gap, which on the page is `mm`. Two units now join with the centred dot the page uses
+  for every compound unit.
+- **A compound unit reads in the page's order.** `20*kgf*cm` read `20 cm·kgf` one line
+  above its own `20.00 kgf·cm`; only `kN*m` came out right, by the luck of the alphabet.
+  A formula's units now take the order the unit tables write that unit in - force first.
+- **A name of several letters is set apart.** `qD*x` read `qDx` and `0.15*qD*L^2` read
+  `0.15qDL²`. An upright name now takes the thin space an upright unit already took;
+  single italic letters keep their juxtaposition, `b h`.
+- **A block makes room without a character.** Copying a computed block gave
+  `0Roots — …root0`: its spacing rows were `\phantom{0}`, a zero with no ink. They are
+  struts of the same height now, measured to the pixel.
+- **A figure is set in the page's type.** Every figure was matplotlib's sans-serif between
+  equations set in a serif. It is built in DejaVu Serif, inside an `rc_context`, so the
+  notebook's own matplotlib settings are untouched.
+
+The block vocabulary stays in English - `Roots`, `root`, `Domain` - which the engineer
+prefers.
+
+A patch release: corrections only.
 
 
 ## v0.31.3 a computed block is written like the working
@@ -2639,6 +2671,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.4** — what reading the rendered memoria found. An inequality block names its inequality (`Where — M(x) > 20 kN·m`) where it named only the variable. Two units in a formula join with a centred dot - `20 kN·m`, not `20 kN m`, and `m·m`, not the `m m` that read as `mm` - and take the page's order, force first, so `20*kgf*cm` reads `kgf·cm` like its own value. A name of several letters is set apart from its neighbours, `qD x` rather than `qDx`. A computed block makes its room with struts, so copying it no longer gives a zero at each end. A figure is set in a serif like the equations around it, without touching the notebook's own matplotlib settings.
 - **0.31.3** — a computed block is written like the working. Roots, extrema, intersections, `governing`, `table` and `summary` were markdown carrying HTML: the mathematics typeset and the words around it did not, a row too wide for the cell wrapped as prose instead of scrolling, and the block began at the text's edge rather than the working's, with nothing between it and its neighbours. They are `Math` outputs now, in the working's own frame - words as text, headings in bold, a response named as its definition names it, one row per point, a table as an array with its rules, a summary row read as `M_u = 183.60 kN·m` - and what each block says is unchanged, checked block by block against the previous release. With it, a root of a factored combination is written `L/2` and not `0.5L`, as the extrema block a few lines above already wrote the same point.
 - **0.31.2** — what reviewing 0.31.1 found, in five corrections. Two numeric factors are joined by `·`, because a space between them is invisible to MathJax and `2*3*kN` read `23 kN`. A mass has a unit family, kg up to 9999 and t from 10 000, as the engineer asked, so `m = P/g` reads `2497.45 kg` or `15.29 t` rather than `kN·s²/m`. An exact zero reached through a sum, a factor or `subs` keeps its unit, not only one reached by a single call. `M_max := M(L/2)` is evaluated as `numeric(M(L/2))` is, instead of stopping the cell. And a characteristic block sets its formulas in display style with full-size fractions and rows apart, so a frame's frequencies read at the page's size.
 - **0.31.1** — what the first modal memoria on 0.31.0 showed, in five corrections. A row with no name, `numeric(lam)`, was written in the name column and pushed every `=` of its block off the right edge; it goes in the value column. A unit written into a formula reads as one: `10 kN` with a thin space rather than `10kN`, and an upright metre rather than the variable `m`, in definition, written, input and equation rows. A length cubed has a unit family, so a section modulus `M_u/f_y` reads `720.00 cm³` rather than `0.72 kN·m/MPa`. The heading of `roots`, `extrema` and `intersections` is typeset rather than printed in Python syntax. And a definition that simplifies to an exact zero, `M_B = M(L)`, asks the evaluation `numeric(M(L))` already used for its unit and reads `0.00 kN·m`, not `0.00`.
@@ -2718,4 +2751,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.3`.
+Version: `0.31.4`.
