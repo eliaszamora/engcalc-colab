@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import math
 import re
 from dataclasses import dataclass, replace
@@ -264,7 +265,9 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if not expr.is_Mul:
             return self._print(expr)
 
-        args = sorted(expr.args, key=_engineering_factor_key)
+        args = self._units_in_the_page_s_order(
+            sorted(expr.args, key=_engineering_factor_key)
+        )
         separator = self._settings["mul_symbol_latex"]
         rendered: list[str] = []
 
@@ -306,6 +309,31 @@ class _EngineeringLatexPrinter(LatexPrinter):
     def _is_unit_literal(self, term) -> bool:
         base = term.base if term.is_Pow else term
         return isinstance(base, sp.Symbol) and base.name in self.unit_literals
+
+    def _units_in_the_page_s_order(self, args: list) -> list:
+        """The unit factors of one product, put in the order the page spells that unit.
+
+        Only the units trade places, and only among the positions units already held; a
+        number or a name stays where the sort put it. See `_page_unit_order` for which
+        order that is and why.
+        """
+        positions = [index for index, term in enumerate(args) if self._is_unit_literal(term)]
+        if len(positions) < 2:
+            return args
+        units = [args[index] for index in positions]
+        factors = []
+        for term in units:
+            base, exponent = (term.base, term.exp) if term.is_Pow else (term, sp.S.One)
+            if not exponent.is_Integer:
+                return args
+            factors.append((base.name, int(exponent)))
+        order = _page_unit_order(tuple(factors))
+        if order is None:
+            return args
+        reordered = list(args)
+        for position, index in zip(positions, order):
+            reordered[position] = units[index]
+        return reordered
 
     def _is_upright_name(self, term) -> bool:
         """A name of several letters, which `_print_Symbol` sets upright: `qD`, `eqFy`.
@@ -903,6 +931,63 @@ def palette_unit_names(name: str) -> tuple[str, ...]:
         _table_unit_text(registry.Unit(stored))
         for stored in dict.fromkeys(_PALETTES[name].values())
     )
+
+
+@functools.lru_cache(maxsize=None)
+def _page_unit_order(factors: tuple[tuple[str, int], ...]) -> tuple[int, ...] | None:
+    """How the page orders the units of one product, as indices into `factors`.
+
+    `factors` is each unit the printer met, as `(name, exponent)`, in whatever order it
+    met them - SymPy's canonical one, which is alphabetical and not how anybody writes a
+    unit. A quantity keeps the order it was built in, and the family tables build every
+    compound they name force first: `kN * m`, `kgf * cm`, `tonf * m`, `kip * ft`. So a
+    formula's `20*kgf*cm` read `20 cm·kgf` one line above its value's `20.00 kgf·cm`.
+
+    The answer is the tables', matched on the dimension of each factor and not on its
+    name, so `N*mm` takes the order of `N * m` without the tables naming `N * mm`. Every
+    table is asked - SI, technical, US customary and each palette - because this is about
+    how the page writes a unit, not which unit it chooses. Today they cannot disagree: the
+    only product of two units any of them names is a moment, and every one is written
+    force first, so SI's `N * m` alone would answer for all of them. Mutation says so -
+    dropping any one table survives - and it is kept whole because "the page's order" is
+    what it has to mean the day a table names a second kind of product. None when no
+    spelling has the same factors: `kN*m*s` is not a unit any table names, and the order
+    it has is better than one invented here.
+    """
+    from .numeric import engineering_registry
+
+    registry = engineering_registry()
+
+    def dimension(unit) -> tuple[tuple[str, float], ...]:
+        return tuple(sorted(unit.dimensionality.items()))
+
+    try:
+        units = [registry.Unit(name) ** exponent for name, exponent in factors]
+    except Exception:
+        return None
+    ours = [dimension(unit) for unit in units]
+    total = functools.reduce(lambda left, right: left * right, units)
+    key = dimension(total)
+
+    spellings: list[str] = []
+    for table in (_UNIT_FAMILIES, _TECHNICAL_UNIT_FAMILIES, _US_CUSTOMARY_UNIT_FAMILIES):
+        spellings.extend(table.get(key, ()))
+    spellings.extend(
+        palette[key] for palette in _PALETTES.values() if key in palette
+    )
+
+    for spelling in spellings:
+        member = registry.Unit(spelling)
+        theirs = [
+            dimension(registry.Unit(name) ** exponent)
+            for name, exponent in member._units.items()
+        ]
+        # The same factors or none: `m ** 2` is one factor and `m*m` is two, so an area
+        # written as a product keeps its order rather than borrowing a square's.
+        if sorted(theirs) != sorted(ours):
+            continue
+        return tuple(sorted(range(len(units)), key=lambda index: theirs.index(ours[index])))
+    return None
 
 
 def _palette_unit(quantity, settings: RenderSettings) -> str | None:

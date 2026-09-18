@@ -114,3 +114,14 @@ M_lim = 20*kN*m
 numeric(M_lim)
 A_c = 0.30*m*0.60*m
 numeric(A_c)
+
+### Un momento escrito en kgf·cm dentro de una fórmula
+
+"""
+El orden de las dos unidades. Una cantidad guarda el orden en que se construyó, y las
+tablas de la página escriben todo momento con la fuerza primero; una fórmula recibía sus
+factores en orden alfabético, y decía cm·kgf una línea antes de su propio valor en kgf·cm.
+"""
+
+M_kgf = 20000*kgf*cm
+numeric(M_kgf)

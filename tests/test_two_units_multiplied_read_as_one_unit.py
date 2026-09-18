@@ -99,23 +99,17 @@ def test_two_names_that_are_not_units_keep_the_ordinary_product():
 @pytest.mark.parametrize(
     "source, unit",
     [
-        ("M = 20*kgf*cm", r"\mathrm{cm} \cdot \mathrm{kgf}"),
-        ("M = 20*tonf*m", r"\mathrm{m} \cdot \mathrm{tonf}"),
-        ("W = 20*N*mm", r"\mathrm{mm} \cdot \mathrm{N}"),
+        ("M = 20*kgf*cm", r"\mathrm{kgf} \cdot \mathrm{cm}"),
+        ("M = 20*tonf*m", r"\mathrm{tonf} \cdot \mathrm{m}"),
+        ("W = 20*N*mm", r"\mathrm{N} \cdot \mathrm{mm}"),
     ],
 )
 def test_every_palette_spells_its_moment_the_same_way(source, unit):
     """The three the engineer switches between, so no palette is left on the old spelling.
 
-    Each pair comes back in the *other* order - `cm · kgf`, `m · tonf`, `mm · N` - and
-    that is not this correction leaving something out. The order is SymPy's canonical
-    one, alphabetical, not the order the engineer wrote: `20*N*mm` and `20*mm*N` are one
-    expression by the time the printer sees it. `kN*m` at the top of this file reads the
-    right way round by the luck of the alphabet and nothing else.
-
-    It is the same defect `test_one_quantity_is_spelled_one_way.py` removed from
-    quantities - `183.60 m·kN` beside `183.60 kN·m` on one page - still standing on the
-    symbolic side, and it is its own to correct. Pinned as it is so that correction has
-    to come back and say so.
+    These came back `cm · kgf`, `m · tonf` and `mm · N` when this file was written - the
+    order was SymPy's, alphabetical, and `kN*m` read the right way round by the luck of
+    the alphabet - and were pinned that way so the correction would have to come back
+    and say so. It did: see `test_a_compound_unit_reads_in_the_page_s_order.py`.
     """
     assert last(source).endswith(unit)
