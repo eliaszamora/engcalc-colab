@@ -33,6 +33,8 @@ SHEET = """L := 600*cm
 q := 10.20*kgf/cm
 M(x) = q*x*(L - x)/2
 M2(x) = 1.5*M(x)
+P2 := 200*kN
+Md(x) = P2*x*(L - x)/L
 """
 
 
@@ -63,10 +65,15 @@ def texts(figure) -> list[Text]:
         "plot(M(x), x, 0, L)",
         "plot(M(x), M2(x), x, 0, L)",
         'plot(M(x), x, 0, L, title="Momento", xlabel="Posición", ylabel="Momento")',
+        "plot(Md(x), x, 0, L, P2=[200*kN, 400*kN, 600*kN, 800*kN])",
     ],
 )
 def test_every_piece_of_writing_on_a_figure_is_serif(figures, call):
-    """Title, axis labels, ticks, annotations, the offset and a legend: one face."""
+    """Title, axis labels, ticks, annotations, the offset and a legend: one face.
+
+    And the summary panel a sweep of four curves or more draws beside the plot, whose
+    texts are made after the plot is laid out, by the layout pass.
+    """
     for figure in figures(call + "\n"):
         for text in texts(figure):
             assert text.get_fontfamily() == [SERIF], (text.get_text(), text.get_fontfamily())
