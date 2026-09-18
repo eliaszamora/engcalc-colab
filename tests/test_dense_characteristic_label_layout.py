@@ -7,7 +7,7 @@ from matplotlib.text import Annotation, Text
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.plotting import render_plot
-from engcalc_colab.presentation import render_presented_plot
+from engcalc_colab.presentation import _PAGE_TYPE, render_presented_plot
 
 
 _AXES_SIZE_TOLERANCE_PX = 1.0
@@ -115,7 +115,13 @@ def _render(result):
 
 
 def _render_baseline(result):
-    figure = render_plot(result)
+    # In the type the presented figure is built in. The question here is what the summary
+    # panel does to the plot beside it, and a baseline in matplotlib's sans measured the
+    # panel and a change of face at once: serif tick labels are wider, and on the
+    # matplotlib the 3.10 and Colab jobs install the axes came out 1.47 px narrower for
+    # that reason alone.
+    with matplotlib.rc_context(_PAGE_TYPE):
+        figure = render_plot(result)
     axis = figure.axes[0]
     canvas = FigureCanvasAgg(figure)
     canvas.draw()
