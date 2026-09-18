@@ -175,3 +175,14 @@ Un momento límite escrito con sus dos unidades, y un área escrita como largo p
 \displaystyle A_{c} & = & \displaystyle 0.3 \cdot 0.6\,\mathrm{m} \cdot \mathrm{m} \\[8pt]
 & = & \displaystyle 0.3 \cdot 0.6\,\mathrm{m} \cdot \mathrm{m} \\[8pt]
 & = & \displaystyle 1800.00\,\mathrm{cm}^{2} \end{array}
+
+=== 28 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un momento escrito en kgf·cm dentro de una fórmula</div>
+
+=== 29 · Markdown ===
+El orden de las dos unidades. Una cantidad guarda el orden en que se construyó, y las tablas de la página escriben todo momento con la fuerza primero; una fórmula recibía sus factores en orden alfabético, y decía cm·kgf una línea antes de su propio valor en kgf·cm.
+
+=== 30 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{kgf} & = & \displaystyle 20000\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
+& = & \displaystyle 20000\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
+& = & \displaystyle 20000.00\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}
