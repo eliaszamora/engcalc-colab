@@ -140,7 +140,7 @@ def test_the_resolution_lands_on_the_expression_as_written(cell, capsys):
     )
     capsys.readouterr()
 
-    assert r"0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2}" in page, page
+    assert r"0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2}" in page, page
     assert r"\left(0.15" not in page and r"\left(0.6" not in page, page
     assert "183.60" in page, page
 
@@ -164,7 +164,7 @@ def test_a_boundary_value_is_arranged_the_same_way(cell, capsys):
     )
     capsys.readouterr()
 
-    written = r"0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}"
+    written = r"0.6\,\mathrm{qD}\,L^{2} + 0.8\,\mathrm{qL}\,L^{2}"
     assert page.count(written) >= 2, page
     assert r"L^{2} \left(0.6" not in page, page
 

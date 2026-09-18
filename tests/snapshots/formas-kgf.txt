@@ -27,12 +27,12 @@ Un módulo resistente es una longitud al cubo y una curvatura es una longitud a 
 \displaystyle W & = & \displaystyle \frac{I}{c} \\[8pt]
 & = & \displaystyle \frac{\left(540000.00\,\mathrm{cm}^{4}\right)}{\left(30.00\,\mathrm{cm}\right)} \\[8pt]
 & = & \displaystyle 18000.00\,\mathrm{cm}^{3} \\[16pt]
-\displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
-\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x \left(L - x\right)}{2} \\[8pt]
-\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x \left(L - x\right)}{2} \\[8pt]
-\displaystyle \mathrm{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x \left(L - x\right)}{2} \\[8pt]
+\displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle \mathrm{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle U_{1}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathrm{Lv}\left(x\right) \\[16pt]
-\displaystyle M_{u} & = & \displaystyle 0.15 \mathrm{qD} L^{2} + 0.2 \mathrm{qL} L^{2} \\[8pt]
+\displaystyle M_{u} & = & \displaystyle 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2} \\[8pt]
 \displaystyle \kappa & = & \displaystyle \frac{M_{u}}{E I} \\[8pt]
 & = & \displaystyle \frac{\left(1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right)}{\left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(540000.00\,\mathrm{cm}^{4}\right)} \\[8pt]
 & = & \displaystyle 1.45 \times 10^{-5}\,\frac{1}{\mathrm{cm}} \end{array}
@@ -108,10 +108,10 @@ summary: $1.22 \times 10^{7}$
 El empotramiento es un borde y no vale cero, así que distingue la expresión escrita de la simplificada donde la viga, con sus dos bordes en cero, no puede.
 
 === 15 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{Dv}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x^{2}}{2} \\[8pt]
-\displaystyle M_{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x^{2}}{2} \\[8pt]
-\displaystyle \mathrm{Dv}\left(x\right) & = & \displaystyle \frac{\mathrm{qD} x^{2}}{2} \\[8pt]
-\displaystyle \mathrm{Lvv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL} x^{2}}{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{Dv}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x^{2}}{2} \\[8pt]
+\displaystyle M_{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x^{2}}{2} \\[8pt]
+\displaystyle \mathrm{Dv}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x^{2}}{2} \\[8pt]
+\displaystyle \mathrm{Lvv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x^{2}}{2} \\[8pt]
 \displaystyle U_{3}\left(x\right) & = & \displaystyle 1.2 \, \mathrm{Dv}\left(x\right) + 1.6 \, \mathrm{Lvv}\left(x\right) \end{array}
 
 === 16 · Math ===
@@ -119,7 +119,7 @@ El empotramiento es un borde y no vale cero, así que distingue la expresión es
 \displaystyle \textbf{Extrema} \text{ — } U_{3}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
-\displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.6 \mathrm{qD} L^{2} + 0.8 \mathrm{qL} L^{2}\,\left(7.49 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global max} \\[4pt]
+\displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.6\,\mathrm{qD}\,L^{2} + 0.8\,\mathrm{qL}\,L^{2}\,\left(7.49 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global max} \\[4pt]
 \rule{0pt}{0.7em} \end{array}
 
 === 17 · HTML ===
