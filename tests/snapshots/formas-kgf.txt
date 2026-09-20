@@ -170,10 +170,8 @@ Un momento límite escrito con sus dos unidades, y un área escrita como largo p
 
 === 27 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{lim} & = & \displaystyle 20\,\mathrm{kN} \cdot \mathrm{m} \\[8pt]
-& = & \displaystyle 20\,\mathrm{kN} \cdot \mathrm{m} \\[8pt]
 & = & \displaystyle 203943.24\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
 \displaystyle A_{c} & = & \displaystyle 0.3 \cdot 0.6\,\mathrm{m} \cdot \mathrm{m} \\[8pt]
-& = & \displaystyle 0.3 \cdot 0.6\,\mathrm{m} \cdot \mathrm{m} \\[8pt]
 & = & \displaystyle 1800.00\,\mathrm{cm}^{2} \end{array}
 
 === 28 · HTML ===
@@ -184,5 +182,4 @@ El orden de las dos unidades. Una cantidad guarda el orden en que se construyó,
 
 === 30 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{kgf} & = & \displaystyle 20000\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
-& = & \displaystyle 20000\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
 & = & \displaystyle 20000.00\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}
