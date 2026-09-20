@@ -2601,7 +2601,8 @@ def _system_solve_rows(result: SystemSolveResult, settings: RenderSettings) -> l
     Rows here mean the unknowns share the `=` column with everything else on the page,
     which is the whole point of the aligned array.
     """
-    rows = [rf" & & \displaystyle {_latex(equation)}" for equation in result.equations]
+    units = result.unit_literals
+    rows = [rf" & & \displaystyle {_latex(equation, units)}" for equation in result.equations]
     quantities = result.quantities or (None,) * len(result.solutions)
     for (name, value), quantity in zip(result.solutions, quantities):
         lhs = _render_lhs(name, None)
@@ -2614,14 +2615,17 @@ def _system_solve_rows(result: SystemSolveResult, settings: RenderSettings) -> l
             else rf"\;\;\left({_quantity_latex(quantity, settings=settings, declared=False)}\right)"
         )
         rows.append(
-            rf"\displaystyle {lhs} & = & \displaystyle {_value_latex(value, settings)}{number}"
+            rf"\displaystyle {lhs} & = & \displaystyle "
+            rf"{_value_latex(value, settings, units)}{number}"
         )
-    rows.extend(_discard_note_rows(result.discarded))
+    rows.extend(_discard_note_rows(result.discarded, units))
     return rows
 
 
 def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
-    return _symbolic_value_rows(result, settings) + _discard_note_rows(result.discarded)
+    return _symbolic_value_rows(result, settings) + _discard_note_rows(
+        result.discarded, result.unit_literals
+    )
 
 
 def _shown_expression(result: EvaluationResult):
@@ -3631,12 +3635,18 @@ _ASSUMPTION_RELATIONS = {
 }
 
 
-def _discard_note_rows(discarded) -> list[str]:
+def _discard_note_rows(
+    discarded, unit_literals: frozenset[str] = frozenset()
+) -> list[str]:
     """Show what `assume` ruled out, as its own row.
 
     A discard the reader cannot see is indistinguishable from a solver that only ever
     found one answer, and the difference matters: the second is arithmetic, the first
     is a decision the engineer made on the line above.
+
+    `unit_literals` for the same reason every other row here takes them: without them
+    the row wrote `- 5/s` with the second in italic, directly under an answer that
+    wrote it upright.
     """
     if discarded is None:
         return []
@@ -3644,7 +3654,7 @@ def _discard_note_rows(discarded) -> list[str]:
         rf"{_render_lhs(discarded.variable, None)} "
         rf"{_ASSUMPTION_RELATIONS[discarded.condition]} 0"
     )
-    values = r",\;\; ".join(_latex(value) for value in discarded.values)
+    values = r",\;\; ".join(_latex(value, unit_literals) for value in discarded.values)
     return [rf" & & \displaystyle \text{{discarded by }} {condition}:\;\; {values}"]
 
 
