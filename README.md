@@ -2,7 +2,28 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.4**.
+Current version: **0.31.5**.
+
+
+## v0.31.5 what reading 0.31.4 found
+
+Two corrections, from a second visual audit of the rendered pages - the first one asked
+for while 0.31.4's were being written, this one after they shipped.
+
+- **A substituted quantity is set apart.** Two substitution rows of the engineer's beam,
+  fifteen lines apart, spaced differently: `M_u = 0.15 (18.35 kgf/cm) (600.00 cm)²` and
+  `d = 5(30.59 kgf/cm)(600.00 cm)⁴`. 0.31.4 gave an upright name of several letters a thin
+  space, and the substitution row inherited a rule about a name that is no longer on it -
+  so the reader saw two spacings and nothing that explained them. What is on the row
+  decides now: a bracketed value is set apart, whatever name it replaced. A consistency
+  0.31.4 broke, not one it inherited.
+- **A stage does not repeat the stage above it.** `M_lim = 20 kN·m` printed its formula,
+  then the substitution of a formula with no names in it - the same row, character for
+  character - and then its value. A matrix of literals drew its matrix twice, and `report`
+  of one repeated the same way. A stage that says exactly what the stage above says is not
+  written. Older than 0.31.4; 0.31.3 wrote the same three rows.
+
+A patch release: corrections only.
 
 
 ## v0.31.4 what reading the rendered memoria found
@@ -2671,6 +2692,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.5** — what reading 0.31.4 found, in two corrections. A value substituted into a row is set apart from what it multiplies whatever name it replaced, so a page no longer spaces two substitution rows two ways - the rule had been asking about a name that is not on the row any more. And a stage that repeats the stage above it is not written: `M_lim = 20 kN·m` no longer prints its formula, the same formula again as its substitution, and then its value, and neither do a matrix of literals nor `report`.
 - **0.31.4** — what reading the rendered memoria found. An inequality block names its inequality (`Where — M(x) > 20 kN·m`) where it named only the variable. Two units in a formula join with a centred dot - `20 kN·m`, not `20 kN m`, and `m·m`, not the `m m` that read as `mm` - and take the page's order, force first, so `20*kgf*cm` reads `kgf·cm` like its own value. A name of several letters is set apart from its neighbours, `qD x` rather than `qDx`. A computed block makes its room with struts, so copying it no longer gives a zero at each end. A figure is set in a serif like the equations around it, without touching the notebook's own matplotlib settings.
 - **0.31.3** — a computed block is written like the working. Roots, extrema, intersections, `governing`, `table` and `summary` were markdown carrying HTML: the mathematics typeset and the words around it did not, a row too wide for the cell wrapped as prose instead of scrolling, and the block began at the text's edge rather than the working's, with nothing between it and its neighbours. They are `Math` outputs now, in the working's own frame - words as text, headings in bold, a response named as its definition names it, one row per point, a table as an array with its rules, a summary row read as `M_u = 183.60 kN·m` - and what each block says is unchanged, checked block by block against the previous release. With it, a root of a factored combination is written `L/2` and not `0.5L`, as the extrema block a few lines above already wrote the same point.
 - **0.31.2** — what reviewing 0.31.1 found, in five corrections. Two numeric factors are joined by `·`, because a space between them is invisible to MathJax and `2*3*kN` read `23 kN`. A mass has a unit family, kg up to 9999 and t from 10 000, as the engineer asked, so `m = P/g` reads `2497.45 kg` or `15.29 t` rather than `kN·s²/m`. An exact zero reached through a sum, a factor or `subs` keeps its unit, not only one reached by a single call. `M_max := M(L/2)` is evaluated as `numeric(M(L/2))` is, instead of stopping the cell. And a characteristic block sets its formulas in display style with full-size fractions and rows apart, so a frame's frequencies read at the page's size.
@@ -2751,4 +2773,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.4`.
+Version: `0.31.5`.
