@@ -122,7 +122,11 @@ def test_solve_still_answers_the_factor_it_can(cell, capsys):
     printed = capsys.readouterr().out
 
     assert "engcalc:" not in printed, printed
-    assert page.rstrip().endswith("& & \\displaystyle a \\endarray"), page
+    # `x = a` since test_a_solved_answer_says_what_it_answers: one answer is written
+    # under the unknown it answers, as two answers always were.
+    assert page.rstrip().endswith(
+        "\\displaystyle x & = & \\displaystyle a \\endarray"
+    ), page
 
 
 def test_a_quintic_factor_of_plain_numbers_keeps_its_exact_root():
