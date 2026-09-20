@@ -392,6 +392,25 @@ class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
     def _print_ModeShapeEntry(self, expr, exp=None):
         return self._print_mode(expr, super()._print_ModeShapeEntry, exp)
 
+    def _is_set_apart(self, term) -> bool:
+        r"""A name this row replaces with its value is set apart, whatever the name was.
+
+        The rule inherited from the printer above asks about the *name*: a unit or a
+        multi-letter name is upright and needs a space, a single italic letter does not.
+        On this row the name is gone, so that question has no answer the reader can see -
+        and it gave one page two spacings, `0.15 (18.35 kgf/cm) (600.00 cm)^2` from `qD`
+        and `5(30.59 kgf/cm)(600.00 cm)^4` from `q_s`, fifteen lines apart.
+
+        What is on the row decides instead, and it is the same in both: a bracketed
+        value, upright, exactly the object `10\,\mathrm{kN}` put the space beside.
+        """
+        base = term.base if term.is_Pow else term
+        if isinstance(base, sp.Symbol) and base.name in self.substitutions:
+            return True
+        if mode_key(base) in self.substitutions:
+            return True
+        return super()._is_set_apart(term)
+
 
 def _engineering_factor_key(term):
     if term.is_Number:

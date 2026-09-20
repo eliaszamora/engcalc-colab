@@ -24,7 +24,7 @@ Esta hoja existe para ejercitar lo que la memoria del pórtico no toca: casos de
 & = & \displaystyle \left(60.00\,\mathrm{cm}\right) - \left(4.00\,\mathrm{cm}\right) \\[8pt]
 & = & \displaystyle 56.00\,\mathrm{cm} \\[16pt]
 \displaystyle I & = & \displaystyle \frac{b h^{3}}{12} \\[8pt]
-& = & \displaystyle \frac{\left(30.00\,\mathrm{cm}\right) \left(60.00\,\mathrm{cm}\right)^{3}}{12} \\[8pt]
+& = & \displaystyle \frac{\left(30.00\,\mathrm{cm}\right)\,\left(60.00\,\mathrm{cm}\right)^{3}}{12} \\[8pt]
 & = & \displaystyle 540000.00\,\mathrm{cm}^{4} \end{array}
 
 === 4 · HTML ===
@@ -141,7 +141,7 @@ La flecha se verifica con la carga de servicio sin mayorar, y el límite habitua
 === 25 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{s} & = & \displaystyle \mathrm{qD} + \mathrm{qL} \\[16pt]
 \displaystyle \delta & = & \displaystyle \frac{5 q_{s} L^{4}}{384 E I} \\[8pt]
-& = & \displaystyle \frac{5 \left(30.59\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right) \left(600.00\,\mathrm{cm}\right)^{4}}{384 \left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(540000.00\,\mathrm{cm}^{4}\right)} \\[8pt]
+& = & \displaystyle \frac{5\,\left(30.59\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{4}}{384\,\left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(540000.00\,\mathrm{cm}^{4}\right)} \\[8pt]
 & = & \displaystyle 0.40\,\mathrm{cm} \\[16pt]
 \displaystyle \delta_{adm} & = & \displaystyle \frac{L}{300} \\[8pt]
 & = & \displaystyle \frac{\left(600.00\,\mathrm{cm}\right)}{300} \\[8pt]

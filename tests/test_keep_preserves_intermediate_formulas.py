@@ -122,7 +122,8 @@ def test_a_kept_name_reads_as_a_memoria_is_written(cell):
         "numeric(z)\n"
     )
     assert r"\displaystyle 2 a" in latex, latex
-    assert r"2 \left(127.48\,\mathrm{mm}\right)" in latex, latex
+    # `2\,\left(` since test_a_substituted_quantity_is_set_apart.
+    assert r"2\,\left(127.48\,\mathrm{mm}\right)" in latex, latex
     assert "254.96" in latex, latex
 
 

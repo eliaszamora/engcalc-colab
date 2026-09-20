@@ -33,7 +33,7 @@ Un módulo resistente es una longitud al cubo y una curvatura es una longitud a 
 \displaystyle U_{1}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathrm{Lv}\left(x\right) \\[16pt]
 \displaystyle M_{u} & = & \displaystyle 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2} \\[8pt]
 \displaystyle \kappa & = & \displaystyle \frac{M_{u}}{E I} \\[8pt]
-& = & \displaystyle \frac{\left(183.60\,\mathrm{kN} \cdot \mathrm{m}\right)}{\left(23500.00\,\mathrm{MPa}\right) \left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)} \\[8pt]
+& = & \displaystyle \frac{\left(183.60\,\mathrm{kN} \cdot \mathrm{m}\right)}{\left(23500.00\,\mathrm{MPa}\right)\,\left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)} \\[8pt]
 & = & \displaystyle 0.00145\,\frac{1}{\mathrm{m}} \end{array}
 
 === 5 · HTML ===
