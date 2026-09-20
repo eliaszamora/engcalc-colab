@@ -2343,6 +2343,62 @@ def _relation_opening(
     return ""
 
 
+def _without_a_repetition(rows: list[str], above: list[str]) -> list[str]:
+    """A stage that says exactly what the stage above it says is not written.
+
+    The substitution stage is the formula with every name replaced by its value, so a
+    right-hand side with no names in it substitutes into itself:
+
+        M_lim  =  20 kN·m
+               =  20 kN·m
+               =  20.00 kN·m
+
+    A memoria that says a thing twice in a row asks the reader to find the difference,
+    and there is none. Compared as the finished rows rather than by asking whether the
+    expression has free symbols: what matters is whether the reader is shown the same
+    thing, and two expressions that differ can still print the same.
+    """
+    return [] if rows == above else rows
+
+
+def _without_a_repeated_stage(stages: list[str]) -> list[str]:
+    """The same rule for a matrix, whose stages are one drawn matrix each.
+
+    `K = [10*kN, 0; 0, 10*kN]` has nothing to substitute either, and drew its matrix
+    twice.
+    """
+    kept: list[str] = []
+    for stage in stages:
+        if not kept or stage != kept[-1]:
+            kept.append(stage)
+    return kept
+
+
+def _numeric_matrix_stages(
+    result: NumericMatrixEvaluationResult | PartialMatrixNumericEvaluationResult,
+    settings: RenderSettings,
+    *,
+    value: str | None,
+) -> list[str]:
+    """The matrices this result draws, in order, with no stage repeating the one above.
+
+    One function because two places need the answer: the rows themselves, and the
+    spacing between them, which counts the stages a second time.
+    """
+    stages = [_matrix_latex(result.symbolic_matrix)]
+    if _shows_substitution(result):
+        stages.append(
+            _matrix_substitution_latex(
+                result.symbolic_matrix,
+                _shown_substitutions(result, settings),
+                settings,
+            )
+        )
+    if value is not None:
+        stages.append(value)
+    return _without_a_repeated_stage(stages)
+
+
 def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSettings) -> list[str]:
     formula_rows = _bounded_expression_rows(
         result.symbolic_expression,
@@ -2358,11 +2414,14 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 
     substituted_rows: list[str] = []
     if _shows_substitution(result):
-        substituted_rows = _bounded_expression_rows(
-            result.symbolic_expression,
-            _shown_substitutions(result, settings),
-            settings=settings,
-            unit_literals=result.unit_literals,
+        substituted_rows = _without_a_repetition(
+            _bounded_expression_rows(
+                result.symbolic_expression,
+                _shown_substitutions(result, settings),
+                settings=settings,
+                unit_literals=result.unit_literals,
+            ),
+            formula_rows,
         )
 
     rows: list[str] = []
@@ -2401,11 +2460,14 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
 
     substituted_rows: list[str] = []
     if _shows_substitution(result):
-        substituted_rows = _bounded_expression_rows(
-            result.symbolic_expression,
-            _shown_substitutions(result, settings),
-            settings=settings,
-            unit_literals=result.unit_literals,
+        substituted_rows = _without_a_repetition(
+            _bounded_expression_rows(
+                result.symbolic_expression,
+                _shown_substitutions(result, settings),
+                settings=settings,
+                unit_literals=result.unit_literals,
+            ),
+            formula_rows,
         )
 
     rows: list[str] = []
@@ -2441,33 +2503,23 @@ def _numeric_matrix_evaluation_rows(
     result: NumericMatrixEvaluationResult,
     settings: RenderSettings,
 ) -> list[str]:
-    stages = [_matrix_latex(result.symbolic_matrix)]
-    if _shows_substitution(result):
-        stages.append(
-            _matrix_substitution_latex(
-                result.symbolic_matrix,
-                _shown_substitutions(result, settings),
-                settings,
-            )
-        )
-    stages.append(_quantity_matrix_latex(result.quantity_matrix, _settings_for(result, settings), declared=_shows_as_stored(result)))
-    return _matrix_stage_rows(_display_lhs(result), stages)
+    value = _quantity_matrix_latex(
+        result.quantity_matrix,
+        _settings_for(result, settings),
+        declared=_shows_as_stored(result),
+    )
+    return _matrix_stage_rows(
+        _display_lhs(result), _numeric_matrix_stages(result, settings, value=value)
+    )
 
 
 def _partial_matrix_numeric_evaluation_rows(
     result: PartialMatrixNumericEvaluationResult,
     settings: RenderSettings,
 ) -> list[str]:
-    stages = [_matrix_latex(result.symbolic_matrix)]
-    if _shows_substitution(result):
-        stages.append(
-            _matrix_substitution_latex(
-                result.symbolic_matrix,
-                _shown_substitutions(result, settings),
-                settings,
-            )
-        )
-    return _matrix_stage_rows(_display_lhs(result), stages)
+    return _matrix_stage_rows(
+        _display_lhs(result), _numeric_matrix_stages(result, settings, value=None)
+    )
 
 
 def _standard_result_row(result: CalculationResult, settings: RenderSettings) -> str:
@@ -2726,14 +2778,15 @@ def _value_row_spacings(
         return spacings
 
     if isinstance(result, NumericMatrixEvaluationResult):
-        stage_lengths = [1, 1]
-        if _shows_substitution(result):
-            stage_lengths.insert(1, 1)
+        value = _quantity_matrix_latex(
+            result.quantity_matrix,
+            _settings_for(result, settings),
+            declared=_shows_as_stored(result),
+        )
+        stage_lengths = [1] * len(_numeric_matrix_stages(result, settings, value=value))
 
     elif isinstance(result, PartialMatrixNumericEvaluationResult):
-        stage_lengths = [1]
-        if _shows_substitution(result):
-            stage_lengths.append(1)
+        stage_lengths = [1] * len(_numeric_matrix_stages(result, settings, value=None))
 
     elif isinstance(result, NumericEvaluationResult):
         formula_rows = _bounded_expression_rows(
@@ -2742,10 +2795,13 @@ def _value_row_spacings(
         )
         substituted_rows = []
         if _shows_substitution(result):
-            substituted_rows = _bounded_expression_rows(
-                result.symbolic_expression,
-                _shown_substitutions(result, settings),
-                settings=settings,
+            substituted_rows = _without_a_repetition(
+                _bounded_expression_rows(
+                    result.symbolic_expression,
+                    _shown_substitutions(result, settings),
+                    settings=settings,
+                ),
+                formula_rows,
             )
         final_latex = _quantity_latex(
             result.quantity,
@@ -2770,10 +2826,13 @@ def _value_row_spacings(
         )
         substituted_rows = []
         if _shows_substitution(result):
-            substituted_rows = _bounded_expression_rows(
-                result.symbolic_expression,
-                _shown_substitutions(result, settings),
-                settings=settings,
+            substituted_rows = _without_a_repetition(
+                _bounded_expression_rows(
+                    result.symbolic_expression,
+                    _shown_substitutions(result, settings),
+                    settings=settings,
+                ),
+                formula_rows,
             )
         evaluated_latex = None
         if result.piecewise_evaluation is not None:
