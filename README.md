@@ -2,7 +2,31 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.5**.
+Current version: **0.31.6**.
+
+
+## v0.31.6 what a `solve` writes
+
+Two corrections, from a visual pass over 0.31.5 made on a sheet written to draw the
+blocks no reference page drew. Both were older than 0.31.5, and both were invisible for
+the same reason: nothing in the repository rendered a `solve` with two answers, an
+`assume` that rules one out, or `intersections`.
+
+- **A solved answer wears its units.** `w² = 25/s²` set the second in italic, and so did
+  each answer of a `solve` with more than one answer and the row saying what `assume`
+  ruled out - four lines above and below rows that set it upright. Those three renderers
+  were never told which names are units, which is the whole of #96 in the paths it did
+  not reach. They are told now.
+- **A solved answer says what it answers.** `solve(eq(v^2, 25/s^2), v)` with one answer
+  left wrote `5/s` alone, in the column an unnamed value goes in, while the same call
+  with two answers wrote `w = −5/s` and `w = 5/s`. The unknown is on the call and was
+  never in doubt; it had nowhere to travel, so the result carries it and the row is
+  written under it.
+
+`tools/formas.eng` draws all three blocks now. That is what that sheet is for, and it is
+the only place any of the thirteen reference pages moves.
+
+A patch release: corrections only.
 
 
 ## v0.31.5 what reading 0.31.4 found
@@ -2692,6 +2716,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.6** — what a `solve` writes, in two corrections. A `solve` with more than one answer, and the row saying what `assume` ruled out, set their units in italic where every row around them set them upright; they are told which names are units now. And a `solve` that finds one answer writes it under the unknown it answers, `v = 5/s`, as the same call with two answers always did. Both were older than 0.31.5 and invisible because no reference sheet drew those blocks; `tools/formas.eng` draws them now.
 - **0.31.5** — what reading 0.31.4 found, in two corrections. A value substituted into a row is set apart from what it multiplies whatever name it replaced, so a page no longer spaces two substitution rows two ways - the rule had been asking about a name that is not on the row any more. And a stage that repeats the stage above it is not written: `M_lim = 20 kN·m` no longer prints its formula, the same formula again as its substitution, and then its value, and neither do a matrix of literals nor `report`.
 - **0.31.4** — what reading the rendered memoria found. An inequality block names its inequality (`Where — M(x) > 20 kN·m`) where it named only the variable. Two units in a formula join with a centred dot - `20 kN·m`, not `20 kN m`, and `m·m`, not the `m m` that read as `mm` - and take the page's order, force first, so `20*kgf*cm` reads `kgf·cm` like its own value. A name of several letters is set apart from its neighbours, `qD x` rather than `qDx`. A computed block makes its room with struts, so copying it no longer gives a zero at each end. A figure is set in a serif like the equations around it, without touching the notebook's own matplotlib settings.
 - **0.31.3** — a computed block is written like the working. Roots, extrema, intersections, `governing`, `table` and `summary` were markdown carrying HTML: the mathematics typeset and the words around it did not, a row too wide for the cell wrapped as prose instead of scrolling, and the block began at the text's edge rather than the working's, with nothing between it and its neighbours. They are `Math` outputs now, in the working's own frame - words as text, headings in bold, a response named as its definition names it, one row per point, a table as an array with its rules, a summary row read as `M_u = 183.60 kN·m` - and what each block says is unchanged, checked block by block against the previous release. With it, a root of a factored combination is written `L/2` and not `0.5L`, as the extrema block a few lines above already wrote the same point.
@@ -2773,4 +2798,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.5`.
+Version: `0.31.6`.
