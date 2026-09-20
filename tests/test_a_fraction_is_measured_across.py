@@ -102,7 +102,10 @@ def test_the_substituted_line_has_the_shape_of_the_line_above_it(cell, capsys):
     assert symbolic in page, page
     substituted = page.split(symbolic, 1)[1]
     substituted = substituted.split(r"10.55", 1)[0]
-    assert substituted.count(r"\frac{5 ") == 1, substituted
+    # `\frac{5\,` since test_a_substituted_quantity_is_set_apart: a value substituted
+    # into the row is set apart from what it multiplies. The shape this asks about -
+    # one fraction, followed into the next line - is unchanged.
+    assert substituted.count(r"\frac{5\,") == 1, substituted
     assert r"\frac{1}" not in substituted, substituted
 
 

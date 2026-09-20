@@ -44,10 +44,10 @@ Las columnas son rectangulares de 300 mm por 450 mm, con los 450 mm en el plano 
 \displaystyle I_{c} & = & \displaystyle \frac{b_{c} d_{c}^{3}}{12} \\[8pt]
 \displaystyle A_{d} & = & \displaystyle a_{d}^{2} \\[16pt]
 \displaystyle A_{c} & = & \displaystyle b_{c} d_{c} \\[8pt]
-& = & \displaystyle \left(30.00\,\mathrm{cm}\right) \left(45.00\,\mathrm{cm}\right) \\[8pt]
+& = & \displaystyle \left(30.00\,\mathrm{cm}\right)\,\left(45.00\,\mathrm{cm}\right) \\[8pt]
 & = & \displaystyle 1350.00\,\mathrm{cm}^{2} \\[8pt]
 \displaystyle I_{c} & = & \displaystyle \frac{b_{c} d_{c}^{3}}{12} \\[8pt]
-& = & \displaystyle \frac{\left(30.00\,\mathrm{cm}\right) \left(45.00\,\mathrm{cm}\right)^{3}}{12} \\[8pt]
+& = & \displaystyle \frac{\left(30.00\,\mathrm{cm}\right)\,\left(45.00\,\mathrm{cm}\right)^{3}}{12} \\[8pt]
 & = & \displaystyle 227812.50\,\mathrm{cm}^{4} \\[8pt]
 \displaystyle A_{d} & = & \displaystyle a_{d}^{2} \\[8pt]
 & = & \displaystyle \left(2.50\,\mathrm{cm}\right)^{2} \\[8pt]
@@ -255,9 +255,9 @@ Las tres contribuciones se suman porque comparten las mismas coordenadas q, que 
 \displaystyle K & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\
 \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
 \displaystyle 0 & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
-& = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)} & \displaystyle \frac{6 \left(1.00\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle 0\\
-\displaystyle \frac{6 \left(1.00\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{2 \left(0.00\right)^{2} \left(1350.00\,\mathrm{cm}^{2}\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2} \left(6.25\,\mathrm{cm}^{2}\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{24 \left(1.00\right)^{2} \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} & \displaystyle \frac{6 \left(1.00\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}}\\
-\displaystyle 0 & \displaystyle \frac{6 \left(1.00\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{4 \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
+& = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle 0\\
+\displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(1350.00\,\mathrm{cm}^{2}\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(6.25\,\mathrm{cm}^{2}\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{24\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}}\\
+\displaystyle 0 & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{4\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
 & = & \displaystyle \left[\begin{matrix}\displaystyle 5.27 \times 10^{9}\,\mathrm{kgf} \cdot \mathrm{cm} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 0.00\\
 \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 245047.18\,\frac{\mathrm{kgf}}{\mathrm{cm}} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf}\\
 \displaystyle 0.00 & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 5.27 \times 10^{9}\,\mathrm{kgf} \cdot \mathrm{cm}\end{matrix}\right] \end{array}
@@ -281,12 +281,12 @@ y sustituyendo en la ecuación de Delta queda la rigidez lateral equivalente.
 \displaystyle K_{dd} & = & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[16pt]
 \displaystyle C & = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3 s_{c}}{2 L_{c}}\\
 \displaystyle - \frac{3 s_{c}}{2 L_{c}}\end{matrix}\right] \\[8pt]
-& = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3 \left(1.00\right)}{2 \left(370.00\,\mathrm{cm}\right)}\\
-\displaystyle - \frac{3 \left(1.00\right)}{2 \left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
+& = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3\,\left(1.00\right)}{2\,\left(370.00\,\mathrm{cm}\right)}\\
+\displaystyle - \frac{3\,\left(1.00\right)}{2\,\left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
 & = & \displaystyle 10^{-3}\,\left[\begin{matrix}\displaystyle -4.05\\
 \displaystyle -4.05\end{matrix}\right]\,\frac{1}{\mathrm{cm}} \\[16pt]
 \displaystyle k_{eq} & = & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{6 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[8pt]
-& = & \displaystyle \frac{2 \left(0.00\right)^{2} \left(1350.00\,\mathrm{cm}^{2}\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2} \left(6.25\,\mathrm{cm}^{2}\right) \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{6 \left(1.00\right)^{2} \left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right) \left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} \\[8pt]
+& = & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(1350.00\,\mathrm{cm}^{2}\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(6.25\,\mathrm{cm}^{2}\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{6\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} \\[8pt]
 & = & \displaystyle 71689.33\,\frac{\mathrm{kgf}}{\mathrm{cm}} \end{array}
 
 === 35 · HTML ===
