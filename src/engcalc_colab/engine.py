@@ -1156,6 +1156,7 @@ class EngineeringEngine:
                 # Every form the row can print. `n = 6*m/(2*m)` is worth 3 and is shown
                 # as written, so asked of the value alone its metres were set as variables.
                 unit_literals=self._unit_literals_of(value, evaluator.display_input, written),
+                solved_for=evaluator.solved_for,
             )
         except EngCalcError as exc:
             message = str(exc)
@@ -1173,6 +1174,7 @@ class _Evaluator(ast.NodeVisitor):
         self.engine = engine
         self.matrix_literals = {binding.name: binding.literal for binding in matrix_literals}
         self.display_input = None
+        self.solved_for = None
         self.numeric_evaluation = None
         # Set when `numeric(expr, unit)` named a unit. `convert_quantity` already
         # stores the result in it; the renderer needs to know it was *asked for*,
@@ -1914,6 +1916,10 @@ class _Evaluator(ast.NodeVisitor):
             # Same rule as the system form.
             if not self._already_on_the_page(node.args[0]):
                 self.display_input = equation
+            # What the answer is an answer for. The system form carries it in
+            # `solutions`; one answer had nowhere to put it and reached the page as a
+            # bare value.
+            self.solved_for = unknown_name
             solvable, degree = closed_form_factors(equation.lhs - equation.rhs, unknown)
             if degree and not solvable:
                 # Only when nothing in it has a closed form: `(x - a)(x⁵ + b x + 1) = 0`

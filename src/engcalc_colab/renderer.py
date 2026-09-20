@@ -2638,9 +2638,23 @@ def _shown_expression(result: EvaluationResult):
     return result.value if result.written is None else result.written
 
 
+def _solved_lhs(result: EvaluationResult) -> str | None:
+    """The name this row is written under: the sheet's, or the unknown a `solve` answered.
+
+    `solve(eq(v^2, 25/s^2), v)` answers `v` and the sheet named nothing, so the row had
+    no left-hand side and the answer went into the column an unnamed value goes in - a
+    number with no subject, directly under a `solve` with two answers writing `w = ...`
+    for each. The unknown is on the call; it only had to be carried.
+    """
+    statement = result.statement
+    if statement.target is None and result.solved_for is not None:
+        return _render_lhs(result.solved_for, None)
+    return _render_lhs(statement.target, statement.parameters)
+
+
 def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
     statement = result.statement
-    lhs = _render_lhs(statement.target, statement.parameters)
+    lhs = _solved_lhs(result)
     if isinstance(
         result.value,
         (sp.MatrixBase, MatrixShape, EigenvalueSet, EigenvectorSet, QuantityMatrix),
@@ -2865,7 +2879,7 @@ def _value_row_spacings(
 
     elif isinstance(result, EvaluationResult):
         statement = result.statement
-        lhs = _render_lhs(statement.target, statement.parameters)
+        lhs = _solved_lhs(result)
         value = sp.sympify(_shown_expression(result))
         display_input = result.display_input
 
