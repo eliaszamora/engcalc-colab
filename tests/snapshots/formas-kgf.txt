@@ -208,3 +208,23 @@ Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos defe
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{intersection} \\[8pt]
 \displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{intersection} \\[4pt]
 \rule{0pt}{0.7em} \end{array}
+
+=== 35 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un piecewise evaluado con la variable libre</div>
+
+=== 36 · Markdown ===
+Ninguna hoja de referencia dibujaba un piecewise con números y la variable todavía libre, y ahí vive una tercera fila que ninguna otra escribe: la respuesta, construida aparte del printer de SymPy. Sus ramas salían en estilo de texto, con la fracción de unidades dibujada pequeña, y la comparación de páginas no podía verlo porque la fila no estaba en ninguna.
+
+=== 37 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{1} & = & \displaystyle 8.16\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\displaystyle q_{2} & = & \displaystyle 4.08\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\displaystyle a_{q} & = & \displaystyle 300.00\,\mathrm{cm} \\[8pt]
+\displaystyle q_{v}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\
+\displaystyle q_{2} & \text{for}\: x \leq L \\
+\displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
+& = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: x < \left(300.00\,\mathrm{cm}\right) \\
+\displaystyle \left(4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: x \leq \left(600.00\,\mathrm{cm}\right) \\
+\displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
+& = & \displaystyle \begin{cases} \displaystyle 8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{for}\: x < 300.00\,\mathrm{cm} \\
+\displaystyle 4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{for}\: x \leq 600.00\,\mathrm{cm} \\
+\displaystyle 0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{otherwise} \end{cases} \end{array}

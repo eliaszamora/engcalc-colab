@@ -108,7 +108,9 @@ def test_what_sits_beside_a_cases_body_is_counted_too(written):
 def test_the_definition_sits_beside_its_name(page):
     """The page, which is where this was seen."""
     written = page(BEAM)
-    assert _latex_visual_width(CASES) < _COMPLETE_ROW_VISUAL_BUDGET
+    body = written[written.index(r"\begin{cases}") : written.index(r"\end{cases}")]
+
+    assert _latex_visual_width(body) < _COMPLETE_ROW_VISUAL_BUDGET
     assert r"M_{P}\left(x\right) & = & \displaystyle \begin{cases}" in written, written
     assert r"M_{P}\left(x\right) & = & \\" not in written, written
 
@@ -130,6 +132,7 @@ def test_a_fraction_is_still_measured_across():
 
 
 def test_the_branches_still_say_what_they_said(page):
-    written = page(BEAM)
+    """Read past the fraction's size, which is a separate question from its width."""
+    written = page(BEAM).replace(r"\dfrac", r"\frac")
     assert r"\text{for}\: x \leq \frac{L}{2}" in written, written
     assert r"\text{otherwise}" in written, written
