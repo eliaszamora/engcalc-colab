@@ -125,3 +125,21 @@ factores en orden alfabético, y decía cm·kgf una línea antes de su propio va
 
 M_kgf = 20000*kgf*cm
 numeric(M_kgf)
+
+### Un solve con dos respuestas, un descarte y unas intersecciones
+
+"""
+Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos defectos: las
+unidades de un solve con varias respuestas y de la fila del descarte salían en cursiva,
+y una respuesta única sin nombre salía sin decir de qué es. Un modo se escribe 1/s en
+las tres filas o no se escribe igual en ninguna.
+"""
+
+solve(eq(w^2, 25/s^2), w)
+
+assume(v > 0)
+solve(eq(v^2, 25/s^2), v)
+
+M_Dv2(x) = qD*x*(L - x)/2
+M_Lv2(x) = 0.75*qL*x*(L - x)
+intersections(M_Dv2(x), M_Lv2(x), x, 0, L)

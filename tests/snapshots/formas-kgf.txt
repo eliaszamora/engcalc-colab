@@ -183,3 +183,28 @@ El orden de las dos unidades. Una cantidad guarda el orden en que se construyó,
 === 30 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{kgf} & = & \displaystyle 20000\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
 & = & \displaystyle 20000.00\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}
+
+=== 31 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un solve con dos respuestas, un descarte y unas intersecciones</div>
+
+=== 32 · Markdown ===
+Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos defectos: las unidades de un solve con varias respuestas y de la fila del descarte salían en cursiva, y una respuesta única sin nombre salía sin decir de qué es. Un modo se escribe 1/s en las tres filas o no se escribe igual en ninguna.
+
+=== 33 · Math ===
+\hspace{0.2em}\begin{array}{lcl}  & & \displaystyle w^{2} = \frac{25}{\mathrm{s}^{2}} \\[8pt]
+\displaystyle w & = & \displaystyle - \frac{5}{\mathrm{s}}\;\;\left(-5.00\,\frac{1}{\mathrm{s}}\right) \\[4pt]
+\displaystyle w & = & \displaystyle \frac{5}{\mathrm{s}}\;\;\left(5.00\,\frac{1}{\mathrm{s}}\right) \\[16pt]
+& & \displaystyle v > 0 \\[8pt]
+& & \displaystyle v^{2} = \frac{25}{\mathrm{s}^{2}} \\[8pt]
+& & \displaystyle \frac{5}{\mathrm{s}} \\[8pt]
+& & \displaystyle \text{discarded by } v > 0:\;\; - \frac{5}{\mathrm{s}} \\[16pt]
+\displaystyle M_{Dv2}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle M_{Lv2}\left(x\right) & = & \displaystyle 0.75\,\mathrm{qL}\,x \left(L - x\right) \end{array}
+
+=== 34 · Math ===
+\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
+\displaystyle \textbf{Intersections} \text{ — } M_{Dv2}\left(x\right) \text{ / } M_{Lv2}\left(x\right) \\[8pt]
+\displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} \\[8pt]
+\displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{intersection} \\[8pt]
+\displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{intersection} \\[4pt]
+\rule{0pt}{0.7em} \end{array}

@@ -466,6 +466,9 @@ class SystemSolveResult:
     equations: tuple[Any, ...]
     solutions: tuple[tuple[str, Any], ...]
     discarded: DiscardedSolutions | None = None
+    # The names these rows read as units. Without them `25/s^2` sets the second as a
+    # variable, in a block whose neighbours set it upright.
+    unit_literals: frozenset[str] = frozenset()
     quantities: tuple[Any, ...] = ()
     """Several answers for one unknown: the number of each, or None where it has none.
     Empty for a system, whose unknowns `numeric(...)` reads."""

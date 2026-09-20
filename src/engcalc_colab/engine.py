@@ -945,6 +945,11 @@ class EngineeringEngine:
                     equations=system.equations,
                     solutions=system.solutions,
                     discarded=system.discarded,
+                    unit_literals=self._unit_literals_of(
+                        *system.equations,
+                        *(value for _, value in system.solutions),
+                        *(system.discarded.values if system.discarded else ()),
+                    ),
                     quantities=(
                         tuple(self._solution_quantity(value) for _, value in system.solutions)
                         if system.kind == "multi"
