@@ -190,6 +190,11 @@ class EvaluationResult:
     # unless the sheet stored a value under it. The numeric results always carried this;
     # a definition row printed without it, so `2*m` set the metre in italic.
     unit_literals: frozenset[str] = frozenset()
+    # The unknown a `solve` answered, when the sheet did not name the row itself. Without
+    # it the one answer of `solve(eq(v^2, 25/s^2), v)` is written as a bare `5/s`, in the
+    # column an unnamed thing goes in, while the same call with two answers writes
+    # `v = ...` for each.
+    solved_for: str | None = None
 
 
 @dataclass(frozen=True)

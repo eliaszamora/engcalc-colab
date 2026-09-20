@@ -195,7 +195,7 @@ Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos defe
 \displaystyle w & = & \displaystyle \frac{5}{\mathrm{s}}\;\;\left(5.00\,\frac{1}{\mathrm{s}}\right) \\[16pt]
 & & \displaystyle v > 0 \\[8pt]
 & & \displaystyle v^{2} = \frac{25}{\mathrm{s}^{2}} \\[8pt]
-& & \displaystyle \frac{5}{\mathrm{s}} \\[8pt]
+\displaystyle v & = & \displaystyle \frac{5}{\mathrm{s}} \\[8pt]
 & & \displaystyle \text{discarded by } v > 0:\;\; - \frac{5}{\mathrm{s}} \\[16pt]
 \displaystyle M_{Dv2}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle M_{Lv2}\left(x\right) & = & \displaystyle 0.75\,\mathrm{qL}\,x \left(L - x\right) \end{array}
