@@ -2061,8 +2061,25 @@ def _latex_visual_width(latex: str) -> float:
     return _stacked_width(normalized)
 
 
+_CASES_BRACE_WIDTH = 2.0
+
+
 def _stacked_width(latex: str) -> float:
     r"""The width of one stretch of LaTeX, with every `\frac` measured across."""
+    cases = _cases_span(latex)
+    if cases is not None:
+        start, inner, end = cases
+        # Stripped: the spaces that separate a branch from the `\\` around it are not
+        # drawn, and counting them charged the body two characters it does not have.
+        branches = [branch.strip() for branch in inner.split(r"\\") if branch.strip()]
+        widest = max((_stacked_width(branch) for branch in branches), default=0.0)
+        return (
+            _stacked_width(latex[:start])
+            + widest
+            + _CASES_BRACE_WIDTH
+            + _stacked_width(latex[end:])
+        )
+
     total = 0.0
     index = 0
     while True:
@@ -2078,6 +2095,25 @@ def _stacked_width(latex: str) -> float:
         total += _FRACTION_RULE_WIDTH
         index = denominator[1]
     return total + _flat_width(latex[index:])
+
+
+def _cases_span(latex: str) -> tuple[int, str, int] | None:
+    r"""The first `\begin{cases}...\end{cases}`: where it starts, what is in it, where it ends.
+
+    A `cases` environment stacks its branches, exactly as a fraction stacks its halves,
+    so the body is as wide as its widest branch and not as wide as all of them laid end
+    to end. Charging the sum is what put the engineer's point load on two rows - the
+    body measured 94 against a budget of 104, where what he sees measures 30 - with the
+    `=` of its definition pointing at nothing.
+    """
+    start = latex.find(r"\begin{cases}")
+    if start < 0:
+        return None
+    opening = start + len(r"\begin{cases}")
+    closing = latex.find(r"\end{cases}", opening)
+    if closing < 0:
+        return None
+    return start, latex[opening:closing], closing + len(r"\end{cases}")
 
 
 def _flat_width(latex: str) -> float:
