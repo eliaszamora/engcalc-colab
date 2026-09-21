@@ -2,7 +2,50 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.7**.
+Current version: **0.31.8**.
+
+
+## v0.31.8 what one bare zero led to
+
+Four corrections. The engineer pointed at a single hole in 0.31.7's own new reference
+block - a branch written `0` where the two beside it carried a unit - and asked for it to
+be treated as a finding of its own. Looking at it turned up three more, one of them worse
+than the hole itself, and none of them new: all four are older than 0.31.7, measured on
+0.31.6 with the tree asserted rather than assumed.
+
+- **A unit in a branch is read as a unit.** A piecewise whose branch held a literal
+  quantity *killed the cell* the moment the variable was left free:
+  `piecewise(q1, x < a, 5*kN/m)` with `numeric(q(x))` answered "numeric evaluation
+  requires values for: kN, m", which asks the engineer to define the kilonewton. Only
+  that path - the definition, the same call at a point and its extrema all answered.
+  `evaluate_symbolic` and `evaluate_matrix` had both been given the rule that an
+  undefined unit alias *is* the unit; the scalar partial path never was, and it does
+  worse than report itself as partial. One line.
+- **A zero branch reads in the unit beside it.** The hole he pointed at. `0*kN/m` folds
+  to a plain zero on the way into the symbolic layer, so the substitution row had no unit
+  left to print and no name to replace, while the answer directly below it wrote
+  `0.00 kN/m` for that same branch. The engine had already decided what the branch is
+  worth, so the branch is named and the printer paid that value - the brackets come from
+  the one mechanism that draws them. A zero only: `5 kN/m` is left as it was written,
+  because nothing was substituted into it.
+- **A zero branch keeps its unit at a point too.** The same zero with the variable bound,
+  where the sharpest form of it sits two lines apart in one block: `0` in the substitution
+  row and `0.00 kN/m` in the answer under it. The renderer could not settle this alone -
+  on the engineer's beam the neighbouring branches are expressions, not quantities, so the
+  unit has to be evaluated - and the engine now hands over the branch values it already
+  computes, brought to one unit by the same call the other path uses.
+- **A unit in a call argument is typeset as a unit.** A row's heading read `q_v(9 m)` with
+  the metre in italic while `M_P(100 cm)` two blocks above read upright. Across the alias
+  table the split is not between units and names but between one letter and two: `m`, `s`
+  and `N` italic, `cm`, `mm`, `kN` and `kg` upright. The heading had never been told which
+  names the row reads as units, so the printer fell back on its own rule that a name of
+  several letters is upright. This is #96 in the last place it had not reached.
+
+`tools/formas.eng` now draws a piecewise evaluated with its variable free, one evaluated
+at a point outside every interval, and a literal quantity inside a branch. None of the
+three was on any reference page, which is why none of this was visible.
+
+A patch release: corrections only.
 
 
 ## v0.31.7 how a piecewise is drawn
@@ -2746,6 +2789,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.8** — what one bare zero led to, in four corrections. A literal quantity in a piecewise branch killed the cell with the variable left free, asking the engineer to define the kilonewton; the scalar partial path now reads an undefined unit alias as the unit, as the scalar and matrix paths beside it already did. A zero branch is written in the unit its neighbours are shown in, both with the variable free and at a point, where the answer one line below had been writing it with a unit all along. And a unit in a call's argument is set upright: the heading had never been told which names a row reads as units, so `m`, `s` and `N` came out italic beside an upright `cm`. All four are older than 0.31.7, and `tools/formas.eng` draws the three blocks that made them visible.
 - **0.31.7** — how a piecewise is drawn, in three corrections. The width estimator did not recognise `\dfrac`: it charged a display fraction 5.0 where the same fraction written `\frac` measures 9.0, and it measures both the same now. A `cases` body is measured across its branches and not end to end, so `M_P(x) =` no longer stands with nothing after it and its three branches dropped to the row below. And a `cases` cell is set in display style with full-size fractions, so a branch reads at the size of the rows around it - 20.7 px became 36.4 px, beside the 36.4 px of the fractions two rows up. Both producers of a `cases` body are corrected, including the answer row of a piecewise evaluated with its variable still free, which no reference sheet drew; `tools/formas.eng` draws it now.
 - **0.31.6** — what a `solve` writes, in two corrections. A `solve` with more than one answer, and the row saying what `assume` ruled out, set their units in italic where every row around them set them upright; they are told which names are units now. And a `solve` that finds one answer writes it under the unknown it answers, `v = 5/s`, as the same call with two answers always did. Both were older than 0.31.5 and invisible because no reference sheet drew those blocks; `tools/formas.eng` draws them now.
 - **0.31.5** — what reading 0.31.4 found, in two corrections. A value substituted into a row is set apart from what it multiplies whatever name it replaced, so a page no longer spaces two substitution rows two ways - the rule had been asking about a name that is not on the row any more. And a stage that repeats the stage above it is not written: `M_lim = 20 kN·m` no longer prints its formula, the same formula again as its substitution, and then its value, and neither do a matrix of literals nor `report`.
@@ -2829,4 +2873,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.7`.
+Version: `0.31.8`.
