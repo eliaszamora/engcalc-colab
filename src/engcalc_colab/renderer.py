@@ -11,6 +11,7 @@ from sympy.printing.conventions import split_super_sub
 from sympy.printing.latex import LatexPrinter
 
 from pint.errors import DimensionalityError
+from pint.util import UnitsContainer
 
 from .matrix_modes import mode_key
 from .matrix_numeric import QuantityMatrix
@@ -1051,6 +1052,50 @@ def _page_unit_order(factors: tuple[tuple[str, int], ...]) -> tuple[int, ...] | 
     return None
 
 
+def _in_the_page_s_unit_order(quantity):
+    r"""One quantity, with its unit spelled the way the page spells that unit.
+
+    For a coefficient only, and the distinction is the point.
+    `test_a_compound_unit_reads_in_the_order_it_was_written` settled that a value keeps
+    the order its factors were **written** in - "not 'force first' - *written* first. An
+    engineer who writes `mm*N` gets `mm*N`" - and `_units_in_the_page_s_order` makes a
+    formula's unit literals follow the value rather than the other way round. Nothing here
+    overrules that.
+
+    A polynomial coefficient is the case where there is no written order left to keep. The
+    engineer wrote `P*(L - x)/2`, force first; expanding it hands the constant term over as
+    `L*P/2`, because SymPy canonicalises alphabetically and `L` sorts before `P`. So the
+    order the coefficient carries is the alphabet's, not his, and on his own beam
+    `120.00 m·kN` sat two lines above `0.00 kN·m`. Asking the page's tables restores what
+    the expansion discarded instead of inventing a second convention.
+
+    The unit is rebuilt rather than its printed form rearranged: Pint keeps the order a
+    unit was built in and its formatter walks that container, so putting the factors in
+    the wanted order is the whole of it.
+
+    Unchanged where the rule has no opinion - a single unit, a fraction of units, an area
+    written `m*m` that no table names - because `_page_unit_order` returns None there.
+    """
+    units = quantity.units
+    factors = tuple(getattr(units, "_units", {}).items())
+    if len(factors) < 2:
+        return quantity
+    if any(exponent != int(exponent) for _, exponent in factors):
+        return quantity
+
+    order = _page_unit_order(tuple((name, int(exponent)) for name, exponent in factors))
+    if order is None:
+        return quantity
+
+    from .numeric import engineering_registry
+
+    registry = engineering_registry()
+    return registry.Quantity(
+        quantity.magnitude,
+        UnitsContainer({factors[index][0]: factors[index][1] for index in order}),
+    )
+
+
 def _palette_unit(quantity, settings: RenderSettings) -> str | None:
     """The unit this sheet's palette fixes for that dimension, or None."""
     palette = _PALETTES.get(settings.palette)
@@ -1875,7 +1920,10 @@ def _partial_polynomial_latex(evaluated_terms: tuple[tuple[int, object], ...] | 
         if abs(magnitude) < settings.zero_tolerance:
             continue
 
-        coefficient_latex = _quantity_latex(abs(coefficient), settings=settings)
+        coefficient_latex = _quantity_latex(
+            _in_the_page_s_unit_order(abs(coefficient)),
+            settings=settings,
+        )
         if power == 0:
             term_latex = coefficient_latex
         elif power == 1:
