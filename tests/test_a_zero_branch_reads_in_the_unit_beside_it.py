@@ -19,9 +19,12 @@ This is `test_a_zero_reads_in_the_unit_beside_it` in the row it did not reach. T
 rule: "in a block, a zero takes the unit its neighbours are shown in - the largest value
 in the block, which is the one the reader is comparing the zero against."
 
-**A zero only.** A literal branch that has a readable form of its own keeps it: `5 kN/m`
-is written as the engineer wrote it, because nothing was substituted into it. A zero has
-no readable form left, which is the whole difference.
+**A zero only, at the time.** A literal branch kept the form the engineer typed it in,
+because nothing was substituted into it, and a zero had no form left to keep. Seeing that
+rendered showed the cost of the distinction - `(8.00 kN/m)` beside a bare `5 kN/m`, two
+shapes in one column - and `test_a_literal_branch_is_written_as_a_value` settled it the
+other way for every branch that holds a value. What is written here about the *zero* is
+unchanged; it is now one case of a wider rule rather than an exception to a narrower one.
 
 Older than 0.31.7; measured on 0.31.6 with the tree asserted.
 """
@@ -108,13 +111,18 @@ def test_the_zero_is_bracketed_like_its_neighbours(page):
         assert value.endswith(r"\right)"), value
 
 
-def test_a_literal_branch_that_can_be_read_is_left_as_written(page):
-    """A zero only. `3` is a readable form; nothing was substituted into it."""
+def test_a_literal_branch_is_written_as_a_value_beside_it(page):
+    """A branch that holds a value is written as one, whether or not it is a zero.
+
+    This asserted `3` left as the engineer typed it, until the rendered page showed what
+    that costs: two shapes in one column. `test_a_literal_branch_is_written_as_a_value`
+    holds the wider rule; this keeps the dimensionless case honest beside it.
+    """
     written = page(RATIO)
     values = values_of(substitution_body(written))
 
     assert values[0] == r"\left(2.00\right)", values
-    assert values[-1] == "3", values
+    assert values[-1] == r"\left(3.00\right)", values
 
 
 # --- what must not move ---------------------------------------------------------------

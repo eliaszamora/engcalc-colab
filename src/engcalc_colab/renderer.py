@@ -2525,14 +2525,16 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 
     substituted_rows: list[str] = []
     if _shows_substitution(result):
-        substituted_expression, zero_branches = _named_zero_branches(
+        shown = _shown_substitutions(result, settings)
+        substituted_expression, valued_branches = _named_value_branches(
             result.symbolic_expression,
             _piecewise_branch_values(result),
+            shown,
         )
         substituted_rows = _without_a_repetition(
             _bounded_expression_rows(
                 substituted_expression,
-                {**_shown_substitutions(result, settings), **zero_branches},
+                {**shown, **valued_branches},
                 settings=settings,
                 unit_literals=result.unit_literals,
             ),
@@ -2559,7 +2561,7 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 # A name no sheet can write, so nothing an engineer types can collide with it. It is
 # never printed: the substitution printer finds it in `substitutions` and prints the
 # value, which is the whole point of naming the branch.
-_ZERO_BRANCH_NAME = "zero branch "
+_VALUE_BRANCH_NAME = "value branch "
 
 
 def _piecewise_branch_values(result):
@@ -2579,21 +2581,27 @@ def _piecewise_branch_values(result):
     return getattr(result, "piecewise_branch_values", None)
 
 
-def _named_zero_branches(expression, branch_values):
-    r"""Give each zero branch a name, so the substitution row can pay it its unit.
+def _named_value_branches(expression, branch_values, substitutions):
+    r"""Name each branch that holds a value, so the substitution row writes it as one.
 
-    `0*kN/m` folds to `Integer(0)` on the way into the symbolic layer, so the
-    substitution row had no unit left to print and no name to replace: two branches read
-    `\left(8.00\,\frac{kN}{m}\right)` and the third a bare `0`, one row above the answer
-    that writes `0.00 kN/m` for that same branch.
+    A substitution row writes the row with values in place of names, and every cell it
+    touches comes out bracketed: `\left(8.00\,\frac{kN}{m}\right)`. A branch the printer
+    finds nothing to replace in comes out as the engineer typed it, which left two shapes
+    in one column - `(8.00 kN/m)` beside a bare `5 kN/m`, and, before this mechanism
+    existed, beside a bare `0` where `0*kN/m` had folded to `Integer(0)`.
 
-    The engine has already decided what the branch is worth - in the branches' shared
-    unit, and even when the engineer writes a bare `0` - so the value is not invented
-    here. Naming the branch and handing the name to the printer is what gives the zero
-    the brackets its neighbours wear, through the one mechanism that draws them.
+    So the rule is the one the row already follows everywhere else: a branch that holds a
+    **value** is written as a value. The value is not invented - the engine resolved the
+    branch - and the brackets come from `_print_Symbol`, the one mechanism that draws
+    them, rather than from a second spelling of the same thing.
 
-    A zero only. A literal branch with a readable form of its own keeps it: `5 kN/m` is
-    left as the engineer wrote it, because nothing was substituted into it.
+    A branch that holds a **formula** is not a single value and is left alone: it keeps
+    its shape, with its own names bracketed inside it. That is what the free-symbol test
+    asks. A branch whose symbols the row is about to substitute is a formula in that
+    sense, even when it is the single name `q1`, and the printer handles it.
+
+    The definition row is untouched by any of this. `5 kN/m` is what the engineer wrote,
+    and the definition is where his writing belongs.
     """
     if branch_values is None or not isinstance(expression, sp.Piecewise):
         return expression, {}
@@ -2601,12 +2609,14 @@ def _named_zero_branches(expression, branch_values):
     if len(branch_values) != len(expression.args):
         return expression, {}
 
+    replaced = set(substitutions)
     named: dict[str, object] = {}
     args = []
     for index, (value, condition) in enumerate(expression.args):
         evaluated = branch_values[index]
-        if sp.sympify(value).is_zero and hasattr(evaluated, "magnitude"):
-            name = f"{_ZERO_BRANCH_NAME}{index}"
+        symbols = {symbol.name for symbol in sp.sympify(value).free_symbols}
+        if hasattr(evaluated, "magnitude") and not (symbols & replaced):
+            name = f"{_VALUE_BRANCH_NAME}{index}"
             named[name] = evaluated
             args.append((sp.Symbol(name), condition))
         else:
@@ -2635,14 +2645,16 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
 
     substituted_rows: list[str] = []
     if _shows_substitution(result):
-        substituted_expression, zero_branches = _named_zero_branches(
+        shown = _shown_substitutions(result, settings)
+        substituted_expression, valued_branches = _named_value_branches(
             result.symbolic_expression,
             _piecewise_branch_values(result),
+            shown,
         )
         substituted_rows = _without_a_repetition(
             _bounded_expression_rows(
                 substituted_expression,
-                {**_shown_substitutions(result, settings), **zero_branches},
+                {**shown, **valued_branches},
                 settings=settings,
                 unit_literals=result.unit_literals,
             ),
