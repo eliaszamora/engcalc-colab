@@ -2,7 +2,37 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.6**.
+Current version: **0.31.7**.
+
+
+## v0.31.7 how a piecewise is drawn
+
+Three corrections, from a visual pass over 0.31.6 made on the engineer's own beam. His
+point load was the one block on the page that did not read like the rest of it: pushed
+off its own row, with its fractions drawn smaller than the fractions two rows above.
+
+- **A display fraction is measured as a fraction.** The width estimator looks for the
+  literal `\frac` to measure a fraction across its two halves. `\dfrac` does not contain
+  it - the backslash is followed by a `d` - so every display fraction on the page was
+  charged as an unknown command plus its characters: `5.0` where the same fraction written
+  `\frac` measures `9.0`. Found while measuring why a row split, and fixed first, because
+  a row that fits by being mismeasured fits by luck.
+- **A piecewise is measured as its widest branch.** `M_P(x) =` stood with nothing after
+  it and its three branches dropped to the row below, where every other definition on the
+  page sits beside its name. The estimator charged the body every branch laid end to end -
+  94 against a budget of 104 - and a `cases` environment stacks its branches, exactly as a
+  fraction stacks its halves. What the reader sees is 30. This is the correction
+  `test_a_fraction_is_measured_across` made for fractions, in the environment it did not
+  reach.
+- **A piecewise reads at the page's size.** A `cases` cell is set in text style, where a
+  fraction is drawn small: 20.7 px and 23.6 px beside 36.4 px for the fractions of the
+  same block, two rows up. 0.31.2 answered this for the computed blocks; `cases` is where
+  that did not reach. Both producers of a `cases` body are corrected, including the answer
+  row of a piecewise evaluated with its variable still free - a row no reference sheet
+  drew, where mutation found the first attempt had measured the wrong one of the three.
+  `tools/formas.eng` draws it now.
+
+A patch release: corrections only.
 
 
 ## v0.31.6 what a `solve` writes
@@ -2716,6 +2746,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.7** — how a piecewise is drawn, in three corrections. The width estimator did not recognise `\dfrac`: it charged a display fraction 5.0 where the same fraction written `\frac` measures 9.0, and it measures both the same now. A `cases` body is measured across its branches and not end to end, so `M_P(x) =` no longer stands with nothing after it and its three branches dropped to the row below. And a `cases` cell is set in display style with full-size fractions, so a branch reads at the size of the rows around it - 20.7 px became 36.4 px, beside the 36.4 px of the fractions two rows up. Both producers of a `cases` body are corrected, including the answer row of a piecewise evaluated with its variable still free, which no reference sheet drew; `tools/formas.eng` draws it now.
 - **0.31.6** — what a `solve` writes, in two corrections. A `solve` with more than one answer, and the row saying what `assume` ruled out, set their units in italic where every row around them set them upright; they are told which names are units now. And a `solve` that finds one answer writes it under the unknown it answers, `v = 5/s`, as the same call with two answers always did. Both were older than 0.31.5 and invisible because no reference sheet drew those blocks; `tools/formas.eng` draws them now.
 - **0.31.5** — what reading 0.31.4 found, in two corrections. A value substituted into a row is set apart from what it multiplies whatever name it replaced, so a page no longer spaces two substitution rows two ways - the rule had been asking about a name that is not on the row any more. And a stage that repeats the stage above it is not written: `M_lim = 20 kN·m` no longer prints its formula, the same formula again as its substitution, and then its value, and neither do a matrix of literals nor `report`.
 - **0.31.4** — what reading the rendered memoria found. An inequality block names its inequality (`Where — M(x) > 20 kN·m`) where it named only the variable. Two units in a formula join with a centred dot - `20 kN·m`, not `20 kN m`, and `m·m`, not the `m m` that read as `mm` - and take the page's order, force first, so `20*kgf*cm` reads `kgf·cm` like its own value. A name of several letters is set apart from its neighbours, `qD x` rather than `qDx`. A computed block makes its room with struts, so copying it no longer gives a zero at each end. A figure is set in a serif like the equations around it, without touching the notebook's own matplotlib settings.
@@ -2798,4 +2829,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.6`.
+Version: `0.31.7`.
