@@ -558,6 +558,18 @@ class NumericContext:
     ) -> tuple[dict[str, Any], tuple[str, ...]]:
         expr = sp.sympify(expression)
         overrides = dict(overrides or {})
+        # The rule `evaluate_symbolic` and `evaluate_matrix` both already keep, in the one
+        # path that had not been given it: an undefined unit alias is the unit, not a name
+        # the sheet forgot to define. `evaluate_matrix` puts it as "without this a column
+        # of forces reports itself as partially evaluated, because `kN` looks like a name
+        # nobody defined" - and a scalar left partially evaluated did worse than report
+        # itself, because this path raises. `piecewise(q1, x < a, 5*kN/m)` asked the
+        # engineer to define the kilonewton the moment the variable was left free, while
+        # the same branch at a point, and its extrema, already answered.
+        #
+        # Resolved, not substituted: a unit stays a unit under the working, for the reason
+        # recorded there - nobody writes `kN = 1 kN`. So it only leaves `unresolved`.
+        resolved_units = self.unit_literal_overrides(expr, overrides)
         names = sorted(symbol.name for symbol in expr.free_symbols)
         substitutions = {
             name: overrides[name] if name in overrides else self.values[name]
@@ -567,7 +579,7 @@ class NumericContext:
         unresolved = tuple(
             name
             for name in names
-            if name not in substitutions
+            if name not in substitutions and name not in resolved_units
         )
 
         if allowed_unresolved is not None:

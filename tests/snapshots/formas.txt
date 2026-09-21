@@ -227,3 +227,17 @@ Ninguna hoja de referencia dibujaba un piecewise con números y la variable toda
 & = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\
 \displaystyle 4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x \leq 6.00\,\mathrm{m} \\
 \displaystyle 0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
+
+=== 38 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Una cantidad literal dentro de una rama</div>
+
+=== 39 · Markdown ===
+Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se escondía un error que mataba la celda: con la variable libre, el motor pedía que le definieran el kilonewton. La definición, el mismo llamado en un punto y su extrema ya respondían; el único camino roto era éste.
+
+=== 40 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\
+\displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[8pt]
+& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\
+\displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[8pt]
+& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\
+\displaystyle 5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}

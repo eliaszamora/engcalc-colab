@@ -158,3 +158,15 @@ q2 := 4*kN/m
 a_q := 3*m
 q_v(x) = piecewise(q1, x < a_q, q2, x <= L, 0*kN/m)
 numeric(q_v(x))
+
+### Una cantidad literal dentro de una rama
+
+"""
+Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se escondía un error
+que mataba la celda: con la variable libre, el motor pedía que le definieran el kilonewton.
+La definición, el mismo llamado en un punto y su extrema ya respondían; el único camino
+roto era éste.
+"""
+
+q_w(x) = piecewise(q1, x < a_q, 5*kN/m)
+numeric(q_w(x))
