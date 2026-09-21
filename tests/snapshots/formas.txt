@@ -256,3 +256,21 @@ El mismo piecewise, pero preguntado en un punto. Ninguna hoja lo escribía, y po
 \displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle 0.00\,\frac{\mathrm{kN}}{\mathrm{m}} \end{array}
+
+=== 44 · HTML ===
+<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un piecewise cuyas ramas son fórmulas en la variable</div>
+
+=== 45 · Markdown ===
+Las hojas ya dibujaban un piecewise con la variable libre, pero con ramas que son nombres, y ahí cada rama resuelve a una cantidad y el grupo le presta su unidad al cero. Una viga real se escribe con fórmulas en la variable: ninguna resuelve, el cero queda solo y salía sin unidad, un momento escrito 0.00 en la fila que se lee.
+
+=== 46 · Math ===
+\hspace{0.2em}\begin{array}{lcl} \displaystyle P_{v} & = & \displaystyle 40.00\,\mathrm{kN} \\[8pt]
+\displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{x P_{v}}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
+\displaystyle \dfrac{P_{v} \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
+\displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
+& = & \displaystyle \begin{cases} \displaystyle \dfrac{x\,\left(40.00\,\mathrm{kN}\right)}{2} & \text{for}\: x \leq \dfrac{\left(6.00\,\mathrm{m}\right)}{2} \\[4pt]
+\displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,\left(\left(6.00\,\mathrm{m}\right) - x\right)}{2} & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) & \text{otherwise} \end{cases} \\[8pt]
+& = & \displaystyle \begin{cases} \displaystyle 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 3.00\,\mathrm{m} \\[4pt]
+\displaystyle 120.00\,\mathrm{m} \cdot \mathrm{kN} - 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
+\displaystyle 0.00\,\mathrm{kN} \cdot \mathrm{m} & \text{otherwise} \end{cases} \end{array}
