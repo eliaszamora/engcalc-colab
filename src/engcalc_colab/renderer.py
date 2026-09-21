@@ -2492,10 +2492,14 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 
     substituted_rows: list[str] = []
     if _shows_substitution(result):
+        substituted_expression, zero_branches = _named_zero_branches(
+            result.symbolic_expression,
+            _piecewise_branch_values(result),
+        )
         substituted_rows = _without_a_repetition(
             _bounded_expression_rows(
-                result.symbolic_expression,
-                _shown_substitutions(result, settings),
+                substituted_expression,
+                {**_shown_substitutions(result, settings), **zero_branches},
                 settings=settings,
                 unit_literals=result.unit_literals,
             ),
@@ -2525,7 +2529,24 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 _ZERO_BRANCH_NAME = "zero branch "
 
 
-def _named_zero_branches(expression, piecewise_evaluation):
+def _piecewise_branch_values(result):
+    """What each branch of this row's piecewise is worth, whichever path built the row.
+
+    The partial path carries them inside `piecewise_evaluation`, one per branch beside
+    the operator and the breakpoint; the path that binds the variable carries them on
+    their own. Both are the engine's own arithmetic, normalised to the unit the branches
+    share, so the renderer reads a value here rather than deriving one.
+
+    The order is not a precedence. The two fields live on different results and never
+    both exist, which mutation showed by swapping them and changing nothing.
+    """
+    evaluation = getattr(result, "piecewise_evaluation", None)
+    if evaluation is not None:
+        return tuple(branch.value for branch in evaluation.branches)
+    return getattr(result, "piecewise_branch_values", None)
+
+
+def _named_zero_branches(expression, branch_values):
     r"""Give each zero branch a name, so the substitution row can pay it its unit.
 
     `0*kN/m` folds to `Integer(0)` on the way into the symbolic layer, so the
@@ -2541,17 +2562,16 @@ def _named_zero_branches(expression, piecewise_evaluation):
     A zero only. A literal branch with a readable form of its own keeps it: `5 kN/m` is
     left as the engineer wrote it, because nothing was substituted into it.
     """
-    if piecewise_evaluation is None or not isinstance(expression, sp.Piecewise):
+    if branch_values is None or not isinstance(expression, sp.Piecewise):
         return expression, {}
 
-    branches = piecewise_evaluation.branches
-    if len(branches) != len(expression.args):
+    if len(branch_values) != len(expression.args):
         return expression, {}
 
     named: dict[str, object] = {}
     args = []
     for index, (value, condition) in enumerate(expression.args):
-        evaluated = branches[index].value
+        evaluated = branch_values[index]
         if sp.sympify(value).is_zero and hasattr(evaluated, "magnitude"):
             name = f"{_ZERO_BRANCH_NAME}{index}"
             named[name] = evaluated
@@ -2584,7 +2604,7 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
     if _shows_substitution(result):
         substituted_expression, zero_branches = _named_zero_branches(
             result.symbolic_expression,
-            result.piecewise_evaluation,
+            _piecewise_branch_values(result),
         )
         substituted_rows = _without_a_repetition(
             _bounded_expression_rows(

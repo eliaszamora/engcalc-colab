@@ -224,6 +224,13 @@ class NumericEvaluationResult:
     # it; this says it was asked for, which is what stops the family overruling a
     # request it happens to have an opinion about.
     unit_was_requested: bool = False
+    # Every branch of a piecewise evaluated at a point, in the unit the branches share -
+    # what `PartialNumericEvaluationResult.piecewise_evaluation` carries on the path that
+    # leaves the variable free. The substitution row needs it to write a zero branch in a
+    # unit, because `0*kN/m` folds to `Integer(0)` and a branch's unit lives in the group.
+    # `None` for everything that is not a piecewise, and for a piecewise whose branches
+    # this evaluation could not resolve on their own.
+    piecewise_branch_values: tuple[Any, ...] | None = None
 
     def __init__(
         self,
@@ -238,6 +245,7 @@ class NumericEvaluationResult:
         unit_literals: frozenset[str] = frozenset(),
         declared_names: frozenset[str] = frozenset(),
         unit_was_requested: bool = False,
+        piecewise_branch_values: tuple[Any, ...] | None = None,
     ) -> None:
         if display_arguments is not None and display_argument is not None:
             raise TypeError("provide either display_arguments or display_argument, not both")
@@ -255,6 +263,11 @@ class NumericEvaluationResult:
         object.__setattr__(self, "unit_literals", frozenset(unit_literals))
         object.__setattr__(self, "declared_names", frozenset(declared_names))
         object.__setattr__(self, "unit_was_requested", bool(unit_was_requested))
+        object.__setattr__(
+            self,
+            "piecewise_branch_values",
+            tuple(piecewise_branch_values) if piecewise_branch_values is not None else None,
+        )
 
     @property
     def display_argument(self) -> Any | None:
