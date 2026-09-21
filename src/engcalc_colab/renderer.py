@@ -2045,6 +2045,14 @@ def _latex_visual_width(latex: str) -> float:
     promoted block is 4 px narrower and 135 px shorter than the loose row it replaces.
     """
     normalized = latex
+    # A display fraction is a fraction. `_stacked_width` looks for the literal `\frac`,
+    # which `\dfrac` does not contain - the backslash is followed by `d` - so it fell
+    # through to `_flat_width` and was charged as a command and its characters: 5.0 for
+    # `\dfrac{x P}{2}` where the same fraction written `\frac` measures 9.0. Display
+    # style changes the size of what is inside a fraction, never whether MathJax stacks
+    # it, so the two measure the same. Wrong since 0.31.2, which introduced `\dfrac` so
+    # a computed block would read at the page's size.
+    normalized = normalized.replace(r"\dfrac", r"\frac")
     normalized = normalized.replace(r"\left", "").replace(r"\right", "")
     normalized = normalized.replace(r"\,", "").replace(r"\!", "")
     normalized = normalized.replace(r"\quad", "  ")
