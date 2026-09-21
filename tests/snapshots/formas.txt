@@ -223,7 +223,7 @@ Ninguna hoja de referencia dibujaba un piecewise con números y la variable toda
 \displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\
 \displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\
-\displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\
 \displaystyle 4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x \leq 6.00\,\mathrm{m} \\
 \displaystyle 0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
