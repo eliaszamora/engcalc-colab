@@ -390,7 +390,19 @@ class EngineeringEngine:
         )
 
     def _unit_literals_of(self, *values) -> frozenset[str]:
-        """The names a definition row reads as units, by the rule its numeric row uses."""
+        """The names a row reads as units, by the rule its numeric row uses.
+
+        A row is its expression *and* its heading. `numeric(f(9*m))` writes the argument
+        into the heading, and the renderer that draws it had nothing to tell `m` from an
+        italic variable, so it fell back on the printer's own rule that a name of several
+        letters is upright: `cm`, `mm`, `kN` and `kg` came out as units and `m`, `s`, `N`
+        and `g` as variables, in the same column. Passing the arguments here is #96
+        reaching the one place that was never handed the answer.
+
+        The guard is what decides: only a symbolic value can carry a unit *name*. An
+        argument that arrives as a quantity already carries a real unit and is drawn by
+        the quantity printer, which never had this question to answer.
+        """
         names: set[str] = set()
         for value in values:
             if isinstance(value, (sp.Basic, sp.MatrixBase)):
@@ -1074,8 +1086,8 @@ class EngineeringEngine:
                     display_name=display_name,
                     display_arguments=display_arguments,
                     piecewise_evaluation=piecewise_evaluation,
-                    unit_literals=self.numeric_context.unit_literal_names(
-                        symbolic_expression
+                    unit_literals=self._unit_literals_of(
+                        symbolic_expression, *(display_arguments or ())
                     ),
                     declared_names=frozenset(self.declared_unit_names),
                     unit_was_requested=evaluator.requested_unit is not None,
@@ -1106,8 +1118,8 @@ class EngineeringEngine:
                     quantity=quantity,
                     display_name=display_name,
                     display_arguments=display_arguments,
-                    unit_literals=self.numeric_context.unit_literal_names(
-                        symbolic_expression
+                    unit_literals=self._unit_literals_of(
+                        symbolic_expression, *(display_arguments or ())
                     ),
                     declared_names=frozenset(self.declared_unit_names),
                     unit_was_requested=evaluator.requested_unit is not None,

@@ -2009,7 +2009,15 @@ def _display_lhs(
         return None
     if result.display_arguments is None:
         return _render_lhs(result.display_name, None)
-    return _render_function_call_lhs(result.display_name, result.display_arguments)
+    # The heading is part of the row, so it is told what the row reads as units. Without
+    # it a unit of one letter in the argument - `f(9*m)` - cannot be told from a
+    # variable, and the printer's multi-letter rule sets it in italic beside an upright
+    # `cm`. A matrix result carries no such set and keeps what it drew before.
+    return _render_function_call_lhs(
+        result.display_name,
+        result.display_arguments,
+        getattr(result, "unit_literals", frozenset()),
+    )
 
 
 def _shows_substitution(
@@ -4019,11 +4027,17 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
     return rf"{lhs} = {value_latex}"
 
 
-def _render_function_call_lhs(name: str, arguments: tuple) -> str:
+def _render_function_call_lhs(
+    name: str,
+    arguments: tuple,
+    unit_literals: frozenset[str] = frozenset(),
+) -> str:
     if not isinstance(arguments, tuple):
         arguments = (arguments,)
     name_latex = _latex(sp.Symbol(name))
-    argument_latex = ", ".join(_latex(argument) for argument in arguments)
+    argument_latex = ", ".join(
+        _latex(argument, unit_literals) for argument in arguments
+    )
     return rf"{name_latex}\left({argument_latex}\right)"
 
 
