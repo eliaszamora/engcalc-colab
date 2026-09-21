@@ -25,6 +25,8 @@ group, so the renderer reads a value rather than deriving one.
 Older than 0.31.7; the row has read a bare zero for as long as it has been drawn.
 """
 
+import re
+
 import matplotlib
 import pytest
 
@@ -66,7 +68,7 @@ def bodies_of(written: str) -> list[list[str]]:
         bodies.append(
             [
                 branch.strip().replace(r"\displaystyle ", "")
-                for branch in inner.split(r"\\")
+                for branch in re.split(r"\\\\(?:\[[^\]]*\])?", inner)
             ]
         )
     return bodies

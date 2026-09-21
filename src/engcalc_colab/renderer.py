@@ -99,6 +99,22 @@ def _letters_of(latex: str) -> str:
     return re.sub(r"[\\{}^_ ]", "", latex)
 
 
+# What separates one branch of a `cases` body from the next. A `cases` environment gives
+# its rows no separation of its own: measured on the rendered page, every body had 0 px
+# between its branches while the rows of the block around it are given 10.2 px. That read
+# as a tight list while a branch was 18 px tall, and 0.31.7 set the branches in display
+# style with full-size fractions, which took them to 36-44 px - at which height the
+# fraction rule of one branch sits against the numerator of the next.
+#
+# `4pt`, half of the `8pt` the block gives its own rows: the branches of one definition
+# are a tighter grouping than two stages of a calculation. Measured in a page loading the
+# notebook's own MathJax build, a three-branch body goes from 106.2 px to 119.2 px.
+#
+# A strut was tried first, the way `_computed_block` makes its room, and changed the
+# body's height by nothing at all. `cases` is not an array whose cells a strut can grow.
+_CASES_ROW_SEPARATOR = r" \\[4pt] "
+
+
 class _EngineeringLatexPrinter(LatexPrinter):
     def __init__(
         self,
@@ -264,7 +280,7 @@ class _EngineeringLatexPrinter(LatexPrinter):
         return (
             written[:start]
             + " "
-            + r" \\ ".join(cases).replace(r"\frac", r"\dfrac")
+            + _CASES_ROW_SEPARATOR.join(cases).replace(r"\frac", r"\dfrac")
             + " "
             + written[end:]
         )
@@ -1927,7 +1943,7 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
     cases = [rf"\displaystyle {case}" for case in rendered]
     return (
         r"\begin{cases} "
-        + r" \\ ".join(cases).replace(r"\frac", r"\dfrac")
+        + _CASES_ROW_SEPARATOR.join(cases).replace(r"\frac", r"\dfrac")
         + r" \end{cases}"
     )
 
@@ -2111,9 +2127,18 @@ def _stacked_width(latex: str) -> float:
     cases = _cases_span(latex)
     if cases is not None:
         start, inner, end = cases
-        # Stripped: the spaces that separate a branch from the `\\` around it are not
-        # drawn, and counting them charged the body two characters it does not have.
-        branches = [branch.strip() for branch in inner.split(r"\\") if branch.strip()]
+        # Split on the separator *with* its optional row space: a branch is what MathJax
+        # draws, and `\\[4pt]` draws nothing. Splitting on `\\` alone would leave `[4pt]`
+        # at the head of every branch after the first and charge it five characters it
+        # does not have - which is how this body came to measure 94 against a budget of
+        # 104 in the first place, and what put `M_P(x) =` on a row with nothing after it.
+        #
+        # Stripped, for the same reason: the spaces around the separator are not drawn.
+        branches = [
+            branch.strip()
+            for branch in re.split(r"\\\\(?:\[[^\]]*\])?", inner)
+            if branch.strip()
+        ]
         widest = max((_stacked_width(branch) for branch in branches), default=0.0)
         return (
             _stacked_width(latex[:start])

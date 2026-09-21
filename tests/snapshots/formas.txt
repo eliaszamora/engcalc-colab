@@ -218,14 +218,14 @@ Ninguna hoja de referencia dibujaba un piecewise con números y la variable toda
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{1} & = & \displaystyle 8.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
 \displaystyle q_{2} & = & \displaystyle 4.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
 \displaystyle a_{q} & = & \displaystyle 3.00\,\mathrm{m} \\[8pt]
-\displaystyle q_{v}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\
-\displaystyle q_{2} & \text{for}\: x \leq L \\
+\displaystyle q_{v}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
+\displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\
-\displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\
+& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[8pt]
-& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\
-\displaystyle 4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x \leq 6.00\,\mathrm{m} \\
+& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\[4pt]
+\displaystyle 4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
 \displaystyle 0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
 
 === 38 · HTML ===
@@ -235,11 +235,11 @@ Ninguna hoja de referencia dibujaba un piecewise con números y la variable toda
 Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se escondía un error que mataba la celda: con la variable libre, el motor pedía que le definieran el kilonewton. La definición, el mismo llamado en un punto y su extrema ya respondían; el único camino roto era éste.
 
 === 40 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
 \displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[8pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\
+& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[8pt]
-& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\
+& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\[4pt]
 \displaystyle 5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
 
 === 41 · HTML ===
@@ -249,10 +249,10 @@ Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se escon
 El mismo piecewise, pero preguntado en un punto. Ninguna hoja lo escribía, y por eso nadie veía que la fila de sustitución escribía la rama por defecto como un cero pelado mientras la respuesta, dos líneas más abajo, la escribía con su unidad. Acá el punto cae fuera de todo tramo, así que la rama que responde es justamente la que salía sin unidad.
 
 === 43 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\
-\displaystyle q_{2} & \text{for}\: x \leq L \\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
+\displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) < \left(3.00\,\mathrm{m}\right) \\
-\displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) \leq \left(6.00\,\mathrm{m}\right) \\
+& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) < \left(3.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle 0.00\,\frac{\mathrm{kN}}{\mathrm{m}} \end{array}

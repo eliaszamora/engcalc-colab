@@ -26,6 +26,8 @@ no readable form left, which is the whole difference.
 Older than 0.31.7; measured on 0.31.6 with the tree asserted.
 """
 
+import re
+
 import matplotlib
 import pytest
 
@@ -63,13 +65,16 @@ def page(monkeypatch):
 
 
 def bodies_of(written: str) -> list[list[str]]:
+    r"""The separator carries a row space - `\\[4pt]`, from
+    `test_a_cases_body_gives_its_branches_room` - so the split takes it with its optional
+    argument, or every branch but the first arrives wearing a `[4pt]`."""
     bodies = []
     for after in written.split(r"\begin{cases}")[1:]:
         inner = after.split(r"\end{cases}")[0]
         bodies.append(
             [
                 branch.strip().replace(r"\displaystyle ", "")
-                for branch in inner.split(r"\\")
+                for branch in re.split(r"\\\\(?:\[[^\]]*\])?", inner)
             ]
         )
     return bodies
