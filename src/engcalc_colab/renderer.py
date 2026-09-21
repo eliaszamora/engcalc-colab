@@ -243,6 +243,32 @@ class _EngineeringLatexPrinter(LatexPrinter):
             return False
         return _letters_of(rendered) == base
 
+    def _print_Piecewise(self, expr):
+        r"""Each branch in display style, so it reads at the size of the rows around it.
+
+        A `cases` environment sets its cells in text style, where a fraction is drawn
+        small: on the engineer's beam the branches of `M_P(x)` measured 20.7 px and
+        23.6 px beside 36.4 px for the fractions two rows above, in the same block.
+        0.31.2 answered this for the computed blocks; `cases` is where that did not
+        reach.
+
+        `\dfrac` as well, for the reason recorded there: `\displaystyle` sizes only the
+        outermost fraction, and a branch can hold one inside another.
+        """
+        written = super()._print_Piecewise(expr)
+        start = written.index(r"\begin{cases}") + len(r"\begin{cases}")
+        end = written.index(r"\end{cases}")
+        cases = [
+            rf"\displaystyle {case.strip()}" for case in written[start:end].split(r"\\")
+        ]
+        return (
+            written[:start]
+            + " "
+            + r" \\ ".join(cases).replace(r"\frac", r"\dfrac")
+            + " "
+            + written[end:]
+        )
+
     def _print_Mul(self, expr):
         if not expr.is_commutative:
             return super()._print_Mul(expr)
@@ -1895,7 +1921,15 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
             rf"{variable_latex} {operator_latex[branch.operator]} {breakpoint_latex}"
         )
 
-    return r"\begin{cases} " + r" \\ ".join(rendered) + r" \end{cases}"
+    # In display style, and `\dfrac`, for the reason `_print_Piecewise` records: a
+    # `cases` cell is set in text style, where a fraction is drawn small, and this row
+    # sits directly under one the definition printer sets at the page's size.
+    cases = [rf"\displaystyle {case}" for case in rendered]
+    return (
+        r"\begin{cases} "
+        + r" \\ ".join(cases).replace(r"\frac", r"\dfrac")
+        + r" \end{cases}"
+    )
 
 
 def _shows_as_stored(result) -> bool:

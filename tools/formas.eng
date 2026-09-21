@@ -143,3 +143,18 @@ solve(eq(v^2, 25/s^2), v)
 M_Dv2(x) = qD*x*(L - x)/2
 M_Lv2(x) = 0.75*qL*x*(L - x)
 intersections(M_Dv2(x), M_Lv2(x), x, 0, L)
+
+### Un piecewise evaluado con la variable libre
+
+"""
+Ninguna hoja de referencia dibujaba un piecewise con números y la variable todavía libre,
+y ahí vive una tercera fila que ninguna otra escribe: la respuesta, construida aparte del
+printer de SymPy. Sus ramas salían en estilo de texto, con la fracción de unidades dibujada
+pequeña, y la comparación de páginas no podía verlo porque la fila no estaba en ninguna.
+"""
+
+q1 := 8*kN/m
+q2 := 4*kN/m
+a_q := 3*m
+q_v(x) = piecewise(q1, x < a_q, q2, x <= L, 0*kN/m)
+numeric(q_v(x))
