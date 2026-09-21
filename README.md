@@ -2,7 +2,36 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.11**.
+Current version: **0.31.12**.
+
+
+## v0.31.12 the order a coefficient lost
+
+One correction, and the engineer found it himself, in his own Colab, in a row 0.31.10 had
+just made readable.
+
+- **A coefficient writes its units in the page's order.** Two lines apart in one block:
+  `120.00 m·kN − 20.00 kN x` above `0.00 kN·m`. He wrote `P*(L - x)/2`, force first;
+  expanding it hands the constant term over as `L*P/2`, because SymPy canonicalises
+  alphabetically and `L` sorts before `P`. So the order that reached the page was the
+  alphabet's, not his - the complaint `_page_unit_order` was written for in 0.31.4, in the
+  one path it had not reached.
+
+**It does not overrule the written order,** and a first attempt at it did. Asking the
+page's tables for every value broke
+`test_a_compound_unit_reads_in_the_order_it_was_written`, which settled that a value keeps
+the order its factors were *written* in - an engineer who writes `mm*N` gets `mm*N` - and
+that a formula's unit literals follow the value rather than the other way round. Both
+still hold; a polynomial coefficient is simply the one place with no written order left to
+keep. The two rules are now pinned against each other from both sides.
+
+Older than any of the corrections around it: the row reads `m·kN` on 0.31.6 too. What
+changed is that 0.31.10 gave the zero branch below it a unit, so for the first time there
+was a `kN·m` beside it to disagree with. Swept across the four reference pages before the
+fix: twenty-three products of two units written force first, and exactly one the other
+way.
+
+A patch release: one correction.
 
 
 ## v0.31.11 a branch that holds a value
@@ -2879,6 +2908,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.12** — the order a coefficient lost. `120.00 m·kN` sat two lines above `0.00 kN·m` in one block: the engineer wrote `P*(L - x)/2` force first, and expanding it hands the constant term over as `L*P/2` because SymPy canonicalises alphabetically. A polynomial coefficient now asks the page's tables, which is the rule 0.31.4 wrote for a formula's unit literals, in the one path it had not reached. It does not overrule the written order - a value still keeps the order its factors were written in, and the two rules are pinned against each other now.
 - **0.31.11** — a branch that holds a value is written as a value. A substitution row brackets every cell it substitutes into, and a branch the printer found nothing to replace in came out as the engineer typed it: `(8.00 kN/m)` beside a bare `5 kN/m`, two shapes in one column where the brackets say nothing about the arithmetic. A branch that holds a value now reads as one, which makes 0.31.8's `(0.00 kN/m)` a case of that rule rather than an exception to a narrower one. A branch that is a formula keeps its shape, and the definition row still says what the engineer wrote.
 - **0.31.10** — a zero beside a formula, the other half of 0.31.8's own correction. A zero branch takes the unit its neighbours are shown in by resolving every branch to a quantity and handing the group one unit; that works when the neighbouring branches are names, and on a real beam they are formulas holding the interval variable, which never resolve. The zero was left alone with nothing to take a unit from, so `numeric(M_P(x))` answered a moment as a bare `0.00` in the row the engineer reads off. The unit is inferred the way the same piecewise asked at a point already infers it, by giving the interval variable one unit of the dimension its breakpoints declare.
 - **0.31.9** — the room a branch needs. A `cases` environment gives its rows no separation of its own: measured on the rendered page, every body had 0 px between its branches while the rows of the block around it get 10.2 px. That read as a tight list while a branch was 18 px tall; 0.31.7 set the branches in display style with full-size fractions and took them to 36-44 px, where the fraction rule of one branch sits against the numerator of the next. They are separated by 4pt now, half of the 8pt the block gives its own rows. The width estimator is not charged for it, which is what would otherwise have undone 0.31.7's own measurement.
@@ -2966,4 +2996,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.11`.
+Version: `0.31.12`.
