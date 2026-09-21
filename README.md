@@ -2,7 +2,38 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.10**.
+Current version: **0.31.11**.
+
+
+## v0.31.11 a branch that holds a value
+
+One correction, and the last of the five that came out of one bare zero.
+
+- **A literal branch is written as a value.** A substitution row writes the row with values
+  in place of names, and every cell it touches comes out bracketed. A branch the printer
+  found nothing to replace in came out as the engineer typed it, which left two shapes in
+  one column: `(8.00 kN/m)` beside a bare `5 kN/m`, where the brackets say nothing about
+  the arithmetic and the reader has to work that out. A branch that holds a **value** is
+  written as a value now, in the row's own form. `0*kN/m` was given exactly that when it
+  became `(0.00 kN/m)`, so a literal is the same case with a number in it, and 0.31.8's
+  correction is one case of a wider rule rather than an exception to a narrower one.
+
+One shape is not available everywhere and is not what this asks for. A branch that is a
+**formula** is not a single value and keeps its shape, with the brackets around the values
+inside it: `(1.00 m) (40.00 kN) / 2`. The definition row is untouched either way - `5 kN/m`
+is what the engineer wrote, and the definition is where his writing belongs.
+
+Three mutants of this survived their first round and each turned out to be a real gap
+rather than an equivalent, found by rendering the shape no contract reached. Naming every
+branch collapses a formula to its answer and throws away the working the row exists to
+show. Paying only the first value branch leaves a second one bare, which no sheet here
+could see because every one of them has exactly one. And reading the engine's value instead
+of the row's own substitution makes `q2 := 400*kgf/m` read `3.92 kN/m` in the substitution
+row - the unit the branches agreed on in order to answer, not the value the sheet put
+there. A substitution row says what was substituted; the answer row is where the branches
+come to a common unit.
+
+A patch release: one correction.
 
 
 ## v0.31.10 a zero beside a formula
@@ -2848,6 +2879,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.11** — a branch that holds a value is written as a value. A substitution row brackets every cell it substitutes into, and a branch the printer found nothing to replace in came out as the engineer typed it: `(8.00 kN/m)` beside a bare `5 kN/m`, two shapes in one column where the brackets say nothing about the arithmetic. A branch that holds a value now reads as one, which makes 0.31.8's `(0.00 kN/m)` a case of that rule rather than an exception to a narrower one. A branch that is a formula keeps its shape, and the definition row still says what the engineer wrote.
 - **0.31.10** — a zero beside a formula, the other half of 0.31.8's own correction. A zero branch takes the unit its neighbours are shown in by resolving every branch to a quantity and handing the group one unit; that works when the neighbouring branches are names, and on a real beam they are formulas holding the interval variable, which never resolve. The zero was left alone with nothing to take a unit from, so `numeric(M_P(x))` answered a moment as a bare `0.00` in the row the engineer reads off. The unit is inferred the way the same piecewise asked at a point already infers it, by giving the interval variable one unit of the dimension its breakpoints declare.
 - **0.31.9** — the room a branch needs. A `cases` environment gives its rows no separation of its own: measured on the rendered page, every body had 0 px between its branches while the rows of the block around it get 10.2 px. That read as a tight list while a branch was 18 px tall; 0.31.7 set the branches in display style with full-size fractions and took them to 36-44 px, where the fraction rule of one branch sits against the numerator of the next. They are separated by 4pt now, half of the 8pt the block gives its own rows. The width estimator is not charged for it, which is what would otherwise have undone 0.31.7's own measurement.
 - **0.31.8** — what one bare zero led to, in four corrections. A literal quantity in a piecewise branch killed the cell with the variable left free, asking the engineer to define the kilonewton; the scalar partial path now reads an undefined unit alias as the unit, as the scalar and matrix paths beside it already did. A zero branch is written in the unit its neighbours are shown in, both with the variable free and at a point, where the answer one line below had been writing it with a unit all along. And a unit in a call's argument is set upright: the heading had never been told which names a row reads as units, so `m`, `s` and `N` came out italic beside an upright `cm`. All four are older than 0.31.7, and `tools/formas.eng` draws the three blocks that made them visible.
@@ -2934,4 +2966,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.10`.
+Version: `0.31.11`.
