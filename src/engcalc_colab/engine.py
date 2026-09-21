@@ -1111,6 +1111,16 @@ class EngineeringEngine:
                     ),
                     declared_names=frozenset(self.declared_unit_names),
                     unit_was_requested=evaluator.requested_unit is not None,
+                    # The substitutions are the overrides: they are exactly the values
+                    # this row was evaluated with, the argument bound to the interval
+                    # variable among them, so the branches resolve to the numbers the row
+                    # already shows. A requested target unit is deliberately not applied -
+                    # a zero follows the neighbours it is read against, and those are
+                    # shown in the unit they were substituted in.
+                    piecewise_branch_values=self.numeric_context.piecewise_branch_values(
+                        symbolic_expression,
+                        overrides=substitutions,
+                    ),
                 )
 
             if statement.target is not None:

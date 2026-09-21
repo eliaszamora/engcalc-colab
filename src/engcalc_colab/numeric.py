@@ -1072,6 +1072,45 @@ class NumericContext:
             branches=tuple(PiecewisePartialBranch(**branch) for branch in branches),
         )
 
+    def piecewise_branch_values(self, expression, overrides: dict[str, Any] | None = None):
+        """Every branch of a piecewise evaluated at a point, in the unit they share.
+
+        `build_partial_piecewise_evaluation` hands the renderer these values on the path
+        that leaves the variable free. A piecewise evaluated at a point had nothing to
+        hand it, so its substitution row printed a bare `0` for the very branch the answer
+        two lines below writes as `0.00 kN/m`.
+
+        A zero branch's unit is not on the branch: `0*kN/m` folds to `Integer(0)` on the
+        way into the symbolic layer, and what gives it one is the group - the same
+        `_normalize_quantity_group` call, under the same name, that the partial path uses.
+
+        `None` when there is nothing to say: not a piecewise, or a branch this evaluation
+        never needed and cannot resolve on its own. The renderer then leaves the row as it
+        found it, so a sheet that reads today cannot stop reading because of this.
+        """
+        expression = sp.sympify(expression)
+        if not isinstance(expression, sp.Piecewise):
+            return None
+
+        overrides = dict(overrides or {})
+        values = []
+        for branch_expression, _condition in expression.args:
+            try:
+                _, value = self.evaluate_symbolic(
+                    sp.sympify(branch_expression),
+                    overrides=overrides,
+                )
+            except EngEvaluationError:
+                return None
+            values.append(value)
+
+        if not values:
+            return None
+        try:
+            return self._normalize_quantity_group(values, "piecewise branches")
+        except EngEvaluationError:
+            return None
+
     def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):
         if isinstance(expr, sp.Symbol):
             return substitutions[expr.name]

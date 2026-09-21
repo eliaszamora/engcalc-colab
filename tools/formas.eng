@@ -170,3 +170,14 @@ roto era éste.
 
 q_w(x) = piecewise(q1, x < a_q, 5*kN/m)
 numeric(q_w(x))
+
+### Un piecewise evaluado en un punto
+
+"""
+El mismo piecewise, pero preguntado en un punto. Ninguna hoja lo escribía, y por eso nadie
+veía que la fila de sustitución escribía la rama por defecto como un cero pelado mientras
+la respuesta, dos líneas más abajo, la escribía con su unidad. Acá el punto cae fuera de
+todo tramo, así que la rama que responde es justamente la que salía sin unidad.
+"""
+
+numeric(q_v(9*m))
