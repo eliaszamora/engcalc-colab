@@ -224,7 +224,7 @@ Ninguna hoja de referencia dibujaba un piecewise con números y la variable toda
 \displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: x < \left(300.00\,\mathrm{cm}\right) \\
 \displaystyle \left(4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: x \leq \left(600.00\,\mathrm{cm}\right) \\
-\displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle \left(0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle \begin{cases} \displaystyle 8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{for}\: x < 300.00\,\mathrm{cm} \\
 \displaystyle 4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{for}\: x \leq 600.00\,\mathrm{cm} \\
 \displaystyle 0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{otherwise} \end{cases} \end{array}

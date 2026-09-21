@@ -2519,6 +2519,50 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
     return rows
 
 
+# A name no sheet can write, so nothing an engineer types can collide with it. It is
+# never printed: the substitution printer finds it in `substitutions` and prints the
+# value, which is the whole point of naming the branch.
+_ZERO_BRANCH_NAME = "zero branch "
+
+
+def _named_zero_branches(expression, piecewise_evaluation):
+    r"""Give each zero branch a name, so the substitution row can pay it its unit.
+
+    `0*kN/m` folds to `Integer(0)` on the way into the symbolic layer, so the
+    substitution row had no unit left to print and no name to replace: two branches read
+    `\left(8.00\,\frac{kN}{m}\right)` and the third a bare `0`, one row above the answer
+    that writes `0.00 kN/m` for that same branch.
+
+    The engine has already decided what the branch is worth - in the branches' shared
+    unit, and even when the engineer writes a bare `0` - so the value is not invented
+    here. Naming the branch and handing the name to the printer is what gives the zero
+    the brackets its neighbours wear, through the one mechanism that draws them.
+
+    A zero only. A literal branch with a readable form of its own keeps it: `5 kN/m` is
+    left as the engineer wrote it, because nothing was substituted into it.
+    """
+    if piecewise_evaluation is None or not isinstance(expression, sp.Piecewise):
+        return expression, {}
+
+    branches = piecewise_evaluation.branches
+    if len(branches) != len(expression.args):
+        return expression, {}
+
+    named: dict[str, object] = {}
+    args = []
+    for index, (value, condition) in enumerate(expression.args):
+        evaluated = branches[index].value
+        if sp.sympify(value).is_zero and hasattr(evaluated, "magnitude"):
+            name = f"{_ZERO_BRANCH_NAME}{index}"
+            named[name] = evaluated
+            args.append((sp.Symbol(name), condition))
+        else:
+            args.append((value, condition))
+    if not named:
+        return expression, {}
+    return sp.Piecewise(*args, evaluate=False), named
+
+
 def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, settings: RenderSettings) -> list[str]:
     formula_rows = _bounded_expression_rows(
         result.symbolic_expression,
@@ -2538,10 +2582,14 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
 
     substituted_rows: list[str] = []
     if _shows_substitution(result):
+        substituted_expression, zero_branches = _named_zero_branches(
+            result.symbolic_expression,
+            result.piecewise_evaluation,
+        )
         substituted_rows = _without_a_repetition(
             _bounded_expression_rows(
-                result.symbolic_expression,
-                _shown_substitutions(result, settings),
+                substituted_expression,
+                {**_shown_substitutions(result, settings), **zero_branches},
                 settings=settings,
                 unit_literals=result.unit_literals,
             ),
