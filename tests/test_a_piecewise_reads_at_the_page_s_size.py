@@ -25,6 +25,8 @@ one the engineer reads off - is built here, by `_piecewise_partial_latex`, and i
 its own fractions: a load in `kN/m` is drawn as one.
 """
 
+import re
+
 import matplotlib
 import pytest
 
@@ -61,11 +63,18 @@ def page(monkeypatch):
 
 
 def bodies_of(written: str) -> list[list[str]]:
-    r"""Every `cases` body on the page, each as its list of branches."""
+    r"""Every `cases` body on the page, each as its list of branches.
+
+    The separator carries a row space - `\\[4pt]`, from
+    `test_a_cases_body_gives_its_branches_room` - so the split has to take it with the
+    optional argument or every branch but the first arrives wearing a `[4pt]`.
+    """
     bodies = []
     for after in written.split(r"\begin{cases}")[1:]:
         inner = after.split(r"\end{cases}")[0]
-        bodies.append([branch.strip() for branch in inner.split(r"\\")])
+        bodies.append(
+            [branch.strip() for branch in re.split(r"\\\\(?:\[[^\]]*\])?", inner)]
+        )
     return bodies
 
 
