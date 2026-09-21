@@ -2,7 +2,34 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.9**.
+Current version: **0.31.10**.
+
+
+## v0.31.10 a zero beside a formula
+
+One correction, and it is the other half of one this project thought it had finished.
+
+- **A zero branch keeps its unit beside a formula.** 0.31.8 gave a zero branch the unit its
+  neighbours are shown in, and reached it by resolving every branch to a quantity and
+  handing the group one unit - which is what turns a bare zero into `0.00 kN/m`. That works
+  when the neighbouring branches are *names*. On a real beam they are *formulas holding the
+  interval variable*, so none of them resolves, the zero is left alone in the group with
+  nothing to take a unit from, and `numeric(M_P(x))` answered a moment as a bare `0.00` in
+  the row the engineer reads off. So the case the correction was written for was the one
+  case it did not cover.
+
+The unit is not guessed. The same inference that makes a piecewise *asked at a point*
+answer `0.00 kgf·cm` could not be reached while the interval variable was free, because a
+branch holding `x` does not evaluate. It does once `x` is given one unit of its own
+dimension, and the breakpoints say what that dimension is: `x ≤ L/2` with `L` in
+centimetres makes `P·x/2` a `kgf·cm`, which is what was written in the default branch to
+begin with. Where a neighbour did resolve, the unit it agreed on stands untouched.
+
+A guard written alongside this was removed as unreachable, and a piecewise with a zero
+branch at *each* end - a span carrying nothing beyond either support - turned out to have
+no contract anywhere, because every sheet in the repository has exactly one zero to pay.
+
+A patch release: one correction.
 
 
 ## v0.31.9 the room a branch needs
@@ -2821,6 +2848,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.10** — a zero beside a formula, the other half of 0.31.8's own correction. A zero branch takes the unit its neighbours are shown in by resolving every branch to a quantity and handing the group one unit; that works when the neighbouring branches are names, and on a real beam they are formulas holding the interval variable, which never resolve. The zero was left alone with nothing to take a unit from, so `numeric(M_P(x))` answered a moment as a bare `0.00` in the row the engineer reads off. The unit is inferred the way the same piecewise asked at a point already infers it, by giving the interval variable one unit of the dimension its breakpoints declare.
 - **0.31.9** — the room a branch needs. A `cases` environment gives its rows no separation of its own: measured on the rendered page, every body had 0 px between its branches while the rows of the block around it get 10.2 px. That read as a tight list while a branch was 18 px tall; 0.31.7 set the branches in display style with full-size fractions and took them to 36-44 px, where the fraction rule of one branch sits against the numerator of the next. They are separated by 4pt now, half of the 8pt the block gives its own rows. The width estimator is not charged for it, which is what would otherwise have undone 0.31.7's own measurement.
 - **0.31.8** — what one bare zero led to, in four corrections. A literal quantity in a piecewise branch killed the cell with the variable left free, asking the engineer to define the kilonewton; the scalar partial path now reads an undefined unit alias as the unit, as the scalar and matrix paths beside it already did. A zero branch is written in the unit its neighbours are shown in, both with the variable free and at a point, where the answer one line below had been writing it with a unit all along. And a unit in a call's argument is set upright: the heading had never been told which names a row reads as units, so `m`, `s` and `N` came out italic beside an upright `cm`. All four are older than 0.31.7, and `tools/formas.eng` draws the three blocks that made them visible.
 - **0.31.7** — how a piecewise is drawn, in three corrections. The width estimator did not recognise `\dfrac`: it charged a display fraction 5.0 where the same fraction written `\frac` measures 9.0, and it measures both the same now. A `cases` body is measured across its branches and not end to end, so `M_P(x) =` no longer stands with nothing after it and its three branches dropped to the row below. And a `cases` cell is set in display style with full-size fractions, so a branch reads at the size of the rows around it - 20.7 px became 36.4 px, beside the 36.4 px of the fractions two rows up. Both producers of a `cases` body are corrected, including the answer row of a piecewise evaluated with its variable still free, which no reference sheet drew; `tools/formas.eng` draws it now.
@@ -2906,4 +2934,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.9`.
+Version: `0.31.10`.
