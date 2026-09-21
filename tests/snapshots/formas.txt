@@ -272,5 +272,5 @@ Las hojas ya dibujaban un piecewise con la variable libre, pero con ramas que so
 \displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,\left(\left(6.00\,\mathrm{m}\right) - x\right)}{2} & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle \begin{cases} \displaystyle 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 3.00\,\mathrm{m} \\[4pt]
-\displaystyle 120.00\,\mathrm{m} \cdot \mathrm{kN} - 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
+\displaystyle 120.00\,\mathrm{kN} \cdot \mathrm{m} - 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
 \displaystyle 0.00\,\mathrm{kN} \cdot \mathrm{m} & \text{otherwise} \end{cases} \end{array}
