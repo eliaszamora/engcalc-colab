@@ -2,7 +2,39 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.8**.
+Current version: **0.31.9**.
+
+
+## v0.31.9 the room a branch needs
+
+One correction, seen in Colab on the engineer's own run of 0.31.8.
+
+- **A `cases` body gives its branches room.** A `cases` environment gives its rows no
+  separation of its own. Measured on the rendered page, every body had **0 px** between
+  its branches while the rows of the block around it are given 10.2 px. That read as a
+  tight list while a branch was 18 px tall, and 0.31.7 set the branches in display style
+  with full-size fractions, which took them to 36-44 px - at which height the fraction
+  rule of one branch sits against the numerator of the next. It is 0.31.7's own doing, in
+  the half of the question it did not ask: it made the branches the right size without
+  giving them the room that size needs. They are separated by `4pt` now, half of the `8pt`
+  the block gives its own rows, because the branches of one definition are a tighter
+  grouping than two stages of a calculation. A three-branch body goes from 106.2 px to
+  119.2 px.
+
+Two things here were settled by measuring rather than by reasoning about them, and both
+had the opposite answer to the expected one. A strut in front of each branch - the way a
+computed block makes its room - changed the body's height by nothing at all, because
+`cases` is not an array whose cells a strut can grow. And the separation MathJax adds goes
+*inside* the row box rather than between boxes, so the gap between rows reads zero either
+way: the gap was the wrong instrument, and the first attempt at this measured nothing
+because of it.
+
+The width estimator is not charged for the separation. It split a `cases` body on `\\`,
+so an unhandled `\\[4pt]` would have put five characters in front of every branch and
+re-inflated the measurement 0.31.7 corrected - which is what put a piecewise's definition
+on a row with nothing after it in the first place.
+
+A patch release: one correction.
 
 
 ## v0.31.8 what one bare zero led to
@@ -2789,6 +2821,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.9** — the room a branch needs. A `cases` environment gives its rows no separation of its own: measured on the rendered page, every body had 0 px between its branches while the rows of the block around it get 10.2 px. That read as a tight list while a branch was 18 px tall; 0.31.7 set the branches in display style with full-size fractions and took them to 36-44 px, where the fraction rule of one branch sits against the numerator of the next. They are separated by 4pt now, half of the 8pt the block gives its own rows. The width estimator is not charged for it, which is what would otherwise have undone 0.31.7's own measurement.
 - **0.31.8** — what one bare zero led to, in four corrections. A literal quantity in a piecewise branch killed the cell with the variable left free, asking the engineer to define the kilonewton; the scalar partial path now reads an undefined unit alias as the unit, as the scalar and matrix paths beside it already did. A zero branch is written in the unit its neighbours are shown in, both with the variable free and at a point, where the answer one line below had been writing it with a unit all along. And a unit in a call's argument is set upright: the heading had never been told which names a row reads as units, so `m`, `s` and `N` came out italic beside an upright `cm`. All four are older than 0.31.7, and `tools/formas.eng` draws the three blocks that made them visible.
 - **0.31.7** — how a piecewise is drawn, in three corrections. The width estimator did not recognise `\dfrac`: it charged a display fraction 5.0 where the same fraction written `\frac` measures 9.0, and it measures both the same now. A `cases` body is measured across its branches and not end to end, so `M_P(x) =` no longer stands with nothing after it and its three branches dropped to the row below. And a `cases` cell is set in display style with full-size fractions, so a branch reads at the size of the rows around it - 20.7 px became 36.4 px, beside the 36.4 px of the fractions two rows up. Both producers of a `cases` body are corrected, including the answer row of a piecewise evaluated with its variable still free, which no reference sheet drew; `tools/formas.eng` draws it now.
 - **0.31.6** — what a `solve` writes, in two corrections. A `solve` with more than one answer, and the row saying what `assume` ruled out, set their units in italic where every row around them set them upright; they are told which names are units now. And a `solve` that finds one answer writes it under the unknown it answers, `v = 5/s`, as the same call with two answers always did. Both were older than 0.31.5 and invisible because no reference sheet drew those blocks; `tools/formas.eng` draws them now.
@@ -2873,4 +2906,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.8`.
+Version: `0.31.9`.
