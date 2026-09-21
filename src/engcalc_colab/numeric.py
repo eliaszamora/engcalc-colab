@@ -1067,10 +1067,87 @@ class NumericContext:
             for index, value in zip(resolved_indices, normalized):
                 branches[index]["value"] = value
 
+        self._give_a_lone_zero_the_branches_unit(
+            expression,
+            branches,
+            variable,
+            overrides,
+        )
+
         return PiecewisePartialEvaluation(
             interval_variable=variable,
             branches=tuple(PiecewisePartialBranch(**branch) for branch in branches),
         )
+
+    def _give_a_lone_zero_the_branches_unit(
+        self,
+        expression,
+        branches: list[dict[str, Any]],
+        variable: str,
+        overrides: dict[str, Any],
+    ) -> None:
+        """A zero whose neighbours all hold the interval variable has no group to join.
+
+        The group above is what turns a bare `Integer(0)` into `0.00 kN/m`, and it only
+        contains branches that resolved to a quantity. When the neighbouring branches are
+        formulas in the interval variable - which is how every real beam is written -
+        none of them resolves, and the zero is left alone with nothing to take a unit
+        from: the engineer's own `M_P(x)` answered a moment as a bare `0.00`.
+
+        `_infer_piecewise_zero_unit` already answers this question, and is what makes the
+        same piecewise asked at a point answer `0.00 kgf·cm`. It could not be reached here
+        because a branch holding `x` does not evaluate while `x` is free. It does once `x`
+        is given one unit of its own dimension, and the breakpoints say what that
+        dimension is: `x <= L/2` with `L` in centimetres makes `P*x/2` a `kgf·cm`.
+
+        Only when the group settled on no unit at all, and the empty `zero_indices` is
+        the whole of that test - no second guard is needed, and one written here was
+        removed as unreachable. A zero beside a branch that resolved dimensionally has
+        already been given that branch's unit by the group above, so it is not
+        dimensionless any more; and a branch that did not resolve holds a symbolic
+        expression rather than a quantity, so it can never be mistaken for one.
+        """
+        zero_indices = [
+            index
+            for index, branch in enumerate(branches)
+            if hasattr(branch["value"], "magnitude")
+            and branch["value"].dimensionless
+            and self._is_exact_zero_quantity(branch["value"])
+        ]
+        if not zero_indices:
+            return
+
+        variable_unit = next(
+            (
+                branch["breakpoint"].units
+                for branch in branches
+                if hasattr(branch["breakpoint"], "units")
+            ),
+            self.ureg.dimensionless,
+        )
+        try:
+            substitutions, _unresolved = self.partial_substitutions(
+                expression,
+                allowed_unresolved={variable},
+                overrides=overrides,
+            )
+            unit = self._infer_piecewise_zero_unit(
+                expression,
+                {**substitutions, variable: self.ureg.Quantity(1, variable_unit)},
+            )
+        except EngEvaluationError:
+            # This row already evaluated; a question asked here must not be able to stop
+            # it from being drawn. Left as found, which is what it read before.
+            return
+
+        # Intent rather than behaviour: with nothing to infer, writing a dimensionless
+        # zero over a branch that already holds one changes nothing, and mutation
+        # confirmed it by surviving. Kept so the rule reads as it is meant - a unit is
+        # taken where there is one to take, and invented nowhere.
+        if unit is None:
+            return
+        for index in zero_indices:
+            branches[index]["value"] = self.ureg.Quantity(0, unit)
 
     def piecewise_branch_values(self, expression, overrides: dict[str, Any] | None = None):
         """Every branch of a piecewise evaluated at a point, in the unit they share.

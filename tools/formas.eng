@@ -181,3 +181,16 @@ todo tramo, así que la rama que responde es justamente la que salía sin unidad
 """
 
 numeric(q_v(9*m))
+
+### Un piecewise cuyas ramas son fórmulas en la variable
+
+"""
+Las hojas ya dibujaban un piecewise con la variable libre, pero con ramas que son nombres,
+y ahí cada rama resuelve a una cantidad y el grupo le presta su unidad al cero. Una viga
+real se escribe con fórmulas en la variable: ninguna resuelve, el cero queda solo y salía
+sin unidad, un momento escrito 0.00 en la fila que se lee.
+"""
+
+P_v := 40*kN
+M_Pv(x) = piecewise(P_v*x/2, x <= L/2, P_v*(L - x)/2, x <= L, 0*kN*m)
+numeric(M_Pv(x))
