@@ -1,10 +1,44 @@
 # EngCalc Current Project Context
 
-> **Stale as of 2026-09-05. Read `NEXT.md` first.** This file was last updated at
-> 0.13.0 on `9a9d6e3`, and `main` has moved a long way past it. The *approved behaviour*
-> and *evidence hierarchy* sections below are still in force and are regression
-> requirements. The baseline numbers, release history and open-issue list are not — do
-> not quote its counts.
+> **Read the block directly below, then `NEXT.md`.** Everything after it was last
+> updated at 0.13.0 on `9a9d6e3` and describes a tree that no longer exists. Its
+> *approved behaviour* and *evidence hierarchy* sections are still in force and are
+> regression requirements; its baseline numbers, release history and open-issue list are
+> not — do not quote its counts.
+
+## Where things stand today
+
+_2026-09-22._
+
+| | |
+|---|---|
+| released | **0.31.13** — `main` at `8d00c9b`; CI (six jobs) and Quality Gate Deep green on that SHA |
+| default suite | **2526 passing**, about three minutes |
+| open PR | **#230** at `b16fba0`, six jobs green on that exact SHA — *a matrix cell is written with the settings its row was given* |
+| branch, not pushed | `fix/a-modulus-is-written-before-its-section` at `9a57cae` — *among the capitals, what carries mass is written first* |
+
+**What the two changes are for.** The engineer types `E*A_c/L_c` in `tools/portico.eng`
+and the page drew `A_c E / L_c`. He settled the question on 2026-09-22: *"quiero que sea
+EA ya que convencionalmente así se usa"*. Two defects were in the way, and they are one
+per branch:
+
+1. the settings a row is given never reached a matrix cell, so the frame page would have
+   corrected three rows and left ten contradicting them;
+2. inside a shape group the factor order was the alphabet's, which is SymPy's canonical
+   order; among the capitals it is dimension now.
+
+Evidence on the pair: 12 + 12 contracts, 3 + 4 of them RED before their fix, mutation
+**8/8 and 8/8**, suite 2526, whole-page diff **39 rows on the three frame pages and
+nothing else**, every one verified a character-for-character permutation, and the page
+rendered and looked at: `k_c`, `k_d`, `K_ii`, `K_id`, `K_dd` and `k_eq` all read `EA` and
+`EI`, symbolic row and substitution agreeing, and the answers unchanged
+(70303.22 kN/m, 0.0168 s).
+
+**Nothing merges without his explicit yes.** The modulus branch is held rather than
+stacked on #230: deleting a stacked PR's base branch closes it, which is how #207 ended.
+
+**Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
+cut; this file's later sections for the approved behaviour that is still in force.
 
 _Last updated: 2026-09-02 — **EngCalc 0.13.0 is released and closed on `main` at `9a9d6e3`**, CI green on Python 3.10–3.14 and **verified installable and working in Google Colab from the documented `git+https` path**, running a complete memoria: a statics system, a moment from its shear, an elastic curve and a plot. Etapa 1 is three quarters done — `integrate` canonical (0.11.0), scalar equation systems (0.12.0), the indefinite integral (0.13.0) — and the measured gap map has gone from 4/18 to 7/18 exercises running end to end, with broken lines down from 24 to 17. No defect is open. One protocol lapse is recorded and corrected below._
 
