@@ -12,41 +12,58 @@ _2026-09-22._
 
 | | |
 |---|---|
-| released | **0.31.13** — #229, `8d00c9b`; CI (six jobs) and Quality Gate Deep green on that SHA |
-| `main` | `13736b6` — **#230 merged on top of 0.31.13**, in no release yet; six jobs and both qualification runs green on that SHA |
-| open PR | **#231** from `fix/a-modulus-is-written-before-its-section` — *among the capitals, what carries mass is written first* — rebased onto `13736b6` |
-| default suite | **2527 passing** on #231's tree (48 s with `-n auto`): 0.31.13's 2503 plus twelve contracts from each change |
+| released | **0.31.14** — release PR #232, carrying #230 and #231 |
+| `main` before it | `680c09d` (#231; #230 is `13736b6`); six jobs and both qualification runs green on that SHA |
+| open PRs | none besides the release |
+| default suite | **2527 passing**, about 50 s with `-n auto`: 0.31.13's 2503 plus twelve contracts from each change |
 
-**What the two changes are for.** The engineer types `E*A_c/L_c` in `tools/portico.eng`
-and the page drew `A_c E / L_c`. He settled the question on 2026-09-22: *"quiero que sea
-EA ya que convencionalmente así se usa"*. Two defects were in the way, one per change:
+**What 0.31.14 is for.** The engineer types `E*A_c/L_c` in `tools/portico.eng` and the
+page drew `A_c E / L_c`. He settled the question on 2026-09-22: *"quiero que sea EA ya que
+convencionalmente así se usa"*, and approved both merges and the release. Two defects were
+in the way, one per change:
 
-1. **#230, merged** — the settings a row is given never reached a matrix cell, so the frame
-   page would have corrected three rows and left ten contradicting them;
-2. **#231, open** — inside a shape group the factor order was the alphabet's, which is
-   SymPy's canonical order; among the capitals it is dimension now.
+1. **#230** (`13736b6`) — the settings a row is given never reached a matrix cell, so the
+   frame page would have corrected three rows and left ten contradicting them;
+2. **#231** (`680c09d`) — inside a shape group the factor order was the alphabet's, which
+   is SymPy's canonical order; among the capitals it is dimension now.
 
-**#230 alone moves no reference page.** Rendered on 0.31.13 and on `13736b6`, the thirteen
-sheets are identical. The frame reads `EA` only once #231 is in; until then `main` still
-draws `A_c E`.
+**#230 alone moves no reference page**: rendered on 0.31.13 and on `13736b6`, the thirteen
+sheets are identical. The 39 rows that move are all #231's.
 
 Evidence on the pair: 12 + 12 contracts, 3 + 4 of them RED before their fix, mutation
 **8/8 and 8/8**, whole-page diff **39 rows on the three frame pages and nothing else**,
-every one a character-for-character permutation (re-measured on the rebased tree), and the
-page rendered and looked at: `k_c`, `k_d`, `K_ii`, `K_id`, `K_dd` and `k_eq` all read `EA`
-and `EI`, symbolic row and substitution agreeing, and the answers unchanged
-(70303.22 kN/m, 0.0168 s). The rebase moved no code: #230's squash has the tree CI passed
-on `b16fba0`, and #231's fix commit has the tree that evidence was measured on. The suite
-had been recorded as 2526; it is 2527, counted.
+every one a character-for-character permutation, and the page rendered and looked at:
+`k_c`, `k_d`, `K_ii`, `K_id`, `K_dd` and `k_eq` all read `EA` and `EI`, symbolic row and
+substitution agreeing, and the answers unchanged (70303.22 kN/m, 0.0168 s). Six jobs green
+on the exact head of both PRs. The suite had been recorded as 2526; it is 2527, counted.
+
+Release evidence, on the release commit's tree:
+
+- the seven version assertions RED before the bump and GREEN after; source suite 2527;
+- a wheel built from `git archive` of the commit, its 29 package files byte-identical to
+  `src`;
+- installed in a clean Python 3.12 venv holding Colab's pins (ipython 7.34.0, numpy 2.2.6,
+  matplotlib 3.10.0, sympy 1.13.3), it adds Pint 0.26.1 and four small dependencies and
+  **upgrades nothing**;
+- outside the repository, `%load_ext` + `%eng_units kgf` + the frame sheet through
+  `%%eng` reads `E A_c` ×10, `E A_d` ×9, `E I_c` ×38 and never the old order;
+- the whole suite against the installed wheel, from a copy of the tree with no `src/`:
+  everything passes except `test_the_ipython_surface_stays_small`, which reads
+  `src/engcalc_colab/magic.py` by path rather than importing it, and passes when handed the
+  wheel's own copy;
+- the thirteen sheets render byte-identical from the wheel and from the working tree.
 
 ### Exact next step
 
-1. Six jobs green on #231's exact head SHA — ask `commits/<sha>/check-runs`; `gh pr checks`
-   can report a run from before a force-push.
-2. Tell Elías. **Nothing merges and 0.31.14 is not cut without his explicit yes.**
-3. With it: squash-merge #231 with `--match-head-commit`, then cut **0.31.14** carrying
-   #230 and #231 — the seven files in `NEXT.md`'s release table, plus the README's
-   `## v0.31.14` section and Version-notes bullet.
+1. Six jobs green on #232's exact head, then squash-merge it with `--match-head-commit` —
+   his yes, 2026-09-22: *"Sí, fusiona el #231 y publica 0.31.14"*.
+2. After the merge: six jobs and both qualification runs green on the merge commit, and a
+   clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
+   in a Colab-like venv reports 0.31.14 and draws the frame in `EA`.
+3. Then nothing he has asked for is open. Known and not requested: in a substitution row a
+   non-zero literal branch keeps its written form (`5 kN/m`) beside bracketed neighbours
+   (`(8.00 kN/m)`); `_analysis_scalar_latex` still has no unit literals to pass, written
+   down in #230's contract file, and no sheet draws it.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.
