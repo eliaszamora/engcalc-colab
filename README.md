@@ -2,7 +2,46 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.12**.
+Current version: **0.31.13**.
+
+
+## v0.31.13 a load before its coordinate
+
+One correction, on a complaint the engineer made reading his own beam in Colab.
+
+- **A name the sheet has no value for is written after the ones it has.** He wrote
+  `piecewise(P*x/2, ...)` and read `xP/2`, two lines above `P(L - x)/2` - the same `P`
+  before its companion in one branch and after it in the next. A commutative product was
+  ordered by the shape of the name: numbers, then names beginning with a lowercase
+  letter, then names beginning with an uppercase one. That gets `q L / 2`, `q L² / 8` and
+  `5 q L⁴ / (384 E I)` right by correlation, loads being usually written lowercase and
+  geometry uppercase, and `P` is the load that breaks the correlation.
+
+**Three rules were tried and measured before this one, and two of them were rejected by
+contracts already in this repository.** *The function's parameter goes last* fixes
+`P*x/2` and ruins `R_B(q) = 3 q L / 8`, where the parameter is the load;
+`test_symbolic_mathjax_wrapping` caught it. *What carries mass goes first* fixes both and
+splits `E I`, because a dimensionless direction cosine sat between them and the modulus
+jumped it. *Coefficients, then what carries mass* keeps `E I` together and writes `fy As`
+where ACI writes `As fy`; `test_a_written_coefficient_survives` caught it. There is no
+dimensional rule that gets `E A` and `As fy` both right, because those two are idiom and
+they disagree with each other.
+
+So the rule adopted does not touch a product between two names the sheet has settled a
+value for: `As fy`, `E A`, `E I` and `q L` are left exactly as they were. What moves is
+the one name the sheet knows nothing about, which on these pages is the coordinate. Two
+names without values keep the shape order between them, or `3 q L / 8` comes back as
+`3 L q / 8`; and a unit literal is not a coordinate, because `m` has no value either and
+sending it to the end tore the metre off the number it had been substituted with.
+
+Nine rows move on the five reference pages this repository pins: eight of them `x P` to
+`P x` in one shape or another, two of those being substitution rows, and one `q x L` to
+`q L x`. A tenth turns up in the wider thirteen-sheet diff a release is read against -
+`2 x² L` becomes `2 L x²` in a deflection, which is the order that sheet wrote it in. The
+`A E` of the frame is untouched, and which way round that one should read is a separate
+question that stays open.
+
+A patch release: one correction.
 
 
 ## v0.31.12 the order a coefficient lost
@@ -2908,6 +2947,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.13** — a load before its coordinate. The engineer wrote `piecewise(P*x/2, ...)` and read `xP/2` two lines above `P(L - x)/2`, the same `P` before its companion in one branch and after it in the next: a commutative product was ordered by the shape of the name, lowercase before uppercase, which gets `q L / 2`, `q L² / 8` and `5 q L⁴ / (384 E I)` right only by correlation. A name the sheet has settled no value for is now written after the ones it has, so a product between two known names is untouched - `As fy`, `E A`, `E I` and `q L` all stay as they were - and what moves is the coordinate. Three rules were tried before this one and two were rejected by contracts already here: parameter-last ruins `3 q L / 8`, and both dimensional rules break either `E I` or `As fy`. Nine rows move on the five reference pages the repository pins, and a tenth - `2 x² L` to `2 L x²` in a deflection - in the wider thirteen-sheet diff a release is read against.
 - **0.31.12** — the order a coefficient lost. `120.00 m·kN` sat two lines above `0.00 kN·m` in one block: the engineer wrote `P*(L - x)/2` force first, and expanding it hands the constant term over as `L*P/2` because SymPy canonicalises alphabetically. A polynomial coefficient now asks the page's tables, which is the rule 0.31.4 wrote for a formula's unit literals, in the one path it had not reached. It does not overrule the written order - a value still keeps the order its factors were written in, and the two rules are pinned against each other now.
 - **0.31.11** — a branch that holds a value is written as a value. A substitution row brackets every cell it substitutes into, and a branch the printer found nothing to replace in came out as the engineer typed it: `(8.00 kN/m)` beside a bare `5 kN/m`, two shapes in one column where the brackets say nothing about the arithmetic. A branch that holds a value now reads as one, which makes 0.31.8's `(0.00 kN/m)` a case of that rule rather than an exception to a narrower one. A branch that is a formula keeps its shape, and the definition row still says what the engineer wrote.
 - **0.31.10** — a zero beside a formula, the other half of 0.31.8's own correction. A zero branch takes the unit its neighbours are shown in by resolving every branch to a quantity and handing the group one unit; that works when the neighbouring branches are names, and on a real beam they are formulas holding the interval variable, which never resolve. The zero was left alone with nothing to take a unit from, so `numeric(M_P(x))` answered a moment as a bare `0.00` in the row the engineer reads off. The unit is inferred the way the same piecewise asked at a point already infers it, by giving the interval variable one unit of the dimension its breakpoints declare.
@@ -2996,4 +3036,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.12`.
+Version: `0.31.13`.

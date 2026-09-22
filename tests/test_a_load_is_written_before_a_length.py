@@ -33,8 +33,10 @@ Two names without values keep the shape order between them, or `3 q L / 8` comes
 sending it to the end tore the metre off its number, `3 q L m / 2` where the engineer had
 substituted `3 m`.
 
-Measured across the four reference pages: six rows move, five of them `x P` to `P x` and
-one `q x L` to `q L x`.
+Measured across the reference pages: nine rows move on the five the repository pins -
+eight `x P` to `P x`, two of those being substitution rows, and one `q x L` to `q L x` -
+and a tenth in the wider thirteen-sheet diff a release is read against, where `2 x² L`
+becomes `2 L x²` in a deflection. That last one restores the order the sheet wrote.
 """
 
 import matplotlib
