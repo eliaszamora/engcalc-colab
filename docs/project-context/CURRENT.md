@@ -1,10 +1,55 @@
 # EngCalc Current Project Context
 
-> **Stale as of 2026-09-05. Read `NEXT.md` first.** This file was last updated at
-> 0.13.0 on `9a9d6e3`, and `main` has moved a long way past it. The *approved behaviour*
-> and *evidence hierarchy* sections below are still in force and are regression
-> requirements. The baseline numbers, release history and open-issue list are not — do
-> not quote its counts.
+> **Read the block directly below, then `NEXT.md`.** Everything after it was last
+> updated at 0.13.0 on `9a9d6e3` and describes a tree that no longer exists. Its
+> *approved behaviour* and *evidence hierarchy* sections are still in force and are
+> regression requirements; its baseline numbers, release history and open-issue list are
+> not — do not quote its counts.
+
+## Where things stand today
+
+_2026-09-22._
+
+| | |
+|---|---|
+| released | **0.31.13** — #229, `8d00c9b`; CI (six jobs) and Quality Gate Deep green on that SHA |
+| `main` | `13736b6` — **#230 merged on top of 0.31.13**, in no release yet; six jobs and both qualification runs green on that SHA |
+| open PR | **#231** from `fix/a-modulus-is-written-before-its-section` — *among the capitals, what carries mass is written first* — rebased onto `13736b6` |
+| default suite | **2527 passing** on #231's tree (48 s with `-n auto`): 0.31.13's 2503 plus twelve contracts from each change |
+
+**What the two changes are for.** The engineer types `E*A_c/L_c` in `tools/portico.eng`
+and the page drew `A_c E / L_c`. He settled the question on 2026-09-22: *"quiero que sea
+EA ya que convencionalmente así se usa"*. Two defects were in the way, one per change:
+
+1. **#230, merged** — the settings a row is given never reached a matrix cell, so the frame
+   page would have corrected three rows and left ten contradicting them;
+2. **#231, open** — inside a shape group the factor order was the alphabet's, which is
+   SymPy's canonical order; among the capitals it is dimension now.
+
+**#230 alone moves no reference page.** Rendered on 0.31.13 and on `13736b6`, the thirteen
+sheets are identical. The frame reads `EA` only once #231 is in; until then `main` still
+draws `A_c E`.
+
+Evidence on the pair: 12 + 12 contracts, 3 + 4 of them RED before their fix, mutation
+**8/8 and 8/8**, whole-page diff **39 rows on the three frame pages and nothing else**,
+every one a character-for-character permutation (re-measured on the rebased tree), and the
+page rendered and looked at: `k_c`, `k_d`, `K_ii`, `K_id`, `K_dd` and `k_eq` all read `EA`
+and `EI`, symbolic row and substitution agreeing, and the answers unchanged
+(70303.22 kN/m, 0.0168 s). The rebase moved no code: #230's squash has the tree CI passed
+on `b16fba0`, and #231's fix commit has the tree that evidence was measured on. The suite
+had been recorded as 2526; it is 2527, counted.
+
+### Exact next step
+
+1. Six jobs green on #231's exact head SHA — ask `commits/<sha>/check-runs`; `gh pr checks`
+   can report a run from before a force-push.
+2. Tell Elías. **Nothing merges and 0.31.14 is not cut without his explicit yes.**
+3. With it: squash-merge #231 with `--match-head-commit`, then cut **0.31.14** carrying
+   #230 and #231 — the seven files in `NEXT.md`'s release table, plus the README's
+   `## v0.31.14` section and Version-notes bullet.
+
+**Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
+cut; this file's later sections for the approved behaviour that is still in force.
 
 _Last updated: 2026-09-02 — **EngCalc 0.13.0 is released and closed on `main` at `9a9d6e3`**, CI green on Python 3.10–3.14 and **verified installable and working in Google Colab from the documented `git+https` path**, running a complete memoria: a statics system, a moment from its shear, an elastic curve and a plot. Etapa 1 is three quarters done — `integrate` canonical (0.11.0), scalar equation systems (0.12.0), the indefinite integral (0.13.0) — and the measured gap map has gone from 4/18 to 7/18 exercises running end to end, with broken lines down from 24 to 17. No defect is open. One protocol lapse is recorded and corrected below._
 

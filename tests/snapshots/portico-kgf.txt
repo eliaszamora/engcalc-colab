@@ -225,14 +225,14 @@ A\_e es la única matriz que hace falta después. Cada columna suya es la deform
 Las columnas son elementos de pórtico plano con rigidez axial y flexional. La diagonal es una barra: su matriz es de 2x2 y sólo relaciona los dos desplazamientos axiales de sus extremos.
 
 === 28 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle k_{c} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{A_{c} E}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle - \frac{A_{c} E}{L_{c}} & \displaystyle 0 & \displaystyle 0\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle k_{c} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle - \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0\\
 \displaystyle 0 & \displaystyle \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle 0 & \displaystyle - \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}}\\
 \displaystyle 0 & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle 0 & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 E I_{c}}{L_{c}}\\
-\displaystyle - \frac{A_{c} E}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle \frac{A_{c} E}{L_{c}} & \displaystyle 0 & \displaystyle 0\\
+\displaystyle - \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0\\
 \displaystyle 0 & \displaystyle - \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle 0 & \displaystyle \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}}\\
 \displaystyle 0 & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 E I_{c}}{L_{c}} & \displaystyle 0 & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[16pt]
-\displaystyle k_{d} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{A_{d} E}{L_{d}} & \displaystyle - \frac{A_{d} E}{L_{d}}\\
-\displaystyle - \frac{A_{d} E}{L_{d}} & \displaystyle \frac{A_{d} E}{L_{d}}\end{matrix}\right] \end{array}
+\displaystyle k_{d} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{E A_{d}}{L_{d}} & \displaystyle - \frac{E A_{d}}{L_{d}}\\
+\displaystyle - \frac{E A_{d}}{L_{d}} & \displaystyle \frac{E A_{d}}{L_{d}}\end{matrix}\right] \end{array}
 
 === 29 · HTML ===
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Contribución de cada elemento y ensamblaje</div>
@@ -244,19 +244,19 @@ Las tres contribuciones se suman porque comparten las mismas coordenadas q, que 
 
 === 31 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle K_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\
-\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{c_{c}^{2} A_{c} E}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle 0\\
+\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{c_{c}^{2} E A_{c}}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle 0\\
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[8pt]
 \displaystyle K_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle \frac{c_{c}^{2} A_{c} E}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
+\displaystyle 0 & \displaystyle \frac{c_{c}^{2} E A_{c}}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
 \displaystyle 0 & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
 \displaystyle K_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle \frac{c_{d}^{2} A_{d} E}{L_{d}} & \displaystyle 0\\
+\displaystyle 0 & \displaystyle \frac{c_{d}^{2} E A_{d}}{L_{d}} & \displaystyle 0\\
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[16pt]
 \displaystyle K & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\
-\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
+\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 c_{c}^{2} E A_{c}}{L_{c}} + \frac{c_{d}^{2} E A_{d}}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
 \displaystyle 0 & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
 & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle 0\\
-\displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(1350.00\,\mathrm{cm}^{2}\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(6.25\,\mathrm{cm}^{2}\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{24\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}}\\
+\displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(1350.00\,\mathrm{cm}^{2}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(6.25\,\mathrm{cm}^{2}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{24\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}}\\
 \displaystyle 0 & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{4\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
 & = & \displaystyle \left[\begin{matrix}\displaystyle 5.27 \times 10^{9}\,\mathrm{kgf} \cdot \mathrm{cm} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 0.00\\
 \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 245047.18\,\frac{\mathrm{kgf}}{\mathrm{cm}} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf}\\
@@ -278,15 +278,15 @@ y sustituyendo en la ecuación de Delta queda la rigidez lateral equivalente.
 \displaystyle 0 & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
 \displaystyle K_{id} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
 \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\end{matrix}\right] \\[8pt]
-\displaystyle K_{dd} & = & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[16pt]
+\displaystyle K_{dd} & = & \displaystyle \frac{2 c_{c}^{2} E A_{c}}{L_{c}} + \frac{c_{d}^{2} E A_{d}}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[16pt]
 \displaystyle C & = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3 s_{c}}{2 L_{c}}\\
 \displaystyle - \frac{3 s_{c}}{2 L_{c}}\end{matrix}\right] \\[8pt]
 & = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3\,\left(1.00\right)}{2\,\left(370.00\,\mathrm{cm}\right)}\\
 \displaystyle - \frac{3\,\left(1.00\right)}{2\,\left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
 & = & \displaystyle 10^{-3}\,\left[\begin{matrix}\displaystyle -4.05\\
 \displaystyle -4.05\end{matrix}\right]\,\frac{1}{\mathrm{cm}} \\[16pt]
-\displaystyle k_{eq} & = & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{6 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[8pt]
-& = & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(1350.00\,\mathrm{cm}^{2}\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(6.25\,\mathrm{cm}^{2}\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{6\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} \\[8pt]
+\displaystyle k_{eq} & = & \displaystyle \frac{2 c_{c}^{2} E A_{c}}{L_{c}} + \frac{c_{d}^{2} E A_{d}}{L_{d}} + \frac{6 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[8pt]
+& = & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(1350.00\,\mathrm{cm}^{2}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(6.25\,\mathrm{cm}^{2}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{6\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} \\[8pt]
 & = & \displaystyle 71689.33\,\frac{\mathrm{kgf}}{\mathrm{cm}} \end{array}
 
 === 35 · HTML ===
@@ -296,7 +296,7 @@ y sustituyendo en la ecuación de Delta queda la rigidez lateral equivalente.
 Con la rigidez condensada y la masa concentrada en el nivel se obtienen la frecuencia circular, la frecuencia natural y el período.
 
 === 37 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle k_{e} & = & \displaystyle \frac{2 c_{c}^{2} A_{c} E}{L_{c}} + \frac{c_{d}^{2} A_{d} E}{L_{d}} + \frac{6 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle k_{e} & = & \displaystyle \frac{2 c_{c}^{2} E A_{c}}{L_{c}} + \frac{c_{d}^{2} E A_{d}}{L_{d}} + \frac{6 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[8pt]
 \displaystyle w_{n} & = & \displaystyle \sqrt{\frac{k_{e}}{m_{s}}} \\[16pt]
 \displaystyle f_{n} & = & \displaystyle \frac{w_{n}}{2 \pi} \\[8pt]
 \displaystyle T_{n} & = & \displaystyle \frac{2 \pi}{w_{n}} \\[16pt]
