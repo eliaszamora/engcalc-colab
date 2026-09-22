@@ -1,4 +1,3 @@
-import sympy as sp
 import pytest
 
 from engcalc_colab.engine import EngineeringEngine

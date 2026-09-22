@@ -128,7 +128,6 @@ def test_no_formula_is_printed_twice(page):
     so nothing was ever immediately above anything. Pairing each definition with its own
     evaluation is what the rule was written for, and it costs the page four rows.
     """
-    import re
     from collections import Counter
 
     rows = []

@@ -124,7 +124,6 @@ def test_the_modes_are_the_eigenvectors_of_the_same_problem(cell, capsys):
         numeric,
     )
     assert len(blocks) == 3, numeric
-    matrix = np.linalg.inv(mass) @ stiffness
     expected, vectors = reference(stiffness, mass)
     for (value, body), lam, vector in zip(blocks, expected, vectors.T):
         shape = [float(entry) for entry in re.findall(r"-?[\d.]+", body)]

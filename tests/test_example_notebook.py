@@ -13,7 +13,6 @@ import json
 import pathlib
 
 import matplotlib
-import pytest
 
 matplotlib.use("Agg")
 

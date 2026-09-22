@@ -13,15 +13,12 @@ from .errors import EngCalcError
 from .reference import CATALOGUE
 from .models import (
     EvaluationResult,
-    ExtremaResult,
-    IntersectionsResult,
     NumericAssignmentResult,
     NumericEvaluationResult,
     ParsedHeading,
     ParsedNarrative,
     PartialNumericEvaluationResult,
     PlotResult,
-    RootsResult,
     TableResult,
 )
 from .parser import parse_cell

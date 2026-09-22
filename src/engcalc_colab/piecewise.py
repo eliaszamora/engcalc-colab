@@ -4,7 +4,7 @@ import ast
 
 import sympy as sp
 
-from .errors import EngEvaluationError, EngSyntaxError
+from .errors import EngEvaluationError
 
 
 _RELATION_BUILDERS = {
@@ -68,37 +68,6 @@ def substitute_keeping_condition_sides(expression, bindings):
     return sp.Piecewise(*branches, evaluate=False)
 
 
-def inspect_piecewise_variable(conditions: tuple[ast.Compare, ...]) -> str:
-    """Return the one direct interval variable shared by all conditions."""
-    if not conditions:
-        raise EngSyntaxError("piecewise requires at least one condition")
-
-    candidate_sets: list[set[str]] = []
-    for condition in conditions:
-        if len(condition.ops) != 1 or len(condition.comparators) != 1:
-            raise EngSyntaxError("piecewise conditions must be binary comparisons")
-        if type(condition.ops[0]) not in _RELATION_BUILDERS:
-            raise EngSyntaxError("unsupported piecewise comparator")
-
-        left = condition.left
-        right = condition.comparators[0]
-        candidates: set[str] = set()
-        if isinstance(left, ast.Name) and not _contains_name(right, left.id):
-            candidates.add(left.id)
-        if isinstance(right, ast.Name) and not _contains_name(left, right.id):
-            candidates.add(right.id)
-        if not candidates:
-            raise EngSyntaxError(
-                "piecewise must compare an interval variable directly with a breakpoint expression"
-            )
-        candidate_sets.append(candidates)
-
-    common = set.intersection(*candidate_sets)
-    if len(common) != 1:
-        raise EngSyntaxError("piecewise conditions must use one interval variable")
-    return next(iter(common))
-
-
 def extract_symbolic_breakpoints(
     expression: sp.Expr,
     variable: str,
@@ -129,10 +98,3 @@ def extract_symbolic_breakpoints(
                 breakpoints.append(sp.sympify(breakpoint))
 
     return tuple(breakpoints)
-
-
-def _contains_name(node: ast.AST, name: str) -> bool:
-    return any(
-        isinstance(child, ast.Name) and child.id == name
-        for child in ast.walk(node)
-    )

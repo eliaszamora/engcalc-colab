@@ -1,4 +1,3 @@
-from conftest import block_text
 
 """RED contracts opening Engineering Presentation.
 
