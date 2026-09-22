@@ -339,42 +339,6 @@ class NumericContext:
             raise EngEvaluationError("plot end must be greater than start")
         return start, end
 
-    def sample_symbolic(
-        self,
-        expression,
-        variable,
-        start,
-        end,
-        count=201,
-        overrides: dict[str, Any] | None = None,
-    ):
-        if count < 2:
-            raise EngEvaluationError("plot sampling requires at least 2 points")
-
-        start, end = self.normalize_plot_bounds(start, end)
-        delta = end - start
-        xs = tuple(start + delta * (index / (count - 1)) for index in range(count))
-        fixed_overrides = dict(overrides or {})
-
-        ys = []
-        y_unit = None
-        for x_value in xs:
-            sample_overrides = dict(fixed_overrides)
-            sample_overrides[variable] = x_value
-            _, y_value = self.evaluate_symbolic(
-                expression,
-                overrides=sample_overrides,
-            )
-            if y_unit is None:
-                y_unit = y_value.units
-            try:
-                y_value = y_value.to(y_unit)
-            except DimensionalityError as exc:
-                raise EngEvaluationError("plot samples have incompatible result units") from exc
-            ys.append(y_value)
-
-        return xs, tuple(ys)
-
     def build_plot_sample_points(
         self,
         expression_cases,

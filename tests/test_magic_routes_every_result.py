@@ -23,10 +23,9 @@ caught all three.
 """
 
 import matplotlib
-import pytest
 
 from conftest import block_text
-from IPython.display import HTML, Math
+from IPython.display import Math
 
 matplotlib.use("Agg")
 

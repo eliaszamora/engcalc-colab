@@ -97,7 +97,7 @@ from .piecewise import (
     substitute_keeping_condition_sides,
 )
 from .tables import normalize_explicit_points, normalize_uniform_points
-from .unit_text import normalise, quantity_text
+from .unit_text import quantity_text
 
 
 _SCALAR_SYMBOLIC_FUNCTIONS = {
@@ -711,7 +711,9 @@ class EngineeringEngine:
                 "combo U1 = 1.2*D + 1.6*L"
             )
 
-        symbol = self.resolve_symbol(variable)
+        # Kept for its side effect: it registers the variable's symbol, with its
+        # assumptions, if the sheet has not used it yet. The symbol itself is not needed.
+        self.resolve_symbol(variable)
         expanded = written.subs(
             {
                 sp.Symbol(case): self.functions[case].expression

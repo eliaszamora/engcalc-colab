@@ -14,8 +14,8 @@ _2026-09-22._
 |---|---|
 | released | **0.31.14** — #232, `main` at `2dc209b`; six jobs and both qualification runs green on that SHA |
 | in progress | **0.31.15**, approved 2026-09-22 after an audit of 0.31.14 — see below |
-| `main` | `ad87d8e` — #233 merged on top of 0.31.14, in no release yet |
-| default suite | **2541 passing** on #234's branch, about a minute with `-n auto` |
+| `main` | `b576a88` — #233 and #234 merged on top of 0.31.14, in no release yet |
+| default suite | **2541 passing** on #235's branch, about a minute with `-n auto` |
 
 **0.31.14 is closed.** It carries #230 and #231, so the frame reads `EA`. Verified after the
 merge: a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
@@ -38,14 +38,19 @@ criterio"*.
    and `rad/s` keeps its radian (Pint holds `rad == 1`). 10 contracts, 8 RED before the
    fix, mutation 5/5, the thirteen pages unchanged.
 2. **No scheduled run of the full suite.** Only the deep gate is scheduled, and Pint 0.26
-   moved every page on 2026-09-10 with no commit here. **#234**, this branch: `ci.yml` also
-   runs every Monday at 05:17 UTC, an hour after the deep gate, and by hand
+   moved every page on 2026-09-10 with no commit here. **#234, merged** (`b576a88`):
+   `ci.yml` also runs every Monday at 05:17 UTC, an hour after the deep gate, and by hand
    (`workflow_dispatch`). 4 contracts in `test_the_suite_runs_without_a_push.py`, 2 RED
-   before, mutation 3/3 (daily, monthly, a job that skips the schedule).
-3. **Dead code.** `renderer._scientific_text`, whose last caller #146 removed while a
-   docstring still says HTML blocks use it; `piecewise.inspect_piecewise_variable` and
-   `_contains_name`, never called; `NumericContext.sample_symbolic`, called only by its own
-   tests; unused imports and locals. To do: remove, pages byte-identical.
+   before, mutation 3/3 (daily, monthly, a job that skips the schedule). Proved on `main`:
+   a run started by hand, run `35787566499`, executed all six jobs, all green.
+3. **Dead code.** **#235**, this branch, removes `renderer._scientific_text` (no caller
+   since #146; `_magnitude_text`'s docstring said HTML blocks used it, and now says why
+   the parameter stays), `piecewise.inspect_piecewise_variable` and `_contains_name`
+   (never called; the parser holds the rule), `NumericContext.sample_symbolic` (kept since
+   0.4.0 only for its tests), 6 unused imports and 3 unused locals in `src` and 12 in the
+   tests. The four sampling contracts now hold the live sampler: breaking it showed one
+   property no contract held — a fixed value of the plot variable's name outranking it —
+   and that mutant had passed all 2541. Suite 2541, the thirteen pages byte-identical.
 4. **Delegated, decided: the eigen printer's `m=1`.** The multiplicity is written `m`,
    beside `m := 500 kg` on a dynamics sheet. To do: omit it when it is 1, write
    `multiplicity n` when it is not.
@@ -58,12 +63,9 @@ stored value outranks the unit alias. That is the documented N/m/s rule seen fro
 
 ### Exact next step
 
-1. #234 green on its exact head, then squash-merge with `--match-head-commit`, and start
-   the suite by hand on `main` (`gh workflow run ci.yml --ref main`) to see a run nobody
-   pushed execute all six jobs.
-2. The PRs for 3 and 4, in that order, each on the `main` the one before left and green on
-   its exact head; then 5; then the 0.31.15 release PR carrying 1, 3 and 4, closed the way
-   0.31.14 was (#232).
+1. #235 green on its exact head, then squash-merge with `--match-head-commit`.
+2. The PR for 4 on the `main` #235 leaves, green on its exact head; then 5; then the 0.31.15
+   release PR carrying 1, 3 and 4, closed the way 0.31.14 was (#232).
 3. Known and not requested: in a substitution row a non-zero literal branch keeps its
    written form (`5 kN/m`) beside bracketed neighbours (`(8.00 kN/m)`);
    `_analysis_scalar_latex` still has no unit literals to pass; `Hz` is not a unit alias —

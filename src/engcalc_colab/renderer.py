@@ -1605,18 +1605,6 @@ def _scientific_latex(magnitude: float, precision: int) -> str:
     return rf"{mantissa:.{precision}f} \times 10^{{{exponent}}}"
 
 
-# The same power of ten for a place LaTeX cannot reach. Colab does not typeset anything
-# inside an HTML output, so a table cell that received `3.51 \times 10^{-8}` showed the
-# backslash to the reader.
-_SUPERSCRIPTS = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
-
-
-def _scientific_text(magnitude: float, precision: int) -> str:
-    exponent = int(math.floor(math.log10(abs(magnitude))))
-    mantissa = magnitude / (10.0**exponent)
-    return f"{mantissa:.{precision}f}×10{str(exponent).translate(_SUPERSCRIPTS)}"
-
-
 # Above this, a fixed-decimal render stops being readable: `I_z := 80e6*mm**4` printed
 # as `80000000.00`, eight zeros nobody writes or counts. The ceiling is a million rather
 # than a hundred thousand because a steel modulus is written `200000 MPa`, and rendering
@@ -1630,11 +1618,13 @@ def _magnitude_text(
     r"""Format one magnitude, in scientific notation outside the readable band.
 
     `scientific` is the notation the power of ten is written in, and it exists so this
-    decision has one implementation rather than two. LaTeX by default; an HTML block -
-    a table cell, a summary row - passes `_scientific_text`, because Colab typesets
-    nothing inside an HTML output and `3.51 \times 10^{-8}` reached the reader with its
-    backslash. Everything above the escape is shared, which is the point: the rules
-    below were hard to get right and a second copy of them would drift.
+    decision has one implementation rather than two. LaTeX is the only notation left:
+    every block is typeset since #146, so the plain-text power of ten an HTML table cell
+    once needed has no caller and is gone. The parameter stays because
+    `_column_wants_exponent` passes a sentinel through it, to ask *whether* a value would
+    take a power of ten without formatting one. Everything above the escape is shared,
+    which is the point: the rules below were hard to get right and a second copy of
+    them would drift.
 
     Only values above ``zero_tolerance`` are owed a readable form; below it a value
     is a genuine zero by an existing approved contract and still renders as zero.
@@ -2987,7 +2977,6 @@ def _solved_lhs(result: EvaluationResult) -> str | None:
 
 
 def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
-    statement = result.statement
     lhs = _solved_lhs(result)
     if isinstance(
         result.value,
@@ -3212,7 +3201,6 @@ def _value_row_spacings(
             stage_lengths.append(1)
 
     elif isinstance(result, EvaluationResult):
-        statement = result.statement
         lhs = _solved_lhs(result)
         value = sp.sympify(_shown_expression(result))
         display_input = result.display_input

@@ -30,7 +30,6 @@ centimetres and a moment in kgf·cm are different questions, and forcing the spa
 `6.00×10²` because the moment needed an exponent would fix one column by breaking another.
 """
 
-import re
 
 import pytest
 

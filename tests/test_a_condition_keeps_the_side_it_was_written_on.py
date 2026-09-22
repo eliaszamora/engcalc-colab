@@ -25,9 +25,9 @@ So a sheet that never reuses the function is fine and one that writes `case Mo =
 is not, and neither is a plain `N(x) = M_P(x)`. Measured: `subs(x, t)` flips it,
 `subs(x, x)` does not, because SymPy skips the rebuild when nothing changes.
 
-Which side is right is not a matter of taste here. `inspect_piecewise_variable` exists
-because the language requires *"one direct comparison between the Piecewise interval
-variable and a breakpoint expression"*, so there is always a variable and always a
+Which side is right is not a matter of taste here. The parser's
+`_piecewise_condition_candidates` requires every condition to compare the interval
+variable directly with a breakpoint expression, so there is always a variable and always a
 breakpoint, and `for x ≤ L` is the direction every engineer writes and every branch of
 this same piecewise already used.
 """

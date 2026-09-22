@@ -1,7 +1,7 @@
 import sympy as sp
 
 from engcalc_colab.engine import EngineeringEngine
-from engcalc_colab.errors import AmbiguousSolveError, EngEvaluationError
+from engcalc_colab.errors import EngEvaluationError
 from engcalc_colab.parser import parse_cell
 
 

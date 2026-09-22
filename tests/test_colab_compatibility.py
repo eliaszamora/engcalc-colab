@@ -18,7 +18,6 @@ because every test here runs in an environment EngCalc chose.
 import pathlib
 import sys
 
-import pytest
 from packaging.requirements import Requirement
 
 if sys.version_info >= (3, 11):
