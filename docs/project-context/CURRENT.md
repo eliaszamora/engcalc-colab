@@ -12,30 +12,41 @@ _2026-09-22._
 
 | | |
 |---|---|
-| released | **0.31.13** — `main` at `8d00c9b`; CI (six jobs) and Quality Gate Deep green on that SHA |
-| default suite | **2526 passing**, about three minutes |
-| open PR | **#230** at `b16fba0`, six jobs green on that exact SHA — *a matrix cell is written with the settings its row was given* |
-| branch, not pushed | `fix/a-modulus-is-written-before-its-section` at `9a57cae` — *among the capitals, what carries mass is written first* |
+| released | **0.31.13** — #229, `8d00c9b`; CI (six jobs) and Quality Gate Deep green on that SHA |
+| `main` | `13736b6` — **#230 merged on top of 0.31.13**, in no release yet; six jobs and both qualification runs green on that SHA |
+| open PR | **#231** from `fix/a-modulus-is-written-before-its-section` — *among the capitals, what carries mass is written first* — rebased onto `13736b6` |
+| default suite | **2527 passing** on #231's tree (48 s with `-n auto`): 0.31.13's 2503 plus twelve contracts from each change |
 
 **What the two changes are for.** The engineer types `E*A_c/L_c` in `tools/portico.eng`
 and the page drew `A_c E / L_c`. He settled the question on 2026-09-22: *"quiero que sea
-EA ya que convencionalmente así se usa"*. Two defects were in the way, and they are one
-per branch:
+EA ya que convencionalmente así se usa"*. Two defects were in the way, one per change:
 
-1. the settings a row is given never reached a matrix cell, so the frame page would have
-   corrected three rows and left ten contradicting them;
-2. inside a shape group the factor order was the alphabet's, which is SymPy's canonical
-   order; among the capitals it is dimension now.
+1. **#230, merged** — the settings a row is given never reached a matrix cell, so the frame
+   page would have corrected three rows and left ten contradicting them;
+2. **#231, open** — inside a shape group the factor order was the alphabet's, which is
+   SymPy's canonical order; among the capitals it is dimension now.
+
+**#230 alone moves no reference page.** Rendered on 0.31.13 and on `13736b6`, the thirteen
+sheets are identical. The frame reads `EA` only once #231 is in; until then `main` still
+draws `A_c E`.
 
 Evidence on the pair: 12 + 12 contracts, 3 + 4 of them RED before their fix, mutation
-**8/8 and 8/8**, suite 2526, whole-page diff **39 rows on the three frame pages and
-nothing else**, every one verified a character-for-character permutation, and the page
-rendered and looked at: `k_c`, `k_d`, `K_ii`, `K_id`, `K_dd` and `k_eq` all read `EA` and
-`EI`, symbolic row and substitution agreeing, and the answers unchanged
-(70303.22 kN/m, 0.0168 s).
+**8/8 and 8/8**, whole-page diff **39 rows on the three frame pages and nothing else**,
+every one a character-for-character permutation (re-measured on the rebased tree), and the
+page rendered and looked at: `k_c`, `k_d`, `K_ii`, `K_id`, `K_dd` and `k_eq` all read `EA`
+and `EI`, symbolic row and substitution agreeing, and the answers unchanged
+(70303.22 kN/m, 0.0168 s). The rebase moved no code: #230's squash has the tree CI passed
+on `b16fba0`, and #231's fix commit has the tree that evidence was measured on. The suite
+had been recorded as 2526; it is 2527, counted.
 
-**Nothing merges without his explicit yes.** The modulus branch is held rather than
-stacked on #230: deleting a stacked PR's base branch closes it, which is how #207 ended.
+### Exact next step
+
+1. Six jobs green on #231's exact head SHA — ask `commits/<sha>/check-runs`; `gh pr checks`
+   can report a run from before a force-push.
+2. Tell Elías. **Nothing merges and 0.31.14 is not cut without his explicit yes.**
+3. With it: squash-merge #231 with `--match-head-commit`, then cut **0.31.14** carrying
+   #230 and #231 — the seven files in `NEXT.md`'s release table, plus the README's
+   `## v0.31.14` section and Version-notes bullet.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.

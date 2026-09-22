@@ -1,21 +1,20 @@
 # Where EngCalc stands, and what to pick up next
 
 _Written 2026-09-05, at the end of the session that worked the findings of an external
-trial. Read this before `CURRENT.md`, which has not been updated since 0.13.0 and
-describes a tree that no longer exists._
+trial. The open work of the day is in `CURRENT.md`'s "Where things stand today"; the rest
+of `CURRENT.md` was written at 0.13.0 and says so._
 
 ## Baseline
 
 | | |
 |---|---|
-| `main` | `8d00c9b` (#229 merged) |
+| `main` | `13736b6` (#230 merged; #231 open) |
 | declared version | **0.31.13** — released by #229, carrying #228 |
-| default suite (`pytest -q`) | **2526 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
-
-_The three rows above are kept current; the prose below was written at 0.29.2 and the
-open work of the day lives in `CURRENT.md`'s "Where things stand today"._
+| default suite (`pytest -q`) | **2527 passing** on #231's tree, about 3 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
+
+_The first three rows are kept current; the prose below was written at 0.29.2._
 
 The suite took seven and a half minutes and the Gate twenty-five, until Pint's registry
 was shared rather than rebuilt per engine. If a run starts taking that again, measure
