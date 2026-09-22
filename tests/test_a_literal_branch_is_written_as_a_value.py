@@ -140,7 +140,7 @@ def test_every_value_branch_is_written_as_a_value_not_only_the_first(page):
 
     assert first == r"\left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right)", first
     assert last == r"\left(7.00\,\mathrm{kN} \cdot \mathrm{m}\right)", last
-    assert formula == r"\dfrac{x\,\left(40.00\,\mathrm{kN}\right)}{2}", formula
+    assert formula == r"\dfrac{\left(40.00\,\mathrm{kN}\right)\,x}{2}", formula
 
 
 # --- what must not move ---------------------------------------------------------------
@@ -171,7 +171,7 @@ def test_a_formula_branch_is_not_collapsed_to_its_value(page):
     formula = values_of(written, 2)[0]
 
     assert formula == (
-        r"\dfrac{\left(1.00\,\mathrm{m}\right)\,\left(40.00\,\mathrm{kN}\right)}{2}"
+        r"\dfrac{\left(40.00\,\mathrm{kN}\right)\,\left(1.00\,\mathrm{m}\right)}{2}"
     ), formula
 
 
@@ -190,7 +190,7 @@ def test_a_formula_branch_keeps_its_shape(page):
     written = page(BEAM + "numeric(M_W(x))\n")
     formula = values_of(written, 1)[0]
 
-    assert formula == r"\dfrac{x\,\left(40.00\,\mathrm{kN}\right)}{2}", formula
+    assert formula == r"\dfrac{\left(40.00\,\mathrm{kN}\right)\,x}{2}", formula
 
 
 def test_a_name_branch_reads_as_it_did(page):

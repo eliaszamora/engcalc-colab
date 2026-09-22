@@ -63,6 +63,10 @@ class RenderSettings:
     # The composite units this sheet's `:=` lines spelled. Read only by the
     # technical-stress convention, which yields to anything the engineer wrote.
     written_units: frozenset[str] = frozenset()
+    # The names this sheet has settled a value for. A product is written with the
+    # quantities the sheet knows first and the one it does not - the coordinate - after
+    # them, which is what writes `P x / 2` instead of `x P / 2`.
+    valued_names: frozenset[str] = frozenset()
     # The palette `%eng_units` declared, by name; "" when none. A name rather than the
     # table itself, because this dataclass is frozen and a dict inside one is not
     # hashable. The tables live beside the family tables, which is where a reader looking
@@ -309,7 +313,12 @@ class _EngineeringLatexPrinter(LatexPrinter):
             return self._print(expr)
 
         args = self._units_in_the_page_s_order(
-            sorted(expr.args, key=_engineering_factor_key)
+            sorted(
+                expr.args,
+                key=lambda term: _engineering_factor_key(
+                    term, self.render_settings, self.unit_literals
+                ),
+            )
         )
         separator = self._settings["mul_symbol_latex"]
         rendered: list[str] = []
@@ -455,7 +464,34 @@ class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
         return super()._is_set_apart(term)
 
 
-def _engineering_factor_key(term):
+def _engineering_factor_key(
+    term,
+    settings: RenderSettings = None,
+    unit_literals: frozenset[str] = frozenset(),
+):
+    r"""Where one factor of a commutative product goes.
+
+        numbers, dimensionless coefficients, what carries mass, then everything else
+
+    That is the order an engineer writes a product in: `q L / 2`, `P x / 2`, `E A / L`,
+    `12 s^{2} E I / L^{3}`. The load, the modulus, the pressure - anything whose dimension
+    carries mass - comes before the geometry it acts on, and a bare coefficient comes
+    before both.
+
+    Until this rule the order was the *shape of the name*: lowercase before uppercase.
+    That got `q L / 2` and `5 q L^{4} / (384 E I)` right by correlation, because loads are
+    usually lowercase and geometry uppercase - and `P` is the load that breaks it, so
+    `P*x/2` came out `x P / 2`, two lines above `P (L - x) / 2`.
+
+    A name the sheet has given no value to is in neither set, has no dimension to sort by,
+    and keeps the place the shape of its name earns it. That is deliberate and is what
+    leaves `R(q) = 3 q L / 8` alone: a rule that reached names it knows nothing about was
+    tried, and an existing contract caught it writing `3 L q / 8`.
+
+    The coefficients go first rather than last for the same kind of reason: sorting by
+    dimension alone puts the modulus ahead of a direction cosine and splits `E I`, which
+    is one named quantity to anybody reading a frame.
+    """
     if term.is_Number:
         return (0, sp.default_sort_key(term))
 
@@ -463,14 +499,35 @@ def _engineering_factor_key(term):
     if isinstance(base, sp.Symbol):
         first_alpha = next((char for char in base.name if char.isalpha()), "")
         if first_alpha.islower():
-            group = 1
+            shape = 1
         elif first_alpha.isupper():
-            group = 2
+            shape = 2
         else:
-            group = 3
-        return (group, sp.default_sort_key(term))
+            shape = 3
+        # Two names the sheet knows nothing about are still ordered by the shape of their
+        # names, or `R(q) = 3 q L / 8` comes out `3 L q / 8` - which is how the rule before
+        # this one was caught.
+        #
+        # A unit is not a coordinate. `m` is a name with no value either, and sending it to
+        # the end tore the metre off the number it belongs to: `subs(M(x), x, 3*m)` read
+        # `3 q L m / 2` where the engineer substituted `3 m`.
+        #
+        # And an empty set means the caller told us nothing, not that nothing has a
+        # value. `render_result` can be called without settings at all, and reading that
+        # as "every name is a coordinate" put `b*h*kgf` on the page as `kgf b h`.
+        known = (
+            settings is None
+            or not settings.valued_names
+            or base.name in settings.valued_names
+            or base.name in unit_literals
+        )
+        return (shape, sp.default_sort_key(term)) if known else (
+            4,
+            shape,
+            sp.default_sort_key(term),
+        )
 
-    return (3, sp.default_sort_key(term))
+    return (5, sp.default_sort_key(term))
 
 
 def _latex(
@@ -1905,7 +1962,10 @@ def _value_latex(value, settings: RenderSettings, unit_literals: frozenset[str] 
         return _quantity_matrix_latex(value, settings)
     if isinstance(value, sp.MatrixBase):
         return _matrix_latex(value, unit_literals)
-    return _latex(value, unit_literals)
+    # The settings this row was given, not the defaults. They were accepted here and
+    # dropped on the way to the printer, so nothing the sheet knows - which of its names
+    # is a load, among the rest - reached the object that draws the expression.
+    return _latex(value, unit_literals, settings)
 
 
 def _partial_polynomial_latex(evaluated_terms: tuple[tuple[int, object], ...] | None, variable: str, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS) -> str | None:

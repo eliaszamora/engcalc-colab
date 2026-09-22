@@ -225,6 +225,7 @@ class EngMagics(Magics):
         return replace(
             self.render_settings,
             written_units=frozenset(self.engine.written_units),
+            valued_names=frozenset(self.engine.numeric_context.values),
             palette=self.units,
         )
 

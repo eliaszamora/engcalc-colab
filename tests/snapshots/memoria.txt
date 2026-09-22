@@ -30,7 +30,7 @@ Se calculan las reacciones, la ley de momentos, la zona donde se supera el momen
 <div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Ley de momentos</div>
 
 === 7 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M\left(x\right) & = & \displaystyle \frac{q x L}{2} - \frac{q x^{2}}{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M\left(x\right) & = & \displaystyle \frac{q L x}{2} - \frac{q x^{2}}{2} \\[8pt]
 \displaystyle \frac{q L^{2}}{8} & = & \displaystyle \frac{\left(10.00\,\frac{\mathrm{kN}}{\mathrm{m}}\right)\,\left(6.00\,\mathrm{m}\right)^{2}}{8} \\[8pt]
 & = & \displaystyle 45.00\,\mathrm{kN} \cdot \mathrm{m} \end{array}
 

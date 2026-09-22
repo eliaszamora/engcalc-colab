@@ -103,7 +103,7 @@ def test_a_fraction_in_a_branch_is_drawn_at_full_size(page):
     (body,) = bodies_of(page(BEAM))
     branches = " ".join(body)
 
-    assert r"\dfrac{x P}{2}" in branches, branches
+    assert r"\dfrac{P x}{2}" in branches, branches
     assert r"\frac{x P}{2}" not in branches.replace(r"\dfrac", r"\d?frac"), branches
 
 

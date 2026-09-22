@@ -48,12 +48,12 @@ La puntual al centro da dos tramos rectos, y hay que escribirlos como tales: $M 
 === 9 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle M_{P}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{x P}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
+\displaystyle M_{P}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
 \displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \\[16pt]
 \displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle \mathrm{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle \mathrm{Mo}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{x P}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
+\displaystyle \mathrm{Mo}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
 \displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \end{array}
 

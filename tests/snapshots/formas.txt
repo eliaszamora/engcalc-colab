@@ -62,7 +62,7 @@ La leyenda con la precisión de la página y el panel resumen con sus encabezado
 
 === 11 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle P_{2} & = & \displaystyle 200.00\,\mathrm{kN} \\[8pt]
-\displaystyle \mathrm{Md}\left(x\right) & = & \displaystyle \frac{x P_{2} \left(L - x\right)}{L} \end{array}
+\displaystyle \mathrm{Md}\left(x\right) & = & \displaystyle \frac{P_{2} x \left(L - x\right)}{L} \end{array}
 
 === 12 · Figure ===
 title: Md(x)
@@ -265,10 +265,10 @@ Las hojas ya dibujaban un piecewise con la variable libre, pero con ramas que so
 
 === 46 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle P_{v} & = & \displaystyle 40.00\,\mathrm{kN} \\[8pt]
-\displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{x P_{v}}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
+\displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P_{v} x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
 \displaystyle \dfrac{P_{v} \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
-& = & \displaystyle \begin{cases} \displaystyle \dfrac{x\,\left(40.00\,\mathrm{kN}\right)}{2} & \text{for}\: x \leq \dfrac{\left(6.00\,\mathrm{m}\right)}{2} \\[4pt]
+& = & \displaystyle \begin{cases} \displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,x}{2} & \text{for}\: x \leq \dfrac{\left(6.00\,\mathrm{m}\right)}{2} \\[4pt]
 \displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,\left(\left(6.00\,\mathrm{m}\right) - x\right)}{2} & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle \begin{cases} \displaystyle 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 3.00\,\mathrm{m} \\[4pt]

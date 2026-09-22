@@ -155,7 +155,7 @@ def test_the_branches_still_say_what_they_said(page):
     said = [branch.strip() for branch in body.split(r"\\[4pt]")]
 
     assert said == [
-        r"\displaystyle \dfrac{x P}{2} & \text{for}\: x \leq \dfrac{L}{2}",
+        r"\displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2}",
         r"\displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L",
         r"\displaystyle 0 & \text{otherwise}",
     ], said
