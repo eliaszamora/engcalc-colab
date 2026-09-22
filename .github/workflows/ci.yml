@@ -4,6 +4,13 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Every Monday, pushed or not. Pint 0.26 changed the spelling of every unit on every
+  # page on 2026-09-10 with no commit here, and the engineer installs with `--upgrade`,
+  # so a dependency release reaches his notebook before any push reaches this suite.
+  # The Deep Gate runs an hour earlier, but it does not carry the reference pages.
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
 
 jobs:
   test:

@@ -14,7 +14,8 @@ _2026-09-22._
 |---|---|
 | released | **0.31.14** — #232, `main` at `2dc209b`; six jobs and both qualification runs green on that SHA |
 | in progress | **0.31.15**, approved 2026-09-22 after an audit of 0.31.14 — see below |
-| default suite | **2537 passing** on #233's branch, about a minute with `-n auto` |
+| `main` | `ad87d8e` — #233 merged on top of 0.31.14, in no release yet |
+| default suite | **2541 passing** on #234's branch, about a minute with `-n auto` |
 
 **0.31.14 is closed.** It carries #230 and #231, so the frame reads `EA`. Verified after the
 merge: a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
@@ -32,13 +33,15 @@ things. His answer: *"Sí, procede con 1, 2 y 3 y con respecto a 4 y 5 lo dejo a
 criterio"*.
 
 1. **`numeric(w, 1/s)` failed** — "target unit must be a unit expression", stopping the
-   cell — while `s**-1` worked and the page itself writes `1/s`. **#233**, this branch: a
-   `1` over a unit is its reciprocal, any other number is still refused, and `rad/s` keeps
-   its radian (Pint holds `rad == 1`). 10 contracts, 8 RED before the fix, mutation 5/5,
-   the thirteen pages unchanged.
+   cell — while `s**-1` worked and the page itself writes `1/s`. **#233, merged**
+   (`ad87d8e`): a `1` over a unit is its reciprocal, any other number is still refused,
+   and `rad/s` keeps its radian (Pint holds `rad == 1`). 10 contracts, 8 RED before the
+   fix, mutation 5/5, the thirteen pages unchanged.
 2. **No scheduled run of the full suite.** Only the deep gate is scheduled, and Pint 0.26
-   moved every page on 2026-09-10 with no commit here. To do: a weekly `schedule` in
-   `ci.yml`.
+   moved every page on 2026-09-10 with no commit here. **#234**, this branch: `ci.yml` also
+   runs every Monday at 05:17 UTC, an hour after the deep gate, and by hand
+   (`workflow_dispatch`). 4 contracts in `test_the_suite_runs_without_a_push.py`, 2 RED
+   before, mutation 3/3 (daily, monthly, a job that skips the schedule).
 3. **Dead code.** `renderer._scientific_text`, whose last caller #146 removed while a
    docstring still says HTML blocks use it; `piecewise.inspect_piecewise_variable` and
    `_contains_name`, never called; `NumericContext.sample_symbolic`, called only by its own
@@ -55,10 +58,12 @@ stored value outranks the unit alias. That is the documented N/m/s rule seen fro
 
 ### Exact next step
 
-1. #233 green on its exact head, then squash-merge with `--match-head-commit`.
-2. The PRs for 2, 3 and 4, in that order, each on the `main` the one before left and green
-   on its exact head; then 5; then the 0.31.15 release PR carrying 1, 3 and 4, closed the
-   way 0.31.14 was (#232).
+1. #234 green on its exact head, then squash-merge with `--match-head-commit`, and start
+   the suite by hand on `main` (`gh workflow run ci.yml --ref main`) to see a run nobody
+   pushed execute all six jobs.
+2. The PRs for 3 and 4, in that order, each on the `main` the one before left and green on
+   its exact head; then 5; then the 0.31.15 release PR carrying 1, 3 and 4, closed the way
+   0.31.14 was (#232).
 3. Known and not requested: in a substitution row a non-zero literal branch keeps its
    written form (`5 kN/m`) beside bracketed neighbours (`(8.00 kN/m)`);
    `_analysis_scalar_latex` still has no unit literals to pass; `Hz` is not a unit alias —
