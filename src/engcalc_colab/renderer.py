@@ -1732,8 +1732,16 @@ def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
     return rf"\left[\begin{{matrix}}{body}\end{{matrix}}\right]"
 
 
-def _matrix_latex(matrix, unit_literals: frozenset[str] = frozenset()) -> str:
-    return _latex(sp.ImmutableMatrix(matrix), unit_literals)
+def _matrix_latex(
+    matrix,
+    unit_literals: frozenset[str] = frozenset(),
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+) -> str:
+    """A matrix is drawn by the same printer as the row around it, with the same
+    settings. Without them a cell fell back on the defaults, and the sheet's own
+    `valued_names` never reached it: `k = [P*x/2, ...]` came out `x P / 2` in the cell
+    and `P x / 2` in a plain row two lines up."""
+    return _latex(sp.ImmutableMatrix(matrix), unit_literals, settings)
 
 
 def _matrix_substitution_latex(
@@ -1910,7 +1918,7 @@ def _analysis_scalar_latex(value, settings: RenderSettings, *, declared: bool) -
     what it means at `_characteristic_quantity_math`."""
     if hasattr(value, "magnitude") and hasattr(value, "units"):
         return _quantity_latex(value, settings=settings, declared=declared)
-    return _latex(value)
+    return _latex(value, settings=settings)
 
 
 def _matrix_shape_latex(value: MatrixShape) -> str:
@@ -1922,7 +1930,10 @@ def _eigenvalue_set_latex(value: EigenvalueSet, settings: RenderSettings) -> str
         # What a set with no closed form shows until it has numbers: the problem it
         # solves, for the matrix the sheet built. A cubic formula here was 7 KB of
         # radicals that could not be evaluated. See `_seeks_no_closed_form`.
-        return rf"\det\left({_matrix_latex(value.source_matrix)} - \lambda I\right) = 0"
+        return (
+            rf"\det\left({_matrix_latex(value.source_matrix, settings=settings)}"
+            rf" - \lambda I\right) = 0"
+        )
     entries = [
         rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)},"
         rf"\;m={entry.multiplicity}"
@@ -1933,7 +1944,10 @@ def _eigenvalue_set_latex(value: EigenvalueSet, settings: RenderSettings) -> str
 
 def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> str:
     if not value.closed_form and not value.entries:
-        return rf"\left({_matrix_latex(value.source_matrix)} - \lambda I\right) \mathbf{{v}} = 0"
+        return (
+            rf"\left({_matrix_latex(value.source_matrix, settings=settings)}"
+            rf" - \lambda I\right) \mathbf{{v}} = 0"
+        )
     entries: list[str] = []
     for entry in value.entries:
         vectors: list[str] = []
@@ -1941,7 +1955,7 @@ def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> s
             if isinstance(vector, QuantityMatrix):
                 vector_latex = _quantity_matrix_latex(vector, settings)
             else:
-                vector_latex = _matrix_latex(vector)
+                vector_latex = _matrix_latex(vector, settings=settings)
             vectors.append(rf"\mathbf{{v}}_{{{index}}}={vector_latex}")
         vector_block = r",\;".join(vectors)
         entries.append(
@@ -1961,7 +1975,7 @@ def _value_latex(value, settings: RenderSettings, unit_literals: frozenset[str] 
     if isinstance(value, QuantityMatrix):
         return _quantity_matrix_latex(value, settings)
     if isinstance(value, sp.MatrixBase):
-        return _matrix_latex(value, unit_literals)
+        return _matrix_latex(value, unit_literals, settings)
     # The settings this row was given, not the defaults. They were accepted here and
     # dropped on the way to the printer, so nothing the sheet knows - which of its names
     # is a load, among the rest - reached the object that draws the expression.
@@ -2604,7 +2618,7 @@ def _numeric_matrix_stages(
     One function because two places need the answer: the rows themselves, and the
     spacing between them, which counts the stages a second time.
     """
-    stages = [_matrix_latex(result.symbolic_matrix)]
+    stages = [_matrix_latex(result.symbolic_matrix, settings=settings)]
     if _shows_substitution(result):
         stages.append(
             _matrix_substitution_latex(
@@ -4068,7 +4082,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         return rf"{lhs} = {_quantity_latex(result.quantity, settings=active_settings, declared=bool(result.written_units))}"
 
     if isinstance(result, PartialMatrixNumericEvaluationResult):
-        stages = [_matrix_latex(result.symbolic_matrix)]
+        stages = [_matrix_latex(result.symbolic_matrix, settings=active_settings)]
         if _shows_substitution(result):
             stages.append(
                 _matrix_substitution_latex(
@@ -4082,7 +4096,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         return rf"{lhs} = {right}" if lhs is not None else right
 
     if isinstance(result, NumericMatrixEvaluationResult):
-        stages = [_matrix_latex(result.symbolic_matrix)]
+        stages = [_matrix_latex(result.symbolic_matrix, settings=active_settings)]
         if _shows_substitution(result):
             stages.append(
                 _matrix_substitution_latex(
