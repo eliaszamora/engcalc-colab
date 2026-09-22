@@ -1946,11 +1946,24 @@ def _eigenvalue_set_latex(value: EigenvalueSet, settings: RenderSettings) -> str
             rf" - \lambda I\right) = 0"
         )
     entries = [
-        rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)},"
-        rf"\;m={entry.multiplicity}"
+        rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)}"
+        + _multiplicity_latex(entry.multiplicity)
         for entry in value.entries
     ]
     return r"\left\{" + r"\; ; \;".join(entries) + r"\right\}"
+
+
+def _multiplicity_latex(multiplicity) -> str:
+    r"""What a repeated eigenvalue says about itself, and a simple one does not.
+
+    It was `m=1` on every entry - beside the `m_1`, `m_2` of the masses the modes came
+    from, on the one kind of sheet that asks for eigenvalues. A simple eigenvalue says
+    nothing the list does not; two modes sharing one frequency is information, so a
+    repeated eigenvalue says so, in words.
+    """
+    if multiplicity == 1:
+        return ""
+    return rf",\;\text{{multiplicity }} {multiplicity}"
 
 
 def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> str:
@@ -1970,8 +1983,9 @@ def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> s
             vectors.append(rf"\mathbf{{v}}_{{{index}}}={vector_latex}")
         vector_block = r",\;".join(vectors)
         entries.append(
-            rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)},"
-            rf"\;m={entry.multiplicity},\;{vector_block}"
+            rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)}"
+            + _multiplicity_latex(entry.multiplicity)
+            + rf",\;{vector_block}"
         )
     return r"\left\{" + r"\; ; \;".join(entries) + r"\right\}"
 

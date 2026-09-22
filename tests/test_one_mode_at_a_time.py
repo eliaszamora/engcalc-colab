@@ -155,7 +155,7 @@ def test_a_closed_form_in_names_is_numbered_by_its_numbers(cell, capsys):
     )
     capsys.readouterr()
 
-    assert "\\lambda=2.00 1/s²,\\;m=1\\; ; \\;\\lambda=5.00 1/s²,\\;m=1" in page, page
+    assert "\\lambda=2.00 1/s²\\; ; \\;\\lambda=5.00 1/s²" in page, page
     assert page.rstrip().endswith("2.00 1/s² \\endarray"), page
 
 
@@ -198,7 +198,7 @@ def test_a_matrix_of_numbers_has_numbered_modes_too(cell, capsys):
     printed = capsys.readouterr().out
     assert "engcalc:" not in printed, printed
 
-    assert "\\lambda=2 - \\sqrt2,\\;m=1\\; ; \\;\\lambda=2,\\;m=1\\; ; \\;\\lambda=\\sqrt2 + 2" in page, page
+    assert "\\lambda=2 - \\sqrt2\\; ; \\;\\lambda=2\\; ; \\;\\lambda=\\sqrt2 + 2" in page, page
     assert page.rstrip().endswith(f"{2 - np.sqrt(2):.2f} \\endarray"), page
 
 

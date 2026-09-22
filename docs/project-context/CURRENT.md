@@ -14,8 +14,8 @@ _2026-09-22._
 |---|---|
 | released | **0.31.14** — #232, `main` at `2dc209b`; six jobs and both qualification runs green on that SHA |
 | in progress | **0.31.15**, approved 2026-09-22 after an audit of 0.31.14 — see below |
-| `main` | `b576a88` — #233 and #234 merged on top of 0.31.14, in no release yet |
-| default suite | **2541 passing** on #235's branch, about a minute with `-n auto` |
+| `main` | `dedd364` — #233, #234 and #235 merged on top of 0.31.14, in no release yet |
+| default suite | **2545 passing** on #236's branch, about a minute with `-n auto` |
 
 **0.31.14 is closed.** It carries #230 and #231, so the frame reads `EA`. Verified after the
 merge: a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
@@ -43,7 +43,7 @@ criterio"*.
    (`workflow_dispatch`). 4 contracts in `test_the_suite_runs_without_a_push.py`, 2 RED
    before, mutation 3/3 (daily, monthly, a job that skips the schedule). Proved on `main`:
    a run started by hand, run `35787566499`, executed all six jobs, all green.
-3. **Dead code.** **#235**, this branch, removes `renderer._scientific_text` (no caller
+3. **Dead code.** **#235, merged** (`dedd364`), removes `renderer._scientific_text` (no caller
    since #146; `_magnitude_text`'s docstring said HTML blocks used it, and now says why
    the parameter stays), `piecewise.inspect_piecewise_variable` and `_contains_name`
    (never called; the parser holds the rule), `NumericContext.sample_symbolic` (kept since
@@ -51,9 +51,16 @@ criterio"*.
    tests. The four sampling contracts now hold the live sampler: breaking it showed one
    property no contract held — a fixed value of the plot variable's name outranking it —
    and that mutant had passed all 2541. Suite 2541, the thirteen pages byte-identical.
-4. **Delegated, decided: the eigen printer's `m=1`.** The multiplicity is written `m`,
-   beside `m := 500 kg` on a dynamics sheet. To do: omit it when it is 1, write
-   `multiplicity n` when it is not.
+4. **Delegated, decided: the eigen printer's `m=1`.** The multiplicity was written `m`,
+   beside `m := 500 kg` on a dynamics sheet. **#236**, this branch: a simple eigenvalue
+   carries no label, a repeated one reads `multiplicity 2` (English, like the block
+   vocabulary), through one helper both printers call. 4 contracts in
+   `test_a_multiplicity_is_not_a_mass.py`, all RED before; mutation 5/5. Twelve tests in
+   five files leaned on the old label — ten pinned it, two read values up to the comma it
+   left — and were rewritten, each keeping what it protected (count, values, order); the
+   one that says "keeps multiplicity" still does where it is information. Thirteen-sheet diff: 7 rows, all on `dinamica`, each the old
+   row minus `,\;m=1` and nothing else. Typeset and read back: no `m = 1`,
+   `{λ = 2, multiplicity 2 ; λ = 3}`.
 5. **Delegated, decided: 71 stale remote branches.** Delete only what a merged PR can
    restore — merged, and its head unchanged since — and keep and list the rest.
 
@@ -63,9 +70,9 @@ stored value outranks the unit alias. That is the documented N/m/s rule seen fro
 
 ### Exact next step
 
-1. #235 green on its exact head, then squash-merge with `--match-head-commit`.
-2. The PR for 4 on the `main` #235 leaves, green on its exact head; then 5; then the 0.31.15
-   release PR carrying 1, 3 and 4, closed the way 0.31.14 was (#232).
+1. #236 green on its exact head, then squash-merge with `--match-head-commit`.
+2. Then 5, and then the 0.31.15 release PR carrying #233, #235 and #236, closed the way
+   0.31.14 was (#232).
 3. Known and not requested: in a substitution row a non-zero literal branch keeps its
    written form (`5 kN/m`) beside bracketed neighbours (`(8.00 kN/m)`);
    `_analysis_scalar_latex` still has no unit literals to pass; `Hz` is not a unit alias —
