@@ -2,7 +2,38 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.14**.
+Current version: **0.31.15**.
+
+
+## v0.31.15 what the audit found
+
+Two corrections and a clean-up, all from an audit of 0.31.14 that the engineer asked for.
+
+- **One over a unit is a unit.** The page writes a circular frequency as `374.98 1/s`, an
+  eigenvalue as `1/s²` and a curvature as `1/m`, and typing that spelling back -
+  `numeric(w, 1/s)` - answered "target unit must be a unit expression" and stopped the
+  cell, while `s**-1` worked. A `1` over a unit is now that unit's reciprocal. Only the
+  `1`: `2/s` is still refused rather than read as `1/s`, and `rad/s` keeps its radian -
+  Pint holds that the radian equals 1, so a rule that only asked "is it 1?" would have
+  dropped it.
+- **A multiplicity is not a mass.** An eigenvalue set wrote each value's multiplicity as
+  `m` - `λ = 1.65 kN/(kg·m), m = 1` - on the one kind of sheet that asks for eigenvalues,
+  where `m` is the mass. A simple eigenvalue now carries no label, and a repeated one says
+  `multiplicity 2`.
+- **What nothing called is gone**: a plain-text power of ten no block has used since
+  0.30.5, a piecewise check the parser makes itself, and the sampler of the first native
+  plot, which only its own tests still called. Moving those tests onto the sampler the page
+  uses found one property nothing had held - a fixed value named like the plot variable
+  outranking it.
+
+The whole suite also runs every Monday now, pushed or not. A dependency release reaches the
+notebook through `--upgrade` before any push reaches the suite, which is how Pint 0.26
+changed every page on 2026-09-10.
+
+Of the thirteen sheets a release is read against, one moves: seven rows of the two-storey
+dynamics sheet, each losing its `, m = 1` and nothing else.
+
+A patch release: two corrections.
 
 
 ## v0.31.14 a modulus before its section
@@ -2989,6 +3020,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.15** — what the audit found. `numeric(w, 1/s)` - the page's own spelling of an inverse second - stopped the cell while `s**-1` worked; a `1` over a unit is now its reciprocal, `2/s` is still refused, and `rad/s` keeps its radian. An eigenvalue's multiplicity was written `m`, beside the masses the modes came from; a simple eigenvalue carries no label now and a repeated one says `multiplicity 2`. Code nothing called is gone, and the whole suite runs every Monday against whatever PyPI serves.
 - **0.31.14** — a modulus before its section, which closes the question 0.31.13 left open. The frame page wrote `A_c E / L_c` where the engineer typed `E*A_c/L_c`, and he asked for `EA`. Inside each shape group of a product the order was the alphabet's; among the capitals it is dimension now - a name whose value carries mass goes first, asked of Pint - so `E A_c`, `P L`, and `E I` for a reason. It stops at the capitals because across a whole product the same rule splits `E I` and writes `fy As` where ACI writes `As fy`. Reaching the frame's matrices took a second correction: a matrix cell had never been given the settings its row was, so one block could draw `x P / 2` above its own substitution `(40.00 kN) x / 2`. Thirteen rows move on the five pinned reference pages and thirty-nine across the thirteen sheets, all on the frame and every one a permutation; no number changes.
 - **0.31.13** — a load before its coordinate. The engineer wrote `piecewise(P*x/2, ...)` and read `xP/2` two lines above `P(L - x)/2`, the same `P` before its companion in one branch and after it in the next: a commutative product was ordered by the shape of the name, lowercase before uppercase, which gets `q L / 2`, `q L² / 8` and `5 q L⁴ / (384 E I)` right only by correlation. A name the sheet has settled no value for is now written after the ones it has, so a product between two known names is untouched - `As fy`, `E A`, `E I` and `q L` all stay as they were - and what moves is the coordinate. Three rules were tried before this one and two were rejected by contracts already here: parameter-last ruins `3 q L / 8`, and both dimensional rules break either `E I` or `As fy`. Nine rows move on the five reference pages the repository pins, and a tenth - `2 x² L` to `2 L x²` in a deflection - in the wider thirteen-sheet diff a release is read against.
 - **0.31.12** — the order a coefficient lost. `120.00 m·kN` sat two lines above `0.00 kN·m` in one block: the engineer wrote `P*(L - x)/2` force first, and expanding it hands the constant term over as `L*P/2` because SymPy canonicalises alphabetically. A polynomial coefficient now asks the page's tables, which is the rule 0.31.4 wrote for a formula's unit literals, in the one path it had not reached. It does not overrule the written order - a value still keeps the order its factors were written in, and the two rules are pinned against each other now.
@@ -3079,4 +3111,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.14`.
+Version: `0.31.15`.
