@@ -2,7 +2,44 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.13**.
+Current version: **0.31.14**.
+
+
+## v0.31.14 a modulus before its section
+
+Two corrections, and they close the question 0.31.13 left open. The engineer types
+`E*A_c/L_c` in his frame and the page wrote `A_c E / L_c`; he settled which way round it
+reads - *"quiero que sea EA ya que convencionalmente así se usa"*.
+
+- **Among the capitals, what carries mass is written first.** A product is written as
+  numbers, then the names beginning with a lowercase letter, then those beginning with a
+  capital, then the names the sheet has no value for. Inside each group the order was the
+  alphabet's, which is SymPy's canonical order and says nothing a reader could name. Among
+  the capitals it is dimension now: a name whose value carries mass goes before one that
+  does not, so `E A_c` rather than `A_c E` and `P L` rather than `L P`. `E I` was already
+  right by the alphabet and is right for a reason now. Which values carry mass is asked of
+  Pint, not read off a table of names.
+- **A matrix cell is written with the settings its row was given.** Everything the sheet
+  knows and the printer needs - which names have values, which are units, what precision,
+  which palette - stopped short of a matrix, so one block could say two things:
+  `numeric(k)` drew its symbolic matrix as `x P / 2` and the substitution directly below
+  as `(40.00 kN) x / 2`. Without this the first correction would have fixed three rows of
+  the frame page and left ten contradicting them.
+
+**The rule stops at the capitals on purpose.** Applied to a whole product it splits `E I` -
+a dimensionless direction cosine sat between them and the modulus jumped it - and writes
+`fy As` where ACI writes `As fy`. Both pair a lowercase name with a capital, which the
+groups already keep apart. `As fy` and `E A` are the same two dimensions in opposite
+orders and no dimensional rule gets both right, so this one is confined to where it
+reaches neither.
+
+Thirteen rows move on the five reference pages this repository pins, all of them on the
+frame page, and thirty-nine in the wider thirteen-sheet diff a release is read against -
+the same frame in its three palettes. Every one is a permutation of the line it replaces,
+only the modulus or the area it jumped moving, and no number changes: the frame still
+answers 70303.22 kN/m and 0.0168 s.
+
+A patch release: two corrections.
 
 
 ## v0.31.13 a load before its coordinate
@@ -2947,6 +2984,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.14** — a modulus before its section, which closes the question 0.31.13 left open. The frame page wrote `A_c E / L_c` where the engineer typed `E*A_c/L_c`, and he asked for `EA`. Inside each shape group of a product the order was the alphabet's; among the capitals it is dimension now - a name whose value carries mass goes first, asked of Pint - so `E A_c`, `P L`, and `E I` for a reason. It stops at the capitals because across a whole product the same rule splits `E I` and writes `fy As` where ACI writes `As fy`. Reaching the frame's matrices took a second correction: a matrix cell had never been given the settings its row was, so one block could draw `x P / 2` above its own substitution `(40.00 kN) x / 2`. Thirteen rows move on the five pinned reference pages and thirty-nine across the thirteen sheets, all on the frame and every one a permutation; no number changes.
 - **0.31.13** — a load before its coordinate. The engineer wrote `piecewise(P*x/2, ...)` and read `xP/2` two lines above `P(L - x)/2`, the same `P` before its companion in one branch and after it in the next: a commutative product was ordered by the shape of the name, lowercase before uppercase, which gets `q L / 2`, `q L² / 8` and `5 q L⁴ / (384 E I)` right only by correlation. A name the sheet has settled no value for is now written after the ones it has, so a product between two known names is untouched - `As fy`, `E A`, `E I` and `q L` all stay as they were - and what moves is the coordinate. Three rules were tried before this one and two were rejected by contracts already here: parameter-last ruins `3 q L / 8`, and both dimensional rules break either `E I` or `As fy`. Nine rows move on the five reference pages the repository pins, and a tenth - `2 x² L` to `2 L x²` in a deflection - in the wider thirteen-sheet diff a release is read against.
 - **0.31.12** — the order a coefficient lost. `120.00 m·kN` sat two lines above `0.00 kN·m` in one block: the engineer wrote `P*(L - x)/2` force first, and expanding it hands the constant term over as `L*P/2` because SymPy canonicalises alphabetically. A polynomial coefficient now asks the page's tables, which is the rule 0.31.4 wrote for a formula's unit literals, in the one path it had not reached. It does not overrule the written order - a value still keeps the order its factors were written in, and the two rules are pinned against each other now.
 - **0.31.11** — a branch that holds a value is written as a value. A substitution row brackets every cell it substitutes into, and a branch the printer found nothing to replace in came out as the engineer typed it: `(8.00 kN/m)` beside a bare `5 kN/m`, two shapes in one column where the brackets say nothing about the arithmetic. A branch that holds a value now reads as one, which makes 0.31.8's `(0.00 kN/m)` a case of that rule rather than an exception to a narrower one. A branch that is a formula keeps its shape, and the definition row still says what the engineer wrote.
@@ -3036,4 +3074,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.13`.
+Version: `0.31.14`.
