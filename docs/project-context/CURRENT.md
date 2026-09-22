@@ -12,58 +12,57 @@ _2026-09-22._
 
 | | |
 |---|---|
-| released | **0.31.14** — release PR #232, carrying #230 and #231 |
-| `main` before it | `680c09d` (#231; #230 is `13736b6`); six jobs and both qualification runs green on that SHA |
-| open PRs | none besides the release |
-| default suite | **2527 passing**, about 50 s with `-n auto`: 0.31.13's 2503 plus twelve contracts from each change |
+| released | **0.31.14** — #232, `main` at `2dc209b`; six jobs and both qualification runs green on that SHA |
+| in progress | **0.31.15**, approved 2026-09-22 after an audit of 0.31.14 — see below |
+| default suite | **2537 passing** on #233's branch, about a minute with `-n auto` |
 
-**What 0.31.14 is for.** The engineer types `E*A_c/L_c` in `tools/portico.eng` and the
-page drew `A_c E / L_c`. He settled the question on 2026-09-22: *"quiero que sea EA ya que
-convencionalmente así se usa"*, and approved both merges and the release. Two defects were
-in the way, one per change:
+**0.31.14 is closed.** It carries #230 and #231, so the frame reads `EA`. Verified after the
+merge: a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
+in a Colab-like venv (Python 3.12, ipython 7.34.0, numpy 2.2.6, matplotlib 3.10.0, sympy
+1.13.3) resolved to `2dc209b`, reported 0.31.14, upgraded nothing, installed files
+byte-identical to `src`, and the frame sheet through `%load_ext` / `%eng_units kgf` /
+`%%eng` read `E A_c` ×10, `E A_d` ×9, `E I_c` ×38 outside the repository. The release's
+own evidence is in #232.
 
-1. **#230** (`13736b6`) — the settings a row is given never reached a matrix cell, so the
-   frame page would have corrected three rows and left ten contradicting them;
-2. **#231** (`680c09d`) — inside a shape group the factor order was the alphabet's, which
-   is SymPy's canonical order; among the capitals it is dimension now.
+**The audit of 0.31.14**, asked for on 2026-09-22, found the project healthy — the suite,
+two local deep exploration runs at 53/53, the gap map at 16/18 with both broken lines
+`check()` (which he rejected), and thirteen rendered pages with no errors and nothing
+wider than 900 px except matrices and a 2-DOF symbolic eigen closed form — and five
+things. His answer: *"Sí, procede con 1, 2 y 3 y con respecto a 4 y 5 lo dejo a tu
+criterio"*.
 
-**#230 alone moves no reference page**: rendered on 0.31.13 and on `13736b6`, the thirteen
-sheets are identical. The 39 rows that move are all #231's.
+1. **`numeric(w, 1/s)` failed** — "target unit must be a unit expression", stopping the
+   cell — while `s**-1` worked and the page itself writes `1/s`. **#233**, this branch: a
+   `1` over a unit is its reciprocal, any other number is still refused, and `rad/s` keeps
+   its radian (Pint holds `rad == 1`). 10 contracts, 8 RED before the fix, mutation 5/5,
+   the thirteen pages unchanged.
+2. **No scheduled run of the full suite.** Only the deep gate is scheduled, and Pint 0.26
+   moved every page on 2026-09-10 with no commit here. To do: a weekly `schedule` in
+   `ci.yml`.
+3. **Dead code.** `renderer._scientific_text`, whose last caller #146 removed while a
+   docstring still says HTML blocks use it; `piecewise.inspect_piecewise_variable` and
+   `_contains_name`, never called; `NumericContext.sample_symbolic`, called only by its own
+   tests; unused imports and locals. To do: remove, pages byte-identical.
+4. **Delegated, decided: the eigen printer's `m=1`.** The multiplicity is written `m`,
+   beside `m := 500 kg` on a dynamics sheet. To do: omit it when it is 1, write
+   `multiplicity n` when it is not.
+5. **Delegated, decided: 71 stale remote branches.** Delete only what a merged PR can
+   restore — merged, and its head unchanged since — and keep and list the rest.
 
-Evidence on the pair: 12 + 12 contracts, 3 + 4 of them RED before their fix, mutation
-**8/8 and 8/8**, whole-page diff **39 rows on the three frame pages and nothing else**,
-every one a character-for-character permutation, and the page rendered and looked at:
-`k_c`, `k_d`, `K_ii`, `K_id`, `K_dd` and `k_eq` all read `EA` and `EI`, symbolic row and
-substitution agreeing, and the answers unchanged (70303.22 kN/m, 0.0168 s). Six jobs green
-on the exact head of both PRs. The suite had been recorded as 2526; it is 2527, counted.
-
-Release evidence, on the release commit's tree:
-
-- the seven version assertions RED before the bump and GREEN after; source suite 2527;
-- a wheel built from `git archive` of the commit, its 29 package files byte-identical to
-  `src`;
-- installed in a clean Python 3.12 venv holding Colab's pins (ipython 7.34.0, numpy 2.2.6,
-  matplotlib 3.10.0, sympy 1.13.3), it adds Pint 0.26.1 and four small dependencies and
-  **upgrades nothing**;
-- outside the repository, `%load_ext` + `%eng_units kgf` + the frame sheet through
-  `%%eng` reads `E A_c` ×10, `E A_d` ×9, `E I_c` ×38 and never the old order;
-- the whole suite against the installed wheel, from a copy of the tree with no `src/`:
-  everything passes except `test_the_ipython_surface_stays_small`, which reads
-  `src/engcalc_colab/magic.py` by path rather than importing it, and passes when handed the
-  wheel's own copy;
-- the thirteen sheets render byte-identical from the wheel and from the working tree.
+Found in passing and not on the list: a cell that names a variable `m` and also writes the
+metre — `k := 2000*kN/m`, then `m := 500*kg` — gives a different `k` when re-run, because a
+stored value outranks the unit alias. That is the documented N/m/s rule seen from a re-run.
 
 ### Exact next step
 
-1. Six jobs green on #232's exact head, then squash-merge it with `--match-head-commit` —
-   his yes, 2026-09-22: *"Sí, fusiona el #231 y publica 0.31.14"*.
-2. After the merge: six jobs and both qualification runs green on the merge commit, and a
-   clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
-   in a Colab-like venv reports 0.31.14 and draws the frame in `EA`.
-3. Then nothing he has asked for is open. Known and not requested: in a substitution row a
-   non-zero literal branch keeps its written form (`5 kN/m`) beside bracketed neighbours
-   (`(8.00 kN/m)`); `_analysis_scalar_latex` still has no unit literals to pass, written
-   down in #230's contract file, and no sheet draws it.
+1. #233 green on its exact head, then squash-merge with `--match-head-commit`.
+2. The PRs for 2, 3 and 4, in that order, each on the `main` the one before left and green
+   on its exact head; then 5; then the 0.31.15 release PR carrying 1, 3 and 4, closed the
+   way 0.31.14 was (#232).
+3. Known and not requested: in a substitution row a non-zero literal branch keeps its
+   written form (`5 kN/m`) beside bracketed neighbours (`(8.00 kN/m)`);
+   `_analysis_scalar_latex` still has no unit literals to pass; `Hz` is not a unit alias —
+   asked, not answered.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.
