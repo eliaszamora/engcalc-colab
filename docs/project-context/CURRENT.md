@@ -12,57 +12,60 @@ _2026-09-22._
 
 | | |
 |---|---|
-| released | **0.31.14** — #232, `main` at `2dc209b`; six jobs and both qualification runs green on that SHA |
-| in progress | **0.31.15**, approved 2026-09-22 after an audit of 0.31.14 — see below |
-| `main` | `dedd364` — #233, #234 and #235 merged on top of 0.31.14, in no release yet |
-| default suite | **2545 passing** on #236's branch, about a minute with `-n auto` |
+| released | **0.31.15** — release PR #237, carrying #233, #235 and #236 (#234 is CI only) |
+| `main` before it | `9343152`; six jobs and both qualification runs green on that SHA |
+| open PRs | none besides the release |
+| default suite | **2545 passing**, about a minute with `-n auto` |
 
-**0.31.14 is closed.** It carries #230 and #231, so the frame reads `EA`. Verified after the
-merge: a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
-in a Colab-like venv (Python 3.12, ipython 7.34.0, numpy 2.2.6, matplotlib 3.10.0, sympy
-1.13.3) resolved to `2dc209b`, reported 0.31.14, upgraded nothing, installed files
-byte-identical to `src`, and the frame sheet through `%load_ext` / `%eng_units kgf` /
-`%%eng` read `E A_c` ×10, `E A_d` ×9, `E I_c` ×38 outside the repository. The release's
-own evidence is in #232.
-
-**The audit of 0.31.14**, asked for on 2026-09-22, found the project healthy — the suite,
-two local deep exploration runs at 53/53, the gap map at 16/18 with both broken lines
-`check()` (which he rejected), and thirteen rendered pages with no errors and nothing
-wider than 900 px except matrices and a 2-DOF symbolic eigen closed form — and five
+**What 0.31.15 is.** An audit of 0.31.14, asked for on 2026-09-22, found the project
+healthy — the suite, two local deep exploration runs at 53/53, the gap map at 16/18 with
+both broken lines `check()` (which he rejected), thirteen rendered pages with no errors and
+nothing wider than 900 px except matrices and a 2-DOF symbolic eigen closed form — and five
 things. His answer: *"Sí, procede con 1, 2 y 3 y con respecto a 4 y 5 lo dejo a tu
 criterio"*.
 
-1. **`numeric(w, 1/s)` failed** — "target unit must be a unit expression", stopping the
-   cell — while `s**-1` worked and the page itself writes `1/s`. **#233, merged**
-   (`ad87d8e`): a `1` over a unit is its reciprocal, any other number is still refused,
-   and `rad/s` keeps its radian (Pint holds `rad == 1`). 10 contracts, 8 RED before the
-   fix, mutation 5/5, the thirteen pages unchanged.
-2. **No scheduled run of the full suite.** Only the deep gate is scheduled, and Pint 0.26
-   moved every page on 2026-09-10 with no commit here. **#234, merged** (`b576a88`):
-   `ci.yml` also runs every Monday at 05:17 UTC, an hour after the deep gate, and by hand
-   (`workflow_dispatch`). 4 contracts in `test_the_suite_runs_without_a_push.py`, 2 RED
-   before, mutation 3/3 (daily, monthly, a job that skips the schedule). Proved on `main`:
-   a run started by hand, run `35787566499`, executed all six jobs, all green.
-3. **Dead code.** **#235, merged** (`dedd364`), removes `renderer._scientific_text` (no caller
-   since #146; `_magnitude_text`'s docstring said HTML blocks used it, and now says why
-   the parameter stays), `piecewise.inspect_piecewise_variable` and `_contains_name`
-   (never called; the parser holds the rule), `NumericContext.sample_symbolic` (kept since
-   0.4.0 only for its tests), 6 unused imports and 3 unused locals in `src` and 12 in the
-   tests. The four sampling contracts now hold the live sampler: breaking it showed one
-   property no contract held — a fixed value of the plot variable's name outranking it —
-   and that mutant had passed all 2541. Suite 2541, the thirteen pages byte-identical.
-4. **Delegated, decided: the eigen printer's `m=1`.** The multiplicity was written `m`,
-   beside `m := 500 kg` on a dynamics sheet. **#236**, this branch: a simple eigenvalue
-   carries no label, a repeated one reads `multiplicity 2` (English, like the block
-   vocabulary), through one helper both printers call. 4 contracts in
-   `test_a_multiplicity_is_not_a_mass.py`, all RED before; mutation 5/5. Twelve tests in
-   five files leaned on the old label — ten pinned it, two read values up to the comma it
-   left — and were rewritten, each keeping what it protected (count, values, order); the
-   one that says "keeps multiplicity" still does where it is information. Thirteen-sheet diff: 7 rows, all on `dinamica`, each the old
-   row minus `,\;m=1` and nothing else. Typeset and read back: no `m = 1`,
-   `{λ = 2, multiplicity 2 ; λ = 3}`.
-5. **Delegated, decided: 71 stale remote branches.** Delete only what a merged PR can
-   restore — merged, and its head unchanged since — and keep and list the rest.
+1. **#233 (`ad87d8e`), one over a unit is a unit.** `numeric(w, 1/s)` stopped the cell with
+   "target unit must be a unit expression" while `s**-1` worked and the page writes `1/s`.
+   A `1` over a unit is its reciprocal; `2/s` is still refused; `rad/s` keeps its radian
+   (Pint holds `rad == 1`). 10 contracts, 8 RED before, mutation 5/5.
+2. **#234 (`b576a88`), the suite runs every week.** `ci.yml` runs every Monday at 05:17 UTC
+   and by hand; run `35787566499`, started by hand on `main`, executed all six jobs green.
+   4 contracts, mutation 3/3.
+3. **#235 (`dedd364`), what nothing calls is removed.** `_scientific_text` and the docstring
+   that still claimed it, `inspect_piecewise_variable` and `_contains_name`,
+   `sample_symbolic`, unused imports and locals. The sampler's four contracts moved to the
+   live sampler and found one property no contract held. Pages byte-identical.
+4. **#236 (`9343152`), a multiplicity is not a mass — my call.** A simple eigenvalue carries
+   no label; a repeated one reads `multiplicity 2`. 4 contracts, all RED before, mutation
+   5/5; twelve tests that leaned on `m=` rewritten, each keeping what it protected.
+5. **Stale branches — my call.** Deleted 51 remote and 17 local branches whose PR merged
+   with the head the branch still had, each under a lease on its SHA; any of them comes
+   back from its PR's "Restore branch" button, and #237's description lists them. Kept 20
+   remote: 18 that never had a PR (`design/`, `planning/`, `spec/`, early `feature/`
+   branches and `noop`), `feature/v0.9.0-matrix-cas`, which moved after its PR merged, and
+   `qa/external-user-rc-beam-20260904`, whose PR closed unmerged. Kept 6 local of the same
+   kinds.
+
+Of the thirteen sheets a release is read against, one moves: seven rows of the two-storey
+dynamics sheet, each losing `,\;m=1` and nothing else.
+
+Release evidence, on the release commit's tree:
+
+- the seven version assertions RED before the bump and GREEN after; source suite 2545,
+  twice;
+- a wheel built from `git archive` of the commit, its 29 package files byte-identical to
+  `src`;
+- installed in a clean Python 3.12 venv holding Colab's pins (ipython 7.34.0, numpy 2.2.6,
+  matplotlib 3.10.0, sympy 1.13.3), it adds Pint 0.26.1 and four small dependencies and
+  **upgrades nothing**;
+- outside the repository, through `%load_ext`: the frame still reads `EA` and answers
+  71689.33 kgf/cm and 0.0168 s, `numeric(w, 1/s)` answers in `1/s`, `rad/s` keeps its
+  radian, no mode carries `m=1`, a repeated eigenvalue says `multiplicity 2`, and no sheet
+  prints an error;
+- the whole suite against the installed wheel, from a copy of the tree with no `src/`:
+  everything passes except `test_the_ipython_surface_stays_small`, which reads
+  `src/engcalc_colab/magic.py` by path and passes when handed the wheel's own copy;
+- the thirteen sheets render byte-identical from the wheel and from the working tree.
 
 Found in passing and not on the list: a cell that names a variable `m` and also writes the
 metre — `k := 2000*kN/m`, then `m := 500*kg` — gives a different `k` when re-run, because a
@@ -70,13 +73,15 @@ stored value outranks the unit alias. That is the documented N/m/s rule seen fro
 
 ### Exact next step
 
-1. #236 green on its exact head, then squash-merge with `--match-head-commit`.
-2. Then 5, and then the 0.31.15 release PR carrying #233, #235 and #236, closed the way
-   0.31.14 was (#232).
-3. Known and not requested: in a substitution row a non-zero literal branch keeps its
-   written form (`5 kN/m`) beside bracketed neighbours (`(8.00 kN/m)`);
-   `_analysis_scalar_latex` still has no unit literals to pass; `Hz` is not a unit alias —
-   asked, not answered.
+1. #237 green on its exact head, then squash-merge with `--match-head-commit` — his yes of
+   2026-09-22 covered publishing 0.31.15.
+2. After the merge: six jobs and both qualification runs green on the merge commit, and a
+   clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
+   in a Colab-like venv reports 0.31.15, upgrades nothing, and passes the same smoke.
+3. Then nothing he asked for is open. Known and not requested: in a substitution row a
+   non-zero literal branch keeps its written form (`5 kN/m`) beside bracketed neighbours
+   (`(8.00 kN/m)`); `_analysis_scalar_latex` still has no unit literals to pass; `Hz` is not
+   a unit alias — asked, not answered.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.
