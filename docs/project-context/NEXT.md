@@ -12,7 +12,7 @@ of `CURRENT.md` was written at 0.13.0 and says so._
 | declared version | **0.31.14** — released by #232, carrying #230 and #231 |
 | default suite (`pytest -q`) | **2527 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
-| CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0` |
+| CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0`; on every PR, every push to `main`, every Monday, and by hand |
 
 _The first three rows are kept current; the prose below was written at 0.29.2._
 
