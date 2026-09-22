@@ -226,6 +226,14 @@ class EngMagics(Magics):
             self.render_settings,
             written_units=frozenset(self.engine.written_units),
             valued_names=frozenset(self.engine.numeric_context.values),
+            # Which of those values carry mass, asked of Pint rather than of the name.
+            # `getattr` because a stored value need not be a quantity: a sheet may settle
+            # a plain number, and a direction cosine does.
+            mass_carrying_names=frozenset(
+                name
+                for name, value in self.engine.numeric_context.values.items()
+                if "[mass]" in getattr(value, "dimensionality", {})
+            ),
             palette=self.units,
         )
 

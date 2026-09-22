@@ -67,6 +67,10 @@ class RenderSettings:
     # quantities the sheet knows first and the one it does not - the coordinate - after
     # them, which is what writes `P x / 2` instead of `x P / 2`.
     valued_names: frozenset[str] = frozenset()
+    # Those of `valued_names` whose value carries mass. Among the names that begin with a
+    # capital, one of these is written before one that is not, which is what writes
+    # `E A_c` instead of `A_c E`. Only the capitals: see `_engineering_factor_key`.
+    mass_carrying_names: frozenset[str] = frozenset()
     # The palette `%eng_units` declared, by name; "" when none. A name rather than the
     # table itself, because this dataclass is frozen and a dict inside one is not
     # hashable. The tables live beside the family tables, which is where a reader looking
@@ -471,26 +475,33 @@ def _engineering_factor_key(
 ):
     r"""Where one factor of a commutative product goes.
 
-        numbers, dimensionless coefficients, what carries mass, then everything else
+        numbers, the lowercase names, the capitals, then the names with no value -
+        and among the capitals, what carries mass first
 
-    That is the order an engineer writes a product in: `q L / 2`, `P x / 2`, `E A / L`,
-    `12 s^{2} E I / L^{3}`. The load, the modulus, the pressure - anything whose dimension
-    carries mass - comes before the geometry it acts on, and a bare coefficient comes
-    before both.
+    That is the order an engineer writes a product in: `q L / 2`, `P x / 2`,
+    `E A_c / L_c`, `12 s^{2} E I / L^{3}`.
 
-    Until this rule the order was the *shape of the name*: lowercase before uppercase.
-    That got `q L / 2` and `5 q L^{4} / (384 E I)` right by correlation, because loads are
-    usually lowercase and geometry uppercase - and `P` is the load that breaks it, so
-    `P*x/2` came out `x P / 2`, two lines above `P (L - x) / 2`.
+    **The three shape groups are the engineer's own habit**, not a dimensional rule:
+    loads and coefficients are written lowercase, geometry and material constants with a
+    capital. That gets `q L / 2` and `5 q L^{4} / (384 E I)` right, and `P` is the load
+    that breaks the correlation - `P*x/2` came out `x P / 2` until a name the sheet has no
+    value for was moved past the ones it has, which is what puts the coordinate last.
 
-    A name the sheet has given no value to is in neither set, has no dimension to sort by,
-    and keeps the place the shape of its name earns it. That is deliberate and is what
-    leaves `R(q) = 3 q L / 8` alone: a rule that reached names it knows nothing about was
-    tried, and an existing contract caught it writing `3 L q / 8`.
+    **Inside a group the order was the alphabet's**, which is SymPy's canonical order and
+    says nothing a reader could name. Among the capitals it is replaced by dimension: a
+    name whose value carries mass is written before one that does not, so `E A_c` rather
+    than `A_c E`, and `P L` rather than `L P`.
 
-    The coefficients go first rather than last for the same kind of reason: sorting by
-    dimension alone puts the modulus ahead of a direction cosine and splits `E I`, which
-    is one named quantity to anybody reading a frame.
+    It stops at the capitals on purpose. Applied to a whole product the same rule splits
+    `E I` - a dimensionless direction cosine sits between them and the modulus jumps it -
+    and turns `fy As` into `As fy`, which is the wrong way round for ACI. Both
+    counterexamples are pinned in `test_a_load_is_written_before_a_length`, and both pair
+    a lowercase name with a capital, which the shape groups already keep apart.
+
+    A name the sheet has given no value to has no dimension to sort by and keeps the place
+    the shape of its name earns it. That is deliberate and is what leaves
+    `R(q) = 3 q L / 8` alone: a rule that reached names it knows nothing about was tried,
+    and an existing contract caught it writing `3 L q / 8`.
     """
     if term.is_Number:
         return (0, sp.default_sort_key(term))
@@ -521,9 +532,19 @@ def _engineering_factor_key(
             or base.name in settings.valued_names
             or base.name in unit_literals
         )
-        return (shape, sp.default_sort_key(term)) if known else (
+        # Among the capitals, and only there, dimension replaces the alphabet. A name
+        # with no value on the sheet is never in this set, so it cannot lead: a unit
+        # literal like `N` stays where its name puts it.
+        leads = (
+            shape == 2
+            and settings is not None
+            and base.name in settings.mass_carrying_names
+        )
+        rank = 0 if leads else 1
+        return (shape, rank, sp.default_sort_key(term)) if known else (
             4,
             shape,
+            rank,
             sp.default_sort_key(term),
         )
 
