@@ -2554,7 +2554,12 @@ kN*m
 N*mm
 mm^4
 mm/kN
+1/s
 ```
+
+A reciprocal is written the way the page writes it: `numeric(w_n, 1/s)`,
+`numeric(kappa, 1/m)`. Only a `1` makes one - `2/s` is not a unit and is refused - and a
+unit on top keeps its place, so `rad/s` stays radians per second.
 
 The conversion applies to the final result. `numeric(...)` preserves original units in its formula/substitution stages; `result(...)` omits the substitution stage but uses the same converted final quantity. Pint checks dimensional compatibility and rejects incompatible targets.
 

@@ -1484,6 +1484,14 @@ class _UnitAstEvaluator(ast.NodeVisitor):
             if isinstance(node.op, ast.Mult):
                 return left * right
             if isinstance(node.op, ast.Div):
+                # `1/s` is how the page itself writes the inverse second. A number over a
+                # unit is a quantity to Pint, and a quantity is rightly refused as a
+                # target, so the `1` is read as what it means here: the reciprocal. Only
+                # the `1` - `2/s` is still no unit, and reading it as `1/s` would drop
+                # the 2 without a word. The number test comes first because Pint holds
+                # that the radian equals 1, and `rad/s` must not lose its radian.
+                if isinstance(left, numbers.Number) and left == 1:
+                    return right**-1
                 return left / right
             if isinstance(node.op, ast.Pow):
                 if not isinstance(right, numbers.Number):
