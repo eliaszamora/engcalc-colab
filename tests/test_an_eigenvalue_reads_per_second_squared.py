@@ -59,7 +59,7 @@ def test_the_eigenvalues_of_a_shear_building_read_per_second_squared(cell, capsy
     capsys.readouterr()
 
     numeric = last_row(page)
-    assert re.findall(r"\\lambda=([\d.]+) ([^,]+),", numeric) == [
+    assert re.findall(r"\\lambda=([\d.]+) ([^,\\]+)", numeric) == [
         ("1647.99", "1/s²"),
         ("9102.01", "1/s²"),
     ], numeric
@@ -71,7 +71,7 @@ def test_the_eigenvalues_beside_the_mode_shapes_read_per_second_squared(cell, ca
     capsys.readouterr()
 
     numeric = last_row(page)
-    assert re.findall(r"\\lambda=([\d.]+) ([^,]+),", numeric) == [
+    assert re.findall(r"\\lambda=([\d.]+) ([^,\\]+)", numeric) == [
         ("1647.99", "1/s²"),
         ("9102.01", "1/s²"),
     ], numeric
@@ -120,7 +120,7 @@ def test_a_unit_the_engineer_asks_for_is_kept(cell, capsys):
     capsys.readouterr()
 
     numeric = last_row(page)
-    assert re.findall(r"\\lambda=([\d.]+) ([^,]+),", numeric) == [
+    assert re.findall(r"\\lambda=([\d.]+) ([^,\\]+)", numeric) == [
         ("1.65", "kN/(kg·m)"),
         ("9.10", "kN/(kg·m)"),
     ], numeric
@@ -132,7 +132,7 @@ def test_a_unit_asked_for_beside_the_mode_shapes_is_kept(cell, capsys):
     capsys.readouterr()
 
     numeric = last_row(page)
-    assert re.findall(r"\\lambda=([\d.]+) ([^,]+),", numeric) == [
+    assert re.findall(r"\\lambda=([\d.]+) ([^,\\]+)", numeric) == [
         ("1.65", "kN/(kg·m)"),
         ("9.10", "kN/(kg·m)"),
     ], numeric

@@ -120,7 +120,7 @@ def test_the_modes_are_the_eigenvectors_of_the_same_problem(cell, capsys):
 
     numeric = page.rsplit("\\\\[8pt]", 1)[-1]
     blocks = re.findall(
-        r"\\lambda=([\d.]+) 1/s²,\\;m=1,\\;\\mathbfv_1=\[\\beginmatrix(.*?)\\endmatrix\]",
+        r"\\lambda=([\d.]+) 1/s²,\\;\\mathbfv_1=\[\\beginmatrix(.*?)\\endmatrix\]",
         numeric,
     )
     assert len(blocks) == 3, numeric
@@ -156,14 +156,15 @@ def test_the_mode_shapes_show_their_problem_too(cell, capsys):
 
 def test_a_repeated_eigenvalue_is_counted_once_with_its_multiplicity(cell, capsys):
     """Floating point splits a repeated root by a few parts in 10¹⁶; the page must still
-    say `m = 2`, the way SymPy's exact answer does for a matrix of numbers."""
+    say `multiplicity 2`, the way SymPy's exact answer does for a matrix of numbers. (It
+    said `m = 2` until `m` was found beside the masses; the simple root carries no label.)"""
     raw, page = cell("a := 2/s^2\nb := 5/s^2\nA = diag(a, a, b)\nnumeric(eigenvals(A))\n")
     capsys.readouterr()
 
     numeric = page.rsplit("\\\\[8pt]", 1)[-1]
-    assert re.findall(r"\\lambda=([\d.]+) 1/s²,\\;m=(\d)", numeric) == [
+    assert re.findall(r"\\lambda=([\d.]+) 1/s²(?:,\\;\\textmultiplicity (\d))?", numeric) == [
         ("2.00", "2"),
-        ("5.00", "1"),
+        ("5.00", ""),
     ], numeric
 
 
@@ -186,7 +187,7 @@ def test_a_dimensionless_matrix_has_modes_too(cell, capsys):
     capsys.readouterr()
 
     numeric = page.rsplit("\\\\[8pt]", 1)[-1]
-    found = [float(value) for value in re.findall(r"\\lambda=([\d.]+),", numeric)]
+    found = [float(value) for value in re.findall(r"\\lambda=([\d.]+)", numeric)]
     assert found == pytest.approx(np.sort(np.linalg.eigvals([[2, 1, 0], [1, 2, 1], [0, 1, 2]])), abs=6e-3)
 
 
@@ -223,4 +224,4 @@ def test_a_matrix_of_numbers_keeps_its_exact_eigenvalues(cell, capsys):
     raw, page = cell("A = diag(2, 1, 2)\nlam = eigenvals(A)\n")
     capsys.readouterr()
 
-    assert "\\lambda=1,\\;m=1\\; ; \\;\\lambda=2,\\;m=2" in page, page
+    assert "\\lambda=1\\; ; \\;\\lambda=2,\\;\\textmultiplicity 2" in page, page

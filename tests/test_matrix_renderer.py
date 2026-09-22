@@ -220,8 +220,12 @@ def test_eigenvalue_rendering_is_deterministic_and_keeps_multiplicity():
     aligned = render_aligned_results([result])
 
     assert "2" in latex and "3" in latex
-    assert "m=2" in latex
-    assert "m=1" in latex
+    # The repeated value says so in words and the simple one carries no label. This read
+    # `m=2` and `m=1`, and `m` is the mass on the sheets that ask for eigenvalues - see
+    # test_a_multiplicity_is_not_a_mass. The multiplicity that carries information stays.
+    assert r"\lambda=2,\;\text{multiplicity } 2" in latex
+    assert latex.count("multiplicity") == 1
+    assert "m=" not in latex
     assert latex.index("2") < latex.index("3")
     assert r"\begin{array}{lcl}" in aligned
 
@@ -235,7 +239,8 @@ def test_eigenvector_rendering_keeps_vectors_as_native_matrices():
     latex = render_result(result)
 
     assert "2" in latex and "3" in latex
-    assert latex.count("m=1") == 2
+    assert latex.count(r"\lambda=") == 2
+    assert "m=" not in latex and "multiplicity" not in latex  # both simple: no label
     assert latex.count(r"\begin{matrix}") == 2
     assert "Matrix([[" not in latex
 
@@ -252,4 +257,5 @@ def test_numeric_homogeneous_eigenvalues_render_with_common_physical_unit():
     assert "10.00" in latex and "20.00" in latex
     assert latex.count(r"\mathrm{kN}") == 2
     assert latex.count(r"\mathrm{mm}") == 2
-    assert "m=1" in latex
+    assert latex.count(r"\lambda=") == 2
+    assert "m=" not in latex

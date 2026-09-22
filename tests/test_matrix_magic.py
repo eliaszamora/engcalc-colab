@@ -77,6 +77,7 @@ def test_eng_magic_renders_shape_and_eigen_analysis_in_source_order(monkeypatch)
     assert [type(item) for item in displayed] == [Math]
     latex = displayed[0].data
     assert r"\left(2, 2\right)" in latex
-    assert "m=1" in latex
+    assert r"\lambda=2" in latex and r"\lambda=3" in latex
+    assert "m=" not in latex
     assert latex.count(r"\begin{matrix}") >= 3
     assert "Matrix([[" not in latex
