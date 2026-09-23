@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.32.0** — this release PR, carrying #249, #250 and #251 (`1cff502`); its closure is recorded below |
-| before that | **0.31.18** — #248, `9be53ad`, verified after its merge |
-| open PRs | this release's |
+| released | **0.32.0** — #253, `ec90dfc`, carrying #249, #250 and #251; six jobs and both qualification runs green on it, verified after its merge (below) |
+| before that | **0.31.18** — #248, `9be53ad` |
+| open PRs | only this record's |
 | default suite | **2657 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -205,10 +205,16 @@ three together. Suite 2657.
 
 ### Exact next step
 
-Close 0.32.0: a wheel from `git archive` of the release commit, a clean Colab-like venv,
-the smoke outside the repository, the suite against the wheel, the thirteen sheets from the
-wheel; then CI and both qualification runs on the merge commit and a `git+https` install of
-`main`, recorded here with the next change. Known and not requested: a wide substitution
+**0.32.0 is closed.** On the release commit: a wheel from `git archive`, its 31 package
+files byte-identical to `src`; in a clean Python 3.12 venv with Colab's pins it adds Pint
+and four small dependencies and upgrades nothing; 33 smoke checks outside the repository;
+the suite against the wheel, 2657 (the surface test passes on the wheel's own `magic.py`);
+the thirteen sheets identical from the wheel and the tree, and to 0.31.18. After its merge:
+six jobs and both qualification runs green on `ec90dfc`, and a clean `git+https` install of
+`main` resolved to `ec90dfc`, upgraded nothing, installed 31 files identical to `src` and
+passed the 33 checks.
+
+Nothing is pending. Known and not requested: a wide substitution
 over plain definitions splits into additive terms (`keep` avoids it); an `N` never defined
 still reads as one newton in silence; `extrema(sqrt(x), x, -1, 4)` misses the minimum at 0;
 `extrema` over an `interp` does not validate its kinks; `1*m` in a matrix prints `m`.
