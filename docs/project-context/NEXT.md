@@ -8,9 +8,9 @@ of `CURRENT.md` was written at 0.13.0 and says so._
 
 | | |
 |---|---|
-| `main` | 0.32.1 released by the release PR (before it the fixes #255–#258) |
-| declared version | **0.32.1** — carrying #255, #256, #257 and #258 |
-| default suite (`pytest -q`) | **2684 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
+| `main` | 0.32.2 released by the release PR (before it #261 and #262) |
+| declared version | **0.32.2** — carrying #261 and #262 |
+| default suite (`pytest -q`) | **2701 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0`; on every PR, every push to `main`, every Monday, and by hand |
 
@@ -107,8 +107,9 @@ seven more, of which four are fixed. What is open, in the order I would take it:
 - ~~`extrema` over an `interp`~~ — **#258, released in 0.32.1**, through two defects found
   on the way and fixed in their own PRs: a unit alone in a sum (#256) and a unit written
   in a plotted function (#257)
-- **`1*m` prints `m`** — in a formula, a matrix and now a characteristic's row
-  (`x = m (1.00 m)`); the number beside it is right. A presentation rule; not done
+- ~~`1*m` prints `m`~~ — **fixed by #262, released in 0.32.2**, with a piecewise
+  breakpoint no longer called a boundary (#261). Left: a `0*m` in a table prints `0`,
+  its metre lost when the line is read
 - **`0.90` prints `0.9`** in a table or formula: the float cannot remember the zero it was
   typed with. Weighed and not done - see CURRENT.md
 

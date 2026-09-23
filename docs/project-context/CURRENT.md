@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.32.1** — #259, `177b4be`, carrying #255–#258; six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.32.0** — #253, `ec90dfc` |
-| open PRs | only this record's |
-| default suite | **2684 passing**, about a minute and a half with `-n auto` |
+| released | **0.32.2** — this release PR, carrying #261 and #262; its closure is recorded below |
+| before that | **0.32.1** — #259, `177b4be`, verified after its merge |
+| open PRs | this release's |
+| default suite | **2701 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -236,20 +236,40 @@ English, the plural of *extremum*, as *maxima* is of *maximum*.
 The 13 reference sheets and 18 exercises are byte-identical to 0.32.0 through all four.
 Suite 2684; deep 53.
 
+### 0.32.2 — a breakpoint and a metre
+
+**0.32.1 closed** (#259, `177b4be`), verified after its merge and recorded by #260.
+
+He looked at 0.32.1 in Colab on 2026-09-23 and asked for the findings to be corrected
+(*"corrige los hallazgos encontrados"*). Two, both on his page:
+
+- **#261 (`4f82b9d`) a breakpoint is called a breakpoint.** The peak of a table, x = 1
+  inside 0 to 2, read `boundary, local max, global max`: every point where a piecewise law
+  changes went through the helper that reads the domain ends and took their word. Each
+  caller now names its point; a law changing on a domain end stays `boundary`. The role is
+  only written, never read. 5 contracts; mutation 5/5.
+- **#262 (`4dffd91`) a unit alone is written with its one.** `1*m` folds to `m` before
+  printing; the written form already kept `1 m`, so only paths printing the value were
+  wrong - arguments, tables, `numeric` formula rows, characteristic rows, matrices
+  (`-kN/m`). The printer tracks each node's parent and writes a unit (or product or power
+  of units, with its sign) standing where a quantity stands as the explicit product with
+  one; a factor is left alone. Characteristic results now carry `unit_literals`, which
+  their rows never had. Two eigen contracts updated with notes. 13 contracts; mutation
+  6/6; a `1/m` guard measured to change nothing and removed.
+
+Left, deliberately: `x = 0 (0.00)` repeats a plain number (the characteristic's exact-form
+convention); a `0*m` in a table prints `0` (lost at parse, not at print).
+
+No row of the 13 sheets or 18 exercises moves. Suite 2701; deep 53.
+
 ### Exact next step
 
-**0.32.1 is closed.** On the release commit: a wheel from `git archive`, 31 package files
-byte-identical to `src`; in a clean Python 3.12 venv with Colab's pins it upgrades nothing;
-38 smoke checks outside the repository; the suite against the wheel, 2684; the thirteen
-sheets identical from the wheel and the tree, and to 0.32.0. After its merge: six jobs and
-both qualification runs green on `177b4be`, and a clean `git+https` install of `main`
-resolved to `177b4be`, upgraded nothing, installed 31 files identical to `src` and passed
-the 38 checks.
-
-Nothing is pending. Known and
-not requested: `1*m` prints `m` (formula, matrix, characteristic row); `0.90` prints `0.9`; a
-wide substitution over plain definitions splits into additive terms (`keep` avoids it); an
-`N` never defined still reads as one newton in silence.
+Close 0.32.2 like 0.32.1: wheel from `git archive`, clean Colab-like venv, the smoke outside
+the repository, the suite against the wheel, the thirteen sheets from the wheel; then CI and
+both qualification runs on the merge commit and a `git+https` install of `main`. Known and
+not requested: `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over
+plain definitions splits into additive terms (`keep` avoids it); an `N` never defined still
+reads as one newton in silence.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.

@@ -13,7 +13,27 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.32.1**.
+Current version: **0.32.2**.
+
+
+## v0.32.2 a breakpoint and a metre
+
+Two corrections to how a result reads, found on his own Colab page after 0.32.1.
+
+**A breakpoint is called a breakpoint.** `extrema` over a table reported its peak as
+`x = 1 · boundary, local max, global max`, and x = 1 is inside the domain, where the
+table's line turns. Every point a piecewise analysis found where its law changes took the
+word the page uses for the ends of the domain. It now reads `breakpoint`; the ends of the
+domain stay `boundary`.
+
+**A unit alone is written with its one.** `1*m` becomes the symbol `m` before anything is
+printed, so wherever the page printed a value rather than the form the sheet wrote, one
+metre read as the word "metre": `max(m, L/4)`, a table `[0, m, 2 m]`, `x = m (1.00 m)`,
+`kN + 4 kN x/m` in the working of `numeric`, `-kN/m` in a stiffness matrix. They now read
+`max(1 m, L/4)`, `[0, 1 m, 2 m]`, `x = 1 m (1.00 m)`, `1 kN + 4 kN x/m`, `-1 kN/m` - the
+spelling the definitions already had. As a factor a unit is left alone: `4 kN x/m`, `1/m`.
+
+None of the thirteen reference sheets moves.
 
 
 ## v0.32.1 what extrema could not see
@@ -3226,6 +3246,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.32.2** — a point where a piecewise or a table changes its law is a `breakpoint`, not a `boundary`; and a unit standing alone is written with its one (`max(1 m, L/4)`, `x = 1 m`, `-1 kN/m`). No reference sheet moves.
 - **0.32.1** — `extrema` refuses a function with no real value in its domain and reads a singular end as unbounded, instead of naming a wrong global extreme; it finds the extremes of an `interp` at the table's points; `1*kN + 4*kN*x/m` evaluates; and `V(x) = 30*kN - q*x` can be plotted. No reference sheet moves.
 - **0.32.0** — `min` and `max` in the order the code writes them, each limit worked out before the one that governs; `interp(x, [x_i], [y_i])`, a value read from a table, with the segment used worked out and no extrapolation; and a coefficient printed as it was typed (`0.125`, not `0.12`). No reference sheet moves.
 - **0.31.18** — a value with no real result says so. `sqrt(-4)` or a negative discriminant under a root was stored as a complex number and the page failed with a traceback that took the whole cell with it. The value is now refused where it is made, in one line that names the operation and the value, with the rows before it on the page; `log`, `asin` and `acos` outside their domain say the same on every Python version. No reference sheet moves.
@@ -3322,4 +3343,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.32.1`.
+Version: `0.32.2`.
