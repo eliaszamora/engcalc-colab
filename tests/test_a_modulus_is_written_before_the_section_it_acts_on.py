@@ -118,16 +118,18 @@ def test_a_flexural_rigidity_is_still_not_split(page):
 
 
 def test_a_tension_capacity_is_untouched(page):
-    r"""`fy As` - the idiom a dimensional rule gets backwards, left exactly as it was.
+    r"""`As fy` - the idiom a dimensional rule gets backwards - is not reordered by it.
 
     `fy` is a stress and `As` an area, the same two dimensions as `E A_c` in the opposite
     order. This rule cannot reach it: `fy` begins with a lowercase letter and is in a
-    group of its own.
+    group of its own. It read `fy As` by the shape rule until 0.33.0, which writes a
+    product in the order the sheet wrote it; see
+    `test_a_product_keeps_the_order_it_was_written_in`.
     """
     written = page("As := 1935*mm**2\nfy := 420*MPa\nT = As*fy\n")
 
     assert last_body(written) == (
-        r"\displaystyle \mathrm{fy}\,\mathrm{As}"
+        r"\displaystyle \mathrm{As}\,\mathrm{fy}"
     ), last_body(written)
 
 

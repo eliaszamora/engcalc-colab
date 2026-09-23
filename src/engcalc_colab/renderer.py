@@ -101,6 +101,68 @@ _DEFAULT_RENDER_SETTINGS = RenderSettings()
 # the page as it was before any one was added.
 MEASURED_UNITS: ContextVar = ContextVar("measured_units", default=frozenset())
 
+# Which name the sheet being printed wrote before which in a product, as the engine's
+# `written_order` - `{frozenset({"E", "A"}): ("E", "A")}` - set by the magic for the cell it
+# prints. Empty outside a cell, which leaves every product to `_engineering_factor_key`.
+WRITTEN_ORDER: ContextVar = ContextVar("written_order", default={})
+
+
+def _in_written_order(args: list, is_name) -> list:
+    """The names of one product put in the order the sheet wrote them.
+
+    `E*A` is stored `A*E` the moment SymPy reads it, and the sort that follows orders by a
+    rule of the page's - for two capitals with no value, the alphabet - so the engineer's
+    `EA` read `AE`. Only the names trade places, and only among the positions names
+    already held: a number stays in front and a unit where the page's unit order puts it.
+
+    Each name goes as early as the sheet allows: before the first name the sheet wrote it
+    ahead of, and among the names it is free to take, the one the sort put first. So two
+    names the sheet never wrote together keep the order the rule gave them, and a product
+    the sheet never wrote - `transpose(T)*k*T` - reads its names the way they were first
+    written together. A sheet that contradicts itself around three names is taken in the
+    sort's order at the point it does.
+    """
+    written = WRITTEN_ORDER.get()
+    if not written:
+        return args
+    positions = [index for index, term in enumerate(args) if is_name(term)]
+    if len(positions) < 2:
+        return args
+
+    def name(term) -> str:
+        return (term.base if term.is_Pow else term).name
+
+    def written_before(first, second) -> bool:
+        pair = (name(first), name(second))
+        return written.get(frozenset(pair)) == pair
+
+    remaining = [args[index] for index in positions]
+    ordered = []
+    while remaining:
+        chosen = next(
+            (
+                index
+                for index, candidate in enumerate(remaining)
+                if not any(
+                    written_before(other, candidate)
+                    for position, other in enumerate(remaining)
+                    if position != index
+                )
+            ),
+            0,
+        )
+        ordered.append(remaining.pop(chosen))
+    reordered = list(args)
+    for position, term in zip(positions, ordered):
+        reordered[position] = term
+    return reordered
+
+
+def _is_a_name(term, unit_literals: frozenset[str]) -> bool:
+    """A factor written as a name - `E`, `L^3` - and not a unit."""
+    base = term.base if term.is_Pow else term
+    return isinstance(base, sp.Symbol) and base.name not in unit_literals
+
 
 def _letters_of(latex: str) -> str:
     r"""The letters a reader would see, with LaTeX scaffolding stripped.
@@ -424,11 +486,14 @@ class _EngineeringLatexPrinter(LatexPrinter):
             return self._print(expr)
 
         args = self._units_in_the_page_s_order(
-            sorted(
-                expr.args,
-                key=lambda term: _engineering_factor_key(
-                    term, self.render_settings, self.unit_literals
+            _in_written_order(
+                sorted(
+                    expr.args,
+                    key=lambda term: _engineering_factor_key(
+                        term, self.render_settings, self.unit_literals
+                    ),
                 ),
+                self._is_a_name,
             )
         )
         separator = self._settings["mul_symbol_latex"]
@@ -472,6 +537,10 @@ class _EngineeringLatexPrinter(LatexPrinter):
     def _is_unit_literal(self, term) -> bool:
         base = term.base if term.is_Pow else term
         return isinstance(base, sp.Symbol) and base.name in self.unit_literals
+
+    def _is_a_name(self, term) -> bool:
+        """A factor the sheet wrote as a name, `E` or `L^3`: what `_in_written_order` moves."""
+        return _is_a_name(term, self.unit_literals)
 
     def _units_in_the_page_s_order(self, args: list) -> list:
         """The unit factors of one product, put in the order the page spells that unit.
@@ -2603,6 +2672,14 @@ def _bounded_product_rows(
         return []
 
     factors = sorted(expression.args, key=_multiplicative_factor_key)
+    # The written order within the numerator and within the denominator, each on its own:
+    # the key has already put every divisor after every factor.
+    for below in (False, True):
+        factors = _in_written_order(
+            factors,
+            lambda term, below=below: _is_a_name(term, unit_literals)
+            and _multiplicative_factor_key(term)[0] == below,
+        )
     rendered_factors = [
         _render_multiplicative_factor(factor, substitutions, settings, unit_literals)
         for factor in factors

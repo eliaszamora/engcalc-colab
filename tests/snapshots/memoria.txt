@@ -22,7 +22,7 @@ Se calculan las reacciones, la ley de momentos, la zona donde se supera el momen
 
 === 5 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle \mathrm{eqFy} & = & \displaystyle R_{A} + R_{B} = q L \\[8pt]
-\displaystyle \mathrm{eqMA} & = & \displaystyle L R_{B} = \frac{q L^{2}}{2} \\[8pt]
+\displaystyle \mathrm{eqMA} & = & \displaystyle R_{B} L = \frac{q L^{2}}{2} \\[8pt]
 \displaystyle R_{A} & = & \displaystyle \frac{q L}{2} \\[4pt]
 \displaystyle R_{B} & = & \displaystyle \frac{q L}{2} \end{array}
 

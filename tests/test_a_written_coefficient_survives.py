@@ -77,14 +77,16 @@ def test_the_value_behind_it_is_unchanged(cell):
     "source, expected",
     [
         ("M = q*L**2/8", r"\frac{q L^{2}}{8}"),
-        ("M = R_A*x - q*x**2/2", r"x R_{A} - \frac{q x^{2}}{2}"),
+        # `x R_A` and `0.17 b fc` by the page's own rule until 0.33.0, which writes a
+        # product in the order the sheet wrote it.
+        ("M = R_A*x - q*x**2/2", r"R_{A} x - \frac{q x^{2}}{2}"),
         # This read backwards - `- cover - db/2 - db_st + h`, SymPy's order - until a sum
         # stopped opening with a minus; see test_a_sum_does_not_open_with_a_minus. The
         # written form and the evaluated one still agree, which is what this pins.
         ("d = h - cover - db_st - db/2",
          r"h - \mathrm{cover} - \frac{\mathrm{db}}{2} - \mathrm{db}_{st}"),
         ("w = 1.2*D + 1.6*L", "1.2 D + 1.6 L"),
-        ("Vc = 0.17*fc*b", r"0.17 b\,\mathrm{fc}"),
+        ("Vc = 0.17*fc*b", r"0.17\,\mathrm{fc}\,b"),
     ],
 )
 def test_a_formula_that_already_read_correctly_does_not_move(cell, source, expected):
@@ -141,7 +143,8 @@ def test_a_definition_built_on_other_definitions_is_left_alone(cell):
         "phiMn = phi*As*fy*(d - a/2)\n"
     )
     assert r"\mathrm{As}^{2}" not in latex, latex
-    assert r"\mathrm{fy}\,\phi\,\mathrm{As}\,\left(" in latex, latex
+    # `phi As fy`, as written, since 0.33.0; `fy phi As` before.
+    assert r"\phi\,\mathrm{As}\,\mathrm{fy}\,\left(" in latex, latex
     # `a`'s own row is still fixed - the restriction is per definition, not per sheet.
     assert "0.85" in latex, latex
 
