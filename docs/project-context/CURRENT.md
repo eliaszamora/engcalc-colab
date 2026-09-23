@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.32.1** — this release PR, carrying #255, #256, #257 and #258; its closure is recorded below |
-| before that | **0.32.0** — #253, `ec90dfc`, verified after its merge |
-| open PRs | this release's |
+| released | **0.32.1** — #259, `177b4be`, carrying #255–#258; six jobs and both qualification runs green on it, verified after its merge (below) |
+| before that | **0.32.0** — #253, `ec90dfc` |
+| open PRs | only this record's |
 | default suite | **2684 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -238,9 +238,15 @@ Suite 2684; deep 53.
 
 ### Exact next step
 
-Close 0.32.1 like 0.32.0: wheel from `git archive`, clean Colab-like venv, the smoke outside
-the repository, the suite against the wheel, the thirteen sheets from the wheel; then CI and
-both qualification runs on the merge commit and a `git+https` install of `main`. Known and
+**0.32.1 is closed.** On the release commit: a wheel from `git archive`, 31 package files
+byte-identical to `src`; in a clean Python 3.12 venv with Colab's pins it upgrades nothing;
+38 smoke checks outside the repository; the suite against the wheel, 2684; the thirteen
+sheets identical from the wheel and the tree, and to 0.32.0. After its merge: six jobs and
+both qualification runs green on `177b4be`, and a clean `git+https` install of `main`
+resolved to `177b4be`, upgraded nothing, installed 31 files identical to `src` and passed
+the 38 checks.
+
+Nothing is pending. Known and
 not requested: `1*m` prints `m` (formula, matrix, characteristic row); `0.90` prints `0.9`; a
 wide substitution over plain definitions splits into additive terms (`keep` avoids it); an
 `N` never defined still reads as one newton in silence.
