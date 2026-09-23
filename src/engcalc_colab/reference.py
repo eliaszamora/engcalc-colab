@@ -317,6 +317,21 @@ _ENTRIES: tuple[CallHelp, ...] = (
         arguments=(("expression", "the value"),),
         example="a = abs(-3)",
     ),
+    CallHelp(
+        name="min",
+        summary="The smallest of several values, written in the order given.",
+        forms=("min(a, b, ...)",),
+        arguments=(("a, b, ...", "two or more values of one kind"),),
+        example="L := 8*m\nb_w := 300*mm\nh_f := 120*mm\ns := 3*m\n"
+        "b_eff = min(L/4, b_w + 16*h_f, s)\nnumeric(b_eff)",
+    ),
+    CallHelp(
+        name="max",
+        summary="The largest of several values, written in the order given.",
+        forms=("max(a, b, ...)",),
+        arguments=(("a, b, ...", "two or more values of one kind"),),
+        example="V_A := 30*kN\nV_B := 45*kN\nV_max = max(V_B, V_A)\nnumeric(V_max)",
+    ),
     _scalar("sqrt", "The square root.", "16"),
     _scalar("sin", "The sine of an angle.", "30*deg"),
     _scalar("cos", "The cosine of an angle.", "30*deg"),

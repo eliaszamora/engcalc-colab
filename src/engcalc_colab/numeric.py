@@ -904,6 +904,22 @@ class NumericContext:
             return left.magnitude >= right.magnitude
         raise EngEvaluationError("unsupported piecewise relation")
 
+    def extremum(self, name: str, values):
+        """`min` or `max` of values of one kind, compared in one unit.
+
+        The first value written wins a tie, so the page shows the limit it would read
+        first. Its message names the function the engineer typed; it used to say
+        "numeric Min/Max", which is nothing anybody wrote.
+        """
+        try:
+            quantities = self._normalize_quantity_group(values, name)
+        except EngEvaluationError as exc:
+            raise EngEvaluationError(
+                f"{name} compares values of one kind; its arguments have incompatible units"
+            ) from exc
+        selector = min if name == "min" else max
+        return selector(quantities, key=lambda quantity: quantity.magnitude)
+
     def _normalize_quantity_group(self, values, context: str):
         quantities = tuple(self._as_quantity(value) for value in values)
         dimensional = next(
@@ -1205,6 +1221,29 @@ class NumericContext:
         except EngEvaluationError:
             return None
 
+    def extremum_values(self, expression, overrides: dict[str, Any] | None = None):
+        """Each argument of a `min` or `max` evaluated, in the unit they are compared in.
+
+        The row a reviewer checks against the code: `min(2.00 m, 2.22 m, 3.00 m)` says
+        which limit governs, where the substitution row only says what each one is made
+        of. `None` when there is nothing to say - not a `min` or `max`, or an argument that
+        cannot be resolved on its own - and the renderer then leaves the working as it was.
+        """
+        expression = sp.sympify(expression)
+        if not isinstance(expression, (sp.Min, sp.Max)):
+            return None
+        values = []
+        for argument in expression.args:
+            try:
+                _, value = self.evaluate_symbolic(argument, overrides=dict(overrides or {}))
+            except EngEvaluationError:
+                return None
+            values.append(value)
+        try:
+            return self._normalize_quantity_group(values, "min/max")
+        except EngEvaluationError:
+            return None
+
     def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):
         if isinstance(expr, sp.Symbol):
             return substitutions[expr.name]
@@ -1256,13 +1295,13 @@ class NumericContext:
         }:
             return self._evaluate_relation(expr, substitutions)
 
-        if expr.func in {sp.Min, sp.Max}:
-            values = self._normalize_quantity_group(
-                (self._evaluate_sympy(arg, substitutions) for arg in expr.args),
-                "numeric Min/Max",
+        # `isinstance`, not `expr.func in {...}`: `min` and `max` are subclasses that keep
+        # their arguments in the order written, and a set of the two bases missed them.
+        if isinstance(expr, (sp.Min, sp.Max)):
+            return self.extremum(
+                "min" if isinstance(expr, sp.Min) else "max",
+                [self._evaluate_sympy(arg, substitutions) for arg in expr.args],
             )
-            selector = min if expr.func == sp.Min else max
-            return selector(values, key=lambda quantity: quantity.magnitude)
 
         if expr.is_Add:
             values = [self._evaluate_sympy(arg, substitutions) for arg in expr.args]
@@ -1422,13 +1461,18 @@ class _NumericAstEvaluator(ast.NodeVisitor):
         return self.context.resolve_numeric_name(node.id)
 
     def visit_Call(self, node: ast.Call):
-        if (
-            not isinstance(node.func, ast.Name)
-            or len(node.args) != 1
-            or node.keywords
-        ):
+        if not isinstance(node.func, ast.Name) or node.keywords:
             raise EngEvaluationError("unsupported numeric function")
         name = node.func.id
+        if name in {"min", "max"}:
+            # `s_max := min(3*h, 450*mm)`: a limit is set as often as it is derived.
+            if len(node.args) < 2:
+                raise EngEvaluationError(
+                    f"{name} expects at least 2 arguments: the values to compare"
+                )
+            return self.context.extremum(name, [self.visit(arg) for arg in node.args])
+        if len(node.args) != 1:
+            raise EngEvaluationError("unsupported numeric function")
         value = self.visit(node.args[0])
         if name == "abs":
             return abs(value)
