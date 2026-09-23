@@ -12,10 +12,9 @@ _2026-09-22._
 
 | | |
 |---|---|
-| released | **0.31.17** — release PR #244, carrying #243 |
-| `main` before it | `389a251`; six jobs and both qualification runs green on that SHA |
+| released | **0.31.17** — #244, `main` at `b02b9b0`, carrying #243; six jobs and both qualification runs green on that SHA |
 | before that | **0.31.16** — #241, `131137d`, verified after its merge (below) |
-| open PRs | none besides the release |
+| open PRs | none |
 | default suite | **2576 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -133,16 +132,16 @@ Release evidence for 0.31.17, on the release commit's tree:
   and passes when handed the wheel's own copy;
 - the thirteen sheets render byte-identical from the wheel and from the working tree.
 
+**0.31.17 verified after its merge**: six jobs and both qualification runs green on
+`b02b9b0`, and a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
+in a Colab-like venv resolved to `b02b9b0`, reported 0.31.17, upgraded nothing, installed 29
+files byte-identical to `src`, and passed the eighteen-check smoke outside the repository.
+
 ### Exact next step
 
-1. #244 green on its exact head, then squash-merge with `--match-head-commit` — his
-   approval of 2026-09-22 covers it.
-2. After the merge: six jobs and both qualification runs green on the merge commit, and a
-   clean `git+https` install in a Colab-like venv reports 0.31.17, upgrades nothing and passes
-   the same smoke.
-3. Then nothing is pending. Known and not requested: a wide substitution over plain
-   definitions splits into additive terms (`keep` avoids it); an `N` never defined still
-   reads as one newton in silence.
+Nothing is pending. Known and not requested: a wide substitution over plain definitions
+splits into additive terms (`keep` avoids it); an `N` never defined still reads as one
+newton in silence (pinned by `test_an_undefined_axial_force_reads_as_newtons`).
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.
