@@ -329,6 +329,11 @@ def measured_units_in(tree) -> frozenset[str]:
     return frozenset(measured)
 
 
+# The calls that leave a form of their own for the row to show. A statement that is one
+# of them shows that form; a statement holding one inside something larger is read again.
+_CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
+
+
 class EngineeringEngine:
     def __init__(self) -> None:
         self.namespace: dict[str, object] = {}
@@ -606,6 +611,33 @@ class EngineeringEngine:
             if node.id in self.kept_names or self._shows_its_written_form(node.id):
                 return True
         return False
+
+    def _shown_input(self, statement, evaluator):
+        """The formula a row shows beside its value: the whole statement, never a part.
+
+        A derivative or an integral leaves its unevaluated form in one slot for the row
+        to show. When the call is the statement, that form is the formula. When it sits
+        inside something larger the slot held only the last call, and the page printed
+        equations that were false: `y = 2*diff(x^2, x)` read `y = d/dx x^2 = 4x`, and a
+        matrix of derivatives read as the last one. The statement is then read a second
+        time with every derivative and integral left standing - the second reading the
+        written form already makes - and a statement that cannot be read so shows its
+        value alone rather than a formula that is not its own.
+        """
+        shown = evaluator.display_input
+        if shown is None:
+            return None
+        body = statement.expression.body
+        if isinstance(body, ast.Call) and getattr(body.func, "id", None) in _CALLS_THAT_SHOW:
+            return shown
+        reader = _Evaluator(self, getattr(statement, "matrix_literals", ()))
+        reader.showing = True
+        try:
+            if statement.parameters is not None:
+                return reader.visit_function_body(body, statement.parameters)
+            return reader.visit(body)
+        except Exception:
+            return None
 
     def _written_form(self, statement, evaluator, value):
         """The definition's expression as it was typed, or None to show the evaluated one.
@@ -1338,15 +1370,16 @@ class EngineeringEngine:
                 if statement.target is not None
                 else self._written_form(statement, evaluator, value)
             )
+            shown = self._shown_input(statement, evaluator)
             return EvaluationResult(
                 statement=statement,
-                display_input=evaluator.display_input,
+                display_input=shown,
                 value=value,
                 discarded=evaluator.discarded_solutions,
                 written=written,
                 # Every form the row can print. `n = 6*m/(2*m)` is worth 3 and is shown
                 # as written, so asked of the value alone its metres were set as variables.
-                unit_literals=self._unit_literals_of(value, evaluator.display_input, written),
+                unit_literals=self._unit_literals_of(value, shown, written),
                 solved_for=evaluator.solved_for,
             )
         except EngCalcError as exc:
@@ -1365,6 +1398,9 @@ class _Evaluator(ast.NodeVisitor):
         self.engine = engine
         self.matrix_literals = {binding.name: binding.literal for binding in matrix_literals}
         self.display_input = None
+        # Set for the second reading of `_shown_input`: a derivative or an integral
+        # returns its unevaluated form, so the statement comes back as it is written.
+        self.showing = False
         self.solved_for = None
         self.numeric_evaluation = None
         # Set when `numeric(expr, unit)` named a unit. `convert_quantity` already
@@ -2276,11 +2312,15 @@ class _Evaluator(ast.NodeVisitor):
                     expr,
                     lambda entry: sp.Integral(entry, bounds),
                 )
+                if self.showing:
+                    return self.display_input
                 return map_matrix_entries(
                     expr,
                     lambda entry: sp.integrate(entry, bounds),
                 )
             self.display_input = sp.Integral(expr, bounds)
+            if self.showing:
+                return self.display_input
             return sp.integrate(expr, bounds)
 
         if name == "macaulay":
@@ -2325,6 +2365,8 @@ class _Evaluator(ast.NodeVisitor):
                     expr,
                     lambda entry: sp.Derivative(entry, (var, order)),
                 )
+                if self.showing:
+                    return self.display_input
                 if isinstance(var, sp.Symbol):
                     breakpoints = []
                     for entry in expr:
@@ -2340,6 +2382,8 @@ class _Evaluator(ast.NodeVisitor):
                 )
 
             self.display_input = sp.Derivative(expr, (var, order))
+            if self.showing:
+                return self.display_input
             if isinstance(var, sp.Symbol):
                 breakpoints = extract_symbolic_breakpoints(expr, var.name)
                 if breakpoints:
