@@ -2,7 +2,46 @@
 
 `engcalc-colab` is a compact engineering-calculation layer for Google Colab and Jupyter. It combines a restricted SymPy-backed symbolic language with a separate Pint-backed numerical context, so the same `%%eng` workflow can preserve formulas, evaluate them with physical units, and plot unit-aware engineering functions without redefining the problem in Python.
 
-Current version: **0.31.15**.
+**To start in Colab**, the first cell:
+
+```python
+%pip install -q --upgrade --no-cache-dir git+https://github.com/eliaszamora/engcalc-colab.git
+%load_ext engcalc_colab
+```
+
+and the sheet in a cell of its own that begins with `%%eng`. Never `--force-reinstall`: it
+reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
+[Install in Google Colab](#install-in-google-colab); what each release changed follows.
+
+Current version: **0.31.16**.
+
+
+## v0.31.16 what was still pending
+
+Three corrections, from going back over what was left open after 0.31.15.
+
+- **A unit inside an eigenvalue is typeset as a unit.** `A = [2*kN/m, 0; 0, 3*kN/m]`
+  drew `λ = 2 kN/m` with an italic metre, two lines under the matrix that wrote it upright.
+  The engine never asked an eigenvalue set for its unit names, and the renderer did not hand
+  them to the printers of the values, the vectors or the `det(A - λI) = 0` of a set with no
+  closed form. A name the sheet has given a value is still a variable.
+- **A frequency can be written in hertz.** `f := 5*Hz` asked the engineer to define the
+  hertz. It can be written now, and asked for - `numeric(f_n, Hz)` - and the page never
+  chooses it: a frequency and a circular frequency share a dimension, so a value derived
+  from one, `2*pi*f`, reads in `1/s` and never as `31.42 Hz`.
+- **A unit that becomes a value says so.** `k := 2000*kN/m` then `m := 500*kg` - the usual
+  way to write one degree of freedom - drew `k = 4.00 kN/kg` the second time the cell ran,
+  and said nothing. A stored value still outranks the unit, because which meaning was
+  wanted cannot be known: the metre there, the axial force in `sigma := N/A` followed by
+  `N := 500*kN`. What is new is that the two moments a name changes meaning are printed -
+  when a name read as a unit is given a value, and whenever a line that read it as a unit
+  reads it as a value. A sheet that uses `m`, `N` or `s` one way throughout prints nothing.
+
+The page opens with how to start, ahead of these notes. Of the thirteen sheets a release is
+read against, no page moves; the two-storey dynamics sheet, which writes the metre and then
+names a mass `m`, prints the new line.
+
+A patch release: three corrections.
 
 
 ## v0.31.15 what the audit found
@@ -3024,6 +3063,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.16** — what was still pending. A unit inside an eigenvalue reads as a unit (`λ = 2 kN/m` had an italic metre under a matrix that wrote it upright). `Hz` can be written and asked for, and the page never chooses it, so `2πf` still reads `1/s`. And a name read as a unit that is then given a value says so: `k := 2000*kN/m` then `m := 500*kg` drew `k = 4.00 kN/kg` the second time the cell ran, in silence; the rule is unchanged, and both moments a name changes meaning are now printed. The README opens with how to start.
 - **0.31.15** — what the audit found. `numeric(w, 1/s)` - the page's own spelling of an inverse second - stopped the cell while `s**-1` worked; a `1` over a unit is now its reciprocal, `2/s` is still refused, and `rad/s` keeps its radian. An eigenvalue's multiplicity was written `m`, beside the masses the modes came from; a simple eigenvalue carries no label now and a repeated one says `multiplicity 2`. Code nothing called is gone, and the whole suite runs every Monday against whatever PyPI serves.
 - **0.31.14** — a modulus before its section, which closes the question 0.31.13 left open. The frame page wrote `A_c E / L_c` where the engineer typed `E*A_c/L_c`, and he asked for `EA`. Inside each shape group of a product the order was the alphabet's; among the capitals it is dimension now - a name whose value carries mass goes first, asked of Pint - so `E A_c`, `P L`, and `E I` for a reason. It stops at the capitals because across a whole product the same rule splits `E I` and writes `fy As` where ACI writes `As fy`. Reaching the frame's matrices took a second correction: a matrix cell had never been given the settings its row was, so one block could draw `x P / 2` above its own substitution `(40.00 kN) x / 2`. Thirteen rows move on the five pinned reference pages and thirty-nine across the thirteen sheets, all on the frame and every one a permutation; no number changes.
 - **0.31.13** — a load before its coordinate. The engineer wrote `piecewise(P*x/2, ...)` and read `xP/2` two lines above `P(L - x)/2`, the same `P` before its companion in one branch and after it in the next: a commutative product was ordered by the shape of the name, lowercase before uppercase, which gets `q L / 2`, `q L² / 8` and `5 q L⁴ / (384 E I)` right only by correlation. A name the sheet has settled no value for is now written after the ones it has, so a product between two known names is untouched - `As fy`, `E A`, `E I` and `q L` all stay as they were - and what moves is the coordinate. Three rules were tried before this one and two were rejected by contracts already here: parameter-last ruins `3 q L / 8`, and both dimensional rules break either `E I` or `As fy`. Nine rows move on the five reference pages the repository pins, and a tenth - `2 x² L` to `2 L x²` in a deflection - in the wider thirteen-sheet diff a release is read against.
@@ -3115,4 +3155,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.15`.
+Version: `0.31.16`.
