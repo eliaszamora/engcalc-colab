@@ -13,7 +13,28 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.32.2**.
+Current version: **0.32.3**.
+
+
+## v0.32.3 what a derivation showed
+
+Two corrections, found writing and reading on the page the derivation of the stiffness
+matrices of a bar and a frame element, before it was handed over.
+
+**The formula beside a value is the whole formula.** `y = 2*diff(x^2, x)` read
+`y = d/dx x² = 4x`, `w = integrate(x, x, 0, 1) + 1` read `∫₀¹ x dx = 3/2`, and
+`theta(x) = integrate(M(x)/(E*I), x) + C1` - written as this README says to - lost its
+`C1`: the value was right and the equation beside it false. A derivative or an integral
+inside something larger now shows inside it - `2 d/dx x² = 4x`, `C₁ + ∫ M/EI dx` - and a
+matrix of derivatives shows every one of them.
+
+**A variable named like a unit is not given a one.** 0.32.2 wrote a unit standing alone with
+its one, and decided by the name: `T = [c, s; -s, c]` read `[c, 1 s; -1 s, c]` and `N + P`
+read `1 N + P`, because `s` is also the second and `N` the newton. The one now goes only to a
+unit the sheet writes as a measurement - a number and units, `1*m`, `-1*kN/m` - and a sine
+or an axial force is left as it is.
+
+None of the thirteen reference sheets moves.
 
 
 ## v0.32.2 a breakpoint and a metre
@@ -3246,6 +3267,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.32.3** — a derivative or an integral inside a larger expression shows inside it, so no row reads a false equation (`2 d/dx x² = 4x`, the `C₁` of an elastic curve); and a variable named like a unit (`s`, `N`) is not given the one a measured unit gets. No reference sheet moves.
 - **0.32.2** — a point where a piecewise or a table changes its law is a `breakpoint`, not a `boundary`; and a unit standing alone is written with its one (`max(1 m, L/4)`, `x = 1 m`, `-1 kN/m`). No reference sheet moves.
 - **0.32.1** — `extrema` refuses a function with no real value in its domain and reads a singular end as unbounded, instead of naming a wrong global extreme; it finds the extremes of an `interp` at the table's points; `1*kN + 4*kN*x/m` evaluates; and `V(x) = 30*kN - q*x` can be plotted. No reference sheet moves.
 - **0.32.0** — `min` and `max` in the order the code writes them, each limit worked out before the one that governs; `interp(x, [x_i], [y_i])`, a value read from a table, with the segment used worked out and no extrapolation; and a coefficient printed as it was typed (`0.125`, not `0.12`). No reference sheet moves.
@@ -3343,4 +3365,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.32.2`.
+Version: `0.32.3`.
