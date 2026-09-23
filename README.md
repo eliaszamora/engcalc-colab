@@ -13,7 +13,16 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.33.0**.
+Current version: **0.33.1**.
+
+
+## v0.33.1 a matrix row has room
+
+The rows of a matrix were set with no space between them, and every cell is in display
+style so a fraction is not smaller than the `0` beside it. In a stiffness matrix one row's
+denominator sat on the next row's numerator: 5.7 px apart at 14 px type, where the columns
+stand at least 14 px apart. The rows are now `\\[6pt]` apart - as far apart as the
+columns - in every matrix, symbolic and numeric. Nothing in them moves but the space.
 
 
 ## v0.33.0 a product keeps the order it was written in
@@ -3285,6 +3294,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.33.1** — the rows of a matrix are set as far apart as its columns (`\\[6pt]`); a stiffness matrix of fractions no longer reads with its rows touching.
 - **0.33.0** — a product is written in the order the sheet wrote it (`E A`, `As fy`, `q x L`), and a product derived from it reads its names the same way; numbers first, units in the page's order, sums unchanged. One reference row moves.
 - **0.32.3** — a derivative or an integral inside a larger expression shows inside it, so no row reads a false equation (`2 d/dx x² = 4x`, the `C₁` of an elastic curve); and a variable named like a unit (`s`, `N`) is not given the one a measured unit gets. No reference sheet moves.
 - **0.32.2** — a point where a piecewise or a table changes its law is a `breakpoint`, not a `boundary`; and a unit standing alone is written with its one (`max(1 m, L/4)`, `x = 1 m`, `-1 kN/m`). No reference sheet moves.
@@ -3384,4 +3394,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.33.0`.
+Version: `0.33.1`.
