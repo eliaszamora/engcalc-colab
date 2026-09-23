@@ -7,6 +7,7 @@ from dataclasses import dataclass, replace
 from html import escape
 
 import sympy as sp
+from sympy.core.function import _coeff_isneg
 from sympy.printing.conventions import split_super_sub
 from sympy.printing.latex import LatexPrinter
 
@@ -136,6 +137,10 @@ class _EngineeringLatexPrinter(LatexPrinter):
         # Keyword-only: SymPy constructs printers positionally with a settings dict.
         self.unit_literals = frozenset(unit_literals)
         self.render_settings = render_settings or _DEFAULT_RENDER_SETTINGS
+
+    def _as_ordered_terms(self, expr, order=None):
+        """A sum's terms in the order the page writes them. See `_ordered_sum_terms`."""
+        return _ordered_sum_terms(super()._as_ordered_terms(expr, order), _coeff_isneg)
 
     def _print_MatrixBase(self, expr):
         """Print a matrix the way this renderer builds every other one.
@@ -2361,6 +2366,50 @@ def _flat_width(latex: str) -> float:
     return float(len(normalized))
 
 
+def _ordered_sum_terms(terms, negative) -> list:
+    r"""The order a sum is written in: not opening with a minus when it can open with a plus.
+
+    SymPy sorts a sum's terms by name, so it opened with whichever came first, sign and
+    all: `- x_1 + x_2`, `- cover - db/2 - db_st + h`, `<- a + x>`. `negative` is the
+    caller's own test for the sign it is about to print, so the order and the signs on
+    the page are decided by the same question.
+
+    A sum ordered by the powers of a name - some name in two of its terms with different
+    exponents - is read the other way round when that makes it open with a plus: reversing
+    keeps the powers in order, only in the other direction, where moving one term would
+    have printed `qLx³/12 - qL³x/24 - qx⁴/24`. Any other sum lets its first positive term
+    lead and keeps the rest as they were, so the effective depth reads `h - cover - ...`
+    and `- a + b - c` reads `b - a - c`. A sum already opening with a plus, or with no
+    positive term at all, is left alone.
+
+    One function, used by the printer and by both paths that lay a sum out term by term:
+    the definition row and its substitution row come from different places, and a rule in
+    one of them only would have made them disagree.
+    """
+    terms = list(terms)
+    if len(terms) < 2 or not negative(terms[0]):
+        return terms
+    exponents: dict[sp.Symbol, set] = {}
+    for term in terms:
+        for base, exponent in term.as_powers_dict().items():
+            if isinstance(base, sp.Symbol):
+                exponents.setdefault(base, set()).add(exponent)
+    if any(len(found) > 1 for found in exponents.values()):
+        if not negative(terms[-1]):
+            terms.reverse()
+        return terms
+    for index, term in enumerate(terms):
+        if not negative(term):
+            terms.insert(0, terms.pop(index))
+            break
+    return terms
+
+
+def _extracts_a_minus(term) -> bool:
+    """The sign `_render_signed_term` prints, asked before the term is laid out."""
+    return term.could_extract_minus_sign()
+
+
 def _render_signed_term(term: sp.Expr, *, substitutions: dict[str, object] | None, settings: RenderSettings, unit_literals: frozenset[str] = frozenset()) -> tuple[bool, str]:
     negative = term.could_extract_minus_sign()
     unsigned_term = -term if negative else term
@@ -2374,7 +2423,11 @@ def _render_signed_term(term: sp.Expr, *, substitutions: dict[str, object] | Non
 def _adaptive_additive_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, visual_budget: float = _NUMERIC_ROW_VISUAL_BUDGET, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS, unit_literals: frozenset[str] = frozenset()) -> list[str]:
     """Pack complete top-level additive terms into MathJax rows adaptively."""
     expression = sp.sympify(expression)
-    terms = expression.as_ordered_terms() if expression.is_Add else [expression]
+    terms = (
+        _ordered_sum_terms(expression.as_ordered_terms(), _extracts_a_minus)
+        if expression.is_Add
+        else [expression]
+    )
     rendered_terms = [_render_signed_term(term, substitutions=substitutions, settings=settings, unit_literals=unit_literals) for term in terms]
 
     packed: list[list[tuple[int, bool, str]]] = []
@@ -2478,7 +2531,11 @@ def _split_overwide_terms(
 ) -> list[str]:
     """Split only over-budget multiplicative terms while preserving additive signs."""
     expression = sp.sympify(expression)
-    terms = expression.as_ordered_terms() if expression.is_Add else [expression]
+    terms = (
+        _ordered_sum_terms(expression.as_ordered_terms(), _extracts_a_minus)
+        if expression.is_Add
+        else [expression]
+    )
     rows: list[str] = []
 
     for index, term in enumerate(terms):

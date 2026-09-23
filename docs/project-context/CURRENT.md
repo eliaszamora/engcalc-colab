@@ -81,27 +81,43 @@ reads `76923.08 MPa`; *a wide substitution is split into additive terms* is stil
 `phiMn = phi*As*fy*(d - a/2)` over definitions of `d` and `a` substitutes into five rows —
 and `keep` on those definitions avoids it, as RC-3 intended.
 
-### Open question for him: the order of a sum
+### The order of a sum — PR #243, waiting on his yes to merge
 
-Found re-checking that list. A sum is printed in SymPy's order, not the written one:
-`d = h - cover - db_st - db/2` reads `d = - cover - db/2 - db_st + h`, `(d - a/2)` reads
-`(- a/2 + d)`, and his frame writes `L_c = √((- x_1 + x_2)² + (- y_1 + y_2)²)` and
-`c_c = (- x_1 + x_2)/L_c`. Measured, patched in memory only, with the simplest rule — *a sum
-does not open with a minus while it has a positive term*: 42 rows move, all on the three
-frame pages, every one for the better (`x_2 - x_1`, `(500.00 cm) - (0.00 cm)`). But the rule
-has a counterexample — an expanded polynomial loses its degree order,
-`- qL³x/24 + qLx³/12 - qx⁴/24` becoming `qLx³/12 - qL³x/24 - qx⁴/24` — and it does not reach
-every substitution row, so `d`'s definition and its substitution would disagree. An ordering
-rule is his to choose with the rows in front of him, as `P x` and `EA` were; nothing was
-changed. If it bothers him, the next step is to measure candidate rules the way #228 did.
+Found re-checking NEXT.md's list: a sum was printed in SymPy's order, so
+`d = h - cover - db_st - db/2` read `- cover - db/2 - db_st + h` and his frame wrote
+`(- x_1 + x_2)`. Asked on 2026-09-22 he answered *"sí me molesta eso de ver primero el
+- x1 + x2 en vez de x2 - x1"* and *"procede"*; I had promised to measure rules the way #228
+did and show every moved row before merging.
+
+Four rules, measured on the thirteen sheets and the eighteen gap-map exercises (A, F and
+G move the same 44 rows there, D four more) and on the shapes that separate them:
+
+| rule | polynomial `- qL³x/24 + qLx³/12 - qx⁴/24` | effective depth | `- a + b - c` |
+|---|---|---|---|
+| A, first positive term leads | broken: powers 3, 1, 4 | `h - cover - db/2 - db_st` | `b - a - c` |
+| D, positive terms first | broken, and 4 more rows move | as A | as A |
+| F, read backwards | kept | `h - db_st - db/2 - cover` | left as it was |
+| **G, chosen** | **kept** | **`h - cover - db/2 - db_st`** | **`b - a - c`** |
+
+G: a sum ordered by the powers of a name is read backwards when that opens it with a plus;
+any other sum lets its first positive term lead. One function, `_ordered_sum_terms`, used
+by the printer and by both term-by-term paths — the definition and its substitution row
+came from different places. **#243**, this branch: 9 contracts, 6 RED before; mutation 7/7
+(A alone and F alone each killed by the contract that refutes it). Moves 42 rows on the
+three frame pages (14 per palette, each the same symbols and minus signs reordered), 2 in
+the exercises (E6's Macaulay bracket `<x - a>`, E9's compatibility equation) and 2 in the
+README's force-method example (`Δ_B = L³V_B/3EI - qL⁴/8EI`). Six existing tests pinned the
+old order and were rewritten with a note each; two of them used the README's propped
+cantilever to exercise row wrapping, which no longer wraps (its result is now one compact
+row), so they carry a six-load integral that wraps either way. Suite 2576.
 
 ### Exact next step
 
-Nothing is pending. The open question above waits on him. Known and not requested: a wide
-substitution over plain definitions splits into additive terms (`keep` avoids it); an `N`
-never defined still reads as one newton in silence (pinned by
-`test_an_undefined_axial_force_reads_as_newtons`; nothing tells it from a sheet that means
-the newton).
+1. **Show him every moved row and wait for his yes** before merging #243 — an ordering rule
+   is chosen with the rows in front of him.
+2. With it: merge #243 and release 0.31.17 the way 0.31.16 was closed (#241).
+3. Known and not requested: a wide substitution over plain definitions splits into
+   additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.

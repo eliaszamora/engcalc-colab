@@ -134,10 +134,13 @@ def test_the_formula_row_is_not_touched(rows):
 
 
 def test_a_difference_of_two_values_is_unchanged(substitution):
-    """A sum is not a product; nothing here should reach it."""
+    """A sum is not a product; nothing here should reach it. (It read `- (4.00 cm) +
+    (60.00 cm)` until a sum stopped opening with a minus - see
+    test_a_sum_does_not_open_with_a_minus - and the spacing this file is about is the
+    same either way.)"""
     assert substitution("cover := 4*cm\nd = h - cover\nnumeric(d)") == (
-        r"& = & \displaystyle - \left(4.00\,\mathrm{cm}\right) + "
-        r"\left(60.00\,\mathrm{cm}\right)"
+        r"& = & \displaystyle \left(60.00\,\mathrm{cm}\right) - "
+        r"\left(4.00\,\mathrm{cm}\right)"
     )
 
 

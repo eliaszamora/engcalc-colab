@@ -60,23 +60,23 @@ Las columnas son rectangulares de 300 mm por 450 mm, con los 450 mm en el plano 
 Cada elemento necesita su longitud y la orientación de su eje local respecto del global. Ambas salen de las coordenadas nodales.
 
 === 10 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle L_{c} & = & \displaystyle \sqrt{\left(- x_{1} + x_{2}\right)^{2} + \left(- y_{1} + y_{2}\right)^{2}} \\[8pt]
-\displaystyle c_{c} & = & \displaystyle \frac{- x_{1} + x_{2}}{L_{c}} \\[8pt]
-\displaystyle s_{c} & = & \displaystyle \frac{- y_{1} + y_{2}}{L_{c}} \\[16pt]
-\displaystyle L_{d} & = & \displaystyle \sqrt{\left(- x_{2} + x_{4}\right)^{2} + \left(- y_{2} + y_{4}\right)^{2}} \\[8pt]
-\displaystyle c_{d} & = & \displaystyle \frac{- x_{2} + x_{4}}{L_{d}} \\[8pt]
-\displaystyle s_{d} & = & \displaystyle \frac{- y_{2} + y_{4}}{L_{d}} \\[16pt]
-\displaystyle L_{c} & = & \displaystyle \sqrt{\left(- x_{1} + x_{2}\right)^{2} + \left(- y_{1} + y_{2}\right)^{2}} \\[8pt]
-& = & \displaystyle \sqrt{\left(- \left(0.00\,\mathrm{cm}\right) + \left(0.00\,\mathrm{cm}\right)\right)^{2} + \left(- \left(0.00\,\mathrm{cm}\right) + \left(370.00\,\mathrm{cm}\right)\right)^{2}} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle L_{c} & = & \displaystyle \sqrt{\left(x_{2} - x_{1}\right)^{2} + \left(y_{2} - y_{1}\right)^{2}} \\[8pt]
+\displaystyle c_{c} & = & \displaystyle \frac{x_{2} - x_{1}}{L_{c}} \\[8pt]
+\displaystyle s_{c} & = & \displaystyle \frac{y_{2} - y_{1}}{L_{c}} \\[16pt]
+\displaystyle L_{d} & = & \displaystyle \sqrt{\left(x_{4} - x_{2}\right)^{2} + \left(y_{4} - y_{2}\right)^{2}} \\[8pt]
+\displaystyle c_{d} & = & \displaystyle \frac{x_{4} - x_{2}}{L_{d}} \\[8pt]
+\displaystyle s_{d} & = & \displaystyle \frac{y_{4} - y_{2}}{L_{d}} \\[16pt]
+\displaystyle L_{c} & = & \displaystyle \sqrt{\left(x_{2} - x_{1}\right)^{2} + \left(y_{2} - y_{1}\right)^{2}} \\[8pt]
+& = & \displaystyle \sqrt{\left(\left(0.00\,\mathrm{cm}\right) - \left(0.00\,\mathrm{cm}\right)\right)^{2} + \left(\left(370.00\,\mathrm{cm}\right) - \left(0.00\,\mathrm{cm}\right)\right)^{2}} \\[8pt]
 & = & \displaystyle 370.00\,\mathrm{cm} \\[8pt]
-\displaystyle L_{d} & = & \displaystyle \sqrt{\left(- x_{2} + x_{4}\right)^{2} + \left(- y_{2} + y_{4}\right)^{2}} \\[8pt]
-& = & \displaystyle \sqrt{\left(- \left(0.00\,\mathrm{cm}\right) + \left(500.00\,\mathrm{cm}\right)\right)^{2} + \left(- \left(370.00\,\mathrm{cm}\right) + \left(0.00\,\mathrm{cm}\right)\right)^{2}} \\[8pt]
+\displaystyle L_{d} & = & \displaystyle \sqrt{\left(x_{4} - x_{2}\right)^{2} + \left(y_{4} - y_{2}\right)^{2}} \\[8pt]
+& = & \displaystyle \sqrt{\left(\left(500.00\,\mathrm{cm}\right) - \left(0.00\,\mathrm{cm}\right)\right)^{2} + \left(\left(0.00\,\mathrm{cm}\right) - \left(370.00\,\mathrm{cm}\right)\right)^{2}} \\[8pt]
 & = & \displaystyle 622.01\,\mathrm{cm} \\[8pt]
-\displaystyle c_{d} & = & \displaystyle \frac{- x_{2} + x_{4}}{L_{d}} \\[8pt]
-& = & \displaystyle \frac{- \left(0.00\,\mathrm{cm}\right) + \left(500.00\,\mathrm{cm}\right)}{\left(622.01\,\mathrm{cm}\right)} \\[8pt]
+\displaystyle c_{d} & = & \displaystyle \frac{x_{4} - x_{2}}{L_{d}} \\[8pt]
+& = & \displaystyle \frac{\left(500.00\,\mathrm{cm}\right) - \left(0.00\,\mathrm{cm}\right)}{\left(622.01\,\mathrm{cm}\right)} \\[8pt]
 & = & \displaystyle 0.80 \\[8pt]
-\displaystyle s_{d} & = & \displaystyle \frac{- y_{2} + y_{4}}{L_{d}} \\[8pt]
-& = & \displaystyle \frac{- \left(370.00\,\mathrm{cm}\right) + \left(0.00\,\mathrm{cm}\right)}{\left(622.01\,\mathrm{cm}\right)} \\[8pt]
+\displaystyle s_{d} & = & \displaystyle \frac{y_{4} - y_{2}}{L_{d}} \\[8pt]
+& = & \displaystyle \frac{\left(0.00\,\mathrm{cm}\right) - \left(370.00\,\mathrm{cm}\right)}{\left(622.01\,\mathrm{cm}\right)} \\[8pt]
 & = & \displaystyle -0.59 \end{array}
 
 === 11 · HTML ===
