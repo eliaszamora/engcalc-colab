@@ -13,7 +13,37 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.31.16**.
+Current version: **0.31.17**.
+
+
+## v0.31.17 a sum does not open with a minus
+
+One correction, asked for by the engineer: *"sí me molesta eso de ver primero el - x1 + x2 en
+vez de x2 - x1"*.
+
+A sum reached the page in SymPy's canonical order, which sorts its terms by name and opens
+with whichever comes first, sign and all. The frame wrote `L_c = √((- x_1 + x_2)² + (- y_1 +
+y_2)²)`, an effective depth read `d = - cover - db/2 - db_st + h`, and a Macaulay bracket
+came out inside out, `⟨- a + x⟩`.
+
+Four rules were measured before one was chosen. *The first positive term leads* broke an
+expanded polynomial - `- qL³x/24 + qLx³/12 - qx⁴/24` became powers 3, 1, 4. *Positive terms
+first* did the same. *Read it backwards* never breaks a polynomial but wrote
+`h - db_st - db/2 - cover`. So the rule has two halves: a sum ordered by the powers of a
+name is read the other way round when that makes it open with a plus, which keeps its
+powers in order; any other sum lets its first positive term lead and keeps the rest as they
+were. A sum already opening with a plus, or with no positive term at all, is left alone. The
+definition row and its substitution row follow the same rule, so `(x_4 - x_2)` sits above
+`((500.00 cm) - (0.00 cm))`.
+
+It does not keep the order that was typed: the terms after the first keep SymPy's, so
+`h - cover - db_st - db/2` reads `h - cover - db/2 - db_st`.
+
+Of the thirteen sheets a release is read against, the frame moves - the same fourteen rows
+in each of its three palettes, each the same symbols reordered - and no other. No number
+changes.
+
+A patch release: one correction.
 
 
 ## v0.31.16 what was still pending
@@ -3063,6 +3093,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.17** — a sum does not open with a minus. The frame wrote `(- x_1 + x_2)` and an effective depth read `- cover - db/2 - db_st + h`: a sum was printed in SymPy's order, which opens with whichever term is alphabetically first. A sum ordered by the powers of a name is now read backwards when that opens it with a plus, keeping its powers in order; any other sum lets its first positive term lead. Four rules were measured first; the simpler ones broke an expanded polynomial's degree order. The frame's fourteen rows move in each palette, and no number changes.
 - **0.31.16** — what was still pending. A unit inside an eigenvalue reads as a unit (`λ = 2 kN/m` had an italic metre under a matrix that wrote it upright). `Hz` can be written and asked for, and the page never chooses it, so `2πf` still reads `1/s`. And a name read as a unit that is then given a value says so: `k := 2000*kN/m` then `m := 500*kg` drew `k = 4.00 kN/kg` the second time the cell ran, in silence; the rule is unchanged, and both moments a name changes meaning are now printed. The README opens with how to start.
 - **0.31.15** — what the audit found. `numeric(w, 1/s)` - the page's own spelling of an inverse second - stopped the cell while `s**-1` worked; a `1` over a unit is now its reciprocal, `2/s` is still refused, and `rad/s` keeps its radian. An eigenvalue's multiplicity was written `m`, beside the masses the modes came from; a simple eigenvalue carries no label now and a repeated one says `multiplicity 2`. Code nothing called is gone, and the whole suite runs every Monday against whatever PyPI serves.
 - **0.31.14** — a modulus before its section, which closes the question 0.31.13 left open. The frame page wrote `A_c E / L_c` where the engineer typed `E*A_c/L_c`, and he asked for `EA`. Inside each shape group of a product the order was the alphabet's; among the capitals it is dimension now - a name whose value carries mass goes first, asked of Pint - so `E A_c`, `P L`, and `E I` for a reason. It stops at the capitals because across a whole product the same rule splits `E I` and writes `fy As` where ACI writes `As fy`. Reaching the frame's matrices took a second correction: a matrix cell had never been given the settings its row was, so one block could draw `x P / 2` above its own substitution `(40.00 kN) x / 2`. Thirteen rows move on the five pinned reference pages and thirty-nine across the thirteen sheets, all on the frame and every one a permutation; no number changes.
@@ -3155,4 +3186,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.16`.
+Version: `0.31.17`.
