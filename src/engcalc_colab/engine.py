@@ -89,6 +89,7 @@ from .matrix_analysis import (
 from .matrix_modes import modes_of, take_mode
 from .matrix_numeric import QuantityMatrix, ensure_common_scale
 from .matrix_solve import solve_linear_system
+from .interpolation import Interpolation
 from .min_max import WrittenMax, WrittenMin
 from .numeric import _UNIT_ALIASES, NumericContext, _NumericAstEvaluator
 from .piecewise import (
@@ -1213,6 +1214,10 @@ class EngineeringEngine:
                         symbolic_expression,
                         overrides=substitutions,
                     ),
+                    interpolation_values=self.numeric_context.interpolation_values(
+                        symbolic_expression,
+                        overrides=substitutions,
+                    ),
                 )
 
             if statement.target is not None:
@@ -2143,6 +2148,28 @@ class _Evaluator(ast.NodeVisitor):
             if any(is_matrix(arg) for arg in args):
                 raise EngEvaluationError(f"{name} compares scalar values, not a matrix")
             return (WrittenMax if name == "max" else WrittenMin)(*args)
+
+        if name == "interp":
+            self._require_arity(name, args, 3, "point, [points], [values]")
+            point, points, values = args
+            if is_matrix(point):
+                raise EngEvaluationError("interp reads one point, not a matrix")
+            if not all(is_matrix(table) and 1 in table.shape for table in (points, values)):
+                raise EngEvaluationError(
+                    "interp reads its table as two rows, the points and the values"
+                )
+            if len(points) < 2:
+                raise EngEvaluationError("interp needs a table of at least 2 points")
+            if len(points) != len(values):
+                raise EngEvaluationError(
+                    f"interp needs one value for each point: {len(points)} points, "
+                    f"{len(values)} values"
+                )
+            return Interpolation(
+                point,
+                sp.ImmutableMatrix(1, len(points), list(points)),
+                sp.ImmutableMatrix(1, len(values), list(values)),
+            )
 
         if name == "integrate":
             # Two arguments is the indefinite integral, four the definite one. The

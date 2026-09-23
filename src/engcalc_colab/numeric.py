@@ -23,6 +23,7 @@ from .matrix_modes import (
     modes_of,
     numbered,
 )
+from .interpolation import Interpolation
 from .matrix_numeric import QuantityMatrix
 
 
@@ -1244,12 +1245,76 @@ class NumericContext:
         except EngEvaluationError:
             return None
 
+    def interpolation_segment(self, point, points, values):
+        """The point of an `interp` and the two table rows around it, `(x, x1, x2, y1, y2)`.
+
+        The point is read in the unit of the table's points, and the values in the unit
+        of its first value, so a point in millimetres finds its place in a table written
+        in metres - and the segment is worked out in metres, the way the table reads. Refused outside
+        the table: a code's table is not a law to extend, and extrapolating in silence is
+        how a sheet ends up with a coefficient nobody tabulated. At a point of the table
+        the segment starts there, so the tabulated value comes back exactly.
+        """
+        try:
+            *xs, x = self._normalize_quantity_group([*points, point], "interp")
+        except EngEvaluationError as exc:
+            raise EngEvaluationError(
+                "interp reads its point against the table in one kind of unit"
+            ) from exc
+        try:
+            ys = list(self._normalize_quantity_group(values, "interp"))
+        except EngEvaluationError as exc:
+            raise EngEvaluationError(
+                "interp needs the values of its table in one kind of unit"
+            ) from exc
+        at = [float(self._as_quantity(value).magnitude) for value in xs]
+        if any(after <= before for before, after in zip(at, at[1:])):
+            raise EngEvaluationError("interp needs its points in increasing order")
+        here = float(self._as_quantity(x).magnitude)
+        if not at[0] <= here <= at[-1]:
+            raise EngEvaluationError(
+                f"interp does not extrapolate: {_value_text(x)} lies outside its table, "
+                f"{_value_text(xs[0])} to {_value_text(xs[-1])}"
+            )
+        index = min(max(i for i, value in enumerate(at) if value <= here), len(at) - 2)
+        return x, xs[index], xs[index + 1], ys[index], ys[index + 1]
+
+    def interpolation_values(self, expression, overrides: dict[str, Any] | None = None):
+        """The segment an `interp` read, for the row that shows it worked out.
+
+        `None` when there is nothing to say - not an `interp`, or a part of it that
+        cannot be resolved on its own - and the renderer leaves the working as it was.
+        """
+        expression = sp.sympify(expression)
+        if not isinstance(expression, Interpolation):
+            return None
+        point, points, values = expression.args
+
+        def read(item):
+            return self.evaluate_symbolic(item, overrides=dict(overrides or {}))[1]
+
+        try:
+            return self.interpolation_segment(
+                read(point), [read(item) for item in points], [read(item) for item in values]
+            )
+        except EngEvaluationError:
+            return None
+
     def _evaluate_sympy(self, expr, substitutions: dict[str, Any]):
         if isinstance(expr, sp.Symbol):
             return substitutions[expr.name]
 
         if expr == sp.pi:
             return math.pi
+
+        if isinstance(expr, Interpolation):
+            point, points, values = expr.args
+            x, x1, x2, y1, y2 = self.interpolation_segment(
+                self._as_quantity(self._evaluate_sympy(point, substitutions)),
+                [self._as_quantity(self._evaluate_sympy(item, substitutions)) for item in points],
+                [self._as_quantity(self._evaluate_sympy(item, substitutions)) for item in values],
+            )
+            return y1 + (y2 - y1) * ((x - x1) / (x2 - x1))
 
         if isinstance(expr, (ModeEigenvalue, ModeShapeEntry)):
             # Before the closed-number branch below, which a mode of a matrix of plain
@@ -1464,6 +1529,11 @@ class _NumericAstEvaluator(ast.NodeVisitor):
         if not isinstance(node.func, ast.Name) or node.keywords:
             raise EngEvaluationError("unsupported numeric function")
         name = node.func.id
+        if name == "interp":
+            raise EngEvaluationError(
+                "interp reads a table, which := cannot hold; define it with = and ask "
+                "numeric(...) for its value"
+            )
         if name in {"min", "max"}:
             # `s_max := min(3*h, 450*mm)`: a limit is set as often as it is derived.
             if len(node.args) < 2:

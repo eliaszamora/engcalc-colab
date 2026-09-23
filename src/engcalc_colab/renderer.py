@@ -2768,7 +2768,7 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
             formula_rows,
         )
 
-    compared_rows = _compared_limit_rows(result, settings, substituted_rows)
+    compared_rows = _worked_rows(result, settings, substituted_rows)
 
     rows: list[str] = []
     opening = _relation_opening(
@@ -2815,6 +2815,48 @@ def _compared_limit_rows(result, settings: RenderSettings, substituted_rows: lis
         unit_literals=result.unit_literals,
     )
     return [] if rows == substituted_rows else rows
+
+
+def _worked_rows(result, settings: RenderSettings, substituted_rows: list[str]) -> list[str]:
+    """The stage between the substitution and the value: each limit of a `min` or `max`,
+    or the segment an `interp` read. Empty for everything else."""
+    return _compared_limit_rows(result, settings, substituted_rows) or _interpolation_rows(
+        result, settings, substituted_rows
+    )
+
+
+def _interpolation_rows(result, settings: RenderSettings, substituted_rows: list[str]) -> list[str]:
+    """`(0.80) + ((0.70) - (0.50))/((1.00) - (0.50)) ((1.00) - (0.80))`: the segment used.
+
+    The straight line between the two table rows around the point, with their numbers -
+    the line a reviewer draws by hand to check which rows were read. The values are the
+    engine's (`interpolation_values`), written through the named-value mechanism a
+    piecewise branch uses. Only after a substitution row, so never in `result(...)`.
+    """
+    values = getattr(result, "interpolation_values", None)
+    if not substituted_rows or values is None:
+        return []
+    named = {f"{_VALUE_BRANCH_NAME}{index}": value for index, value in enumerate(values)}
+    x, x_1, x_2, y_1, y_2 = (sp.Symbol(name) for name in named)
+
+    def minus(a, b):
+        return sp.Add(a, sp.Mul(-1, b, evaluate=False), evaluate=False)
+
+    worked = sp.Add(
+        y_1,
+        sp.Mul(
+            minus(y_2, y_1),
+            sp.Mul(minus(x, x_1), sp.Pow(minus(x_2, x_1), -1, evaluate=False), evaluate=False),
+            evaluate=False,
+        ),
+        evaluate=False,
+    )
+    return _bounded_expression_rows(
+        worked,
+        named,
+        settings=settings,
+        unit_literals=result.unit_literals,
+    )
 
 
 def _numeric_substituted_rows(result, settings: RenderSettings) -> list[str]:
@@ -3311,7 +3353,7 @@ def _value_row_spacings(
         ]
         if substituted_rows:
             stage_lengths.append(len(substituted_rows))
-        compared_rows = _compared_limit_rows(
+        compared_rows = _worked_rows(
             result, settings, _numeric_substituted_rows(result, settings)
         )
         if compared_rows:

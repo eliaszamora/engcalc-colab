@@ -234,6 +234,9 @@ class NumericEvaluationResult:
     # Each argument of a `min` or `max` worked out, in the unit they are compared in, for
     # the row that shows which limit governs. `None` for everything else.
     extremum_values: tuple[Any, ...] | None = None
+    # The point of an `interp` and the two table rows around it, `(x, x1, x2, y1, y2)`,
+    # for the row that shows the segment used. `None` for everything else.
+    interpolation_values: tuple[Any, ...] | None = None
 
     def __init__(
         self,
@@ -250,6 +253,7 @@ class NumericEvaluationResult:
         unit_was_requested: bool = False,
         piecewise_branch_values: tuple[Any, ...] | None = None,
         extremum_values: tuple[Any, ...] | None = None,
+        interpolation_values: tuple[Any, ...] | None = None,
     ) -> None:
         if display_arguments is not None and display_argument is not None:
             raise TypeError("provide either display_arguments or display_argument, not both")
@@ -276,6 +280,11 @@ class NumericEvaluationResult:
             self,
             "extremum_values",
             tuple(extremum_values) if extremum_values is not None else None,
+        )
+        object.__setattr__(
+            self,
+            "interpolation_values",
+            tuple(interpolation_values) if interpolation_values is not None else None,
         )
 
     @property
