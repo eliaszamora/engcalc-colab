@@ -8,13 +8,13 @@
 
 ## Where things stand today
 
-_2026-09-22._
+_2026-09-23._
 
 | | |
 |---|---|
-| released | **0.31.17** — #244, `main` at `b02b9b0`, carrying #243; six jobs and both qualification runs green on that SHA |
+| released | **0.31.17** — #244, `b02b9b0`, carrying #243; `main` at `7bbad4b` (#245, this record), six jobs and both qualification runs green on it |
 | before that | **0.31.16** — #241, `131137d`, verified after its merge (below) |
-| open PRs | none |
+| open PRs | only this record's |
 | default suite | **2576 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -137,11 +137,36 @@ Release evidence for 0.31.17, on the release commit's tree:
 in a Colab-like venv resolved to `b02b9b0`, reported 0.31.17, upgraded nothing, installed 29
 files byte-identical to `src`, and passed the eighteen-check smoke outside the repository.
 
+### What Calcpad has, measured against EngCalc — 2026-09-23
+
+He asked whether EngCalc has Calcpad's capabilities. Calcpad itself is no longer open
+source; CalcpadCE (`imartincei/CalcpadCE`, MIT, C#) continues 7.6.2. Its quick reference was
+read and each EngCalc counterpart run on 0.31.17, not recalled. Same core: formula →
+substitution → result, units with conversion (`ksi`, `kip`, `ft`, `in` work as targets),
+numeric roots, integrals without a closed form (`∫₀¹ e^{-x²} cos x³ dx = 0.71`), sums,
+matrices, eigenvalues, plots. EngCalc only: a CAS — symbolic `integrate`/`diff`/`solve`,
+systems, inequalities, `assume` — Macaulay brackets, `governing`, `envelope`, load cases and
+combinations that keep their factors, Colab. CalcpadCE only, each rejected by `%%eng` today:
+`min`/`max`, `round`/`floor`/`ceiling`, `mod`, `if`/`switch` as functions, `line`/`spline`
+interpolation, `$Product`, loops and `#if` blocks, complex numbers, `#input` forms,
+`#read`/`#write` CSV and Excel, `$Map` colour maps, `#include`/macros, `lsolve`/`svd` and the
+other decompositions, export to Word/PDF. A 30×30 stiffness `solve` plus `eigenvals` takes
+1.7 s here (exact SymPy); fine for study, not for a model of thousands of freedoms.
+
+**Found by the comparison, not yet fixed:** `z := sqrt(-4)` is stored as `2i`, and the next
+`numeric(z)` raises a raw `TypeError` from `_magnitude_text` (`float()` of a complex), so
+Colab shows a traceback in place of the whole cell — the rows before it too — where every
+other failure gives one `EngCalc error` line. A negative discriminant under a root reaches
+it. EngCalc works in real numbers; the fix is a concise error where the value becomes
+complex.
+
 ### Exact next step
 
-Nothing is pending. Known and not requested: a wide substitution over plain definitions
-splits into additive terms (`keep` avoids it); an `N` never defined still reads as one
-newton in silence (pinned by `test_an_undefined_axial_force_reads_as_newtons`).
+**Waiting on him:** whether to fix the complex-value traceback (a patch, RED → GREEN) and
+which, if any, of CalcpadCE's functions to add — `min`/`max` and `line` interpolation are the
+ones a design code asks for. Known and not requested: a wide substitution over plain
+definitions splits into additive terms (`keep` avoids it); an `N` never defined still reads
+as one newton in silence (pinned by `test_an_undefined_axial_force_reads_as_newtons`).
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.
