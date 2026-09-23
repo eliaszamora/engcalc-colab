@@ -14,7 +14,7 @@ from pint.errors import DimensionalityError, PintError
 from .unit_text import normalise
 from sympy.polys.polyerrors import PolynomialError
 
-from .errors import EngEvaluationError, diagnostic_hint
+from .errors import EngEvaluationError, NoRealValueError, diagnostic_hint
 from .matrix_modes import (
     ModeEigenvalue,
     ModeShapeEntry,
@@ -89,6 +89,37 @@ def _keep_written_unit_order(items, _registry):
     is what preserves the order `_units` recorded when the quantity was built.
     """
     return list(items)
+
+
+def _value_text(value) -> str:
+    """A value as a message quotes it: four figures, and its unit when it has one."""
+    text = f"{float(getattr(value, 'magnitude', value)):.4g}"
+    units = getattr(value, "units", None)
+    if units is not None and not value.dimensionless:
+        text += f" {units:~P}"
+    return text
+
+
+def _real_power(base, exponent):
+    """`base ** exponent`, refused when it has no real value.
+
+    Python answers `(-16) ** 0.5` with a complex number and Pint carries it on, so
+    `sqrt(b^2 - 4*a*c)` over a negative discriminant was stored without a word. The
+    renderer prints real numbers and raised a TypeError on it: the notebook showed a
+    traceback, and not one row of the cell, the ones before it included. Every root and
+    fractional power on every path - `:=`, `numeric`, a function at a point, a matrix, a
+    table, a plot - is made here, so this is where EngCalc says it works in real numbers.
+    """
+    result = base ** exponent
+    magnitude = getattr(result, "magnitude", result)
+    if isinstance(magnitude, numbers.Complex) and not isinstance(magnitude, numbers.Real):
+        what = (
+            f"the square root of {_value_text(base)}"
+            if getattr(exponent, "magnitude", exponent) == 0.5
+            else f"{_value_text(base)} raised to a fractional power"
+        )
+        raise NoRealValueError(f"{what} has no real value; EngCalc works in real numbers")
+    return result
 
 
 def engineering_registry() -> UnitRegistry:
@@ -216,7 +247,7 @@ class NumericContext:
         quantity = self._as_quantity(value)
 
         if name == "sqrt":
-            return quantity ** 0.5
+            return _real_power(quantity, 0.5)
 
         forward_trig = {
             "sin": math.sin,
@@ -241,6 +272,18 @@ class NumericContext:
             if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:
                 raise EngEvaluationError(f"{name} requires a dimensionless argument")
             magnitude = float(quantity.to_base_units().magnitude)
+            # Python's own message said this before, in words that change with its
+            # version: `math domain error` on Colab's 3.12, another sentence on 3.14.
+            if name != "atan" and not -1 <= magnitude <= 1:
+                shown = f"{magnitude:.4g}"
+                if -1 <= float(shown) <= 1:
+                    # Four figures round the `1.0000000000000002` a division left behind
+                    # back to `1`, and `acos of 1` is a value the reader can see is fine.
+                    shown = repr(magnitude)
+                raise NoRealValueError(
+                    f"{name} of {shown} has no real value; "
+                    "its argument must lie between -1 and 1"
+                )
             return self.ureg.Quantity(inverse_trig[name](magnitude), self.ureg.radian)
 
         scalar_dimensionless = {
@@ -251,6 +294,11 @@ class NumericContext:
             if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:
                 raise EngEvaluationError(f"{name} requires a dimensionless argument")
             magnitude = float(quantity.to_base_units().magnitude)
+            if name == "log" and magnitude <= 0:
+                raise NoRealValueError(
+                    f"the logarithm of {magnitude:.4g} has no real value; "
+                    "its argument must be positive"
+                )
             return scalar_dimensionless[name](magnitude)
 
         raise EngEvaluationError(f"unsupported numeric function '{name}'")
@@ -1237,7 +1285,7 @@ class NumericContext:
                 if not exponent.dimensionless:
                     raise EngEvaluationError("numeric exponent must be dimensionless")
                 exponent = exponent.to_base_units().magnitude
-            return base ** exponent
+            return _real_power(base, exponent)
 
         if isinstance(expr, sp.Sum):
             # The symbolic layer keeps the sigma, which is what the memoria shows, and
@@ -1411,7 +1459,7 @@ class _NumericAstEvaluator(ast.NodeVisitor):
             if isinstance(node.op, ast.Div):
                 return left / right
             if isinstance(node.op, ast.Pow):
-                return left ** right
+                return _real_power(left, right)
         except DimensionalityError as exc:
             raise EngEvaluationError("incompatible units") from exc
         except PintError as exc:
