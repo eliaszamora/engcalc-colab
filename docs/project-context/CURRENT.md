@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.32.3** — #268, `6aa6001`, carrying #266 and #267; six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.32.2** — #263, `2da4dea` |
-| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` — a draft never to be merged, head `review/since-0.31.17` = `6aa6001` |
-| default suite | **2723 passing**, about a minute and a half with `-n auto` |
+| released | **0.33.0** — this release PR, carrying #270; its closure is recorded below |
+| before that | **0.32.3** — #268, `6aa6001`, verified after its merge |
+| open PRs | this release's; #265, the ultra-review frame, a draft never to be merged |
+| default suite | **2738 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -299,8 +299,8 @@ the wheel, 2723; the thirteen sheets identical, and to 0.32.2. After its merge: 
 and both qualification runs green on `6aa6001`, and a clean `git+https` install of `main`
 resolved to it, upgraded nothing, installed 31 files identical to `src`, passed the 51.
 
-**Open, waiting for his yes: a product keeps the order it was written in** (branch
-`feat/a-product-keeps-its-written-order`). Reading the derivation he asked why `E*A` read
+**0.33.0 - a product keeps the order it was written in** (#270, approved by him with
+every moving row in front of him on 2026-09-23: *"Apruebo, tienes mi Sí"*). Reading the derivation he asked why `E*A` read
 `AE`: SymPy stores `A*E` as it reads, and `_engineering_factor_key` fell to the alphabet for
 two capitals with no value. He said he wants the written order. The engine records, per
 product, which name was written before which (`record_written_order`, first writing kept,
@@ -313,7 +313,7 @@ contracts; mutation 10/10; suite 2738. Rows that move: one reference row (memori
 (21 `A E` → `E A`), and eight contracts updated with notes - among them his earlier choice
 `q*x*L/2` → `q L x` now reads `q x L` as written (the coordinate-last rule still answers
 for products the sheet did not write), and ACI's `As*fy` now reads `As fy`. Sums keep the
-page's order. Nothing merges until he approves these rows; then release 0.33.0.
+page's order. Released as 0.33.0; its closure is to be recorded here.
 
 **Then: he runs `/code-review ultra 265`.** The findings come back to be verified by
 running them before anything is fixed. Known and not requested:

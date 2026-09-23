@@ -13,7 +13,25 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.32.3**.
+Current version: **0.33.0**.
+
+
+## v0.33.0 a product keeps the order it was written in
+
+`N_b = E*A*(u_2 - u_1)/L` read `AE (u_2 - u_1)/L`. SymPy keeps no order for a product -
+`E*A` is stored `A*E` the moment it is read - and the page ordered the factors again by a
+rule of its own, which for two capitals with no value was the alphabet.
+
+A product is now written in the order the sheet wrote it: `E A`, `As fy`, `m a`, `R_B L`,
+`q x L`. Numbers stay in front and units keep the page's order. A product the sheet did
+not write itself - `f_1 = -N_b`, the entries of `transpose(T)*k*T` - reads its names in
+the order they were first written together, so a whole derivation reads `E A` from the
+line that defined it. Two names never written together keep the rule they had, which
+still puts a coordinate after the quantities. The first writing is the one the page keeps:
+a sheet that writes `E*A` and later `A*E` reads `E A` throughout. Sums keep the page's
+order.
+
+One reference row moves, `R_B L` in the memoria, as it is written there.
 
 
 ## v0.32.3 what a derivation showed
@@ -3267,6 +3285,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.33.0** — a product is written in the order the sheet wrote it (`E A`, `As fy`, `q x L`), and a product derived from it reads its names the same way; numbers first, units in the page's order, sums unchanged. One reference row moves.
 - **0.32.3** — a derivative or an integral inside a larger expression shows inside it, so no row reads a false equation (`2 d/dx x² = 4x`, the `C₁` of an elastic curve); and a variable named like a unit (`s`, `N`) is not given the one a measured unit gets. No reference sheet moves.
 - **0.32.2** — a point where a piecewise or a table changes its law is a `breakpoint`, not a `boundary`; and a unit standing alone is written with its one (`max(1 m, L/4)`, `x = 1 m`, `-1 kN/m`). No reference sheet moves.
 - **0.32.1** — `extrema` refuses a function with no real value in its domain and reads a singular end as unbounded, instead of naming a wrong global extreme; it finds the extremes of an `interp` at the table's points; `1*kN + 4*kN*x/m` evaluates; and `V(x) = 30*kN - q*x` can be plotted. No reference sheet moves.
@@ -3365,4 +3384,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.32.3`.
+Version: `0.33.0`.
