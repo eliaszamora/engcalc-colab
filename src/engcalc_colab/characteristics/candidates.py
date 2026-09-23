@@ -7,7 +7,7 @@ from typing import Any
 import sympy as sp
 from pint.errors import DimensionalityError
 
-from ..errors import EngEvaluationError
+from ..errors import EngEvaluationError, NoRealValueError
 from ..models import CharacteristicPoint
 from .domain import AnalysisDomain
 from .fallback import (
@@ -178,13 +178,7 @@ def _normalize_candidate_quantity(context, quantity, domain: AnalysisDomain):
 
 
 def _candidate_in_domain(quantity, domain: AnalysisDomain) -> bool:
-    try:
-        magnitude = float(quantity.to(domain.unit).magnitude)
-    except TypeError:
-        # A complex candidate location never lies inside a real analysis domain.
-        # solve() can return such candidates when a registered parameter leaves
-        # the sign of a radicand undetermined, e.g. sqrt(-a) for x**2 + a.
-        return False
+    magnitude = float(quantity.to(domain.unit).magnitude)
     lower = float(domain.lower_quantity.magnitude)
     upper = float(domain.upper_quantity.magnitude)
     tolerance = 1e-12 * max(1.0, abs(lower), abs(upper), abs(upper - lower))
@@ -206,6 +200,12 @@ def _evaluate_root_candidate(
     fixed_overrides = context.unit_literal_overrides(candidate, fixed_overrides)
     try:
         _, x_quantity = context.evaluate_symbolic(candidate, overrides=fixed_overrides)
+    except NoRealValueError:
+        # A complex candidate location never lies inside a real analysis domain.
+        # solve() offers such candidates when a registered parameter leaves the
+        # sign of a radicand undetermined, e.g. sqrt(-a) for x**2 + a. A rejection,
+        # like the units below - not a candidate that could not be evaluated.
+        return _CandidateEvaluation(point=None)
     except EngEvaluationError:
         # A plausible exact candidate that EngCalc cannot physically evaluate is
         # not evidence that no root exists. The deterministic fallback must run.

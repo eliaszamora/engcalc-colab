@@ -360,10 +360,9 @@ class EngineeringEngine:
         place the reader is shown them as numbers."""
         try:
             _substitutions, quantity = self.numeric_context.evaluate_symbolic(value)
-            # A complex root evaluates - `sqrt(-4)` is Python's `2j` - and fails only
-            # where the page turns it into digits, so it is refused here.
-            float(quantity.magnitude)
-        except (EngEvaluationError, TypeError, ValueError):
+        except EngEvaluationError:
+            # A complex root among them: the numeric layer refuses a value with no
+            # real result, where it used to hand back Python's `2j`.
             return None
         return quantity
 
@@ -2691,18 +2690,17 @@ class _Evaluator(ast.NodeVisitor):
             overrides = context.unit_literal_overrides(value)
             _substitutions, quantity = context.evaluate_symbolic(value, overrides=overrides)
         except EngCalcError:
+            # A complex answer ends here too: the numeric layer refuses a value with no
+            # real result. It has no sign, so the assumption says nothing about it and
+            # it survives. Discarding on ignorance is how a solver quietly loses roots.
             return None
 
         magnitude = getattr(quantity, "magnitude", quantity)
         try:
-            number = complex(magnitude)
+            number = float(magnitude)
         except (TypeError, ValueError):
             return None
-        if number.imag:
-            # A complex answer has no sign, so the assumption says nothing about it and
-            # it survives. Discarding on ignorance is how a solver quietly loses roots.
-            return None
-        return self._ASSUMPTION_ADMITS[condition](number.real)
+        return self._ASSUMPTION_ADMITS[condition](number)
 
     def _rule_out_by_assumption(self, solutions: list, unknown_name: str):
         """Drop the answers the engineer has already said are impossible.

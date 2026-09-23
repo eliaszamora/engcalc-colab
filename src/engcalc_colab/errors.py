@@ -14,6 +14,15 @@ class AmbiguousSolveError(EngEvaluationError):
     pass
 
 
+class NoRealValueError(EngEvaluationError):
+    """A value with no real result: the root of a negative number, the logarithm of one.
+
+    Its own type because one caller must tell it from every other failure: `roots` reads
+    it as a candidate outside the real domain - `sqrt(-a)` for `x^2 + a` - where any other
+    error means the candidate could not be evaluated and the fallback has to run.
+    """
+
+
 def diagnostic_hint(code: str, **context) -> str:
     """Return a stable corrective hint for a known engineering-facing error."""
     if code == "direct_numeric_argument":
