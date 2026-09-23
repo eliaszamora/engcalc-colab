@@ -2482,7 +2482,11 @@ Supported unit aliases include:
 - length: `mm`, `cm`, `m`
 - force: `N`, `kN`, `kgf`, `tonf`
 - pressure/stress: `Pa`, `kPa`, `MPa`, `GPa`
-- other: `kg`, `s`, `rad`, `deg`
+- other: `kg`, `s`, `Hz`, `rad`, `deg`
+
+`Hz` can be written (`f := 5*Hz`) and asked for (`numeric(f_n, Hz)`), and the page never
+chooses it: a frequency and a circular frequency share a dimension, so a value derived from
+one - `2*pi*f` - reads in `1/s`.
 
 EngCalc defines:
 

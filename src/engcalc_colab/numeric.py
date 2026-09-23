@@ -57,6 +57,11 @@ _UNIT_ALIASES = {
     # the symbol every code uses for a tonne, rather than the `ton` that was typed.
     "ton": "metric_ton",
     "s": "second",
+    # Written and asked for, never chosen: no family has hertz, because a frequency and a
+    # circular frequency share `[time]⁻¹` and nothing in a value tells `f` from `ω`. A page
+    # that picked it would print `ω_n = 374.98 Hz`. Without it here, `f := 5*Hz` asked the
+    # engineer to define the hertz - the answer `MN` got before it joined the table.
+    "Hz": "hertz",
     "rad": "radian",
     "deg": "degree",
     # US customary. Pint knows every one of these already, so this is a table of the
