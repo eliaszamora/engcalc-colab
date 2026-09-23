@@ -2768,6 +2768,8 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
             formula_rows,
         )
 
+    compared_rows = _compared_limit_rows(result, settings, substituted_rows)
+
     rows: list[str] = []
     opening = _relation_opening(
         lhs,
@@ -2775,14 +2777,71 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
         substituted_rows[0] if substituted_rows else final_latex,
         rows,
     )
-    for index, body in enumerate(substituted_rows):
-        if index == 0:
-            rows.append(rf"{opening} & = & \displaystyle {body}")
-            opening = ""
-        else:
-            rows.append(rf" & & \displaystyle {body}")
+    for stage in (substituted_rows, compared_rows):
+        for index, body in enumerate(stage):
+            if index == 0:
+                rows.append(rf"{opening} & = & \displaystyle {body}")
+                opening = ""
+            else:
+                rows.append(rf" & & \displaystyle {body}")
     rows.append(rf"{opening} & = & \displaystyle {final_latex}")
     return rows
+
+
+def _compared_limit_rows(result, settings: RenderSettings, substituted_rows: list[str]) -> list[str]:
+    """`min((2.00 m), (2.22 m), (3.00 m))`: each limit of a `min` or `max` worked out.
+
+    The substitution row says what each limit is made of; this one says what each is
+    worth, so the one that governs is read off the page. The values are the engine's own
+    (`extremum_values`), written through the same named-value mechanism a piecewise
+    branch uses, so they are bracketed exactly as the substitution row brackets its own.
+
+    Only after a substitution row, and never the same row twice: `max(V_B, V_A)`
+    substitutes straight into two values, and this row would repeat it. The spacing
+    metadata asks the same function, so the two cannot disagree about whether it exists.
+    """
+    values = getattr(result, "extremum_values", None)
+    expression = result.symbolic_expression
+    if not substituted_rows or values is None or not isinstance(expression, (sp.Min, sp.Max)):
+        return []
+    if len(values) != len(expression.args):
+        return []
+    named = {f"{_VALUE_BRANCH_NAME}{index}": value for index, value in enumerate(values)}
+    compared = type(expression)(*(sp.Symbol(name) for name in named))
+    rows = _bounded_expression_rows(
+        compared,
+        named,
+        settings=settings,
+        unit_literals=result.unit_literals,
+    )
+    return [] if rows == substituted_rows else rows
+
+
+def _numeric_substituted_rows(result, settings: RenderSettings) -> list[str]:
+    """The substitution stage of a numeric row, exactly as `_numeric_evaluation_rows`
+    draws it - for the spacing metadata, which must ask about the same rows."""
+    if not _shows_substitution(result):
+        return []
+    formula_rows = _bounded_expression_rows(
+        result.symbolic_expression,
+        settings=settings,
+        unit_literals=result.unit_literals,
+    )
+    shown = _shown_substitutions(result, settings)
+    substituted_expression, valued_branches = _named_value_branches(
+        result.symbolic_expression,
+        _piecewise_branch_values(result),
+        shown,
+    )
+    return _without_a_repetition(
+        _bounded_expression_rows(
+            substituted_expression,
+            {**shown, **valued_branches},
+            settings=settings,
+            unit_literals=result.unit_literals,
+        ),
+        formula_rows,
+    )
 
 
 # A name no sheet can write, so nothing an engineer types can collide with it. It is
@@ -3252,6 +3311,11 @@ def _value_row_spacings(
         ]
         if substituted_rows:
             stage_lengths.append(len(substituted_rows))
+        compared_rows = _compared_limit_rows(
+            result, settings, _numeric_substituted_rows(result, settings)
+        )
+        if compared_rows:
+            stage_lengths.append(len(compared_rows))
         stage_lengths.append(1)
 
     elif isinstance(result, PartialNumericEvaluationResult):

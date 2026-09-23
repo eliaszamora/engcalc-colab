@@ -231,6 +231,9 @@ class NumericEvaluationResult:
     # `None` for everything that is not a piecewise, and for a piecewise whose branches
     # this evaluation could not resolve on their own.
     piecewise_branch_values: tuple[Any, ...] | None = None
+    # Each argument of a `min` or `max` worked out, in the unit they are compared in, for
+    # the row that shows which limit governs. `None` for everything else.
+    extremum_values: tuple[Any, ...] | None = None
 
     def __init__(
         self,
@@ -246,6 +249,7 @@ class NumericEvaluationResult:
         declared_names: frozenset[str] = frozenset(),
         unit_was_requested: bool = False,
         piecewise_branch_values: tuple[Any, ...] | None = None,
+        extremum_values: tuple[Any, ...] | None = None,
     ) -> None:
         if display_arguments is not None and display_argument is not None:
             raise TypeError("provide either display_arguments or display_argument, not both")
@@ -267,6 +271,11 @@ class NumericEvaluationResult:
             self,
             "piecewise_branch_values",
             tuple(piecewise_branch_values) if piecewise_branch_values is not None else None,
+        )
+        object.__setattr__(
+            self,
+            "extremum_values",
+            tuple(extremum_values) if extremum_values is not None else None,
         )
 
     @property

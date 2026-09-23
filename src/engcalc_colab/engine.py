@@ -89,6 +89,7 @@ from .matrix_analysis import (
 from .matrix_modes import modes_of, take_mode
 from .matrix_numeric import QuantityMatrix, ensure_common_scale
 from .matrix_solve import solve_linear_system
+from .min_max import WrittenMax, WrittenMin
 from .numeric import _UNIT_ALIASES, NumericContext, _NumericAstEvaluator
 from .piecewise import (
     build_piecewise,
@@ -1208,6 +1209,10 @@ class EngineeringEngine:
                         symbolic_expression,
                         overrides=substitutions,
                     ),
+                    extremum_values=self.numeric_context.extremum_values(
+                        symbolic_expression,
+                        overrides=substitutions,
+                    ),
                 )
 
             if statement.target is not None:
@@ -2129,6 +2134,15 @@ class _Evaluator(ast.NodeVisitor):
         if name == "abs":
             self._require_arity(name, args, 1, "expression")
             return sp.Abs(args[0])
+
+        if name in {"min", "max"}:
+            if len(args) < 2:
+                raise EngEvaluationError(
+                    f"{name} expects at least 2 arguments: the values to compare"
+                )
+            if any(is_matrix(arg) for arg in args):
+                raise EngEvaluationError(f"{name} compares scalar values, not a matrix")
+            return (WrittenMax if name == "max" else WrittenMin)(*args)
 
         if name == "integrate":
             # Two arguments is the indefinite integral, four the definite one. The

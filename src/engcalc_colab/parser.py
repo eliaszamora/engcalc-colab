@@ -63,6 +63,9 @@ _ALLOWED_CALLS = {
     "subs", "eq", "sum", "numeric", "result", "plot", "envelope", "table", "abs",
     "piecewise", "identity", "zeros", "diag", "transpose", "det", "inv", "trace", "size",
     "rank", "rref", "norm", "eigenvals", "eigenvects", "dot", "cross",
+    # What a design code is written with: the smaller of two limits, the larger of two
+    # minima. SymPy has both and sorts their arguments; see `min_max`.
+    "min", "max",
 } | _SCALAR_CALLS | _CHARACTERISTIC_CALLS
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
