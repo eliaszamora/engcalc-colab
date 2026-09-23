@@ -258,6 +258,8 @@ class EngMagics(Magics):
                     continue
 
                 result = self.engine.evaluate(item)
+                for notice in self.engine.notices:
+                    print(f"engcalc: {notice}")
                 if isinstance(result, PlotResult):
                     _display_equation_group(
                         pending_results,

@@ -14,8 +14,8 @@ _2026-09-22._
 |---|---|
 | released | **0.31.15** — #237, `main` at `ebf5ca9`; six jobs and both qualification runs green on that SHA |
 | in progress | **0.31.16**, the pending items — see below |
-| `main` | `614d582` — #238 merged on top of 0.31.15, in no release yet |
-| default suite | **2555 passing** on #239's branch, about a minute with `-n auto` |
+| `main` | `67b4efd` — #238 and #239 merged on top of 0.31.15, in no release yet |
+| default suite | **2567 passing** on #240's branch, about a minute with `-n auto` |
 
 **0.31.15 is closed.** It carries the audit of 0.31.14: #233 (`numeric(w, 1/s)`), #234
 (the suite runs every Monday), #235 (dead code) and #236 (a multiplicity is not a mass),
@@ -37,14 +37,23 @@ criterio"*. Each item was checked on the page before deciding:
    and the renderer hands them to both eigen printers, the vectors and the matrix of a set
    with no closed form. 5 contracts, 4 RED before; mutation 5/5; thirteen pages unchanged.
 2. **`Hz`**, which he did not answer: `f := 5*Hz` asked the engineer to define the hertz —
-   the failure the alias table already fixed for `MN`. **#239**, this branch: `Hz` can be
+   the failure the alias table already fixed for `MN`. **#239, merged** (`67b4efd`): `Hz` can be
    written and asked for, and the page never chooses it — a frequency and a circular
    frequency share `[time]⁻¹`, so `2*pi*f` reads `1/s`, measured before the change with the
    alias patched in and pinned since. 5 contracts, 4 RED before; mutation 4/4, three of
    them putting hertz into the families.
-3. **A unit alias that becomes a value.** `k = 2000*kN/m`, then `m := 500*kg`, then
-   `numeric(k)` gives `4.00 kN/kg` — in one run, not only on a re-run. To do: say so at the
-   line that gives the value, and only when the name has already been read as a unit.
+3. **A unit alias that becomes a value.** Worse than recorded: `k := 2000*kN/m`, then
+   `m := 500*kg` — the usual one degree of freedom — drew `k = 4.00 kN/kg` and
+   `w = 0.0894 kN^0.5/kg` the second time the cell ran, in silence, on `main`. Which meaning
+   was wanted cannot be known (the metre there, the axial force in `sigma := N/A` then
+   `N := 500*kN`), so the rule stays and **#240**, this branch, says the two moments aloud:
+   a name read as a unit given a value (once), and a line that read it as a unit reading it
+   as a value (every time). A sheet that uses a name one way prints nothing; `%eng_reset`
+   forgets. 12 contracts, 7 RED before; mutation 11/11 — the survivor of the first pass
+   was a third run falling silent, now pinned. `test_a_single_degree_of_freedom_has_its_two_frequencies`
+   asserted a silent console on exactly this sheet and now expects the one line. Of the
+   thirteen sheets only the harness's dynamics sheet, which does this, prints it; none of
+   his reference sheets assigns `N`, `m` or `s`.
 4. **A record corrected.** "A non-zero literal branch keeps its written form beside
    bracketed neighbours" was listed here as known; #224 fixed it in 0.31.11, and the page
    shows `(5.00 kN/m)` beside `(8.00 kN/m)`. It had been carried forward by mistake.
@@ -54,9 +63,8 @@ criterio"*. Each item was checked on the page before deciding:
 
 ### Exact next step
 
-1. #239 green on its exact head, then squash-merge with `--match-head-commit`.
-2. The PR for 3 on the `main` #239 leaves; then the 0.31.16 release, closed the way
-   0.31.15 was (#237).
+1. #240 green on its exact head, then squash-merge with `--match-head-commit`.
+2. The 0.31.16 release, closed the way 0.31.15 was (#237).
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.

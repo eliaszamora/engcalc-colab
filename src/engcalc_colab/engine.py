@@ -312,6 +312,12 @@ class EngineeringEngine:
         # its definition showed instead of contradicting it a line later.
         self.written_namespace: dict[str, object] = {}
         self.numeric_guards: dict[str, tuple[MatrixNumericGuard, ...]] = {}
+        # Every alias this session has read as a unit, and which aliases each line read
+        # that way, so that a name changing meaning can say so. See `evaluate`.
+        self.names_read_as_units: set[str] = set()
+        self.units_read_by_line: dict[str, frozenset[str]] = {}
+        # What the last statement has to say that is not an error. The magic prints it.
+        self.notices: list[str] = []
         # The unit of a definition whose value simplified to an exact zero, which a
         # SymPy zero cannot carry. See `_unit_of_a_zero`.
         self.zero_quantities: dict[str, object] = {}
@@ -750,6 +756,8 @@ class EngineeringEngine:
         self.functions.clear()
         self.symbols.clear()
         self.numeric_guards.clear()
+        self.names_read_as_units.clear()
+        self.units_read_by_line.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -767,7 +775,64 @@ class EngineeringEngine:
             return self.namespace[name]
         return self.resolve_symbol(name)
 
-    def evaluate(
+    def evaluate(self, statement: ParsedStatement | ParsedNumericAssignment):
+        """One statement, a note of every alias it read as a unit, and what that means.
+
+        `N`, `m` and `s` are aliases and ordinary names at once, and a stored value
+        outranks the alias - `N := 500*kN` must make `N` the axial force. That stays. It
+        had no voice: `k := 2000*kN/m` then `m := 500*kg` is the usual way to write one
+        degree of freedom, and running that cell again made `k` 4.00 kN/kg in silence.
+        Two moments are said aloud, and nothing else changes:
+
+        - a name read as a unit is given a value (`_notice_a_unit_becoming_a_value`);
+        - a line that read a name as a unit reads it as a value now, which is the
+          re-run that changed its result.
+
+        A statement that fails reads nothing the sheet goes on with, and says nothing.
+        """
+        self.notices = []
+        result = self._evaluate_statement(statement)
+        read = frozenset(getattr(result, "unit_literals", ())) | frozenset(
+            getattr(result, "written_units", ())
+        )
+        source = getattr(statement, "source", None)
+        if source is not None:
+            before = self.units_read_by_line.get(source, frozenset())
+            # The same line stops reading an alias as a unit for one reason only: the
+            # name holds a value now, which is the whole of the precedence rule.
+            for name in sorted(before - read):
+                self.notices.append(
+                    f"line {statement.line_no}: this line read '{name}' as a unit "
+                    f"({_UNIT_ALIASES[name]}) when it ran before, and reads it as a "
+                    f"value now, so its result is not the one it had. Give the value "
+                    f"another name, such as {name}_1, to keep both."
+                )
+            self.units_read_by_line[source] = before | read
+        self.names_read_as_units |= read
+        return result
+
+    def _notice_a_unit_becoming_a_value(self, statement) -> str | None:
+        """What to say when a name that was read as a unit is given a value.
+
+        Only when this session has already read the name as a unit, because only then
+        does one name mean two things; and only when it first gets a value, because the
+        re-run of the same assignment is the same news.
+        """
+        name = statement.target
+        if (
+            name not in _UNIT_ALIASES
+            or name not in self.names_read_as_units
+            or self.numeric_context.get(name) is not None
+        ):
+            return None
+        return (
+            f"line {statement.line_no}: '{name}' has been read as a unit "
+            f"({_UNIT_ALIASES[name]}); from here on it is this value wherever it is "
+            f"written, and a line that used the unit reads the value when it is "
+            f"evaluated again. Give the value another name, such as {name}_1, to keep both."
+        )
+
+    def _evaluate_statement(
         self,
         statement: ParsedStatement | ParsedNumericAssignment,
     ) -> (
@@ -818,6 +883,9 @@ class EngineeringEngine:
                 else:
                     self.declared_unit_names.discard(statement.target)
                 self.zero_quantities.pop(statement.target, None)
+                notice = self._notice_a_unit_becoming_a_value(statement)
+                if notice:
+                    self.notices.append(notice)
                 if self._calls_a_function_of_the_sheet(statement.expression):
                     quantity = self._assign_through_the_sheet(statement)
                 else:
