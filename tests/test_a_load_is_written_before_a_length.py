@@ -95,10 +95,23 @@ def test_the_substituted_row_follows_it_too(page):
 
 
 def test_the_coordinate_goes_after_every_name_with_a_value(page):
-    """`q*x*L/2` reads `q L x / 2`: the quantities together, the coordinate last."""
-    written = page("q := 10*kN/m\nL := 6*m\nM(x) = q*x*L/2\n")
+    """A product the sheet did not write reads `q L x`: the quantities together, the
+    coordinate last.
+
+    Until 0.33.0 this was `M(x) = q*x*L/2` read `q L x / 2`. A product the sheet writes is
+    now written in its order, so that line reads `q x L`; the rule here still answers for
+    what the sheet never wrote side by side - here `L` and `x`. See
+    `test_a_product_keeps_the_order_it_was_written_in`.
+    """
+    written = page("q := 10*kN/m\nL := 6*m\nw(x) = q*x\nM(x) = w(x)*L/2\n")
 
     assert last_body(written) == r"\displaystyle \frac{q L x}{2}", last_body(written)
+
+
+def test_a_written_coordinate_stays_where_it_was_written(page):
+    written = page("q := 10*kN/m\nL := 6*m\nM(x) = q*x*L/2\n")
+
+    assert last_body(written) == r"\displaystyle \frac{q x L}{2}", last_body(written)
 
 
 # --- what must not move ---------------------------------------------------------------
@@ -107,16 +120,15 @@ def test_the_coordinate_goes_after_every_name_with_a_value(page):
 def test_a_product_of_two_settled_names_is_untouched(page):
     r"""Whatever the shape rule makes of it, this rule leaves it alone.
 
-    The renderer writes `fy As`, because `fy` begins lowercase and `As` uppercase. ACI
-    writes `As fy`, so that is a question this repository has not answered - and pinning
-    it here is how the answer stays a separate decision rather than a side effect. The
-    rule tried before this one changed it, which is what `test_a_written_coefficient_
-    survives` objected to.
+    The renderer wrote `fy As`, because `fy` begins lowercase and `As` uppercase, where
+    ACI writes `As fy`. That was left as a separate decision, and 0.33.0 made it: a product
+    is written in the order the sheet wrote it, so `As*fy` reads `As fy`. See
+    `test_a_product_keeps_the_order_it_was_written_in`.
     """
     written = page("As := 1935*mm**2\nfy := 420*MPa\nT = As*fy\n")
 
     assert last_body(written) == (
-        r"\displaystyle \mathrm{fy}\,\mathrm{As}"
+        r"\displaystyle \mathrm{As}\,\mathrm{fy}"
     ), last_body(written)
 
 

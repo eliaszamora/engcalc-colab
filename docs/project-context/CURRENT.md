@@ -299,7 +299,23 @@ the wheel, 2723; the thirteen sheets identical, and to 0.32.2. After its merge: 
 and both qualification runs green on `6aa6001`, and a clean `git+https` install of `main`
 resolved to it, upgraded nothing, installed 31 files identical to `src`, passed the 51.
 
-**Next: he runs `/code-review ultra 265`.** The findings come back to be verified by
+**Open, waiting for his yes: a product keeps the order it was written in** (branch
+`feat/a-product-keeps-its-written-order`). Reading the derivation he asked why `E*A` read
+`AE`: SymPy stores `A*E` as it reads, and `_engineering_factor_key` fell to the alphabet for
+two capitals with no value. He said he wants the written order. The engine records, per
+product, which name was written before which (`record_written_order`, first writing kept,
+cleared by `reset`); the magic hands it to the printer as `WRITTEN_ORDER`; `_in_written_order`
+moves only names, among the positions names hold, so numbers stay first and units keep the
+page's order; a product never written (`transpose(T)*k*T`) takes the order its names were
+first written together in, and names never written together keep the old rule. 14
+contracts; mutation 10/10; suite 2738. Rows that move: one reference row (memoria
+`L R_B` → `R_B L`, as written), E1 and E2 (`a P` → `P a`, three rows), the derivation
+(21 `A E` → `E A`), and eight contracts updated with notes - among them his earlier choice
+`q*x*L/2` → `q L x` now reads `q x L` as written (the coordinate-last rule still answers
+for products the sheet did not write), and ACI's `As*fy` now reads `As fy`. Sums keep the
+page's order. Nothing merges until he approves these rows; then release 0.33.0.
+
+**Then: he runs `/code-review ultra 265`.** The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.

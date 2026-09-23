@@ -329,6 +329,48 @@ def measured_units_in(tree) -> frozenset[str]:
     return frozenset(measured)
 
 
+def record_written_order(tree, order: dict) -> None:
+    """Note in `order` which name each product of a statement writes before which.
+
+    SymPy keeps no order for a product - `E*A` is stored `A*E` as it is read - so the
+    order the engineer wrote is taken here, from the tree, before it is lost: for every
+    product, each pair of names it holds, keyed by the pair and valued by which came
+    first. The first writing is kept (`setdefault`): a page that writes `E*A` and then
+    `A*E` reads one way throughout rather than a row changing with what came after it.
+
+    A power counts by its base, `L^2` is `L`; a call or a sum is not a name and its own
+    products are read on their own. Units are noted like any name and the printer leaves
+    them to the page's unit order.
+    """
+
+    def names(node, found: list) -> None:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Div)):
+            names(node.left, found)
+            names(node.right, found)
+            return
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            names(node.operand, found)
+            return
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+            node = node.left
+        if isinstance(node, ast.Name):
+            found.append(node.id)
+
+    def visit(node, inside: bool) -> None:
+        product = isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Div))
+        if product and not inside:
+            found: list = []
+            names(node, found)
+            for index, first in enumerate(found):
+                for second in found[index + 1:]:
+                    if first != second:
+                        order.setdefault(frozenset((first, second)), (first, second))
+        for child in ast.iter_child_nodes(node):
+            visit(child, product or (inside and isinstance(node, ast.UnaryOp)))
+
+    visit(tree, False)
+
+
 # The calls that leave a form of their own for the row to show. A statement that is one
 # of them shows that form; a statement holding one inside something larger is read again.
 _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
@@ -372,6 +414,9 @@ class EngineeringEngine:
         # uses as units, not as variables that share their names. See
         # `measured_units_in`.
         self.measured_units: set[str] = set()
+        # Which name this sheet wrote before which in a product, first writing kept. See
+        # `record_written_order`.
+        self.written_order: dict[frozenset[str], tuple[str, str]] = {}
         self.units_read_by_line: dict[str, frozenset[str]] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
@@ -841,6 +886,7 @@ class EngineeringEngine:
         self.numeric_guards.clear()
         self.names_read_as_units.clear()
         self.measured_units.clear()
+        self.written_order.clear()
         self.units_read_by_line.clear()
         self.numeric_context.reset()
 
@@ -878,12 +924,14 @@ class EngineeringEngine:
         expression = getattr(statement, "expression", None)
         if expression is not None:
             self.measured_units |= measured_units_in(expression)
+            record_written_order(expression, self.written_order)
         # A matrix written `[a, b; c, d]` keeps its entries apart from the statement's own
         # tree, and a stiffness matrix is where `-1*kN/m` is most often written.
         for binding in getattr(statement, "matrix_literals", ()):
             for row in binding.literal.rows:
                 for entry in row:
                     self.measured_units |= measured_units_in(entry)
+                    record_written_order(entry, self.written_order)
         result = self._evaluate_statement(statement)
         read = frozenset(getattr(result, "unit_literals", ())) | frozenset(
             getattr(result, "written_units", ())

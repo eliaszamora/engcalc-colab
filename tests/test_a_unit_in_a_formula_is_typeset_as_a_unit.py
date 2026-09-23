@@ -124,11 +124,14 @@ def test_a_definition_too_long_for_one_row_is_set_the_same_way(monkeypatch, caps
 
 def test_a_mass_named_m_is_still_a_mass(monkeypatch, capsys):
     """`m := 500*kg` makes `m` a value, and the same precedence the arithmetic uses
-    decides the type: italic, and no thin space as if it were a unit."""
+    decides the type: italic, and no thin space as if it were a unit.
+
+    `m a` since 0.33.0, the order it was written in; it read `a m` by the alphabet. See
+    `test_a_product_keeps_the_order_it_was_written_in`."""
     math = page(monkeypatch, "m := 500*kg\na := 2*m/s^2\nF = m*a\n")
     capsys.readouterr()
 
-    assert r"F & = & \displaystyle a m" in math, math
+    assert r"F & = & \displaystyle m a" in math, math
 
 
 def test_two_names_are_not_set_apart(monkeypatch, capsys):

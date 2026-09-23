@@ -25,6 +25,7 @@ from .parser import parse_cell
 from .presentation import render_presented_plot
 from .renderer import (
     MEASURED_UNITS,
+    WRITTEN_ORDER,
     PALETTE_NAMES,
     RenderSettings,
     palette_unit_names,
@@ -241,9 +242,12 @@ class EngMagics(Magics):
         # prints, so a unit alone is written with its one and a variable sharing its
         # name is not.
         token = MEASURED_UNITS.set(self.engine.measured_units)
+        # And the order its products were written in, so `E*A` reads `E A`.
+        order = WRITTEN_ORDER.set(self.engine.written_order)
         try:
             return self._eng_cell(cell)
         finally:
+            WRITTEN_ORDER.reset(order)
             MEASURED_UNITS.reset(token)
 
     def _eng_cell(self, cell: str):
