@@ -58,7 +58,11 @@ def test_breakpoint_actual_value_can_govern_global_maximum():
     points, _, _, _, unresolved = solve_extrema_exact(expr, x, domain, context)
 
     at_point = next(point for point in _points_at(points, 2) if point.side == "at")
-    assert "boundary" in at_point.roles
+    # `breakpoint` since 2026-09-23: x = 2 is inside the domain 0 to 4, where the law
+    # changes; it was labelled `boundary`, the word for the ends of the domain. See
+    # test_a_breakpoint_is_not_a_boundary. What this contract is about is unchanged.
+    assert "breakpoint" in at_point.roles
+    assert "boundary" not in at_point.roles
     assert "global_max" in at_point.roles
     assert "local_max" in at_point.roles
     assert unresolved is False
