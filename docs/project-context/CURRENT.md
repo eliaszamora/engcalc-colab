@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.31.18** — this release PR, carrying #247 (`9b45077`); its closure is recorded below |
-| before that | **0.31.17** — #244, `b02b9b0`, verified after its merge (below) |
-| open PRs | this release's |
+| released | **0.31.18** — #248, `9be53ad`, carrying #247; six jobs and both qualification runs green on it, verified after its merge (below) |
+| before that | **0.31.17** — #244, `b02b9b0` |
+| open PRs | **#249** `min`/`max` (green; its merge was refused by the session's permission system and waits on him) · **#250** `interp`, stacked on #249 · **#251** draft, a coefficient printed as typed — **waiting on his decision** · this record |
 | default suite | **2608 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -171,16 +171,45 @@ the thirteen sheets and eighteen exercises byte-identical to 0.31.17.
 Known, found with it and not caused by it: `extrema(sqrt(x), x, -1, 4)` reports x = 4 as
 both global max and global min and misses the minimum at x = 0.
 
+### 0.31.18 closed, 0.32.0 built
+
+**0.31.18 verified after its merge**: six jobs and both qualification runs green on
+`9be53ad`; a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
+in a Colab-like venv resolved to `9be53ad`, upgraded nothing, installed 29 files
+byte-identical to `src` and passed the 24-check smoke outside the repository.
+
+**0.32.0 is built and not merged** — the two functions he approved on 2026-09-23:
+
+- **#249 `min`/`max`** in the order the code writes them. SymPy's `Min`/`Max` sort their
+  arguments; `min_max.WrittenMin/WrittenMax` build the real lattice and put the arguments
+  back (built through the subclass, `max(3, 5)` is 3 — pinned). `numeric` shows each limit
+  worked out: `min((2.00 m), (2.22 m), (3.00 m)) = 2.00 m`. 14 contracts, mutation 14/15
+  (the survivor, a written-form entry, changed nothing and was removed). Six jobs green.
+  **`gh pr merge` was refused by the session's permission classifier ("merge without
+  review")**, so it waits for him to merge it or allow it.
+- **#250 `interp(x, [x_i], [y_i])`**, stacked on #249: the table as written, the segment
+  used worked out in the table's unit, refusal outside the table. Its derivative stays
+  unevaluated — SymPy's chain rule recursed through the table's matrices, reached by `plot`.
+  21 contracts, mutation 17/17. Known: `extrema` over it answers in one line that it cannot
+  validate the kink.
+- **#251 (draft), a coefficient printed as typed — his decision.** The Float printer rounds
+  every number longer than the precision, so `0.125 q L²` reads `0.12 q L²` and ACI's φ
+  table `[0.002, 0.005]` reads `[2.00×10⁻³, 0.01]`. Proposed: at most six significant
+  figures in plain notation prints as typed; artefacts (16–17 figures) round as before. No
+  row of the 13 sheets or 18 exercises moves; it changes a contract that pinned `0.1234` →
+  `0.12`. 8 contracts, mutation 5/5.
+
+All three leave the 13 reference sheets and 18 exercises byte-identical to 0.31.18.
+
 ### Exact next step
 
-Close 0.31.18: a wheel from `git archive` of the release commit, a clean Colab-like venv,
-the smoke outside the repository, the suite against the wheel, the thirteen sheets from
-the wheel; then CI and both qualification runs on the merge commit and a `git+https`
-install of `main`. **Then 0.32.0**, approved in the same message: `min`/`max` in the
-order the code writes them (SymPy's `Min`/`Max` reorder their arguments) and linear
-interpolation from a table. Known and not requested: a wide substitution over plain
-definitions splits into additive terms (`keep` avoids it); an `N` never defined still reads
-as one newton in silence (pinned by `test_an_undefined_axial_force_reads_as_newtons`).
+**Waiting on him:** (1) merge #249, or allow the merge; (2) yes or no on #251, with the
+table of rows in its description. Then: #250 onto `main`, #251 if he says yes, and the
+0.32.0 release PR closed like 0.31.18 (wheel, clean venv, smoke, suite against the wheel,
+thirteen sheets, post-merge CI and `git+https`). Known and not requested: a wide
+substitution over plain definitions splits into additive terms (`keep` avoids it); an `N`
+never defined still reads as one newton in silence; `extrema(sqrt(x), x, -1, 4)` misses the
+minimum at 0.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.
