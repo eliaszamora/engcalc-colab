@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.32.3** — this release PR, carrying #266 and #267; its closure is recorded below |
-| before that | **0.32.2** — #263, `2da4dea`, verified after its merge |
-| open PRs | this release's; #265, the ultra-review frame, a draft never to be merged |
+| released | **0.32.3** — #268, `6aa6001`, carrying #266 and #267; six jobs and both qualification runs green on it, verified after its merge (below) |
+| before that | **0.32.2** — #263, `2da4dea` |
+| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` — a draft never to be merged, head `review/since-0.31.17` = `6aa6001` |
 | default suite | **2723 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -292,7 +292,15 @@ The 13 reference sheets are byte-identical through both. Suite 2723; deep 53.
 
 ### Exact next step
 
-Close 0.32.3 like 0.32.2; then he runs `/code-review ultra 265`. Known and not requested:
+**0.32.3 is closed.** On the release commit: a wheel from `git archive`, 31 files
+byte-identical to `src`; in a clean Colab-like venv it upgrades nothing; 51 smoke checks
+outside the repository, the whole matrix derivation sheet among them; the suite against
+the wheel, 2723; the thirteen sheets identical, and to 0.32.2. After its merge: six jobs
+and both qualification runs green on `6aa6001`, and a clean `git+https` install of `main`
+resolved to it, upgraded nothing, installed 31 files identical to `src`, passed the 51.
+
+**Next: he runs `/code-review ultra 265`.** The findings come back to be verified by
+running them before anything is fixed. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
 
