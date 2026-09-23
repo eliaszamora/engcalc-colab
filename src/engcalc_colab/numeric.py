@@ -517,7 +517,10 @@ class NumericContext:
         overrides: dict[str, Any] | None = None,
     ) -> tuple[int, ...]:
         expression = sp.sympify(expression)
-        fixed_overrides = dict(overrides or {})
+        # A unit written in the function - `V(x) = 30*kN - q*x`, a breakpoint `x <= 1*m` -
+        # is resolved as a unit, as every other evaluation resolves it. Looking every name
+        # up among the sheet's values raised a KeyError on `kN`, and the figure was lost.
+        fixed_overrides = self.unit_literal_overrides(expression, overrides)
         names = sorted(symbol.name for symbol in expression.free_symbols)
         previous = None
         starts: list[int] = []
