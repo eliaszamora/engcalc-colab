@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.32.0** — #253, `ec90dfc`, carrying #249, #250 and #251; six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.31.18** — #248, `9be53ad` |
-| open PRs | only this record's |
-| default suite | **2657 passing**, about a minute and a half with `-n auto` |
+| released | **0.32.1** — this release PR, carrying #255, #256, #257 and #258; its closure is recorded below |
+| before that | **0.32.0** — #253, `ec90dfc`, verified after its merge |
+| open PRs | this release's |
+| default suite | **2684 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -203,21 +203,47 @@ to the ones tested.
 Of the thirteen reference sheets and eighteen gap-map exercises, nothing moves with the
 three together. Suite 2657.
 
+### 0.32.1 — what extrema could not see
+
+**0.32.0 closed** (#253, `ec90dfc`), verified after its merge and recorded by #254.
+
+He asked on 2026-09-23, after seeing 0.32.0 in Colab, for the four open items to be
+addressed (*"aborda los puntos 1 2 3 y 4 según tus recomendaciones y si se deben tomar
+decisiones las dejo bajo tu mano"*), and asked why the function is called `extrema`: it is
+English, the plural of *extremum*, as *maxima* is of *maximum*.
+
+- **1. #255 (`cc18299`) `extrema` reads its function across the whole domain.** A domain
+  end the analysis could not evaluate was dropped in silence: `sqrt(x)` on [-1, 4] named
+  x = 4 global max and min, `1/x` on [0, 2] named x = 2 the global max. A function with no
+  real value in the domain is refused on `plot`'s grid (only for functions that can leave
+  the reals); a singular end is read from its one side. 11 contracts; mutation 9/9.
+- **2. #258 `extrema` over an `interp`**: read as its piecewise (`Interpolation.as_piecewise`),
+  the domain checked against the table first. Mutation 5/6, the survivor equivalent. A
+  restriction to `interp(x, ...)` was measured, cost `interp(x/2, ...)`, and was removed.
+  On the way, two defects on `main`, each its own PR:
+  - **#256 (`4087749`) a unit alone in a sum** — `1*kN + 4*kN*x/m` failed in `numeric` and
+    `table` with Pint's words; it made a piecewise in kN drop its x = 0 end in `extrema`.
+  - **#257 (`59d849d`) a plot reads a unit written in its function** — `V(x) = 30*kN - q*x`
+    could not be drawn (KeyError in `piecewise_segment_starts`).
+- **3. `0.90` → `0.9`: decided not to do.** The number reaches EngCalc as a float that
+  cannot remember its zero. Keeping the typed spelling means carrying it from the parser
+  into SymPy, and a Float subclass holding it is unsafe: SymPy caches expressions by value,
+  so one statement's spelling could print in another. A trailing zero is not worth that.
+- **4. More Calcpad functions: decided not to do**, as recommended: they pull EngCalc
+  towards a programming language. `ceiling` (number of bars) is the first candidate if a
+  sheet of his asks for it.
+
+The 13 reference sheets and 18 exercises are byte-identical to 0.32.0 through all four.
+Suite 2684; deep 53.
+
 ### Exact next step
 
-**0.32.0 is closed.** On the release commit: a wheel from `git archive`, its 31 package
-files byte-identical to `src`; in a clean Python 3.12 venv with Colab's pins it adds Pint
-and four small dependencies and upgrades nothing; 33 smoke checks outside the repository;
-the suite against the wheel, 2657 (the surface test passes on the wheel's own `magic.py`);
-the thirteen sheets identical from the wheel and the tree, and to 0.31.18. After its merge:
-six jobs and both qualification runs green on `ec90dfc`, and a clean `git+https` install of
-`main` resolved to `ec90dfc`, upgraded nothing, installed 31 files identical to `src` and
-passed the 33 checks.
-
-Nothing is pending. Known and not requested: a wide substitution
-over plain definitions splits into additive terms (`keep` avoids it); an `N` never defined
-still reads as one newton in silence; `extrema(sqrt(x), x, -1, 4)` misses the minimum at 0;
-`extrema` over an `interp` does not validate its kinks; `1*m` in a matrix prints `m`.
+Close 0.32.1 like 0.32.0: wheel from `git archive`, clean Colab-like venv, the smoke outside
+the repository, the suite against the wheel, the thirteen sheets from the wheel; then CI and
+both qualification runs on the merge commit and a `git+https` install of `main`. Known and
+not requested: `1*m` prints `m` (formula, matrix, characteristic row); `0.90` prints `0.9`; a
+wide substitution over plain definitions splits into additive terms (`keep` avoids it); an
+`N` never defined still reads as one newton in silence.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.

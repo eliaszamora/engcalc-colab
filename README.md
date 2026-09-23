@@ -13,7 +13,37 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.32.0**.
+Current version: **0.32.1**.
+
+
+## v0.32.1 what extrema could not see
+
+Four corrections, found working through the items left open after 0.32.0.
+
+**`extrema` reads its function across the whole domain.** `extrema(sqrt(x), x, -1, 4)`
+answered x = 4 as both global maximum and minimum, and `extrema(1/x, x, 0, 2)` called x = 2
+the global maximum of a function that grows without bound towards 0. A domain end the
+analysis could not evaluate was dropped in silence, and the global roles handed out among
+what was left. Now a function with no real value somewhere in the domain is refused in one
+line, as `plot` and `table` refuse it - *extrema reads its function across the whole
+domain, and at x = -1 the square root of -1 has no real value* - and a singularity at a
+domain end is read from its one side: *unbounded above*, and no global maximum claimed.
+
+**The extremes of a table are found at its points.** `extrema` over an `interp` answered
+that it could not validate a solution set. It reads the table as the piecewise it is, one
+segment per pair of points, and finds the peak where the slope jumps. A domain past the
+table is refused, as `interp` refuses a point outside it.
+
+**A unit alone in a sum is a quantity of one.** `k(x) = 1*kN + 4*kN*x/m`, then `numeric`
+or `table`, failed with Pint's own words: `1*kN` folds to the unit `kN`, and a unit cannot be
+added to. The same defect made `extrema` over a piecewise in kilonewtons drop the end of its
+domain and name the wrong minimum.
+
+**A plot reads a unit written in its function.** `V(x) = 30*kN - q*x` could be evaluated
+and tabulated and not drawn - *symbolic evaluation failed: 'kN'* - and the same for
+`envelope` and a piecewise whose breakpoint was written in metres.
+
+None of the thirteen reference sheets moves.
 
 
 ## v0.32.0 min, max and a table
@@ -70,8 +100,8 @@ shows the segment used before the value, in the table's own unit - a point in mi
 read against a table in metres is worked out in metres. Outside the table it refuses:
 *interp does not extrapolate: 2.5 lies outside its table, 0.5 to 2*. A table is a matrix,
 which `:=` does not hold, so it is defined with `=` and read with `numeric`. `plot` and
-`roots` work over it; `extrema` does not - a broken line's extremes sit where its slope
-jumps, and it says so in one line.
+`roots` work over it, and since 0.32.1 so does `extrema`, which finds a broken line's
+extremes at the table's points.
 
 ### A coefficient is printed as it was typed
 
@@ -3196,6 +3226,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.32.1** — `extrema` refuses a function with no real value in its domain and reads a singular end as unbounded, instead of naming a wrong global extreme; it finds the extremes of an `interp` at the table's points; `1*kN + 4*kN*x/m` evaluates; and `V(x) = 30*kN - q*x` can be plotted. No reference sheet moves.
 - **0.32.0** — `min` and `max` in the order the code writes them, each limit worked out before the one that governs; `interp(x, [x_i], [y_i])`, a value read from a table, with the segment used worked out and no extrapolation; and a coefficient printed as it was typed (`0.125`, not `0.12`). No reference sheet moves.
 - **0.31.18** — a value with no real result says so. `sqrt(-4)` or a negative discriminant under a root was stored as a complex number and the page failed with a traceback that took the whole cell with it. The value is now refused where it is made, in one line that names the operation and the value, with the rows before it on the page; `log`, `asin` and `acos` outside their domain say the same on every Python version. No reference sheet moves.
 - **0.31.17** — a sum does not open with a minus. The frame wrote `(- x_1 + x_2)` and an effective depth read `- cover - db/2 - db_st + h`: a sum was printed in SymPy's order, which opens with whichever term is alphabetically first. A sum ordered by the powers of a name is now read backwards when that opens it with a plus, keeping its powers in order; any other sum lets its first positive term lead. Four rules were measured first; the simpler ones broke an expanded polynomial's degree order. The frame's fourteen rows move in each palette, and no number changes.
@@ -3291,4 +3322,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.32.0`.
+Version: `0.32.1`.
