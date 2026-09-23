@@ -8,9 +8,9 @@ of `CURRENT.md` was written at 0.13.0 and says so._
 
 | | |
 |---|---|
-| `main` | #241 merged, 0.31.16 (before it `6fae2b0`, #240) |
-| declared version | **0.31.16** — released by #241, carrying #238, #239 and #240 |
-| default suite (`pytest -q`) | **2567 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
+| `main` | #244 merged, 0.31.17 (before it `389a251`, #243) |
+| declared version | **0.31.17** — released by #244, carrying #243 |
+| default suite (`pytest -q`) | **2576 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0`; on every PR, every push to `main`, every Monday, and by hand |
 
@@ -96,9 +96,8 @@ seven more, of which four are fixed. What is open, in the order I would take it:
 - ~~a modulus derived from one written in MPa is shown in GPa~~ — **closed by #122**
   (2026-09-08), which this list was never told of. Re-checked on 2026-09-22: `G = E/2.6`
   from `E := 200000*MPa` reads `76923.08 MPa`
-- **the terms of a sum are printed in SymPy's order**, not the written one — found
-  re-checking this list on 2026-09-22; `CURRENT.md` has the measurement and why it waits
-  on him
+- ~~the terms of a sum are printed in SymPy's order~~ — **fixed by #243, released in
+  0.31.17**, a rule he chose with every moved row in front of him
 
 The finished ones are kept rather than deleted: each says what the answer turned out to
 be and what it cost to find, which is the part a summary would lose.

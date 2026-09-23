@@ -12,9 +12,11 @@ _2026-09-22._
 
 | | |
 |---|---|
-| released | **0.31.16** — #241, `main` at `131137d`, carrying #238, #239 and #240; six jobs and both qualification runs green on that SHA |
-| open PRs | none |
-| default suite | **2567 passing**, about a minute with `-n auto` |
+| released | **0.31.17** — release PR #244, carrying #243 |
+| `main` before it | `389a251`; six jobs and both qualification runs green on that SHA |
+| before that | **0.31.16** — #241, `131137d`, verified after its merge (below) |
+| open PRs | none besides the release |
+| default suite | **2576 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -81,7 +83,7 @@ reads `76923.08 MPa`; *a wide substitution is split into additive terms* is stil
 `phiMn = phi*As*fy*(d - a/2)` over definitions of `d` and `a` substitutes into five rows —
 and `keep` on those definitions avoids it, as RC-3 intended.
 
-### The order of a sum — PR #243, waiting on his yes to merge
+### The order of a sum — #243, merged with his yes, released as 0.31.17
 
 Found re-checking NEXT.md's list: a sum was printed in SymPy's order, so
 `d = h - cover - db_st - db/2` read `- cover - db/2 - db_st + h` and his frame wrote
@@ -111,13 +113,36 @@ old order and were rewritten with a note each; two of them used the README's pro
 cantilever to exercise row wrapping, which no longer wraps (its result is now one compact
 row), so they carry a six-load integral that wraps either way. Suite 2576.
 
+He saw every row #243 moves and answered *"Tienes mi aprobación"* (2026-09-22). Merged as
+`389a251`; six jobs and both qualification runs green on it.
+
+Release evidence for 0.31.17, on the release commit's tree:
+
+- the seven version assertions RED before the bump and GREEN after; source suite 2576,
+  twice;
+- of the thirteen sheets, only the frame moves against 0.31.16 — fourteen rows in each of
+  its three palettes;
+- a wheel built from `git archive` of the commit, its 29 package files byte-identical to
+  `src`; installed in a clean Python 3.12 venv holding Colab's pins it adds Pint 0.26.1 and
+  four small dependencies and **upgrades nothing**;
+- outside the repository, through `%load_ext`, eighteen smoke checks: the fifteen of 0.31.16
+  plus the frame writing `(x_2 - x_1)`, an effective depth opening with `h` in its
+  definition and its substitution, and a polynomial keeping its powers in order;
+- the whole suite against the installed wheel from a copy of the tree with no `src/`: all
+  pass except `test_the_ipython_surface_stays_small`, which reads `src/.../magic.py` by path
+  and passes when handed the wheel's own copy;
+- the thirteen sheets render byte-identical from the wheel and from the working tree.
+
 ### Exact next step
 
-1. **Show him every moved row and wait for his yes** before merging #243 — an ordering rule
-   is chosen with the rows in front of him.
-2. With it: merge #243 and release 0.31.17 the way 0.31.16 was closed (#241).
-3. Known and not requested: a wide substitution over plain definitions splits into
-   additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
+1. #244 green on its exact head, then squash-merge with `--match-head-commit` — his
+   approval of 2026-09-22 covers it.
+2. After the merge: six jobs and both qualification runs green on the merge commit, and a
+   clean `git+https` install in a Colab-like venv reports 0.31.17, upgrades nothing and passes
+   the same smoke.
+3. Then nothing is pending. Known and not requested: a wide substitution over plain
+   definitions splits into additive terms (`keep` avoids it); an `N` never defined still
+   reads as one newton in silence.
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.
