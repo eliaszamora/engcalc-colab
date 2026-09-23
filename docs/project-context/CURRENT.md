@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.1** - this release PR, carrying #273; its closure is recorded below |
-| before that | **0.33.0** - #271, `7bfd026`, verified after its merge |
-| open PRs | this release's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged |
+| released | **0.33.1** - #274, `d225e48`, carrying #273; six jobs and both qualification runs green on it, verified after its merge (below) |
+| before that | **0.33.0** - #271, `7bfd026` |
+| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged, head `review/since-0.31.17` moved to `d225e48`, so it covers #247 through #273 |
 | default suite | **2745 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -329,9 +329,18 @@ columns. Shown `\\`, `4pt`, `6pt`, `8pt` side by side, he chose the recommended 
 width. 7 contracts; nine contracts pinned the bare `\\` and were updated with notes (one
 test parser read the `6` of `[6pt]` as a mode entry). Moves: the separator only - dinámica
 6, pórtico 96 × 3 palettes, the derivation 60; every other page and all 18 exercises
-byte-identical. Suite 2745. Released as 0.33.1; its closure is to be recorded here.
+byte-identical. Suite 2745. Released as 0.33.1 (#274).
 
-**Next: he runs `/code-review ultra 265`** (its head is `7bfd026`, so it covers #270). The findings come back to be verified by
+**0.33.1 is closed.** On the release commit `c10a982`: version assertions RED then GREEN;
+source suite 2745, twice; wheel from `git archive`, 31 files identical to `src`; clean
+Colab-like venv upgrades nothing; smoke 56/56 outside the repository (60 derivation rows
+`\\[6pt]` apart, no bare separator); suite against the wheel 2745; 13 sheets and 18
+exercises identical to the approved #273 branch. After its merge the push triggered CI
+and the deep gate this time: six jobs and both qualification runs green on `d225e48`; a
+clean `git+https` install of `main` resolved to it, upgraded nothing, 31 files identical
+to `src`, smoke 56/56.
+
+**Next: he runs `/code-review ultra 265`** (its head is `d225e48`, so it covers #273). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
