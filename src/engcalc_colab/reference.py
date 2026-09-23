@@ -332,6 +332,17 @@ _ENTRIES: tuple[CallHelp, ...] = (
         arguments=(("a, b, ...", "two or more values of one kind"),),
         example="V_A := 30*kN\nV_B := 45*kN\nV_max = max(V_B, V_A)\nnumeric(V_max)",
     ),
+    CallHelp(
+        name="interp",
+        summary="A value read from a table, on the straight line between the two points around it.",
+        forms=("interp(x, [x_1, x_2, ...], [y_1, y_2, ...])",),
+        arguments=(
+            ("x", "the point to read the table at, inside it"),
+            ("[x_1, x_2, ...]", "the table's points, in increasing order"),
+            ("[y_1, y_2, ...]", "the value at each point"),
+        ),
+        example="e_t := 0.003\nphi = interp(e_t, [0.002, 0.005], [0.65, 0.90])\nnumeric(phi)",
+    ),
     _scalar("sqrt", "The square root.", "16"),
     _scalar("sin", "The sine of an angle.", "30*deg"),
     _scalar("cos", "The cosine of an angle.", "30*deg"),
