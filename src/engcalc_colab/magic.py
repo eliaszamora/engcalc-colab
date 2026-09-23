@@ -24,6 +24,7 @@ from .models import (
 from .parser import parse_cell
 from .presentation import render_presented_plot
 from .renderer import (
+    MEASURED_UNITS,
     PALETTE_NAMES,
     RenderSettings,
     palette_unit_names,
@@ -236,6 +237,16 @@ class EngMagics(Magics):
 
     @cell_magic
     def eng(self, line: str, cell: str):
+        # The units this sheet writes as measurements reach the printer while the cell
+        # prints, so a unit alone is written with its one and a variable sharing its
+        # name is not.
+        token = MEASURED_UNITS.set(self.engine.measured_units)
+        try:
+            return self._eng_cell(cell)
+        finally:
+            MEASURED_UNITS.reset(token)
+
+    def _eng_cell(self, cell: str):
         pending_results: list[CalculationResult] = []
         try:
             for item in parse_cell(cell):

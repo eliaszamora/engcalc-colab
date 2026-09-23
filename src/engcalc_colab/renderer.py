@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+from contextvars import ContextVar
 import math
 import re
 from dataclasses import dataclass, replace
@@ -92,6 +93,13 @@ class RenderSettings:
 
 
 _DEFAULT_RENDER_SETTINGS = RenderSettings()
+
+# The unit aliases the sheet being printed writes as a measurement (`1*m`), set by the
+# magic for the cell it prints. A unit alone is written with its one only if it is
+# among them: the same letters name variables (`s` a sine, `N` a force), and in 0.32.2
+# a transformation matrix read `[c, 1 s; -1 s, c]`. Empty outside a cell, which is
+# the page as it was before any one was added.
+MEASURED_UNITS: ContextVar = ContextVar("measured_units", default=frozenset())
 
 
 def _letters_of(latex: str) -> str:
@@ -215,7 +223,11 @@ class _EngineeringLatexPrinter(LatexPrinter):
             if not factor.exp.is_Rational:
                 return False
             factor = factor.base
-        return isinstance(factor, sp.Symbol) and factor.name in self.unit_literals
+        return (
+            isinstance(factor, sp.Symbol)
+            and factor.name in self.unit_literals
+            and factor.name in MEASURED_UNITS.get()
+        )
 
     def _as_ordered_terms(self, expr, order=None):
         """A sum's terms in the order the page writes them. See `_ordered_sum_terms`."""

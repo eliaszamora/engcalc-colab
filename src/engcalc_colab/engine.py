@@ -283,6 +283,52 @@ class _QuantityOfTheFormula(_NumericAstEvaluator):
         return super().visit_Call(node)
 
 
+def measured_units_in(tree) -> frozenset[str]:
+    """The unit aliases a statement writes as a measurement.
+
+    A measurement is a product of numbers and units and nothing else: `1*m`, `2*kN/m`,
+    `-1*kN/m`, `0.25*m^2`. A name written that way is a unit of this sheet. The same
+    letters also name quantities - `s` a sine, `N` an axial force, `m` a mass - and in
+    `c^2 + s^2` or `N + P` the name is never written so. Only whole products count:
+    `4*kN*x/m` has an `x` in it and measures nothing, and `2*m*a` does not make a mass a
+    metre. An exponent is not a factor, so `s^2` alone measures nothing either.
+    """
+    measured: set[str] = set()
+
+    def factors(node, found: list) -> bool:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Div)):
+            return factors(node.left, found) and factors(node.right, found)
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            return factors(node.operand, found)
+        if (
+            isinstance(node, ast.BinOp)
+            and isinstance(node.op, ast.Pow)
+            and isinstance(node.right, ast.Constant)
+        ):
+            return isinstance(node.left, ast.Name) and factors(node.left, found)
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
+                return False
+            found.append(None)
+            return True
+        if isinstance(node, ast.Name) and node.id in _UNIT_ALIASES:
+            found.append(node.id)
+            return True
+        return False
+
+    def visit(node, inside: bool) -> None:
+        product = isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Div))
+        if product and not inside:
+            found: list = []
+            if factors(node, found) and None in found:
+                measured.update(name for name in found if name is not None)
+        for child in ast.iter_child_nodes(node):
+            visit(child, product or (inside and isinstance(node, ast.UnaryOp)))
+
+    visit(tree, False)
+    return frozenset(measured)
+
+
 class EngineeringEngine:
     def __init__(self) -> None:
         self.namespace: dict[str, object] = {}
@@ -317,6 +363,10 @@ class EngineeringEngine:
         # Every alias this session has read as a unit, and which aliases each line read
         # that way, so that a name changing meaning can say so. See `evaluate`.
         self.names_read_as_units: set[str] = set()
+        # Unit aliases this sheet writes as a measurement - `1*m`, `2*kN/m` - and so
+        # uses as units, not as variables that share their names. See
+        # `measured_units_in`.
+        self.measured_units: set[str] = set()
         self.units_read_by_line: dict[str, frozenset[str]] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
@@ -758,6 +808,7 @@ class EngineeringEngine:
         self.symbols.clear()
         self.numeric_guards.clear()
         self.names_read_as_units.clear()
+        self.measured_units.clear()
         self.units_read_by_line.clear()
         self.numeric_context.reset()
 
@@ -792,6 +843,15 @@ class EngineeringEngine:
         A statement that fails reads nothing the sheet goes on with, and says nothing.
         """
         self.notices = []
+        expression = getattr(statement, "expression", None)
+        if expression is not None:
+            self.measured_units |= measured_units_in(expression)
+        # A matrix written `[a, b; c, d]` keeps its entries apart from the statement's own
+        # tree, and a stiffness matrix is where `-1*kN/m` is most often written.
+        for binding in getattr(statement, "matrix_literals", ()):
+            for row in binding.literal.rows:
+                for entry in row:
+                    self.measured_units |= measured_units_in(entry)
         result = self._evaluate_statement(statement)
         read = frozenset(getattr(result, "unit_literals", ())) | frozenset(
             getattr(result, "written_units", ())
