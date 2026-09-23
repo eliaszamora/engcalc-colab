@@ -13,7 +13,39 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.31.17**.
+Current version: **0.31.18**.
+
+
+## v0.31.18 a value with no real result says so
+
+One correction, found comparing EngCalc with Calcpad.
+
+`sqrt(-4)`, or `sqrt(b^2 - 4*a*c)` over a negative discriminant, was stored as a complex
+number - Python answers `(-16) ** 0.5` with one - and the page, which prints real numbers,
+failed on it: Colab showed a traceback in place of the cell and not one of its rows, the
+definitions above the failing line included. Twelve paths led there, every one through a
+root or a fractional power: `:=`, `numeric`, `result`, a function at a point, a matrix, a
+`table`, a `plot`.
+
+EngCalc works in real numbers, and now says so where the value is made, in one line, with
+the rows before it on the page:
+
+```text
+engcalc: line 5: the square root of -16 has no real value; EngCalc works in real numbers
+engcalc: line 1: -8 raised to a fractional power has no real value; EngCalc works in real numbers
+```
+
+`log`, `asin` and `acos` outside their domain gave one line already, but in Python's words,
+`math domain error` on Colab. They now say which: *the logarithm of 0 has no real value; its
+argument must be positive*, *acos of 1.0000000000000002 has no real value; its argument must
+lie between -1 and 1* - every figure of a value a rounding left just outside the range.
+
+What is real stays real: `x^2` and `sqrt(x^2)` of a negative number, `(-2)^3`, `(-2)^(-1)`,
+`asin(1)`. `roots` over a domain where the function has no real value still finds the ones
+it has, and `abs(sqrt(-4))`, which drew `2.00`, is refused with its root. None of the
+thirteen reference sheets moves.
+
+A patch release: one correction.
 
 
 ## v0.31.17 a sum does not open with a minus
@@ -3093,6 +3125,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.31.18** — a value with no real result says so. `sqrt(-4)` or a negative discriminant under a root was stored as a complex number and the page failed with a traceback that took the whole cell with it. The value is now refused where it is made, in one line that names the operation and the value, with the rows before it on the page; `log`, `asin` and `acos` outside their domain say the same on every Python version. No reference sheet moves.
 - **0.31.17** — a sum does not open with a minus. The frame wrote `(- x_1 + x_2)` and an effective depth read `- cover - db/2 - db_st + h`: a sum was printed in SymPy's order, which opens with whichever term is alphabetically first. A sum ordered by the powers of a name is now read backwards when that opens it with a plus, keeping its powers in order; any other sum lets its first positive term lead. Four rules were measured first; the simpler ones broke an expanded polynomial's degree order. The frame's fourteen rows move in each palette, and no number changes.
 - **0.31.16** — what was still pending. A unit inside an eigenvalue reads as a unit (`λ = 2 kN/m` had an italic metre under a matrix that wrote it upright). `Hz` can be written and asked for, and the page never chooses it, so `2πf` still reads `1/s`. And a name read as a unit that is then given a value says so: `k := 2000*kN/m` then `m := 500*kg` drew `k = 4.00 kN/kg` the second time the cell ran, in silence; the rule is unchanged, and both moments a name changes meaning are now printed. The README opens with how to start.
 - **0.31.15** — what the audit found. `numeric(w, 1/s)` - the page's own spelling of an inverse second - stopped the cell while `s**-1` worked; a `1` over a unit is now its reciprocal, `2/s` is still refused, and `rad/s` keeps its radian. An eigenvalue's multiplicity was written `m`, beside the masses the modes came from; a simple eigenvalue carries no label now and a repeated one says `multiplicity 2`. Code nothing called is gone, and the whole suite runs every Monday against whatever PyPI serves.
@@ -3186,4 +3219,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.17`.
+Version: `0.31.18`.
