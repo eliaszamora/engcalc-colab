@@ -1913,10 +1913,18 @@ def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
     # and the transformation matrices do not get wider at all - their width is set by a
     # substitution row and the taller fractions fit inside it - and only the assembly
     # grows, 1224 px to 1696, which was past the notebook's output width either way.
-    body = r"\\".join(
+    body = _MATRIX_ROW_SEPARATOR.join(
         " & ".join(rf"\displaystyle {cell}" for cell in row) for row in rows
     )
     return rf"\left[\begin{{matrix}}{body}\end{{matrix}}\right]"
+
+
+# What separates one row of a matrix from the next. A bare `\\` left display fractions
+# nearly touching: measured in the notebook's MathJax build at 14 px type, 5.7 px between
+# one row's denominator and the next row's numerator in a stiffness matrix whose columns
+# stand at least 14 px apart. He asked whether the entries were touching and chose `6pt`,
+# which measures 14.2 px there - the rows as far apart as the columns.
+_MATRIX_ROW_SEPARATOR = r"\\[6pt]"
 
 
 def _matrix_latex(
@@ -2457,6 +2465,9 @@ def _latex_visual_width(latex: str) -> float:
     # it, so the two measure the same. Wrong since 0.31.2, which introduced `\dfrac` so
     # a computed block would read at the page's size.
     normalized = normalized.replace(r"\dfrac", r"\frac")
+    # A row's space, `\\[6pt]` between the rows of a matrix, adds height and draws
+    # nothing across; left in, its five characters were charged as width.
+    normalized = re.sub(r"\\\\\[[^\]]*\]", lambda _match: r"\\", normalized)
     normalized = normalized.replace(r"\left", "").replace(r"\right", "")
     normalized = normalized.replace(r"\,", "").replace(r"\!", "")
     normalized = normalized.replace(r"\quad", "  ")

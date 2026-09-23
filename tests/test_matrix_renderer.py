@@ -51,7 +51,8 @@ def test_row_and_column_vectors_keep_their_orientation():
     _matrix_markers(row)
     _matrix_markers(column)
     assert r"a & \displaystyle b & \displaystyle c" in row
-    assert r"a\\\displaystyle b\\\displaystyle c" in column
+    # Rows `\\[6pt]` apart since 0.33.1; see test_a_matrix_row_has_room.
+    assert r"a\\[6pt]\displaystyle b\\[6pt]\displaystyle c" in column
 
 
 def test_homogeneous_quantity_matrix_uses_one_common_unit_and_bare_cells():

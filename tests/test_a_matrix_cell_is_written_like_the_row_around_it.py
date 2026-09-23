@@ -179,8 +179,9 @@ def test_a_unit_in_a_matrix_cell_is_still_upright(page):
 def test_a_matrix_of_numbers_is_untouched(page):
     (cells,) = cells_of(page("A_1 = [ 1, 0; 0, 1 ]\n"))
 
+    # The rows `\\[6pt]` apart since 0.33.1; see test_a_matrix_row_has_room.
     assert cells == (
-        r"\displaystyle 1 & \displaystyle 0\\\displaystyle 0 & \displaystyle 1"
+        r"\displaystyle 1 & \displaystyle 0\\[6pt]\displaystyle 0 & \displaystyle 1"
     ), cells
 
 

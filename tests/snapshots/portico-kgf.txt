@@ -90,8 +90,8 @@ $q = [\theta_1,\ \Delta,\ \theta_4]^T$
 donde Delta es el desplazamiento lateral del nivel.
 
 === 13 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q & = & \displaystyle \left[\begin{matrix}\displaystyle \theta_{1}\\
-\displaystyle \Delta\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q & = & \displaystyle \left[\begin{matrix}\displaystyle \theta_{1}\\[6pt]
+\displaystyle \Delta\\[6pt]
 \displaystyle \theta_{4}\end{matrix}\right] \end{array}
 
 === 14 · HTML ===
@@ -103,29 +103,29 @@ $U = T\,q$
 reproduce automáticamente los apoyos y las restricciones cinemáticas. Las filas nulas son los grados de libertad impedidos; las filas con un uno son los que siguen directamente a una coordenada independiente.
 
 === 16 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle T & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 1 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 1 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle T & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 1 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 1 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 1\end{matrix}\right] \\[16pt]
-\displaystyle U & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\
-\displaystyle 0\\
-\displaystyle \theta_{1}\\
-\displaystyle \Delta\\
-\displaystyle 0\\
-\displaystyle 0\\
-\displaystyle \Delta\\
-\displaystyle 0\\
-\displaystyle 0\\
-\displaystyle 0\\
-\displaystyle 0\\
+\displaystyle U & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle \theta_{1}\\[6pt]
+\displaystyle \Delta\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle \Delta\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle 0\\[6pt]
 \displaystyle \theta_{4}\end{matrix}\right] \end{array}
 
 === 17 · HTML ===
@@ -137,37 +137,37 @@ $u_e^g = L_e\,U$
 Se construye desde la conectividad: la columna izquierda une los nodos 1 y 2, la derecha une el 4 con el 3, y la diagonal une el 2 con el 4. Para las columnas el subvector tiene seis componentes y para la diagonal, que es una barra, sólo cuatro traslaciones.
 
 === 19 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle L_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle L_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[16pt]
-\displaystyle L_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle L_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[16pt]
-\displaystyle L_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
+\displaystyle L_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0\end{matrix}\right] \\[16pt]
-\displaystyle u_{1g} & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\
-\displaystyle 0\\
-\displaystyle \theta_{1}\\
-\displaystyle \Delta\\
-\displaystyle 0\\
+\displaystyle u_{1g} & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle \theta_{1}\\[6pt]
+\displaystyle \Delta\\[6pt]
+\displaystyle 0\\[6pt]
 \displaystyle 0\end{matrix}\right] \\[8pt]
-\displaystyle u_{2g} & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\
-\displaystyle 0\\
-\displaystyle \theta_{4}\\
-\displaystyle \Delta\\
-\displaystyle 0\\
+\displaystyle u_{2g} & = & \displaystyle \left[\begin{matrix}\displaystyle 0\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle \theta_{4}\\[6pt]
+\displaystyle \Delta\\[6pt]
+\displaystyle 0\\[6pt]
 \displaystyle 0\end{matrix}\right] \\[8pt]
-\displaystyle u_{3g} & = & \displaystyle \left[\begin{matrix}\displaystyle \Delta\\
-\displaystyle 0\\
-\displaystyle 0\\
+\displaystyle u_{3g} & = & \displaystyle \left[\begin{matrix}\displaystyle \Delta\\[6pt]
+\displaystyle 0\\[6pt]
+\displaystyle 0\\[6pt]
 \displaystyle 0\end{matrix}\right] \end{array}
 
 === 20 · HTML ===
@@ -179,19 +179,19 @@ $u_e^l = R_e\,u_e^g$
 Para un elemento de pórtico plano la rotación actúa sobre las dos traslaciones de cada nodo y deja el giro intacto. Para la diagonal, que sólo tiene rigidez axial, basta proyectar las traslaciones de cada extremo sobre la dirección de la barra: dos filas para dos desplazamientos axiales.
 
 === 22 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle R_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle R_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1\end{matrix}\right] \\[16pt]
-\displaystyle R_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0\\
+\displaystyle R_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle c_{c} & \displaystyle s_{c} & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle - s_{c} & \displaystyle c_{c} & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 0 & \displaystyle 1\end{matrix}\right] \\[16pt]
-\displaystyle R_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{d} & \displaystyle s_{d} & \displaystyle 0 & \displaystyle 0\\
+\displaystyle R_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle c_{d} & \displaystyle s_{d} & \displaystyle 0 & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle c_{d} & \displaystyle s_{d}\end{matrix}\right] \end{array}
 
 === 23 · HTML ===
@@ -203,19 +203,19 @@ $A_e = R_e\,L_e\,T$        y        $u_e^l = A_e\,q$
 A\_e es la única matriz que hace falta después. Cada columna suya es la deformada local del elemento cuando una coordenada independiente vale la unidad y las demás cero, que es exactamente lo que su matriz de rigidez necesita saber.
 
 === 25 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle A_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle c_{c} & \displaystyle 0\\
-\displaystyle 0 & \displaystyle - s_{c} & \displaystyle 0\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle A_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle c_{c} & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle - s_{c} & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[8pt]
-\displaystyle A_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle 0 & \displaystyle 1\\
-\displaystyle 0 & \displaystyle c_{c} & \displaystyle 0\\
-\displaystyle 0 & \displaystyle - s_{c} & \displaystyle 0\\
+\displaystyle A_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle 0 & \displaystyle 1\\[6pt]
+\displaystyle 0 & \displaystyle c_{c} & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle - s_{c} & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[8pt]
-\displaystyle A_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle c_{d} & \displaystyle 0\\
+\displaystyle A_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle c_{d} & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \end{array}
 
 === 26 · HTML ===
@@ -225,13 +225,13 @@ A\_e es la única matriz que hace falta después. Cada columna suya es la deform
 Las columnas son elementos de pórtico plano con rigidez axial y flexional. La diagonal es una barra: su matriz es de 2x2 y sólo relaciona los dos desplazamientos axiales de sus extremos.
 
 === 28 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle k_{c} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle - \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle 0 & \displaystyle - \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}}\\
-\displaystyle 0 & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle 0 & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 E I_{c}}{L_{c}}\\
-\displaystyle - \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle - \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle 0 & \displaystyle \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}}\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle k_{c} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle - \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle 0 & \displaystyle - \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}}\\[6pt]
+\displaystyle 0 & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle 0 & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 E I_{c}}{L_{c}}\\[6pt]
+\displaystyle - \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0 & \displaystyle \frac{E A_{c}}{L_{c}} & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle - \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle 0 & \displaystyle \frac{12 E I_{c}}{L_{c}^{3}} & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}}\\[6pt]
 \displaystyle 0 & \displaystyle \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 E I_{c}}{L_{c}} & \displaystyle 0 & \displaystyle - \frac{6 E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[16pt]
-\displaystyle k_{d} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{E A_{d}}{L_{d}} & \displaystyle - \frac{E A_{d}}{L_{d}}\\
+\displaystyle k_{d} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{E A_{d}}{L_{d}} & \displaystyle - \frac{E A_{d}}{L_{d}}\\[6pt]
 \displaystyle - \frac{E A_{d}}{L_{d}} & \displaystyle \frac{E A_{d}}{L_{d}}\end{matrix}\right] \end{array}
 
 === 29 · HTML ===
@@ -243,23 +243,23 @@ $K_e = A_e^{T}\,k_e\,A_e$
 Las tres contribuciones se suman porque comparten las mismas coordenadas q, que es justamente lo que consiguió la cadena T, L\_e, R\_e.
 
 === 31 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle K_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\
-\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{c_{c}^{2} E A_{c}}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle 0\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle K_{1} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\[6pt]
+\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{c_{c}^{2} E A_{c}}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[8pt]
-\displaystyle K_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle \frac{c_{c}^{2} E A_{c}}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
+\displaystyle K_{2} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle \frac{c_{c}^{2} E A_{c}}{L_{c}} + \frac{12 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\[6pt]
 \displaystyle 0 & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
-\displaystyle K_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\
-\displaystyle 0 & \displaystyle \frac{c_{d}^{2} E A_{d}}{L_{d}} & \displaystyle 0\\
+\displaystyle K_{3} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 0 & \displaystyle 0\\[6pt]
+\displaystyle 0 & \displaystyle \frac{c_{d}^{2} E A_{d}}{L_{d}} & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 0\end{matrix}\right] \\[16pt]
-\displaystyle K & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\
-\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 c_{c}^{2} E A_{c}}{L_{c}} + \frac{c_{d}^{2} E A_{d}}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
+\displaystyle K & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle 0\\[6pt]
+\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{2 c_{c}^{2} E A_{c}}{L_{c}} + \frac{c_{d}^{2} E A_{d}}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\[6pt]
 \displaystyle 0 & \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}} & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
-& = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle 0\\
-\displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(1350.00\,\mathrm{cm}^{2}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(6.25\,\mathrm{cm}^{2}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{24\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}}\\
+& = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle 0\\[6pt]
+\displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(1350.00\,\mathrm{cm}^{2}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(6.25\,\mathrm{cm}^{2}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{24\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}}\\[6pt]
 \displaystyle 0 & \displaystyle \frac{6\,\left(1.00\right)\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{2}} & \displaystyle \frac{4\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
-& = & \displaystyle \left[\begin{matrix}\displaystyle 5.27 \times 10^{9}\,\mathrm{kgf} \cdot \mathrm{cm} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 0.00\\
-\displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 245047.18\,\frac{\mathrm{kgf}}{\mathrm{cm}} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf}\\
+& = & \displaystyle \left[\begin{matrix}\displaystyle 5.27 \times 10^{9}\,\mathrm{kgf} \cdot \mathrm{cm} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 0.00\\[6pt]
+\displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 245047.18\,\frac{\mathrm{kgf}}{\mathrm{cm}} & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf}\\[6pt]
 \displaystyle 0.00 & \displaystyle 2.14 \times 10^{7}\,\mathrm{kgf} & \displaystyle 5.27 \times 10^{9}\,\mathrm{kgf} \cdot \mathrm{cm}\end{matrix}\right] \end{array}
 
 === 32 · HTML ===
@@ -271,19 +271,19 @@ $\theta = C\,\Delta$          con    $C = -K_{ii}^{-1}\,K_{id}$
 y sustituyendo en la ecuación de Delta queda la rigidez lateral equivalente.
 
 === 34 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle S_{i} & = & \displaystyle \left[\begin{matrix}\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\
+\hspace{0.2em}\begin{array}{lcl} \displaystyle S_{i} & = & \displaystyle \left[\begin{matrix}\displaystyle 1 & \displaystyle 0 & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle 0 & \displaystyle 1\end{matrix}\right] \\[16pt]
 \displaystyle S_{d} & = & \displaystyle \left[\begin{matrix}\displaystyle 0 & \displaystyle 1 & \displaystyle 0\end{matrix}\right] \\[16pt]
-\displaystyle K_{ii} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle 0\\
+\displaystyle K_{ii} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{4 E I_{c}}{L_{c}} & \displaystyle 0\\[6pt]
 \displaystyle 0 & \displaystyle \frac{4 E I_{c}}{L_{c}}\end{matrix}\right] \\[8pt]
-\displaystyle K_{id} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\
+\displaystyle K_{id} & = & \displaystyle \left[\begin{matrix}\displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\\[6pt]
 \displaystyle \frac{6 s_{c} E I_{c}}{L_{c}^{2}}\end{matrix}\right] \\[8pt]
 \displaystyle K_{dd} & = & \displaystyle \frac{2 c_{c}^{2} E A_{c}}{L_{c}} + \frac{c_{d}^{2} E A_{d}}{L_{d}} + \frac{24 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[16pt]
-\displaystyle C & = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3 s_{c}}{2 L_{c}}\\
+\displaystyle C & = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3 s_{c}}{2 L_{c}}\\[6pt]
 \displaystyle - \frac{3 s_{c}}{2 L_{c}}\end{matrix}\right] \\[8pt]
-& = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3\,\left(1.00\right)}{2\,\left(370.00\,\mathrm{cm}\right)}\\
+& = & \displaystyle \left[\begin{matrix}\displaystyle - \frac{3\,\left(1.00\right)}{2\,\left(370.00\,\mathrm{cm}\right)}\\[6pt]
 \displaystyle - \frac{3\,\left(1.00\right)}{2\,\left(370.00\,\mathrm{cm}\right)}\end{matrix}\right] \\[8pt]
-& = & \displaystyle 10^{-3}\,\left[\begin{matrix}\displaystyle -4.05\\
+& = & \displaystyle 10^{-3}\,\left[\begin{matrix}\displaystyle -4.05\\[6pt]
 \displaystyle -4.05\end{matrix}\right]\,\frac{1}{\mathrm{cm}} \\[16pt]
 \displaystyle k_{eq} & = & \displaystyle \frac{2 c_{c}^{2} E A_{c}}{L_{c}} + \frac{c_{d}^{2} E A_{d}}{L_{d}} + \frac{6 s_{c}^{2} E I_{c}}{L_{c}^{3}} \\[8pt]
 & = & \displaystyle \frac{2\,\left(0.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(1350.00\,\mathrm{cm}^{2}\right)}{\left(370.00\,\mathrm{cm}\right)} + \frac{\left(0.80\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(6.25\,\mathrm{cm}^{2}\right)}{\left(622.01\,\mathrm{cm}\right)} + \frac{6\,\left(1.00\right)^{2}\,\left(2.14 \times 10^{6}\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(227812.50\,\mathrm{cm}^{4}\right)}{\left(370.00\,\mathrm{cm}\right)^{3}} \\[8pt]
