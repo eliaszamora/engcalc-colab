@@ -110,11 +110,17 @@ def test_the_precision_also_decides_what_counts_as_too_long():
 
     A mutation that hardcoded the threshold at two survived every other contract here,
     because they all round the same number the same way whatever the threshold is.
-    `0.1234` at precision 6 is short enough to be left alone; a fixed threshold would
-    round it and hand back `0.123400`, which is longer than what was typed.
+    `1234.56789` at precision 6 is short enough to be left alone; a fixed threshold would
+    send it down the rounding path and hand back `1234.567890`, longer than what was typed.
+
+    This contract used `0.1234` and pinned it rounding to `0.12` at precision 2. A number
+    of four figures is one somebody typed, and it is printed as typed now whatever the
+    precision (`test_a_coefficient_is_printed_as_typed`), so the example moved to nine
+    figures, which are long at precision 2 and short at precision 6 - the property this
+    contract is about.
     """
-    assert _latex(sp.Float("0.1234"), settings=RenderSettings(precision=6)) == "0.1234"
-    assert _latex(sp.Float("0.1234"), settings=RenderSettings(precision=2)) == "0.12"
+    assert _latex(sp.Float("1234.56789"), settings=RenderSettings(precision=6)) == "1234.56789"
+    assert _latex(sp.Float("1234.56789"), settings=RenderSettings(precision=2)) == "1234.57"
 
 
 def test_integers_are_untouched():

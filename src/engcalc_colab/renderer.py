@@ -125,6 +125,18 @@ def _letters_of(latex: str) -> str:
 _CASES_ROW_SEPARATOR = r" \\[4pt] "
 
 
+# A number of this many significant figures or fewer is one somebody typed. Measured on
+# the two kinds a formula holds: typed coefficients have one to three (0.005, 0.0018,
+# 0.125, 0.00207), the leftovers of the algebra sixteen or seventeen (1/0.85, 1/3). Six
+# leaves room for a measured constant without letting an artefact through.
+_TYPED_FIGURES = 6
+
+
+def _significant_digits(spelling: str) -> int:
+    """Significant figures in a plain decimal spelling: `0.00207` has three."""
+    return len(spelling.lstrip("-").replace(".", "").lstrip("0"))
+
+
 class _EngineeringLatexPrinter(LatexPrinter):
     def __init__(
         self,
@@ -196,11 +208,22 @@ class _EngineeringLatexPrinter(LatexPrinter):
         longer than any precision this accepts. That matters, because the rest of the
         page writes exponents with `\times` and two notations on one page is a wart. An
         explicit branch for it was written first, measured, and found unreachable.
+
+        Long is not the same as untyped, and length past the precision was the only test:
+        `0.125` came out `0.12` and `0.005` came out `0.01`, a value the sheet does not
+        use, so ACI's table for phi, `[0.002, 0.005]`, read `[2.00 x 10^-3, 0.01]`. What
+        separates the two is the shortest spelling that reads back as the same float:
+        what a person types has three figures or so, what the algebra leaves behind has
+        sixteen or seventeen. Up to `_TYPED_FIGURES` in plain notation is printed as
+        typed; the rest is rounded as above.
         """
         written = super()._print_Float(expr)
         decimals = written.partition(".")[2]
         if len(decimals) <= self.render_settings.precision:
             return written
+        typed = repr(float(expr))
+        if "e" not in typed and _significant_digits(typed) <= _TYPED_FIGURES:
+            return typed
         return _magnitude_text(float(expr), replace(self.render_settings, figures=0))
 
     def _print_Symbol(self, expr, style=None):
