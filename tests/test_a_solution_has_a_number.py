@@ -47,7 +47,11 @@ def numbers(page: str, unit: str) -> list[float]:
 def test_a_single_degree_of_freedom_has_its_two_frequencies(cell, capsys):
     page = cell("k := 2000*kN/m\nm := 500*kg\nsolve(k - w^2*m = 0, w)\n")
     printed = capsys.readouterr().out
-    assert "engcalc:" not in printed, printed
+    # `m` is the metre on line 1 and a mass on line 2, and running this cell again would
+    # make `k` 4.00 kN/kg, so line 2 says so - see test_a_unit_that_becomes_a_value_says_so.
+    # That line, and nothing else.
+    assert printed.count("engcalc:") == 1, printed
+    assert "engcalc: line 2: 'm' has been read as a unit (meter)" in printed, printed
 
     expected = math.sqrt(2000e3 / 500)
     assert numbers(page, "1/s") == pytest.approx([-expected, expected], abs=6e-3), page
