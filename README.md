@@ -13,7 +13,76 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.31.18**.
+Current version: **0.32.0**.
+
+
+## v0.32.0 min, max and a table
+
+Two functions a design code is written with, and one correction to how a coefficient is
+printed. Recommended after comparing EngCalc with Calcpad, and approved by the engineer.
+
+### `min` and `max`, in the order the code writes them
+
+```text
+%%eng
+L := 8*m
+b_w := 300*mm
+h_f := 120*mm
+s := 3*m
+b_eff = min(L/4, b_w + 16*h_f, s)
+numeric(b_eff)
+```
+
+```text
+b_eff = min(L/4, b_w + 16 h_f, s)
+      = min((8.00 m)/4, (300.00 mm) + 16 (120.00 mm), (3.00 m))
+      = min((2.00 m), (2.22 m), (3.00 m))
+      = 2.00 m
+```
+
+SymPy's `Min` and `Max` sort their arguments, so the same line would have read
+`min(L/4, s, b_w + 16 h_f)`: the right value, and not the code's formula. The arguments stay
+where they were typed. `numeric` works each limit out before taking the one that governs -
+the row a reviewer checks against the code - unless that row would repeat the substitution
+(`max(V_B, V_A)`), and `result(...)` shows none of it. `:=` takes them too:
+`s_max := min(3*h, 450*mm)`. Values of different kinds are refused: *max compares values of
+one kind*.
+
+### `interp`, a value read from a table
+
+```text
+%%eng
+e_t := 0.003
+phi = interp(e_t, [0.002, 0.005], [0.65, 0.90])
+numeric(phi)
+```
+
+```text
+phi = interp(e_t, [0.002, 0.005], [0.65, 0.9])
+    = interp((0.003), [0.002, 0.005], [0.65, 0.9])
+    = (0.65) + ((0.003) - (0.002))/((0.005) - (0.002)) ((0.90) - (0.65))
+    = 0.73
+```
+
+`interp(x, [x_1, x_2, ...], [y_1, y_2, ...])`: the point, the table's points in increasing
+order, and the value at each. The table stays on the page as it was written, and `numeric`
+shows the segment used before the value, in the table's own unit - a point in millimetres
+read against a table in metres is worked out in metres. Outside the table it refuses:
+*interp does not extrapolate: 2.5 lies outside its table, 0.5 to 2*. A table is a matrix,
+which `:=` does not hold, so it is defined with `=` and read with `numeric`. `plot` and
+`roots` work over it; `extrema` does not - a broken line's extremes sit where its slope
+jumps, and it says so in one line.
+
+### A coefficient is printed as it was typed
+
+A number longer than the page's precision was rounded, because that is how the printer
+keeps an artefact of the algebra - `1/(2*0.85) = 0.588235294117647` - off the page. It
+rounded a typed coefficient too: `M = 0.125*q*L^2` read `0.12 q L²`, `c = 0.005*q` read
+`0.01 q`, and the table above read `[2.00 × 10⁻³, 0.01]`. A number of at most six
+significant figures is now printed as typed; the artefacts, sixteen or seventeen figures,
+are rounded as before.
+
+None of the thirteen reference sheets moves.
 
 
 ## v0.31.18 a value with no real result says so
@@ -3073,6 +3142,8 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
 - `subs(expr, variable, value)` — symbolic substitution.
 - `eq(lhs, rhs)` — explicit symbolic equality, mainly for advanced/internal use.
 - `abs(expr)` — symbolic/numerical absolute value; composes with plotting and magnitude envelopes.
+- `min(a, b, ...)` / `max(a, b, ...)` — the smallest or largest of values of one kind, in the order written; `numeric` works each out before the one that governs.
+- `interp(x, [x_1, x_2, ...], [y_1, y_2, ...])` — linear interpolation in a table whose points increase; refuses a point outside it.
 
 `solve(...)` currently requires exactly one solution; zero or multiple solutions produce a concise EngCalc error.
 
@@ -3125,6 +3196,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.32.0** — `min` and `max` in the order the code writes them, each limit worked out before the one that governs; `interp(x, [x_i], [y_i])`, a value read from a table, with the segment used worked out and no extrapolation; and a coefficient printed as it was typed (`0.125`, not `0.12`). No reference sheet moves.
 - **0.31.18** — a value with no real result says so. `sqrt(-4)` or a negative discriminant under a root was stored as a complex number and the page failed with a traceback that took the whole cell with it. The value is now refused where it is made, in one line that names the operation and the value, with the rows before it on the page; `log`, `asin` and `acos` outside their domain say the same on every Python version. No reference sheet moves.
 - **0.31.17** — a sum does not open with a minus. The frame wrote `(- x_1 + x_2)` and an effective depth read `- cover - db/2 - db_st + h`: a sum was printed in SymPy's order, which opens with whichever term is alphabetically first. A sum ordered by the powers of a name is now read backwards when that opens it with a plus, keeping its powers in order; any other sum lets its first positive term lead. Four rules were measured first; the simpler ones broke an expanded polynomial's degree order. The frame's fourteen rows move in each palette, and no number changes.
 - **0.31.16** — what was still pending. A unit inside an eigenvalue reads as a unit (`λ = 2 kN/m` had an italic metre under a matrix that wrote it upright). `Hz` can be written and asked for, and the page never chooses it, so `2πf` still reads `1/s`. And a name read as a unit that is then given a value says so: `k := 2000*kN/m` then `m := 500*kg` drew `k = 4.00 kN/kg` the second time the cell ran, in silence; the rule is unchanged, and both moments a name changes meaning are now printed. The README opens with how to start.
@@ -3219,4 +3291,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.31.18`.
+Version: `0.32.0`.

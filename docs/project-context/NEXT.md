@@ -8,9 +8,9 @@ of `CURRENT.md` was written at 0.13.0 and says so._
 
 | | |
 |---|---|
-| `main` | 0.31.18 released by the release PR (before it `9b45077`, #247) |
-| declared version | **0.31.18** — carrying #247 |
-| default suite (`pytest -q`) | **2608 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
+| `main` | 0.32.0 released by the release PR (before it `1cff502`, #251) |
+| declared version | **0.32.0** — carrying #249, #250 and #251 |
+| default suite (`pytest -q`) | **2657 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0`; on every PR, every push to `main`, every Monday, and by hand |
 
@@ -103,6 +103,10 @@ seven more, of which four are fixed. What is open, in the order I would take it:
 - **`extrema` over a domain where the function has no real value** — `extrema(sqrt(x),
   x, -1, 4)` reports x = 4 as both global max and global min and misses the minimum at
   x = 0. Found with #247, not caused by it (the same before and after); not requested
+- ~~a typed coefficient longer than the precision was rounded~~ (`0.125` → `0.12`,
+  `0.005` → `0.01`) — **fixed by #251, released in 0.32.0**, with his yes on the rows
+- **`extrema` over an `interp`** answers in one line that it cannot validate the kink of a
+  broken line; its extremes are at the table's points. Not requested
 
 The finished ones are kept rather than deleted: each says what the answer turned out to
 be and what it cost to find, which is the part a summary would lose.
