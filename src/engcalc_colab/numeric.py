@@ -1369,7 +1369,16 @@ class NumericContext:
             )
 
         if expr.is_Add:
-            values = [self._evaluate_sympy(arg, substitutions) for arg in expr.args]
+            # A term that is a unit on its own - `1*kN` folds to `kN` - is one of it. Pint
+            # multiplies a unit by a quantity and refuses to add one to it, so
+            # `1*kN + 4*kN*x/m` failed in `numeric`, `table` and `plot` whenever the unit
+            # came first, with Pint's own words.
+            values = [
+                self._as_quantity(value)
+                if hasattr(value, "dimensionality") and not hasattr(value, "magnitude")
+                else value
+                for value in (self._evaluate_sympy(arg, substitutions) for arg in expr.args)
+            ]
             result = values[0]
             for value in values[1:]:
                 result = result + value
