@@ -22,6 +22,25 @@ class Interpolation(sp.Function):
     def eval(cls, point, points, values):
         return None
 
+    def as_piecewise(self) -> sp.Piecewise:
+        """The same function as one straight segment per pair of points.
+
+        What `extrema` reads, because its piecewise analysis finds the extremes at the
+        breakpoints, where the slope of a broken line jumps. Past the table it has no
+        value, which is why `extrema` checks the domain against the table first.
+        """
+        point, points, values = self.args
+        xs, ys = list(points), list(values)
+        return sp.Piecewise(
+            *(
+                (
+                    ys[i] + (ys[i + 1] - ys[i]) * (point - xs[i]) / (xs[i + 1] - xs[i]),
+                    sp.Le(point, xs[i + 1]),
+                )
+                for i in range(len(xs) - 1)
+            )
+        )
+
     def _eval_derivative(self, symbol):
         # Unevaluated. SymPy's chain rule would differentiate the table's matrices too,
         # and that sends it into a recursion of its own (matrix `diff` through

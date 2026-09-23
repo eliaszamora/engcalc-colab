@@ -143,13 +143,14 @@ def test_a_function_of_the_coordinate_can_be_plotted(magics, capsys):
     assert "engcalc:" not in capsys.readouterr().out
 
 
-def test_extremes_over_a_table_are_refused_in_one_line(magics, capsys):
-    """A broken line has its extremes at the table's points, where the slope jumps, and the
-    numeric analysis cannot validate a solution there; it says so in one line. What this
-    pins is that it gets that far: SymPy's chain rule differentiated the table's matrices
-    too and recursed until Python stopped it, which `plot` reached first, because it
-    differentiates to mark extrema. The derivative of an `interp` now stays unevaluated."""
-    run(magics, "f(x) = interp(x, [0, 1, 2], [0, 1, 0])\nextrema(f(x), x, 0, 2)\n")
+def test_the_derivative_of_a_table_stays_unevaluated(magics, capsys):
+    """SymPy's chain rule differentiated the table's matrices too and recursed until Python
+    stopped it, which `plot` reached first, because it differentiates to mark extrema. The
+    derivative of an `interp` stays unevaluated.
+
+    This contract first pinned that `extrema` over an `interp` answered in one line that it
+    could not validate the kink of a broken line. It answers now, at the table's points
+    (test_the_extremes_of_a_table_are_found), so what is left to pin is the derivative."""
+    run(magics, "f(x) = interp(x, [0, 1, 2], [0, 1, 0])\ng(x) = diff(f(x), x)\n")
     printed = capsys.readouterr().out
-    assert printed.startswith("engcalc: line 2:"), printed
-    assert "recursion" not in printed, printed
+    assert "engcalc:" not in printed, printed
