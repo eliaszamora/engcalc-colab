@@ -750,6 +750,7 @@ def _piecewise_one_sided_point(
     side: str,
     overrides: dict[str, Any] | None,
     source_label: str | None,
+    role: str,
 ):
     direction = "-" if side == "left" else "+"
     try:
@@ -788,7 +789,7 @@ def _piecewise_one_sided_point(
         value_quantity=value_quantity,
         provenance="exact",
         side=side,
-        roles=("boundary",),
+        roles=(role,),
         source_label=source_label,
     )
     return point, False, False, False
@@ -804,7 +805,14 @@ def _piecewise_selected_boundary_point(
     *,
     overrides: dict[str, Any] | None,
     source_label: str | None,
+    role: str,
 ) -> CharacteristicPoint | None:
+    """The point the governing branch gives at `boundary_symbolic`.
+
+    `role` is what the point is: `boundary` at an end of the domain, `breakpoint` where the
+    law changes inside it. Both came through here as `boundary`, so the peak of a table at
+    x = 1, inside a domain from 0 to 2, was reported at a boundary.
+    """
     folded = sp.piecewise_fold(sp.sympify(expression))
     branch_expression = folded
     if isinstance(folded, sp.Piecewise):
@@ -826,7 +834,7 @@ def _piecewise_selected_boundary_point(
         context,
         overrides=overrides,
         source_label=source_label,
-        roles=("boundary",),
+        roles=(role,),
         candidate_quantity=boundary_quantity,
     )
 
@@ -1249,6 +1257,7 @@ def _solve_piecewise_extrema_exact(
             context,
             overrides=overrides,
             source_label=source_label,
+            role="boundary",
         )
         if point is not None:
             points.append(point)
@@ -1268,6 +1277,7 @@ def _solve_piecewise_extrema_exact(
             side="left",
             overrides=overrides,
             source_label=source_label,
+            role="breakpoint",
         )
         right_point, right_up, right_down, right_unresolved = _piecewise_one_sided_point(
             right_region,
@@ -1278,6 +1288,7 @@ def _solve_piecewise_extrema_exact(
             side="right",
             overrides=overrides,
             source_label=source_label,
+            role="breakpoint",
         )
         unbounded_above = unbounded_above or left_up or right_up
         unbounded_below = unbounded_below or left_down or right_down
@@ -1292,6 +1303,7 @@ def _solve_piecewise_extrema_exact(
             context,
             overrides=overrides,
             source_label=source_label,
+            role="breakpoint",
         )
         if at_point is not None:
             local_role = _piecewise_local_role_at_breakpoint(
@@ -1350,6 +1362,7 @@ def _solve_piecewise_extrema_exact(
             side=side,
             overrides=overrides,
             source_label=source_label,
+            role="boundary",
         )
         unbounded_above = unbounded_above or edge_up
         unbounded_below = unbounded_below or edge_down
