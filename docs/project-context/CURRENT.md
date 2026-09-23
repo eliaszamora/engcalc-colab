@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.0** - #271, `7bfd026`, carrying #270; six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.32.3** - #268, `6aa6001` |
-| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged, head `review/since-0.31.17` moved to `7bfd026`, so it covers #247 through #270 |
-| default suite | **2738 passing**, about a minute and a half with `-n auto` |
+| released | **0.33.1** - this release PR, carrying #273; its closure is recorded below |
+| before that | **0.33.0** - #271, `7bfd026`, verified after its merge |
+| open PRs | this release's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged |
+| default suite | **2745 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -319,8 +319,8 @@ contracts; mutation 10/10; suite 2738. Rows that move: one reference row (memori
 for products the sheet did not write), and ACI's `As*fy` now reads `As fy`. Sums keep the
 page's order. Released as 0.33.0 (#271).
 
-**Open, waiting for his yes to merge: a matrix row has room** (branch
-`fix/a-matrix-row-has-room`). Reading `k_v` he asked whether the entries were touching
+**0.33.1 - a matrix row has room** (#273, merged with his yes on 2026-09-23:
+*"Tienes mi aprobación"*). Reading `k_v` he asked whether the entries were touching
 vertically: `_matrix_from_cells_latex` joined rows with a bare `\\`, and display fractions
 stood 5.7 px apart at 14 px type (6.8 px at the page's 17 px) against ≥14 px between
 columns. Shown `\\`, `4pt`, `6pt`, `8pt` side by side, he chose the recommended `6pt`
@@ -329,7 +329,7 @@ columns. Shown `\\`, `4pt`, `6pt`, `8pt` side by side, he chose the recommended 
 width. 7 contracts; nine contracts pinned the bare `\\` and were updated with notes (one
 test parser read the `6` of `[6pt]` as a mode entry). Moves: the separator only - dinámica
 6, pórtico 96 × 3 palettes, the derivation 60; every other page and all 18 exercises
-byte-identical. Suite 2745. Then release 0.33.1.
+byte-identical. Suite 2745. Released as 0.33.1; its closure is to be recorded here.
 
 **Next: he runs `/code-review ultra 265`** (its head is `7bfd026`, so it covers #270). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
