@@ -12,59 +12,76 @@ _2026-09-22._
 
 | | |
 |---|---|
-| released | **0.31.15** — #237, `main` at `ebf5ca9`; six jobs and both qualification runs green on that SHA |
-| in progress | **0.31.16**, the pending items — see below |
-| `main` | `67b4efd` — #238 and #239 merged on top of 0.31.15, in no release yet |
-| default suite | **2567 passing** on #240's branch, about a minute with `-n auto` |
+| released | **0.31.16** — release PR #241, carrying #238, #239 and #240 |
+| `main` before it | `6fae2b0`; six jobs and both qualification runs green on that SHA |
+| open PRs | none besides the release |
+| default suite | **2567 passing**, about a minute with `-n auto` |
 
-**0.31.15 is closed.** It carries the audit of 0.31.14: #233 (`numeric(w, 1/s)`), #234
-(the suite runs every Monday), #235 (dead code) and #236 (a multiplicity is not a mass),
-and 51 stale branches deleted, each restorable from its PR (the list is in #237). Verified
-after the merge: a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
-in a Colab-like venv (Python 3.12, ipython 7.34.0, numpy 2.2.6, matplotlib 3.10.0, sympy
-1.13.3) resolved to `ebf5ca9`, reported 0.31.15, upgraded nothing, installed 29 files
-byte-identical to `src`, and read all three corrections and the frame's `EA` outside the
-repository. The release's own evidence is in #237.
+**0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
+suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
+merge: a clean `git+https` install of `ebf5ca9` in a Colab-like venv reported 0.31.15,
+upgraded nothing and read all three corrections outside the repository.
 
-**0.31.16: what was still pending.** On 2026-09-22 he wrote *"abarca lo pendiente, tienes mi
-aprobación y si para abordar lo que esté pendiente o que necesite mi respuesta según tu
-criterio"*. Each item was checked on the page before deciding:
+**What 0.31.16 is: what was still pending.** On 2026-09-22 he wrote *"abarca lo pendiente,
+tienes mi aprobación y si para abordar lo que esté pendiente o que necesite mi respuesta
+según tu criterio"*. Each item was checked on the page before deciding:
 
-1. **A unit inside an eigenvalue is typeset as a unit.** The "known" note that
+1. **#238 (`614d582`), a unit in an eigenvalue is typeset as a unit.** The "known" note that
    `_analysis_scalar_latex` had no unit literals was not theoretical: `A = [2*kN/m, 0; 0,
-   3*kN/m]` drew `λ = 2 kN/m` with an italic metre two lines under the matrix that wrote it
-   upright. **#238, merged** (`614d582`): the engine asks a set's source matrix for its unit names
-   and the renderer hands them to both eigen printers, the vectors and the matrix of a set
-   with no closed form. 5 contracts, 4 RED before; mutation 5/5; thirteen pages unchanged.
-2. **`Hz`**, which he did not answer: `f := 5*Hz` asked the engineer to define the hertz —
-   the failure the alias table already fixed for `MN`. **#239, merged** (`67b4efd`): `Hz` can be
-   written and asked for, and the page never chooses it — a frequency and a circular
-   frequency share `[time]⁻¹`, so `2*pi*f` reads `1/s`, measured before the change with the
-   alias patched in and pinned since. 5 contracts, 4 RED before; mutation 4/4, three of
-   them putting hertz into the families.
-3. **A unit alias that becomes a value.** Worse than recorded: `k := 2000*kN/m`, then
-   `m := 500*kg` — the usual one degree of freedom — drew `k = 4.00 kN/kg` and
-   `w = 0.0894 kN^0.5/kg` the second time the cell ran, in silence, on `main`. Which meaning
-   was wanted cannot be known (the metre there, the axial force in `sigma := N/A` then
-   `N := 500*kN`), so the rule stays and **#240**, this branch, says the two moments aloud:
-   a name read as a unit given a value (once), and a line that read it as a unit reading it
-   as a value (every time). A sheet that uses a name one way prints nothing; `%eng_reset`
-   forgets. 12 contracts, 7 RED before; mutation 11/11 — the survivor of the first pass
-   was a third run falling silent, now pinned. `test_a_single_degree_of_freedom_has_its_two_frequencies`
-   asserted a silent console on exactly this sheet and now expects the one line. Of the
-   thirteen sheets only the harness's dynamics sheet, which does this, prints it; none of
-   his reference sheets assigns `N`, `m` or `s`.
-4. **A record corrected.** "A non-zero literal branch keeps its written form beside
-   bracketed neighbours" was listed here as known; #224 fixed it in 0.31.11, and the page
-   shows `(5.00 kN/m)` beside `(8.00 kN/m)`. It had been carried forward by mistake.
-5. Left as it is, deliberately: `A_c = 0.30*m*0.60*m` written `0.3 · 0.6 m · m`. It is
-   correct, and keeping the written zeros and grouping would mean a float that remembers how
-   it was typed.
+   3*kN/m]` drew `λ = 2 kN/m` with an italic metre. The engine now asks a set's source
+   matrix for its unit names and the renderer hands them to both eigen printers, the vectors
+   and the `det(A - λI) = 0` matrix. 5 contracts, 4 RED before, mutation 5/5.
+2. **#239 (`67b4efd`), a frequency can be written in hertz** — the question he had not
+   answered. `Hz` can be written and asked for, never chosen: measured first with the alias
+   patched in, `2*pi*f` already read `1/s`, and a contract pins it. 5 contracts, 4 RED
+   before, mutation 4/4.
+3. **#240 (`6fae2b0`), a unit that becomes a value says so.** Worse than recorded:
+   `k := 2000*kN/m` then `m := 500*kg`, the usual one degree of freedom, drew
+   `k = 4.00 kN/kg` the second time the cell ran, in silence. Which meaning was wanted cannot
+   be known, so the rule stays and the two moments a name changes meaning are printed. 12
+   contracts, 7 RED before, mutation 11/11 (the survivor of the first pass, a third run
+   falling silent, now pinned).
+4. **A record corrected**: "a non-zero literal branch keeps its written form" was carried
+   here as known after #224 had fixed it in 0.31.11; the page shows `(5.00 kN/m)`.
+5. **The README opens with how to start** in Colab — the two cells, and never
+   `--force-reinstall` — above the "Current version" line, so the release procedure is
+   unchanged. The audit had found install instructions 2200 lines down.
+6. **Left as it is, deliberately:** `A_c = 0.30*m*0.60*m` written `0.3 · 0.6 m · m`. It is
+   correct, and keeping the typed zeros would need a float that remembers how it was typed.
+
+No page of the thirteen moves; the harness's two-storey dynamics sheet, which writes the
+metre and then names a mass `m`, prints the new line.
+
+Release evidence, on the release commit's tree:
+
+- the seven version assertions RED before the bump and GREEN after; source suite 2567,
+  twice;
+- a wheel built from `git archive` of the commit, its 29 package files byte-identical to
+  `src`;
+- installed in a clean Python 3.12 venv holding Colab's pins (ipython 7.34.0, numpy 2.2.6,
+  matplotlib 3.10.0, sympy 1.13.3), it adds Pint 0.26.1 and four small dependencies and
+  **upgrades nothing**;
+- outside the repository, through `%load_ext`, a smoke of fifteen checks: the frame still
+  reads `EA` and answers 71689.33 kgf/cm and 0.0168 s; `1/s`, `rad/s`, no `m=1`,
+  `multiplicity 2`; an upright unit in an eigenvalue; `5.00 Hz` and `2πf` in `1/s`; both
+  notices on the single degree of freedom, first run and second; nothing printed by the
+  consistent sheets;
+- the whole suite against the installed wheel, from a copy of the tree with no `src/`: all
+  pass except `test_the_ipython_surface_stays_small`, which reads `src/.../magic.py` by path
+  and passes when handed the wheel's own copy;
+- the thirteen sheets render byte-identical from the wheel and from the working tree.
 
 ### Exact next step
 
-1. #240 green on its exact head, then squash-merge with `--match-head-commit`.
-2. The 0.31.16 release, closed the way 0.31.15 was (#237).
+1. #241 green on its exact head, then squash-merge with `--match-head-commit` — his
+   approval of 2026-09-22 covers it.
+2. After the merge: six jobs and both qualification runs green on the merge commit, and a
+   clean `git+https` install in a Colab-like venv reports 0.31.16, upgrades nothing and passes
+   the same smoke.
+3. Then nothing is pending. Known and not requested: `_analysis_scalar_latex`'s note is
+   closed; an `N` never defined still reads as one newton in silence (pinned by
+   `test_an_undefined_axial_force_reads_as_newtons`, nothing tells it from a sheet that
+   means the newton).
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.
