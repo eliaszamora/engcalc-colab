@@ -12,9 +12,8 @@ _2026-09-22._
 
 | | |
 |---|---|
-| released | **0.31.16** — release PR #241, carrying #238, #239 and #240 |
-| `main` before it | `6fae2b0`; six jobs and both qualification runs green on that SHA |
-| open PRs | none besides the release |
+| released | **0.31.16** — #241, `main` at `131137d`, carrying #238, #239 and #240; six jobs and both qualification runs green on that SHA |
+| open PRs | none |
 | default suite | **2567 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -71,17 +70,38 @@ Release evidence, on the release commit's tree:
   and passes when handed the wheel's own copy;
 - the thirteen sheets render byte-identical from the wheel and from the working tree.
 
+**0.31.16 verified after its merge**: six jobs and both qualification runs green on
+`131137d`, and a clean `pip install --upgrade git+https://github.com/eliaszamora/engcalc-colab.git@main`
+in a Colab-like venv resolved to `131137d`, reported 0.31.16, upgraded nothing, installed 29
+files byte-identical to `src`, and passed the fifteen-check smoke outside the repository.
+
+**NEXT.md's "still open" list, re-checked on the page on 2026-09-22** (it had not been
+since 0.29.2): *a modulus derived from MPa prints GPa* was closed by #122 — `G = E/2.6`
+reads `76923.08 MPa`; *a wide substitution is split into additive terms* is still real —
+`phiMn = phi*As*fy*(d - a/2)` over definitions of `d` and `a` substitutes into five rows —
+and `keep` on those definitions avoids it, as RC-3 intended.
+
+### Open question for him: the order of a sum
+
+Found re-checking that list. A sum is printed in SymPy's order, not the written one:
+`d = h - cover - db_st - db/2` reads `d = - cover - db/2 - db_st + h`, `(d - a/2)` reads
+`(- a/2 + d)`, and his frame writes `L_c = √((- x_1 + x_2)² + (- y_1 + y_2)²)` and
+`c_c = (- x_1 + x_2)/L_c`. Measured, patched in memory only, with the simplest rule — *a sum
+does not open with a minus while it has a positive term*: 42 rows move, all on the three
+frame pages, every one for the better (`x_2 - x_1`, `(500.00 cm) - (0.00 cm)`). But the rule
+has a counterexample — an expanded polynomial loses its degree order,
+`- qL³x/24 + qLx³/12 - qx⁴/24` becoming `qLx³/12 - qL³x/24 - qx⁴/24` — and it does not reach
+every substitution row, so `d`'s definition and its substitution would disagree. An ordering
+rule is his to choose with the rows in front of him, as `P x` and `EA` were; nothing was
+changed. If it bothers him, the next step is to measure candidate rules the way #228 did.
+
 ### Exact next step
 
-1. #241 green on its exact head, then squash-merge with `--match-head-commit` — his
-   approval of 2026-09-22 covers it.
-2. After the merge: six jobs and both qualification runs green on the merge commit, and a
-   clean `git+https` install in a Colab-like venv reports 0.31.16, upgrades nothing and passes
-   the same smoke.
-3. Then nothing is pending. Known and not requested: `_analysis_scalar_latex`'s note is
-   closed; an `N` never defined still reads as one newton in silence (pinned by
-   `test_an_undefined_axial_force_reads_as_newtons`, nothing tells it from a sheet that
-   means the newton).
+Nothing is pending. The open question above waits on him. Known and not requested: a wide
+substitution over plain definitions splits into additive terms (`keep` avoids it); an `N`
+never defined still reads as one newton in silence (pinned by
+`test_an_undefined_axial_force_reads_as_newtons`; nothing tells it from a sheet that means
+the newton).
 
 **Where the live narrative is.** `NEXT.md` for how the work goes and how a release is
 cut; this file's later sections for the approved behaviour that is still in force.

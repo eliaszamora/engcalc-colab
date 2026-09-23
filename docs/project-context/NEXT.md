@@ -89,11 +89,16 @@ seven more, of which four are fixed. What is open, in the order I would take it:
   along. One function that returns its argument; `m·N` and `ft·kip` were the only two
   compound units in the whole suite that moved
 - **a wide substitution is split into additive terms** by the wrapping path, in the RC-3
-  section directly below
+  section below. Re-checked on 2026-09-22: still so over plain definitions, and `keep`
+  avoids it
 - ~~the hunt for guards nobody is checking~~ — **run on the engine and the parser by
   #115.** What it found, and what is left of it, is a section of its own below
-- **a modulus derived from one written in MPa is shown in GPa**, in the section below.
-  Open, and it is a question for the engineer rather than a defect
+- ~~a modulus derived from one written in MPa is shown in GPa~~ — **closed by #122**
+  (2026-09-08), which this list was never told of. Re-checked on 2026-09-22: `G = E/2.6`
+  from `E := 200000*MPa` reads `76923.08 MPa`
+- **the terms of a sum are printed in SymPy's order**, not the written one — found
+  re-checking this list on 2026-09-22; `CURRENT.md` has the measurement and why it waits
+  on him
 
 The finished ones are kept rather than deleted: each says what the answer turned out to
 be and what it cost to find, which is the part a summary would lose.
@@ -286,7 +291,8 @@ A fourth sheet, written to check the two things he named himself, found both:
   engineer's own shape. `test_a_deflection_is_not_a_zero.py`, and the two contracts it
   first shipped with were vacuous; see section 1 of `HOW-THIS-WORK-GOES-WRONG.md`.
 
-- **`G = E/2.6` prints `76.92 GPa` from a sheet written in MPa.** Open. The pressure
+- ~~**`G = E/2.6` prints `76.92 GPa` from a sheet written in MPa.**~~ **Closed by #122**,
+  which dropped `GPa` from the pressure family as described below. The pressure
   family keeps both the mega and the giga step deliberately - #99 made every other family
   stop at kilo at the engineer's request, and exempted this one. He has since said twice
   that he never uses GPa: *"el E del acero nunca lo he trabajado en GPa"* and *"GPa nunca
