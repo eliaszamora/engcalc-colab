@@ -407,6 +407,12 @@ class EngineeringEngine:
         for value in values:
             if isinstance(value, (sp.Basic, sp.MatrixBase)):
                 names |= self.numeric_context.unit_literal_names(value)
+            elif isinstance(value, (EigenvalueSet, EigenvectorSet)):
+                # A set is not an expression, so it was never asked: `λ = 2 kN/m` set its
+                # metre italic two lines under the matrix that wrote it upright. Every
+                # name in its values and vectors comes from the matrix it was computed
+                # from, and that matrix is also what a set with no closed form draws.
+                names |= self._unit_literals_of(value.source_matrix)
         return frozenset(names)
 
     def _store_kept_value(self, name: str, value) -> None:

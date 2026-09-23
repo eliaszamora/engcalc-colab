@@ -1922,31 +1922,47 @@ def _quantity_matrix_latex(
     return matrix_latex
 
 
-def _analysis_scalar_latex(value, settings: RenderSettings, *, declared: bool) -> str:
+def _analysis_scalar_latex(
+    value,
+    settings: RenderSettings,
+    *,
+    declared: bool,
+    unit_literals: frozenset[str] = frozenset(),
+) -> str:
     """An eigenvalue. `declared` only when `numeric(lam, unit)` asked for one: an
     eigenvalue is computed, and it defaulted to True, which kept `kN/(kg·m)` - the unit
     `inv(M)*K` builds - for what is a squared frequency in `1/s²`. The word means here
-    what it means at `_characteristic_quantity_math`."""
+    what it means at `_characteristic_quantity_math`.
+
+    `unit_literals` are the row's, as everywhere else: without them `m`, `s` and `N`
+    inside a closed form were set as variables beside the upright `kN`."""
     if hasattr(value, "magnitude") and hasattr(value, "units"):
         return _quantity_latex(value, settings=settings, declared=declared)
-    return _latex(value, settings=settings)
+    return _latex(value, unit_literals, settings)
 
 
 def _matrix_shape_latex(value: MatrixShape) -> str:
     return rf"\left({value.rows}, {value.cols}\right)"
 
 
-def _eigenvalue_set_latex(value: EigenvalueSet, settings: RenderSettings) -> str:
+def _eigenvalue_set_latex(
+    value: EigenvalueSet,
+    settings: RenderSettings,
+    unit_literals: frozenset[str] = frozenset(),
+) -> str:
     if not value.closed_form and not value.entries:
         # What a set with no closed form shows until it has numbers: the problem it
         # solves, for the matrix the sheet built. A cubic formula here was 7 KB of
         # radicals that could not be evaluated. See `_seeks_no_closed_form`.
         return (
-            rf"\det\left({_matrix_latex(value.source_matrix, settings=settings)}"
+            rf"\det\left({_matrix_latex(value.source_matrix, unit_literals, settings)}"
             rf" - \lambda I\right) = 0"
         )
     entries = [
-        rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)}"
+        r"\lambda="
+        + _analysis_scalar_latex(
+            entry.value, settings, declared=value.unit_requested, unit_literals=unit_literals
+        )
         + _multiplicity_latex(entry.multiplicity)
         for entry in value.entries
     ]
@@ -1966,10 +1982,14 @@ def _multiplicity_latex(multiplicity) -> str:
     return rf",\;\text{{multiplicity }} {multiplicity}"
 
 
-def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> str:
+def _eigenvector_set_latex(
+    value: EigenvectorSet,
+    settings: RenderSettings,
+    unit_literals: frozenset[str] = frozenset(),
+) -> str:
     if not value.closed_form and not value.entries:
         return (
-            rf"\left({_matrix_latex(value.source_matrix, settings=settings)}"
+            rf"\left({_matrix_latex(value.source_matrix, unit_literals, settings)}"
             rf" - \lambda I\right) \mathbf{{v}} = 0"
         )
     entries: list[str] = []
@@ -1979,11 +1999,14 @@ def _eigenvector_set_latex(value: EigenvectorSet, settings: RenderSettings) -> s
             if isinstance(vector, QuantityMatrix):
                 vector_latex = _quantity_matrix_latex(vector, settings)
             else:
-                vector_latex = _matrix_latex(vector, settings=settings)
+                vector_latex = _matrix_latex(vector, unit_literals, settings)
             vectors.append(rf"\mathbf{{v}}_{{{index}}}={vector_latex}")
         vector_block = r",\;".join(vectors)
         entries.append(
-            rf"\lambda={_analysis_scalar_latex(entry.value, settings, declared=value.unit_requested)}"
+            r"\lambda="
+            + _analysis_scalar_latex(
+                entry.value, settings, declared=value.unit_requested, unit_literals=unit_literals
+            )
             + _multiplicity_latex(entry.multiplicity)
             + rf",\;{vector_block}"
         )
@@ -1994,9 +2017,9 @@ def _value_latex(value, settings: RenderSettings, unit_literals: frozenset[str] 
     if isinstance(value, MatrixShape):
         return _matrix_shape_latex(value)
     if isinstance(value, EigenvalueSet):
-        return _eigenvalue_set_latex(value, settings)
+        return _eigenvalue_set_latex(value, settings, unit_literals)
     if isinstance(value, EigenvectorSet):
-        return _eigenvector_set_latex(value, settings)
+        return _eigenvector_set_latex(value, settings, unit_literals)
     if isinstance(value, QuantityMatrix):
         return _quantity_matrix_latex(value, settings)
     if isinstance(value, sp.MatrixBase):
