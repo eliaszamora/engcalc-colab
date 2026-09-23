@@ -78,8 +78,11 @@ def test_the_value_behind_it_is_unchanged(cell):
     [
         ("M = q*L**2/8", r"\frac{q L^{2}}{8}"),
         ("M = R_A*x - q*x**2/2", r"x R_{A} - \frac{q x^{2}}{2}"),
+        # This read backwards - `- cover - db/2 - db_st + h`, SymPy's order - until a sum
+        # stopped opening with a minus; see test_a_sum_does_not_open_with_a_minus. The
+        # written form and the evaluated one still agree, which is what this pins.
         ("d = h - cover - db_st - db/2",
-         r"- \mathrm{cover} - \frac{\mathrm{db}}{2} - \mathrm{db}_{st} + h"),
+         r"h - \mathrm{cover} - \frac{\mathrm{db}}{2} - \mathrm{db}_{st}"),
         ("w = 1.2*D + 1.6*L", "1.2 D + 1.6 L"),
         ("Vc = 0.17*fc*b", r"0.17 b\,\mathrm{fc}"),
     ],

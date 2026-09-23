@@ -28,10 +28,16 @@ M_A(q) = solve(eq(M_A_aux + q*L^2/2 - R_B(q)*L, 0), M_A_aux)
 
 
 def test_long_integral_uses_bounded_operation_and_result_rows():
+    """The operation on one row and the result on its own. The result took three rows as
+    a collected polynomial until a sum stopped opening with a minus; the compact
+    `L³R/3 - qL⁴/8` now fits one, and that is the better page (see
+    test_a_sum_does_not_open_with_a_minus). Wrapping itself is pinned with a longer
+    integral in test_symbolic_mathjax_wrapping."""
     result = propped_symbolic_results()[0]
     rows = _display_rows(result, RenderSettings())
-    assert len(rows) >= 3
+    assert len(rows) >= 2
     assert any(r"\int" in row for row in rows)
+    assert r"\frac{L^{3} R_{B aux}}{3} - \frac{q L^{4}}{8}" in rows[-1], rows
     assert_rows_bounded(rows)
 
 
