@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.31.17** — #244, `b02b9b0`, carrying #243; `main` at `7bbad4b` (#245, this record), six jobs and both qualification runs green on it |
-| before that | **0.31.16** — #241, `131137d`, verified after its merge (below) |
-| open PRs | only this record's |
-| default suite | **2576 passing**, about a minute with `-n auto` |
+| released | **0.31.18** — this release PR, carrying #247 (`9b45077`); its closure is recorded below |
+| before that | **0.31.17** — #244, `b02b9b0`, verified after its merge (below) |
+| open PRs | this release's |
+| default suite | **2608 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -153,18 +153,32 @@ interpolation, `$Product`, loops and `#if` blocks, complex numbers, `#input` for
 other decompositions, export to Word/PDF. A 30×30 stiffness `solve` plus `eigenvals` takes
 1.7 s here (exact SymPy); fine for study, not for a model of thousands of freedoms.
 
-**Found by the comparison, not yet fixed:** `z := sqrt(-4)` is stored as `2i`, and the next
-`numeric(z)` raises a raw `TypeError` from `_magnitude_text` (`float()` of a complex), so
-Colab shows a traceback in place of the whole cell — the rows before it too — where every
-other failure gives one `EngCalc error` line. A negative discriminant under a root reaches
-it. EngCalc works in real numbers; the fix is a concise error where the value becomes
-complex.
+**Found by the comparison, fixed in 0.31.18 (#247).** `z := sqrt(-4)` was stored as `2i` and
+the page failed on it with a raw `TypeError` (`float()` of a complex in `_magnitude_text`):
+a traceback in place of the whole cell, the rows before it too. Twelve paths, all through a
+power. He approved on 2026-09-23 (*"Procede según lo que tú me recomiendes"*) a clear
+message, RED before and GREEN after, released as 0.31.18.
+
+The rule: a value with no real result is refused where it is made — `_real_power` in
+`numeric.py`, used by the three places a power is made, and domain checks for `log`,
+`asin`, `acos` — in one line naming the operation and the value, with the rows before it
+shown. The refusal is `NoRealValueError(EngEvaluationError)`, a type of its own because
+`roots` must read it as a candidate outside the real domain (`±sqrt(-a)` for `x^2 + a`),
+which it used to discard by catching the `TypeError`; the first draft without the type
+failed 12 quality tests. 32 contracts, 22 RED before; mutation 10/10; suite 2608; deep 53;
+the thirteen sheets and eighteen exercises byte-identical to 0.31.17.
+
+Known, found with it and not caused by it: `extrema(sqrt(x), x, -1, 4)` reports x = 4 as
+both global max and global min and misses the minimum at x = 0.
 
 ### Exact next step
 
-**Waiting on him:** whether to fix the complex-value traceback (a patch, RED → GREEN) and
-which, if any, of CalcpadCE's functions to add — `min`/`max` and `line` interpolation are the
-ones a design code asks for. Known and not requested: a wide substitution over plain
+Close 0.31.18: a wheel from `git archive` of the release commit, a clean Colab-like venv,
+the smoke outside the repository, the suite against the wheel, the thirteen sheets from
+the wheel; then CI and both qualification runs on the merge commit and a `git+https`
+install of `main`. **Then 0.32.0**, approved in the same message: `min`/`max` in the
+order the code writes them (SymPy's `Min`/`Max` reorder their arguments) and linear
+interpolation from a table. Known and not requested: a wide substitution over plain
 definitions splits into additive terms (`keep` avoids it); an `N` never defined still reads
 as one newton in silence (pinned by `test_an_undefined_axial_force_reads_as_newtons`).
 
