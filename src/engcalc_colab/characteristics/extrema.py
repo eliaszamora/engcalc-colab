@@ -7,6 +7,7 @@ import sympy as sp
 from pint.errors import DimensionalityError
 
 from ..errors import EngEvaluationError, NoRealValueError
+from ..interpolation import Interpolation
 from ..models import CharacteristicInterval, CharacteristicPoint
 from ..numeric import _value_text
 from .candidates import (
@@ -209,6 +210,34 @@ def _domain_position(quantity, domain: AnalysisDomain) -> str:
     if abs(magnitude - upper) <= tolerance:
         return "upper"
     return "inside" if lower < magnitude < upper else "outside"
+
+
+def _tables_as_piecewise(
+    expression: sp.Expr,
+    variable: sp.Symbol,
+    domain: AnalysisDomain,
+    context,
+    *,
+    overrides: dict[str, Any] | None,
+) -> sp.Expr:
+    """Each `interp` in the expression, as the piecewise it is.
+
+    A broken line has its extremes at its points, where the slope jumps, and the search for
+    a zero slope found nothing to validate: `extrema` over an `interp` answered "could not
+    validate a solution set". The piecewise analysis finds extremes at breakpoints, so the
+    table's points are handed to it as breakpoints.
+
+    The domain is checked against each table first, by reading the table at both domain
+    ends - which raises `interp`'s own refusal outside it. The piecewise would carry its
+    end segments on past the table in silence, and that is extrapolation.
+    """
+    base = dict(overrides or {})
+    replacements = {}
+    for table in expression.atoms(Interpolation):
+        for end in (domain.lower_quantity, domain.upper_quantity):
+            context.evaluate_symbolic(table, overrides={**base, variable.name: end})
+        replacements[table] = table.as_piecewise()
+    return expression.xreplace(replacements) if replacements else expression
 
 
 def _can_leave_the_reals(expression: sp.Expr) -> bool:
@@ -1354,6 +1383,9 @@ def solve_extrema_exact(
 
     resolved_overrides = context.unit_literal_overrides(expression, overrides)
     _refuse_where_not_real(
+        expression, variable, domain, context, overrides=resolved_overrides
+    )
+    expression = _tables_as_piecewise(
         expression, variable, domain, context, overrides=resolved_overrides
     )
     if expression.has(sp.Piecewise):
