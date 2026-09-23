@@ -6,8 +6,9 @@ from typing import Any
 import sympy as sp
 from pint.errors import DimensionalityError
 
-from ..errors import EngEvaluationError
+from ..errors import EngEvaluationError, NoRealValueError
 from ..models import CharacteristicInterval, CharacteristicPoint
+from ..numeric import _value_text
 from .candidates import (
     _candidate_in_domain,
     _deduplicate_root_points,
@@ -194,11 +195,68 @@ def _evaluate_extrema_candidate(
 
 
 def _quantity_strictly_inside_domain(quantity, domain: AnalysisDomain) -> bool:
+    return _domain_position(quantity, domain) == "inside"
+
+
+def _domain_position(quantity, domain: AnalysisDomain) -> str:
+    """"lower", "upper", "inside" or "outside", with the tolerance the domain uses."""
     magnitude = float(quantity.to(domain.unit).magnitude)
     lower = float(domain.lower_quantity.to(domain.unit).magnitude)
     upper = float(domain.upper_quantity.to(domain.unit).magnitude)
     tolerance = 1e-12 * max(1.0, abs(lower), abs(upper), abs(upper - lower))
-    return lower + tolerance < magnitude < upper - tolerance
+    if abs(magnitude - lower) <= tolerance:
+        return "lower"
+    if abs(magnitude - upper) <= tolerance:
+        return "upper"
+    return "inside" if lower < magnitude < upper else "outside"
+
+
+def _can_leave_the_reals(expression: sp.Expr) -> bool:
+    """A root or fractional power, a logarithm, an inverse sine or cosine: the only
+    operations whose value can stop being real. Nothing else is sampled."""
+    return any(
+        power.exp.is_integer is not True for power in expression.atoms(sp.Pow)
+    ) or expression.has(sp.log, sp.asin, sp.acos)
+
+
+def _refuse_where_not_real(
+    expression: sp.Expr,
+    variable: sp.Symbol,
+    domain: AnalysisDomain,
+    context,
+    *,
+    overrides: dict[str, Any] | None,
+) -> None:
+    """Refuse a function that has no real value somewhere in the domain.
+
+    `extrema(sqrt(x), x, -1, 4)` answered `x = 4 · global max, global min`: the value at
+    x = -1 could not be evaluated, the domain end was dropped in silence, and the global
+    roles were handed out among what was left - so the minimum at x = 0, where the root
+    starts, was never seen. A domain is the reader's statement that the function lives on
+    all of it; where it does not, the answer is to say so, the way `plot` and `table` do
+    since 0.31.18, on the same grid of points `plot` would draw.
+    """
+    if not _can_leave_the_reals(expression):
+        return
+    base = dict(overrides or {})
+    points = context.build_plot_sample_points(
+        [(expression, base)],
+        variable.name,
+        domain.lower_quantity,
+        domain.upper_quantity,
+    )
+    for point in points:
+        try:
+            context.evaluate_symbolic(expression, overrides={**base, variable.name: point})
+        except NoRealValueError as exc:
+            raise NoRealValueError(
+                "extrema reads its function across the whole domain, and at "
+                f"{variable.name} = {_value_text(point)} {exc}"
+            ) from None
+        except EngEvaluationError:
+            # A singularity, or anything else a point cannot be evaluated for, is the
+            # analysis's own business below; this guard is about real values only.
+            continue
 
 
 def _evaluate_extrema_nearby(
@@ -424,9 +482,14 @@ def _continuous_unbounded_directions(
         except EngEvaluationError:
             unresolved = True
             continue
-        if not _quantity_strictly_inside_domain(x_quantity, domain):
+        # At a domain end only the side inside the domain exists. `1/x` on [0, 2] was
+        # skipped here and its end dropped as unevaluable, so x = 2 was called the global
+        # maximum of a function that grows without bound towards x = 0.
+        position = _domain_position(x_quantity, domain)
+        if position == "outside":
             continue
-        for direction in ("-", "+"):
+        directions = {"lower": ("+",), "upper": ("-",), "inside": ("-", "+")}[position]
+        for direction in directions:
             try:
                 limit = sp.limit(
                     expression,
@@ -1290,6 +1353,9 @@ def solve_extrema_exact(
         raise EngEvaluationError("extrema variable must be a symbolic identifier")
 
     resolved_overrides = context.unit_literal_overrides(expression, overrides)
+    _refuse_where_not_real(
+        expression, variable, domain, context, overrides=resolved_overrides
+    )
     if expression.has(sp.Piecewise):
         return _solve_piecewise_extrema_exact(
             expression,
