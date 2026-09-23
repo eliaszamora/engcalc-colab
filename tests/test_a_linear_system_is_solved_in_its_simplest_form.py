@@ -64,7 +64,8 @@ def test_the_numbers_do_not_move(cell, capsys):
     raw, page = cell(TWO_SPRINGS + "u = solve(K, F)\nnumeric(u)\n")
     capsys.readouterr()
 
-    assert page.rstrip().endswith("[\\beginmatrix\\displaystyle 7.50\\\\\\displaystyle 10.83\\endmatrix] mm \\endarray"), page
+    # Rows `\\[6pt]` apart since 0.33.1; see test_a_matrix_row_has_room.
+    assert page.rstrip().endswith("[\\beginmatrix\\displaystyle 7.50\\\\[6pt]\\displaystyle 10.83\\endmatrix] mm \\endarray"), page
 
 
 def test_six_degrees_of_freedom_stay_readable():

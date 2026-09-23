@@ -38,7 +38,7 @@ def run(magics, source: str) -> str:
 @pytest.mark.parametrize(
     ("source", "shown"),
     [
-        ("T = [c, s; -s, c]\n", r"c & \displaystyle \mathrm{s}\\\displaystyle - \mathrm{s} & \displaystyle c"),
+        ("T = [c, s; -s, c]\n", r"c & \displaystyle \mathrm{s}\\[6pt]\displaystyle - \mathrm{s} & \displaystyle c"),
         ("x = c^2 + s^2\n", r"c^{2} + \mathrm{s}^{2}"),
         ("N_u = N + P\n", r"N_{u} & = & \displaystyle \mathrm{N} + P"),
         ("p = m*g + s\n", r"g\,\mathrm{m} + \mathrm{s}"),

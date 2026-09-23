@@ -319,6 +319,18 @@ contracts; mutation 10/10; suite 2738. Rows that move: one reference row (memori
 for products the sheet did not write), and ACI's `As*fy` now reads `As fy`. Sums keep the
 page's order. Released as 0.33.0 (#271).
 
+**Open, waiting for his yes to merge: a matrix row has room** (branch
+`fix/a-matrix-row-has-room`). Reading `k_v` he asked whether the entries were touching
+vertically: `_matrix_from_cells_latex` joined rows with a bare `\\`, and display fractions
+stood 5.7 px apart at 14 px type (6.8 px at the page's 17 px) against ≥14 px between
+columns. Shown `\\`, `4pt`, `6pt`, `8pt` side by side, he chose the recommended `6pt`
+(*"Procede con tu recomendación"*): rows as far apart as columns, 14.2 px at 14 px and
+16.9 px (1 em) at 17 px on his derivation. `_latex_visual_width` reads `\\[..]` as no
+width. 7 contracts; nine contracts pinned the bare `\\` and were updated with notes (one
+test parser read the `6` of `[6pt]` as a mode entry). Moves: the separator only - dinámica
+6, pórtico 96 × 3 palettes, the derivation 60; every other page and all 18 exercises
+byte-identical. Suite 2745. Then release 0.33.1.
+
 **Next: he runs `/code-review ultra 265`** (its head is `7bfd026`, so it covers #270). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
