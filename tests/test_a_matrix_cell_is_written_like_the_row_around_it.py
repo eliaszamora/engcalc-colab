@@ -18,10 +18,11 @@ settings and passed them on - but only in its last line. The branch one line abo
 dropped them, and so did `_matrix_latex` itself, which never had a settings parameter. So
 did the three places that build a matrix's stage list, and `_analysis_scalar_latex`.
 
-`_analysis_scalar_latex` has no unit literals to pass and is left without them here. That
-is a second thing, not this one: no sheet in the repository draws an eigenvalue whose
-closed form holds a unit alias, so there is nothing to show and nothing to pin. It is
-written down rather than fixed blind.
+`_analysis_scalar_latex` had no unit literals to pass and was left without them here. That
+was a second thing, not this one: no sheet in the repository drew an eigenvalue whose
+closed form holds a unit alias, so there was nothing to show and nothing to pin, and it was
+written down rather than fixed blind. The audit of 0.31.14 drew one - `λ = 2 kN/m` with an
+italic metre - and `test_a_unit_in_an_eigenvalue_is_typeset_as_a_unit` pins the fix.
 
 That is the same defect #228 fixed, in the branches #228 did not reach. It is not about
 matrices as such: anything the sheet knows and the printer needs - which names have
