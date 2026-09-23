@@ -1075,6 +1075,14 @@ class EngineeringEngine:
                         points=characteristic.points,
                         intervals=characteristic.intervals,
                         label_expression=characteristic.label_expression,
+                        unit_literals=self._unit_literals_of(
+                            *(
+                                expression
+                                for point in characteristic.points
+                                for expression in (point.x_symbolic, point.value_symbolic)
+                                if expression is not None
+                            )
+                        ),
                     )
                 if characteristic.kind == "intersections":
                     return IntersectionsResult(
@@ -1088,6 +1096,14 @@ class EngineeringEngine:
                         intervals=characteristic.intervals,
                         left_expression=characteristic.left_expression,
                         right_expression=characteristic.right_expression,
+                        unit_literals=self._unit_literals_of(
+                            *(
+                                expression
+                                for point in characteristic.points
+                                for expression in (point.x_symbolic, point.value_symbolic)
+                                if expression is not None
+                            )
+                        ),
                     )
                 if characteristic.kind == "extrema":
                     return ExtremaResult(
@@ -1101,6 +1117,14 @@ class EngineeringEngine:
                         unbounded_above=characteristic.unbounded_above,
                         unbounded_below=characteristic.unbounded_below,
                         label_expression=characteristic.label_expression,
+                        unit_literals=self._unit_literals_of(
+                            *(
+                                expression
+                                for point in characteristic.points
+                                for expression in (point.x_symbolic, point.value_symbolic)
+                                if expression is not None
+                            )
+                        ),
                     )
                 raise EngEvaluationError(
                     f"unsupported characteristic result '{characteristic.kind}'"

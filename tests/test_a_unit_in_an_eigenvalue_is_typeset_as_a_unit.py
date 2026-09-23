@@ -62,8 +62,10 @@ def test_a_vector_holding_a_unit_reads_it_upright(cell, capsys):
     raw = cell("B = [1*s, 1*m; 0, 2*s]\nphi = eigenvects(B)\n")
     assert "engcalc:" not in capsys.readouterr().out
     vectors = raw.split(r"\phi")[-1]
-    assert r"\frac{\mathrm{m}}{\mathrm{s}}" in vectors, vectors
-    assert r"\frac{m}{s}" not in vectors, vectors
+    # One metre per second, written with its one since a unit alone is
+    # (test_a_unit_alone_is_written_with_its_one); what this pins is that it is upright.
+    assert r"\frac{1\,\mathrm{m}}{\mathrm{s}}" in vectors, vectors
+    assert r"\frac{m}{s}" not in vectors and r"1\,m}" not in vectors, vectors
 
 
 def test_a_set_with_no_closed_form_draws_its_matrix_with_upright_units(cell, capsys):
@@ -75,7 +77,9 @@ def test_a_set_with_no_closed_form_draws_its_matrix_with_upright_units(cell, cap
     assert "engcalc:" not in capsys.readouterr().out
     determinant = raw.split(r"\mathrm{lam}")[-1]
     assert r"\det\left(" in determinant, determinant
-    assert r"\frac{\mathrm{kN}}{\mathrm{m}}" in determinant, determinant
+    # `-1*kN/m`, written with its one since a unit alone is, sign and all
+    # (test_a_unit_alone_is_written_with_its_one); what this pins is that it is upright.
+    assert r"\frac{1\,\mathrm{kN}}{\mathrm{m}}" in determinant, determinant
     assert r"\frac{\mathrm{kN}}{m}" not in determinant, determinant
 
 

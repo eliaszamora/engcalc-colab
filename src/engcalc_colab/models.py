@@ -528,6 +528,9 @@ class RootsResult:
     intervals: tuple[CharacteristicInterval, ...] = ()
     # The response the heading typesets; None where `display_label` is already `M(x)`.
     label_expression: Any = None
+    # The names the points' exact forms read as units, so `x = 1 m` and not `x = m`
+    # set as a variable. Empty is the safe reading for a result built without them.
+    unit_literals: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
@@ -618,6 +621,9 @@ class IntersectionsResult:
     intervals: tuple[CharacteristicInterval, ...] = ()
     left_expression: Any = None
     right_expression: Any = None
+    # The names the points' exact forms read as units, so `x = 1 m` and not `x = m`
+    # set as a variable. Empty is the safe reading for a result built without them.
+    unit_literals: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))
@@ -636,6 +642,9 @@ class ExtremaResult:
     unbounded_above: bool = False
     unbounded_below: bool = False
     label_expression: Any = None
+    # The names the points' exact forms read as units, so `x = 1 m` and not `x = m`
+    # set as a variable. Empty is the safe reading for a result built without them.
+    unit_literals: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", tuple(self.points))

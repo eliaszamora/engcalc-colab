@@ -149,6 +149,73 @@ class _EngineeringLatexPrinter(LatexPrinter):
         # Keyword-only: SymPy constructs printers positionally with a settings dict.
         self.unit_literals = frozenset(unit_literals)
         self.render_settings = render_settings or _DEFAULT_RENDER_SETTINGS
+        # What is being printed, outermost first: a node's parent decides whether a unit
+        # in it is a factor or stands where a quantity stands. See `_print`.
+        self._printing: list = []
+
+    def _print(self, expr, **kwargs):
+        """Every node, with a unit standing alone written with its one.
+
+        `1*m` folds to the symbol `m` before anything is printed, so where the page printed
+        the value rather than the form the sheet wrote - a function's arguments, a table, a
+        formula row of `numeric`, a characteristic row - one metre read as the word
+        "metre": `max(m, L/4)`, `[0, m, 2 m]`, `x = m (1.00 m)`. The written form already
+        kept `1 m`, `1 kN·m` and `1 kN/m`; this gives every other path the same spelling, by
+        printing the unit as the product with an explicit one that the written form is.
+
+        Only where a quantity stands - a term, an argument, an entry, a side of a
+        comparison, the whole expression. Inside a product or a power the unit is a factor
+        (`4 kN x / m`, the `m` of `m²`) and is left alone.
+        """
+        self._printing.append(expr)
+        try:
+            # With its sign as well: `-1*kN/m` in a stiffness matrix read `-kN/m`.
+            if (
+                isinstance(expr, sp.Mul)
+                and expr.args[0] == sp.S.NegativeOne
+                and len(expr.args) > 1
+            ):
+                factors = expr.args[1:]
+                rest = factors[0] if len(factors) == 1 else sp.Mul(*factors, evaluate=False)
+                if self._is_a_unit_alone(rest, parent=self._parent_of(expr)):
+                    return "- " + self._print(
+                        sp.Mul(sp.Integer(1), *factors, evaluate=False), **kwargs
+                    )
+            if self._is_a_unit_alone(expr):
+                # Through this method, not the base one: the product has to be on the
+                # stack, or its own unit sees no product above it and is wrapped again.
+                # And flat, `1·kN·m` rather than `1·(kN·m)`: the space after a number is
+                # set before a unit, and a nested product is not one.
+                factors = expr.args if isinstance(expr, sp.Mul) else (expr,)
+                return self._print(
+                    sp.Mul(sp.Integer(1), *factors, evaluate=False), **kwargs
+                )
+            return super()._print(expr, **kwargs)
+        finally:
+            self._printing.pop()
+
+    def _parent_of(self, expr):
+        """What `expr`, the node being printed, is printed inside of - None at the top."""
+        return self._printing[-2] if len(self._printing) > 1 else None
+
+    def _is_a_unit_alone(self, expr, parent=...) -> bool:
+        if not self.unit_literals or not isinstance(expr, (sp.Symbol, sp.Mul, sp.Pow)):
+            return False
+        if parent is ...:
+            parent = self._parent_of(expr)
+        if isinstance(parent, (sp.Mul, sp.Pow)):
+            return False
+        # `1/m` passes too and prints as it did: a one over a one over a metre is the
+        # same fraction, measured.
+        factors = expr.args if isinstance(expr, sp.Mul) else (expr,)
+        return all(self._is_a_unit_factor(factor) for factor in factors)
+
+    def _is_a_unit_factor(self, factor) -> bool:
+        if isinstance(factor, sp.Pow):
+            if not factor.exp.is_Rational:
+                return False
+            factor = factor.base
+        return isinstance(factor, sp.Symbol) and factor.name in self.unit_literals
 
     def _as_ordered_terms(self, expr, order=None):
         """A sum's terms in the order the page writes them. See `_ordered_sum_terms`."""
@@ -3945,6 +4012,7 @@ def _characteristic_point_coordinate(
     variable: str,
     settings: RenderSettings,
     unit=None,
+    unit_literals: frozenset[str] = frozenset(),
 ) -> str:
     """A point's coordinate, in the block's domain unit.
 
@@ -3960,7 +4028,7 @@ def _characteristic_point_coordinate(
             f"{_characteristic_quantity_math(point.x_quantity, settings, unit=unit)}"
         )
 
-    symbolic = _characteristic_symbolic_math(point.x_symbolic)
+    symbolic = _characteristic_symbolic_math(point.x_symbolic, unit_literals)
     evaluated = _characteristic_quantity_math(point.x_quantity, settings, unit=unit)
     return rf"{variable_latex} = {symbolic}\,\left({evaluated}\right)"
 
@@ -3969,6 +4037,7 @@ def _characteristic_point_value(
     point: CharacteristicPoint,
     settings: RenderSettings,
     zero_unit=None,
+    unit_literals: frozenset[str] = frozenset(),
 ) -> str | None:
     if point.value_symbolic is None and point.value_quantity is None:
         return None
@@ -3979,7 +4048,7 @@ def _characteristic_point_value(
             point.value_quantity, settings, zero_unit
         )
 
-    symbolic = _characteristic_symbolic_math(point.value_symbolic)
+    symbolic = _characteristic_symbolic_math(point.value_symbolic, unit_literals)
     if point.value_quantity is None:
         return r"\text{value} = " + symbolic
     evaluated = _characteristic_value_math(point.value_quantity, settings, zero_unit)
@@ -4135,9 +4204,12 @@ def render_characteristic_result(
                 result.variable,
                 active_settings,
                 domain_unit,
+                getattr(result, "unit_literals", frozenset()),
             )
         ]
-        value_text = _characteristic_point_value(point, active_settings, zero_unit)
+        value_text = _characteristic_point_value(
+            point, active_settings, zero_unit, getattr(result, "unit_literals", frozenset())
+        )
         if value_text is not None and not isinstance(result, RootsResult):
             parts.append(value_text)
         if point.roles:
