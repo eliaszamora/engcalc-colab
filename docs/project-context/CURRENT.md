@@ -499,8 +499,16 @@ smoke 69/69. **In his Colab on the published 0.34.0**: the appended install cell
 `main` (plain `git+https`, no `--force-reinstall`); a fresh runtime printed `0.34.0`, and
 the frame cell rendered `d = K^-1 F` = [0.63 cm; -0.0103 cm; -0.00202; 0.62 cm; ...],
 `R_1` = [-619.54 kgf; 5051.98 kgf; 198601.90 kgf cm; ...] and `Sigma_F_x = Sigma_F_y =
-0.00 kgf`, no notice. **Exact next step:** his call on the `10^3` prefactor of mixed-unit
-matrices (`f_4`, `f_v`, `R_4`), shown to him with the rows before any change.
+0.00 kgf`, no notice.
+
+**Decided: a matrix of mixed units keeps its `10^3` factor.** Shown to him in his Colab
+side by side (trial branch, deleted after): `f_4 = 10^3 [6.95 kgf; 2.38 kgf; 432.59 kgf cm;
+...]` against `[6948.02 kgf; 2380.46 kgf; 432587.86 kgf cm; ...]`; he chose the factor on
+2026-09-24 (*"Me gusta como queda en Antes con el 10^3 x, se ve más limpio"*). The rule in
+`_matrix_scale_exponent` stays as it is, including that `f_1` takes no factor because
+619.54 would read 0.62. Do not propose removing it again.
+
+**Exact next step:** nothing open; wait for his next request.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
