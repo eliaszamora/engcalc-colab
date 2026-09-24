@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.3** - #280, `1ed3831`, carrying #279; six jobs and both qualification runs green on it, verified after its merge and **in his Colab** (below) |
-| before that | **0.33.2** - #277, `a8955a3` |
-| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged, head `review/since-0.31.17` moved to `1ed3831`, so it covers #247 through #279 |
-| default suite | **2760 passing**, about a minute and a half with `-n auto` |
+| released | **0.33.4** - this release PR, carrying #282; its closure is recorded below |
+| before that | **0.33.3** - #280, `1ed3831`, verified after its merge and in his Colab |
+| open PRs | this release's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged |
+| default suite | **2772 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -395,7 +395,7 @@ page with KaTeX 0.16.28 from jsdelivr reproduces Colab exactly).
 **The ultra review ran (2026-09-24) - five findings, each reproduced on 0.33.3 by running
 it** (scratchpad `ultra_probe.py`). Merged with his yes: branch
 `fix/what-the-ultra-review-found`, `tests/test_what_the_ultra_review_found.py` (8, 7 RED on
-0.33.3); suite 2768; 13 sheets, 18 exercises and the derivation byte-identical to 0.33.3.
+0.33.3); suite 2772 with option A; 13 sheets, 18 exercises and the derivation byte-identical to 0.33.3.
 1. *A failed line still taught the sheet*: `evaluate` took `measured_units`/`written_order`
    before `_evaluate_statement`; `q = 3*s + nofunc(1)` brought back `[c, 1 s; ...]`. Now
    taken after success.
