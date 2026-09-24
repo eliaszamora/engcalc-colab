@@ -14,8 +14,8 @@ _2026-09-23._
 |---|---|
 | released | **0.33.6** - #292, `18f2f75`, carrying #291; six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.33.5** - #289, `71a7584` |
-| open PRs | none |
-| default suite | **2821 passing**, about a minute and a half with `-n auto` |
+| open PRs | #294 - `d := solve(K, F)`, CI green, checked in his Colab, waiting for his yes to merge and release 0.34.0 |
+| default suite | **2821 passing** on `main`; 2845 on the open branch, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -483,7 +483,38 @@ base shears + H = 0, vertical reactions = wL) in about 10 s, but `solve(K, F)` i
 and printed in closed form - 29-33 kB of LaTeX, unreadable - and `numeric(...)` opens
 with that form; `K_n := K` is refused (`:=` takes no matrix). `keep` coefficients do not
 help (solve is not a written-form call). Proposed to him: `d := solve(K, F)` as a
-numeric matrix definition. Waiting for his choice.
+numeric matrix definition; he approved it on 2026-09-24 (*"Sí, apruebo d := solve(K, F),
+procede"*).
+
+**`d := solve(K, F)` - a matrix defined by its numbers** (#294, branch
+`feat/a-numeric-matrix-definition`, six CI jobs green; not merged: merging and releasing
+as 0.34.0 wait for his yes).
+A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
+`matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
+written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
+`solve`, `inv`, `transpose`, `+ - *`, a scalar factor, `d[4,1]`, `d[4]`, `K[[1,2],[1,2]]`
+and `[0; d[1,1]]` / `[K_jj, Z; Z, K_jj]` written on the line. The unit of each entry of an
+inverse or a solution comes from factoring the matrix's units as r_i/c_k (a stiffness:
+forces/moments over displacements/rotations). A matrix is kept in
+`numeric_context.matrices`, apart from the scalars; one entry taken out is a scalar
+`:=` value a `numeric` line can use. The page shows the line as written, from its own
+tree (SymPy would reorder `k_v d + f_0`), then the numbers: `d = K^{-1} F` over
+`[0.63 cm; -0.0103 cm; -0.00202; 0.62 cm; -0.0141 cm; 0.00118]` on his kgf palette;
+`u := d[2,1]` reads `u = d_{2,1} = 20.00 m` (the written form on a scalar `:=` is only
+for lines that read a matrix). A `=` line naming such a matrix says to use it on a `:=`
+line. Redefinition either way replaces it. 23 contracts; mutation 18/18 killed. The
+frame is `tools/portico_matricial.eng` (displacements, member-end forces with f_0,
+reactions `transpose(T_c)*f`, `Sigma_F_x = Sigma_F_y = 0.00 kgf`), added to the KaTeX
+test with the kgf palette. The 13 sheets and 18 exercises are byte-identical to 0.33.6.
+Suite 2845. **In his Colab** (notebook "Ejercicio 2.2", two cells appended at the end: an
+install of the branch - the reconnect reused a 0.33.5 session, so it was restarted - and
+the frame with `%eng_units kgf`): the branch loaded, the whole frame rendered in KaTeX,
+`d` as above, `f_1` = [5051.98 kgf; 619.54 kgf; 198601.90 kgf cm; ...], `R_1` and `R_4`,
+`Sigma_F_x = Sigma_F_y = 0.00 kgf`. His session now runs the branch, not a release.
+
+Seen, not changed (his call): a matrix of mixed units takes a `10^3` factor in front
+when its entries are large, so `f_4` reads `10^3 [6.95 kgf; ...; 432.59 kgf cm]` while
+`f_1` (largest 198601.90) has none - existing behaviour of every numeric matrix.
 
 Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions

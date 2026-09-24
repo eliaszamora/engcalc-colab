@@ -38,6 +38,7 @@ from .models import (
     MatrixNumericGuard,
     NumericAssignmentResult,
     NumericEvaluationResult,
+    NumericMatrixAssignmentResult,
     NumericMatrixEvaluationResult,
     PartialMatrixNumericEvaluationResult,
     MatrixShape,
@@ -87,7 +88,23 @@ from .matrix_analysis import (
     matrix_rref,
 )
 from .matrix_modes import modes_of, take_mode
-from .matrix_numeric import QuantityMatrix, ensure_common_scale
+from .matrix_numeric import (
+    NumberMatrix,
+    QuantityMatrix,
+    add_numbers,
+    blocks_of_numbers,
+    ensure_common_scale,
+    entry_quantity,
+    inverse_numbers,
+    multiply_numbers,
+    numbers_of,
+    quantity_matrix_of,
+    scalar_numbers,
+    scale_numbers,
+    solve_numbers,
+    take_numbers,
+    transpose_numbers,
+)
 from .matrix_solve import solve_linear_system
 from .interpolation import Interpolation
 from .min_max import WrittenMax, WrittenMin
@@ -281,6 +298,205 @@ class _QuantityOfTheFormula(_NumericAstEvaluator):
             inner = _QuantityOfTheFormula(self.engine, {variable.id: self.visit(value)})
             return inner.visit(expression)
         return super().visit_Call(node)
+
+
+class _MatrixNumbers:
+    """The right side of a `:=` line that reads a matrix, worked out in numbers.
+
+    `d := solve(K, F)`: `K` and `F` are the matrices the sheet built with `=`, evaluated
+    entry by entry as `numeric(K)` evaluates them, and `solve` is then arithmetic on
+    numbers. The symbolic `solve` of six degrees of freedom is the closed form this
+    exists to avoid. Whatever part of the line reads no matrix - `w*L/2`, `H` - is a
+    scalar, and goes to the evaluator every other `:=` line uses, so it means exactly what
+    it would mean there.
+    """
+
+    _MATRIX_CALLS = ("solve", "inv", "transpose")
+
+    def __init__(self, engine: "EngineeringEngine", statement) -> None:
+        self.engine = engine
+        self.context = engine.numeric_context
+        self.literals = {
+            binding.name: binding.literal
+            for binding in getattr(statement, "matrix_literals", ())
+        }
+
+    def names_a_matrix(self, name: str) -> bool:
+        if name in self.literals:
+            return True
+        # The precedence a scalar `:=` already has: a value settled with `:=` outranks
+        # what `=` said, and a matrix of numbers outranks a matrix of formulas.
+        if name in self.context.values:
+            return False
+        if name in self.context.matrices:
+            return True
+        return is_matrix(self.engine.namespace.get(name))
+
+    def reads_a_matrix(self, node: ast.AST) -> bool:
+        return any(
+            isinstance(each, ast.Name) and self.names_a_matrix(each.id)
+            for each in ast.walk(node)
+        )
+
+    def value(self, node: ast.AST):
+        """A `NumberMatrix`, or a scalar quantity when the line takes one entry."""
+        if not self.reads_a_matrix(node):
+            return self.context.evaluate_expression(ast.Expression(body=node))
+        if isinstance(node, ast.Name):
+            return self._named(node.id)
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            operand = self.value(node.operand)
+            if isinstance(node.op, ast.UAdd):
+                return operand
+            if isinstance(operand, NumberMatrix):
+                return scale_numbers(operand, self.context.ureg.Quantity(-1))
+            return -operand
+        if isinstance(node, ast.BinOp):
+            return self._binary(node)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            return self._call(node)
+        if isinstance(node, ast.Subscript):
+            return self._part(node)
+        raise EngEvaluationError(
+            f"'{ast.unparse(node)}' cannot be worked out in numbers on a := line"
+        )
+
+    def _named(self, name: str) -> NumberMatrix:
+        if name in self.literals:
+            return self._literal(self.literals[name])
+        if name in self.context.matrices:
+            return numbers_of(self.context.matrices[name])
+        _substitutions, unresolved, quantity_matrix = self.context.evaluate_matrix(
+            self.engine.namespace[name]
+        )
+        if unresolved:
+            hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(unresolved))
+            raise EngEvaluationError(
+                f"{name} needs values for: " + ", ".join(unresolved) + f". {hint}"
+            )
+        return numbers_of(quantity_matrix)
+
+    def _literal(self, literal) -> NumberMatrix:
+        block_rows = []
+        for row in literal.rows:
+            blocks = []
+            for cell in row:
+                value = self.value(cell.body)
+                if not isinstance(value, NumberMatrix):
+                    value = scalar_numbers(self.context._as_quantity(value))
+                blocks.append(value)
+            block_rows.append(blocks)
+        return blocks_of_numbers(block_rows)
+
+    def _binary(self, node: ast.BinOp):
+        left = self.value(node.left)
+        right = self.value(node.right)
+        left_matrix = isinstance(left, NumberMatrix)
+        right_matrix = isinstance(right, NumberMatrix)
+        if not (left_matrix or right_matrix):
+            return self._scalar_binary(node.op, left, right)
+        if isinstance(node.op, (ast.Add, ast.Sub)):
+            if not (left_matrix and right_matrix):
+                raise EngEvaluationError(
+                    f"'{ast.unparse(node)}' adds a number to a matrix; a matrix is "
+                    "added only to a matrix of the same size"
+                )
+            return add_numbers(left, right, 1 if isinstance(node.op, ast.Add) else -1)
+        if isinstance(node.op, ast.Mult):
+            if left_matrix and right_matrix:
+                return multiply_numbers(left, right)
+            if left_matrix:
+                return scale_numbers(left, self.context._as_quantity(right))
+            return scale_numbers(right, self.context._as_quantity(left))
+        if isinstance(node.op, ast.Div) and left_matrix and not right_matrix:
+            return scale_numbers(left, 1 / self.context._as_quantity(right))
+        raise EngEvaluationError(
+            f"'{ast.unparse(node)}' is not an operation between matrices; they are "
+            "added, subtracted, multiplied and divided by a number"
+        )
+
+    def _scalar_binary(self, op: ast.operator, left, right):
+        if isinstance(op, ast.Add):
+            return left + right
+        if isinstance(op, ast.Sub):
+            return left - right
+        if isinstance(op, ast.Mult):
+            return left * right
+        if isinstance(op, ast.Div):
+            return left / right
+        if isinstance(op, ast.Pow):
+            exponent = self.context._as_quantity(right)
+            if not exponent.dimensionless:
+                raise EngEvaluationError("an exponent must be a number without a unit")
+            return left ** float(exponent.to("").magnitude)
+        raise EngEvaluationError("unsupported operator on a := line")
+
+    def _call(self, node: ast.Call):
+        name = node.func.id
+        arguments = [self.value(argument) for argument in node.args]
+        if name in self._MATRIX_CALLS:
+            if node.keywords or not all(isinstance(each, NumberMatrix) for each in arguments):
+                raise EngEvaluationError(f"{name} on a := line takes matrices")
+            if name == "solve" and len(arguments) == 2:
+                return solve_numbers(*arguments)
+            if name == "inv" and len(arguments) == 1:
+                return inverse_numbers(arguments[0])
+            if name == "transpose" and len(arguments) == 1:
+                return transpose_numbers(arguments[0])
+            raise EngEvaluationError(
+                f"{name} on a := line takes "
+                + ("a matrix and a right-hand side" if name == "solve" else "one matrix")
+            )
+        if len(arguments) == 1 and not isinstance(arguments[0], NumberMatrix):
+            if name == "abs":
+                return abs(self.context._as_quantity(arguments[0]))
+            return self.context.evaluate_scalar_function(name, arguments[0])
+        raise EngEvaluationError(f"{name} cannot be worked out in numbers on a := line")
+
+    def _part(self, node: ast.Subscript):
+        numbers = self.value(node.value)
+        if not isinstance(numbers, NumberMatrix):
+            raise EngEvaluationError(f"'{ast.unparse(node.value)}' is not a matrix")
+        index = node.slice
+        parts = list(index.elts) if isinstance(index, ast.Tuple) else [index]
+        selections = [self._positions(part) for part in parts]
+        written = f"{ast.unparse(node.value)}[{','.join(ast.unparse(p) for p in parts)}]"
+        if len(selections) == 1 and 1 in (numbers.rows, numbers.cols):
+            # `d[4]` of a column or a row: its fourth entry.
+            if numbers.cols == 1:
+                selections.append(([1], False))
+            else:
+                selections.insert(0, ([1], False))
+        if len(selections) != 2:
+            raise EngEvaluationError(
+                f"{written}: a matrix is indexed [row, column]"
+            )
+        (rows, rows_listed), (cols, cols_listed) = selections
+        for position, size in ((rows, numbers.rows), (cols, numbers.cols)):
+            if any(not 1 <= each <= size for each in position):
+                raise EngEvaluationError(
+                    f"{written} is outside a {numbers.shape} matrix; rows and columns "
+                    "are counted from 1"
+                )
+        rows = [each - 1 for each in rows]
+        cols = [each - 1 for each in cols]
+        if not rows_listed and not cols_listed:
+            return entry_quantity(numbers, rows[0], cols[0], self.context.ureg)
+        return take_numbers(numbers, rows, cols)
+
+    @staticmethod
+    def _positions(part: ast.AST) -> tuple[list[int], bool]:
+        if isinstance(part, ast.Constant) and isinstance(part.value, int):
+            return [part.value], False
+        if isinstance(part, ast.List) and all(
+            isinstance(each, ast.Constant) and isinstance(each.value, int)
+            for each in part.elts
+        ):
+            return [each.value for each in part.elts], True
+        raise EngEvaluationError(
+            f"'{ast.unparse(part)}': an index on a := line is a whole number or a list "
+            "of them, such as d[4,1] or K[[1, 2], [1, 2]]"
+        )
 
 
 def measured_units_in(tree) -> frozenset[str]:
@@ -676,7 +892,52 @@ class EngineeringEngine:
             )
         quantity = probe.numeric_evaluation[2]
         self.numeric_context.values[statement.target] = quantity
+        self.numeric_context.matrices.pop(statement.target, None)
         return quantity
+
+    def _assign_numbers(self, statement, numbers: "_MatrixNumbers", written_units):
+        """`d := solve(K, F)` and `u := d[2,1]`: a line that reads a matrix, in numbers.
+
+        A matrix is kept in `numeric_context.matrices`, apart from the scalars, so that
+        nothing that reads a scalar value can be handed a matrix; one entry taken out of
+        it is a scalar like any other `:=` value, and a `numeric` line can use it.
+        """
+        context = self.numeric_context
+        try:
+            value = numbers.value(statement.expression.body)
+        except DimensionalityError as exc:
+            raise EngEvaluationError("incompatible units") from exc
+        for binding in statement.matrix_literals:
+            for row in binding.literal.rows:
+                for cell in row:
+                    written_units |= context.written_unit_names(cell)
+        matrix_names = frozenset(
+            node.id
+            for node in ast.walk(statement.expression)
+            if isinstance(node, ast.Name)
+            and node.id not in numbers.literals
+            and numbers.names_a_matrix(node.id)
+        )
+        if isinstance(value, NumberMatrix):
+            quantity_matrix = quantity_matrix_of(value, context.ureg)
+            context.values.pop(statement.target, None)
+            context.matrices[statement.target] = quantity_matrix
+            return NumericMatrixAssignmentResult(
+                statement=statement,
+                quantity_matrix=quantity_matrix,
+                written_units=written_units,
+                matrix_names=matrix_names,
+            )
+        quantity = context._as_quantity(value)
+        context.matrices.pop(statement.target, None)
+        context.values[statement.target] = quantity
+        return NumericAssignmentResult(
+            statement=statement,
+            quantity=quantity,
+            written_units=written_units,
+            shown_as_written=True,
+            matrix_names=matrix_names,
+        )
 
     def zero_in_its_unit(self, name: str, quantity):
         """`quantity`, or the zero `name` was defined as when the arithmetic lost its unit."""
@@ -1133,6 +1394,9 @@ class EngineeringEngine:
                 notice = self._notice_a_unit_becoming_a_value(statement)
                 if notice:
                     self.notices.append(notice)
+                numbers = _MatrixNumbers(self, statement)
+                if numbers.reads_a_matrix(statement.expression.body):
+                    return self._assign_numbers(statement, numbers, written_units)
                 if self._calls_a_function_of_the_sheet(statement.expression):
                     quantity = self._assign_through_the_sheet(statement)
                 else:
@@ -1506,6 +1770,7 @@ class EngineeringEngine:
                     )
                 else:
                     self.namespace[statement.target] = value
+                    self.numeric_context.matrices.pop(statement.target, None)
                     zero = self._unit_of_a_zero(statement, value)
                     if zero is None:
                         self.zero_quantities.pop(statement.target, None)
@@ -1834,6 +2099,14 @@ class _Evaluator(ast.NodeVisitor):
             return sp.pi
         if node.id in self.engine.namespace:
             self._add_numeric_guards(self.engine.numeric_guards.get(node.id, ()))
+        elif (
+            node.id in self.engine.numeric_context.matrices
+            and self.engine.numeric_context.get(node.id) is None
+        ):
+            raise EngEvaluationError(
+                f"'{node.id}' holds numbers, not formulas: it was defined with :=. "
+                f"Use it on a := line, such as x := {node.id}[1,1] or f := k*{node.id}."
+            )
         return self.engine.resolve_name(node.id)
 
     def visit_UnaryOp(self, node: ast.UnaryOp):

@@ -239,15 +239,20 @@ def parse_cell(
                     )
                 _validate_target(target, line_no)
                 normalized = normalize_expression(numeric_rhs.strip())
+                # `D := [0; d[1,1]]` writes a matrix the way a `=` line does, and it is
+                # read the same way; a line with no brackets is left exactly as it was.
+                rewritten, matrix_literals = rewrite_matrix_literals(normalized, line_no)
                 try:
-                    expression = ast.parse(normalized, mode="eval")
+                    expression = ast.parse(rewritten, mode="eval")
                 except SyntaxError as exc:
-                    raise _invalid_syntax(line_no, normalized) from exc
+                    raise _invalid_syntax(line_no, rewritten) from exc
                 _validate_ast(expression, line_no)
+                _validate_matrix_literal_bindings(matrix_literals, line_no)
                 _validate_characteristic_statement_context(
                     expression,
                     target,
                     line_no,
+                    matrix_literals=matrix_literals,
                 )
                 statements.append(ParsedNumericAssignment(
                     line_no=line_no,
@@ -255,6 +260,7 @@ def parse_cell(
                     target=target,
                     expression=expression,
                     blank_before=pending_blank,
+                    matrix_literals=matrix_literals,
                 ))
                 pending_blank = False
                 index = next_index

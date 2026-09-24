@@ -1,0 +1,112 @@
+## Pórtico de un vano por el método de rigidez
+
+"""
+Dos columnas de 30 × 30 cm empotradas en la base y una viga de 30 × 50 cm.
+Nodos: 1 y 4 en las bases, 2 y 3 arriba. Grados de libertad libres: los
+desplazamientos y el giro de los nodos 2 y 3, en ese orden.
+"""
+
+E := 15100*sqrt(210)*kgf/cm^2
+A_c := 30*cm*30*cm
+I_c := 30*cm*(30*cm)^3/12
+A_v := 30*cm*50*cm
+I_v := 30*cm*(50*cm)^3/12
+h := 4*m
+L := 6*m
+H := 3000*kgf
+w := 2000*kgf/m
+
+### Rigidez de las columnas
+
+keep a_c = E*A_c/h
+keep b_1 = 12*E*I_c/h^3
+keep b_2 = 6*E*I_c/h^2
+keep b_3 = 4*E*I_c/h
+keep b_4 = 2*E*I_c/h
+
+k_c = [a_c, 0, 0, -a_c, 0, 0;
+       0, b_1, b_2, 0, -b_1, b_2;
+       0, b_2, b_3, 0, -b_2, b_4;
+       -a_c, 0, 0, a_c, 0, 0;
+       0, -b_1, -b_2, 0, b_1, -b_2;
+       0, b_2, b_4, 0, -b_2, b_3]
+
+"""
+Las columnas van de la base hacia arriba: $\theta = 90°$.
+"""
+
+T_c = [0, 1, 0, 0, 0, 0;
+       -1, 0, 0, 0, 0, 0;
+       0, 0, 1, 0, 0, 0;
+       0, 0, 0, 0, 1, 0;
+       0, 0, 0, -1, 0, 0;
+       0, 0, 0, 0, 0, 1]
+
+K_c = transpose(T_c)*k_c*T_c
+
+### Rigidez de la viga
+
+keep a_v = E*A_v/L
+keep g_1 = 12*E*I_v/L^3
+keep g_2 = 6*E*I_v/L^2
+keep g_3 = 4*E*I_v/L
+keep g_4 = 2*E*I_v/L
+
+k_v = [a_v, 0, 0, -a_v, 0, 0;
+       0, g_1, g_2, 0, -g_1, g_2;
+       0, g_2, g_3, 0, -g_2, g_4;
+       -a_v, 0, 0, a_v, 0, 0;
+       0, -g_1, -g_2, 0, g_1, -g_2;
+       0, g_2, g_4, 0, -g_2, g_3]
+
+### Ensamblaje
+
+"""
+Cada columna aporta su bloque del nodo superior; la viga, sus 6 × 6.
+"""
+
+K_jj = K_c[[4, 5, 6], [4, 5, 6]]
+Z = [0, 0, 0; 0, 0, 0; 0, 0, 0]
+K = k_v + [K_jj, Z; Z, K_jj]
+
+### Cargas
+
+"""
+$H$ en el nodo 2 y las cargas equivalentes de $w$ en los extremos de la viga,
+que son las fuerzas de empotramiento $f_0$ con el signo cambiado.
+"""
+
+f_0 = [0; w*L/2; w*L^2/12; 0; w*L/2; -w*L^2/12]
+F = [H; -w*L/2; -w*L^2/12; 0; -w*L/2; w*L^2/12]
+
+### Desplazamientos
+
+d := solve(K, F)
+
+### Fuerzas en los extremos de los elementos
+
+"""
+En ejes locales: $f = k\,T\,D$ en las columnas, con la base fija, y
+$f = k\,D + f_0$ en la viga, que ya está en ejes globales.
+"""
+
+D_1 := [0; 0; 0; d[1,1]; d[2,1]; d[3,1]]
+D_4 := [0; 0; 0; d[4,1]; d[5,1]; d[6,1]]
+f_1 := k_c*T_c*D_1
+f_4 := k_c*T_c*D_4
+f_v := k_v*d + f_0
+
+### Reacciones
+
+"""
+Las fuerzas de cada columna en ejes globales; sus tres primeras son la
+reacción en la base.
+"""
+
+R_1 := transpose(T_c)*f_1
+R_4 := transpose(T_c)*f_4
+
+### Equilibrio
+
+Sigma_F_x := R_1[1,1] + R_4[1,1] + H
+Sigma_F_y := R_1[2,1] + R_4[2,1] - w*L

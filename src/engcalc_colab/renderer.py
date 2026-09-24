@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import functools
 from contextvars import ContextVar
 import math
@@ -34,6 +35,7 @@ from .models import (
     MatrixShape,
     NumericAssignmentResult,
     NumericEvaluationResult,
+    NumericMatrixAssignmentResult,
     NumericMatrixEvaluationResult,
     PartialMatrixNumericEvaluationResult,
     PartialNumericEvaluationResult,
@@ -50,6 +52,7 @@ CalculationResult = (
     | NumericAssignmentResult
     | NumericEvaluationResult
     | NumericMatrixEvaluationResult
+    | NumericMatrixAssignmentResult
     | PartialNumericEvaluationResult
     | PartialMatrixNumericEvaluationResult
 )
@@ -3210,6 +3213,145 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
     return rows
 
 
+# --- `d := solve(K, F)`: a line over matrices, as written ------------------------------
+#
+# Printed from the line's own tree and not through SymPy, which puts a sum's terms in its
+# own order and would turn `k_v d + f_0` into `f_0 + k_v d`. There is nothing here to
+# simplify or reorder: the page repeats what the engineer wrote, in mathematical form,
+# and the numbers follow it. See `test_a_matrix_of_numbers_is_defined_with_colon_equals`.
+
+_WRITTEN_ATOM = 5
+
+
+def _written_precedence(node) -> int:
+    if isinstance(node, ast.BinOp):
+        if isinstance(node.op, (ast.Add, ast.Sub)):
+            return 1
+        if isinstance(node.op, ast.Mult):
+            return 2
+        if isinstance(node.op, ast.Pow):
+            return 4
+        return _WRITTEN_ATOM  # a fraction is its own group
+    if isinstance(node, ast.UnaryOp):
+        return 1
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and node.value < 0:
+        return 1
+    return _WRITTEN_ATOM
+
+
+class _WrittenLine:
+    def __init__(self, result, settings: RenderSettings):
+        self.literals = {
+            binding.name: binding.literal
+            for binding in getattr(result.statement, "matrix_literals", ())
+        }
+        self.unit_names = result.written_units
+        self.matrix_names = result.matrix_names
+        self.settings = settings
+
+    def is_matrix(self, node) -> bool:
+        if isinstance(node, ast.Name):
+            return node.id in self.literals or node.id in self.matrix_names
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            return node.func.id in ("solve", "inv", "transpose")
+        if isinstance(node, ast.Subscript):
+            return any(isinstance(each, ast.List) for each in ast.walk(node.slice))
+        if isinstance(node, ast.BinOp):
+            return self.is_matrix(node.left) or self.is_matrix(node.right)
+        if isinstance(node, ast.UnaryOp):
+            return self.is_matrix(node.operand)
+        return False
+
+    def grouped(self, node, below: int) -> str:
+        text = self.latex(node)
+        if _written_precedence(node) < below:
+            return rf"\left({text}\right)"
+        return text
+
+    def latex(self, node) -> str:
+        if isinstance(node, ast.Name):
+            return self._name(node.id)
+        if isinstance(node, ast.Constant):
+            return str(node.value)
+        if isinstance(node, ast.UnaryOp):
+            sign = "-" if isinstance(node.op, ast.USub) else "+"
+            return sign + self.grouped(node.operand, 2)
+        if isinstance(node, ast.BinOp):
+            return self._binary(node)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+            return self._call(node.func.id, node.args)
+        if isinstance(node, ast.Subscript):
+            base = self.latex(node.value)
+            index = node.slice
+            parts = index.elts if isinstance(index, ast.Tuple) else [index]
+            shown = ",".join(
+                r"\left[" + ",".join(str(each.value) for each in part.elts) + r"\right]"
+                if isinstance(part, ast.List)
+                else self.latex(part)
+                for part in parts
+            )
+            if "_" in base or not isinstance(node.value, ast.Name):
+                base = rf"\left({base}\right)"
+            return f"{base}_{{{shown}}}"
+        return ast.unparse(node)
+
+    def _name(self, name: str) -> str:
+        if name in self.literals:
+            return _matrix_from_cells_latex(
+                [[self.latex(cell.body) for cell in row] for row in self.literals[name].rows]
+            )
+        if name in self.unit_names:
+            return _latex(sp.Symbol(name), frozenset({name}), self.settings)
+        return _render_lhs(name, None)
+
+    def _binary(self, node: ast.BinOp) -> str:
+        if isinstance(node.op, (ast.Add, ast.Sub)):
+            sign = " + " if isinstance(node.op, ast.Add) else " - "
+            return self.latex(node.left) + sign + self.grouped(node.right, 2)
+        if isinstance(node.op, ast.Mult):
+            left = self.grouped(node.left, 2) if not isinstance(node.left, ast.UnaryOp) else self.latex(node.left)
+            right = self.grouped(node.right, 2)
+            joint = r" \cdot " if right[:1].isdigit() else " "
+            if self.is_matrix(node.left) or self.is_matrix(node.right):
+                joint = r"\,"
+            if isinstance(node.right, ast.Name) and node.right.id in self.unit_names:
+                joint = r"\,"
+            return left + joint + right
+        if isinstance(node.op, ast.Div):
+            return rf"\frac{{{self.latex(node.left)}}}{{{self.latex(node.right)}}}"
+        if isinstance(node.op, ast.Pow):
+            return f"{self.grouped(node.left, _WRITTEN_ATOM)}^{{{self.latex(node.right)}}}"
+        return ast.unparse(node)
+
+    def _call(self, name: str, arguments) -> str:
+        if name == "solve" and len(arguments) == 2:
+            matrix, right = arguments
+            return rf"{self.grouped(matrix, _WRITTEN_ATOM)}^{{-1}}\,{self.grouped(right, 2)}"
+        if name == "inv" and len(arguments) == 1:
+            return f"{self.grouped(arguments[0], _WRITTEN_ATOM)}^{{-1}}"
+        if name == "transpose" and len(arguments) == 1:
+            return f"{self.grouped(arguments[0], _WRITTEN_ATOM)}^{{T}}"
+        inner = ", ".join(self.latex(argument) for argument in arguments)
+        if name == "sqrt" and len(arguments) == 1:
+            return rf"\sqrt{{{inner}}}"
+        if name == "abs" and len(arguments) == 1:
+            return rf"\left|{inner}\right|"
+        return rf"\operatorname{{{name}}}\left({inner}\right)"
+
+
+def _written_line_latex(result, settings: RenderSettings) -> str:
+    return _WrittenLine(result, settings).latex(
+        result.statement.expression.body
+    )
+
+
+def _numeric_matrix_assignment_stages(
+    result: NumericMatrixAssignmentResult, settings: RenderSettings
+) -> list[str]:
+    value = _quantity_matrix_latex(result.quantity_matrix, settings)
+    return _without_a_repeated_stage([_written_line_latex(result, settings), value])
+
+
 def _matrix_stage_rows(lhs: str | None, stages: list[str]) -> list[str]:
     if not stages:
         return []
@@ -3427,6 +3569,11 @@ def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> 
 
 
 def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[str]:
+    if isinstance(result, NumericMatrixAssignmentResult):
+        return _matrix_stage_rows(
+            _render_lhs(result.statement.target, None),
+            _numeric_matrix_assignment_stages(result, settings),
+        )
     if isinstance(result, NumericMatrixEvaluationResult):
         return _numeric_matrix_evaluation_rows(result, settings)
     if isinstance(result, PartialMatrixNumericEvaluationResult):
@@ -3515,6 +3662,11 @@ def _value_row_spacings(
                 "renderer semantic spacing metadata does not match rendered row count"
             )
         return spacings
+
+    if isinstance(result, NumericMatrixAssignmentResult):
+        return _stage_spacing_sequence(
+            [1] * len(_numeric_matrix_assignment_stages(result, settings))
+        )
 
     if isinstance(result, NumericMatrixEvaluationResult):
         value = _quantity_matrix_latex(
@@ -4507,7 +4659,14 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         # used `:=`. The two agree on `q := 2.8*tonf/m` and part company on
         # `phiMn := 0.9*As*fy*z`, where the units came from three stored values and the
         # statement declared only a name.
-        return rf"{lhs} = {_quantity_latex(result.quantity, settings=active_settings, declared=bool(result.written_units))}"
+        value = _quantity_latex(result.quantity, settings=active_settings, declared=bool(result.written_units))
+        if result.shown_as_written:
+            return rf"{lhs} = {_written_line_latex(result, active_settings)} = {value}"
+        return rf"{lhs} = {value}"
+
+    if isinstance(result, NumericMatrixAssignmentResult):
+        stages = _numeric_matrix_assignment_stages(result, active_settings)
+        return rf"{_render_lhs(result.statement.target, None)} = " + " = ".join(stages)
 
     if isinstance(result, PartialMatrixNumericEvaluationResult):
         stages = [_matrix_latex(result.symbolic_matrix, settings=active_settings)]

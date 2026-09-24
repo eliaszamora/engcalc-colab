@@ -97,6 +97,8 @@ class ParsedNumericAssignment:
     target: str
     expression: ast.Expression
     blank_before: bool = False
+    matrix_literals: tuple[MatrixLiteralBinding, ...] = ()
+    """`D := [0; d[1,1]]`: the matrices written on the line, as a `=` line keeps them."""
 
 
 @dataclass(frozen=True)
@@ -205,6 +207,23 @@ class NumericAssignmentResult:
     # statement declared a name and not a unit, which is what the renderer needs in
     # order to tell `q := 2.8*tonf/m` from `phiMn := 0.9*As*fy*z`.
     written_units: frozenset[str] = frozenset()
+    # `u := d[2,1]` read a matrix of numbers, and the page says which part: the value
+    # alone would not tell the reader where it came from.
+    shown_as_written: bool = False
+    matrix_names: frozenset[str] = frozenset()
+
+
+@dataclass(frozen=True)
+class NumericMatrixAssignmentResult:
+    """`d := solve(K, F)`: a matrix worked out in numbers, shown as written and then
+    as its value. See `test_a_matrix_of_numbers_is_defined_with_colon_equals`."""
+
+    statement: ParsedNumericAssignment
+    quantity_matrix: Any
+    written_units: frozenset[str] = frozenset()
+    # The names on the line that stand for matrices, so the page can set a product of
+    # matrices apart - `k_c T_c D_1` - where a product of scalars is written tight.
+    matrix_names: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, init=False)
