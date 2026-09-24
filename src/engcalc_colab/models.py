@@ -224,6 +224,8 @@ class NumericMatrixAssignmentResult:
     # The names on the line that stand for matrices, so the page can set a product of
     # matrices apart - `k_c T_c D_1` - where a product of scalars is written tight.
     matrix_names: frozenset[str] = frozenset()
+    # `numeric(d, cm)`: the entries are already in the unit asked for.
+    unit_was_requested: bool = False
 
 
 @dataclass(frozen=True, init=False)
