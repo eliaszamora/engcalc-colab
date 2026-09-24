@@ -17,7 +17,7 @@ from pint.errors import DimensionalityError
 from pint.util import UnitsContainer
 
 from .matrix_modes import mode_key
-from .matrix_numeric import QuantityMatrix
+from .matrix_numeric import MATRIX_CALLS, QuantityMatrix
 from .unit_text import quantity_text, unit_text
 from .models import (
     AssumptionResult,
@@ -3253,7 +3253,7 @@ class _WrittenLine:
         if isinstance(node, ast.Name):
             return node.id in self.literals or node.id in self.matrix_names
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            return node.func.id in ("solve", "inv", "transpose")
+            return node.func.id in MATRIX_CALLS
         if isinstance(node, ast.Subscript):
             return any(isinstance(each, ast.List) for each in ast.walk(node.slice))
         if isinstance(node, ast.BinOp):

@@ -582,8 +582,26 @@ without factor, columns x10^3 (-600 ... 800) with the legend clear of the lines.
 Windows screen capture came back black this time (screen locked); the Chrome extension's
 own screenshot was used to look.
 
-**Exact next step:** the ultra review of #299 when he launches it (`/code-review ultra 299`);
-reproduce each finding by running it before changing anything.
+**The ultra review of #299 (everything since 0.33.6) - he launched it.** Seven findings,
+each reproduced by running it (scratchpad `ultra_299_probe.py`) before any change. Fixed on
+branch `fix/what-the-second-ultra-review-found`:
+1. `s := min(3*h, d[1,1])` stopped ("min cannot be worked out"): a call that takes numbers
+   now works out only its matrix-reading arguments and is evaluated by
+   `_QuantityOfTheFormula`, so `min`, `max`, `interp`, sqrt... mean what they do elsewhere.
+2. `r := [d[1,1], d[2,1]]` (a row with commas) stopped: read as a row, as on a `=` line.
+3. `y := M(3*m)*d[1,1]/m` stopped at the sheet function `M`: the parts that read no
+   matrix and call a sheet function go through `_QuantityOfTheFormula`.
+4. `K = [...]`, `K := solve(K, F)`, `y = 2*K` read the OLD formula in silence (the one
+   wrong answer): a matrix given numbers with `:=` drops its formula (namespace, written
+   form, guards, kept), so `y = 2*K` says to use `:=` and `numeric(K)` shows the numbers.
+5. `D := [0;` over several lines gave "unbalanced parentheses": `:` removed from the
+   comparison set in `matrix_syntax._has_symbolic_assignment_before_first_bracket`.
+6. `solve`/`inv`/`transpose` listed twice: one `matrix_numeric.MATRIX_CALLS`.
+Not changed, measured: stages built twice per `:=` matrix line (15 ms of a 2.36 s
+render); one LU per right-hand-side column (10 ms for six columns).
+7 contracts (7 RED); mutation 5/5. Suite 2874. The 13 sheets and 18 exercises identical.
+
+**Exact next step:** his yes to merge it and publish 0.34.3; then close #299 unmerged.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
