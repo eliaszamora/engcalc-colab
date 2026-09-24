@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.6** - this release PR, carrying #291; its closure is recorded below |
-| before that | **0.33.5** - #289, `71a7584`, verified after its merge and in his Colab |
-| open PRs | this release's |
+| released | **0.33.6** - #292, `18f2f75`, carrying #291; six jobs and both qualification runs green on it, verified after its merge (below) |
+| before that | **0.33.5** - #289, `71a7584` |
+| open PRs | none |
 | default suite | **2821 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -468,8 +468,22 @@ is read as a unit (newton), and nothing on the sheet writes it as one. If it is 
 quantity, give it a value first (N := ...) or another name, such as N_1." The value is
 unchanged. 11 contracts (5 RED); ten contracts that use `s`/`N` as names on purpose
 filter it with `conftest.without_letter_notices`. No notice on the 13 sheets, 18
-exercises or the derivation. Suite 2821. Released as 0.33.6; its closure is to be recorded here. He then chose option
+exercises or the derivation. Suite 2821. Released as 0.33.6 (#292). **Closed**: on `e3bab2e` version assertions RED then GREEN,
+suite 2821 twice, wheel 31 files identical, clean Colab-like venv upgrades nothing, smoke
+63/63 (`smoke-0336/`), suite against the wheel 2821 with KaTeX, sheets and exercises
+identical to 0.33.5; after its merge six jobs and both qualification runs green on
+`18f2f75`, `git+https` resolved to it, 31 files identical, 63/63. He then chose option
 B for the portal frame: I write it, check it in his Colab, and hand him the cells.
+
+**The portal frame (his option B) found a gap - a real frame's solution is unreadable.**
+One bay, fixed bases, h = 4 m, L = 6 m, 30x30 columns, 30x50 beam, f'c 210, H = 3000 kgf,
+w = 2000 kgf/m, 6 free DOF (scratchpad `portal_v1..v4.eng`). EngCalc solves it right
+(delta 0.628 cm, theta_2 -0.00202, theta_3 0.00118, equal to NumPy to every figure;
+base shears + H = 0, vertical reactions = wL) in about 10 s, but `solve(K, F)` is kept
+and printed in closed form - 29-33 kB of LaTeX, unreadable - and `numeric(...)` opens
+with that form; `K_n := K` is refused (`:=` takes no matrix). `keep` coefficients do not
+help (solve is not a written-form call). Proposed to him: `d := solve(K, F)` as a
+numeric matrix definition. Waiting for his choice.
 
 Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
