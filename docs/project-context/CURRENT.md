@@ -392,8 +392,26 @@ his install cell reported 0.33.3, his derivation re-run): `T_b`/`K_b`, `T_f`/`K_
 Lesson recorded: Colab is KaTeX 0.16.28 - calibrate presentation against it (a local
 page with KaTeX 0.16.28 from jsdelivr reproduces Colab exactly).
 
-**Next: he runs `/code-review ultra 265`** (its head is `1ed3831`, so it covers #279). The findings come back to be verified by
-running them before anything is fixed. Known and not requested:
+**The ultra review ran (2026-09-24) - five findings, each reproduced on 0.33.3 by running
+it** (scratchpad `ultra_probe.py`). Open, waiting for his yes to merge: branch
+`fix/what-the-ultra-review-found`, `tests/test_what_the_ultra_review_found.py` (8, 7 RED on
+0.33.3); suite 2768; 13 sheets, 18 exercises and the derivation byte-identical to 0.33.3.
+1. *A failed line still taught the sheet*: `evaluate` took `measured_units`/`written_order`
+   before `_evaluate_statement`; `q = 3*s + nofunc(1)` brought back `[c, 1 s; ...]`. Now
+   taken after success.
+2. *`solve` inside a larger expression solved twice* (the `_shown_input` second reading):
+   `_Evaluator.answered` keeps each solve's answer by node; the reading reuses it. Page
+   unchanged (`z = 8`).
+3. *Substitution stage built in three places*, the spacing metadata's without the row's
+   units or piecewise branches: one `_numeric_substituted_rows(result, settings,
+   formula_rows)` for drawing and counting.
+5. *A name updated from itself showed its new value in its own formula*
+   (`v = v + 2*diff(t^2, t)` read `4t + 2 d/dt t² + 5`): `_shown_input` now runs before
+   the name is stored; reads `2 d/dt t² + 5`. Functions too.
+4. **His decision, not changed**: `(-8)^(1/3)` says "no real value", pinned by
+   `test_a_value_with_no_real_result_says_so`; −8 has a real cube root (−2).
+
+**Then**, known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
 

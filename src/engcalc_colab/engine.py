@@ -677,6 +677,7 @@ class EngineeringEngine:
             return shown
         reader = _Evaluator(self, getattr(statement, "matrix_literals", ()))
         reader.showing = True
+        reader.answered = evaluator.answered
         try:
             if statement.parameters is not None:
                 return reader.visit_function_body(body, statement.parameters)
@@ -921,6 +922,11 @@ class EngineeringEngine:
         A statement that fails reads nothing the sheet goes on with, and says nothing.
         """
         self.notices = []
+        result = self._evaluate_statement(statement)
+        # What the line writes - the units it measures, the order of its products - is
+        # taken only once it has evaluated. Taken before, a line that then failed left it
+        # behind for the rest of the session: `q = 3*s + nofunc(1)` made the `s` of a
+        # later rotation matrix a second. The printer reads both after this returns.
         expression = getattr(statement, "expression", None)
         if expression is not None:
             self.measured_units |= measured_units_in(expression)
@@ -932,7 +938,6 @@ class EngineeringEngine:
                 for entry in row:
                     self.measured_units |= measured_units_in(entry)
                     record_written_order(entry, self.written_order)
-        result = self._evaluate_statement(statement)
         read = frozenset(getattr(result, "unit_literals", ())) | frozenset(
             getattr(result, "written_units", ())
         )
@@ -1384,6 +1389,9 @@ class EngineeringEngine:
                     ),
                 )
 
+            # The formula is read before the name is stored: read after, `v = v + 2*diff(t^2, t)`
+            # showed the new `v` inside the formula that defines it.
+            shown = self._shown_input(statement, evaluator)
             if statement.target is not None:
                 if statement.parameters is not None:
                     for parameter in statement.parameters:
@@ -1418,7 +1426,6 @@ class EngineeringEngine:
                 if statement.target is not None
                 else self._written_form(statement, evaluator, value)
             )
-            shown = self._shown_input(statement, evaluator)
             return EvaluationResult(
                 statement=statement,
                 display_input=shown,
@@ -1449,6 +1456,9 @@ class _Evaluator(ast.NodeVisitor):
         # Set for the second reading of `_shown_input`: a derivative or an integral
         # returns its unevaluated form, so the statement comes back as it is written.
         self.showing = False
+        # Each `solve` call's answer, by the call's node, so the second reading reuses it
+        # rather than solving the same equation again. See `visit_Call`.
+        self.answered: dict[int, object] = {}
         self.solved_for = None
         self.numeric_evaluation = None
         # Set when `numeric(expr, unit)` named a unit. `convert_quantity` already
@@ -1778,6 +1788,22 @@ class _Evaluator(ast.NodeVisitor):
         return build_piecewise(branches, default)
 
     def visit_Call(self, node: ast.Call):
+        """A call, with a `solve` answered once for both readings of its statement.
+
+        `_shown_input` reads a statement a second time when a call sits inside something
+        larger. A derivative or an integral returns its unevaluated form then, but a
+        `solve` in `2*solve(x - 4 = 0, x)` shows its answer, and was solving the same
+        equation a second time to get it.
+        """
+        solving = isinstance(node.func, ast.Name) and node.func.id == "solve"
+        if solving and self.showing and id(node) in self.answered:
+            return self.answered[id(node)]
+        value = self._read_call(node)
+        if solving:
+            self.answered[id(node)] = value
+        return value
+
+    def _read_call(self, node: ast.Call):
         if not isinstance(node.func, ast.Name):
             raise EngSyntaxError(f"unsupported syntax '{type(node.func).__name__}'")
         name = node.func.id
