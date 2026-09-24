@@ -26,12 +26,15 @@ import re
 
 import engcalc_colab.magic as magic
 
+from conftest import without_spacer_rows
+
 
 def page(monkeypatch, source: str) -> str:
     captured = []
     monkeypatch.setattr(magic, "display", captured.append)
     magic.EngMagics().eng("", source)
-    return "".join(str(getattr(obj, "data", "")) for obj in captured)
+    # The room a matrix is given is not a row; see test_a_matrix_row_has_room.
+    return without_spacer_rows("".join(str(getattr(obj, "data", "")) for obj in captured))
 
 
 def left_cells(math: str) -> list[str]:

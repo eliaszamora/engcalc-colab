@@ -11,7 +11,7 @@ from engcalc_colab.models import (
 )
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.renderer import RenderSettings, render_aligned_results, render_result
-from engcalc_colab.renderer import _MATRIX_ROW_SEPARATOR as ROW
+from engcalc_colab.renderer import _MATRIX_PLAIN_ROW_SEPARATOR as ROW
 
 
 def evaluate(engine: EngineeringEngine, source: str):

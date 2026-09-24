@@ -1913,22 +1913,39 @@ def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
     # and the transformation matrices do not get wider at all - their width is set by a
     # substitution row and the taller fractions fit inside it - and only the assembly
     # grows, 1224 px to 1696, which was past the notebook's output width either way.
-    body = _MATRIX_ROW_SEPARATOR.join(
-        " & ".join(rf"\displaystyle {cell}" for cell in row) for row in rows
-    )
+    lines = [" & ".join(rf"\displaystyle {cell}" for cell in row) for row in rows]
+    tall = [any(_is_tall(cell) for cell in row) for row in rows]
+    body = lines[0]
+    for index in range(1, len(lines)):
+        separator = (
+            _MATRIX_ROW_SEPARATOR
+            if tall[index - 1] or tall[index]
+            else _MATRIX_PLAIN_ROW_SEPARATOR
+        )
+        body += separator + lines[index]
     return rf"\left[\begin{{matrix}}{body}\end{{matrix}}\right]"
 
 
 # What separates one row of a matrix from the next. A bare `\\` left display fractions
 # touching: he asked whether the entries of a stiffness matrix were touching.
 #
-# Calibrated in Colab, where the page is read. 0.33.1 chose `6pt` from a measurement in
-# the preview's MathJax 3, which leaves 5.7 px between rows before any separator (14 px
-# type) - there `6pt` put the rows as far apart as the columns. Colab's renderer leaves
-# none, and in his notebook the same `6pt` was a thin gap that still read tight. Drawn
-# there five ways, bare to `14pt`, `12pt` is the one whose rows stand about as far apart
-# as its columns, and he chose it. In the preview it reads somewhat airier.
+# Calibrated in Colab, where the page is read, and Colab typesets with KaTeX 0.16.28 - not
+# the MathJax 3 of the preview, where 0.33.1's `6pt` was measured. KaTeX reads `\\[len]` as
+# LaTeX does: the row is made at least `len` plus a strut's depth deep, nothing added to a
+# row already deeper. Drawn in his Colab bare to `14pt`, `12pt` puts rows of fractions about
+# as far apart as the columns, and he chose it. Rows of plain entries - `c_θ`, `-s_θ`, `0` -
+# read loose at `12pt` and balanced at `3pt`, so a boundary takes `12pt` only when a row on
+# either side of it holds something tall.
 _MATRIX_ROW_SEPARATOR = r"\\[12pt]"
+_MATRIX_PLAIN_ROW_SEPARATOR = r"\\[3pt]"
+
+# What makes a cell tall: a fraction, a big operator, a nested array. A power or a root is
+# not - `c_θ²` sits in a plain row's height.
+_TALL_CELL = re.compile(r"\\(?:[dt]?frac|i{0,3}nt|oint|sum|prod|binom|lim)(?![A-Za-z])|\\begin\{")
+
+
+def _is_tall(cell: str) -> bool:
+    return _TALL_CELL.search(cell) is not None
 
 
 def _matrix_latex(
@@ -3657,6 +3674,25 @@ def _opens_by_repeating(result_rows: list[str], previous_rows: list[str] | None)
     )
 
 
+def _row_break(spacing: str, above: str, below: str) -> str:
+    r"""What goes between two rows of the working: `\\[spacing]`, and room for a matrix.
+
+    Colab typesets with KaTeX, which reads `\\[spacing]` as LaTeX does - the row is made at
+    least that deep, and a row already deeper gains nothing. A matrix is deeper than any
+    spacing the working uses, so two matrices one above the other touched in his notebook,
+    `T_f` on `K_f`, and `24pt` still touched under a four-row stiffness matrix. A row of its
+    own adds room whatever the depth: the strut `_computed_block` already opens and closes
+    with, a strut's height and depth in KaTeX and 0.7em in the preview's MathJax. It goes
+    wherever the row above or the row below holds a matrix.
+    """
+    if _MATRIX_OPENING in above or _MATRIX_OPENING in below:
+        return rf"\\[{spacing}] \rule{{0pt}}{{0.7em}} \\"
+    return rf"\\[{spacing}]"
+
+
+_MATRIX_OPENING = r"\begin{matrix}"
+
+
 def render_aligned_results(results: list[CalculationResult], *, settings: RenderSettings | None = None) -> str:
     """Render all calculation groups with one consistent MathJax array layout."""
     if not results:
@@ -3684,7 +3720,7 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
             # side, so the array's alignment needs nothing else, and the separator
             # becomes the stage spacing this block would have used internally.
             for spacing, continuation_row in zip(internal_spacings, result_rows[1:]):
-                rows.append(rf"\\[{spacing}]")
+                rows.append(_row_break(spacing, rows[-1], continuation_row))
                 rows.append(continuation_row)
             # The whole block, not the tail that was emitted. Only `[-1]` is ever read
             # and it is the same either way, so this cannot be observed: setting it to
@@ -3695,14 +3731,14 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
 
         if result_index:
             spacing = "16pt" if result.statement.blank_before else "8pt"
-            rows.append(rf"\\[{spacing}]")
+            rows.append(_row_break(spacing, rows[-1], result_rows[0]))
         rows.append(result_rows[0])
 
         for spacing, continuation_row in zip(
             internal_spacings,
             result_rows[1:],
         ):
-            rows.append(rf"\\[{spacing}]")
+            rows.append(_row_break(spacing, rows[-1], continuation_row))
             rows.append(continuation_row)
 
         previous_rows = result_rows
