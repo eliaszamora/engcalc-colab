@@ -12,9 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.34.2** - this release PR, carrying #303 (`aa88b1d`) and #304 (`a87f299`); its closure is recorded below |
+| released | **0.34.2** - #305, `a791a8b`, carrying #303 (`aa88b1d`) and #304 (`a87f299`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.34.1** - #301, `24ada0b` |
-| open PRs | this release's; #299 (draft review frame for `/code-review ultra 299`, never merge) |
+| open PRs | #299 (draft review frame for `/code-review ultra 299`, never merge) |
 | default suite | **2867 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -570,8 +570,20 @@ decided under that (branch `fix/a-design-moment-is-plotted-downward`):
 
 Merged as #304 (`a87f299`); released as 0.34.2 by the release PR.
 
-**Exact next step:** close 0.34.2 (checks after its merge, his Colab); the ultra review
-of #299 when he launches it (`/code-review ultra 299`).
+**0.34.2 is closed.** On the release commit `62e2f29`: version assertions RED then GREEN;
+suite 2867 twice; wheel 31 files identical to `src`; clean Colab-like venv upgrades
+nothing; smoke 73/73 (`smoke-0342/`: the frame's moment axes read x10^3 and run
+positive-down, the shear takes no factor); suite against the wheel 2866 + the by-path
+magic test on the wheel's copy; 13 sheets and 18 exercises from the wheel identical to the
+tree. After its merge: CI (six jobs) and the deep gate green on `a791a8b`; `git+https`
+resolved to it, upgraded nothing, 23 modules identical, smoke 73/73. In his Colab (session
+restarted - it held 0.34.1): 0.34.2; beam M x10^3 (ticks to 1000) positive-down, shear
+without factor, columns x10^3 (-600 ... 800) with the legend clear of the lines.
+Windows screen capture came back black this time (screen locked); the Chrome extension's
+own screenshot was used to look.
+
+**Exact next step:** the ultra review of #299 when he launches it (`/code-review ultra 299`);
+reproduce each finding by running it before changing anything.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
