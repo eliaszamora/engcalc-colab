@@ -648,12 +648,42 @@ arrow at the member's ends; add shear, axial and the deformed shape.
 reads a file (Colab `/content`, Drive) or a URL, embeds it (HTML data URI) and writes the
 caption as Markdown (`$...$` typeset). Numbered automatically, by (file, caption): a cell
 run again keeps its numbers, `%eng_reset` restarts at 1. Parser allows `width=` only here.
-Label is "Figure N." - English like Roots/Domain; he was told "Figura" in the proposal,
-so it is flagged to him. 13 contracts; mutation 3/3. Suite 2902.
+The label reads **"Figura N."** - his choice (*"déjalo como Figura"*), over the English of
+the block names (`7987242`). 13 contracts; mutation 3/3. PR #311, not merged.
 
-**Exact next step:** mock-ups of V, N and the deformed shape with the load arrows fixed,
-and a proposed syntax for the frame diagrams; then build them; verify everything in his
-Colab; publish 0.35.0 only when he says.
+**4. Diagrams drawn on the frame** (branch `feat/frame-plot`, stacked on `feat/image`).
+Approved over a four-panel mock-up (*"Sí, opción (b), apruebo la sintaxis"*):
+`member("V", start=[0*m, h], end=[L, h], forces=f_v, displacements=d, EI=E*I_v, load=w)`
+declares what the sheet worked out (local end forces `[N_i; V_i; M_i; N_j; V_j; M_j]`,
+local displacements, a uniform load towards -y') and puts nothing on the page;
+`frame_plot(M|V|N|deformed, "caption", scale=150)` draws every declared member as a
+numbered "Figura", sharing the numbering with `image`. Nothing is solved again.
+Sign, option (b): each member is read as a beam seen from inside the frame (inside = the
+side facing the middle of the joints), so M is positive when it pulls the inside fibre and
+a knee reads one number (-519 596 kgf·cm from beam and column); V follows the same reading
+(right column -2 380 kgf), N is positive in tension. M drawn on the tension side. Values
+with sign in boxes (whole numbers from 100, two decimals below), in the unit the page
+writes the largest value in (`renderer.quantity_as_displayed`: palette, else family - kN·m,
+not the base units a `:=` matrix keeps). Loads red: the distributed load starts and ends
+with an arrow at the member's ends and stands clear of the diagram; a joint's load is read
+back from the end forces meeting at a free joint (3 000 kgf at node 2); supports where the
+sheet's displacements hold a joint still. Deformed: Hermite on the end displacements plus
+the load's own deflection (needs EI), Δx at joints, δ on a loaded member, scale given or
+rounded to 1/2/5×10^n. Module `frame_diagrams.py`. `tools/portico_matricial.eng` ends with
+the four diagrams. 25 contracts (`test_a_frame_is_drawn_with_its_diagrams.py`), mutation
+8/8. Suite 2927.
+Not drawn (no syntax for it yet): a moment applied at a joint; a load other than uniform.
+
+PR #312 (base `feat/image`). **In his Colab** ("Ejercicio 2.2", cells 13-14, runtime
+deleted first - a reconnect had reused a session where pip skipped the same 0.34.3):
+`feat/frame-plot` built from `git+https`, the frame sheet with `image("portico.png",
+"Geometría del pórtico", width=9*cm)` at its head ran whole with no error: the sketch
+embedded as "Figura 1. Geometría del pórtico", then "Figura 2. Momento flector" to "Figura
+5. Deformada", each as drawn locally (-519 596 once at the knee, 3 000 kgf, Δx 0.63/0.62 cm,
+δ -0.35 cm, ×150). #311 CI green (six jobs) with "Figura".
+
+**Exact next step:** his yes to merge #311 then #312 (retarget #312 to `main` after #311);
+publish 0.35.0 (with #310) only when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

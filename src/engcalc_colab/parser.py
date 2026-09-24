@@ -522,6 +522,14 @@ def _validate_normal_node(
             _validate_image_call(node, line_no)
             return
 
+        if node.func.id == "member":
+            _validate_member_call(node, line_no)
+            return
+
+        if node.func.id == "frame_plot":
+            _validate_frame_plot_call(node, line_no)
+            return
+
         for arg in node.args:
             _validate_normal_node(
                 arg,
@@ -562,6 +570,74 @@ def _validate_image_call(node: ast.Call, line_no: int) -> None:
                 f"line {line_no}: image takes width= and nothing else by name, {usage}"
             )
         _validate_normal_node(item.value, line_no)
+
+
+# What a member of a frame is declared with; see `EngineeringEngine._member_asked_for`.
+MEMBER_KEYWORDS = ("start", "end", "forces", "displacements", "EI", "load")
+FRAME_DIAGRAMS = ("M", "V", "N", "deformed")
+
+
+def _validate_member_call(node: ast.Call, line_no: int) -> None:
+    """`member("V", start=[0*m, h], end=[L, h], forces=f_v, ...)`: a member of a frame."""
+    usage = 'as in member("V", start=[0*m, h], end=[L, h], forces=f_v)'
+    if len(node.args) != 1 or not (
+        isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)
+    ):
+        raise EngSyntaxError(
+            f"line {line_no}: member takes its name in quotes first, {usage}"
+        )
+    given = set()
+    for item in node.keywords:
+        if item.arg not in MEMBER_KEYWORDS:
+            named = "**" if item.arg is None else item.arg
+            raise EngSyntaxError(
+                f"line {line_no}: member takes {', '.join(MEMBER_KEYWORDS)} by name, "
+                f"not {named}; {usage}"
+            )
+        given.add(item.arg)
+        if item.arg in ("start", "end") and not (
+            isinstance(item.value, ast.List) and len(item.value.elts) == 2
+        ):
+            raise EngSyntaxError(
+                f"line {line_no}: member {item.arg} is a point, two lengths "
+                f"[x, y]; {usage}"
+            )
+        _validate_normal_node(item.value, line_no)
+    for needed in ("start", "end"):
+        if needed not in given:
+            raise EngSyntaxError(f"line {line_no}: member needs {needed}=; {usage}")
+
+
+def _validate_frame_plot_call(node: ast.Call, line_no: int) -> None:
+    """`frame_plot(M, "Momento flector")`, `frame_plot(deformed, scale=150)`."""
+    usage = 'as in frame_plot(M, "Momento flector")'
+    diagram = node.args[0] if node.args else None
+    if not (isinstance(diagram, ast.Name) and diagram.id in FRAME_DIAGRAMS):
+        raise EngSyntaxError(
+            f"line {line_no}: frame_plot draws M, V, N or deformed, {usage}"
+        )
+    caption = node.args[1:]
+    if len(caption) > 1 or not all(
+        isinstance(arg, ast.Constant) and isinstance(arg.value, str) for arg in caption
+    ):
+        raise EngSyntaxError(
+            f"line {line_no}: frame_plot takes a caption in quotes after the diagram, {usage}"
+        )
+    for item in node.keywords:
+        if item.arg != "scale" or diagram.id != "deformed":
+            raise EngSyntaxError(
+                f"line {line_no}: frame_plot takes scale= only for the deformed shape, "
+                'as in frame_plot(deformed, "Deformada", scale=150)'
+            )
+        if not (
+            isinstance(item.value, ast.Constant)
+            and isinstance(item.value.value, (int, float))
+            and not isinstance(item.value.value, bool)
+            and item.value.value > 0
+        ):
+            raise EngSyntaxError(
+                f"line {line_no}: frame_plot scale is a plain number, such as scale=150"
+            )
 
 
 def _validate_characteristic_call(

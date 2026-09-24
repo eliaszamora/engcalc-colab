@@ -152,3 +152,19 @@ M_c4(y) = -M_4 + V_4*y
 plot(M_c1(y), M_c4(y), y, 0, h)
 extrema(M_c1(y), y, 0, h)
 extrema(M_c4(y), y, 0, h)
+
+### Diagramas en el pórtico
+
+"""
+Cada elemento con sus fuerzas de extremo y sus desplazamientos en ejes locales. El
+momento se dibuja del lado traccionado y es positivo si tracciona la fibra interior.
+"""
+
+member("C1", start=[0*m, 0*m], end=[0*m, h], forces=f_1, displacements=T_c*D_1, EI=E*I_c)
+member("V", start=[0*m, h], end=[L, h], forces=f_v, displacements=d, EI=E*I_v, load=w)
+member("C2", start=[L, 0*m], end=[L, h], forces=f_4, displacements=T_c*D_4, EI=E*I_c)
+
+frame_plot(M, "Momento flector")
+frame_plot(V, "Fuerza cortante")
+frame_plot(N, "Fuerza axial")
+frame_plot(deformed, "Deformada", scale=150)
