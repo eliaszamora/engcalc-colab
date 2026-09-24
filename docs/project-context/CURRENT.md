@@ -460,7 +460,18 @@ files identical, smoke 62/62. **In his Colab** (a reconnect reused the 0.33.3 se
 reported 0.33.5): `K_b0` in `a`, `K_c`, `K_22c`, `K_22` in `a`, `b_1...b_4`, `K_1` in
 `E A / L_1`, `N_1` = -4078.86 kgf and `N_2` = 5098.58 kgf as before.
 
-**Next: nothing open.** Known and not requested:
+**Open, waiting for his yes: a letter read as a unit says so** (branch
+`fix/a-letter-read-as-a-unit-says-so`; he chose it from my recommendations on 2026-09-24).
+`sigma = N/A` with `N` never defined gave 0.002 MPa in silence (N = one newton). A line
+that reads `N`, `m` or `s` as a unit, where the sheet never wrote that letter beside a
+number or another unit (`letters_written_as_units_in`), now says once per letter: "'N'
+is read as a unit (newton), and nothing on the sheet writes it as one. If it is a
+quantity, give it a value first (N := ...) or another name, such as N_1." The value is
+unchanged. 11 contracts (5 RED); ten contracts that use `s`/`N` as names on purpose
+filter it with `conftest.without_letter_notices`. No notice on the 13 sheets, 18
+exercises or the derivation. Suite 2821. Then: suggest him a typical portal frame.
+
+Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
 

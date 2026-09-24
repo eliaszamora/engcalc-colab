@@ -77,6 +77,21 @@ _LATEX_TEXT = {
 _SPACER_ROW = _re.compile(r"(\\\\\[[^\]]*\])\s*\\rule\{0pt\}\{0\.7em\}\s*\\\\(?!\[)")
 
 
+# The line a sheet is told when it reads `N`, `m` or `s` as a unit it never wrote as one.
+# See `test_a_letter_read_as_a_unit_says_so`.
+_LETTER_NOTICE = _re.compile(
+    r"engcalc: line \d+: '[Nms]' is read as a unit \([a-z]+\), and nothing on the sheet "
+    r"writes it as one\. If it is a quantity, give it a value first \([Nms] := \.\.\.\) or "
+    r"another name, such as [Nms]_1\.\n?"
+)
+
+
+def without_letter_notices(console: str) -> str:
+    """The console with that line taken out, for a contract that uses `s` or `N` as a name
+    on purpose - a sine, an axial force - and is about something else."""
+    return _LETTER_NOTICE.sub("", console)
+
+
 def without_spacer_rows(latex: str) -> str:
     """The working with the rows that only make room between matrices taken out.
 

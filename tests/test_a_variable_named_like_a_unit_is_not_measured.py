@@ -18,6 +18,9 @@ has measured; `%eng_reset` forgets them with everything else.
 import pytest
 
 import engcalc_colab.magic as magic
+
+# A sine written `s`, a force written `N`: the line saying they read as units is expected.
+from conftest import without_letter_notices
 from engcalc_colab.renderer import _MATRIX_PLAIN_ROW_SEPARATOR as ROW
 
 
@@ -50,7 +53,7 @@ def run(magics, source: str) -> str:
 )
 def test_a_name_never_measured_keeps_no_one(magics, capsys, source, shown):
     page = run(magics, source)
-    assert "engcalc:" not in capsys.readouterr().out
+    assert "engcalc:" not in without_letter_notices(capsys.readouterr().out)
     assert shown in page, page
     assert r"1\,\mathrm{" not in page, page
 
@@ -65,7 +68,7 @@ def test_a_name_never_measured_keeps_no_one(magics, capsys, source, shown):
 )
 def test_a_measured_unit_still_has_its_one(magics, capsys, source, shown):
     page = run(magics, source)
-    assert "engcalc:" not in capsys.readouterr().out
+    assert "engcalc:" not in without_letter_notices(capsys.readouterr().out)
     assert shown in page, page
 
 
@@ -81,7 +84,7 @@ def test_a_measured_unit_still_has_its_one(magics, capsys, source, shown):
 )
 def test_what_is_not_a_measurement_measures_nothing(magics, capsys, source):
     page = run(magics, source)
-    assert "engcalc:" not in capsys.readouterr().out
+    assert "engcalc:" not in without_letter_notices(capsys.readouterr().out)
     assert r"a + \mathrm{m}" in page, page
     assert r"1\,\mathrm{m}" not in page, page
 
@@ -92,5 +95,5 @@ def test_a_reset_forgets_what_was_measured(magics, capsys):
     with pytest.MonkeyPatch.context():
         magics.eng_reset("")
     page = run(magics, "x = m + a\n")
-    assert "engcalc:" not in capsys.readouterr().out.replace("engcalc state cleared", "")
+    assert "engcalc:" not in without_letter_notices(capsys.readouterr().out).replace("engcalc state cleared", "")
     assert r"1\,\mathrm{m}" not in page, page
