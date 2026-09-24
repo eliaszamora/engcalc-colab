@@ -86,6 +86,7 @@ title: Comparison envelope
 xlabel: x [$\mathrm{cm}$]
 ylabel: Comparison [$\mathrm{kgf} \cdot \mathrm{cm}$]
 offset: ×10⁶
+positive: down
 legend: max | min
 annotation: (0, 0)
 annotation: (300, $1.97 \times 10^{6}$)

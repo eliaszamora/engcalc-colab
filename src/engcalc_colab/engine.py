@@ -173,6 +173,10 @@ def substitute_symbolic_value(value, bindings):
     return expression.xreplace(bindings)
 
 _MOMENT_LABEL = re.compile(r"^M(?:_[A-Za-z0-9]+|[0-9]+)?\(")
+# `Md(x)`, `Mu(x)`, `Mn(x)`, `Mmax(x)`: the names a design sheet gives a moment. A letter
+# after the `M` could as well begin `Mass(x)`, so these count as a moment only when what
+# they draw is a force times a length. See `test_a_design_moment_is_plotted_downward`.
+_MOMENT_FAMILY_LABEL = re.compile(r"^M[A-Za-z0-9_]*\(")
 
 
 @dataclass(frozen=True)
@@ -3898,7 +3902,7 @@ class _Evaluator(ast.NodeVisitor):
                     PlotSeries(
                         display_label=expression.display_label,
                         y_values=y_values,
-                        is_moment=self._is_moment_label(expression.source_label),
+                        is_moment=self._is_moment_series(expression.source_label, y_values),
                         segment_starts=segment_starts,
                         characteristics=characteristics,
                     )
@@ -3907,7 +3911,7 @@ class _Evaluator(ast.NodeVisitor):
                     PlotSeries(
                         display_label=expression.source_label,
                         y_values=source_y_values,
-                        is_moment=self._is_moment_label(expression.source_label),
+                        is_moment=self._is_moment_series(expression.source_label, y_values),
                         segment_starts=source_segment_starts,
                     )
                 )
@@ -3997,7 +4001,7 @@ class _Evaluator(ast.NodeVisitor):
             call_name=call_name,
         )
 
-        is_moment = self._is_moment_label(source_label)
+        is_moment = None
         comparison_series: list[PlotSeries] = []
         source_series: list[PlotSeries] = []
         case_overrides = tuple(
@@ -4030,6 +4034,8 @@ class _Evaluator(ast.NodeVisitor):
                 )
             else:
                 source_y_values = comparison_y_values
+            if is_moment is None:
+                is_moment = self._is_moment_series(source_label, comparison_y_values)
 
             case_label = (
                 f"{parameter_name} = {self._format_plot_quantity(sweep_value)}"
@@ -4179,6 +4185,25 @@ class _Evaluator(ast.NodeVisitor):
     @staticmethod
     def _is_moment_label(label: str) -> bool:
         return _MOMENT_LABEL.match(label.strip()) is not None
+
+    def _is_moment_series(self, label: str, values) -> bool:
+        """A moment by its name, or by a moment's name and a moment's dimension.
+
+        A load case or combination is named for the load, not the response - `D`, `Lv`,
+        `U1` - so for those the dimension alone decides: `combo U1 = 1.2*D + 1.6*Lv` over
+        `case D = M_D(x)` is a moment, and a combination of shears is not.
+        """
+        if self._is_moment_label(label):
+            return True
+        name = label.strip().split("(", 1)[0]
+        if _MOMENT_FAMILY_LABEL.match(label.strip()) is None and name not in self.engine.load_cases:
+            return False
+        moment = self.engine.numeric_context.ureg.Quantity(1, "newton * meter").dimensionality
+        for value in values:
+            dimensionality = getattr(value, "dimensionality", None)
+            if dimensionality is not None:
+                return dimensionality == moment
+        return False
 
     @staticmethod
     def _format_plot_quantity(quantity) -> str:

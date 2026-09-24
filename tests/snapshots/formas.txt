@@ -51,6 +51,7 @@ title: w(x)
 xlabel: x [$\mathrm{m}$]
 ylabel: w(x) [$\mathrm{kgf}/\mathrm{cm}$]
 offset: 
+positive: up
 annotation: (0, 30)
 annotation: (6, 60)
 
@@ -69,6 +70,7 @@ title: Md(x)
 xlabel: x [$\mathrm{m}$]
 ylabel: Md(x) [$\mathrm{kN} \cdot \mathrm{m}$]
 offset: 
+positive: down
 legend: P2 = 200.00 kN | P2 = 400.00 kN | P2 = 600.00 kN | P2 = 800.00 kN
 summary: Characteristic points
 summary: x = 0 $\mathbf{m}$

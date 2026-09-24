@@ -144,6 +144,9 @@ def _figure_lines(figure: matplotlib.figure.Figure) -> list[str]:
         f"xlabel: {axes.get_xlabel()}",
         f"ylabel: {axes.get_ylabel()}",
         f"offset: {figure_text(axes.yaxis.get_offset_text().get_text())}",
+        # Positive moment is drawn downward. The sweep `Md(x)` went up for months and
+        # no page moved, because nothing here said which way the axis ran.
+        f"positive: {'down' if axes.yaxis_inverted() else 'up'}",
     ]
     legend = axes.get_legend()
     if legend is not None:
