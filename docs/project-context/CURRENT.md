@@ -639,7 +639,21 @@ No reference page moves. Suite 2889. `tests/test_the_frame_is_designed.py` (10).
 **3. Images in a memoria**: not possible today (a narrative escapes Markdown); an API to
 propose (`image("file.png", "caption", width=...)`, embedded so it stays in the notebook).
 
-**Exact next step:** his yes on #1's PR; his choice on the look of #2 and on the image API.
+#310 merged with his yes (`f887551`); not released - he said to wait and publish together.
+His answers: tension side is the usual convention (he asked what I meant); labels WITH
+sign; red loads and boxed values yes, but a distributed load must start and end with an
+arrow at the member's ends; add shear, axial and the deformed shape.
+
+**3. `image` implemented** (branch `feat/image`): `image("file", "caption", width=12*cm)`
+reads a file (Colab `/content`, Drive) or a URL, embeds it (HTML data URI) and writes the
+caption as Markdown (`$...$` typeset). Numbered automatically, by (file, caption): a cell
+run again keeps its numbers, `%eng_reset` restarts at 1. Parser allows `width=` only here.
+Label is "Figure N." - English like Roots/Domain; he was told "Figura" in the proposal,
+so it is flagged to him. 13 contracts; mutation 3/3. Suite 2902.
+
+**Exact next step:** mock-ups of V, N and the deformed shape with the load arrows fixed,
+and a proposed syntax for the frame diagrams; then build them; verify everything in his
+Colab; publish 0.35.0 only when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

@@ -733,6 +733,22 @@ class TableColumn:
 
 
 @dataclass(frozen=True)
+class ImageResult:
+    """`image("portico.png", "Geometría y cargas", width=12*cm)`: a numbered figure.
+
+    `data` is the file itself, read when the line ran, so the figure is embedded in the
+    output and stays in the notebook. See `test_a_memoria_holds_its_images`.
+    """
+
+    statement: ParsedStatement
+    number: int
+    data: bytes
+    mime: str
+    caption: str | None = None
+    width_cm: float | None = None
+
+
+@dataclass(frozen=True)
 class TableResult:
     statement: ParsedStatement
     variable: str

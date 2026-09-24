@@ -22,6 +22,7 @@ from .errors import (
     diagnostic_hint,
 )
 from .models import (
+    ImageResult,
     CharacteristicInterval,
     CharacteristicPoint,
     DiscardedSolutions,
@@ -735,6 +736,9 @@ class EngineeringEngine:
         self.letters_written_as_units: set[str] = set()
         self.letters_said_to_be_units: set[str] = set()
         self.units_read_by_line: dict[str, frozenset[str]] = {}
+        # The number each figure of `image(...)` was given, by file and caption, so a
+        # cell run again keeps its numbers. See `_image_asked_for`.
+        self.figure_numbers: dict[tuple[str, str | None], int] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
         # The unit of a definition whose value simplified to an exact zero, which a
@@ -948,6 +952,54 @@ class EngineeringEngine:
         self.numeric_context.values[statement.target] = quantity
         self.numeric_context.matrices.pop(statement.target, None)
         return quantity
+
+    def _image_asked_for(self, statement):
+        """`image("portico.png", "Geometría y cargas", width=12*cm)`, read and numbered.
+
+        A path is read from where the notebook runs - in Colab `/content`, or
+        `/content/drive/MyDrive/...` with Drive mounted - and a URL is fetched. The number
+        belongs to the figure, by file and caption, so running a cell again keeps it; a
+        new figure takes the next one, and a reset starts again at 1.
+        """
+        body = statement.expression.body
+        calls_image = any(
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "image"
+            for node in ast.walk(body)
+        )
+        if not calls_image:
+            return None
+        if statement.target is not None or not (
+            isinstance(body, ast.Call) and isinstance(body.func, ast.Name) and body.func.id == "image"
+        ):
+            raise EngEvaluationError(
+                "image(...) places a figure and stands on its own line, "
+                'as in image("portico.png", "Geometría y cargas")'
+            )
+        source = body.args[0].value
+        caption = body.args[1].value if len(body.args) > 1 else None
+        width_cm = None
+        for item in body.keywords:
+            width = self.numeric_context.evaluate_expression(ast.Expression(body=item.value))
+            try:
+                width_cm = float(width.to("cm").magnitude)
+            except (AttributeError, DimensionalityError) as exc:
+                raise EngEvaluationError(
+                    f"image width must be a length, such as 12*cm; {ast.unparse(item.value)} is not"
+                ) from exc
+        data, mime = _read_image(source)
+        key = (source, caption)
+        if key not in self.figure_numbers:
+            self.figure_numbers[key] = len(self.figure_numbers) + 1
+        return ImageResult(
+            statement=statement,
+            number=self.figure_numbers[key],
+            data=data,
+            mime=mime,
+            caption=caption,
+            width_cm=width_cm,
+        )
 
     def _numbers_asked_for(self, statement):
         """`numeric(d)` or `numeric(d, cm)` of a matrix defined with `:=`: its numbers.
@@ -1349,6 +1401,7 @@ class EngineeringEngine:
         self.letters_written_as_units.clear()
         self.letters_said_to_be_units.clear()
         self.units_read_by_line.clear()
+        self.figure_numbers.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -1569,6 +1622,10 @@ class EngineeringEngine:
             shown = self._numbers_asked_for(statement)
             if shown is not None:
                 return shown
+
+            figure = self._image_asked_for(statement)
+            if figure is not None:
+                return figure
 
             if statement.parameters is not None:
                 value = evaluator.visit_function_body(
@@ -4452,6 +4509,45 @@ def _in_mode_order(entries) -> tuple:
     counts in. A two-by-two written in names lists its roots in SymPy's order, which the
     numbers need not follow."""
     return tuple(sorted(entries, key=lambda entry: float(entry.value.to_base_units().magnitude)))
+
+
+_IMAGE_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+    ".webp": "image/webp",
+}
+
+
+def _read_image(source: str) -> tuple[bytes, str]:
+    """The bytes of a figure and its type, from a file or a URL."""
+    import pathlib
+    import urllib.request
+
+    suffix = pathlib.PurePosixPath(source.split("?", 1)[0]).suffix.lower()
+    mime = _IMAGE_TYPES.get(suffix)
+    if source.startswith(("http://", "https://")):
+        try:
+            with urllib.request.urlopen(source, timeout=30) as response:
+                data = response.read()
+                mime = mime or response.headers.get("Content-Type", "").split(";")[0].strip()
+        except Exception as exc:  # noqa: BLE001 - any failure to fetch is said the same way
+            raise EngEvaluationError(f"image could not be fetched from {source}: {exc}") from exc
+    else:
+        path = pathlib.Path(source).expanduser()
+        if not path.is_file():
+            raise EngEvaluationError(
+                f"image file not found: {source} (looked in {path.resolve().parent}); in "
+                "Colab, upload it to the Files panel or mount Drive and give its path"
+            )
+        data = path.read_bytes()
+    if not mime or not mime.startswith("image/"):
+        raise EngEvaluationError(
+            f"image reads .png, .jpg, .gif, .svg or .webp files; {source} is not one"
+        )
+    return data, mime
 
 
 def _canonical_limits(expression):
