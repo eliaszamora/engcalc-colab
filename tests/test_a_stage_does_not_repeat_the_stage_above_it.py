@@ -27,6 +27,8 @@ from IPython.display import Math
 
 import engcalc_colab.magic as magic
 
+from conftest import without_spacer_rows
+
 matplotlib.use("Agg")
 
 
@@ -39,7 +41,8 @@ def stages(monkeypatch):
         magic.EngMagics().eng("", source)
         maths = [item.data for item in captured if isinstance(item, Math)]
         assert maths, "the cell displayed no mathematics"
-        body = maths[-1]
+        # The room a matrix is given is not a stage; see test_a_matrix_row_has_room.
+        body = without_spacer_rows(maths[-1])
         body = body[body.index(r"{lcl}") + len(r"{lcl}") :].replace(r"\end{array}", "")
         rows = [row.strip() for row in body.split(r"\\[8pt]")]
         named = [index for index, row in enumerate(rows) if row.startswith(r"\displaystyle")]

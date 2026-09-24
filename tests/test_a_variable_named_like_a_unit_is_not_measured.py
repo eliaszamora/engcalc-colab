@@ -18,7 +18,7 @@ has measured; `%eng_reset` forgets them with everything else.
 import pytest
 
 import engcalc_colab.magic as magic
-from engcalc_colab.renderer import _MATRIX_ROW_SEPARATOR as ROW
+from engcalc_colab.renderer import _MATRIX_PLAIN_ROW_SEPARATOR as ROW
 
 
 @pytest.fixture

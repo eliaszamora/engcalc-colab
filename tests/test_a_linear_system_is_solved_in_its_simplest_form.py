@@ -25,7 +25,7 @@ import engcalc_colab.magic as magic
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.errors import EngEvaluationError
 from engcalc_colab.parser import parse_cell
-from engcalc_colab.renderer import _MATRIX_ROW_SEPARATOR as ROW
+from engcalc_colab.renderer import _MATRIX_PLAIN_ROW_SEPARATOR as ROW
 
 from conftest import block_text
 

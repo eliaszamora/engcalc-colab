@@ -71,9 +71,25 @@ _LATEX_TEXT = {
 }
 
 
+# The row the working puts between a row that holds a matrix and its neighbour, after the
+# row break: `\\[8pt] \rule{0pt}{0.7em} \\`. See `renderer._row_break`. Not the computed
+# block's own strut rows, which are followed by `\\[-4pt]` or close the array.
+_SPACER_ROW = _re.compile(r"(\\\\\[[^\]]*\])\s*\\rule\{0pt\}\{0\.7em\}\s*\\\\(?!\[)")
+
+
+def without_spacer_rows(latex: str) -> str:
+    """The working with the rows that only make room between matrices taken out.
+
+    A reader sees no row there, and a contract that counts rows or reads the last one is
+    about what the rows say, not about the room between them - which
+    `test_a_matrix_row_has_room` pins on its own.
+    """
+    return _SPACER_ROW.sub(r"\1", latex)
+
+
 def block_text(html: str) -> str:
     """One rendered block as the reader sees it: tags gone, LaTeX read back as text."""
-    text = _re.sub(r"<[^>]+>", " ", html)
+    text = without_spacer_rows(_re.sub(r"<[^>]+>", " ", html))
     if r"\rule{0pt}{0.7em} \\[-4pt]" in text:
         text = _computed_block_text(text)
     # A characteristic block sets its formulas `$\displaystyle ...$` with `\dfrac`, so they

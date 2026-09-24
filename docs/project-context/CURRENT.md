@@ -364,6 +364,22 @@ his own install cell reported 0.33.2, his derivation cell re-run - `k_b` and `k_
 with rows as far apart as columns. A plain-number matrix (`k_bl`) reads roomier; noted,
 not changed. Scratch cells used for the calibration are not saved in his notebook.
 
+**Open: a matrix has room in KaTeX** (branch `fix/a-matrix-has-room-in-katex`). He asked
+whether the space *between* matrices had been checked, and to deal with what I had noted
+and left (plain matrices read loose at 12pt), "a tu criterio". Checked in his Colab: two
+matrices one above the other touched (`T_f` on `K_f`, `K_22c`/`F_c`/`d_c`). Asked from
+inside an output: **Colab typesets with KaTeX 0.16.28** (gstatic), not MathJax; KaTeX
+reads `\\[len]` as LaTeX's `\@argarraycr` - a minimum depth, nothing added to a deeper row
+- so no row spacing separates two matrices (`24pt` still touched under a 4-row one).
+Reproduced exactly with KaTeX 0.16.28 locally. Fix: `_row_break` puts a spacer row
+(`\rule{0pt}{0.7em}`, as `_computed_block` uses) wherever the row above or below holds a
+matrix; inside a matrix a boundary is `12pt` when either row holds something tall
+(`_TALL_CELL`: fractions, big operators, nested arrays) and `3pt` otherwise (balanced in
+Colab). `conftest.without_spacer_rows`; `block_text` drops spacer rows (a reader sees no
+row). Verified in his Colab with the branch's own LaTeX for `T_f`/`K_f`,
+`K_22`/`F_h`/`d_h`, `K_22c`/`F_c`/`d_c`. Mutation 7/7; suite 2760. Moves room only:
+dinámica, pórtico × 3, the derivation. Then release 0.33.3.
+
 **Next: he runs `/code-review ultra 265`** (its head is `a8955a3`, so it covers #276). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
