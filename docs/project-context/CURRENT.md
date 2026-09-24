@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.5** - this release PR, carrying #287 and #288; its closure is recorded below |
+| released | **0.33.5** - #289, `71a7584`, carrying #287 and #288; six jobs and both qualification runs green on it, verified after its merge and **in his Colab** (below) |
 | before that | **0.33.4** - #283, `5b7e1ee` |
-| open PRs | this release's |
+| open PRs | none |
 | default suite | **2810 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -448,7 +448,19 @@ contracts (6 RED). Rows that move: only his derivation - `K_b0` in `a`, `K_c` an
 in `a`, `b_1 ... b_4`; `K_1`, `K_2` keep `E A / L_1`, `E A / L_2`. The 13 sheets and 18
 exercises are identical. Suite 2810.
 
-Known and not requested:
+**0.33.5 is closed** (#289, `71a7584`). On the release commit `c5fa399`: version
+assertions RED then GREEN; source suite 2810, twice; wheel from `git archive`, 31 files
+identical to `src`; clean Colab-like venv upgrades nothing; smoke 62/62 (`smoke-0335/`:
+a kept value following a later `:=`, `K_c` in `a`/`b_1...b_4`, `K_1` in `E A / L_1`);
+suite against the wheel 2810 with KaTeX installed in the copy; 13 sheets and 18
+exercises identical to 0.33.4. After its merge: six jobs and both qualification runs
+green on `71a7584`; a clean `git+https` install resolved to it, upgraded nothing, 31
+files identical, smoke 62/62. **In his Colab** (a reconnect reused the 0.33.3 session
+- "extension is already loaded" - so the session was restarted; his install cell then
+reported 0.33.5): `K_b0` in `a`, `K_c`, `K_22c`, `K_22` in `a`, `b_1...b_4`, `K_1` in
+`E A / L_1`, `N_1` = -4078.86 kgf and `N_2` = 5098.58 kgf as before.
+
+**Next: nothing open.** Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
 
