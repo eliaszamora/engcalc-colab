@@ -12,9 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.35.0** - this release PR, carrying #310 (`f887551`), #311 (`29bce85`), #312 (`79d5fe9`); its closure is recorded below |
+| released | **0.35.0** - #314, `509e65e`, carrying #310 (`f887551`), #311 (`29bce85`), #312 (`79d5fe9`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.34.3** - #308, `f0e17d8` |
-| open PRs | this release's |
+| open PRs | none |
 | default suite | **2927 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -688,7 +688,26 @@ rebased onto it (tree identical to what ran in his Colab, 0 diff lines), retarge
 
 Released as 0.35.0 with his yes (*"Sí, fusiona #313 y publica la 0.35.0"*).
 
-**Exact next step:** close 0.35.0 (checks after its merge, his Colab).
+**0.35.0 is closed.** On the release commit: version assertions RED (7) then GREEN; suite
+2927 twice; wheel from `git archive` 32 files identical to `src`; a clean Colab-like venv
+(3.12, ipython 7.34.0, numpy 2.2.6, matplotlib 3.10.0, sympy 1.13.3) gained only Pint and
+four small deps; smoke 80/80 outside the repository (`smoke-0350/`: the frame's four
+diagrams as Figuras 1-4, one moment at the knee, 3 000 kgf read back, Δx 0.63 cm, an image
+embedded keeping its number, a kept name inside `min`); suite against the wheel 2926 + the
+by-path IPython-surface test on the wheel's `magic.py`; 13 sheets and 18 exercises
+identical to 0.34.3. After its merge: CI (six jobs) and the deep gate green on `509e65e`;
+`git+https` resolved to it, upgraded nothing, 24 modules identical, smoke 80/80. In his
+Colab (runtime deleted, cell 13 back to the plain `--upgrade` install from `main`): 0.35.0,
+the whole frame with `image` and the four diagrams, no error.
+
+Found while designing the beam, still NOT fixed (to propose to him): `governing` over six
+quadratics takes 54 s; a `keep` name inside a sheet function is expanded; a call to a
+combination is written expanded (`U1(L/2)`); "Governing - x" heading; "Comparison
+envelope" title. Not drawn by `frame_plot` (no syntax yet): a moment on a joint, a
+non-uniform load.
+
+**Exact next step:** none open; ask him what next (the five findings above are the
+candidates).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
