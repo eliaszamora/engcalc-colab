@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.5** - #289, `71a7584`, carrying #287 and #288; six jobs and both qualification runs green on it, verified after its merge and **in his Colab** (below) |
-| before that | **0.33.4** - #283, `5b7e1ee` |
-| open PRs | none |
-| default suite | **2810 passing**, about a minute and a half with `-n auto` |
+| released | **0.33.6** - this release PR, carrying #291; its closure is recorded below |
+| before that | **0.33.5** - #289, `71a7584`, verified after its merge and in his Colab |
+| open PRs | this release's |
+| default suite | **2821 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -460,8 +460,7 @@ files identical, smoke 62/62. **In his Colab** (a reconnect reused the 0.33.3 se
 reported 0.33.5): `K_b0` in `a`, `K_c`, `K_22c`, `K_22` in `a`, `b_1...b_4`, `K_1` in
 `E A / L_1`, `N_1` = -4078.86 kgf and `N_2` = 5098.58 kgf as before.
 
-**Open, waiting for his yes: a letter read as a unit says so** (branch
-`fix/a-letter-read-as-a-unit-says-so`; he chose it from my recommendations on 2026-09-24).
+**0.33.6 - a letter read as a unit says so** (#291, merged with his yes; he chose it from my recommendations on 2026-09-24).
 `sigma = N/A` with `N` never defined gave 0.002 MPa in silence (N = one newton). A line
 that reads `N`, `m` or `s` as a unit, where the sheet never wrote that letter beside a
 number or another unit (`letters_written_as_units_in`), now says once per letter: "'N'
@@ -469,7 +468,8 @@ is read as a unit (newton), and nothing on the sheet writes it as one. If it is 
 quantity, give it a value first (N := ...) or another name, such as N_1." The value is
 unchanged. 11 contracts (5 RED); ten contracts that use `s`/`N` as names on purpose
 filter it with `conftest.without_letter_notices`. No notice on the 13 sheets, 18
-exercises or the derivation. Suite 2821. Then: suggest him a typical portal frame.
+exercises or the derivation. Suite 2821. Released as 0.33.6; its closure is to be recorded here. He then chose option
+B for the portal frame: I write it, check it in his Colab, and hand him the cells.
 
 Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
