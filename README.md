@@ -13,7 +13,30 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.33.5**.
+Current version: **0.33.6**.
+
+
+## v0.33.6 a letter read as a unit says so
+
+`N`, `m` and `s` are units and ordinary names at once. A name the sheet has given no value
+is read as the unit, which is right for `q := 10*kN/m` and silently wrong for an axial
+force `N` the sheet forgot to define:
+
+```text
+A := 500*mm^2
+sigma = N/A
+numeric(sigma)          0.002 MPa   - N was one newton
+```
+
+A line that reads one of these letters as a unit, where nothing on the sheet has written
+it beside a number or another unit (`30*N`, `2*m`, `4*kN*x/m`), now says so, once per
+letter:
+
+```text
+engcalc: line 2: 'N' is read as a unit (newton), and nothing on the sheet writes it as one. If it is a quantity, give it a value first (N := ...) or another name, such as N_1.
+```
+
+The value is unchanged. No reference sheet prints it.
 
 
 ## v0.33.5 a kept name follows its values, and keeps its name
@@ -3369,6 +3392,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.33.6** — a line that reads `N`, `m` or `s` as a unit the sheet never wrote as one says so, once per letter. No reference sheet moves.
 - **0.33.5** — a kept name's number follows the values it is made of (a later `:=` left it stale), and a kept name survives `subs`, `expand`, `simplify` and `factor`. No reference sheet moves.
 - **0.33.4** — what the independent review found: a failed line no longer changes how later lines print, a name updated from itself shows its old value in its formula, `solve` in an expression is solved once, and `(-8)^(1/3)` says how to take the real cube root. No reference sheet moves.
 - **0.33.3** — two matrices one above the other no longer touch in Colab (KaTeX), and a matrix of plain entries is set closer than one of fractions.
@@ -3473,4 +3497,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.33.5`.
+Version: `0.33.6`.
