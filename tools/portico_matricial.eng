@@ -110,3 +110,45 @@ R_4 := transpose(T_c)*f_4
 
 Sigma_F_x := R_1[1,1] + R_4[1,1] + H
 Sigma_F_y := R_1[2,1] + R_4[2,1] - w*L
+
+### Diagramas de la viga
+
+"""
+Origen en el nodo 2. Con los esfuerzos de extremo de $f_v$: momento positivo si
+tracciona la fibra inferior, cortante positivo hacia arriba en la cara izquierda
+y axial positivo en tracción.
+"""
+
+N_v := -f_v[1,1]
+V_2 := f_v[2,1]
+M_2 := f_v[3,1]
+
+V_b(x) = V_2 - w*x
+M_b(x) = -M_2 + V_2*x - w*x^2/2
+
+plot(M_b(x), x, 0, L)
+plot(V_b(x), x, 0, L)
+extrema(M_b(x), x, 0, L)
+roots(V_b(x), x, 0, L)
+
+### Diagramas de las columnas
+
+"""
+Origen en la base de cada columna, $y$ hacia arriba, con los esfuerzos de extremo
+en ejes locales de $f_1$ y $f_4$. Sin carga en el tramo: cortante constante y
+momento lineal.
+"""
+
+N_1 := -f_1[1,1]
+V_1 := f_1[2,1]
+M_1 := f_1[3,1]
+N_4 := -f_4[1,1]
+V_4 := f_4[2,1]
+M_4 := f_4[3,1]
+
+M_c1(y) = -M_1 + V_1*y
+M_c4(y) = -M_4 + V_4*y
+
+plot(M_c1(y), M_c4(y), y, 0, h)
+extrema(M_c1(y), y, 0, h)
+extrema(M_c4(y), y, 0, h)

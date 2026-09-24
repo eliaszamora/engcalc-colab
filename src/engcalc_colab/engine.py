@@ -895,6 +895,66 @@ class EngineeringEngine:
         self.numeric_context.matrices.pop(statement.target, None)
         return quantity
 
+    def _numbers_asked_for(self, statement):
+        """`numeric(d)` or `numeric(d, cm)` of a matrix defined with `:=`: its numbers.
+
+        There is no formula behind them to substitute into - that is what `:=` means -
+        so the page writes the name and the value, as the `:=` line did.
+        """
+        body = statement.expression.body
+        if not (
+            statement.target is None
+            and isinstance(body, ast.Call)
+            and isinstance(body.func, ast.Name)
+            and body.func.id == "numeric"
+            and not body.keywords
+            and len(body.args) in (1, 2)
+            and isinstance(body.args[0], ast.Name)
+        ):
+            return None
+        name = body.args[0].id
+        context = self.numeric_context
+        if (
+            name not in context.matrices
+            or name in self.namespace
+            or context.get(name) is not None
+        ):
+            return None
+        quantity_matrix = context.matrices[name]
+        requested = len(body.args) == 2
+        if requested:
+            unit = context.evaluate_unit_expression(ast.Expression(body=body.args[1]))
+            entries = []
+            for index, entry in enumerate(quantity_matrix):
+                position = divmod(index, quantity_matrix.cols)
+                if position in quantity_matrix.adaptable_zeros:
+                    entries.append(context.ureg.Quantity(0, unit))
+                    continue
+                try:
+                    entries.append(entry.to(unit))
+                except DimensionalityError as exc:
+                    row, col = position
+                    raise EngEvaluationError(
+                        f"numeric({name}, {ast.unparse(body.args[1])}): entry "
+                        f"[{row + 1},{col + 1}] is {entry:~P}, which cannot be written in "
+                        f"{ast.unparse(body.args[1])}"
+                    ) from exc
+            quantity_matrix = QuantityMatrix(
+                quantity_matrix.rows, quantity_matrix.cols, tuple(entries)
+            )
+        shown = ParsedNumericAssignment(
+            line_no=statement.line_no,
+            source=statement.source,
+            target=name,
+            expression=ast.Expression(body=ast.Name(id=name, ctx=ast.Load())),
+        )
+        return NumericMatrixAssignmentResult(
+            statement=shown,
+            quantity_matrix=quantity_matrix,
+            matrix_names=frozenset({name}),
+            unit_was_requested=requested,
+        )
+
     def _assign_numbers(self, statement, numbers: "_MatrixNumbers", written_units):
         """`d := solve(K, F)` and `u := d[2,1]`: a line that reads a matrix, in numbers.
 
@@ -1434,6 +1494,10 @@ class EngineeringEngine:
 
             if getattr(statement, "target_index", None) is not None:
                 return self._assign_part(statement, evaluator)
+
+            shown = self._numbers_asked_for(statement)
+            if shown is not None:
+                return shown
 
             if statement.parameters is not None:
                 value = evaluator.visit_function_body(

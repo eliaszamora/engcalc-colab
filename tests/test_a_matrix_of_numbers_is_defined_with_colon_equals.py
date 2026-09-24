@@ -246,3 +246,28 @@ def test_one_index_takes_an_entry_of_a_column_or_a_row():
     _engine, results = run(SPRINGS + "d := solve(K, F)\nu := d[2]\nv := transpose(d)[1]\n")
     assert results[-2].quantity.to("m").magnitude == pytest.approx(20.0)
     assert results[-1].quantity.to("m").magnitude == pytest.approx(10.0)
+
+
+def test_numeric_of_it_shows_its_numbers(sheet):
+    """`numeric(d)` after `d := solve(K, F)`: the numbers, not an error."""
+    page, console = sheet(SPRINGS + "d := solve(K, F)\nnumeric(d)\n")
+    assert not console, console
+    shown = page.split("K^{-1}", 1)[1]
+    assert shown.count("10.00") == 2 and shown.count("20.00") == 2, shown
+    # The name and its value, not `d = d = [...]`.
+    assert shown.rstrip().endswith(r"\,\mathrm{m} \end{array}"), shown
+    assert r"\displaystyle d & = & \displaystyle \left[\begin{matrix}" in shown, shown
+
+
+def test_numeric_of_it_in_a_unit_converts_every_entry(sheet):
+    page, console = sheet(SPRINGS + "d := solve(K, F)\nnumeric(d, cm)\n")
+    assert not console, console
+    # One unit, so the factor he chose to keep comes out: 10^3 [1.00; 2.00] cm.
+    last = page.rsplit(r"\displaystyle d & = & ", 1)[1]
+    assert last.startswith(r"\displaystyle 10^{3}"), last
+    assert "1.00" in last and "2.00" in last and last.rstrip().endswith(r"\,\mathrm{cm} \end{array}"), last
+
+
+def test_numeric_of_it_in_a_unit_that_does_not_fit_says_so():
+    with pytest.raises(EngEvaluationError, match=r"\[1,1\].*kN"):
+        run(SPRINGS + "d := solve(K, F)\nnumeric(d, kN)\n")

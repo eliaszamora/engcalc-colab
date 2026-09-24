@@ -3348,8 +3348,16 @@ def _written_line_latex(result, settings: RenderSettings) -> str:
 def _numeric_matrix_assignment_stages(
     result: NumericMatrixAssignmentResult, settings: RenderSettings
 ) -> list[str]:
-    value = _quantity_matrix_latex(result.quantity_matrix, settings)
-    return _without_a_repeated_stage([_written_line_latex(result, settings), value])
+    value = _quantity_matrix_latex(
+        result.quantity_matrix,
+        _settings_for(result, settings),
+        declared=_shows_as_stored(result),
+    )
+    written = _written_line_latex(result, settings)
+    # `numeric(d)` writes `d = [...]`, not `d = d = [...]`.
+    if written == _render_lhs(result.statement.target, None):
+        return [value]
+    return _without_a_repeated_stage([written, value])
 
 
 def _matrix_stage_rows(lhs: str | None, stages: list[str]) -> list[str]:
