@@ -27,6 +27,9 @@ jobs:
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e '.[dev]'
       - run: python -m compileall -q src/engcalc_colab
+      # The KaTeX Colab typesets with, for test_colab_can_typeset_every_formula. The
+      # runner ships Node; the version of KaTeX is the one pinned in tools/katex.
+      - run: npm ci --prefix tools/katex
       - run: python -m pytest -q -n auto
 
   colab-ipython:
@@ -56,4 +59,7 @@ jobs:
           assert IPython.__version__ == "7.34.0", IPython.__version__
           print("still on Colab's IPython")
           PY
+      # The KaTeX Colab typesets with, for test_colab_can_typeset_every_formula. The
+      # runner ships Node; the version of KaTeX is the one pinned in tools/katex.
+      - run: npm ci --prefix tools/katex
       - run: python -m pytest -q -n auto

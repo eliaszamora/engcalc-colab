@@ -1,0 +1,8 @@
+{
+  "name": "engcalc-katex-check",
+  "private": true,
+  "description": "The KaTeX Colab typesets with, pinned, for tests/test_colab_can_typeset_every_formula.py.",
+  "dependencies": {
+    "katex": "0.16.28"
+  }
+}

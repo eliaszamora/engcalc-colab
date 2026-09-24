@@ -422,7 +422,18 @@ identical to 0.33.3. After its merge: six jobs and both qualification runs green
 `5b7e1ee`; a clean `git+https` install resolved to it, upgraded nothing, 31 files
 identical, smoke 60/60. Not re-checked in Colab: no page moves.
 
-**Next: nothing open.** Known and not requested:
+**Colab's KaTeX in the suite** (branch `test/colab-can-typeset-every-formula`, his yes to
+"la 1 y luego la 2", 2026-09-24). `tests/test_colab_can_typeset_every_formula.py` hands every
+formula of the 5 reference pages, `tools/matrix_derivation.eng` (his derivation, now in the
+repo) and the 18 gap-map exercises - 153 formulas, the `Math` blocks and the `$...$` of the
+Markdown - to KaTeX 0.16.28 (`tools/katex/package.json` + lock, `render.cjs`, Node), and
+fails on any it cannot typeset. 0 errors, 0 strict warnings today. Skipped on a workstation
+without `npm ci --prefix tools/katex`; required in CI (`CI` set), where both jobs run
+`npm ci`. Mutation: the spacer as `\vrule` (not in KaTeX) caught; `\hskip` survives because
+KaTeX has it. Suite 2798. It does not measure spacing.
+
+**Next: item 2 - `expand`/`simplify` keep the names kept with `keep`**, rows shown to him
+before anything merges. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
 
