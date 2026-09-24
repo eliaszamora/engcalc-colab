@@ -12,9 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.34.1** - this release PR, carrying #300 (`e0512c2`); its closure is recorded below |
+| released | **0.34.1** - #301, `24ada0b`, carrying #300 (`e0512c2`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.34.0** - #295, `ac6199b` |
-| open PRs | this release's; #299 (draft review frame, never merge) |
+| open PRs | #299 (draft review frame for `/code-review ultra 299`, never merge) |
 | default suite | **2849 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -528,8 +528,17 @@ Seen in the diagrams, not changed: the beam moment axis uses matplotlib's `x10^6
 **#300 merged with his yes** (`e0512c2`, *"Sí, fusiona y publica la 0.34.1"*), released as 0.34.1.
 Added in the release PR, not in #300: `numeric(d, cm)` named a misfit entry with the whole
 float (`-0.0020228091706281292`); it now reads `-0.00202, a number without a unit` (1 contract).
-**Exact next step:** close 0.34.1 (checks after its merge, his Colab); the ultra review of
-#299 when he launches it.
+**0.34.1 is closed.** On the release commit `862de44`: version assertions RED then GREEN;
+suite 2849 twice; wheel 31 files identical to `src`; clean Colab-like venv upgrades
+nothing; smoke 71/71 (`smoke-0341/`: `numeric(d)`, the frame's diagrams); suite against
+the wheel 2848 + the by-path magic test on the wheel's copy; 13 sheets and 18 exercises
+identical to 0.34.0. After its merge: CI (six jobs) and the deep gate green on `24ada0b`;
+`git+https` resolved to it, upgraded nothing, 23 modules identical, smoke 71/71. In his
+Colab (runtime deleted first - the trial session held a same-version build): 0.34.1, the
+whole frame through the column extrema, no error.
+
+**Exact next step:** the ultra review of #299 when he launches it (`/code-review ultra 299`);
+reproduce each finding by running it before changing anything.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
