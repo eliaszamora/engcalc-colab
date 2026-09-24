@@ -508,7 +508,25 @@ side by side (trial branch, deleted after): `f_4 = 10^3 [6.95 kgf; 2.38 kgf; 432
 `_matrix_scale_exponent` stays as it is, including that `f_1` takes no factor because
 619.54 would read 0.62. Do not propose removing it again.
 
-**Exact next step:** nothing open; wait for his next request.
+**His three points after 0.34.0 (2026-09-24, "abarca los 3 puntos"):**
+1. Independent review: he asked me to launch `/code-review ultra` through Chrome; I may not
+   launch it myself (billed, user-triggered), so the frame is ready - draft #299,
+   `review/before-0.34.0` (`5fab92f`) ... `review/since-0.33.6` - and he types
+   `/code-review ultra 299`. Never merge #299; close it after the review.
+2. The frame draws its diagrams (branch `feat/frame-diagrams`): `tools/portico_matricial.eng`
+   takes end forces out with `:=` (`V_2 := f_v[2,1]`), writes `M_b(x)`, `V_b(x)`,
+   `M_c1(y)`, `M_c4(y)` and plots them, with `extrema`/`roots`. Beam M max 6872.77 kgf m at
+   x = 2.526 m; joint moments agree (492.14 and 5195.96 kgf m). Checked in his Colab.
+3. `numeric(d)` of a matrix defined with `:=` shows `d = [numbers]`, and `numeric(d, cm)`
+   converts every entry (or names the entry that cannot be). 3 contracts, 2 mutants caught.
+   The written form on a scalar taken from a matrix (`u = d_{2,1} = 20.00 m`) is kept as is
+   unless he says otherwise. Suite 2848; the 13 sheets and 18 exercises are identical.
+
+Seen in the diagrams, not changed: the beam moment axis uses matplotlib's `x10^6` offset
+(0.25 ... 1.00) while the column plot prints 200000 ... 800000 - two styles for one unit.
+
+**Exact next step:** his yes to merge `feat/frame-diagrams` (as 0.34.1); the ultra review
+when he launches it.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
