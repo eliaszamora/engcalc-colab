@@ -14,7 +14,7 @@ _2026-09-23._
 |---|---|
 | released | **0.33.6** - #292, `18f2f75`, carrying #291; six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.33.5** - #289, `71a7584` |
-| open PRs | `feat/a-numeric-matrix-definition` - `d := solve(K, F)`, waiting for his yes |
+| open PRs | #294 - `d := solve(K, F)`, CI green, checked in his Colab, waiting for his yes to merge and release 0.34.0 |
 | default suite | **2821 passing** on `main`; 2845 on the open branch, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -486,8 +486,9 @@ help (solve is not a written-form call). Proposed to him: `d := solve(K, F)` as 
 numeric matrix definition; he approved it on 2026-09-24 (*"Sí, apruebo d := solve(K, F),
 procede"*).
 
-**`d := solve(K, F)` - a matrix defined by its numbers** (branch
-`feat/a-numeric-matrix-definition`, not merged: merging and releasing wait for his yes).
+**`d := solve(K, F)` - a matrix defined by its numbers** (#294, branch
+`feat/a-numeric-matrix-definition`, six CI jobs green; not merged: merging and releasing
+as 0.34.0 wait for his yes).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
@@ -505,7 +506,11 @@ line. Redefinition either way replaces it. 23 contracts; mutation 18/18 killed. 
 frame is `tools/portico_matricial.eng` (displacements, member-end forces with f_0,
 reactions `transpose(T_c)*f`, `Sigma_F_x = Sigma_F_y = 0.00 kgf`), added to the KaTeX
 test with the kgf palette. The 13 sheets and 18 exercises are byte-identical to 0.33.6.
-Suite 2845.
+Suite 2845. **In his Colab** (notebook "Ejercicio 2.2", two cells appended at the end: an
+install of the branch - the reconnect reused a 0.33.5 session, so it was restarted - and
+the frame with `%eng_units kgf`): the branch loaded, the whole frame rendered in KaTeX,
+`d` as above, `f_1` = [5051.98 kgf; 619.54 kgf; 198601.90 kgf cm; ...], `R_1` and `R_4`,
+`Sigma_F_x = Sigma_F_y = 0.00 kgf`. His session now runs the branch, not a release.
 
 Seen, not changed (his call): a matrix of mixed units takes a `10^3` factor in front
 when its entries are large, so `f_4` reads `10^3 [6.95 kgf; ...; 432.59 kgf cm]` while
