@@ -329,6 +329,46 @@ def measured_units_in(tree) -> frozenset[str]:
     return frozenset(measured)
 
 
+def letters_written_as_units_in(tree) -> frozenset[str]:
+    """The one-letter unit aliases a statement writes where a unit is written.
+
+    `N`, `m` and `s` are units and ordinary names at once. Next to a number or another unit
+    they are plainly the unit - `30*N`, `2*m`, `4*kN*x/m`, `1/s` - and a sheet that writes
+    them so has said what it means. Alone in a formula, `N/A` or `x/m`, nothing has.
+    """
+    written: set[str] = set()
+
+    def factors(node, found: list) -> None:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Div)):
+            factors(node.left, found)
+            factors(node.right, found)
+        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            factors(node.operand, found)
+        elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+            factors(node.left, found)
+        else:
+            found.append(node)
+
+    def visit(node, inside: bool) -> None:
+        product = isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Div))
+        if product and not inside:
+            found: list = []
+            factors(node, found)
+            names = [f.id for f in found if isinstance(f, ast.Name) and f.id in _UNIT_ALIASES]
+            beside = any(
+                isinstance(f, ast.Constant) and isinstance(f.value, (int, float))
+                and not isinstance(f.value, bool)
+                for f in found
+            ) or any(len(name) > 1 for name in names)
+            if beside:
+                written.update(name for name in names if len(name) == 1)
+        for child in ast.iter_child_nodes(node):
+            visit(child, product or (inside and isinstance(node, ast.UnaryOp)))
+
+    visit(tree, False)
+    return frozenset(written)
+
+
 def record_written_order(tree, order: dict) -> None:
     """Note in `order` which name each product of a statement writes before which.
 
@@ -420,6 +460,10 @@ class EngineeringEngine:
         # Which name this sheet wrote before which in a product, first writing kept. See
         # `record_written_order`.
         self.written_order: dict[frozenset[str], tuple[str, str]] = {}
+        # The one-letter aliases the sheet has written where a unit is written, and those a
+        # line has already been told are read as units. See `_notice_a_letter_read_as_a_unit`.
+        self.letters_written_as_units: set[str] = set()
+        self.letters_said_to_be_units: set[str] = set()
         self.units_read_by_line: dict[str, frozenset[str]] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
@@ -912,6 +956,8 @@ class EngineeringEngine:
         self.names_read_as_units.clear()
         self.measured_units.clear()
         self.written_order.clear()
+        self.letters_written_as_units.clear()
+        self.letters_said_to_be_units.clear()
         self.units_read_by_line.clear()
         self.numeric_context.reset()
 
@@ -954,6 +1000,7 @@ class EngineeringEngine:
         expression = getattr(statement, "expression", None)
         if expression is not None:
             self.measured_units |= measured_units_in(expression)
+            self.letters_written_as_units |= letters_written_as_units_in(expression)
             record_written_order(expression, self.written_order)
         # A matrix written `[a, b; c, d]` keeps its entries apart from the statement's own
         # tree, and a stiffness matrix is where `-1*kN/m` is most often written.
@@ -961,6 +1008,7 @@ class EngineeringEngine:
             for row in binding.literal.rows:
                 for entry in row:
                     self.measured_units |= measured_units_in(entry)
+                    self.letters_written_as_units |= letters_written_as_units_in(entry)
                     record_written_order(entry, self.written_order)
         # A settled value moves the numbers kept names stand for.
         if isinstance(statement, ParsedNumericAssignment) and self.kept_names:
@@ -982,7 +1030,33 @@ class EngineeringEngine:
                 )
             self.units_read_by_line[source] = before | read
         self.names_read_as_units |= read
+        for name in sorted(read):
+            said = self._notice_a_letter_read_as_a_unit(name, statement)
+            if said is not None:
+                self.notices.append(said)
         return result
+
+    def _notice_a_letter_read_as_a_unit(self, name: str, statement) -> str | None:
+        """What to say when a line reads `N`, `m` or `s` as a unit nobody wrote as one.
+
+        `A := 500*mm^2` then `sigma = N/A` gave 0.002 MPa for an axial force the sheet
+        forgot to define: `N` was one newton, and nothing said so. Said once per letter,
+        and only where the sheet has not written the letter as a unit anywhere - next to a
+        number or another unit, `30*N`, `2*m`, `4*kN*x/m` - which is where it plainly is one.
+        """
+        if (
+            len(name) != 1
+            or name not in _UNIT_ALIASES
+            or name in self.letters_written_as_units
+            or name in self.letters_said_to_be_units
+        ):
+            return None
+        self.letters_said_to_be_units.add(name)
+        return (
+            f"line {statement.line_no}: '{name}' is read as a unit ({_UNIT_ALIASES[name]}), "
+            f"and nothing on the sheet writes it as one. If it is a quantity, give it a "
+            f"value first ({name} := ...) or another name, such as {name}_1."
+        )
 
     def _notice_a_unit_becoming_a_value(self, statement) -> str | None:
         """What to say when a name that was read as a unit is given a value.

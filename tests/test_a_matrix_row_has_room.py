@@ -39,6 +39,9 @@ import pytest
 from IPython.display import Math
 
 import engcalc_colab.magic as magic
+
+# A sine written `s`, a force written `N`: the line saying they read as units is expected.
+from conftest import without_letter_notices
 from engcalc_colab.renderer import (
     _MATRIX_PLAIN_ROW_SEPARATOR as PLAIN,
     _MATRIX_ROW_SEPARATOR as TALL,
@@ -55,7 +58,7 @@ def page(monkeypatch, capsys):
         captured = []
         monkeypatch.setattr(magic, "display", captured.append)
         magic.EngMagics().eng("", source)
-        assert "engcalc:" not in capsys.readouterr().out
+        assert "engcalc:" not in without_letter_notices(capsys.readouterr().out)
         return " ".join(item.data for item in captured if isinstance(item, Math))
 
     return render

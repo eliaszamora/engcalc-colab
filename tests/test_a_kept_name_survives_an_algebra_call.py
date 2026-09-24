@@ -27,6 +27,9 @@ from IPython.display import Math
 
 import engcalc_colab.magic as magic
 
+# A sine written `s`, a force written `N`: the line saying they read as units is expected.
+from conftest import without_letter_notices
+
 
 @pytest.fixture
 def page(monkeypatch):
@@ -36,7 +39,7 @@ def page(monkeypatch):
         console = io.StringIO()
         with contextlib.redirect_stdout(console):
             magic.EngMagics().eng("", source)
-        assert "engcalc:" not in console.getvalue(), console.getvalue()
+        assert "engcalc:" not in without_letter_notices(console.getvalue()), console.getvalue()
         return " ".join(item.data for item in captured if isinstance(item, Math))
 
     return render
