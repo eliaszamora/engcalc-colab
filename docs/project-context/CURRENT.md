@@ -495,11 +495,12 @@ suite against the wheel 2844 + the by-path magic test passing on the wheel's cop
 sheets and 18 exercises from the wheel identical to the tree and to 0.33.6. After its
 merge: CI (six jobs) and the deep gate (both qualification runs) green on `ac6199b`; a
 clean `git+https` install resolved to it, upgraded nothing, 23 modules identical to `src`,
-smoke 69/69. In his Colab the feature was checked on the branch (the same code; only the
-version string differs). Re-running his two appended cells on the published 0.34.0 - the
-install cell switched to `main` - is still to do: Claude in Chrome disconnected after the
-merge. **Exact next step:** that check; then his call on the `10^3` prefactor of
-mixed-unit matrices.
+smoke 69/69. **In his Colab on the published 0.34.0**: the appended install cell now installs
+`main` (plain `git+https`, no `--force-reinstall`); a fresh runtime printed `0.34.0`, and
+the frame cell rendered `d = K^-1 F` = [0.63 cm; -0.0103 cm; -0.00202; 0.62 cm; ...],
+`R_1` = [-619.54 kgf; 5051.98 kgf; 198601.90 kgf cm; ...] and `Sigma_F_x = Sigma_F_y =
+0.00 kgf`, no notice. **Exact next step:** his call on the `10^3` prefactor of mixed-unit
+matrices (`f_4`, `f_v`, `R_4`), shown to him with the rows before any change.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
