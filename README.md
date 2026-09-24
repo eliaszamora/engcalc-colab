@@ -13,7 +13,33 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.33.3**.
+Current version: **0.33.4**.
+
+
+## v0.33.4 what the independent review found
+
+An independent review of everything released since 0.31.17 reported five findings. Each
+was run before anything changed; four were defects.
+
+- **A line that fails no longer teaches the sheet.** The units a line measures and the
+  order of its products were taken before it evaluated, so a line that then failed - a
+  typo - left them behind: `q = 3*s + nofunc(1)` brought back `[c, 1 s; -1 s, c]`.
+- **A name updated from itself shows what it was.** `v = 5` then `v = v + 2*diff(t^2, t)`
+  read `v = 4t + 2 d/dt t² + 5`, the new `v` inside its own formula. It reads
+  `2 d/dt t² + 5` now; functions and integrals the same.
+- **`solve` inside a larger expression is solved once**, not twice.
+- **The substitution stage is built in one place**: the rows drawn and the rows counted for
+  the spacing were separate computations, one without the row's units.
+
+And one decision. `(-8)^(1/3)` said "has no real value", which is not true: -8 has a real
+cube root. EngCalc keeps the principal power, as SymPy and Mathcad do, and now says so and
+how to take the real root:
+
+```text
+engcalc: line 1: -8 raised to a fractional power has no real principal value; EngCalc works in real numbers. For its real cube root, write -(8^(1/3))
+```
+
+No reference sheet moves.
 
 
 ## v0.33.3 a matrix has room in KaTeX
@@ -3317,6 +3343,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.33.4** — what the independent review found: a failed line no longer changes how later lines print, a name updated from itself shows its old value in its formula, `solve` in an expression is solved once, and `(-8)^(1/3)` says how to take the real cube root. No reference sheet moves.
 - **0.33.3** — two matrices one above the other no longer touch in Colab (KaTeX), and a matrix of plain entries is set closer than one of fractions.
 - **0.33.2** — the rows of a matrix are `\\[12pt]` apart, calibrated in Colab, where 0.33.1's 6pt still read tight.
 - **0.33.1** — the rows of a matrix are set as far apart as its columns (`\\[6pt]`); a stiffness matrix of fractions no longer reads with its rows touching.
@@ -3419,4 +3446,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.33.3`.
+Version: `0.33.4`.
