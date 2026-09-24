@@ -613,7 +613,33 @@ merge: CI (six jobs) and the deep gate green on `f0e17d8`; `git+https` resolved 
 upgraded nothing, 23 modules identical, smoke 75/75. In his Colab (fresh runtime): 0.34.3,
 the whole frame through the column moment diagram, no error. #299 closed unmerged.
 
-**Exact next step:** nothing open; wait for his next request.
+**He asked (2026-09-24): "empieza por la 1 y 2", and images in a memoria.**
+
+**1. The frame's beam designed** (branch `feat/frame-design`): `tools/portico_diseno.eng`,
+a second cell after `portico_matricial.eng`. Assumed (stated on the sheet): w = 1400 dead
++ 600 live kgf/m, H = 3000 kgf seismic at strength level; ACI 318-19. Three cases solved
+at once (`d_c := solve(K, F_c)`, one column per case), cases D/Lv/EQ, six combinations,
+envelope; Mu+ 876940.63, Mu- -553507.27 / -552587.34 kgf cm; As 5.55 / 4.40 (min) cm2;
+Vu 7920 kgf > phi Vc 7603.63 kgf; stirrups 2 legs 8 mm at 22 cm (s_max). Every number
+equals an independent NumPy solution. Writing it found and fixed:
+- a `keep` name inside `min`/`max` was expanded (`As = max(...)` lost `f_cw`, `R_n`,
+  `As_min`; 0.85 folded into 2.35): `min`/`max` join `_WRITTEN_FORM_SAFE_CALLS`, and
+  `_agrees_with` compares limits as SymPy's canonical `Min`/`Max` (`_canonical_limits`),
+  since `WrittenMin` came back from `srepr` as an unknown function. 3 contracts.
+- a row written with commas on a `:=` line printed as source text: `_WrittenLine` prints
+  an `ast.List` as a one-row matrix. 1 contract.
+Found, NOT fixed (to propose): `governing` over six quadratics took 54 s (15 exact
+symbolic intersections; the sheet uses the envelope instead); a `keep` name inside a
+sheet function (`As_req(Mu)`) is expanded; a call to a combination is written expanded
+(`U1(L/2)` reads `0.15 qD L^2 + ...`, also on viga); `governing` heads its block
+"Governing - x"; a combination envelope is titled "Comparison envelope".
+No reference page moves. Suite 2889. `tests/test_the_frame_is_designed.py` (10).
+
+**2. Diagrams drawn on the frame**: a mock-up to show him before any code.
+**3. Images in a memoria**: not possible today (a narrative escapes Markdown); an API to
+propose (`image("file.png", "caption", width=...)`, embedded so it stays in the notebook).
+
+**Exact next step:** his yes on #1's PR; his choice on the look of #2 and on the image API.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

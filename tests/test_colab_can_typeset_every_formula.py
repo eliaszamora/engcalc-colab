@@ -55,13 +55,20 @@ def _sheets() -> list[tuple[str, str, str]]:
     sheets.append(("matrix-derivation", (ROOT / "tools" / "matrix_derivation.eng").read_text(encoding="utf-8"), ""))
     # A frame solved with `d := solve(K, F)`: the lines over matrices of numbers.
     sheets.append(("matrix-frame", (ROOT / "tools" / "portico_matricial.eng").read_text(encoding="utf-8"), "kgf"))
+    # The same frame, designed: the design cell reads the frame's names, so they run as one.
+    sheets.append((
+        "matrix-frame-design",
+        (ROOT / "tools" / "portico_matricial.eng").read_text(encoding="utf-8")
+        + "\n" + (ROOT / "tools" / "portico_diseno.eng").read_text(encoding="utf-8"),
+        "kgf",
+    ))
     # The gap map's exercises last. Some ask for what EngCalc does not do - that is what the
     # gap map measures - and the cell is refused whole, so they may put nothing on the page.
     sheets += [(title.split()[0], source, "") for title, _area, source in EXERCISES]
     return sheets
 
 
-_MUST_DRAW = {name for name, _, _ in REFERENCE_PAGES} | {"matrix-derivation", "matrix-frame"}
+_MUST_DRAW = {name for name, _, _ in REFERENCE_PAGES} | {"matrix-derivation", "matrix-frame", "matrix-frame-design"}
 
 
 def _formulas(source: str, palette: str, monkeypatch) -> list[dict]:
