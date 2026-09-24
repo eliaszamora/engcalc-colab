@@ -1920,11 +1920,15 @@ def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
 
 
 # What separates one row of a matrix from the next. A bare `\\` left display fractions
-# nearly touching: measured in the notebook's MathJax build at 14 px type, 5.7 px between
-# one row's denominator and the next row's numerator in a stiffness matrix whose columns
-# stand at least 14 px apart. He asked whether the entries were touching and chose `6pt`,
-# which measures 14.2 px there - the rows as far apart as the columns.
-_MATRIX_ROW_SEPARATOR = r"\\[6pt]"
+# touching: he asked whether the entries of a stiffness matrix were touching.
+#
+# Calibrated in Colab, where the page is read. 0.33.1 chose `6pt` from a measurement in
+# the preview's MathJax 3, which leaves 5.7 px between rows before any separator (14 px
+# type) - there `6pt` put the rows as far apart as the columns. Colab's renderer leaves
+# none, and in his notebook the same `6pt` was a thin gap that still read tight. Drawn
+# there five ways, bare to `14pt`, `12pt` is the one whose rows stand about as far apart
+# as its columns, and he chose it. In the preview it reads somewhat airier.
+_MATRIX_ROW_SEPARATOR = r"\\[12pt]"
 
 
 def _matrix_latex(
@@ -2465,8 +2469,8 @@ def _latex_visual_width(latex: str) -> float:
     # it, so the two measure the same. Wrong since 0.31.2, which introduced `\dfrac` so
     # a computed block would read at the page's size.
     normalized = normalized.replace(r"\dfrac", r"\frac")
-    # A row's space, `\\[6pt]` between the rows of a matrix, adds height and draws
-    # nothing across; left in, its five characters were charged as width.
+    # A row's space, `\\[12pt]` between the rows of a matrix, adds height and draws
+    # nothing across; left in, its characters were charged as width.
     normalized = re.sub(r"\\\\\[[^\]]*\]", lambda _match: r"\\", normalized)
     normalized = normalized.replace(r"\left", "").replace(r"\right", "")
     normalized = normalized.replace(r"\,", "").replace(r"\!", "")

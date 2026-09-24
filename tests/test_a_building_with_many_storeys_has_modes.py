@@ -126,7 +126,7 @@ def test_the_modes_are_the_eigenvectors_of_the_same_problem(cell, capsys):
     assert len(blocks) == 3, numeric
     expected, vectors = reference(stiffness, mass)
     for (value, body), lam, vector in zip(blocks, expected, vectors.T):
-        # A row's space, `\\[6pt]`, is not an entry of the vector.
+        # A row's space, `\\[12pt]`, is not an entry of the vector.
         shape = [float(entry) for entry in re.findall(r"-?[\d.]+", re.sub(r"\[\d+pt\]", "", body))]
         assert shape[-1] == 1.0, shape
         assert float(value) == pytest.approx(lam, rel=1e-4)

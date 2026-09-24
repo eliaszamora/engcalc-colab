@@ -340,6 +340,18 @@ and the deep gate this time: six jobs and both qualification runs green on `d225
 clean `git+https` install of `main` resolved to it, upgraded nothing, 31 files identical
 to `src`, smoke 56/56.
 
+**0.33.1 was calibrated in the wrong renderer; 0.33.2 corrects it** (branch
+`fix/a-matrix-row-has-room-in-colab`). He ran 0.33.1 in Colab and `k_v` still read tight.
+Checked in his own Colab through the Claude-in-Chrome extension (a scratch cell, nothing
+saved in his notebook): the runtime was 0.33.1 and the separator reached the page, but
+Colab's renderer leaves no space between matrix rows of its own, where the preview's
+MathJax 3 leaves 5.7 px - so `6pt` was a thin gap there. Drawn in Colab bare, 6, 10, 12
+and 14 pt, `12pt` put the rows about as far apart as the columns; he chose it (*"procede
+con tu recomendación"*). In the preview it measures 27-29 px (1.6 em). The five contracts
+that only needed *some* separator now read `_MATRIX_ROW_SEPARATOR` instead of a literal.
+Moves the separator only (6pt to 12pt): dinámica 6, pórtico 96 × 3, the derivation 60.
+Suite 2745. Lesson: a presentation measurement is taken in Colab, not only in the preview.
+
 **Next: he runs `/code-review ultra 265`** (its head is `d225e48`, so it covers #273). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
