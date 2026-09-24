@@ -13,7 +13,37 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.33.6**.
+Current version: **0.34.0**.
+
+
+## v0.34.0 a matrix defined by its numbers
+
+`=` keeps a matrix as formulas, which is what a derivation wants and what a real frame
+cannot afford: `d = solve(K, F)` on a portal frame of six degrees of freedom was stored and
+printed in closed form, about 30 kB of LaTeX that took ten seconds and that nobody could
+read. `:=` has always meant "the number, not the formula" for a scalar. It means the same
+for a matrix now:
+
+```text
+d := solve(K, F)                        d = K^-1 F
+                                          = [0.63 cm; -0.0103 cm; -0.00202; 0.62 cm; -0.0141 cm; 0.00118]
+D_1 := [0; 0; 0; d[1,1]; d[2,1]; d[3,1]]
+f_1 := k_c*T_c*D_1                      f_1 = k_c T_c D_1 = [5051.98 kgf; 619.54 kgf; ...]
+R_1 := transpose(T_c)*f_1
+Sigma_F_x := R_1[1,1] + R_4[1,1] + H    Sigma_F_x = (R_1)_1,1 + (R_4)_1,1 + H = 0.00 kgf
+```
+
+The right side is worked out in numbers: a matrix built with `=` is evaluated entry by
+entry, as `numeric(K)` evaluates it, and `solve`, `inv`, `transpose`, sums, products, a
+factor, an entry `d[4,1]` or `d[4]`, a part `K[[1, 2], [1, 2]]` and a matrix written on the
+line are arithmetic on numbers with a unit for every entry - a stiffness mixes kgf/cm, kgf
+and kgf·cm, and its solution mixes centimetres with rotations that have none. The page
+shows the line as written and then its value, and the name holds the numbers for the lines
+after it. One entry taken out is an ordinary `:=` value, which a `numeric` line can use.
+
+A `=` line that names such a matrix says to use it on a `:=` line instead. The whole frame
+- stiffness, assembly, displacements, member-end forces, reactions and equilibrium - is in
+`tools/portico_matricial.eng`. No existing page moves.
 
 
 ## v0.33.6 a letter read as a unit says so
@@ -3392,6 +3422,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.34.0** — `d := solve(K, F)`: a `:=` line over matrices is worked out in numbers, shown as written and then as its value. No reference sheet moves.
 - **0.33.6** — a line that reads `N`, `m` or `s` as a unit the sheet never wrote as one says so, once per letter. No reference sheet moves.
 - **0.33.5** — a kept name's number follows the values it is made of (a later `:=` left it stale), and a kept name survives `subs`, `expand`, `simplify` and `factor`. No reference sheet moves.
 - **0.33.4** — what the independent review found: a failed line no longer changes how later lines print, a name updated from itself shows its old value in its formula, `solve` in an expression is solved once, and `(-8)^(1/3)` says how to take the real cube root. No reference sheet moves.
@@ -3497,4 +3528,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.33.6`.
+Version: `0.34.0`.
