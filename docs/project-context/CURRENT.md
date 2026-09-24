@@ -12,10 +12,10 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.34.1** - #301, `24ada0b`, carrying #300 (`e0512c2`); six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.34.0** - #295, `ac6199b` |
-| open PRs | #299 (draft review frame for `/code-review ultra 299`, never merge) |
-| default suite | **2849 passing**, about a minute with `-n auto` |
+| released | **0.34.2** - this release PR, carrying #303 (`aa88b1d`) and #304 (`a87f299`); its closure is recorded below |
+| before that | **0.34.1** - #301, `24ada0b` |
+| open PRs | this release's; #299 (draft review frame for `/code-review ultra 299`, never merge) |
+| default suite | **2867 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -568,8 +568,10 @@ decided under that (branch `fix/a-design-moment-is-plotted-downward`):
 - **Kept, deliberately:** an annotation of a million or more still writes the page's
   number (`8.10x10^7`) while the axis now reads `x10^6` - the annotation follows the page.
 
-**Exact next step:** release 0.34.2 (#303 and this); the ultra review of #299 when he
-launches it (`/code-review ultra 299`).
+Merged as #304 (`a87f299`); released as 0.34.2 by the release PR.
+
+**Exact next step:** close 0.34.2 (checks after its merge, his Colab); the ultra review
+of #299 when he launches it (`/code-review ultra 299`).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
