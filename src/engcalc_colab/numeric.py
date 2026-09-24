@@ -114,12 +114,31 @@ def _real_power(base, exponent):
     result = base ** exponent
     magnitude = getattr(result, "magnitude", result)
     if isinstance(magnitude, numbers.Complex) and not isinstance(magnitude, numbers.Real):
-        what = (
-            f"the square root of {_value_text(base)}"
-            if getattr(exponent, "magnitude", exponent) == 0.5
-            else f"{_value_text(base)} raised to a fractional power"
+        if getattr(exponent, "magnitude", exponent) == 0.5:
+            raise NoRealValueError(
+                f"the square root of {_value_text(base)} has no real value; "
+                "EngCalc works in real numbers"
+            )
+        # Not "no real value": -8 has a real cube root, -2. What it has not is a real
+        # *principal* power, which is what EngCalc takes, as SymPy and Mathcad do - an
+        # exponent arrives as 0.333..., and guessing which decimals mean an odd root would
+        # answer some and not others. He chose to keep that and to be told how to write
+        # the real root. The independent review of 2026-09-24 caught the old wording.
+        # The example is exact only for a cube root of a plain number: `(-27)^(2/3)` is +9,
+        # and the minus sign outside `27^(2/3)` would give -9. Any other case gets the
+        # rule, with the cube root of -8 to show it.
+        cube_root = abs(float(getattr(exponent, "magnitude", exponent)) - 1 / 3) < 1e-12
+        if cube_root and getattr(base, "dimensionless", True):
+            how = f"For its real cube root, write -({_value_text(-base)}^(1/3))"
+        else:
+            how = (
+                "An odd root of a negative number is real: take the root of its magnitude "
+                "and put the sign outside, as -(8^(1/3)) = -2"
+            )
+        raise NoRealValueError(
+            f"{_value_text(base)} raised to a fractional power has no real principal "
+            f"value; EngCalc works in real numbers. {how}"
         )
-        raise NoRealValueError(f"{what} has no real value; EngCalc works in real numbers")
     return result
 
 

@@ -393,7 +393,7 @@ Lesson recorded: Colab is KaTeX 0.16.28 - calibrate presentation against it (a l
 page with KaTeX 0.16.28 from jsdelivr reproduces Colab exactly).
 
 **The ultra review ran (2026-09-24) - five findings, each reproduced on 0.33.3 by running
-it** (scratchpad `ultra_probe.py`). Open, waiting for his yes to merge: branch
+it** (scratchpad `ultra_probe.py`). Merged with his yes: branch
 `fix/what-the-ultra-review-found`, `tests/test_what_the_ultra_review_found.py` (8, 7 RED on
 0.33.3); suite 2768; 13 sheets, 18 exercises and the derivation byte-identical to 0.33.3.
 1. *A failed line still taught the sheet*: `evaluate` took `measured_units`/`written_order`
@@ -408,8 +408,10 @@ it** (scratchpad `ultra_probe.py`). Open, waiting for his yes to merge: branch
 5. *A name updated from itself showed its new value in its own formula*
    (`v = v + 2*diff(t^2, t)` read `4t + 2 d/dt t² + 5`): `_shown_input` now runs before
    the name is stored; reads `2 d/dt t² + 5`. Functions too.
-4. **His decision, not changed**: `(-8)^(1/3)` says "no real value", pinned by
-   `test_a_value_with_no_real_result_says_so`; −8 has a real cube root (−2).
+4. **His decision: option A** (*"Sí, fusiona y publica la 0.33.4, opción A"*): keep the
+   principal power, make the line true - "has no real principal value" - and say how:
+   `For its real cube root, write -(8^(1/3))` for a cube root of a plain number, the rule
+   with `-(8^(1/3)) = -2` otherwise (`(-27)^(2/3)` is +9, so no per-case example).
 
 **Then**, known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions

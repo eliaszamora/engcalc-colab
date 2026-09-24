@@ -53,7 +53,8 @@ NO_REAL_POWER = [
     ("L := 6*m\nz := sqrt(-4)\n", "line 2: the square root of -4 has no real value"),
     ("z := sqrt(-4)\nnumeric(z)\n", "line 1: the square root of -4 has no real value"),
     ("z := (-4)^0.5\n", "line 1: the square root of -4 has no real value"),
-    ("z := (-8)^(1/3)\n", "line 1: -8 raised to a fractional power has no real value"),
+    # "principal" since 0.33.4: -8 has a real cube root; its principal power is complex.
+    ("z := (-8)^(1/3)\n", "line 1: -8 raised to a fractional power has no real principal value"),
     ("x := -2*m\nz := sqrt(x)\n", "line 2: the square root of -2 m has no real value"),
     (
         "a := 1\nb := 2\nc := 5\nD = sqrt(b^2 - 4*a*c)\nnumeric(D)\n",
@@ -68,7 +69,10 @@ NO_REAL_POWER = [
         "x0 := -4\nf(x) = sqrt(x)\nnumeric(f(x0))\n",
         "line 3: the square root of -4 has no real value",
     ),
-    ("x := -8\ny = x^(1/3)\nnumeric(y)\n", "line 3: -8 raised to a fractional power has no real value"),
+    (
+        "x := -8\ny = x^(1/3)\nnumeric(y)\n",
+        "line 3: -8 raised to a fractional power has no real principal value",
+    ),
     # A matrix already names the entry, and keeps doing so in front of the new words.
     (
         "a := -4\nA = [sqrt(a), 1; 1, 2]\nnumeric(A)\n",
@@ -85,6 +89,47 @@ def test_a_power_with_no_real_value_says_so_in_one_line(magics, capsys, source, 
     printed = capsys.readouterr().out
     assert f"engcalc: {said}; {REAL}" in printed, printed
     assert printed.count("engcalc:") == 1, printed
+
+
+def test_a_fractional_power_says_how_to_write_the_real_root(magics, capsys):
+    """-8 has a real cube root, -2; its principal power `(-8)^(1/3)` is complex.
+
+    It said "has no real value", which the independent review of 2026-09-24 caught as
+    untrue. He chose to keep the principal power, as SymPy and Mathcad take it - an
+    exponent arrives as `0.333...`, and a rule that guessed which decimals meant an odd
+    root would answer some and not others - and to have the line say so, and say how to
+    write the real root.
+    """
+    run(magics, "z := (-8)^(1/3)\n")
+    printed = capsys.readouterr().out
+    assert "has no real principal value" in printed, printed
+    assert "For its real cube root, write -(8^(1/3))" in printed, printed
+    assert printed.count("engcalc:") == 1, printed
+
+
+def test_a_power_that_is_not_a_cube_root_is_given_the_rule_not_a_wrong_example(magics, capsys):
+    """`(-27)^(2/3)` is +9; `-(27^(1/3))` would be -3 and `-(27^(2/3))` -9. The line
+    gives the rule and shows it on -8, which is right, rather than an example that is not."""
+    run(magics, "z := (-27)^(2/3)\n")
+    printed = capsys.readouterr().out
+    assert "no real principal value" in printed, printed
+    assert "-(27^" not in printed, printed
+    assert "take the root of its magnitude and put the sign outside, as -(8^(1/3)) = -2" in printed, printed
+
+
+def test_the_real_root_written_that_way_is_the_real_root(magics, capsys):
+    page = run(magics, "z := -(8^(1/3))\n")
+    assert "engcalc:" not in capsys.readouterr().out
+    assert page.rstrip().endswith(r"-2.00 \end{array}"), page
+
+
+def test_a_measured_base_is_told_the_same_without_a_bare_number(magics, capsys):
+    """The example quotes the magnitude of a plain number; a measured base keeps its unit
+    in the first half of the line and the rule in the second."""
+    run(magics, "z := (-8*m^3)^(1/3)\n")
+    printed = capsys.readouterr().out
+    assert "-8 m³ raised to a fractional power has no real principal value" in printed, printed
+    assert "put the sign outside, as -(8^(1/3)) = -2" in printed, printed
 
 
 def test_the_rows_before_it_are_shown(magics, capsys):
