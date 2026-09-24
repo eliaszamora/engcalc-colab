@@ -52,6 +52,7 @@ title: w(x)
 xlabel: x [$\mathrm{cm}$]
 ylabel: w(x) [$\mathrm{kgf}/\mathrm{cm}$]
 offset: 
+positive: up
 annotation: (0, 30)
 annotation: (600, 60)
 
@@ -70,6 +71,7 @@ title: Md(x)
 xlabel: x [$\mathrm{cm}$]
 ylabel: Md(x) [$\mathrm{kgf} \cdot \mathrm{cm}$]
 offset: ×10⁶
+positive: down
 legend: P2 = 20394.32 kgf | P2 = 40788.65 kgf | P2 = 61182.97 kgf | P2 = 81577.30 kgf
 summary: Characteristic points
 summary: x = 0 $\mathbf{cm}$

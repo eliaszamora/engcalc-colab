@@ -39,6 +39,7 @@ title: M(x)
 xlabel: x [$\mathrm{m}$]
 ylabel: M(x) [$\mathrm{kN} \cdot \mathrm{m}$]
 offset: 
+positive: down
 annotation: (0, 0)
 annotation: (3, 45)
 

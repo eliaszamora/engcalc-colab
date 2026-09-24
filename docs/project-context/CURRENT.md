@@ -549,7 +549,26 @@ takes none); annotations keep the page's numbers. Moves three figures of the ref
 sheets, shown to him before merging: formas-kgf sweep `x10^7` -> `x10^6`, larga-mm
 `x10^8` -> `x10^6`, memoria-kgf none -> `x10^3`. 5 contracts; mutation 4/4. Suite 2854.
 
-**Exact next step:** his yes to merge it (0.34.2); the ultra review of #299 when he
+Merged as #303 (`aa88b1d`) with his yes (*"Sí, fusiona y publica la 0.34.2"*), which
+also said *"si hay cosas que corregir corrígelas, dejo a tu criterio"*. What I fixed and
+decided under that (branch `fix/a-design-moment-is-plotted-downward`):
+
+- **A moment by another name is drawn positive-down.** Moment-ness was the name alone
+  (`M(`, `M_b(`, `M2(`), so the `Md(x)` sweep in formas, the load-combination envelope
+  in viga (`U1`, `U2` over `case D = M_D(x)`) and exercise E10's `U1(x)` were drawn
+  upward. Now `engine._is_moment_series`: the old names as before; `M` + letters
+  (`Md`, `Mu`, `Mn`, `Mmax`) and load cases/combinations count when the values are a
+  force times a length (`Mass(x)` in kg and a combination of shears are not). 13
+  contracts; mutation 4/4. Five figures turn: formas x2, viga x2, E10.
+- **The snapshots record which way positive runs** (`positive: down/up` per figure) -
+  nothing had, which is how the sweep went unseen.
+- **A legend goes where the lines are fewest** (`loc="best"`, `_LEGEND_PLACE`): fixed
+  "upper right" sat on the turned sweep's curves. Checked every figure with a legend on
+  the sheets and exercises: only the sweep's legend moves (to upper centre).
+- **Kept, deliberately:** an annotation of a million or more still writes the page's
+  number (`8.10x10^7`) while the axis now reads `x10^6` - the annotation follows the page.
+
+**Exact next step:** release 0.34.2 (#303 and this); the ultra review of #299 when he
 launches it (`/code-review ultra 299`).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the

@@ -653,6 +653,13 @@ def _style_axes(axis) -> None:
         axis.yaxis.set_major_formatter(formatter)
 
 
+# Where a legend goes: the corner the lines cover least, found when the figure is drawn,
+# after the axis has been turned. A fixed "upper right" sat on the curves as soon as a
+# moment was drawn positive-down - a simply supported moment starts and ends at the top
+# then - while the frame's columns end at the bottom right, so no one corner serves.
+_LEGEND_PLACE = "best"
+
+
 # A value of this size or larger would put five digits on a tick. A shear of 6948 kgf
 # reads well as it is, and takes no factor.
 _AXIS_FACTOR_FLOOR = 1e4
@@ -800,7 +807,7 @@ def _render_multi_series(figure, axis, result: PlotResult) -> None:
         )
 
     axis.axhline(0.0, linewidth=1.0, color=axis.spines["bottom"].get_edgecolor(), alpha=0.75, zorder=2)
-    axis.legend(loc="upper right")
+    axis.legend(loc=_LEGEND_PLACE)
     moment = all(series.is_moment for series in result.series)
     if moment:
         axis.invert_yaxis()
@@ -863,7 +870,7 @@ def _render_signed_envelope(figure, axis, result: PlotResult) -> None:
         label="_zero",
         zorder=3,
     )
-    axis.legend(handles=[maximum_line, minimum_line], loc="upper right")
+    axis.legend(handles=[maximum_line, minimum_line], loc=_LEGEND_PLACE)
 
     maximum_index = max(range(len(maximum_y)), key=maximum_y.__getitem__)
     minimum_index = min(range(len(minimum_y)), key=minimum_y.__getitem__)
@@ -946,7 +953,7 @@ def _render_magnitude_envelope(figure, axis, result: PlotResult) -> None:
         label="_zero",
         zorder=3,
     )
-    axis.legend(handles=[magnitude_line], loc="upper right")
+    axis.legend(handles=[magnitude_line], loc=_LEGEND_PLACE)
 
     maximum_index = max(range(len(magnitude_y)), key=magnitude_y.__getitem__)
     axis.scatter(
