@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.2** - #277, `a8955a3`, carrying #276; six jobs and both qualification runs green on it, verified after its merge and **in his Colab** (below) |
-| before that | **0.33.1** - #274, `d225e48` (matrix rows 6pt apart: calibrated in the preview, still tight in Colab) |
-| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged, head `review/since-0.31.17` moved to `a8955a3`, so it covers #247 through #276 |
-| default suite | **2745 passing**, about a minute and a half with `-n auto` |
+| released | **0.33.3** - this release PR, carrying #279; its closure is recorded below |
+| before that | **0.33.2** - #277, `a8955a3`, verified after its merge and in his Colab |
+| open PRs | this release's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged |
+| default suite | **2760 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -364,7 +364,7 @@ his own install cell reported 0.33.2, his derivation cell re-run - `k_b` and `k_
 with rows as far apart as columns. A plain-number matrix (`k_bl`) reads roomier; noted,
 not changed. Scratch cells used for the calibration are not saved in his notebook.
 
-**Open: a matrix has room in KaTeX** (branch `fix/a-matrix-has-room-in-katex`). He asked
+**0.33.3 - a matrix has room in KaTeX** (#279, merged under his "lo dejo a tu criterio"). He asked
 whether the space *between* matrices had been checked, and to deal with what I had noted
 and left (plain matrices read loose at 12pt), "a tu criterio". Checked in his Colab: two
 matrices one above the other touched (`T_f` on `K_f`, `K_22c`/`F_c`/`d_c`). Asked from
@@ -378,7 +378,7 @@ matrix; inside a matrix a boundary is `12pt` when either row holds something tal
 Colab). `conftest.without_spacer_rows`; `block_text` drops spacer rows (a reader sees no
 row). Verified in his Colab with the branch's own LaTeX for `T_f`/`K_f`,
 `K_22`/`F_h`/`d_h`, `K_22c`/`F_c`/`d_c`. Mutation 7/7; suite 2760. Moves room only:
-dinámica, pórtico × 3, the derivation. Then release 0.33.3.
+dinámica, pórtico × 3, the derivation. Released as 0.33.3; its closure is to be recorded here.
 
 **Next: he runs `/code-review ultra 265`** (its head is `a8955a3`, so it covers #276). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:

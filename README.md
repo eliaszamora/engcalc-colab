@@ -13,7 +13,21 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.33.2**.
+Current version: **0.33.3**.
+
+
+## v0.33.3 a matrix has room in KaTeX
+
+Colab typesets its formulas with KaTeX, and KaTeX reads a row's space as LaTeX does: the
+row is made at least that deep, and nothing is added to a row already deeper. A matrix is
+deeper than any space the working leaves between its rows, so two matrices one above the
+other - a transformation matrix over a stiffness matrix, a stiffness matrix over its load
+vector - touched. A row that holds a matrix is now kept apart from its neighbours by a
+row of its own, which adds room whatever the depth.
+
+Inside a matrix, rows of fractions keep the `12pt` 0.33.2 gave them, and rows of plain
+entries - `c_θ`, `-s_θ`, `0` - take `3pt`: at `12pt` they read loose. Nothing moves but
+the space.
 
 
 ## v0.33.2 a matrix row has room in Colab
@@ -3303,6 +3317,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.33.3** — two matrices one above the other no longer touch in Colab (KaTeX), and a matrix of plain entries is set closer than one of fractions.
 - **0.33.2** — the rows of a matrix are `\\[12pt]` apart, calibrated in Colab, where 0.33.1's 6pt still read tight.
 - **0.33.1** — the rows of a matrix are set as far apart as its columns (`\\[6pt]`); a stiffness matrix of fractions no longer reads with its rows touching.
 - **0.33.0** — a product is written in the order the sheet wrote it (`E A`, `As fy`, `q x L`), and a product derived from it reads its names the same way; numbers first, units in the page's order, sums unchanged. One reference row moves.
@@ -3404,4 +3419,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.33.2`.
+Version: `0.33.3`.
