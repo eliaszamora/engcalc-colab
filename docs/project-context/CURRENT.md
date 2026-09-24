@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.2** - this release PR, carrying #276; its closure is recorded below |
-| before that | **0.33.1** - #274, `d225e48`, verified after its merge, but calibrated in the wrong renderer |
-| open PRs | this release's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged |
+| released | **0.33.2** - #277, `a8955a3`, carrying #276; six jobs and both qualification runs green on it, verified after its merge and **in his Colab** (below) |
+| before that | **0.33.1** - #274, `d225e48` (matrix rows 6pt apart: calibrated in the preview, still tight in Colab) |
+| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged, head `review/since-0.31.17` moved to `a8955a3`, so it covers #247 through #276 |
 | default suite | **2745 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -351,9 +351,20 @@ con tu recomendación"*). In the preview it measures 27-29 px (1.6 em). The five
 that only needed *some* separator now read `_MATRIX_ROW_SEPARATOR` instead of a literal.
 Moves the separator only (6pt to 12pt): dinámica 6, pórtico 96 × 3, the derivation 60.
 Suite 2745. Lesson: a presentation measurement is taken in Colab, not only in the preview.
-Released as 0.33.2; its closure is to be recorded here.
+Released as 0.33.2 (#277).
 
-**Next: he runs `/code-review ultra 265`** (its head is `d225e48`, so it covers #273). The findings come back to be verified by
+**0.33.2 is closed.** On the release commit `fb61336`: version assertions RED then GREEN;
+source suite 2745, twice; wheel from `git archive`, 31 files identical to `src`; clean
+Colab-like venv upgrades nothing; smoke 56/56 (60 derivation rows `\\[12pt]` apart);
+suite against the wheel 2745; 13 sheets and 18 exercises identical to the approved #276
+branch. After its merge: six jobs and both qualification runs green on `a8955a3`; a clean
+`git+https` install resolved to it, upgraded nothing, 31 files identical, smoke 56/56.
+**And in his Colab**, driven through the Claude-in-Chrome extension: session restarted,
+his own install cell reported 0.33.2, his derivation cell re-run - `k_b` and `k_v` read
+with rows as far apart as columns. A plain-number matrix (`k_bl`) reads roomier; noted,
+not changed. Scratch cells used for the calibration are not saved in his notebook.
+
+**Next: he runs `/code-review ultra 265`** (its head is `a8955a3`, so it covers #276). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
