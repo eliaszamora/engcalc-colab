@@ -7,9 +7,10 @@ the figure stays in the notebook, in a shared copy and in a PDF, whatever happen
 file afterwards. A path is read from where the notebook runs (in Colab, `/content`, or
 `/content/drive/MyDrive/...` once Drive is mounted); a URL is fetched.
 
-The number belongs to the figure, not to the run: running the cell again keeps `Figure 1`
-as `Figure 1`, a new figure takes the next number, and `%eng_reset` starts again at 1. The
-caption is Markdown, so `$...$` in it is typeset as it is in a narrative.
+The number belongs to the figure, not to the run: running the cell again keeps `Figura 1`
+as `Figura 1`, a new figure takes the next number, and `%eng_reset` starts again at 1. The
+caption is Markdown, so `$...$` in it is typeset as it is in a narrative. The label reads
+"Figura", in Spanish: he chose it over the English of the block names ("déjalo como Figura").
 """
 
 import base64
@@ -54,7 +55,7 @@ def html_of(outputs) -> list[str]:
 
 
 def captions(outputs) -> list[str]:
-    return [o.data for o in outputs if isinstance(o, Markdown) and "Figure" in o.data]
+    return [o.data for o in outputs if isinstance(o, Markdown) and "Figura" in o.data]
 
 
 def test_an_image_is_embedded_with_its_caption(images):
@@ -62,19 +63,19 @@ def test_an_image_is_embedded_with_its_caption(images):
     assert not console, console
     (figure,) = html_of(outputs)
     assert "data:image/png;base64," + base64.b64encode(PIXEL).decode() in figure
-    assert captions(outputs) == ["**Figure 1.** Geometría y cargas"]
+    assert captions(outputs) == ["**Figura 1.** Geometría y cargas"]
 
 
 def test_figures_are_numbered_in_order(images):
     outputs, _ = images('image("portico.png", "Pórtico")\nimage("viga.png", "Viga")\n')
-    assert captions(outputs) == ["**Figure 1.** Pórtico", "**Figure 2.** Viga"]
+    assert captions(outputs) == ["**Figura 1.** Pórtico", "**Figura 2.** Viga"]
 
 
 def test_running_the_cell_again_keeps_the_numbers(images):
     source = 'image("portico.png", "Pórtico")\nimage("viga.png", "Viga")\n'
     images(source)
     outputs, _ = images(source)
-    assert captions(outputs) == ["**Figure 1.** Pórtico", "**Figure 2.** Viga"]
+    assert captions(outputs) == ["**Figura 1.** Pórtico", "**Figura 2.** Viga"]
 
 
 def test_a_reset_starts_again_at_one(images):
@@ -82,17 +83,17 @@ def test_a_reset_starts_again_at_one(images):
     with contextlib.redirect_stdout(io.StringIO()):
         images.magics.eng_reset("")
     outputs, _ = images('image("viga.png", "Viga")\n')
-    assert captions(outputs) == ["**Figure 1.** Viga"]
+    assert captions(outputs) == ["**Figura 1.** Viga"]
 
 
 def test_the_caption_may_hold_mathematics(images):
     outputs, _ = images('image("portico.png", "Carga $w = 2000$ kgf/m")\n')
-    assert captions(outputs) == ["**Figure 1.** Carga $w = 2000$ kgf/m"]
+    assert captions(outputs) == ["**Figura 1.** Carga $w = 2000$ kgf/m"]
 
 
 def test_an_image_without_a_caption_is_still_numbered(images):
     outputs, _ = images('image("portico.png")\n')
-    assert captions(outputs) == ["**Figure 1.**"]
+    assert captions(outputs) == ["**Figura 1.**"]
 
 
 @pytest.mark.parametrize("width, css", [("12*cm", "width:12.00cm"), ("80*mm", "width:8.00cm")])

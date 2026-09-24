@@ -180,8 +180,11 @@ def _render_image(result: ImageResult) -> HTML:
 
 
 def _image_caption(result: ImageResult) -> str:
-    """`**Figure 1.** Geometría y cargas`: Markdown, so `$...$` in a caption is typeset."""
-    label = f"**Figure {result.number}.**"
+    """`**Figura 1.** Geometría y cargas`: Markdown, so `$...$` in a caption is typeset.
+
+    "Figura", in Spanish, is his choice (2026-09-24), over the English of the block names.
+    """
+    label = f"**Figura {result.number}.**"
     if not result.caption:
         return label
     return f"{label} {_narrative_paragraph_markdown(result.caption)}"
