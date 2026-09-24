@@ -22,7 +22,10 @@ from .errors import (
     diagnostic_hint,
 )
 from .models import (
+    FrameMember,
+    FramePlotResult,
     ImageResult,
+    MemberResult,
     CharacteristicInterval,
     CharacteristicPoint,
     DiscardedSolutions,
@@ -739,6 +742,8 @@ class EngineeringEngine:
         # The number each figure of `image(...)` was given, by file and caption, so a
         # cell run again keeps its numbers. See `_image_asked_for`.
         self.figure_numbers: dict[tuple[str, str | None], int] = {}
+        # The members of a frame, by name, in the order declared. See `_member_asked_for`.
+        self.frame_members: dict[str, FrameMember] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
         # The unit of a definition whose value simplified to an exact zero, which a
@@ -961,22 +966,14 @@ class EngineeringEngine:
         belongs to the figure, by file and caption, so running a cell again keeps it; a
         new figure takes the next one, and a reset starts again at 1.
         """
-        body = statement.expression.body
-        calls_image = any(
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "image"
-            for node in ast.walk(body)
+        body = _standalone_call(
+            statement,
+            "image",
+            "image(...) places a figure and stands on its own line, "
+            'as in image("portico.png", "Geometría y cargas")',
         )
-        if not calls_image:
+        if body is None:
             return None
-        if statement.target is not None or not (
-            isinstance(body, ast.Call) and isinstance(body.func, ast.Name) and body.func.id == "image"
-        ):
-            raise EngEvaluationError(
-                "image(...) places a figure and stands on its own line, "
-                'as in image("portico.png", "Geometría y cargas")'
-            )
         source = body.args[0].value
         caption = body.args[1].value if len(body.args) > 1 else None
         width_cm = None
@@ -989,16 +986,172 @@ class EngineeringEngine:
                     f"image width must be a length, such as 12*cm; {ast.unparse(item.value)} is not"
                 ) from exc
         data, mime = _read_image(source)
-        key = (source, caption)
-        if key not in self.figure_numbers:
-            self.figure_numbers[key] = len(self.figure_numbers) + 1
         return ImageResult(
             statement=statement,
-            number=self.figure_numbers[key],
+            number=self._figure_number((source, caption)),
             data=data,
             mime=mime,
             caption=caption,
             width_cm=width_cm,
+        )
+
+    def _figure_number(self, key: tuple[str, str | None]) -> int:
+        """The number of a figure, `image` or `frame_plot` alike: kept across a rerun."""
+        if key not in self.figure_numbers:
+            self.figure_numbers[key] = len(self.figure_numbers) + 1
+        return self.figure_numbers[key]
+
+    def _member_asked_for(self, statement):
+        """`member("V", start=[0*m, h], end=[L, h], forces=f_v, ...)`: a member declared.
+
+        Nothing is solved here: the sheet worked the frame out, and this keeps what it
+        found - geometry, local end forces, local end displacements, EI and a uniform load -
+        for `frame_plot` to draw. Declaring a name again replaces that member in its place,
+        so a cell run again draws the same frame.
+        """
+        body = _standalone_call(
+            statement,
+            "member",
+            'member(...) declares a member of a frame and stands on its own line, '
+            'as in member("V", start=[0*m, h], end=[L, h], forces=f_v)',
+        )
+        if body is None:
+            return None
+        name = body.args[0].value
+        given = {item.arg: item.value for item in body.keywords}
+        numbers = _MatrixNumbers(self, statement)
+        ureg = self.numeric_context.ureg
+
+        def scalar(node, what: str, dimension: str, meaning: str):
+            try:
+                value = numbers.value(node)
+            except DimensionalityError as exc:
+                raise EngEvaluationError(f"member {name}: {what} has incompatible units") from exc
+            if isinstance(value, NumberMatrix):
+                raise EngEvaluationError(
+                    f"member {name}: {what} is one value, and {ast.unparse(node)} is a matrix"
+                )
+            quantity = self.numeric_context._as_quantity(value)
+            # A bare `0` fits anything; `0*kgf` said what it is.
+            if not (quantity.magnitude == 0 and quantity.dimensionless) and not quantity.check(dimension):
+                raise EngEvaluationError(
+                    f"member {name}: {what} is {meaning}; {ast.unparse(node)} is "
+                    f"{quantity.units:~P}"
+                )
+            return quantity
+
+        def point(which: str):
+            return tuple(
+                scalar(element, which, "[length]", "two lengths [x, y]")
+                for element in given[which].elts
+            )
+
+        start, end = point("start"), point("end")
+        if all(
+            (b - a).to_base_units().magnitude == 0 for a, b in zip(start, end)
+        ):
+            raise EngEvaluationError(
+                f"member {name} has no length: start and end are the same point"
+            )
+
+        def six(which: str, kinds: tuple[str, ...], order: str):
+            node = given.get(which)
+            if node is None:
+                return None
+            try:
+                value = numbers.value(node)
+            except DimensionalityError as exc:
+                raise EngEvaluationError(f"member {name}: {which} has incompatible units") from exc
+            shape = (value.rows, value.cols) if isinstance(value, NumberMatrix) else (1, 1)
+            if shape not in ((6, 1), (1, 6)):
+                raise EngEvaluationError(
+                    f"member {name}: {which} has 6 entries, {order}; "
+                    f"{ast.unparse(node)} is {shape[0]}×{shape[1]}"
+                )
+            matrix = quantity_matrix_of(value, ureg)
+            for index, entry in enumerate(matrix):
+                quantity = self.numeric_context._as_quantity(entry)
+                kind = kinds[index % 3]
+                fits = quantity.dimensionless if not kind else quantity.check(kind)
+                if not (quantity.magnitude == 0 and quantity.dimensionless) and not fits:
+                    raise EngEvaluationError(
+                        f"member {name}: {which} entry {index + 1} is "
+                        f"{quantity.units:~P}, which does not fit {order}"
+                    )
+            return matrix
+
+        member = FrameMember(
+            name=name,
+            start=start,
+            end=end,
+            forces=six(
+                "forces",
+                ("[force]", "[force]", "[force] * [length]"),
+                "[N_i; V_i; M_i; N_j; V_j; M_j]",
+            ),
+            displacements=six(
+                "displacements",
+                ("[length]", "[length]", ""),
+                "[u_i; v_i; θ_i; u_j; v_j; θ_j]",
+            ),
+            stiffness=(
+                scalar(given["EI"], "EI", "[force] * [length] ** 2", "a force times a length squared")
+                if "EI" in given
+                else None
+            ),
+            load=(
+                scalar(given["load"], "load", "[force] / [length]", "a force per length")
+                if "load" in given
+                else None
+            ),
+        )
+        self.frame_members[name] = member
+        return MemberResult(statement=statement, member=member)
+
+    def _frame_plot_asked_for(self, statement):
+        """`frame_plot(M, "Momento flector")`: a diagram of the members declared."""
+        body = _standalone_call(
+            statement,
+            "frame_plot",
+            "frame_plot(...) draws a figure and stands on its own line, "
+            'as in frame_plot(M, "Momento flector")',
+        )
+        if body is None:
+            return None
+        diagram = body.args[0].id
+        caption = body.args[1].value if len(body.args) > 1 else None
+        written = ast.unparse(body)
+        members = tuple(self.frame_members.values())
+        if not members:
+            raise EngEvaluationError(
+                f"{written} draws the members declared with member(...), and none is "
+                'declared yet: member("V", start=[0*m, h], end=[L, h], forces=f_v)'
+            )
+        needed = "displacements" if diagram == "deformed" else "forces"
+        missing = [member.name for member in members if getattr(member, needed) is None]
+        if missing:
+            raise EngEvaluationError(
+                f"{written} needs {needed}= on every member; "
+                f"{', '.join(missing)} {'has' if len(missing) == 1 else 'have'} none"
+            )
+        if diagram == "deformed":
+            unbending = [
+                member.name
+                for member in members
+                if member.load is not None and member.stiffness is None
+            ]
+            if unbending:
+                raise EngEvaluationError(
+                    f"{written} needs EI= on {', '.join(unbending)}, to bend it under its load"
+                )
+        scale = next((float(item.value.value) for item in body.keywords), None)
+        return FramePlotResult(
+            statement=statement,
+            diagram=diagram,
+            number=self._figure_number((f"frame_plot({diagram})", caption)),
+            members=members,
+            caption=caption,
+            scale=scale,
         )
 
     def _numbers_asked_for(self, statement):
@@ -1402,6 +1555,7 @@ class EngineeringEngine:
         self.letters_said_to_be_units.clear()
         self.units_read_by_line.clear()
         self.figure_numbers.clear()
+        self.frame_members.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -1626,6 +1780,14 @@ class EngineeringEngine:
             figure = self._image_asked_for(statement)
             if figure is not None:
                 return figure
+
+            declared = self._member_asked_for(statement)
+            if declared is not None:
+                return declared
+
+            diagram = self._frame_plot_asked_for(statement)
+            if diagram is not None:
+                return diagram
 
             if statement.parameters is not None:
                 value = evaluator.visit_function_body(
@@ -4509,6 +4671,24 @@ def _in_mode_order(entries) -> tuple:
     counts in. A two-by-two written in names lists its roots in SymPy's order, which the
     numbers need not follow."""
     return tuple(sorted(entries, key=lambda entry: float(entry.value.to_base_units().magnitude)))
+
+
+def _standalone_call(statement, name: str, message: str):
+    """The call `name(...)` when it is the whole line; None when the line does not call it.
+
+    Anywhere else - assigned, or inside an expression - it is refused with `message`.
+    """
+    body = statement.expression.body
+    if not any(
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == name
+        for node in ast.walk(body)
+    ):
+        return None
+    if statement.target is not None or not (
+        isinstance(body, ast.Call) and isinstance(body.func, ast.Name) and body.func.id == name
+    ):
+        raise EngEvaluationError(message)
+    return body
 
 
 _IMAGE_TYPES = {

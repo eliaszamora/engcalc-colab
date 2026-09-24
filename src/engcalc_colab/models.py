@@ -733,6 +733,46 @@ class TableColumn:
 
 
 @dataclass(frozen=True)
+class FrameMember:
+    """A member of a frame, as `member(...)` declared it: what the sheet worked out.
+
+    `start` and `end` are two lengths each; `forces` the six end forces in local axes
+    `[N_i; V_i; M_i; N_j; V_j; M_j]` acting on the member, x' from start to end and y'
+    turned a quarter anticlockwise from it; `displacements` the six local end
+    displacements in the same order; `load` a uniform load acting towards -y'. Matrices
+    are `QuantityMatrix`. See `test_a_frame_is_drawn_with_its_diagrams`.
+    """
+
+    name: str
+    start: tuple[Any, Any]
+    end: tuple[Any, Any]
+    forces: Any = None
+    displacements: Any = None
+    stiffness: Any = None
+    load: Any = None
+
+
+@dataclass(frozen=True)
+class MemberResult:
+    """`member(...)`: declared, and nothing on the page; the figure shows it."""
+
+    statement: ParsedStatement
+    member: FrameMember
+
+
+@dataclass(frozen=True)
+class FramePlotResult:
+    """`frame_plot(M, "Momento flector")`: a diagram drawn on the frame, numbered."""
+
+    statement: ParsedStatement
+    diagram: str
+    number: int
+    members: tuple[FrameMember, ...]
+    caption: str | None = None
+    scale: float | None = None
+
+
+@dataclass(frozen=True)
 class ImageResult:
     """`image("portico.png", "Geometría y cargas", width=12*cm)`: a numbered figure.
 

@@ -18,11 +18,14 @@ from .models import (
     ParsedHeading,
     ParsedNarrative,
     PartialNumericEvaluationResult,
+    FramePlotResult,
     ImageResult,
+    MemberResult,
     PlotResult,
     TableResult,
 )
 from .parser import parse_cell
+from .frame_diagrams import render_frame_plot
 from .presentation import render_presented_plot
 from .renderer import (
     MEASURED_UNITS,
@@ -31,6 +34,7 @@ from .renderer import (
     RenderSettings,
     palette_unit_names,
     plot_in_palette,
+    quantity_as_displayed,
     render_aligned_results,
     CharacteristicResult,
     ComputedBlockResult,
@@ -179,15 +183,15 @@ def _render_image(result: ImageResult) -> HTML:
     )
 
 
-def _image_caption(result: ImageResult) -> str:
+def _figure_caption(number: int, caption: str | None) -> str:
     """`**Figura 1.** Geometría y cargas`: Markdown, so `$...$` in a caption is typeset.
 
     "Figura", in Spanish, is his choice (2026-09-24), over the English of the block names.
     """
-    label = f"**Figura {result.number}.**"
-    if not result.caption:
+    label = f"**Figura {number}.**"
+    if not caption:
         return label
-    return f"{label} {_narrative_paragraph_markdown(result.caption)}"
+    return f"{label} {_narrative_paragraph_markdown(caption)}"
 
 
 CalculationResult = (
@@ -312,6 +316,24 @@ class EngMagics(Magics):
                     )
                     continue
 
+                if isinstance(result, MemberResult):
+                    continue
+
+                if isinstance(result, FramePlotResult):
+                    _display_equation_group(
+                        pending_results,
+                        self._settings(),
+                    )
+                    pending_results.clear()
+                    settings = self._settings()
+                    display(
+                        render_frame_plot(
+                            result, lambda quantity: quantity_as_displayed(quantity, settings)
+                        )
+                    )
+                    display(Markdown(_figure_caption(result.number, result.caption)))
+                    continue
+
                 if isinstance(result, ImageResult):
                     _display_equation_group(
                         pending_results,
@@ -319,7 +341,7 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     display(_render_image(result))
-                    display(Markdown(_image_caption(result)))
+                    display(Markdown(_figure_caption(result.number, result.caption)))
                     continue
 
                 if isinstance(result, TableResult):

@@ -1353,6 +1353,15 @@ def _in_the_page_s_unit_order(quantity):
     )
 
 
+def quantity_as_displayed(quantity, settings: RenderSettings):
+    """One quantity in the unit the page would write it in: the palette's, or the family's.
+
+    What `frame_plot` writes its labels in, so a figure reads `kN·m` beside a page that
+    does - a matrix of numbers keeps base units, and `58839.90` is no label.
+    """
+    return _display_quantity(quantity, settings, declared=False)
+
+
 def _palette_unit(quantity, settings: RenderSettings) -> str | None:
     """The unit this sheet's palette fixes for that dimension, or None."""
     palette = _PALETTES.get(settings.palette)
