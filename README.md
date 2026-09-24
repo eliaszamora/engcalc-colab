@@ -13,7 +13,16 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.33.1**.
+Current version: **0.33.2**.
+
+
+## v0.33.2 a matrix row has room in Colab
+
+0.33.1 set the rows of a matrix `\\[6pt]` apart, measured in a preview whose renderer
+already leaves some space between rows. Colab's leaves none, and in the notebook a
+stiffness matrix still read with its rows almost touching. Drawn in Colab without a
+separator and at 6, 10, 12 and 14 pt, `12pt` puts the rows about as far apart as the
+columns, and that is what a matrix uses now. Nothing in it moves but the space.
 
 
 ## v0.33.1 a matrix row has room
@@ -3294,6 +3303,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.33.2** — the rows of a matrix are `\\[12pt]` apart, calibrated in Colab, where 0.33.1's 6pt still read tight.
 - **0.33.1** — the rows of a matrix are set as far apart as its columns (`\\[6pt]`); a stiffness matrix of fractions no longer reads with its rows touching.
 - **0.33.0** — a product is written in the order the sheet wrote it (`E A`, `As fy`, `q x L`), and a product derived from it reads its names the same way; numbers first, units in the page's order, sums unchanged. One reference row moves.
 - **0.32.3** — a derivative or an integral inside a larger expression shows inside it, so no row reads a false equation (`2 d/dx x² = 4x`, the `C₁` of an elastic curve); and a variable named like a unit (`s`, `N`) is not given the one a measured unit gets. No reference sheet moves.
@@ -3394,4 +3404,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.33.1`.
+Version: `0.33.2`.

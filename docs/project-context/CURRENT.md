@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.1** - #274, `d225e48`, carrying #273; six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.33.0** - #271, `7bfd026` |
-| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged, head `review/since-0.31.17` moved to `d225e48`, so it covers #247 through #273 |
+| released | **0.33.2** - this release PR, carrying #276; its closure is recorded below |
+| before that | **0.33.1** - #274, `d225e48`, verified after its merge, but calibrated in the wrong renderer |
+| open PRs | this release's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged |
 | default suite | **2745 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -340,8 +340,8 @@ and the deep gate this time: six jobs and both qualification runs green on `d225
 clean `git+https` install of `main` resolved to it, upgraded nothing, 31 files identical
 to `src`, smoke 56/56.
 
-**0.33.1 was calibrated in the wrong renderer; 0.33.2 corrects it** (branch
-`fix/a-matrix-row-has-room-in-colab`). He ran 0.33.1 in Colab and `k_v` still read tight.
+**0.33.1 was calibrated in the wrong renderer; 0.33.2 corrects it** (#276, merged with
+his yes on 2026-09-23). He ran 0.33.1 in Colab and `k_v` still read tight.
 Checked in his own Colab through the Claude-in-Chrome extension (a scratch cell, nothing
 saved in his notebook): the runtime was 0.33.1 and the separator reached the page, but
 Colab's renderer leaves no space between matrix rows of its own, where the preview's
@@ -351,6 +351,7 @@ con tu recomendación"*). In the preview it measures 27-29 px (1.6 em). The five
 that only needed *some* separator now read `_MATRIX_ROW_SEPARATOR` instead of a literal.
 Moves the separator only (6pt to 12pt): dinámica 6, pórtico 96 × 3, the derivation 60.
 Suite 2745. Lesson: a presentation measurement is taken in Colab, not only in the preview.
+Released as 0.33.2; its closure is to be recorded here.
 
 **Next: he runs `/code-review ultra 265`** (its head is `d225e48`, so it covers #273). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
