@@ -537,8 +537,20 @@ identical to 0.34.0. After its merge: CI (six jobs) and the deep gate green on `
 Colab (runtime deleted first - the trial session held a same-version build): 0.34.1, the
 whole frame through the column extrema, no error.
 
-**Exact next step:** the ultra review of #299 when he launches it (`/code-review ultra 299`);
-reproduce each finding by running it before changing anything.
+**An axis takes its power of ten in thousands** (branch
+`fix/an-axis-takes-its-power-of-ten-in-thousands`). He disliked both spellings of one unit
+on the frame's diagrams - the beam's `x10^6` with ticks 0.25 ... 1.00 and the columns'
+200000 ... 800000 (matplotlib takes an offset only once an axis reaches a million, and
+whatever power that is). Shown two ways to take a power in thousands; he chose option A,
+`x10^3` in the corner where matplotlib writes it (2026-09-24, *"Prefiero la opción A"*),
+over `[10^3 kgf cm]` in the label. `plotting._style_axes` fixes the offset to a multiple of
+three sized on the largest value drawn, once a value reaches 10^4 (a shear of 6948 kgf
+takes none); annotations keep the page's numbers. Moves three figures of the reference
+sheets, shown to him before merging: formas-kgf sweep `x10^7` -> `x10^6`, larga-mm
+`x10^8` -> `x10^6`, memoria-kgf none -> `x10^3`. 5 contracts; mutation 4/4. Suite 2854.
+
+**Exact next step:** his yes to merge it (0.34.2); the ultra review of #299 when he
+launches it (`/code-review ultra 299`).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
