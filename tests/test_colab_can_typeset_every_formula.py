@@ -53,13 +53,15 @@ _INLINE_MATH = re.compile(r"(?<!\\)\$(.+?)(?<!\\)\$", re.S)
 def _sheets() -> list[tuple[str, str, str]]:
     sheets = [(name, path.read_text(encoding="utf-8"), palette) for name, path, palette in REFERENCE_PAGES]
     sheets.append(("matrix-derivation", (ROOT / "tools" / "matrix_derivation.eng").read_text(encoding="utf-8"), ""))
+    # A frame solved with `d := solve(K, F)`: the lines over matrices of numbers.
+    sheets.append(("matrix-frame", (ROOT / "tools" / "portico_matricial.eng").read_text(encoding="utf-8"), "kgf"))
     # The gap map's exercises last. Some ask for what EngCalc does not do - that is what the
     # gap map measures - and the cell is refused whole, so they may put nothing on the page.
     sheets += [(title.split()[0], source, "") for title, _area, source in EXERCISES]
     return sheets
 
 
-_MUST_DRAW = {name for name, _, _ in REFERENCE_PAGES} | {"matrix-derivation"}
+_MUST_DRAW = {name for name, _, _ in REFERENCE_PAGES} | {"matrix-derivation", "matrix-frame"}
 
 
 def _formulas(source: str, palette: str, monkeypatch) -> list[dict]:

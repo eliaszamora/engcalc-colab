@@ -191,9 +191,13 @@ class NumericContext:
     def __init__(self) -> None:
         self.ureg = engineering_registry()
         self.values: dict[str, Any] = {}
+        # `d := solve(K, F)`: matrices of numbers, apart from the scalars. See
+        # `engine._MatrixNumbers`.
+        self.matrices: dict[str, Any] = {}
 
     def reset(self) -> None:
         self.values.clear()
+        self.matrices.clear()
 
     def get(self, name: str):
         return self.values.get(name)
@@ -214,6 +218,7 @@ class NumericContext:
     def assign(self, name: str, expression: ast.Expression):
         quantity = self.evaluate_expression(expression)
         self.values[name] = quantity
+        self.matrices.pop(name, None)
         return quantity
 
     def written_unit_names(self, expression: ast.Expression) -> frozenset[str]:
