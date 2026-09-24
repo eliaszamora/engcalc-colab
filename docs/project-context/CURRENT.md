@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.4** - this release PR, carrying #282; its closure is recorded below |
-| before that | **0.33.3** - #280, `1ed3831`, verified after its merge and in his Colab |
-| open PRs | this release's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged |
+| released | **0.33.4** - #283, `5b7e1ee`, carrying #282; six jobs and both qualification runs green on it, verified after its merge (below) |
+| before that | **0.33.3** - #280, `1ed3831` |
+| open PRs | this record's; **#265**, the ultra-review frame (review done 2026-09-24) - a draft never to be merged; can be closed |
 | default suite | **2772 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -413,7 +413,16 @@ it** (scratchpad `ultra_probe.py`). Merged with his yes: branch
    `For its real cube root, write -(8^(1/3))` for a cube root of a plain number, the rule
    with `-(8^(1/3)) = -2` otherwise (`(-27)^(2/3)` is +9, so no per-case example).
 
-**Then**, known and not requested:
+**0.33.4 is closed** (#283, `5b7e1ee`). On the release commit `3044948`: version
+assertions RED then GREEN; source suite 2772, twice; wheel from `git archive`, 31 files
+identical to `src`; clean Colab-like venv upgrades nothing; smoke 60/60 (`smoke-0334/`:
+the new cube-root line, a failed line not bringing back `1 s`, `v = v + 2*diff(t^2, t)`
+showing the old `v`); suite against the wheel 2772; 13 sheets and 18 exercises
+identical to 0.33.3. After its merge: six jobs and both qualification runs green on
+`5b7e1ee`; a clean `git+https` install resolved to it, upgraded nothing, 31 files
+identical, smoke 60/60. Not re-checked in Colab: no page moves.
+
+**Next: nothing open.** Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
 
