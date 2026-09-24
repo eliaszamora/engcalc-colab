@@ -13,7 +13,33 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.33.4**.
+Current version: **0.33.5**.
+
+
+## v0.33.5 a kept name follows its values, and keeps its name
+
+**A kept value follows its inputs.** `keep` stored the number a kept name stands for once,
+when the name was kept. A value settled afterwards left it behind:
+
+```text
+keep a = E*A/L
+z = 2*a
+E := 100*GPa
+numeric(z)      50000 kN/m, the a it was        - now 25000 kN/m
+numeric(a)      12500 kN/m, the a it is
+```
+
+One page gave two answers for the same `a`, in silence. And a name kept before its values
+were settled had no number at all, so `numeric` asked for a value the sheet had given. The
+number is taken again whenever a value is settled.
+
+**A kept name survives `subs`, `expand`, `simplify` and `factor`.** A derivation that
+passed through one of them lost every kept name at once. They now keep them wherever the
+result still is what the name stands for: `subs(K_b, c_theta, 1, s_theta, 0)` reads in `a`,
+and the column `K_c` in `a` and `b_1 ... b_4`. A substitution inside the name - `L` by
+`L_1` in `a = E*A/L` - makes the short form false, and there the entry reads `E A / L_1`.
+
+No reference sheet moves.
 
 
 ## v0.33.4 what the independent review found
@@ -3343,6 +3369,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.33.5** — a kept name's number follows the values it is made of (a later `:=` left it stale), and a kept name survives `subs`, `expand`, `simplify` and `factor`. No reference sheet moves.
 - **0.33.4** — what the independent review found: a failed line no longer changes how later lines print, a name updated from itself shows its old value in its formula, `solve` in an expression is solved once, and `(-8)^(1/3)` says how to take the real cube root. No reference sheet moves.
 - **0.33.3** — two matrices one above the other no longer touch in Colab (KaTeX), and a matrix of plain entries is set closer than one of fractions.
 - **0.33.2** — the rows of a matrix are `\\[12pt]` apart, calibrated in Colab, where 0.33.1's 6pt still read tight.
@@ -3446,4 +3473,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.33.4`.
+Version: `0.33.5`.

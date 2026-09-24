@@ -12,10 +12,10 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.4** - #283, `5b7e1ee`, carrying #282; six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.33.3** - #280, `1ed3831` |
-| open PRs | none. #265, the ultra-review frame, closed unmerged on 2026-09-24 at his request; branches `review/before-0.31.18` and `review/since-0.31.17` kept |
-| default suite | **2772 passing**, about a minute and a half with `-n auto` |
+| released | **0.33.5** - this release PR, carrying #287 and #288; its closure is recorded below |
+| before that | **0.33.4** - #283, `5b7e1ee` |
+| open PRs | this release's |
+| default suite | **2810 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -433,7 +433,7 @@ without `npm ci --prefix tools/katex`; required in CI (`CI` set), where both job
 KaTeX has it. Suite 2798. It does not measure spacing.
 
 **Item 2 found a defect first - a kept value did not follow its inputs** (#287,
-`fix/a-kept-value-follows-its-inputs`, waiting for his yes). `_store_kept_value` computed a
+`fix/a-kept-value-follows-its-inputs`, merged with his yes). `_store_kept_value` computed a
 kept name's number once: `keep a = E*A/L; z = 2*a; E := 100*GPa` answered `numeric(z)`
 with the old `a` (50000 kN/m) and `numeric(a)` with the new (12500) - wrong, silent, in
 every release since `keep`; and `keep` before the values made `numeric(2*a)` ask for `a`.
@@ -441,8 +441,8 @@ every release since `keep`; and `keep` before the values made `numeric(2*a)` ask
 contracts (3 RED); no page moves.
 
 **Item 2 - a kept name survives `subs`, `expand`, `simplify`, `factor`** (branch
-`feat/a-kept-name-survives-an-algebra-call`, on #287, waiting for his yes after seeing the
-rows). The four join `_WRITTEN_FORM_SAFE_CALLS`; `_agrees_with` keeps it honest - `subs(...,
+`feat/a-kept-name-survives-an-algebra-call`, #288, merged with his yes after seeing the
+rows: *"Sí, fusiona ambos y publica la 0.33.5"*). The four join `_WRITTEN_FORM_SAFE_CALLS`; `_agrees_with` keeps it honest - `subs(...,
 L, L_1)` replaces the `L` inside `a`, the check fails and the entry reads `E A / L_1`. 8
 contracts (6 RED). Rows that move: only his derivation - `K_b0` in `a`, `K_c` and `K_22c`
 in `a`, `b_1 ... b_4`; `K_1`, `K_2` keep `E A / L_1`, `E A / L_2`. The 13 sheets and 18
