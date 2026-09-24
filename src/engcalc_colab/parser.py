@@ -518,6 +518,10 @@ def _validate_normal_node(
             _validate_table_call(node, line_no)
             return
 
+        if node.func.id == "image":
+            _validate_image_call(node, line_no)
+            return
+
         for arg in node.args:
             _validate_normal_node(
                 arg,
@@ -540,6 +544,24 @@ def _validate_normal_node(
             piecewise_parameters=piecewise_parameters,
         )
 
+
+
+def _validate_image_call(node: ast.Call, line_no: int) -> None:
+    """`image("file", "caption", width=12*cm)`: a file, an optional caption, a width."""
+    usage = 'as in image("portico.png", "Geometría y cargas", width=12*cm)'
+    texts = node.args
+    if not 1 <= len(texts) <= 2 or not all(
+        isinstance(arg, ast.Constant) and isinstance(arg.value, str) for arg in texts
+    ):
+        raise EngSyntaxError(
+            f"line {line_no}: image takes a file in quotes and a caption in quotes, {usage}"
+        )
+    for item in node.keywords:
+        if item.arg != "width":
+            raise EngSyntaxError(
+                f"line {line_no}: image takes width= and nothing else by name, {usage}"
+            )
+        _validate_normal_node(item.value, line_no)
 
 
 def _validate_characteristic_call(

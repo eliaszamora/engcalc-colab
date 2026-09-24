@@ -18,6 +18,7 @@ from .models import (
     ParsedHeading,
     ParsedNarrative,
     PartialNumericEvaluationResult,
+    ImageResult,
     PlotResult,
     TableResult,
 )
@@ -166,6 +167,26 @@ def _render_narrative(narrative: ParsedNarrative) -> Markdown:
     )
 
 
+def _render_image(result: ImageResult) -> HTML:
+    """The figure itself, embedded, so it stays in the notebook with the output."""
+    import base64
+
+    width = f"width:{result.width_cm:.2f}cm;" if result.width_cm is not None else ""
+    data = base64.b64encode(result.data).decode("ascii")
+    return HTML(
+        f'<img src="data:{result.mime};base64,{data}" '
+        f'style="{width}max-width:100%;height:auto;display:block;margin:6px 0 2px 0;">'
+    )
+
+
+def _image_caption(result: ImageResult) -> str:
+    """`**Figure 1.** Geometría y cargas`: Markdown, so `$...$` in a caption is typeset."""
+    label = f"**Figure {result.number}.**"
+    if not result.caption:
+        return label
+    return f"{label} {_narrative_paragraph_markdown(result.caption)}"
+
+
 CalculationResult = (
     EvaluationResult
     | NumericAssignmentResult
@@ -286,6 +307,16 @@ class EngMagics(Magics):
                             plot_in_palette(result, self._settings())
                         )
                     )
+                    continue
+
+                if isinstance(result, ImageResult):
+                    _display_equation_group(
+                        pending_results,
+                        self._settings(),
+                    )
+                    pending_results.clear()
+                    display(_render_image(result))
+                    display(Markdown(_image_caption(result)))
                     continue
 
                 if isinstance(result, TableResult):
