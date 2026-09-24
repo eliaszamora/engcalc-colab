@@ -12,9 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.34.3** - this release PR, carrying #307 (`e56bac9`); its closure is recorded below |
+| released | **0.34.3** - #308, `f0e17d8`, carrying #307 (`e56bac9`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.34.2** - #305, `a791a8b` |
-| open PRs | this release's; #299 (review frame, to be closed unmerged) |
+| open PRs | none (#299 closed unmerged after its review) |
 | default suite | **2874 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -604,8 +604,16 @@ render); one LU per right-hand-side column (10 ms for six columns).
 Merged as #307 (`e56bac9`) with his yes (*"Sí, fusiona y publica la 0.34.3"*); released as
 0.34.3 by the release PR.
 
-**Exact next step:** close 0.34.3 (checks after its merge, his Colab) and close #299
-unmerged.
+**0.34.3 is closed.** On the release commit `17f36c2`: version assertions RED then GREEN;
+suite 2874 twice; wheel 31 files identical to `src`; clean Colab-like venv upgrades
+nothing; smoke 75/75 (`smoke-0343/`: a matrix given numbers drops its formula, `min` over
+a matrix entry, a `:=` matrix over two lines); suite against the wheel 2873 + the by-path
+magic test on the wheel's copy; 13 sheets and 18 exercises identical to 0.34.2. After its
+merge: CI (six jobs) and the deep gate green on `f0e17d8`; `git+https` resolved to it,
+upgraded nothing, 23 modules identical, smoke 75/75. In his Colab (fresh runtime): 0.34.3,
+the whole frame through the column moment diagram, no error. #299 closed unmerged.
+
+**Exact next step:** nothing open; wait for his next request.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
