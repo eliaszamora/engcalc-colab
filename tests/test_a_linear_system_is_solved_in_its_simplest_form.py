@@ -25,6 +25,7 @@ import engcalc_colab.magic as magic
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.errors import EngEvaluationError
 from engcalc_colab.parser import parse_cell
+from engcalc_colab.renderer import _MATRIX_ROW_SEPARATOR as ROW
 
 from conftest import block_text
 
@@ -64,8 +65,10 @@ def test_the_numbers_do_not_move(cell, capsys):
     raw, page = cell(TWO_SPRINGS + "u = solve(K, F)\nnumeric(u)\n")
     capsys.readouterr()
 
-    # Rows `\\[6pt]` apart since 0.33.1; see test_a_matrix_row_has_room.
-    assert page.rstrip().endswith("[\\beginmatrix\\displaystyle 7.50\\\\[6pt]\\displaystyle 10.83\\endmatrix] mm \\endarray"), page
+    # Rows apart by the matrix separator; see test_a_matrix_row_has_room.
+    assert page.rstrip().endswith(
+        rf"[\beginmatrix\displaystyle 7.50{ROW}\displaystyle 10.83\endmatrix] mm \endarray"
+    ), page
 
 
 def test_six_degrees_of_freedom_stay_readable():

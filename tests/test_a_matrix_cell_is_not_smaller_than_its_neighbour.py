@@ -61,7 +61,7 @@ def _cells(latex: str) -> list[str]:
     out = []
     for chunk in latex.split(r"\begin{matrix}")[1:]:
         body = chunk.split(r"\end{matrix}")[0]
-        # Rows are `\\[6pt]` apart since 0.33.1; the space is not part of a cell.
+        # Rows are apart by a row space since 0.33.1; the space is not part of a cell.
         for row in re.split(r"\\\\(?:\[[^\]]*\])?", body):
             out.extend(cell.strip() for cell in row.split("&") if cell.strip())
     return out

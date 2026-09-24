@@ -10,6 +10,14 @@ the columns stand at least 14 px apart. He asked on 2026-09-23, reading `k_v` in
 matrix derivation, whether the entries were touching, and chose the separation that makes
 the two the same: `\\[6pt]`, measured at 14.2 px between rows of `k_v`.
 
+That was 0.33.1, and it was measured in the wrong place. The preview renders with MathJax
+3, which already leaves 5-6 px between rows before any separator; the Colab notebook he
+reads his pages in leaves none. Checked in his own Colab on 2026-09-23 with the same
+fragment of `k_v` drawn five ways: bare, the rows touch; `6pt`, a thin gap that still reads
+tight; `10pt`, apart; `12pt`, rows about as far apart as the columns; `14pt`, airier than
+the columns. He chose `12pt`, calibrated where the page is read. In the preview it reads
+somewhat airier than the columns, which is the side to err on.
+
 Every matrix, symbolic or numeric, is built by `_matrix_from_cells_latex`, so all of them
 take it. The width estimator reads the separator as nothing, the way it reads a `cases`
 separator: it adds height, not width.
@@ -22,7 +30,7 @@ from IPython.display import Math
 import engcalc_colab.magic as magic
 from engcalc_colab.renderer import _latex_visual_width, _matrix_from_cells_latex
 
-ROW = r"\\[6pt]"
+ROW = r"\\[12pt]"
 
 
 @pytest.fixture
