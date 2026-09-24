@@ -283,3 +283,12 @@ def test_an_entry_that_does_not_fit_is_named_the_way_the_page_writes_it():
     )
     with pytest.raises(EngEvaluationError, match=r"entry \[2,1\] is 0\.00281, a number without a unit,"):
         run(source)
+
+
+def test_a_row_of_matrices_is_written_as_a_matrix(sheet):
+    """`fv := k*d + [f0_D, f0_L, Z_6]` printed the brackets as source text."""
+    page, console = sheet(SPRINGS + "d := solve(K, F)\nG := [d, d] + [d, d]\n")
+    assert not console, console
+    written = page.split(r"G & = & \displaystyle ", 1)[1].split(r"\\", 1)[0]
+    assert "[d, d]" not in written, written
+    assert r"\left[\begin{matrix}\displaystyle d & \displaystyle d\end{matrix}\right]" in written, written

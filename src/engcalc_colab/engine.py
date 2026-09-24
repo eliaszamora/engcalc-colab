@@ -4418,7 +4418,14 @@ _WRITTEN_FORM_SAFE_CALLS = frozenset(
      "subs",
      "expand",
      "simplify",
-     "factor"}
+     "factor",
+     # `min` and `max`, found designing the portal frame's beam: `As = max(f_cw*b*d/fy*(...),
+     # As_min)` lost `f_cw`, `R_n` and `As_min` at once, and the 0.85 of Whitney's block
+     # folded into 2/0.85 = 2.35. A limit is pure arithmetic, like `abs` above; the
+     # evaluator records the limits it compares, but on the written pass's own instance.
+     # See `test_a_kept_name_survives_min_and_max`.
+     "min",
+     "max"}
 )
 
 
@@ -4447,6 +4454,16 @@ def _in_mode_order(entries) -> tuple:
     return tuple(sorted(entries, key=lambda entry: float(entry.value.to_base_units().magnitude)))
 
 
+def _canonical_limits(expression):
+    """`WrittenMin`/`WrittenMax` as SymPy's `Min`/`Max`, which put their arguments in order."""
+    if not hasattr(expression, "replace"):
+        return expression
+    return expression.replace(
+        lambda node: isinstance(node, (WrittenMin, WrittenMax)),
+        lambda node: (sp.Min if isinstance(node, WrittenMin) else sp.Max)(*node.args),
+    )
+
+
 def _agrees_with(written, value, expansions: dict | None = None) -> bool:
     """True when the written form is the same expression as the one computed beside it.
 
@@ -4458,14 +4475,18 @@ def _agrees_with(written, value, expansions: dict | None = None) -> bool:
     held off - and verified all seven at 1.9 ms.
     """
     try:
-        rebuilt = sp.sympify(sp.srepr(written))
+        # A `min` or `max` keeps its arguments where they were typed, and a round trip
+        # through `srepr` would bring `WrittenMin` back as an unknown function of that
+        # name: both sides are compared as SymPy's own `Min` and `Max`, whose order is
+        # canonical. See `test_a_kept_name_survives_min_and_max`.
+        rebuilt = sp.sympify(sp.srepr(_canonical_limits(written)))
         if expansions:
             # A `keep` name stands for itself in the written form and for its expression
             # in the evaluated one, so the two only agree once the names are put back.
             # Checking without this would reject every formula built on a kept name,
             # which is the whole feature.
             rebuilt = rebuilt.subs(expansions)
-        difference = rebuilt - sp.sympify(value)
+        difference = _canonical_limits(rebuilt) - _canonical_limits(sp.sympify(value))
         if isinstance(difference, sp.MatrixBase):
             # The whole of what let a written form reach a matrix. A zero matrix is not
             # `== 0` - `Matrix([[0, 0], [0, 0]]) == 0` is False - so asking a matrix the

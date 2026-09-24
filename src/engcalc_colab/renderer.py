@@ -3260,7 +3260,7 @@ class _WrittenLine:
             return self.is_matrix(node.left) or self.is_matrix(node.right)
         if isinstance(node, ast.UnaryOp):
             return self.is_matrix(node.operand)
-        return False
+        return isinstance(node, ast.List)
 
     def grouped(self, node, below: int) -> str:
         text = self.latex(node)
@@ -3280,6 +3280,9 @@ class _WrittenLine:
             return self._binary(node)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             return self._call(node.func.id, node.args)
+        if isinstance(node, ast.List):
+            # `[f0_D, f0_L, Z_6]`: a row written with commas is a matrix of one row.
+            return _matrix_from_cells_latex([[self.latex(each) for each in node.elts]])
         if isinstance(node, ast.Subscript):
             base = self.latex(node.value)
             index = node.slice
