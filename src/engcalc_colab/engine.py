@@ -2141,11 +2141,17 @@ class EngineeringEngine:
                         self.numeric_guards[statement.target] = tuple(evaluator.numeric_guards)
                     else:
                         self.numeric_guards.pop(statement.target, None)
-            written = (
-                self.written_namespace.get(statement.target)
-                if statement.target is not None
-                else self._written_form(statement, evaluator, value)
-            )
+            if statement.target is None:
+                written = self._written_form(statement, evaluator, value)
+            elif statement.parameters is None:
+                written = self.written_namespace.get(statement.target)
+            elif self._reaches_a_kept_name(statement.expression):
+                # A function that reads a kept name is written as typed, or `f_cw` in
+                # `As_req(Mu)` is expanded and 2/0.85 folded into 2.35. Any other function
+                # prints as it always has. See `test_a_kept_name_survives_a_sheet_function`.
+                written = self._written_form(statement, evaluator, value)
+            else:
+                written = None
             return EvaluationResult(
                 statement=statement,
                 display_input=shown,
