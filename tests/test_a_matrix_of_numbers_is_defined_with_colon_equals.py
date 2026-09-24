@@ -271,3 +271,15 @@ def test_numeric_of_it_in_a_unit_converts_every_entry(sheet):
 def test_numeric_of_it_in_a_unit_that_does_not_fit_says_so():
     with pytest.raises(EngEvaluationError, match=r"\[1,1\].*kN"):
         run(SPRINGS + "d := solve(K, F)\nnumeric(d, kN)\n")
+
+
+def test_an_entry_that_does_not_fit_is_named_the_way_the_page_writes_it():
+    with pytest.raises(EngEvaluationError, match=r"entry \[1,1\] is 10 m, which cannot be written in kN"):
+        run(SPRINGS + "d := solve(K, F)\nnumeric(d, kN)\n")
+    source = (
+        "E := 200*GPa\nI := 8000*cm^4\nL := 3*m\nP := 10*kN\n"
+        "K = [12*E*I/L^3, -6*E*I/L^2; -6*E*I/L^2, 4*E*I/L]\n"
+        "F = [P; 0]\nd := solve(K, F)\nnumeric(d, mm)\n"
+    )
+    with pytest.raises(EngEvaluationError, match=r"entry \[2,1\] is 0\.00281, a number without a unit,"):
+        run(source)

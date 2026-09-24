@@ -12,10 +12,10 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.34.0** - #295, `ac6199b`, carrying #294 (`dc0ce3b`); six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.33.6** - #292, `18f2f75` |
-| open PRs | none |
-| default suite | **2845 passing**, about a minute with `-n auto` |
+| released | **0.34.1** - this release PR, carrying #300 (`e0512c2`); its closure is recorded below |
+| before that | **0.34.0** - #295, `ac6199b` |
+| open PRs | this release's; #299 (draft review frame, never merge) |
+| default suite | **2849 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -525,8 +525,11 @@ side by side (trial branch, deleted after): `f_4 = 10^3 [6.95 kgf; 2.38 kgf; 432
 Seen in the diagrams, not changed: the beam moment axis uses matplotlib's `x10^6` offset
 (0.25 ... 1.00) while the column plot prints 200000 ... 800000 - two styles for one unit.
 
-**Exact next step:** his yes to merge `feat/frame-diagrams` (as 0.34.1); the ultra review
-when he launches it.
+**#300 merged with his yes** (`e0512c2`, *"Sí, fusiona y publica la 0.34.1"*), released as 0.34.1.
+Added in the release PR, not in #300: `numeric(d, cm)` named a misfit entry with the whole
+float (`-0.0020228091706281292`); it now reads `-0.00202, a number without a unit` (1 contract).
+**Exact next step:** close 0.34.1 (checks after its merge, his Colab); the ultra review of
+#299 when he launches it.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
