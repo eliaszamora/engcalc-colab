@@ -934,10 +934,18 @@ class EngineeringEngine:
                     entries.append(entry.to(unit))
                 except DimensionalityError as exc:
                     row, col = position
+                    written = ast.unparse(body.args[1])
+                    # Three figures, as a reader would quote it; a rotation says it has
+                    # no unit rather than printing nothing after the number.
+                    value = f"{float(entry.magnitude):.3g}"
+                    value += (
+                        ", a number without a unit"
+                        if entry.dimensionless
+                        else f" {entry.units:~P}"
+                    )
                     raise EngEvaluationError(
-                        f"numeric({name}, {ast.unparse(body.args[1])}): entry "
-                        f"[{row + 1},{col + 1}] is {entry:~P}, which cannot be written in "
-                        f"{ast.unparse(body.args[1])}"
+                        f"numeric({name}, {written}): entry [{row + 1},{col + 1}] is "
+                        f"{value}, which cannot be written in {written}"
                     ) from exc
             quantity_matrix = QuantityMatrix(
                 quantity_matrix.rows, quantity_matrix.cols, tuple(entries)

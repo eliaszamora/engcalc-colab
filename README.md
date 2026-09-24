@@ -13,7 +13,25 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.34.0**.
+Current version: **0.34.1**.
+
+
+## v0.34.1 a matrix of numbers can be shown again
+
+`numeric(d)` after `d := solve(K, F)` said to use `d` on a `:=` line. It shows the numbers
+now, as the `:=` line did, and `numeric(d, cm)` writes every entry in the unit asked for -
+or names the entry that has no such unit, such as a rotation:
+
+```text
+d := solve(K, F)
+numeric(d)          d = [0.63 cm; -0.0103 cm; -0.00202; 0.62 cm; -0.0141 cm; 0.00118]
+numeric(d, cm)      numeric(d, cm): entry [3,1] is -0.00202, a number without a unit, which cannot be written in cm
+```
+
+`tools/portico_matricial.eng` goes on from the reactions to the diagrams: the end forces
+are taken out with `:=` (`V_2 := f_v[2,1]`), and the beam's moment and shear and both
+columns' moments are written as functions, plotted, and read with `extrema` and `roots`.
+No reference sheet moves.
 
 
 ## v0.34.0 a matrix defined by its numbers
@@ -3422,6 +3440,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.34.1** — `numeric(d)` of a matrix defined with `:=` shows its numbers; the matrix frame draws its diagrams. No reference sheet moves.
 - **0.34.0** — `d := solve(K, F)`: a `:=` line over matrices is worked out in numbers, shown as written and then as its value. No reference sheet moves.
 - **0.33.6** — a line that reads `N`, `m` or `s` as a unit the sheet never wrote as one says so, once per letter. No reference sheet moves.
 - **0.33.5** — a kept name's number follows the values it is made of (a later `:=` left it stale), and a kept name survives `subs`, `expand`, `simplify` and `factor`. No reference sheet moves.
@@ -3528,4 +3547,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.34.0`.
+Version: `0.34.1`.
