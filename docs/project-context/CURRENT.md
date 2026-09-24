@@ -8,14 +8,14 @@
 
 ## Where things stand today
 
-_2026-09-23._
+_2026-09-24._
 
 | | |
 |---|---|
-| released | **0.33.6** - #292, `18f2f75`, carrying #291; six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.33.5** - #289, `71a7584` |
-| open PRs | #294 - `d := solve(K, F)`, CI green, checked in his Colab, waiting for his yes to merge and release 0.34.0 |
-| default suite | **2821 passing** on `main`; 2845 on the open branch, about a minute and a half with `-n auto` |
+| released | **0.34.0** - this release PR, carrying #294 (`dc0ce3b`); its closure is recorded below |
+| before that | **0.33.6** - #292, `18f2f75` |
+| open PRs | this release's |
+| default suite | **2845 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -486,9 +486,8 @@ help (solve is not a written-form call). Proposed to him: `d := solve(K, F)` as 
 numeric matrix definition; he approved it on 2026-09-24 (*"Sí, apruebo d := solve(K, F),
 procede"*).
 
-**`d := solve(K, F)` - a matrix defined by its numbers** (#294, branch
-`feat/a-numeric-matrix-definition`, six CI jobs green; not merged: merging and releasing
-as 0.34.0 wait for his yes).
+**`d := solve(K, F)` - a matrix defined by its numbers** (#294, `dc0ce3b`, merged with
+his yes on 2026-09-24: *"Tienes mi si mi aprobación"*; released as 0.34.0 by the release PR).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
