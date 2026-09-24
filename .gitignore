@@ -25,3 +25,6 @@ gapmap.json
 cov.json
 coverage.xml
 htmlcov/
+
+# KaTeX for tests/test_colab_can_typeset_every_formula.py; `npm ci --prefix tools/katex`
+tools/katex/node_modules/

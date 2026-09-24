@@ -1,0 +1,218 @@
+## Análisis matricial: de la barra al pórtico
+
+"""
+Se deduce la relación $f = k\,u$ de un elemento, primero en sus ejes locales y
+luego en los globales, para la barra y para el elemento de pórtico plano.
+
+Convenciones. El eje local $x'$ va del nodo $i$ al nodo $j$ y el eje $y'$ es
+$x'$ girado 90° en sentido antihorario. $\theta$ es el ángulo de $X$ a $x'$,
+medido en sentido antihorario, y sus cosenos directores son
+$c_\theta = \cos\theta$ y $s_\theta = \sin\theta$. Fuerzas positivas en el
+sentido positivo de los ejes; momentos y giros positivos antihorarios.
+"""
+
+### 1. Barra horizontal
+
+"""
+La barra sólo tiene fuerza axial. Por compatibilidad su alargamiento es
+$u_2 - u_1$; por la ley de Hooke la fuerza axial es $N = EA\,(u_2 - u_1)/L$,
+positiva en tracción; y por equilibrio la barra tira del nodo 1 hacia atrás
+y del nodo 2 hacia adelante.
+"""
+
+N_b = E*A*(u_2 - u_1)/L
+f_1 = -N_b
+f_2 = N_b
+
+"""
+Cada término de la matriz de rigidez es cuánto cambia una fuerza cuando se
+mueve un desplazamiento: $k_{rs} = \partial f_r / \partial u_s$.
+"""
+
+k_b = [diff(f_1, u_1), diff(f_1, u_2); diff(f_2, u_1), diff(f_2, u_2)]
+
+"""
+Para girarla después conviene escribirla en el plano, con dos desplazamientos
+por nodo $(u', v')$. La barra no tiene rigidez transversal, de modo que las
+filas y columnas de $v'$ son nulas. En una barra horizontal los ejes locales
+son los globales y esta matriz ya es la global.
+"""
+
+keep a = E*A/L
+
+k_bl = [ a, 0, -a, 0;
+         0, 0,  0, 0;
+        -a, 0,  a, 0;
+         0, 0,  0, 0]
+
+### 2. Barra inclinada
+
+"""
+Los desplazamientos globales $(U, V)$ de un nodo se proyectan sobre los ejes
+locales: $u' = c_\theta U + s_\theta V$ y $v' = -s_\theta U + c_\theta V$.
+Para el elemento completo $u' = T\,U$, y las fuerzas se transforman igual,
+$f' = T\,F$. Como $T$ es ortogonal, $T^{-1} = T^{T}$, y de $f' = k'u'$ sale
+
+$F = T^{T}\,k'\,T\;U \quad\Rightarrow\quad K = T^{T}\,k'\,T$
+"""
+
+T_b = [ c_theta, s_theta,        0,       0;
+       -s_theta, c_theta,        0,       0;
+              0,       0,  c_theta, s_theta;
+              0,       0, -s_theta, c_theta]
+
+K_b = transpose(T_b)*k_bl*T_b
+
+"""
+Con $\theta = 0$ se recupera la barra horizontal.
+"""
+
+K_b0 = subs(K_b, c_theta, 1, s_theta, 0)
+
+"""
+La fuerza axial de la barra, una vez conocidos los desplazamientos globales,
+es la proyección del alargamiento sobre su eje:
+"""
+
+N_e = a*(-c_theta*U_1 - s_theta*V_1 + c_theta*U_2 + s_theta*V_2)
+
+### 3. Pórtico horizontal
+
+"""
+El elemento de pórtico tiene tres grados de libertad por nodo,
+$(u', v', \theta)$. La parte axial es la de la barra. La flexión
+(Euler-Bernoulli) se deduce con las funciones de forma cúbicas de Hermite,
+que dan la deformada exacta de una viga sin carga en su tramo:
+"""
+
+H_1(x) = 1 - 3*x^2/L^2 + 2*x^3/L^3
+H_2(x) = x - 2*x^2/L + x^3/L^2
+H_3(x) = 3*x^2/L^2 - 2*x^3/L^3
+H_4(x) = -x^2/L + x^3/L^2
+
+"""
+La curvatura es la segunda derivada de la deformada, y la rigidez sale de la
+energía de flexión: $k_{rs} = \int_0^L EI\,H_r''\,H_s''\,dx$. Basta calcular
+los diez términos distintos, porque la matriz es simétrica.
+"""
+
+k_11 = integrate(E*I*diff(H_1(x), x, 2)^2, x, 0, L)
+k_12 = integrate(E*I*diff(H_1(x), x, 2)*diff(H_2(x), x, 2), x, 0, L)
+k_13 = integrate(E*I*diff(H_1(x), x, 2)*diff(H_3(x), x, 2), x, 0, L)
+k_14 = integrate(E*I*diff(H_1(x), x, 2)*diff(H_4(x), x, 2), x, 0, L)
+k_22 = integrate(E*I*diff(H_2(x), x, 2)^2, x, 0, L)
+k_23 = integrate(E*I*diff(H_2(x), x, 2)*diff(H_3(x), x, 2), x, 0, L)
+k_24 = integrate(E*I*diff(H_2(x), x, 2)*diff(H_4(x), x, 2), x, 0, L)
+k_33 = integrate(E*I*diff(H_3(x), x, 2)^2, x, 0, L)
+k_34 = integrate(E*I*diff(H_3(x), x, 2)*diff(H_4(x), x, 2), x, 0, L)
+k_44 = integrate(E*I*diff(H_4(x), x, 2)^2, x, 0, L)
+
+k_v = [k_11, k_12, k_13, k_14;
+       k_12, k_22, k_23, k_24;
+       k_13, k_23, k_33, k_34;
+       k_14, k_24, k_34, k_44]
+
+"""
+Aparecen los cuatro coeficientes clásicos, que se nombran para leer la
+matriz completa:
+"""
+
+keep b_1 = 12*E*I/L^3
+keep b_2 = 6*E*I/L^2
+keep b_3 = 4*E*I/L
+keep b_4 = 2*E*I/L
+
+k_f = [ a,    0,    0, -a,    0,    0;
+        0,  b_1,  b_2,  0, -b_1,  b_2;
+        0,  b_2,  b_3,  0, -b_2,  b_4;
+       -a,    0,    0,  a,    0,    0;
+        0, -b_1, -b_2,  0,  b_1, -b_2;
+        0,  b_2,  b_4,  0, -b_2,  b_3]
+
+### 4. Pórtico inclinado
+
+"""
+El giro de un nodo es alrededor del eje perpendicular al plano, el mismo en
+ejes locales y globales, de modo que no se transforma:
+"""
+
+T_f = [ c_theta, s_theta, 0,        0,       0, 0;
+       -s_theta, c_theta, 0,        0,       0, 0;
+              0,       0, 1,        0,       0, 0;
+              0,       0, 0,  c_theta, s_theta, 0;
+              0,       0, 0, -s_theta, c_theta, 0;
+              0,       0, 0,        0,       0, 1]
+
+K_f = transpose(T_f)*k_f*T_f
+
+### 5. Pórtico vertical
+
+"""
+Una columna recorrida de la base (i) a la cabeza (j) tiene $\theta = 90°$:
+$c_\theta = 0$ y $s_\theta = 1$. El desplazamiento horizontal activa la
+rigidez de flexión y el vertical la axial.
+"""
+
+K_c = subs(K_f, c_theta, 0, s_theta, 1)
+
+### 6. F = K u: dos verificaciones conocidas
+
+"""
+Voladizo horizontal empotrado en el nodo 1 con una carga $P$ hacia abajo en
+el nodo 2. Con el nodo 1 fijo, las ecuaciones que quedan son las del nodo 2.
+"""
+
+K_22 = k_f[[4, 5, 6], [4, 5, 6]]
+F_h = [0; -P; 0]
+d_h = solve(K_22, F_h)
+
+"""
+Es la flecha $PL^3/3EI$ y el giro $PL^2/2EI$ de la resistencia de
+materiales. Columna empotrada en la base con una carga horizontal $H$ en la
+cabeza, ahora con la matriz ya transformada:
+"""
+
+K_22c = K_c[[4, 5, 6], [4, 5, 6]]
+F_c = [H; 0; 0]
+d_c = solve(K_22c, F_c)
+
+### 7. Una armadura de dos barras con números
+
+"""
+El nodo 3, en $(4, 0)$ m, está unido al nodo 1, en $(0, 0)$, por una barra
+horizontal, y al nodo 2, en $(0, 3)$ m, por una barra inclinada de 5 m. Los
+nodos 1 y 2 están articulados y el 3 carga $P$ hacia abajo. Cada barra aporta
+al nodo 3 el bloque de su nodo $j$, con sus propios cosenos directores.
+"""
+
+E := 200*GPa
+A := 500*mm^2
+P := 30*kN
+L_1 := 4*m
+L_2 := 5*m
+c_2 := 4/5
+s_2 := -3/5
+
+K_1 = subs(K_b, c_theta, 1, s_theta, 0, L, L_1)
+K_2 = subs(K_b, c_theta, c_2, s_theta, s_2, L, L_2)
+
+K_3 = K_1[[3, 4], [3, 4]] + K_2[[3, 4], [3, 4]]
+F_3 = [0; -P]
+d_3 = solve(K_3, F_3)
+
+numeric(d_3)
+
+"""
+Las fuerzas en las barras salen de sus alargamientos, con los nodos 1 y 2 fijos:
+"""
+
+N_1 = simplify(subs(N_e, c_theta, 1, s_theta, 0, L, L_1, U_1, 0, V_1, 0, U_2, d_3[1, 1], V_2, d_3[2, 1]))
+N_2 = simplify(subs(N_e, c_theta, c_2, s_theta, s_2, L, L_2, U_1, 0, V_1, 0, U_2, d_3[1, 1], V_2, d_3[2, 1]))
+
+numeric(N_1)
+numeric(N_2)
+
+"""
+La barra horizontal trabaja a compresión y la inclinada a tracción, con los
+valores que da el equilibrio del nudo 3: $N_2\,s_2 = -P$ y $N_1 = -N_2\,c_2$.
+"""
