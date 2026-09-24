@@ -3904,7 +3904,18 @@ _WRITTEN_FORM_SAFE_CALLS = frozenset(
      # 0.32 s to about 0.7 s. Before the verification was fixed that bought nothing at
      # all; now it buys the last two matrices of the memoria.
      "transpose",
-     "inv"}
+     "inv",
+     # The algebra calls, on 2026-09-24. Without them a derivation that passed through one
+     # lost every kept name at once: `K_b0 = subs(K_b, c_theta, 1, s_theta, 0)` and the
+     # column `K_c` read in `E A / L` and `12 E I / L^3` between matrices that read in `a`
+     # and `b_1 ... b_4`. None has an effect a second walk would repeat, and the
+     # verification keeps the short form honest: `subs(..., L, L_1)` replaces the `L`
+     # inside `a = E*A/L`, the written form no longer agrees, and the entry reads
+     # `E A / L_1` as it should. A `simplify` is computed twice, on the smaller form.
+     "subs",
+     "expand",
+     "simplify",
+     "factor"}
 )
 
 
