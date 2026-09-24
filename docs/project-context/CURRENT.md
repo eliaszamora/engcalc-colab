@@ -14,7 +14,7 @@ _2026-09-23._
 |---|---|
 | released | **0.33.4** - #283, `5b7e1ee`, carrying #282; six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.33.3** - #280, `1ed3831` |
-| open PRs | this record's; **#265**, the ultra-review frame (review done 2026-09-24) - a draft never to be merged; can be closed |
+| open PRs | none. #265, the ultra-review frame, closed unmerged on 2026-09-24 at his request; branches `review/before-0.31.18` and `review/since-0.31.17` kept |
 | default suite | **2772 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
