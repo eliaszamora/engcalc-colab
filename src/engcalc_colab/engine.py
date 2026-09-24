@@ -391,6 +391,9 @@ class EngineeringEngine:
         # what it stands for; `namespace` still holds the expanded expression and
         # everything computes with that, so the barrier is presentation only.
         self.kept_names: set[str] = set()
+        # The kept names whose number in `numeric_context.values` was computed from their
+        # expression, and so follows it. See `_refresh_kept_values`.
+        self.kept_values: set[str] = set()
         # Names whose `:=` wrote a unit down. `written_unit_names` already drew this
         # line per assignment, for that assignment's own row, and then discarded it.
         # A substituted value two lines later needs the same answer, so it is kept:
@@ -538,8 +541,28 @@ class EngineeringEngine:
         try:
             _, quantity = self.numeric_context.evaluate_symbolic(sp.sympify(value))
         except Exception:
+            # A number that can no longer be computed is dropped, not kept: a stale one
+            # is a wrong answer given in silence. See `_refresh_kept_values`.
+            if name in self.kept_values:
+                self.numeric_context.values.pop(name, None)
+                self.kept_values.discard(name)
             return
         self.numeric_context.values[name] = self.zero_in_its_unit(name, quantity)
+        self.kept_values.add(name)
+
+    def _refresh_kept_values(self) -> None:
+        """Take every kept name's number again, from the values settled now.
+
+        It was taken once, when the name was kept. `E := 100*GPa` after `keep a = E*A/L`
+        left `a` at the number it had with 200 GPa, and `numeric(2*a)` answered with the
+        old `a` while `numeric(a)` answered with the new one - one page, two answers, in
+        silence. A name kept before its values were settled had no number at all, and
+        `numeric` asked for a value the sheet had given. Called after a value is settled,
+        which is the only thing that moves these numbers.
+        """
+        for name in list(self.kept_names):
+            if name in self.namespace:
+                self._store_kept_value(name, self.namespace[name])
 
     def _unit_of_a_zero(self, statement, value):
         """The quantity a definition that simplified to zero is, unit included.
@@ -879,6 +902,7 @@ class EngineeringEngine:
         self.reported.clear()
         self.load_cases.clear()
         self.kept_names.clear()
+        self.kept_values.clear()
         self.declared_unit_names.clear()
         self.written_units.clear()
         self.written_namespace.clear()
@@ -938,6 +962,9 @@ class EngineeringEngine:
                 for entry in row:
                     self.measured_units |= measured_units_in(entry)
                     record_written_order(entry, self.written_order)
+        # A settled value moves the numbers kept names stand for.
+        if isinstance(statement, ParsedNumericAssignment) and self.kept_names:
+            self._refresh_kept_values()
         read = frozenset(getattr(result, "unit_literals", ())) | frozenset(
             getattr(result, "written_units", ())
         )
