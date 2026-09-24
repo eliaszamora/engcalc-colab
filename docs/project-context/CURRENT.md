@@ -12,10 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.34.3** - #308, `f0e17d8`, carrying #307 (`e56bac9`); six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.34.2** - #305, `a791a8b` |
-| on `main`, unreleased | #310 (`f887551`) frame design; #311 (`29bce85`) `image`; #312 (`79d5fe9`) `member` + `frame_plot` - CI and deep gate green on each |
-| open PRs | none |
+| released | **0.35.0** - this release PR, carrying #310 (`f887551`), #311 (`29bce85`), #312 (`79d5fe9`); its closure is recorded below |
+| before that | **0.34.3** - #308, `f0e17d8` |
+| open PRs | this release's |
 | default suite | **2927 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -687,8 +686,9 @@ Merged with his yes (*"Sí, fusiona #311 y #312"*): #311 squashed as `29bce85`; 
 rebased onto it (tree identical to what ran in his Colab, 0 diff lines), retargeted to
 `main`, six jobs green, squashed as `79d5fe9`. CI and the deep gate green on both commits.
 
-**Exact next step:** publish 0.35.0 (#310, #311, #312) **only when he says** - *"espera
-para publicar"*. Then the full release procedure.
+Released as 0.35.0 with his yes (*"Sí, fusiona #313 y publica la 0.35.0"*).
+
+**Exact next step:** close 0.35.0 (checks after its merge, his Colab).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
