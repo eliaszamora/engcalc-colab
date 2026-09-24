@@ -91,6 +91,11 @@ def ensure_common_scale(quantity_matrix: QuantityMatrix, operation: str):
 # mpmath and not numpy for the reason `matrix_modes` gives: SymPy depends on it.
 
 
+# The calls a `:=` line works out on matrices. One list: the engine evaluates them and
+# the renderer sets them apart as matrices, and a call added to one must be in both.
+MATRIX_CALLS = ("solve", "inv", "transpose")
+
+
 @dataclass(frozen=True)
 class NumberMatrix:
     rows: int

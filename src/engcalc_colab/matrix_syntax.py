@@ -251,7 +251,9 @@ def _has_symbolic_assignment_before_first_bracket(text: str) -> bool:
 
         previous = prefix[index - 1] if index > 0 else ""
         following = prefix[index + 1] if index + 1 < len(prefix) else ""
-        if previous in {":", "<", ">", "!", "="} or following == "=":
+        # `:` is not in this set: `D := [0;` runs on like `K = [a, b;`, since a `:=` line
+        # holds a matrix too now. `<=`, `>=`, `!=` and `==` are comparisons, not assignments.
+        if previous in {"<", ">", "!", "="} or following == "=":
             continue
         return True
     return False

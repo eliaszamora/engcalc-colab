@@ -89,6 +89,7 @@ from .matrix_analysis import (
 )
 from .matrix_modes import modes_of, take_mode
 from .matrix_numeric import (
+    MATRIX_CALLS,
     NumberMatrix,
     QuantityMatrix,
     add_numbers,
@@ -315,7 +316,7 @@ class _MatrixNumbers:
     it would mean there.
     """
 
-    _MATRIX_CALLS = ("solve", "inv", "transpose")
+    _MATRIX_CALLS = MATRIX_CALLS
 
     def __init__(self, engine: "EngineeringEngine", statement) -> None:
         self.engine = engine
@@ -345,7 +346,9 @@ class _MatrixNumbers:
     def value(self, node: ast.AST):
         """A `NumberMatrix`, or a scalar quantity when the line takes one entry."""
         if not self.reads_a_matrix(node):
-            return self.context.evaluate_expression(ast.Expression(body=node))
+            return self._scalar(node)
+        if isinstance(node, ast.List):
+            return self._row(node)
         if isinstance(node, ast.Name):
             return self._named(node.id)
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
@@ -364,6 +367,27 @@ class _MatrixNumbers:
         raise EngEvaluationError(
             f"'{ast.unparse(node)}' cannot be worked out in numbers on a := line"
         )
+
+    def _scalar(self, node: ast.AST):
+        """A part of the line that reads no matrix, as a `:=` line reads it elsewhere.
+
+        A function of the sheet goes through `_QuantityOfTheFormula`, the way
+        `_assign_through_the_sheet` answers `M_max := M(L/2)`; `NumericContext` knows only
+        the functions mathematics has, and `y := M(3*m)*d[1,1]/m` stopped at `M`.
+        """
+        if self.engine._calls_a_function_of_the_sheet(node):
+            return _QuantityOfTheFormula(self.engine).visit(node)
+        return self.context.evaluate_expression(ast.Expression(body=node))
+
+    def _row(self, node: ast.List) -> NumberMatrix:
+        """`[d[1,1], d[2,1]]`: a row written with commas, as a `=` line reads it."""
+        cells = []
+        for element in node.elts:
+            value = self.value(element)
+            if not isinstance(value, NumberMatrix):
+                value = scalar_numbers(self.context._as_quantity(value))
+            cells.append(value)
+        return blocks_of_numbers([cells])
 
     def _named(self, name: str) -> NumberMatrix:
         if name in self.literals:
@@ -437,6 +461,8 @@ class _MatrixNumbers:
 
     def _call(self, node: ast.Call):
         name = node.func.id
+        if name not in self._MATRIX_CALLS:
+            return self._number_call(node)
         arguments = [self.value(argument) for argument in node.args]
         if name in self._MATRIX_CALLS:
             if node.keywords or not all(isinstance(each, NumberMatrix) for each in arguments):
@@ -451,11 +477,35 @@ class _MatrixNumbers:
                 f"{name} on a := line takes "
                 + ("a matrix and a right-hand side" if name == "solve" else "one matrix")
             )
-        if len(arguments) == 1 and not isinstance(arguments[0], NumberMatrix):
-            if name == "abs":
-                return abs(self.context._as_quantity(arguments[0]))
-            return self.context.evaluate_scalar_function(name, arguments[0])
         raise EngEvaluationError(f"{name} cannot be worked out in numbers on a := line")
+
+    def _number_call(self, node: ast.Call):
+        """`min(3*h, d[1,1])`, `M(d[1,1])`, `sqrt(u^2 + v^2)`: a call that takes numbers.
+
+        The arguments that read a matrix are worked out here - each must come to one
+        number - and the call itself is left to the evaluator a `:=` line uses for
+        everything else, so `min`, `max`, `interp`, the functions of mathematics and those
+        of the sheet mean exactly what they mean there. Only `solve`, `inv` and `transpose`
+        take matrices.
+        """
+        name = node.func.id
+        bound: dict[str, object] = {}
+        arguments = []
+        for index, argument in enumerate(node.args):
+            if not self.reads_a_matrix(argument):
+                arguments.append(argument)
+                continue
+            value = self.value(argument)
+            if isinstance(value, NumberMatrix):
+                raise EngEvaluationError(
+                    f"{name} on a := line takes numbers, and '{ast.unparse(argument)}' "
+                    "is a matrix; take one of its entries, such as d[1,1]"
+                )
+            key = f"__eng_number_{index}"
+            bound[key] = value
+            arguments.append(ast.Name(id=key, ctx=ast.Load()))
+        call = ast.Call(func=node.func, args=arguments, keywords=node.keywords)
+        return _QuantityOfTheFormula(self.engine, bound).visit(call)
 
     def _part(self, node: ast.Subscript):
         numbers = self.value(node.value)
@@ -994,6 +1044,13 @@ class EngineeringEngine:
             quantity_matrix = quantity_matrix_of(value, context.ureg)
             context.values.pop(statement.target, None)
             context.matrices[statement.target] = quantity_matrix
+            # `K = [...]` then `K := solve(K, F)`: the formula goes, or a `=` line after it
+            # goes on reading the old K in silence.
+            for store in (self.namespace, self.written_namespace, self.numeric_guards):
+                store.pop(statement.target, None)
+            self.zero_quantities.pop(statement.target, None)
+            self.kept_names.discard(statement.target)
+            self.kept_values.discard(statement.target)
             return NumericMatrixAssignmentResult(
                 statement=statement,
                 quantity_matrix=quantity_matrix,
@@ -1467,7 +1524,9 @@ class EngineeringEngine:
                 if notice:
                     self.notices.append(notice)
                 numbers = _MatrixNumbers(self, statement)
-                if numbers.reads_a_matrix(statement.expression.body):
+                if numbers.reads_a_matrix(statement.expression.body) or isinstance(
+                    statement.expression.body, ast.List
+                ):
                     return self._assign_numbers(statement, numbers, written_units)
                 if self._calls_a_function_of_the_sheet(statement.expression):
                     quantity = self._assign_through_the_sheet(statement)
