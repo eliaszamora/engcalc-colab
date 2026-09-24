@@ -12,10 +12,10 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.34.2** - #305, `a791a8b`, carrying #303 (`aa88b1d`) and #304 (`a87f299`); six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.34.1** - #301, `24ada0b` |
-| open PRs | #299 (draft review frame for `/code-review ultra 299`, never merge) |
-| default suite | **2867 passing**, about a minute with `-n auto` |
+| released | **0.34.3** - this release PR, carrying #307 (`e56bac9`); its closure is recorded below |
+| before that | **0.34.2** - #305, `a791a8b` |
+| open PRs | this release's; #299 (review frame, to be closed unmerged) |
+| default suite | **2874 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -601,7 +601,11 @@ Not changed, measured: stages built twice per `:=` matrix line (15 ms of a 2.36 
 render); one LU per right-hand-side column (10 ms for six columns).
 7 contracts (7 RED); mutation 5/5. Suite 2874. The 13 sheets and 18 exercises identical.
 
-**Exact next step:** his yes to merge it and publish 0.34.3; then close #299 unmerged.
+Merged as #307 (`e56bac9`) with his yes (*"Sí, fusiona y publica la 0.34.3"*); released as
+0.34.3 by the release PR.
+
+**Exact next step:** close 0.34.3 (checks after its merge, his Colab) and close #299
+unmerged.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

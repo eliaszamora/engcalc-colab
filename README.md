@@ -13,7 +13,26 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.34.2**.
+Current version: **0.34.3**.
+
+
+## v0.34.3 what the second independent review found
+
+An independent review of everything since 0.33.6 found seven things; each was reproduced
+by running it before anything changed.
+
+- **A matrix given numbers no longer keeps its formula.** `K = [...]`, then
+  `K := solve(K, F)`, then `y = 2*K` computed with the old formula of `K`, in silence. The
+  formula is dropped now: `y = 2*K` says to use `K` on a `:=` line, and `numeric(K)`
+  shows its numbers.
+- **A `:=` line that reads a matrix takes the rest of the language.** `min(3*h, d[1,1])`,
+  a function of the sheet (`M(3*m)*d[1,1]/m`) and a row written with commas
+  (`[d[1,1], d[2,1]]`) stopped the line; they mean what they mean on any `:=` line.
+- **A matrix on a `:=` line may run over several lines**, as one on a `=` line does.
+
+Two efficiency notes were measured and left: a line's matrix is typeset twice (15 ms in a
+2.4 s frame) and a solve factors once per right-hand column (10 ms for six). No reference
+sheet moves.
 
 
 ## v0.34.2 a moment reads in thousands and downward
@@ -3458,6 +3477,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.34.3** — what the second independent review found: a matrix given numbers drops its formula; `min`, sheet functions and comma rows on a `:=` line that reads a matrix; a `:=` matrix over several lines. No reference sheet moves.
 - **0.34.2** — an axis of large values reads in thousands (`×10³`); `Md`, `Mu`, `Mn` and load combinations of moments are drawn positive-down. Five figures turn, three change their power of ten.
 - **0.34.1** — `numeric(d)` of a matrix defined with `:=` shows its numbers; the matrix frame draws its diagrams. No reference sheet moves.
 - **0.34.0** — `d := solve(K, F)`: a `:=` line over matrices is worked out in numbers, shown as written and then as its value. No reference sheet moves.
@@ -3566,4 +3586,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.34.2`.
+Version: `0.34.3`.
