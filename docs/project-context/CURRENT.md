@@ -432,8 +432,23 @@ without `npm ci --prefix tools/katex`; required in CI (`CI` set), where both job
 `npm ci`. Mutation: the spacer as `\vrule` (not in KaTeX) caught; `\hskip` survives because
 KaTeX has it. Suite 2798. It does not measure spacing.
 
-**Next: item 2 - `expand`/`simplify` keep the names kept with `keep`**, rows shown to him
-before anything merges. Known and not requested:
+**Item 2 found a defect first - a kept value did not follow its inputs** (#287,
+`fix/a-kept-value-follows-its-inputs`, waiting for his yes). `_store_kept_value` computed a
+kept name's number once: `keep a = E*A/L; z = 2*a; E := 100*GPa` answered `numeric(z)`
+with the old `a` (50000 kN/m) and `numeric(a)` with the new (12500) - wrong, silent, in
+every release since `keep`; and `keep` before the values made `numeric(2*a)` ask for `a`.
+`_refresh_kept_values` after each `:=`; a number no longer computable is dropped. 4
+contracts (3 RED); no page moves.
+
+**Item 2 - a kept name survives `subs`, `expand`, `simplify`, `factor`** (branch
+`feat/a-kept-name-survives-an-algebra-call`, on #287, waiting for his yes after seeing the
+rows). The four join `_WRITTEN_FORM_SAFE_CALLS`; `_agrees_with` keeps it honest - `subs(...,
+L, L_1)` replaces the `L` inside `a`, the check fails and the entry reads `E A / L_1`. 8
+contracts (6 RED). Rows that move: only his derivation - `K_b0` in `a`, `K_c` and `K_22c`
+in `a`, `b_1 ... b_4`; `K_1`, `K_2` keep `E A / L_1`, `E A / L_2`. The 13 sheets and 18
+exercises are identical. Suite 2810.
+
+Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
 
