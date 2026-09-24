@@ -13,7 +13,47 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.34.3**.
+Current version: **0.35.0**.
+
+
+## v0.35.0 a frame's diagrams, figures, and a designed beam
+
+**The diagrams of a frame, drawn on the frame.** `member` declares what the sheet worked
+out and `frame_plot` draws it; nothing is solved again:
+
+```text
+member("C1", start=[0*m, 0*m], end=[0*m, h], forces=f_1, displacements=T_c*D_1, EI=E*I_c)
+member("V",  start=[0*m, h],   end=[L, h],   forces=f_v, displacements=d,       EI=E*I_v, load=w)
+member("C2", start=[L, 0*m],   end=[L, h],   forces=f_4, displacements=T_c*D_4, EI=E*I_c)
+
+frame_plot(M, "Momento flector")
+frame_plot(V, "Fuerza cortante")
+frame_plot(N, "Fuerza axial")
+frame_plot(deformed, "Deformada", scale=150)
+```
+
+`forces` and `displacements` are the six end values in local axes, x' from `start` to
+`end`; `load` is a uniform load towards -y'. Each member is read as a beam seen from inside
+the frame: a moment is positive when it pulls the inside fibre, so a knee reads one number
+from the beam and from the column, and the shear follows the same reading; the axial force
+is positive in tension. The moment is drawn on the side it pulls. Values carry their sign,
+in boxes, in the unit the page writes them in; loads are red, and a distributed load starts
+and ends with an arrow at the member's ends. A load on a joint is read back from the end
+forces that meet there, and a support is drawn where the displacements hold a joint still.
+The deformed shape adds each loaded member's own deflection (it needs `EI`) and gives the
+joints' displacements.
+
+**Figures.** `image("portico.png", "Geometría del pórtico", width=9*cm)` places a file or
+a URL in the memoria, embedded so it stays in the notebook. Figures are numbered on their
+own - **Figura 1**, **Figura 2** - `image` and `frame_plot` alike; a cell run again keeps
+its numbers and `%eng_reset` starts again at 1. The caption may hold `$...$`.
+
+**The frame's beam, designed** (`tools/portico_diseno.eng`): three load cases solved at
+once with `d_c := solve(K, F_c)`, six combinations, the envelope, flexure and shear to ACI
+318-19, every number equal to an independent NumPy solution. Writing it found that a kept
+name inside `min` or `max` was expanded; it stays a name now.
+
+No reference sheet moves.
 
 
 ## v0.34.3 what the second independent review found
@@ -3477,6 +3517,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.35.0** — `member` and `frame_plot`: M, V, N and the deformed shape drawn on a frame; `image` and numbered figures (Figura N); the frame's beam designed; a kept name survives `min` and `max`. No reference sheet moves.
 - **0.34.3** — what the second independent review found: a matrix given numbers drops its formula; `min`, sheet functions and comma rows on a `:=` line that reads a matrix; a `:=` matrix over several lines. No reference sheet moves.
 - **0.34.2** — an axis of large values reads in thousands (`×10³`); `Md`, `Mu`, `Mn` and load combinations of moments are drawn positive-down. Five figures turn, three change their power of ten.
 - **0.34.1** — `numeric(d)` of a matrix defined with `:=` shows its numbers; the matrix frame draws its diagrams. No reference sheet moves.
@@ -3586,4 +3627,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.34.3`.
+Version: `0.35.0`.
