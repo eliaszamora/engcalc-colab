@@ -674,9 +674,16 @@ the four diagrams. 25 contracts (`test_a_frame_is_drawn_with_its_diagrams.py`), 
 8/8. Suite 2927.
 Not drawn (no syntax for it yet): a moment applied at a joint; a load other than uniform.
 
-**Exact next step:** verify `image` and the four diagrams in his Colab from
-`feat/frame-plot`; with his yes, merge #311 then the frame-plot PR; publish 0.35.0 (with
-#310) only when he says.
+PR #312 (base `feat/image`). **In his Colab** ("Ejercicio 2.2", cells 13-14, runtime
+deleted first - a reconnect had reused a session where pip skipped the same 0.34.3):
+`feat/frame-plot` built from `git+https`, the frame sheet with `image("portico.png",
+"Geometría del pórtico", width=9*cm)` at its head ran whole with no error: the sketch
+embedded as "Figura 1. Geometría del pórtico", then "Figura 2. Momento flector" to "Figura
+5. Deformada", each as drawn locally (-519 596 once at the knee, 3 000 kgf, Δx 0.63/0.62 cm,
+δ -0.35 cm, ×150). #311 CI green (six jobs) with "Figura".
+
+**Exact next step:** his yes to merge #311 then #312 (retarget #312 to `main` after #311);
+publish 0.35.0 (with #310) only when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
