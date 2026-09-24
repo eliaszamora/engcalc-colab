@@ -2961,24 +2961,7 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
     )
     lhs = _display_lhs(result)
 
-    substituted_rows: list[str] = []
-    if _shows_substitution(result):
-        shown = _shown_substitutions(result, settings)
-        substituted_expression, valued_branches = _named_value_branches(
-            result.symbolic_expression,
-            _piecewise_branch_values(result),
-            shown,
-        )
-        substituted_rows = _without_a_repetition(
-            _bounded_expression_rows(
-                substituted_expression,
-                {**shown, **valued_branches},
-                settings=settings,
-                unit_literals=result.unit_literals,
-            ),
-            formula_rows,
-        )
-
+    substituted_rows = _numeric_substituted_rows(result, settings, formula_rows)
     compared_rows = _worked_rows(result, settings, substituted_rows)
 
     rows: list[str] = []
@@ -3070,16 +3053,25 @@ def _interpolation_rows(result, settings: RenderSettings, substituted_rows: list
     )
 
 
-def _numeric_substituted_rows(result, settings: RenderSettings) -> list[str]:
-    """The substitution stage of a numeric row, exactly as `_numeric_evaluation_rows`
-    draws it - for the spacing metadata, which must ask about the same rows."""
+def _numeric_substituted_rows(
+    result, settings: RenderSettings, formula_rows: list[str] | None = None
+) -> list[str]:
+    """The substitution stage of a numeric row: what `_numeric_evaluation_rows` draws and
+    what the spacing metadata counts, from this one function.
+
+    The two were separate computations, and the metadata's left out the row's units and
+    its piecewise branches, so the rows counted and the rows drawn could disagree; the
+    stage was built two or three times per row besides. `formula_rows` is passed by a
+    caller that has them already.
+    """
     if not _shows_substitution(result):
         return []
-    formula_rows = _bounded_expression_rows(
-        result.symbolic_expression,
-        settings=settings,
-        unit_literals=result.unit_literals,
-    )
+    if formula_rows is None:
+        formula_rows = _bounded_expression_rows(
+            result.symbolic_expression,
+            settings=settings,
+            unit_literals=result.unit_literals,
+        )
     shown = _shown_substitutions(result, settings)
     substituted_expression, valued_branches = _named_value_branches(
         result.symbolic_expression,
@@ -3536,20 +3528,14 @@ def _value_row_spacings(
         stage_lengths = [1] * len(_numeric_matrix_stages(result, settings, value=None))
 
     elif isinstance(result, NumericEvaluationResult):
+        # The same rows `_numeric_evaluation_rows` draws, from the same functions: this
+        # counted rows built without the row's units and without its piecewise branches.
         formula_rows = _bounded_expression_rows(
             result.symbolic_expression,
             settings=settings,
+            unit_literals=result.unit_literals,
         )
-        substituted_rows = []
-        if _shows_substitution(result):
-            substituted_rows = _without_a_repetition(
-                _bounded_expression_rows(
-                    result.symbolic_expression,
-                    _shown_substitutions(result, settings),
-                    settings=settings,
-                ),
-                formula_rows,
-            )
+        substituted_rows = _numeric_substituted_rows(result, settings, formula_rows)
         final_latex = _quantity_latex(
             result.quantity,
             settings=_settings_for(result, settings),
@@ -3564,9 +3550,7 @@ def _value_row_spacings(
         ]
         if substituted_rows:
             stage_lengths.append(len(substituted_rows))
-        compared_rows = _worked_rows(
-            result, settings, _numeric_substituted_rows(result, settings)
-        )
+        compared_rows = _worked_rows(result, settings, substituted_rows)
         if compared_rows:
             stage_lengths.append(len(compared_rows))
         stage_lengths.append(1)
