@@ -3345,9 +3345,28 @@ class _Evaluator(ast.NodeVisitor):
             upper_quantity = domain.upper_quantity
             unit = lower_quantity.units
 
+            # Only where a crossing is, as a number, is kept. When both responses are
+            # polynomials once the sheet's values are in, that is a real root of their
+            # difference: six quadratic combinations took 54 s through fifteen symbolic
+            # closed forms. See `test_governing_is_quick_over_polynomials`.
+            polynomials = [
+                _polynomial_in_base_units(
+                    self.engine.numeric_context, item.comparison_expression, variable_symbol
+                )
+                for item in resolved
+            ]
             crossovers = []
             for index, left in enumerate(resolved):
-                for right in resolved[index + 1 :]:
+                for offset, right in enumerate(resolved[index + 1 :], start=index + 1):
+                    if polynomials[index] is not None and polynomials[offset] is not None:
+                        crossovers.extend(
+                            _real_roots_between(
+                                polynomials[index] - polynomials[offset],
+                                lower_quantity,
+                                upper_quantity,
+                            )
+                        )
+                        continue
                     points, _intervals, unresolved = solve_intersections_exact(
                         left.comparison_expression,
                         right.comparison_expression,
@@ -4671,6 +4690,63 @@ def _in_mode_order(entries) -> tuple:
     counts in. A two-by-two written in names lists its roots in SymPy's order, which the
     numbers need not follow."""
     return tuple(sorted(entries, key=lambda entry: float(entry.value.to_base_units().magnitude)))
+
+
+def _polynomial_in_base_units(context, expression, variable):
+    """`expression` as a polynomial in `variable` with every other name a number, or None.
+
+    Each name and unit takes its value's magnitude in base units, and the variable stands
+    for its own magnitude in base units, so the polynomial's roots are positions in base
+    units. Base units are what make this sound: converting to them only multiplies, so a
+    sum that agrees in units agrees in base magnitudes. None when a name has no value, or
+    when what is left is not a polynomial - a `piecewise`, a Macaulay bracket - and the
+    caller keeps its exact path.
+    """
+    expression = sp.sympify(expression)
+    if expression.has(sp.Piecewise):
+        return None
+    try:
+        units = context.unit_literal_overrides(expression, None)
+    except EngEvaluationError:
+        return None
+    substitutions = {}
+    for symbol in expression.free_symbols:
+        if symbol == variable:
+            continue
+        value = units.get(symbol.name, context.values.get(symbol.name))
+        if value is None:
+            return None
+        try:
+            magnitude = context._as_quantity(value).to_base_units().magnitude
+            substitutions[symbol] = sp.Float(float(magnitude))
+        except (TypeError, ValueError, AttributeError):
+            return None
+    try:
+        polynomial = sp.Poly(expression.xreplace(substitutions), variable)
+    except sp.PolynomialError:
+        return None
+    if not all(coefficient.is_real for coefficient in polynomial.all_coeffs()):
+        return None
+    return polynomial
+
+
+def _real_roots_between(polynomial, lower_quantity, upper_quantity):
+    """The real roots of `polynomial` strictly inside the domain, as quantities."""
+    unit = lower_quantity.units
+    base = lower_quantity.to_base_units()
+    low = float(base.magnitude)
+    high = float(upper_quantity.to_base_units().magnitude)
+    if polynomial.is_zero or polynomial.degree() < 1:
+        return []
+    roots = []
+    for root in polynomial.nroots(n=15, maxsteps=200):
+        value = complex(root)
+        # A root this close to the axis is a real crossing computed in floating point.
+        if abs(value.imag) > 1e-9 * max(1.0, abs(value.real)):
+            continue
+        if low < value.real < high:
+            roots.append(base._REGISTRY.Quantity(value.real, base.units).to(unit))
+    return roots
 
 
 def _standalone_call(statement, name: str, message: str):
