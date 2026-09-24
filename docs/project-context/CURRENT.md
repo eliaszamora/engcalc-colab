@@ -12,9 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.34.0** - this release PR, carrying #294 (`dc0ce3b`); its closure is recorded below |
+| released | **0.34.0** - #295, `ac6199b`, carrying #294 (`dc0ce3b`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.33.6** - #292, `18f2f75` |
-| open PRs | this release's |
+| open PRs | none |
 | default suite | **2845 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -487,7 +487,19 @@ numeric matrix definition; he approved it on 2026-09-24 (*"Sí, apruebo d := sol
 procede"*).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, `dc0ce3b`, merged with
-his yes on 2026-09-24: *"Tienes mi si mi aprobación"*; released as 0.34.0 by the release PR).
+his yes on 2026-09-24: *"Tienes mi si mi aprobación"*; released as 0.34.0, #295 `ac6199b`).
+**0.34.0 is closed.** On the release commit `5bfad3d`: version assertions RED then GREEN;
+source suite 2845, twice; wheel from `git archive`, 31 files identical to `src`; clean
+Colab-like venv upgrades nothing; smoke 69/69 (`smoke-0340/`, adds the matrix frame);
+suite against the wheel 2844 + the by-path magic test passing on the wheel's copy; 13
+sheets and 18 exercises from the wheel identical to the tree and to 0.33.6. After its
+merge: CI (six jobs) and the deep gate (both qualification runs) green on `ac6199b`; a
+clean `git+https` install resolved to it, upgraded nothing, 23 modules identical to `src`,
+smoke 69/69. In his Colab the feature was checked on the branch (the same code; only the
+version string differs). Re-running his two appended cells on the published 0.34.0 - the
+install cell switched to `main` - is still to do: Claude in Chrome disconnected after the
+merge. **Exact next step:** that check; then his call on the `10^3` prefactor of
+mixed-unit matrices.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
