@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 
 from matplotlib.mathtext import MathTextParser
+from matplotlib.ticker import ScalarFormatter
 import sympy as sp
 from typing import Any
 
@@ -635,9 +636,41 @@ def _style_axes(axis) -> None:
     # When the ticks share a power of ten matplotlib puts it in the corner and spells it
     # `1e6`, which is programmer notation and appears nowhere else in a memoria - two
     # centimetres above an annotation on the same axis reading `1.97×10⁶`, and below a
-    # table reading `1.87 × 10⁶`. This changes the spelling only; whether an offset
-    # appears at all is matplotlib's decision from the data, unchanged.
+    # table reading `1.87 × 10⁶`.
     axis.ticklabel_format(useMathText=True)
+    # Which power, though, is the page's, not matplotlib's. Left to itself it takes an
+    # offset only once the axis reaches a million, so a beam of 687 277 kgf·cm read in
+    # fractions of a million (0.25 ... 1.00) beside columns of 519 596 kgf·cm in six
+    # digits. A matrix takes a power in thousands that brings its entries into 1 to 1000,
+    # and an axis now takes the same - `×10³`, where matplotlib writes it - once a value
+    # would run to five digits. See `test_an_axis_takes_its_power_of_ten_in_thousands`.
+    exponent = _axis_exponent(
+        value for line in axis.get_lines() for value in line.get_ydata()
+    )
+    if exponent:
+        formatter = ScalarFormatter(useMathText=True)
+        formatter.set_powerlimits((exponent, exponent))
+        axis.yaxis.set_major_formatter(formatter)
+
+
+# A value of this size or larger would put five digits on a tick. A shear of 6948 kgf
+# reads well as it is, and takes no factor.
+_AXIS_FACTOR_FLOOR = 1e4
+
+
+def _axis_exponent(values) -> int:
+    """The power of ten, a multiple of three, that brings the largest value into 1 to 1000.
+
+    Zero when nothing drawn reaches `_AXIS_FACTOR_FLOOR`.
+    """
+    largest = 0.0
+    for value in values:
+        magnitude = abs(float(value))
+        if math.isfinite(magnitude):
+            largest = max(largest, magnitude)
+    if largest < _AXIS_FACTOR_FLOOR:
+        return 0
+    return int(math.floor(math.log10(largest) / 3.0)) * 3
 
 
 def _segment_slices(series: PlotSeries, count: int) -> tuple[tuple[int, int], ...]:

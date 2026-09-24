@@ -69,7 +69,7 @@ La leyenda con la precisión de la página y el panel resumen con sus encabezado
 title: Md(x)
 xlabel: x [$\mathrm{cm}$]
 ylabel: Md(x) [$\mathrm{kgf} \cdot \mathrm{cm}$]
-offset: ×10⁷
+offset: ×10⁶
 legend: P2 = 20394.32 kgf | P2 = 40788.65 kgf | P2 = 61182.97 kgf | P2 = 81577.30 kgf
 summary: Characteristic points
 summary: x = 0 $\mathbf{cm}$
