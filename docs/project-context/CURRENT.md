@@ -14,8 +14,9 @@ _2026-09-24._
 |---|---|
 | released | **0.34.3** - #308, `f0e17d8`, carrying #307 (`e56bac9`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.34.2** - #305, `a791a8b` |
-| open PRs | none (#299 closed unmerged after its review) |
-| default suite | **2874 passing**, about a minute with `-n auto` |
+| on `main`, unreleased | #310 (`f887551`) frame design; #311 (`29bce85`) `image`; #312 (`79d5fe9`) `member` + `frame_plot` - CI and deep gate green on each |
+| open PRs | none |
+| default suite | **2927 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -674,7 +675,7 @@ the four diagrams. 25 contracts (`test_a_frame_is_drawn_with_its_diagrams.py`), 
 8/8. Suite 2927.
 Not drawn (no syntax for it yet): a moment applied at a joint; a load other than uniform.
 
-PR #312 (base `feat/image`). **In his Colab** ("Ejercicio 2.2", cells 13-14, runtime
+**In his Colab** ("Ejercicio 2.2", cells 13-14, runtime
 deleted first - a reconnect had reused a session where pip skipped the same 0.34.3):
 `feat/frame-plot` built from `git+https`, the frame sheet with `image("portico.png",
 "Geometría del pórtico", width=9*cm)` at its head ran whole with no error: the sketch
@@ -682,8 +683,12 @@ embedded as "Figura 1. Geometría del pórtico", then "Figura 2. Momento flector
 5. Deformada", each as drawn locally (-519 596 once at the knee, 3 000 kgf, Δx 0.63/0.62 cm,
 δ -0.35 cm, ×150). #311 CI green (six jobs) with "Figura".
 
-**Exact next step:** his yes to merge #311 then #312 (retarget #312 to `main` after #311);
-publish 0.35.0 (with #310) only when he says.
+Merged with his yes (*"Sí, fusiona #311 y #312"*): #311 squashed as `29bce85`; #312
+rebased onto it (tree identical to what ran in his Colab, 0 diff lines), retargeted to
+`main`, six jobs green, squashed as `79d5fe9`. CI and the deep gate green on both commits.
+
+**Exact next step:** publish 0.35.0 (#310, #311, #312) **only when he says** - *"espera
+para publicar"*. Then the full release procedure.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
