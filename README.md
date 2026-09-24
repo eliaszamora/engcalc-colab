@@ -13,7 +13,25 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.34.1**.
+Current version: **0.34.2**.
+
+
+## v0.34.2 a moment reads in thousands and downward
+
+**An axis takes its power of ten in thousands.** Matplotlib took an offset only once an
+axis reached a million, and whatever power that was: a portal frame's beam, 687 277
+kgf·cm at mid-span, read `×10⁶` with ticks 0.25 … 1.00, and its columns, 519 596 kgf·cm,
+read 200000 … 800000 - one unit, two spellings. An axis whose values reach five digits
+now takes a power of ten that is a multiple of three, sized on its largest value, written
+where matplotlib writes it: `×10³`, ticks 200 … 1000. A shear of 6948 kgf takes none, and
+annotations keep the page's numbers. Three reference figures move: formas (kgf) `×10⁷` to
+`×10⁶`, larga-mm `×10⁸` to `×10⁶`, memoria (kgf) none to `×10³`.
+
+**A moment by another name is drawn positive-down.** Whether a figure was a moment was
+read from its name alone - `M(`, `M_b(`, `M2(` - so a design sweep `Md(x)`, a factored
+`Mu(x)` and a combination `U1(x)` of moment cases went up. Those names now count when
+their values are a force times a length; `Mass(x)` in kg and a combination of shears do
+not. Legends go where the lines are fewest, which only moves the sweep's.
 
 
 ## v0.34.1 a matrix of numbers can be shown again
@@ -3440,6 +3458,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.34.2** — an axis of large values reads in thousands (`×10³`); `Md`, `Mu`, `Mn` and load combinations of moments are drawn positive-down. Five figures turn, three change their power of ten.
 - **0.34.1** — `numeric(d)` of a matrix defined with `:=` shows its numbers; the matrix frame draws its diagrams. No reference sheet moves.
 - **0.34.0** — `d := solve(K, F)`: a `:=` line over matrices is worked out in numbers, shown as written and then as its value. No reference sheet moves.
 - **0.33.6** — a line that reads `N`, `m` or `s` as a unit the sheet never wrote as one says so, once per letter. No reference sheet moves.
@@ -3547,4 +3566,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.34.1`.
+Version: `0.34.2`.
