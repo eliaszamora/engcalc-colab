@@ -12,9 +12,9 @@ _2026-09-23._
 
 | | |
 |---|---|
-| released | **0.33.3** - this release PR, carrying #279; its closure is recorded below |
-| before that | **0.33.2** - #277, `a8955a3`, verified after its merge and in his Colab |
-| open PRs | this release's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged |
+| released | **0.33.3** - #280, `1ed3831`, carrying #279; six jobs and both qualification runs green on it, verified after its merge and **in his Colab** (below) |
+| before that | **0.33.2** - #277, `a8955a3` |
+| open PRs | this record's; **#265**, the frame for `/code-review ultra 265` - a draft never to be merged, head `review/since-0.31.17` moved to `1ed3831`, so it covers #247 through #279 |
 | default suite | **2760 passing**, about a minute and a half with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -378,9 +378,21 @@ matrix; inside a matrix a boundary is `12pt` when either row holds something tal
 Colab). `conftest.without_spacer_rows`; `block_text` drops spacer rows (a reader sees no
 row). Verified in his Colab with the branch's own LaTeX for `T_f`/`K_f`,
 `K_22`/`F_h`/`d_h`, `K_22c`/`F_c`/`d_c`. Mutation 7/7; suite 2760. Moves room only:
-dinámica, pórtico × 3, the derivation. Released as 0.33.3; its closure is to be recorded here.
+dinámica, pórtico × 3, the derivation. Released as 0.33.3 (#280).
 
-**Next: he runs `/code-review ultra 265`** (its head is `a8955a3`, so it covers #276). The findings come back to be verified by
+**0.33.3 is closed.** On the release commit `24699ff`: version assertions RED then GREEN;
+source suite 2760, twice; wheel from `git archive`, 31 files identical to `src`; clean
+Colab-like venv upgrades nothing; smoke 58/58 (derivation: 28 tall row boundaries, 32
+plain, 16 spacer rows, `T_f` kept apart from `K_f`); suite against the wheel 2760; 13
+sheets and 18 exercises identical to the #279 branch. After its merge: six jobs and both
+qualification runs green on `1ed3831`; a clean `git+https` install resolved to it,
+upgraded nothing, 31 files identical, smoke 58/58. **In his Colab** (session restarted,
+his install cell reported 0.33.3, his derivation re-run): `T_b`/`K_b`, `T_f`/`K_f`,
+`K_22c`/`F_c`/`d_c` apart; plain matrices compact; fraction matrices keep 12pt.
+Lesson recorded: Colab is KaTeX 0.16.28 - calibrate presentation against it (a local
+page with KaTeX 0.16.28 from jsdelivr reproduces Colab exactly).
+
+**Next: he runs `/code-review ultra 265`** (its head is `1ed3831`, so it covers #279). The findings come back to be verified by
 running them before anything is fixed. Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.
