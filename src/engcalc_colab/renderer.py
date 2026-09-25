@@ -395,12 +395,12 @@ class _EngineeringLatexPrinter(LatexPrinter):
         decides which names these are, because the alias table cannot: `m := 500*kg` is
         a mass and must keep its italic.
 
-        Then: a multi-letter name is upright, so `eqFy` is not read as `e q F y`. Italic
-        is for a quantity, which is a single letter. A name of several letters is a
-        label, and setting it in italic makes MathJax space it as a product: the
-        reactions block of a memoria showed `eqFy` and `eqMA` as four and four sliding
-        letters. This is the ISO 80000-2 rule and what every typeset engineering
-        document does.
+        Then: a multi-letter name is one word, so `eqFy` is not read as `e q F y`. Set in
+        math italic it is spaced as a product: the reactions block of a memoria showed
+        `eqFy` and `eqMA` as four and four sliding letters. It was made upright for that,
+        and upright is a unit's letter - `Vu = 7920 kgf` beside an italic `V_c` read as a
+        unit and as a second V. It is now `\mathit`, text italic: a quantity's slant with
+        the letters kept together (his choice, 2026-09-25).
 
         SymPy is left in charge only when it spells the base back. That test replaced
         "SymPy produced a backslash, so it recognised the name", which was true and
@@ -423,7 +423,11 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if len(base) <= 1 or self._sympy_spells_it_back(base):
             return super()._print_Symbol(expr, style) if style else super()._print_Symbol(expr)
 
-        name = rf"\mathrm{{{base}}}"
+        # Italic, as every quantity is, and not upright: upright is a unit's letter, and
+        # `Vu = 7920 kgf` next to an italic `V_c` read as a unit and as a second V. He chose
+        # it on 2026-09-25. `\mathit` keeps the letters together as one word, which is what
+        # upright was protecting: math italic would space `eqFy` as `e q F y`.
+        name = rf"\mathit{{{base}}}"
         if style == "bold":
             name = rf"\mathbf{{{name}}}"
         if supers:

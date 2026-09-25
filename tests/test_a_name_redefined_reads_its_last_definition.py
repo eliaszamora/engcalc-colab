@@ -58,5 +58,5 @@ def test_a_number_redefined_as_a_formula_reads_the_formula(sheet):
 def test_numeric_of_the_name_itself_reads_the_number(sheet):
     page, console = sheet("a := 3*kN\nb := 4*kN\nVu = max(a, b)\nVu := 5000*kgf\nnumeric(Vu)\n")
     assert not console, console
-    rest = after(page, r"\mathrm{Vu} & = & \displaystyle 5000.00")
+    rest = after(page, r"\mathit{Vu} & = & \displaystyle 5000.00")
     assert r"\max" not in rest and "4.00" not in rest, rest

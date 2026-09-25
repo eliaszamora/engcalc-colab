@@ -74,7 +74,7 @@ def test_an_effective_depth_and_its_substitution_open_with_the_height(cell, caps
     """Two paths drew this row pair, so the rule had to live where both could reach it."""
     page = cell(DEPTH + "d = h - cover - db_st - db/2\nnumeric(d)\n")
     assert "engcalc:" not in capsys.readouterr().out
-    assert r"d & = & \displaystyle h - \mathrm{cover} - " in page, page
+    assert r"d & = & \displaystyle h - \mathit{cover} - " in page, page
     assert (
         r"& = & \displaystyle \left(500.00\,\mathrm{mm}\right) - \left(40.00\,\mathrm{mm}\right) - "
         in page

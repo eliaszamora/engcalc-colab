@@ -70,7 +70,7 @@ numeric(q_v(x))
 # `qD` comes from the engineer's own beam, where `M_D(x)` is written exactly this way.
 BRANCHES = (
     r"\displaystyle \dfrac{x P}{2} & \text{for}\: x \leq \dfrac{L}{2}",
-    r"\displaystyle \dfrac{\mathrm{qD}\,x \left(L - x\right)}{2} & \text{for}\: x \leq L",
+    r"\displaystyle \dfrac{\mathit{qD}\,x \left(L - x\right)}{2} & \text{for}\: x \leq L",
     r"\displaystyle 0 & \text{otherwise}",
 )
 FLUSH = r"\begin{cases} " + r" \\ ".join(BRANCHES) + r" \end{cases}"

@@ -89,7 +89,7 @@ def test_the_deflection_formula_reads_as_it_was_written(cell):
 
     assert "q_{s}" in written, written
     assert "384" in written, written
-    assert r"\mathrm{qD}" not in written, written
+    assert r"\mathit{qD}" not in written, written
     assert "I" in written.replace(r"\displaystyle", ""), written
 
 
@@ -100,7 +100,7 @@ def test_a_coefficient_on_a_kept_sum_is_enough_to_break_it(cell):
     written = formula_for(page, " W ")
 
     assert "q_{s}" in written, written
-    assert r"\mathrm{qD}" not in written, written
+    assert r"\mathit{qD}" not in written, written
     assert "h^{3}" not in written, written
 
 
@@ -120,7 +120,7 @@ def test_a_formula_with_no_coefficient_still_keeps_its_names(cell):
         page = cell(BEAM + f"keep W = {expression}\n")
         written = formula_for(page, " W ")
         assert "q_{s}" in written, (expression, written)
-        assert r"\mathrm{qD}" not in written, (expression, written)
+        assert r"\mathit{qD}" not in written, (expression, written)
 
 
 def test_a_sheet_with_no_keep_is_unchanged(cell):
@@ -129,7 +129,7 @@ def test_a_sheet_with_no_keep_is_unchanged(cell):
     page = cell(
         "L := 6.00*m\nqD := 18*kN/m\nqL := 12*kN/m\nq_s = qD + qL\nW = 5*q_s\n"
     )
-    assert r"\mathrm{qD}" in page, page
+    assert r"\mathit{qD}" in page, page
 
 
 def test_a_written_form_that_is_wrong_is_still_refused():

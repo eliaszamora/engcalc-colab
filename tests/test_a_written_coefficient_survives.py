@@ -84,9 +84,9 @@ def test_the_value_behind_it_is_unchanged(cell):
         # stopped opening with a minus; see test_a_sum_does_not_open_with_a_minus. The
         # written form and the evaluated one still agree, which is what this pins.
         ("d = h - cover - db_st - db/2",
-         r"h - \mathrm{cover} - \frac{\mathrm{db}}{2} - \mathrm{db}_{st}"),
+         r"h - \mathit{cover} - \frac{\mathit{db}}{2} - \mathit{db}_{st}"),
         ("w = 1.2*D + 1.6*L", "1.2 D + 1.6 L"),
-        ("Vc = 0.17*fc*b", r"0.17\,\mathrm{fc}\,b"),
+        ("Vc = 0.17*fc*b", r"0.17\,\mathit{fc}\,b"),
     ],
 )
 def test_a_formula_that_already_read_correctly_does_not_move(cell, source, expected):
@@ -142,9 +142,9 @@ def test_a_definition_built_on_other_definitions_is_left_alone(cell):
         "a = As*fy/(0.85*fc*b)\n"
         "phiMn = phi*As*fy*(d - a/2)\n"
     )
-    assert r"\mathrm{As}^{2}" not in latex, latex
+    assert r"\mathit{As}^{2}" not in latex, latex
     # `phi As fy`, as written, since 0.33.0; `fy phi As` before.
-    assert r"\phi\,\mathrm{As}\,\mathrm{fy}\,\left(" in latex, latex
+    assert r"\phi\,\mathit{As}\,\mathit{fy}\,\left(" in latex, latex
     # `a`'s own row is still fixed - the restriction is per definition, not per sheet.
     assert "0.85" in latex, latex
 

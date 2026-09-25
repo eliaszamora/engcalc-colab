@@ -21,8 +21,8 @@ Se calculan las reacciones, la ley de momentos, la zona donde se supera el momen
 <div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Reacciones</div>
 
 === 5 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle \mathrm{eqFy} & = & \displaystyle R_{A} + R_{B} = q L \\[8pt]
-\displaystyle \mathrm{eqMA} & = & \displaystyle R_{B} L = \frac{q L^{2}}{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle \mathit{eqFy} & = & \displaystyle R_{A} + R_{B} = q L \\[8pt]
+\displaystyle \mathit{eqMA} & = & \displaystyle R_{B} L = \frac{q L^{2}}{2} \\[8pt]
 \displaystyle R_{A} & = & \displaystyle \frac{q L}{2} \\[4pt]
 \displaystyle R_{B} & = & \displaystyle \frac{q L}{2} \end{array}
 
