@@ -56,8 +56,25 @@ class _IfBlock:
     branches: list[_Branch] = field(default_factory=list)
 
 
+def _lines(cell: str) -> Iterator[tuple[int, str, bool]]:
+    """Each line, numbered, and whether it is control: `%` first, outside `\"\"\"` text."""
+    in_text = False
+    for index, raw in enumerate(cell.splitlines()):
+        text = raw.strip()
+        if in_text:
+            in_text = '"""' not in text
+            yield index + 1, raw, False
+            continue
+        if text.startswith('"""'):
+            # `"""` alone opens a block; `"""One line."""` opens and closes it.
+            in_text = '"""' not in text[3:]
+            yield index + 1, raw, False
+            continue
+        yield index + 1, raw, text.startswith("%")
+
+
 def has_control(cell: str) -> bool:
-    return any(line.lstrip().startswith("%") for line in cell.splitlines())
+    return any(control for _line_no, _raw, control in _lines(cell))
 
 
 def _structure(cell: str) -> list:
@@ -73,10 +90,9 @@ def _structure(cell: str) -> list:
         body.append(new)
         return new
 
-    for index, raw in enumerate(cell.splitlines()):
-        line_no = index + 1
+    for line_no, raw, control in _lines(cell):
         text = raw.strip()
-        if not text.startswith("%"):
+        if not control:
             current = stretch(line_no)
             # Keep the stretch's lines aligned with the cell's, so a line inside it is
             # numbered as the cell numbers it.

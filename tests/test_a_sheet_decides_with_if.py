@@ -142,6 +142,13 @@ def test_a_block_written_wrong_says_where(sheet, source, words):
         assert word in console, (word, console)
 
 
+def test_a_percent_inside_a_text_block_is_text(sheet):
+    source = '"""\nLa cuantía mínima es\n% 0.18 del área bruta.\n"""\ny := 1*m\n'
+    math, notes, console = sheet(source)
+    assert not console, console
+    assert r"y & = & \displaystyle 1.00\,\mathrm{m}" in math, math
+
+
 def test_a_line_written_wrong_in_a_branch_that_does_not_run_still_refuses_the_cell(sheet):
     # As a cell without `%` does: nothing is written until every line reads.
     math, _notes, console = sheet("y := 1*m\n% if 1 > 2:\nz = w +\n% end\n")
