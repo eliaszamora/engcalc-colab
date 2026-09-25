@@ -102,3 +102,28 @@ def test_a_written_form_agrees_when_a_float_sits_under_a_root():
     assert _agrees_with(written, value, {f_cw: sp.Float("0.85") * fc})
     # And a written form that is not the value is still refused.
     assert not _agrees_with(written * 2, value, {f_cw: sp.Float("0.85") * fc})
+
+
+def test_a_long_row_keeps_the_shape_of_its_formula(sheet):
+    """A substitution too wide for one row was expanded before it was split:
+    `f_cw b d/fy (1 - sqrt(...))` became `(...)/(4200) - (...) · sqrt(...) · 1/(4200)`, a
+    shape the formula above it never had. It keeps its shape now - the plain factors as
+    one fraction, the bracket on the next row. Seen in his Colab on 0.36.0."""
+    page, console = sheet(FUNCTION + "As_2 = As_req(876940*kgf*cm)\nnumeric(As_2)\n")
+    assert not console, console
+    rows = page.split(r"\mathrm{As}_{2} & = & ", 1)[1].split(r"\end{array}", 1)[0]
+    substitution = rows.split(r"\[8pt]")[2]
+    assert r"\quad \cdot \left(1 - \sqrt{" in substitution, substitution
+    assert r"\frac{1}{" not in substitution, substitution
+    assert r"\quad - " not in substitution, substitution
+
+
+def test_a_fraction_of_a_bracket_is_still_a_fraction(sheet):
+    """A centroid, (A1 y1 + A2 y2)/(A1 + A2), is not a product to keep in shape: kept so,
+    it read `1/(A1 + A2) · (...)`."""
+    page, console = sheet(
+        "A_1 := 300*mm*100*mm\nA_2 := 100*mm*400*mm\ny_1 := 450*mm\ny_2 := 200*mm\n"
+        "y_c = (A_1*y_1 + A_2*y_2)/(A_1 + A_2)\nnumeric(y_c)\n"
+    )
+    assert not console, console
+    assert r"\frac{1}{" not in page, page

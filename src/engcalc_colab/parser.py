@@ -69,6 +69,10 @@ _ALLOWED_CALLS = {
     # A value read from a code's table; see `interpolation`.
     "interp",
 } | _SCALAR_CALLS | _CHARACTERISTIC_CALLS
+# Calls that place something on the page rather than compute: each is validated by its
+# own rule below and answered by the engine before any evaluation. Named here so the help
+# can be held against them. See `tests/test_eng_help.py`.
+PLACING_CALLS = frozenset({"image", "member", "frame_plot"})
 _RESERVED = _ALLOWED_CALLS | {"pi", "True", "False", "None"}
 _IDENTIFIER = re.compile(r"^[A-Za-z_]\w*$")
 _PART_TARGET = re.compile(r"^([A-Za-z_]\w*)\s*\[(.*)\]$")

@@ -17,7 +17,7 @@ from IPython.display import HTML
 
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import ParsedHeading
-from engcalc_colab.parser import _ALLOWED_CALLS, parse_cell
+from engcalc_colab.parser import _ALLOWED_CALLS, _DECLARATIONS, PLACING_CALLS, parse_cell
 from engcalc_colab.reference import CATALOGUE
 
 
@@ -40,8 +40,15 @@ def run_help(monkeypatch, line: str):
     return displayed
 
 
+# Everything a sheet can write that has a name of its own: the calls, the calls that
+# place something on the page, and the statement forms `keep`, `case`, `combo` and `:=`.
+# He asked on 2026-09-24 what `keep` was for: it was the one thing on the frame's sheet
+# the help had no entry for, and neither had `member`, `frame_plot` or `image`.
+DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":="}
+
+
 def test_every_call_the_language_accepts_can_be_looked_up():
-    missing = sorted(_ALLOWED_CALLS - set(CATALOGUE))
+    missing = sorted(DOCUMENTED - set(CATALOGUE))
     assert not missing, f"calls with no help entry: {missing}"
 
 
@@ -51,17 +58,24 @@ def test_the_catalogue_describes_nothing_the_language_refuses():
     An entry for a removed call teaches a form that no longer exists, and nothing else
     would notice: the help still renders, still reads well, and is wrong.
     """
-    unknown = sorted(set(CATALOGUE) - _ALLOWED_CALLS)
+    unknown = sorted(set(CATALOGUE) - DOCUMENTED)
     assert not unknown, f"help entries for calls that do not exist: {unknown}"
 
 
 @pytest.mark.parametrize("name", sorted(CATALOGUE))
-def test_the_example_runs(name):
+def test_the_example_runs(name, tmp_path, monkeypatch):
     """Every example, executed rather than read.
 
     This is the contract that makes the catalogue trustworthy. Checking that an example
     merely mentions the call it documents would pass for a form the parser rejects.
+    `image` reads a file, so its example runs where one is.
     """
+    import base64
+
+    (tmp_path / "portico.png").write_bytes(base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    ))
+    monkeypatch.chdir(tmp_path)
     entry = CATALOGUE[name]
     try:
         results = run_cell(entry.example)
@@ -81,6 +95,12 @@ def test_the_example_uses_the_call_it_documents(name):
         # The bracket notation is how it is written; the call form exists because that
         # is what the notation is rewritten to, so the example shows the notation.
         assert "<x-a>^1" in entry.example, entry.example
+        return
+    if entry.kind == "statement":
+        written = f" {name} " if name == ":=" else f"{name} "
+        assert any(line.startswith(written.lstrip()) or written in line for line in entry.example.splitlines()), (
+            f"the example for {name} never writes it:\n{entry.example}"
+        )
         return
     assert f"{name}(" in entry.example, (
         f"the example for {name} never calls it:\n{entry.example}"
@@ -126,6 +146,10 @@ def test_a_name_with_no_near_match_still_explains_how_to_list(monkeypatch, capsy
 def test_an_entry_that_takes_arguments_documents_them():
     """A form with slots and no explanation of them is the defect this feature exists to fix."""
     for name, entry in sorted(CATALOGUE.items()):
+        if entry.kind == "statement":
+            # A statement's slots are names in its form, not parentheses.
+            assert entry.arguments, f"{name} is a statement and explains none of its parts"
+            continue
         has_slots = any(
             form.partition("(")[2].rstrip(")").strip() for form in entry.forms
         )
@@ -135,3 +159,22 @@ def test_an_entry_that_takes_arguments_documents_them():
             # `summary()` takes nothing, and inventing an argument for it would be worse
             # than saying nothing. The rule cuts both ways.
             assert not entry.arguments, f"{name} takes nothing but explains arguments"
+
+
+def test_help_for_keep_says_what_it_is_for(monkeypatch):
+    """He asked what `keep` is for. The entry answers with the page, before and after."""
+    (html,) = [item.data for item in run_help(monkeypatch, "keep")]
+    assert "keep name = expression" in html
+    assert "C = 0.85 b d fc" in html and "C = f_cw b d" in html, html
+
+
+def test_help_explains_how_a_frame_is_drawn(monkeypatch):
+    (html,) = [item.data for item in run_help(monkeypatch, "member")]
+    assert "N_i; V_i; M_i; N_j; V_j; M_j" in html
+    assert "equilibrium" in html, html
+
+
+def test_the_list_shows_the_statements_apart(monkeypatch):
+    (html,) = [item.data for item in run_help(monkeypatch, "")]
+    assert "Statements" in html and "keep name = expression" in html
+    assert html.index("Statements") < html.index("Calls"), html

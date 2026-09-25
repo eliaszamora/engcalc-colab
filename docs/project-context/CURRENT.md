@@ -777,7 +777,23 @@ Found, NOT fixed (to propose): a long substitution row wraps into additive terms
 trailing `· 1/(4200 kgf/cm^2)`; without a palette a `0*kN` entry of a `:=` matrix reads
 `0.00 N`.
 
-**Exact next step:** none open; ask him what next.
+**Next three points** (he asked: *"Aborda los 3 puntos de tu recomendación"*), branch
+`feat/help-rows-zeros`:
+1. `b153d46` `%eng_help` documents `keep`, `case`, `combo`, `:=` (kind "statement", with a
+   `note` saying what it is for - keep shows `C = 0.85 b d fc` vs `C = f_cw b d`) and
+   `member`, `frame_plot`, `image` (`parser.PLACING_CALLS`); the list shows Statements
+   apart from Calls; `tests/test_eng_help.py` holds the catalogue against all of them and
+   runs every example. He had asked what `keep` was for: it had no entry.
+2. `5e1286e` **option B, his choice ("Opción B, fusiona #319")**: a long substitution row keeps the shape of
+   its formula - the plain factors as one fraction, each bracket on the next row
+   (`_shaped_product_rows`, allowance 1.15 x the budget), instead of expanding into terms
+   with a stray `· 1/(4200 kgf/cm^2)`. A bare fraction of a bracket (a centroid) is left as
+   it was. No reference sheet or exercise moves; As_2 = As_req(...) does.
+3. `c555020` a zero in a `:=` matrix reads in the unit of a neighbour of its kind
+   (`0.00 kN`, not `0.00 N`) without a palette.
+Suite 2980 on SymPy 1.14 and on 1.13.3.
+
+**Exact next step:** merged as #319 with his yes; nothing is released - publish (0.37.0) only when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
