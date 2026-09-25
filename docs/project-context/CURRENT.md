@@ -849,8 +849,8 @@ both ends included (`table(..., 11)` = "Once estaciones"); fixed and held by a c
    (`matrix_syntax.mark_typed_decimals`, `node.typed`), the written form carries a
    `TypedFloat` (turned back into a Float before `srepr`), the printer writes `typed`.
    `formas` moves one row: `A_c = 0.30 · 0.60 m·m`.
-2. `6767aaf` a bracket too wide for a row wraps inside itself (`\left( ... ight.` /
-   `\left. ... ight)`): `phiMn` over plain `d`, `a` takes 3 rows, not 5. No sheet moves.
+2. `6767aaf` a bracket too wide for a row wraps inside itself (`\left( ... \right.` /
+   `\left. ... \right)`): `phiMn` over plain `d`, `a` takes 3 rows, not 5. No sheet moves.
 3. `82e0e16` a table column of zeros takes its unit from the expression at mid-range
    (`TableColumn.reference`): `M(x) [kN·m]`, not `[N·m]`.
 4. No change: an undefined `N` already warns since 2026-09-24 ("Said, not changed" was his
