@@ -13,7 +13,46 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.35.0**.
+Current version: **0.36.0**.
+
+
+## v0.36.0 governing in seconds, calls written as called, loads on a member
+
+**`governing` over polynomials answers in seconds.** Six quadratic combinations took 54 s,
+equated pairwise in symbols; `governing` keeps only where a crossing is, so when both
+responses are polynomials once the sheet's values are in, a crossing is a real root of
+their difference. The boundaries are the same to 1e-9. A `piecewise` or a Macaulay bracket
+keeps the exact path. The frame's design sheet now says which combination governs.
+
+**A call of the sheet is written as it was called.**
+
+```text
+M_u = U1(L/2)
+    = 0.15 qD L^2 + 0.2 qL L^2
+    = 0.15 (18.00 kN/m) (6.00 m)^2 + 0.2 (12.00 kN/m) (6.00 m)^2
+    = 183.60 kN·m
+```
+
+The row read `M_u = 0.15 qD L^2 + ...`, and which combination and where were gone.
+
+**A kept name stays a name inside a function of the sheet**, in its definition and at its
+calls: `As_req(Mu)` keeps `f_cw`, and 2/0.85 is no longer folded into 2.35.
+
+**Combinations envelope as a family**: `U1` ... `U6` are the family `U`, so the envelope
+reads `U(x) envelope`, `U_max(x)`, `U_min(x)` instead of `Comparison`; `governing` heads its
+block `Governing along x`.
+
+**Loads on a member of a frame**: `load=[w_1, w_2]` runs linearly from start to end, and
+`point=[P, a]` is a load `P` at `a` from start, one row per load. The diagrams follow them -
+the moment's peak where the shear crosses zero, the jump under a point load - the deformed
+shape adds the member's own deflection under them, and they are drawn in red. A moment
+applied at a joint is read back from the end moments and drawn; a fixed end of one member is
+a wall across it. A load keeps the unit it was typed in.
+
+**A `:=` matrix writes a unit as a factor**: `[0*kN; 20*kN]` read `0 1 kN`, `20 1 kN`.
+
+The reference sheets move only where these were chosen: the call row on `formas`, `viga`
+and `corta`, and the envelope and governing names on `viga` and `corta`.
 
 
 ## v0.35.0 a frame's diagrams, figures, and a designed beam
@@ -3517,6 +3556,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.36.0** — `governing` over polynomials in seconds; `M_u = U1(L/2)` written as called; a kept name survives a function of the sheet; `U(x) envelope` and `Governing along x`; `load=[w_1, w_2]` and `point=[P, a]` on a member, a moment on a joint; a unit in a `:=` matrix is not `1 kN`.
 - **0.35.0** — `member` and `frame_plot`: M, V, N and the deformed shape drawn on a frame; `image` and numbered figures (Figura N); the frame's beam designed; a kept name survives `min` and `max`. No reference sheet moves.
 - **0.34.3** — what the second independent review found: a matrix given numbers drops its formula; `min`, sheet functions and comma rows on a `:=` line that reads a matrix; a `:=` matrix over several lines. No reference sheet moves.
 - **0.34.2** — an axis of large values reads in thousands (`×10³`); `Md`, `Mu`, `Mn` and load combinations of moments are drawn positive-down. Five figures turn, three change their power of ten.
@@ -3627,4 +3667,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.35.0`.
+Version: `0.36.0`.
