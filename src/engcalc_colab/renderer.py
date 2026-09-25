@@ -371,6 +371,10 @@ class _EngineeringLatexPrinter(LatexPrinter):
         sixteen or seventeen. Up to `_TYPED_FIGURES` in plain notation is printed as
         typed; the rest is rounded as above.
         """
+        typed = getattr(expr, "typed", None)
+        if typed is not None:
+            # `0.90` as the sheet typed it. See `test_a_number_is_written_as_typed`.
+            return typed
         written = super()._print_Float(expr)
         decimals = written.partition(".")[2]
         if len(decimals) <= self.render_settings.precision:
@@ -3362,7 +3366,7 @@ class _WrittenLine:
         if isinstance(node, ast.Name):
             return self._name(node.id)
         if isinstance(node, ast.Constant):
-            return str(node.value)
+            return getattr(node, "typed", str(node.value))
         if isinstance(node, ast.UnaryOp):
             sign = "-" if isinstance(node.op, ast.USub) else "+"
             return sign + self.grouped(node.operand, 2)

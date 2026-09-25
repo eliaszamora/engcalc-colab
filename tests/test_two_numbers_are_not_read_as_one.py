@@ -40,8 +40,9 @@ def test_an_area_from_two_dimensions(monkeypatch, capsys):
 
     # `m \, m` until test_two_units_multiplied_read_as_one_unit, which is this same
     # question one factor to the right: two metres separated by a space read `mm`.
-    assert r"0.3 \cdot 0.6\,\mathrm{m} \cdot \mathrm{m}" in math, math
-    assert "0.3 0.6" not in math, math
+    # And as typed, `0.30` and `0.60` since test_a_number_is_written_as_typed.
+    assert r"0.30 \cdot 0.60\,\mathrm{m} \cdot \mathrm{m}" in math, math
+    assert "0.30 0.60" not in math, math
 
 
 def test_two_coefficients_before_names(monkeypatch, capsys):

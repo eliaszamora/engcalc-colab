@@ -6,6 +6,21 @@ from .errors import EngSyntaxError
 from .models import MatrixLiteralBinding, ParsedMatrixLiteral
 
 
+
+def mark_typed_decimals(tree: ast.AST, text: str) -> ast.AST:
+    """Note on each decimal the figures it was typed with, when a zero ends them.
+
+    `0.90` parses to the float 0.9 and the zero is gone; ACI writes its factors with their
+    figures and a memoria is checked against the code. The written form reads `typed` back.
+    See `test_a_number_is_written_as_typed`.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, float):
+            typed = ast.get_source_segment(text, node)
+            if typed and "." in typed and "e" not in typed.lower() and typed.endswith("0"):
+                node.typed = typed
+    return tree
+
 def consume_matrix_statement(
     lines: list[str],
     start_index: int,
@@ -117,7 +132,9 @@ def _parse_semicolon_matrix(body: str, line_no: int) -> ParsedMatrixLiteral:
         parsed_cells: list[ast.Expression] = []
         for raw_cell in raw_cells:
             try:
-                expression = ast.parse(raw_cell.strip(), mode="eval")
+                expression = mark_typed_decimals(
+                    ast.parse(raw_cell.strip(), mode="eval"), raw_cell.strip()
+                )
             except SyntaxError as exc:
                 raise EngSyntaxError(
                     f"line {line_no}: invalid matrix cell syntax"
