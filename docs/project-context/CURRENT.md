@@ -8,14 +8,14 @@
 
 ## Where things stand today
 
-_2026-09-24._
+_2026-09-25._
 
 | | |
 |---|---|
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
-| open PRs | none |
-| default suite | **2988 passing**, about a minute with `-n auto` |
+| in progress | branch `feat/if-blocks`: `% if` blocks, a `:=` redefinition fix, the `k_1` unit fix - PR open, **not merged**, waiting for his yes (see "Control flow with %") |
+| default suite | **3015 passing** on the branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -824,7 +824,48 @@ its bracket in shape (`= 280.20 kN·m`) and `z = 0.90 b`. At that window width t
 panel is narrow and a long row runs past it (a horizontal scrollbar) - the formula row too,
 which did not change.
 
-**Exact next step:** none open; ask him what next.
+### Control flow with % - approved 2026-09-25, `if` first
+
+He asked for `if`/`for`/`while` in a sheet and proposed `%` lines. Approved (*"Apruebo tus
+recomendaciones en los 4 puntos, empieza por el if"*): a line starting with `%` is control,
+written as Python; `% end` closes a block; the branch taken opens with a "Como ...:" sentence
+in numbers; `for` shows each iteration's rows; `while` shows only the final result and the
+iteration count; Python helper variables stay off the memoria; `{...}` interpolates a
+value into a line. He rejected a `check()` call. Order: `if`, then `for`, then `while`.
+In the same message he asked for three more: (1) a numeric `solve` with an interval that
+assigns, `c := solve(eq(...), c, 0*cm, d)` ("unsupported numeric function" today); (2)
+`table` over a list of values, `table(As_req(Mu), Mu, [Mu_pos, Mu_2, Mu_3])`; (3) fix the
+unit of `k_1 := k(4*m)`.
+
+Branch `feat/if-blocks` (PR open, not merged):
+- `f3cfa88` (point 3): a `:=` value keeps its unit only when its line wrote every part of it
+  (`unit_text.unit_was_written`). `k_1 := k(4*m)` reads `16000.00 kN·m`, not GPa·mm⁴/m. 5
+  contracts. No page moves.
+- `4ead9b6` + `f673ad0` `% if / % elif / % else / % end` (`control.py`; `magic._eng_cell`
+  routes a cell with `%` lines through `control.run`). The structure and every line are read
+  before anything runs. A condition is Python comparisons joined by `and`/`or`/`not` over the
+  sheet's values (`numeric(...)` through the engine). The sentence is Markdown with `$...$`:
+  `Como Vu = 7920.00 kgf > φ_v V_c = 7603.63 kgf:`. Each side is written as the page writes
+  it, and the other sides in the first side's unit. A branch that does not hold is neither
+  computed nor written. Conditions that did not hold are stated negated (`≤`) before the
+  one that did, joined with " y ". A `%` inside a `"""` block is text. 15 contracts
+  (`tests/test_a_sheet_decides_with_if.py`); mutation 9/9. KaTeX 0.16.28 typesets the
+  sentences.
+- `df18d39` **a defect on 0.38.0, found rendering it**: `Vu = max(a, b)` then
+  `Vu := 5000*kgf` printed 5000.00 kgf and kept computing with `max(a, b)`. The scalar `:=`
+  path now drops the formula, as the matrix path did. 4 contracts (3 RED).
+- `1af5e62` `%eng_help if`.
+The 13 sheets and 18 exercises are identical to `main`. His shear design, rendered with
+`% if` (real numbers `Como Vu = 77.67 kN > φ_v V_c = 74.57 kN:`, and with `Vu := 5000*kgf`
+the `else` branch), is to be shown to him before merging.
+
+Found, NOT fixed (on 0.38.0, not caused by this branch): on `portico_diseno.eng`,
+`Vu = max(V_U1, ...)` has a row in base units (`57663.10 kg·m/s²`), and
+`s_e = min(s_req, s_max)` has one in `cm·kgf·s²/(kg·m)`.
+
+**Exact next step:** show him the `% if` rows and get his yes on the PR. Then `% for` with
+`{...}`, then `% while`, then points 1 and 2. Each goes RED→GREEN, runs on both SymPy
+versions, and gets a page comparison.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
