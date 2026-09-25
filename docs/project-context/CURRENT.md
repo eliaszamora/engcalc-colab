@@ -836,6 +836,22 @@ Seen, not changed (his call): a matrix of mixed units takes a `10^3` factor in f
 when its entries are large, so `f_4` reads `10^3 [6.95 kgf; ...; 432.59 kgf cm]` while
 `f_1` (largest 198601.90) has none - existing behaviour of every numeric matrix.
 
+**%eng_help in Spanish** (he asked, 2026-09-25: *"Tradúcela al español"*), branch
+`feat/help-in-spanish`: every summary, note, argument and placeholder, the headings
+(Argumentos, Ejemplo, Sentencias, Funciones) and the messages (`no hay ayuda para ...`).
+Call names, keywords and examples stay as the language writes them. Translating found that
+`table`'s last argument was documented as "how many intervals": it is the number of rows,
+both ends included (`table(..., 11)` = "Once estaciones"); fixed and held by a contract.
+
+Re-checked on the page on 2026-09-25 (0.37.0 + this branch), still real, none requested:
+- `a = 0.90*b` is written `0.9 b` - a coefficient from a code loses its trailing zero.
+- A long substitution over plain (not `keep`) definitions still expands into rows of terms:
+  `phiMn = phi*As*fy*(d - a/2)` over `d` and `a` takes 7 rows. `keep d`, `keep a` avoid it;
+  option B's allowance (1.15) does not reach this case.
+- A table column that is zero at every station takes the base unit in its header (`N·m`).
+- An `N` never defined reads as one newton.
+- (His call, seen) a mixed-unit numeric matrix takes a `10^3` factor in front when large.
+
 Known and not requested:
 `0.90` prints `0.9`; a `0*m` in a table prints `0`; a wide substitution over plain definitions
 splits into additive terms (`keep` avoids it); an `N` never defined still reads as one newton.

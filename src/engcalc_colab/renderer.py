@@ -4954,7 +4954,7 @@ def render_call_help(entry) -> str:
         for name, meaning in entry.arguments
     )
     argument_block = (
-        f'<div class="engcalc-help-heading">Arguments</div>{arguments}'
+        f'<div class="engcalc-help-heading">Argumentos</div>{arguments}'
         if arguments
         else ""
     )
@@ -4969,7 +4969,7 @@ def render_call_help(entry) -> str:
         + forms
         + argument_block
         + note
-        + '<div class="engcalc-help-heading">Example</div>'
+        + '<div class="engcalc-help-heading">Ejemplo</div>'
         + f'<div class="engcalc-help-example">{escape(entry.example)}</div>'
         + "</div>"
     )
@@ -4991,11 +4991,11 @@ def render_call_index(entries) -> str:
         + '<div class="engcalc-help">'
         + '<div class="engcalc-help-name">EngCalc</div>'
         + '<div class="engcalc-help-summary">'
-        + "%eng_help &lt;name&gt; for the arguments and an example: %eng_help keep, %eng_help :=."
+        + "%eng_help &lt;nombre&gt; para los argumentos y un ejemplo: %eng_help keep, %eng_help :=."
         + "</div>"
-        + '<div class="engcalc-help-heading">Statements</div>'
+        + '<div class="engcalc-help-heading">Sentencias</div>'
         + rows("statement")
-        + '<div class="engcalc-help-heading">Calls</div>'
+        + '<div class="engcalc-help-heading">Funciones</div>'
         + rows("call")
         + "</div>"
     )

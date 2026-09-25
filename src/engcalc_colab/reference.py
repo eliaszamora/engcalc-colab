@@ -10,6 +10,10 @@ run is worse than none: it teaches a form the language refuses, and the reader b
 their own typing. `tests/test_eng_help.py` executes all of them, and also checks that the
 catalogue and the parser's allowed calls are the same set in both directions, so a
 function added without an entry fails the suite rather than being silently unhelpable.
+
+The help is written in Spanish, as he asked on 2026-09-25 (*"Tradúcela al español"*): the
+prose and the placeholders of each form. The names of the calls, their keywords and the
+examples stay as the language writes them.
 """
 
 from __future__ import annotations
@@ -43,8 +47,8 @@ def _scalar(name: str, summary: str, example_argument: str) -> CallHelp:
     return CallHelp(
         name=name,
         summary=summary,
-        forms=(f"{name}(expression)",),
-        arguments=(("expression", "the value to apply it to"),),
+        forms=(f"{name}(expresión)",),
+        arguments=(("expresión", "el valor al que se aplica"),),
         example=f"y = {name}({example_argument})",
     )
 
@@ -53,17 +57,18 @@ _STATEMENTS: tuple[CallHelp, ...] = (
     CallHelp(
         name=":=",
         kind="statement",
-        summary="Give a name its value, a number with its unit; a line that reads a matrix is worked out in numbers.",
-        forms=("name := expression", "d := solve(K, F)"),
+        summary="Da a un nombre su valor, un número con su unidad; una línea que lee una matriz se resuelve en números.",
+        forms=("nombre := expresión", "d := solve(K, F)"),
         arguments=(
-            ("name", "the name the value is kept under"),
-            ("expression", "a value with its unit, or arithmetic on values already given; with a matrix, solve, inv, transpose, + - *, and entries such as d[2,1]"),
+            ("nombre", "el nombre con que se guarda el valor"),
+            ("expresión", "un valor con su unidad, o aritmética sobre valores ya dados; con una matriz, solve, inv, transpose, + - * y entradas como d[2,1]"),
         ),
         note=(
-            "`=` defines a formula and keeps it in symbols; `:=` defines a value. "
-            "numeric() puts the `:=` values into a `=` formula and shows the substitution. "
-            "`d := solve(K, F)` solves in numbers - a symbolic solve of a real stiffness "
-            "matrix would not finish - and the page writes the line as typed, then its numbers."
+            "`=` define una fórmula y la conserva en símbolos; `:=` define un valor. "
+            "numeric() pone los valores `:=` en una fórmula `=` y muestra la sustitución. "
+            "`d := solve(K, F)` resuelve en números - resolver en símbolos una matriz de "
+            "rigidez real no terminaría - y la memoria escribe la línea como se tipeó y "
+            "luego sus números."
         ),
         example=(
             "L := 6*m\nq := 10*kN/m\nM = q*L^2/8\nnumeric(M)\n"
@@ -73,19 +78,19 @@ _STATEMENTS: tuple[CallHelp, ...] = (
     CallHelp(
         name="keep",
         kind="statement",
-        summary="Define a value that later formulas show by its name, not by what it expands to.",
-        forms=("keep name = expression",),
+        summary="Define un valor que las fórmulas siguientes muestran por su nombre, no por lo que vale.",
+        forms=("keep nombre = expresión",),
         arguments=(
-            ("name", "the name later formulas keep, as the code names it: f_cw, R_n, As_min, d"),
-            ("expression", "its definition, shown once, on its own row"),
+            ("nombre", "el nombre que conservan las fórmulas siguientes, como lo llama la norma: f_cw, R_n, As_min, d"),
+            ("expresión", "su definición, que se muestra una vez, en su propia fila"),
         ),
         note=(
-            "Without keep, a formula that uses the name is written with the name replaced "
-            "by its definition. With f_cw = 0.85*fc, then C = f_cw*b*d, the page reads "
-            "C = 0.85 b d fc. With keep f_cw = 0.85*fc it reads C = f_cw b d - the "
-            "formula of the code - and the substitution puts in f_cw's own value "
-            "(178.50 kgf/cm2). Use it for every intermediate a code or your reasoning "
-            "names; a given value (fc := 210*kgf/cm^2) does not need it."
+            "Sin keep, una fórmula que usa el nombre se escribe con el nombre reemplazado "
+            "por su definición. Con f_cw = 0.85*fc y luego C = f_cw*b*d, la memoria dice "
+            "C = 0.85 b d fc. Con keep f_cw = 0.85*fc dice C = f_cw b d - la fórmula de "
+            "la norma - y la sustitución pone el valor propio de f_cw (178.50 kgf/cm2). "
+            "Úsalo en todo valor intermedio que la norma o tu razonamiento nombran; un dato "
+            "(fc := 210*kgf/cm^2) no lo necesita."
         ),
         example=(
             "fc := 210*kgf/cm^2\nb := 30*cm\nd := 44*cm\n"
@@ -95,15 +100,15 @@ _STATEMENTS: tuple[CallHelp, ...] = (
     CallHelp(
         name="case",
         kind="statement",
-        summary="Name the response of one load case, as a function of the coordinate along the member.",
-        forms=("case name = expression",),
+        summary="Nombra la respuesta de un caso de carga, como función de la coordenada a lo largo del elemento.",
+        forms=("case nombre = expresión",),
         arguments=(
-            ("name", "the case, such as D, Lv or EQ"),
-            ("expression", "the response it gives, such as M_D(x)"),
+            ("nombre", "el caso, como D, Lv o EQ"),
+            ("expresión", "la respuesta que da, como M_D(x)"),
         ),
         note=(
-            "A combo adds cases with their factors. The coordinate is found rather than "
-            "declared: it is the one name left once every other has a value."
+            "Un combo suma casos con sus factores. La coordenada no se declara, se "
+            "encuentra: es el único nombre que queda cuando todos los demás tienen valor."
         ),
         example=(
             "L := 6*m\nqD := 18*kN/m\nqL := 12*kN/m\n"
@@ -115,15 +120,15 @@ _STATEMENTS: tuple[CallHelp, ...] = (
     CallHelp(
         name="combo",
         kind="statement",
-        summary="Combine load cases with the factors a code gives; the combination is then a function, U1(x).",
-        forms=("combo name = factor*case + ...",),
+        summary="Combina casos de carga con los factores de la norma; la combinación es luego una función, U1(x).",
+        forms=("combo nombre = factor*caso + ...",),
         arguments=(
-            ("name", "the combination, such as U1"),
-            ("factor*case + ...", "each case by its factor, as 1.2*D + 1.6*Lv"),
+            ("nombre", "la combinación, como U1"),
+            ("factor*caso + ...", "cada caso por su factor, como 1.2*D + 1.6*Lv"),
         ),
         note=(
-            "Written with its factors, so a reviewer checks it against the code without "
-            "redoing the arithmetic. Use it as a function: U1(L/2), "
+            "Se escribe con sus factores, para que un revisor la contraste con la norma "
+            "sin rehacer la aritmética. Se usa como función: U1(L/2), "
             "envelope(U1(x), U2(x), x, 0, L), governing(U1(x), U2(x), x, 0, L)."
         ),
         example=(
@@ -139,38 +144,38 @@ _STATEMENTS: tuple[CallHelp, ...] = (
 _PLACING: tuple[CallHelp, ...] = (
     CallHelp(
         name="image",
-        summary="Place a picture - a file or a URL - as a numbered Figura, embedded in the notebook.",
-        forms=('image("file.png")', 'image("file.png", "caption", width=12*cm)'),
+        summary="Coloca una imagen - un archivo o una URL - como Figura numerada, incrustada en el cuaderno.",
+        forms=('image("archivo.png")', 'image("archivo.png", "leyenda", width=12*cm)'),
         arguments=(
-            ("file", "in quotes: a path from where the notebook runs - in Colab /content, or /content/drive/MyDrive/... with Drive mounted - or an http(s) URL; png, jpg, gif, svg or webp"),
-            ("caption", "optional, in quotes; it may hold $...$"),
-            ("width", "optional, a length, such as 12*cm"),
+            ("archivo", "entre comillas: una ruta desde donde corre el cuaderno - en Colab /content, o /content/drive/MyDrive/... con Drive montado - o una URL http(s); png, jpg, gif, svg o webp"),
+            ("leyenda", "opcional, entre comillas; puede llevar $...$"),
+            ("width", "opcional, una longitud, como 12*cm"),
         ),
-        note="Figures are numbered on their own, image and frame_plot alike; a cell run again keeps its numbers and %eng_reset starts again at 1.",
+        note="Las figuras se numeran solas, image y frame_plot por igual; una celda que se vuelve a correr conserva sus números y %eng_reset vuelve a empezar en 1.",
         example='image("portico.png", "Geometría del pórtico", width=9*cm)',
     ),
     CallHelp(
         name="member",
-        summary="Declare a member of a frame from what the sheet worked out, for frame_plot; it puts nothing on the page.",
+        summary="Declara un elemento de un pórtico con lo que la hoja ya calculó, para frame_plot; no escribe nada en la memoria.",
         forms=(
-            'member("name", start=[x_1, y_1], end=[x_2, y_2], forces=f)',
-            'member("name", start=..., end=..., forces=f, displacements=u, EI=E*I, load=w)',
-            'member("name", start=..., end=..., forces=f, load=[w_1, w_2], point=[P, a])',
+            'member("nombre", start=[x_1, y_1], end=[x_2, y_2], forces=f)',
+            'member("nombre", start=..., end=..., forces=f, displacements=u, EI=E*I, load=w)',
+            'member("nombre", start=..., end=..., forces=f, load=[w_1, w_2], point=[P, a])',
         ),
         arguments=(
-            ("name", "in quotes; declaring it again replaces it"),
-            ("start, end", "its ends, two lengths each; x' runs from start to end, y' a quarter turn anticlockwise from it"),
-            ("forces", "the six end forces in local axes, acting on the member, [N_i; V_i; M_i; N_j; V_j; M_j] - as k*T*D + f_0 gives them"),
-            ("displacements", "the six end displacements in local axes, [u_i; v_i; θ_i; u_j; v_j; θ_j] - T*D; for the deformed shape"),
-            ("EI", "its flexural stiffness; the deformed shape of a loaded member needs it"),
-            ("load", "a load towards -y': w uniform, or [w_1, w_2] running linearly from start to end"),
-            ("point", "[P, a], a load P towards -y' at a from start; several are rows, [P_1, a_1; P_2, a_2]"),
+            ("nombre", "entre comillas; declararlo otra vez lo reemplaza"),
+            ("start, end", "sus extremos, dos longitudes cada uno; x' va de start a end, y' un cuarto de vuelta antihorario desde x'"),
+            ("forces", "las seis fuerzas de extremo en ejes locales, que actúan sobre el elemento, [N_i; V_i; M_i; N_j; V_j; M_j] - como las da k*T*D + f_0"),
+            ("displacements", "los seis desplazamientos de extremo en ejes locales, [u_i; v_i; θ_i; u_j; v_j; θ_j] - T*D; para la deformada"),
+            ("EI", "su rigidez a flexión; la deformada de un elemento cargado la necesita"),
+            ("load", "una carga hacia -y': w uniforme, o [w_1, w_2] lineal de start a end"),
+            ("point", "[P, a], una carga P hacia -y' a una distancia a de start; varias van en filas, [P_1, a_1; P_2, a_2]"),
         ),
         note=(
-            "Nothing is solved again. frame_plot applies equilibrium to each member from its "
-            "start: N(s) = -N_i, V(s) = V_i minus the load up to s, M(s) = -M_i + V_i s minus "
-            "the moment of that load. The load on a joint is read back from the end forces "
-            "meeting there; a support is a joint the displacements hold still."
+            "No se vuelve a resolver nada. frame_plot aplica equilibrio a cada elemento desde "
+            "su inicio: N(s) = -N_i, V(s) = V_i menos la carga hasta s, M(s) = -M_i + V_i s "
+            "menos el momento de esa carga. La carga en un nudo se deduce de las fuerzas de "
+            "extremo que llegan a él; un apoyo es un nudo que los desplazamientos mantienen quieto."
         ),
         example=(
             "L := 6*m\nP := 30*kN\nf := [0*kN; 20*kN; 0*kN*m; 0*kN; 10*kN; 0*kN*m]\n"
@@ -180,18 +185,18 @@ _PLACING: tuple[CallHelp, ...] = (
     ),
     CallHelp(
         name="frame_plot",
-        summary="Draw M, V, N or the deformed shape on every member declared, as a numbered Figura.",
-        forms=('frame_plot(M, "caption")', "frame_plot(V)", "frame_plot(N)", 'frame_plot(deformed, "caption", scale=150)'),
+        summary="Dibuja M, V, N o la deformada sobre todos los elementos declarados, como Figura numerada.",
+        forms=('frame_plot(M, "leyenda")', "frame_plot(V)", "frame_plot(N)", 'frame_plot(deformed, "leyenda", scale=150)'),
         arguments=(
-            ("M, V, N, deformed", "the diagram; M is drawn on the tension side and is positive when it pulls the inside fibre, each member read as a beam seen from inside the frame"),
-            ("caption", "optional, in quotes; the figure reads Figura n. caption"),
-            ("scale", "deformed only: how many times the displacements are drawn; chosen when left out"),
+            ("M, V, N, deformed", "el diagrama; M se dibuja del lado traccionado y es positivo si tracciona la fibra interior, cada elemento leído como una viga vista desde dentro del pórtico"),
+            ("leyenda", "opcional, entre comillas; la figura dice Figura n. leyenda"),
+            ("scale", "solo para deformed: cuántas veces se amplifican los desplazamientos; se elige solo si se omite"),
         ),
         note=(
-            "Values carry their sign, in boxes, in the unit the page writes; the moment's "
-            "peak is marked where the shear crosses zero. The deformed shape follows the end "
-            "displacements with the member's own shape functions and adds the deflection its "
-            "load gives with both ends held."
+            "Los valores llevan su signo, en recuadros, en la unidad de la memoria; el "
+            "máximo del momento se marca donde el cortante pasa por cero. La deformada sigue "
+            "los desplazamientos de extremo con las funciones de forma del elemento y suma la "
+            "flecha que su carga produce con ambos extremos empotrados."
         ),
         example=(
             "L := 6*m\nw := 12*kN/m\nf := [0*kN; 36*kN; 0*kN*m; 0*kN; 36*kN; 0*kN*m]\n"
@@ -204,36 +209,36 @@ _PLACING: tuple[CallHelp, ...] = (
 _ENTRIES: tuple[CallHelp, ...] = (
     CallHelp(
         name="numeric",
-        summary="Evaluate an expression with the values the sheet has given, and show the substitution.",
-        forms=("numeric(expression)", "numeric(expression, unit)"),
+        summary="Evalúa una expresión con los valores que la hoja ha dado, y muestra la sustitución.",
+        forms=("numeric(expresión)", "numeric(expresión, unidad)"),
         arguments=(
-            ("expression", "what to evaluate; every name in it needs a `:=` value"),
-            ("unit", "optional, the unit to show the answer in, as in `mm` or `kN*m`"),
+            ("expresión", "lo que se evalúa; cada nombre en ella necesita un valor `:=`"),
+            ("unidad", "opcional, la unidad en que se muestra el resultado, como `mm` o `kN*m`"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM_max = q*L^2/8\nnumeric(M_max, kN*m)",
     ),
     CallHelp(
         name="result",
-        summary="Show the formula and its final value, without the substitution stage.",
-        forms=("result(expression)", "result(expression, unit)"),
+        summary="Muestra la fórmula y su valor final, sin la etapa de sustitución.",
+        forms=("result(expresión)", "result(expresión, unidad)"),
         arguments=(
-            ("expression", "what to evaluate"),
-            ("unit", "optional, the unit to show the answer in"),
+            ("expresión", "lo que se evalúa"),
+            ("unidad", "opcional, la unidad en que se muestra el resultado"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM_max = q*L^2/8\nresult(M_max, kN*m)",
     ),
     CallHelp(
         name="integrate",
-        summary="Integrate an expression: two arguments for the antiderivative, four between bounds.",
+        summary="Integra una expresión: dos argumentos para la primitiva, cuatro entre límites.",
         forms=(
-            "integrate(expression, variable)",
-            "integrate(expression, variable, lower, upper)",
+            "integrate(expresión, variable)",
+            "integrate(expresión, variable, inferior, superior)",
         ),
         arguments=(
-            ("expression", "what to integrate"),
-            ("variable", "the variable of integration, as in `x`"),
-            ("lower", "the lower bound; omit it, with `upper`, for the antiderivative"),
-            ("upper", "the upper bound"),
+            ("expresión", "lo que se integra"),
+            ("variable", "la variable de integración, como `x`"),
+            ("inferior", "el límite inferior; se omite, con `superior`, para la primitiva"),
+            ("superior", "el límite superior"),
         ),
         example=(
             "L := 6*m\nq := 10*kN/m\n"
@@ -244,29 +249,29 @@ _ENTRIES: tuple[CallHelp, ...] = (
     ),
     CallHelp(
         name="diff",
-        summary="Differentiate an expression with respect to a variable.",
-        forms=("diff(expression, variable)",),
+        summary="Deriva una expresión respecto de una variable.",
+        forms=("diff(expresión, variable)",),
         arguments=(
-            ("expression", "what to differentiate"),
-            ("variable", "the variable to differentiate by"),
+            ("expresión", "lo que se deriva"),
+            ("variable", "la variable respecto de la cual se deriva"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\nV(x) = diff(M(x), x)",
     ),
     CallHelp(
         name="solve",
-        summary="Solve an equation, a system, or an inequality.",
+        summary="Resuelve una ecuación, un sistema o una inecuación.",
         forms=(
-            "solve(equation, unknown)",
-            "solve(eq_1, ..., eq_n, x_1, ..., x_n)",
-            "solve(inequality, variable, lower, upper)",
-            "solve(matrix, vector)",
+            "solve(ecuación, incógnita)",
+            "solve(ec_1, ..., ec_n, x_1, ..., x_n)",
+            "solve(inecuación, variable, inferior, superior)",
+            "solve(matriz, vector)",
         ),
         arguments=(
-            ("equation", "written `eq(left, right)`, or `left = right` inside the call"),
-            ("unknown", "the name to solve for"),
-            ("eq_1 ... eq_n", "n equations, followed by exactly n unknowns"),
-            ("inequality", "a comparison such as `M(x) > 20*kN*m`"),
-            ("lower, upper", "for an inequality, the domain; it is where the variable gets its unit"),
+            ("ecuación", "escrita `eq(izquierda, derecha)`, o `izquierda = derecha` dentro de la llamada"),
+            ("incógnita", "el nombre que se despeja"),
+            ("ec_1 ... ec_n", "n ecuaciones, seguidas de exactamente n incógnitas"),
+            ("inecuación", "una comparación como `M(x) > 20*kN*m`"),
+            ("inferior, superior", "para una inecuación, el dominio; de ahí toma la variable su unidad"),
         ),
         example=(
             "L := 6*m\nq := 10*kN/m\n"
@@ -277,41 +282,41 @@ _ENTRIES: tuple[CallHelp, ...] = (
     ),
     CallHelp(
         name="eq",
-        summary="Build an equation from its two sides, for `solve`.",
-        forms=("eq(left, right)",),
-        arguments=(("left", "the left-hand side"), ("right", "the right-hand side")),
+        summary="Arma una ecuación con sus dos lados, para `solve`.",
+        forms=("eq(izquierda, derecha)",),
+        arguments=(("izquierda", "el lado izquierdo"), ("derecha", "el lado derecho")),
         example="L := 6*m\nq := 10*kN/m\neqFy = eq(R_A + R_B, q*L)",
     ),
     CallHelp(
         name="subs",
-        summary="Replace a variable by a value in an expression.",
-        forms=("subs(expression, variable, value)", "subs(expression, v1, x1, v2, x2, ...)"),
+        summary="Reemplaza una variable por un valor en una expresión.",
+        forms=("subs(expresión, variable, valor)", "subs(expresión, v1, x1, v2, x2, ...)"),
         arguments=(
-            ("expression", "what to substitute into"),
-            ("variable", "the name to replace"),
-            ("value", "what to put in its place"),
+            ("expresión", "donde se sustituye"),
+            ("variable", "el nombre que se reemplaza"),
+            ("valor", "lo que se pone en su lugar"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\nnumeric(subs(M(x), x, L/2))",
     ),
     CallHelp(
         name="sum",
-        summary="Sum an expression over an index between two bounds.",
-        forms=("sum(expression, index, lower, upper)",),
+        summary="Suma una expresión sobre un índice entre dos límites.",
+        forms=("sum(expresión, índice, inferior, superior)",),
         arguments=(
-            ("expression", "the term, written in terms of the index"),
-            ("index", "the summation index, as in `i`"),
-            ("lower", "the first value of the index"),
-            ("upper", "the last value of the index"),
+            ("expresión", "el término, escrito en función del índice"),
+            ("índice", "el índice de la suma, como `i`"),
+            ("inferior", "el primer valor del índice"),
+            ("superior", "el último valor del índice"),
         ),
         example="n := 5\nP := 10*kN\nS = sum(P*i, i, 1, n)\nnumeric(S)",
     ),
     CallHelp(
         name="macaulay",
-        summary="A Macaulay bracket, zero before its offset. Usually written `<x-a>^n`.",
-        forms=("macaulay(shifted, order)", "<x-a>^n"),
+        summary="Un paréntesis de Macaulay, nulo antes de su desplazamiento. Se suele escribir `<x-a>^n`.",
+        forms=("macaulay(desplazada, orden)", "<x-a>^n"),
         arguments=(
-            ("shifted", "the shifted coordinate, as in `x - a`"),
-            ("order", "the power; 1 for a point load in a moment law"),
+            ("desplazada", "la coordenada desplazada, como `x - a`"),
+            ("orden", "la potencia; 1 para una carga puntual en una ley de momentos"),
         ),
         example=(
             "L := 8*m\nP := 40*kN\na := 3*m\n"
@@ -322,47 +327,47 @@ _ENTRIES: tuple[CallHelp, ...] = (
     ),
     CallHelp(
         name="assume",
-        summary="State what is known about a symbol, before the symbol is first used.",
-        forms=("assume(symbol > 0)", "assume(a > 0, b >= 0, ...)"),
+        summary="Declara lo que se sabe de un símbolo, antes de usarlo por primera vez.",
+        forms=("assume(símbolo > 0)", "assume(a > 0, b >= 0, ...)"),
         arguments=(
-            ("symbol > 0", "a comparison against zero: `>`, `>=`, `<` or `<=`"),
+            ("símbolo > 0", "una comparación con cero: `>`, `>=`, `<` o `<=`"),
         ),
         example="assume(Lk > 0)\nf(Lk) = Lk^2\nsolve(eq(f(Lk), 4), Lk)",
     ),
     CallHelp(
         name="report",
-        summary="Show a value where it is written and mark it for the summary.",
-        forms=("report(name)",),
-        arguments=(("name", "a name the sheet has already defined"),),
+        summary="Muestra un valor donde se escribe y lo marca para el resumen.",
+        forms=("report(nombre)",),
+        arguments=(("nombre", "un nombre que la hoja ya definió"),),
         example="L := 6*m\nq := 10*kN/m\nM_max = q*L^2/8\nreport(M_max)",
     ),
     CallHelp(
         name="summary",
-        summary="Print every value marked with `report`, in the order they were marked.",
+        summary="Escribe cada valor marcado con `report`, en el orden en que se marcó.",
         forms=("summary()",),
         arguments=(),
         example="L := 6*m\nq := 10*kN/m\nM_max = q*L^2/8\nreport(M_max)\nsummary()",
     ),
     CallHelp(
         name="plot",
-        summary="Draw an expression against a variable over a range.",
-        forms=("plot(expression, variable, lower, upper)",),
+        summary="Grafica una expresión contra una variable en un intervalo.",
+        forms=("plot(expresión, variable, inferior, superior)",),
         arguments=(
-            ("expression", "what to draw"),
-            ("variable", "the horizontal variable"),
-            ("lower", "the start of the range"),
-            ("upper", "the end of the range"),
+            ("expresión", "lo que se grafica"),
+            ("variable", "la variable horizontal"),
+            ("inferior", "el inicio del intervalo"),
+            ("superior", "el final del intervalo"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\nplot(M(x), x, 0, L)",
     ),
     CallHelp(
         name="envelope",
-        summary="Draw several expressions together with their upper and lower envelope.",
-        forms=("envelope(expr_1, expr_2, variable, lower, upper)",),
+        summary="Grafica varias expresiones juntas con su envolvente superior e inferior.",
+        forms=("envelope(expr_1, expr_2, variable, inferior, superior)",),
         arguments=(
-            ("expr_1, expr_2", "the responses to envelope"),
-            ("variable", "the horizontal variable"),
-            ("lower, upper", "the range"),
+            ("expr_1, expr_2", "las respuestas que se envuelven"),
+            ("variable", "la variable horizontal"),
+            ("inferior, superior", "el intervalo"),
         ),
         example=(
             "L := 6*m\nq := 10*kN/m\n"
@@ -372,46 +377,46 @@ _ENTRIES: tuple[CallHelp, ...] = (
     ),
     CallHelp(
         name="table",
-        summary="Tabulate one or more expressions at evenly spaced stations.",
-        forms=("table(expression, variable, lower, upper, steps)",),
+        summary="Tabula una o más expresiones en estaciones equiespaciadas.",
+        forms=("table(expresión, variable, inferior, superior, estaciones)",),
         arguments=(
-            ("expression", "what to tabulate"),
-            ("variable", "the variable to step"),
-            ("lower, upper", "the range"),
-            ("steps", "how many intervals"),
+            ("expresión", "lo que se tabula"),
+            ("variable", "la variable que avanza"),
+            ("inferior, superior", "el intervalo"),
+            ("estaciones", "cuántas filas, contando ambos extremos: 11 da x = 0, L/10, ..., L"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\ntable(M(x), x, 0, L, 4)",
     ),
     CallHelp(
         name="roots",
-        summary="Where an expression crosses zero inside a domain.",
-        forms=("roots(expression, variable, lower, upper)",),
+        summary="Dónde una expresión pasa por cero dentro de un dominio.",
+        forms=("roots(expresión, variable, inferior, superior)",),
         arguments=(
-            ("expression", "the response"),
-            ("variable", "the variable"),
-            ("lower, upper", "the domain to search"),
+            ("expresión", "la respuesta"),
+            ("variable", "la variable"),
+            ("inferior, superior", "el dominio donde se busca"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\nroots(M(x), x, 0, L)",
     ),
     CallHelp(
         name="extrema",
-        summary="The maxima and minima of an expression inside a domain.",
-        forms=("extrema(expression, variable, lower, upper)",),
+        summary="Los máximos y mínimos de una expresión dentro de un dominio.",
+        forms=("extrema(expresión, variable, inferior, superior)",),
         arguments=(
-            ("expression", "the response"),
-            ("variable", "the variable"),
-            ("lower, upper", "the domain to search"),
+            ("expresión", "la respuesta"),
+            ("variable", "la variable"),
+            ("inferior, superior", "el dominio donde se busca"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\nextrema(M(x), x, 0, L)",
     ),
     CallHelp(
         name="intersections",
-        summary="Where two expressions cross inside a domain.",
-        forms=("intersections(left, right, variable, lower, upper)",),
+        summary="Dónde se cruzan dos expresiones dentro de un dominio.",
+        forms=("intersections(izquierda, derecha, variable, inferior, superior)",),
         arguments=(
-            ("left, right", "the two responses"),
-            ("variable", "the variable"),
-            ("lower, upper", "the domain to search"),
+            ("izquierda, derecha", "las dos respuestas"),
+            ("variable", "la variable"),
+            ("inferior, superior", "el dominio donde se busca"),
         ),
         example=(
             "L := 6*m\nq := 10*kN/m\n"
@@ -421,12 +426,12 @@ _ENTRIES: tuple[CallHelp, ...] = (
     ),
     CallHelp(
         name="governing",
-        summary="Which of several responses is largest, over each stretch of the domain.",
-        forms=("governing(expr_1, expr_2, variable, lower, upper)",),
+        summary="Cuál de varias respuestas es la mayor, en cada tramo del dominio.",
+        forms=("governing(expr_1, expr_2, variable, inferior, superior)",),
         arguments=(
-            ("expr_1, expr_2", "the responses to compare"),
-            ("variable", "the variable"),
-            ("lower, upper", "the domain"),
+            ("expr_1, expr_2", "las respuestas que se comparan"),
+            ("variable", "la variable"),
+            ("inferior, superior", "el dominio"),
         ),
         example=(
             "L := 6*m\nqD := 8*kN/m\nqL := 12*kN/m\n"
@@ -437,181 +442,181 @@ _ENTRIES: tuple[CallHelp, ...] = (
     ),
     CallHelp(
         name="piecewise",
-        summary="A value that changes at a breakpoint.",
-        forms=("piecewise(value_before, condition, value_after)",),
+        summary="Un valor que cambia en un punto de quiebre.",
+        forms=("piecewise(valor_antes, condición, valor_después)",),
         arguments=(
-            ("value_before", "the value while the condition holds"),
-            ("condition", "one comparison, as in `x < L/2`"),
-            ("value_after", "the value otherwise"),
+            ("valor_antes", "el valor mientras se cumple la condición"),
+            ("condición", "una comparación, como `x < L/2`"),
+            ("valor_después", "el valor en otro caso"),
         ),
         example="L := 6*m\nq := 10*kN/m\nw(x) = piecewise(q, x < L/2, 0*kN/m)\nnumeric(subs(w(x), x, 0*m))",
     ),
     CallHelp(
         name="simplify",
-        summary="Simplify an expression, using whatever `assume` has stated.",
-        forms=("simplify(expression)",),
-        arguments=(("expression", "what to simplify"),),
+        summary="Simplifica una expresión, con lo que `assume` haya declarado.",
+        forms=("simplify(expresión)",),
+        arguments=(("expresión", "lo que se simplifica"),),
         example="assume(L > 0)\na = sqrt(L^2)\nsimplify(a)",
     ),
     CallHelp(
         name="expand",
-        summary="Multiply an expression out.",
-        forms=("expand(expression)",),
-        arguments=(("expression", "what to expand"),),
+        summary="Desarrolla una expresión, multiplicando sus factores.",
+        forms=("expand(expresión)",),
+        arguments=(("expresión", "lo que se desarrolla"),),
         example="p = expand((x + 2)*(x - 3))",
     ),
     CallHelp(
         name="factor",
-        summary="Write an expression as a product of factors.",
-        forms=("factor(expression)",),
-        arguments=(("expression", "what to factor"),),
+        summary="Escribe una expresión como producto de factores.",
+        forms=("factor(expresión)",),
+        arguments=(("expresión", "lo que se factoriza"),),
         example="p = factor(x^2 - x - 6)",
     ),
     CallHelp(
         name="abs",
-        summary="The magnitude of an expression, without its sign.",
-        forms=("abs(expression)",),
-        arguments=(("expression", "the value"),),
+        summary="El valor absoluto de una expresión, sin su signo.",
+        forms=("abs(expresión)",),
+        arguments=(("expresión", "el valor"),),
         example="a = abs(-3)",
     ),
     CallHelp(
         name="min",
-        summary="The smallest of several values, written in the order given.",
+        summary="El menor de varios valores, escritos en el orden dado.",
         forms=("min(a, b, ...)",),
-        arguments=(("a, b, ...", "two or more values of one kind"),),
+        arguments=(("a, b, ...", "dos o más valores de una misma clase"),),
         example="L := 8*m\nb_w := 300*mm\nh_f := 120*mm\ns := 3*m\n"
         "b_eff = min(L/4, b_w + 16*h_f, s)\nnumeric(b_eff)",
     ),
     CallHelp(
         name="max",
-        summary="The largest of several values, written in the order given.",
+        summary="El mayor de varios valores, escritos en el orden dado.",
         forms=("max(a, b, ...)",),
-        arguments=(("a, b, ...", "two or more values of one kind"),),
+        arguments=(("a, b, ...", "dos o más valores de una misma clase"),),
         example="V_A := 30*kN\nV_B := 45*kN\nV_max = max(V_B, V_A)\nnumeric(V_max)",
     ),
     CallHelp(
         name="interp",
-        summary="A value read from a table, on the straight line between the two points around it.",
+        summary="Un valor leído de una tabla, sobre la recta entre los dos puntos que lo rodean.",
         forms=("interp(x, [x_1, x_2, ...], [y_1, y_2, ...])",),
         arguments=(
-            ("x", "the point to read the table at, inside it"),
-            ("[x_1, x_2, ...]", "the table's points, in increasing order"),
-            ("[y_1, y_2, ...]", "the value at each point"),
+            ("x", "el punto donde se lee la tabla, dentro de ella"),
+            ("[x_1, x_2, ...]", "los puntos de la tabla, en orden creciente"),
+            ("[y_1, y_2, ...]", "el valor en cada punto"),
         ),
         example="e_t := 0.003\nphi = interp(e_t, [0.002, 0.005], [0.65, 0.90])\nnumeric(phi)",
     ),
-    _scalar("sqrt", "The square root.", "16"),
-    _scalar("sin", "The sine of an angle.", "30*deg"),
-    _scalar("cos", "The cosine of an angle.", "30*deg"),
-    _scalar("tan", "The tangent of an angle.", "30*deg"),
-    _scalar("asin", "The angle whose sine this is.", "0.5"),
-    _scalar("acos", "The angle whose cosine this is.", "0.5"),
-    _scalar("atan", "The angle whose tangent this is.", "1"),
-    _scalar("exp", "The exponential.", "1"),
-    _scalar("log", "The natural logarithm.", "1"),
+    _scalar("sqrt", "La raíz cuadrada.", "16"),
+    _scalar("sin", "El seno de un ángulo.", "30*deg"),
+    _scalar("cos", "El coseno de un ángulo.", "30*deg"),
+    _scalar("tan", "La tangente de un ángulo.", "30*deg"),
+    _scalar("asin", "El ángulo cuyo seno es este.", "0.5"),
+    _scalar("acos", "El ángulo cuyo coseno es este.", "0.5"),
+    _scalar("atan", "El ángulo cuya tangente es esta.", "1"),
+    _scalar("exp", "La exponencial.", "1"),
+    _scalar("log", "El logaritmo natural.", "1"),
     CallHelp(
         name="identity",
-        summary="The identity matrix.",
-        forms=("identity(size)",),
-        arguments=(("size", "how many rows and columns"),),
+        summary="La matriz identidad.",
+        forms=("identity(tamaño)",),
+        arguments=(("tamaño", "cuántas filas y columnas"),),
         example="I3 = identity(3)",
     ),
     CallHelp(
         name="zeros",
-        summary="A matrix of zeros.",
-        forms=("zeros(rows, cols)",),
-        arguments=(("rows", "how many rows"), ("cols", "how many columns")),
+        summary="Una matriz de ceros.",
+        forms=("zeros(filas, columnas)",),
+        arguments=(("filas", "cuántas filas"), ("columnas", "cuántas columnas")),
         example="Z = zeros(2, 3)",
     ),
     CallHelp(
         name="diag",
-        summary="A diagonal matrix from the values given.",
+        summary="Una matriz diagonal con los valores dados.",
         forms=("diag(v_1, v_2, ...)",),
-        arguments=(("v_1, v_2, ...", "the diagonal entries"),),
+        arguments=(("v_1, v_2, ...", "las entradas de la diagonal"),),
         example="D = diag(1, 2, 3)",
     ),
     CallHelp(
         name="transpose",
-        summary="Swap a matrix's rows and columns.",
-        forms=("transpose(matrix)",),
-        arguments=(("matrix", "the matrix"),),
+        summary="Intercambia las filas y columnas de una matriz.",
+        forms=("transpose(matriz)",),
+        arguments=(("matriz", "la matriz"),),
         example="A = [1, 2; 3, 4]\nB = transpose(A)",
     ),
     CallHelp(
         name="det",
-        summary="The determinant of a square matrix.",
-        forms=("det(matrix)",),
-        arguments=(("matrix", "a square matrix"),),
+        summary="El determinante de una matriz cuadrada.",
+        forms=("det(matriz)",),
+        arguments=(("matriz", "una matriz cuadrada"),),
         example="A = [2, 0; 0, 4]\nd = det(A)",
     ),
     CallHelp(
         name="inv",
-        summary="The inverse of a square matrix.",
-        forms=("inv(matrix)",),
-        arguments=(("matrix", "a square, invertible matrix"),),
+        summary="La inversa de una matriz cuadrada.",
+        forms=("inv(matriz)",),
+        arguments=(("matriz", "una matriz cuadrada e invertible"),),
         example="A = [2, 0; 0, 4]\nB = inv(A)",
     ),
     CallHelp(
         name="trace",
-        summary="The sum of a square matrix's diagonal.",
-        forms=("trace(matrix)",),
-        arguments=(("matrix", "a square matrix"),),
+        summary="La suma de la diagonal de una matriz cuadrada.",
+        forms=("trace(matriz)",),
+        arguments=(("matriz", "una matriz cuadrada"),),
         example="A = [2, 0; 0, 4]\nt = trace(A)",
     ),
     CallHelp(
         name="size",
-        summary="A matrix's number of rows and columns.",
-        forms=("size(matrix)",),
-        arguments=(("matrix", "the matrix"),),
+        summary="El número de filas y columnas de una matriz.",
+        forms=("size(matriz)",),
+        arguments=(("matriz", "la matriz"),),
         example="A = [1, 2; 3, 4]\ns = size(A)",
     ),
     CallHelp(
         name="rank",
-        summary="The rank of a matrix.",
-        forms=("rank(matrix)",),
-        arguments=(("matrix", "the matrix"),),
+        summary="El rango de una matriz.",
+        forms=("rank(matriz)",),
+        arguments=(("matriz", "la matriz"),),
         example="A = [1, 2; 2, 4]\nr = rank(A)",
     ),
     CallHelp(
         name="rref",
-        summary="The reduced row echelon form of a matrix.",
-        forms=("rref(matrix)",),
-        arguments=(("matrix", "the matrix"),),
+        summary="La forma escalonada reducida por filas de una matriz.",
+        forms=("rref(matriz)",),
+        arguments=(("matriz", "la matriz"),),
         example="A = [1, 2; 3, 4]\nR = rref(A)",
     ),
     CallHelp(
         name="norm",
-        summary="The norm of a matrix or vector.",
-        forms=("norm(matrix)",),
-        arguments=(("matrix", "the matrix or vector"),),
+        summary="La norma de una matriz o de un vector.",
+        forms=("norm(matriz)",),
+        arguments=(("matriz", "la matriz o el vector"),),
         example="v = [3; 4]\nn = norm(v)",
     ),
     CallHelp(
         name="eigenvals",
-        summary="The eigenvalues of a square matrix, with their multiplicities.",
-        forms=("eigenvals(matrix)",),
-        arguments=(("matrix", "a square matrix"),),
+        summary="Los valores propios de una matriz cuadrada, con sus multiplicidades.",
+        forms=("eigenvals(matriz)",),
+        arguments=(("matriz", "una matriz cuadrada"),),
         example="A = [2, 0; 0, 4]\ne = eigenvals(A)",
     ),
     CallHelp(
         name="eigenvects",
-        summary="The eigenvectors of a square matrix.",
-        forms=("eigenvects(matrix)",),
-        arguments=(("matrix", "a square matrix"),),
+        summary="Los vectores propios de una matriz cuadrada.",
+        forms=("eigenvects(matriz)",),
+        arguments=(("matriz", "una matriz cuadrada"),),
         example="A = [2, 0; 0, 4]\nv = eigenvects(A)",
     ),
     CallHelp(
         name="dot",
-        summary="The dot product of two vectors, a scalar.",
+        summary="El producto escalar de dos vectores, un escalar.",
         forms=("dot(u, v)",),
-        arguments=(("u, v", "two vectors of one length, written as rows or columns"),),
+        arguments=(("u, v", "dos vectores de igual largo, escritos como filas o columnas"),),
         example="u = [1; 2; 3]\nv = [4; 5; 6]\nd = dot(u, v)",
     ),
     CallHelp(
         name="cross",
-        summary="The cross product of two vectors of length three, as the moment r × F.",
+        summary="El producto vectorial de dos vectores de largo tres, como el momento r × F.",
         forms=("cross(u, v)",),
-        arguments=(("u, v", "two vectors of length 3; the result takes u's orientation"),),
+        arguments=(("u, v", "dos vectores de largo 3; el resultado toma la orientación de u"),),
         example="r = [2*m; 0*m; 1*m]\nF = [0*kN; 5*kN; 0*kN]\nM_O = cross(r, F)",
     ),
 )

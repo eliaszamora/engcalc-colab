@@ -428,9 +428,9 @@ class EngMagics(Magics):
         entry = CATALOGUE.get(name)
         if entry is None:
             near = sorted(other for other in CATALOGUE if other.startswith(name[:2]))
-            hint = f"; did you mean {', '.join(near)}?" if near else ""
-            print(f"engcalc: no help for '{name}'{hint}")
-            print("engcalc: %eng_help with no name lists every call")
+            hint = f"; ¿quisiste decir {', '.join(near)}?" if near else ""
+            print(f"engcalc: no hay ayuda para '{name}'{hint}")
+            print("engcalc: %eng_help sin nombre lista todo lo que se puede escribir")
             return None
 
         display(HTML(render_call_help(entry)))
