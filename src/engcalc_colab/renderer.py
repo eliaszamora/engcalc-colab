@@ -2821,6 +2821,40 @@ def _split_overwide_terms(
     return rows
 
 
+def _shaped_product_rows(
+    expression: sp.Expr,
+    substitutions: dict[str, object] | None = None,
+    *,
+    settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
+    unit_literals: frozenset[str] = frozenset(),
+) -> list[str]:
+    """A product with brackets: its plain factors as one fraction, then each bracket.
+
+    `[]` when the expression is not such a product; the caller then goes on as before.
+    """
+    negative = expression.could_extract_minus_sign()
+    body = -expression if negative else expression
+    if not body.is_Mul:
+        return []
+    brackets = [factor for factor in body.args if factor.is_Add]
+    plain = [factor for factor in body.args if not factor.is_Add]
+    if not brackets or not plain:
+        return []
+    # Only a denominator outside the brackets - a centroid, (A1 y1 + A2 y2)/(A1 + A2) - is
+    # a fraction of its bracket, not a product; written this way it read `1/(A1 + A2)`.
+    if all(factor.is_Pow and factor.exp.is_negative for factor in plain):
+        return []
+
+    def shown(part):
+        if substitutions is None:
+            return _latex(part, unit_literals, settings)
+        return _substitution_latex(part, substitutions, settings, unit_literals)
+
+    rows = [("- " if negative else "") + shown(sp.Mul(*plain, evaluate=False))]
+    rows += [rf"\quad \cdot \left({shown(bracket)}\right)" for bracket in brackets]
+    return rows
+
+
 def _bounded_expression_rows(expression: sp.Expr, substitutions: dict[str, object] | None = None, *, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS, unit_literals: frozenset[str] = frozenset()) -> list[str]:
     """Return additive rows and split overwide products/fractions at safe factor boundaries."""
     expression = sp.sympify(expression)
@@ -2828,6 +2862,26 @@ def _bounded_expression_rows(expression: sp.Expr, substitutions: dict[str, objec
     if all(_latex_visual_width(row) <= _NUMERIC_ROW_VISUAL_BUDGET for row in rows):
         return rows
 
+    # A product with a bracket in it keeps its shape: the plain factors as one fraction,
+    # then each bracket on a row of its own. Expanded, `f_cw b d/fy (1 - sqrt(...))` became
+    # two terms and a stray `· 1/(4200 kgf/cm²)`, a shape the formula above never had. A
+    # bracket's row may run a little past the budget rather than be taken apart - in his
+    # Colab the As row had room to spare - but not past the rows the rest of this function
+    # would give by more than that. See `test_a_long_row_keeps_the_shape_of_its_formula`.
+    shaped = _shaped_product_rows(expression, substitutions, settings=settings, unit_literals=unit_literals)
+    otherwise = _rows_past_the_budget(expression, rows, substitutions, settings=settings, unit_literals=unit_literals)
+    allowance = _SHAPED_ROW_ALLOWANCE * max(_NUMERIC_ROW_VISUAL_BUDGET, *map(_latex_visual_width, otherwise))
+    if shaped and max(map(_latex_visual_width, shaped)) <= allowance:
+        return shaped
+    return otherwise
+
+
+# How far past the budget a bracket's row may run before a product is taken apart instead.
+_SHAPED_ROW_ALLOWANCE = 1.15
+
+
+def _rows_past_the_budget(expression: sp.Expr, rows: list[str], substitutions: dict[str, object] | None = None, *, settings: RenderSettings = _DEFAULT_RENDER_SETTINGS, unit_literals: frozenset[str] = frozenset()) -> list[str]:
+    """What `_bounded_expression_rows` does with a row past the budget: expand, then split."""
     expanded = sp.expand(expression)
     if sp.sstr(expanded) != sp.sstr(expression):
         expanded_rows = _adaptive_additive_rows(expanded, substitutions, settings=settings, unit_literals=unit_literals)
