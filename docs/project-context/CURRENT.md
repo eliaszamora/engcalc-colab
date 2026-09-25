@@ -12,10 +12,10 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.36.0** - #317, `9ebbd78`, carrying #316 (`173835f`) and one fix its validation found; six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.35.0** - #314, `509e65e` |
-| open PRs | none |
-| default suite | **2960 passing**, about a minute with `-n auto` |
+| released | **0.37.0** - this release PR, carrying #319 (`4cfa805`); its closure is recorded below |
+| before that | **0.36.0** - #317, `9ebbd78` |
+| open PRs | this release's |
+| default suite | **2980 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -793,7 +793,10 @@ trailing `· 1/(4200 kgf/cm^2)`; without a palette a `0*kN` entry of a `:=` matr
    (`0.00 kN`, not `0.00 N`) without a palette.
 Suite 2980 on SymPy 1.14 and on 1.13.3.
 
-**Exact next step:** merged as #319 with his yes; nothing is released - publish (0.37.0) only when he says.
+Merged as #319 (`4cfa805`) with his yes; released as 0.37.0 by the release PR (*"Publica la
+0.37.0"*).
+
+**Exact next step:** close 0.37.0 (checks after its merge, his Colab).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
