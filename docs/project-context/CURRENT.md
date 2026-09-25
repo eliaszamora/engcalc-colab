@@ -12,9 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.38.0** - this release PR, carrying #322 (`91c74dd`) and #323 (`333d54f`); its closure is recorded below |
+| released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
-| open PRs | this release's |
+| open PRs | none |
 | default suite | **2988 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -810,7 +810,18 @@ loaded clean; cell 15 shows `As_2` in option B's shape and `%eng_help keep` with
 #322 (help in Spanish) and #323 (points 1-3) merged with his yes; released as 0.38.0 by
 the release PR (*"Sí, fusiona #323 y publica la 0.38.0"*).
 
-**Exact next step:** close 0.38.0 (checks after its merge, his Colab).
+**0.38.0 is released.** On the release commit: version assertions RED (7) then GREEN; suite
+2988 twice (SymPy 1.14) and 2988 on 1.13.3; wheel 32 files identical to `src`; clean
+Colab-like venv gained only Pint and four small deps; smoke 92/92 (`smoke-0380/`: help in
+Spanish, `0.90` as typed, a wide bracket wrapping, a zero column's unit); suite against the
+wheel 2987 + the by-path test on the wheel's `magic.py`; 13 sheets and 18 exercises: only
+`formas`' `A_c = 0.30 · 0.60 m·m` moves. After its merge: CI (six jobs) and the deep gate
+green on `a53613d`; `git+https` resolved to it, upgraded nothing, 24 modules identical,
+smoke 92/92. **His Colab: not yet checked** - the Chrome extension disconnected before it.
+
+**Exact next step:** check 0.38.0 in his Colab (cell 13 installs from `main`; restart the
+session, since a same-runtime `--upgrade` keeps 0.37.0 loaded; cell 15 then shows the
+loads, `As_2`, `%eng_help keep` - add `phiMn` and `0.90*b`).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
