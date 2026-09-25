@@ -104,5 +104,5 @@ def test_each_block_still_says_what_it_said(blocks):
     assert "Extrema — M(x)" in page
     assert "Domain: 0.00 m to 6.00 m" in page
     assert "x = L/2 (3.00 m)" in page
-    assert "Governing — x" in page
+    assert "Governing along x" in page
     assert "Summary" in page and "M_u" in page.replace(" ", "").replace("Mu", "M_u")

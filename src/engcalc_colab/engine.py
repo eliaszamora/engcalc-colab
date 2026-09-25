@@ -4515,7 +4515,13 @@ class _Evaluator(ast.NodeVisitor):
                 return "Comparison"
             function_names.append(label[: -(len(variable) + 2)])
 
-        families = {name.split("_", 1)[0] for name in function_names}
+        # `M_1`, `M_2` are the family `M`, and so are `U1`, `U2`: a code's combinations
+        # are written with their number and no underscore, and the frame's envelope was
+        # titled `Comparison envelope`. See `test_combinations_are_named_as_a_family`.
+        families = {
+            re.sub(r"(?<=[A-Za-z])\d+$", "", name.split("_", 1)[0])
+            for name in function_names
+        }
         if len(families) == 1:
             family = next(iter(families))
             return f"{family}({variable})"

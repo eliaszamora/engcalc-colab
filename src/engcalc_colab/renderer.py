@@ -4646,7 +4646,8 @@ def render_governing_result(
         rows.append(rf"\displaystyle {span} & \qquad \displaystyle {_response_label_latex(interval.label)}")
     variable = _characteristic_symbolic_math(sp.Symbol(result.variable))
     table = r"\begin{array}{ll} " + r" \\[8pt] ".join(rows) + r" \end{array}"
-    return _computed_block([rf"\textbf{{Governing}} \text{{ — }} {variable}", table])
+    # "along", not a dash: `Governing — x` read as a dash where a word was meant.
+    return _computed_block([rf"\textbf{{Governing}} \text{{ along }} {variable}", table])
 
 
 def render_summary_result(
