@@ -784,7 +784,7 @@ trailing `· 1/(4200 kgf/cm^2)`; without a palette a `0*kN` entry of a `:=` matr
    `member`, `frame_plot`, `image` (`parser.PLACING_CALLS`); the list shows Statements
    apart from Calls; `tests/test_eng_help.py` holds the catalogue against all of them and
    runs every example. He had asked what `keep` was for: it had no entry.
-2. `5e1286e` **option B, awaiting his choice**: a long substitution row keeps the shape of
+2. `5e1286e` **option B, his choice ("Opción B, fusiona #319")**: a long substitution row keeps the shape of
    its formula - the plain factors as one fraction, each bracket on the next row
    (`_shaped_product_rows`, allowance 1.15 x the budget), instead of expanding into terms
    with a stray `· 1/(4200 kgf/cm^2)`. A bare fraction of a bracket (a centroid) is left as
@@ -793,7 +793,7 @@ trailing `· 1/(4200 kgf/cm^2)`; without a palette a `0*kN` entry of a `:=` matr
    (`0.00 kN`, not `0.00 N`) without a palette.
 Suite 2980 on SymPy 1.14 and on 1.13.3.
 
-**Exact next step:** his choice on point 2 (A as today / B), then his yes to merge.
+**Exact next step:** merged as #319 with his yes; nothing is released - publish (0.37.0) only when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
