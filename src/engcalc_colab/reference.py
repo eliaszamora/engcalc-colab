@@ -141,6 +141,27 @@ _STATEMENTS: tuple[CallHelp, ...] = (
         ),
     ),
     CallHelp(
+        name="while",
+        kind="statement",
+        summary="Repite líneas mientras una condición se cumpla; la memoria muestra solo la última vuelta y cuántas hubo.",
+        forms=("% while condición:", "% end"),
+        arguments=(
+            ("condición", "una comparación entre valores de la hoja, como abs(f(c)) > 0.001*kgf*cm; se une con and y or"),
+        ),
+        note=(
+            "Cada vuelta se calcula pero no se escribe. Al terminar, la memoria dice En 4 "
+            "iteraciones: y la condición en números, que ya no se cumple (así se ve que "
+            "convergió), y luego las filas de la última vuelta. Si a las 1000 vueltas la "
+            "condición sigue cumpliéndose, la celda se detiene con un mensaje: no converge "
+            "desde ese valor inicial."
+        ),
+        example=(
+            "x := 1*m\n"
+            "% while abs(x^2 - 2*m^2) > 1e-6*m^2:\n"
+            "x := (x + 2*m^2/x)/2\n% end"
+        ),
+    ),
+    CallHelp(
         name="case",
         kind="statement",
         summary="Nombra la respuesta de un caso de carga, como función de la coordenada a lo largo del elemento.",

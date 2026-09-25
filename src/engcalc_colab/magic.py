@@ -317,8 +317,13 @@ class EngMagics(Magics):
                     display(_render_narrative(item))
                     continue
 
-                result = self.engine.evaluate(item)
-                for notice in self.engine.notices:
+                # A `% while` hands over its last iteration already worked out.
+                if isinstance(item, control.Evaluated):
+                    result, notices = item.result, item.notices
+                else:
+                    result = self.engine.evaluate(item)
+                    notices = self.engine.notices
+                for notice in notices:
                     print(f"engcalc: {notice}")
                 if isinstance(result, PlotResult):
                     _display_equation_group(

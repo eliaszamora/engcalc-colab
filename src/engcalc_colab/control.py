@@ -33,7 +33,7 @@ from .errors import EngCalcError, EngEvaluationError, EngSyntaxError
 from .parser import normalize_expression, parse_cell
 
 _KEYWORD = re.compile(r"^(\w+)\b(.*)$", re.S)
-_BLOCKS = ("if", "elif", "else", "end", "for")
+_BLOCKS = ("if", "elif", "else", "end", "for", "while")
 _INSERTED = re.compile(r"\{([^{}]+)\}")
 # A `% for` that would write more rows than a memoria can hold is a mistake, and one that
 # never ends would hang the notebook. The same limit `% while` will have.
@@ -47,8 +47,8 @@ _BUILTINS = {
     )
 }
 _WHAT_A_PERCENT_LINE_IS = (
-    "a line that starts with % is % if, % elif, % else, % for, % end, or a helper such "
-    "as % n = 0"
+    "a line that starts with % is % if, % elif, % else, % for, % while, % end, or a "
+    "helper such as % n = 0"
 )
 
 
@@ -95,6 +95,21 @@ class _ForBlock:
     line_no: int
     header: ast.For
     body: list = field(default_factory=list)
+
+
+@dataclass
+class _WhileBlock:
+    line_no: int
+    condition: str
+    body: list = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class Evaluated:
+    """A line a `% while` has already worked out: its last iteration, shown as it stands."""
+
+    result: object
+    notices: tuple = ()
 
 
 @dataclass
@@ -234,14 +249,23 @@ def _structure(cell: str) -> list:
             body.append(block)
             stack.append((block, body))
             body = block.body
+        elif keyword == "while":
+            if not condition:
+                raise EngSyntaxError(
+                    f"line {line_no}: % while needs a condition, as in % while abs(r) > 0.001:"
+                )
+            block = _WhileBlock(line_no=line_no, condition=condition)
+            body.append(block)
+            stack.append((block, body))
+            body = block.body
         elif keyword in ("elif", "else"):
             if not stack:
                 raise EngSyntaxError(f"line {line_no}: % {keyword} with no % if open above it")
             block, _outer = stack[-1]
-            if isinstance(block, _ForBlock):
+            if not isinstance(block, _IfBlock):
                 raise EngSyntaxError(
-                    f"line {line_no}: % {keyword} belongs to a % if; the % for of line "
-                    f"{block.line_no} has none"
+                    f"line {line_no}: % {keyword} belongs to a % if; the % {_kind(block)} of "
+                    f"line {block.line_no} has none"
                 )
             if block.branches[-1].condition is None:
                 raise EngSyntaxError(f"line {line_no}: % {keyword} after the % else of line {block.branches[-1].line_no}")
@@ -251,13 +275,16 @@ def _structure(cell: str) -> list:
             body = block.branches[-1].body
         else:  # end
             if not stack:
-                raise EngSyntaxError(f"line {line_no}: % end with no % if or % for open above it")
+                raise EngSyntaxError(f"line {line_no}: % end with no % if, % for or % while open above it")
             _block, body = stack.pop()
     if stack:
         block, _outer = stack[-1]
-        kind = "for" if isinstance(block, _ForBlock) else "if"
-        raise EngSyntaxError(f"line {block.line_no}: this % {kind} has no % end")
+        raise EngSyntaxError(f"line {block.line_no}: this % {_kind(block)} has no % end")
     return root
+
+
+def _kind(block) -> str:
+    return {_ForBlock: "for", _WhileBlock: "while"}.get(type(block), "if")
 
 
 def _for_header(code: str, line_no: int) -> ast.For:
@@ -295,6 +322,9 @@ def _check_lines(nodes: list) -> None:
         if isinstance(node, _Stretch):
             _parse_stretch(node, lambda _text, _line_no: "1")
         elif isinstance(node, _ForBlock):
+            _check_lines(node.body)
+        elif isinstance(node, _WhileBlock):
+            _condition_tree(node.condition, node.line_no)
             _check_lines(node.body)
         elif isinstance(node, _IfBlock):
             for branch in node.branches:
@@ -341,6 +371,8 @@ def _walk(nodes: list, engine, settings, scope: _Scope) -> Iterator:
             _run_helper(node, scope)
         elif isinstance(node, _ForBlock):
             yield from _repeat(node, engine, settings, scope)
+        elif isinstance(node, _WhileBlock):
+            yield from _iterate(node, engine, settings, scope)
         else:
             yield from _choose(node, engine, settings, scope)
 
@@ -402,6 +434,42 @@ def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
                 f"{value!r}: {exc}"
             ) from exc
         yield from _walk(node.body, engine, settings, scope)
+
+
+def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:
+    """Run the body while the condition holds, and show only the last time it ran.
+
+    Each iteration is worked out here, silently: an iteration nobody reads is not written.
+    What the page gets is a sentence - how many iterations, and the condition as it stands
+    now, which no longer holds - and then the rows of the last iteration.
+    """
+    tree = _condition_tree(node.condition, node.line_no)
+    count = 0
+    last: list = []
+    while True:
+        current = _in_scope(tree, scope)
+        holds, _said = _decide(current, node.line_no, engine, settings)
+        if not holds:
+            break
+        if count == _MOST_ITERATIONS:
+            raise EngEvaluationError(
+                f"line {node.line_no}: this % while ran {_MOST_ITERATIONS} times and its "
+                f"condition still holds: it does not converge from this start"
+            )
+        count += 1
+        last = []
+        for item in _walk(node.body, engine, settings, scope):
+            if isinstance(item, (ConditionNote, Evaluated)) or not hasattr(item, "line_no"):
+                last.append(item)
+            elif type(item).__name__ in ("ParsedHeading", "ParsedNarrative"):
+                last.append(item)
+            else:
+                result = engine.evaluate(item)
+                last.append(Evaluated(result, tuple(engine.notices)))
+    word = "iteración" if count == 1 else "iteraciones"
+    stated = _negated(current, node.line_no, engine, settings)
+    yield ConditionNote(latex=f"{_ROOM}\\textbf{{En {count} {word}:}}\\;\\; {stated}")
+    yield from last
 
 
 def _run_helper(node: _Helper, scope: _Scope) -> None:
@@ -533,7 +601,9 @@ def _negated(tree: ast.AST, line_no: int, engine, settings) -> str:
 
 def _compare(tree: ast.Compare, line_no: int, engine, settings, operators) -> tuple[bool, str]:
     operands = [tree.left, *tree.comparators]
-    values = [_value(operand, line_no, engine) for operand in operands]
+    values = _zeros_in_their_neighbours_unit(
+        [_value(operand, line_no, engine) for operand in operands]
+    )
     verdict = True
     for (left, right), operator in zip(zip(values, values[1:]), tree.ops):
         first, second = left[0].quantity, right[0].quantity
@@ -554,6 +624,30 @@ def _compare(tree: ast.Compare, line_no: int, engine, settings, operators) -> tu
     for operator, piece in zip(operators, pieces[1:]):
         said += f" {_OPERATORS[type(operator)][1]} {piece}"
     return verdict, said
+
+
+def _zeros_in_their_neighbours_unit(values: list) -> list:
+    """`V > 0` and `x > 0*m`: a zero compares with anything, in its neighbour's unit.
+
+    `0*kN` reaches here as a plain 0 - a zero keeps no unit - and a comparison of kN against
+    a plain number is refused, rightly for `V > 3` and wrongly for zero. Found writing
+    `% while x > 0*m` (2026-09-25).
+    """
+    from dataclasses import replace  # noqa: PLC0415
+
+    units = next(
+        (value[0].quantity.units for value in values if not value[0].quantity.dimensionless),
+        None,
+    )
+    if units is None:
+        return values
+    out = []
+    for result, written, literals in values:
+        quantity = result.quantity
+        if quantity.dimensionless and quantity.magnitude == 0:
+            result = replace(result, quantity=quantity.magnitude * units)
+        out.append((result, written, literals))
+    return out
 
 
 def _value(operand: ast.AST, line_no: int, engine):
@@ -592,14 +686,41 @@ def _in_one_unit(operands, values, settings, engine) -> list:
     first_operand = operands[0]
     declared = isinstance(first_operand, ast.Name) and first_operand.id in engine.declared_unit_names
     first = _display_quantity(values[0][0].quantity, current, declared=declared)
-    shown = [first]
-    for result, _written, _units in values[1:]:
-        quantity = result.quantity
+    quantities = [result.quantity for result, _written, _units in values]
+    # The first side's unit, unless a side has no figure left in it - `1e-6 m²` reads
+    # `0.00 m²` and the printer moves it to cm² on its own, one side in each unit. Then
+    # the unit that side would be shown in, for every side.
+    candidates = [first.units] + [
+        _display_quantity(quantity, current, declared=False).units for quantity in quantities[1:]
+    ]
+    common = next(
+        (
+            unit
+            for unit in candidates
+            if all(_reads_in(quantity, unit, current) for quantity in quantities)
+        ),
+        first.units,
+    )
+    shown = []
+    for index, quantity in enumerate(quantities):
         if quantity.dimensionality == first.dimensionality:
-            shown.append(quantity.to(first.units))
+            shown.append(quantity.to(common))
         else:
-            shown.append(_display_quantity(quantity, current, declared=False))
+            shown.append(first if index == 0 else _display_quantity(quantity, current, declared=False))
     return shown
+
+
+def _reads_in(quantity, unit, settings) -> bool:
+    """Whether `quantity` keeps a figure written in `unit` (a zero always does)."""
+    from .renderer import _display_quantity  # noqa: PLC0415 - renderer imports models only
+
+    try:
+        converted = quantity.to(unit)
+    except DimensionalityError:
+        return True
+    if abs(float(converted.to_base_units().magnitude)) <= settings.zero_tolerance:
+        return True
+    return _display_quantity(converted, settings, declared=True).units == converted.units
 
 
 def _said(operand: ast.AST, value, quantity, settings) -> str:

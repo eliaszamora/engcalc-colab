@@ -131,7 +131,7 @@ def test_a_for_inside_a_branch_runs_only_when_the_branch_does(sheet):
         ("% for i in [1, 2]:\ny_{i} := 1*m\n% else:\n% end\n", ("line 3", "% else")),
         ("% for i in range(5000):\ny_{i} := 1*m\n% end\n", ("line 1", "1000")),
         ("F_1 := 1*kN\n% for F in [2*F_1]:\nD := {F}\n% end\n", ("line 3", "{F}")),
-        ("% while 1 > 0:\n% end\n", ("line 1", "% for")),
+        ("% switch x:\n% end\n", ("line 1", "% for")),
         ("% import os\n", ("line 1", "% n = 0")),
     ],
 )
