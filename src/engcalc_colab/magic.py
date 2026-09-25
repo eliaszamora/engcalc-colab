@@ -328,7 +328,10 @@ class EngMagics(Magics):
                     settings = self._settings()
                     display(
                         render_frame_plot(
-                            result, lambda quantity: quantity_as_displayed(quantity, settings)
+                            result,
+                            lambda quantity, declared=False: quantity_as_displayed(
+                                quantity, settings, declared=declared
+                            ),
                         )
                     )
                     display(Markdown(_figure_caption(result.number, result.caption)))

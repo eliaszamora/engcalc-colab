@@ -202,6 +202,9 @@ def test_a_beam_alone_is_drawn(tmp_path):
     # page writes f without a palette - not in the base units a matrix of numbers keeps.
     assert "29.42" in labels and "-58.84" in labels, labels
     assert "kN" in title(figure), title(figure)
+    # The load keeps the unit the sheet typed, as `w := 2000*kgf/m` does on the page; it
+    # read `2.00 tonf/m`, a unit the sheet never wrote.
+    assert "2 000 kgf/m" in labels, labels
 
 
 @pytest.mark.parametrize(

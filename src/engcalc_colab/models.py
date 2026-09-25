@@ -739,8 +739,8 @@ class FrameMember:
     `start` and `end` are two lengths each; `forces` the six end forces in local axes
     `[N_i; V_i; M_i; N_j; V_j; M_j]` acting on the member, x' from start to end and y'
     turned a quarter anticlockwise from it; `displacements` the six local end
-    displacements in the same order; `load` a uniform load acting towards -y'. Matrices
-    are `QuantityMatrix`. See `test_a_frame_is_drawn_with_its_diagrams`.
+    displacements in the same order; `load` a load acting towards -y', uniform or running
+    linearly to `load_end`; `points` point loads towards -y'. Matrices are `QuantityMatrix`. See `test_a_frame_is_drawn_with_its_diagrams`.
     """
 
     name: str
@@ -750,6 +750,10 @@ class FrameMember:
     displacements: Any = None
     stiffness: Any = None
     load: Any = None
+    # `load=[w_1, w_2]`: `load` is w_1 at start and this is w_2 at end; None when uniform.
+    load_end: Any = None
+    # `point=[P, a]`, one (P, a) per load: P towards -y' at a from start.
+    points: tuple = ()
 
 
 @dataclass(frozen=True)

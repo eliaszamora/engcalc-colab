@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import math
 import re
 from dataclasses import dataclass, replace
 
@@ -1083,6 +1084,60 @@ class EngineeringEngine:
                     )
             return matrix
 
+        # `load=w`, or `load=[w_1, w_2]` running linearly from start to end.
+        loads = (None, None)
+        if "load" in given:
+            written = given["load"]
+            ends = written.elts if isinstance(written, ast.List) else [written]
+            values = [
+                scalar(end_value, "load", "[force] / [length]", "a force per length")
+                for end_value in ends
+            ]
+            loads = (values[0], values[1] if len(values) == 2 else None)
+
+        # `point=[P, a]`, one row per load: P towards -y' at a from start.
+        points = []
+        if "point" in given:
+            node = given["point"]
+            if isinstance(node, ast.List):
+                # `[P, a]`, one load: its two values, read as any value on the line is.
+                pairs = [tuple(numbers.value(element) for element in node.elts)]
+            else:
+                try:
+                    value = numbers.value(node)
+                except DimensionalityError as exc:
+                    raise EngEvaluationError(f"member {name}: point has incompatible units") from exc
+                if not isinstance(value, NumberMatrix) or value.cols != 2:
+                    raise EngEvaluationError(
+                        f"member {name}: point is [P, a], a load and its distance from start; "
+                        "several are rows, [P_1, a_1; P_2, a_2]"
+                    )
+                rows = quantity_matrix_of(value, ureg)
+                pairs = [(rows.entry(row, 0), rows.entry(row, 1)) for row in range(rows.rows)]
+            span = math.hypot(*(float((b - a).to_base_units().magnitude) for a, b in zip(start, end)))
+            for row, (force, where) in enumerate(pairs):
+                force = self.numeric_context._as_quantity(force)
+                where = self.numeric_context._as_quantity(where)
+                if not force.check("[force]"):
+                    raise EngEvaluationError(
+                        f"member {name}: point load {row + 1} is {force.units:~P}, not a force"
+                    )
+                if not (where.magnitude == 0 and where.dimensionless) and not where.check("[length]"):
+                    raise EngEvaluationError(
+                        f"member {name}: point {row + 1} is at {where.units:~P}; its distance "
+                        "from start is a length"
+                    )
+                distance = float(where.to_base_units().magnitude)
+                if not 0 <= distance <= span * (1 + 1e-12):
+                    unit = where.units if not where.dimensionless else ureg.meter
+                    raise EngEvaluationError(
+                        f"member {name}: point {row + 1} at {float(where.to(unit).magnitude):g} "
+                        f"{unit:~P} is off the member, which is "
+                        f"{ureg.Quantity(span, 'm').to(unit).magnitude:g} {unit:~P} long"
+                    )
+                points.append((force, where))
+        points = tuple(points)
+
         member = FrameMember(
             name=name,
             start=start,
@@ -1102,11 +1157,9 @@ class EngineeringEngine:
                 if "EI" in given
                 else None
             ),
-            load=(
-                scalar(given["load"], "load", "[force] / [length]", "a force per length")
-                if "load" in given
-                else None
-            ),
+            load=loads[0],
+            load_end=loads[1],
+            points=points,
         )
         self.frame_members[name] = member
         return MemberResult(statement=statement, member=member)
@@ -1141,7 +1194,7 @@ class EngineeringEngine:
             unbending = [
                 member.name
                 for member in members
-                if member.load is not None and member.stiffness is None
+                if (member.load is not None or member.points) and member.stiffness is None
             ]
             if unbending:
                 raise EngEvaluationError(
