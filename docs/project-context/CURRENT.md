@@ -817,11 +817,14 @@ Spanish, `0.90` as typed, a wide bracket wrapping, a zero column's unit); suite 
 wheel 2987 + the by-path test on the wheel's `magic.py`; 13 sheets and 18 exercises: only
 `formas`' `A_c = 0.30 · 0.60 m·m` moves. After its merge: CI (six jobs) and the deep gate
 green on `a53613d`; `git+https` resolved to it, upgraded nothing, 24 modules identical,
-smoke 92/92. **His Colab: not yet checked** - the Chrome extension disconnected before it.
+smoke 92/92. **0.38.0 is closed.** In his Colab (after he reconnected the extension; a
+new tab, runtime disconnected so a clean VM): cell 13 installed and loaded 0.38.0 clean;
+cell 15 showed the loads, `As_2`, `%eng_help keep` in Spanish, `phiMn` over three rows with
+its bracket in shape (`= 280.20 kN·m`) and `z = 0.90 b`. At that window width the output
+panel is narrow and a long row runs past it (a horizontal scrollbar) - the formula row too,
+which did not change.
 
-**Exact next step:** check 0.38.0 in his Colab (cell 13 installs from `main`; restart the
-session, since a same-runtime `--upgrade` keeps 0.37.0 loaded; cell 15 then shows the
-loads, `As_2`, `%eng_help keep` - add `phiMn` and `0.90*b`).
+**Exact next step:** none open; ask him what next.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
