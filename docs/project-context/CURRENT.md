@@ -706,8 +706,31 @@ combination is written expanded (`U1(L/2)`); "Governing - x" heading; "Compariso
 envelope" title. Not drawn by `frame_plot` (no syntax yet): a moment on a joint, a
 non-uniform load.
 
-**Exact next step:** none open; ask him what next (the five findings above are the
-candidates).
+**The five pending points** (he asked: *"La idea es que abarques todos esos puntos
+pendientes"*), branch `fix/pending-findings`, one commit each so a choice can drop one:
+1. `a7d4b01` `governing` over polynomials finds crossings as numeric roots of their
+   difference (`_polynomial_in_base_units`, `_real_roots_between`); piecewise/Macaulay keep
+   the exact path. Frame design: 55.9 s -> the whole design cell in 7 s, boundaries equal
+   the exact path's to 1e-9. `tools/portico_diseno.eng` now shows `governing`. 5 contracts.
+2. `d4716c4` + part of `ad6f71e`: a function that reads a kept name is written as typed
+   (`As_req(Mu)` keeps `f_cw`, no 2.35) and a call of it substitutes into that written body
+   (`engine.written_functions`, `_flat_products`: `2 · 876940 kgf·cm`). 5 contracts.
+3. `ad6f71e` **option B, awaiting his choice**: `M_u = U1(L/2)` on its own row, then
+   `= 0.15 qD L^2 + 0.2 qL L^2`, substitution, value (`_call_of_the_sheet_shown`,
+   `_print_AppliedUndef`, `_opens_by_repeating` accepts the split). Moves one row on
+   formas, formas-kgf, viga, viga-kgf and corta (`M_c = M(L/2)`, `M_0 = M(0 mm) = 0`).
+4. `294e980` **awaiting his choice**: `U1`..`U6` are the family `U` (envelope `U(x) envelope`,
+   `U_max/U_min`, axis `U(x)`), and "Governing along x" for "Governing — x". Moves viga,
+   viga-kgf, corta and E11 headings/figure labels.
+5. `4a8ca70`: a moment applied at a free joint is read back from the end moments and drawn
+   (red arc + value); a fixed end of one member is a wall across it (cantilever). The
+   frame's figures are unchanged. **Non-uniform loads need syntax - proposed, not built**:
+   `load=[w_1, w_2]` (linear start->end) and `point=[P, a]` (rows for several).
+Suite 2947. The 13 sheets and 18 exercises differ from 0.35.0 only by points 3 and 4.
+
+**Exact next step:** his choices - option B (or A/C) for point 3, the two names for point
+4, the load syntax for point 5 - then build the load syntax, merge with his yes, and
+publish only when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
