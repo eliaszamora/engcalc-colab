@@ -698,6 +698,10 @@ def _engineering_factor_key(
     """
     if term.is_Number:
         return (0, sp.default_sort_key(term))
+    # Worked out from numbers alone, it is a number: `sqrt(6^2 + 4^2)*m` is written
+    # `√(6² + 4²) m`, not `m √(6² + 4²)` with the unit in front. His exercise 2.1.
+    if not term.free_symbols:
+        return (0, sp.default_sort_key(term))
 
     base = term.base if term.is_Pow else term
     if isinstance(base, sp.Symbol):
