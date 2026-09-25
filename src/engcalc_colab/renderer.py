@@ -2106,6 +2106,23 @@ def _quantity_matrix_latex(
             # was trying to respect.
             quantity = _display_quantity(quantity, settings, declared=False)
         shown.append(quantity)
+    if not homogeneous:
+        # A zero has no size to choose a unit by, and a matrix of numbers keeps base
+        # units: `[0*kN; 20*kN]` read `0.00 N` beside `20.00 kN`. It reads in the unit of
+        # a neighbour of its own kind. See `test_a_zero_entry_reads_in_the_unit_of_its_neighbours`.
+        for index, quantity in enumerate(shown):
+            if getattr(quantity, "magnitude", 1) != 0 or getattr(quantity, "dimensionless", True):
+                continue
+            kin = next(
+                (
+                    other for other in shown
+                    if getattr(other, "magnitude", 0) != 0
+                    and getattr(other, "dimensionality", None) == quantity.dimensionality
+                ),
+                None,
+            )
+            if kin is not None:
+                shown[index] = quantity.to(kin.units)
     exponent = _matrix_scale_exponent(
         [quantity.magnitude for quantity in shown],
         settings,

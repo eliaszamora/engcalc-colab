@@ -294,6 +294,19 @@ def test_a_row_of_matrices_is_written_as_a_matrix(sheet):
     assert r"\left[\begin{matrix}\displaystyle d & \displaystyle d\end{matrix}\right]" in written, written
 
 
+def test_a_zero_entry_reads_in_the_unit_of_its_neighbours(sheet):
+    """`f := [0*kN; 20*kN; 0*kN*m; 5*kN*m]` read `0.00 N` and `0.00 N·m` beside `20.00 kN`
+    without a palette: a matrix of numbers keeps base units, and a zero has no size to
+    choose a unit by, so it kept the newton. A zero reads in the unit its neighbours of
+    the same kind are written in. Found after 0.36.0, asked for among his next points."""
+    page, console = sheet("f := [0*kN; 20*kN; 0*kN*m; 5*kN*m]\n")
+    assert not console, console
+    values = page.split(r"\end{matrix}", 1)[1]
+    assert r"0.00\,\mathrm{kN}" in values and r"20.00\,\mathrm{kN}" in values, values
+    assert r"0.00\,\mathrm{kN} \cdot \mathrm{m}" in values, values
+    assert r"0.00\,\mathrm{N}" not in values, values
+
+
 def test_a_unit_in_a_written_entry_is_not_one_of_it(sheet):
     """`f := [0*kN; 20*kN; 0*kN*m]` wrote its entries `0 1 kN`, `20 1 kN`, `0 1 kN 1 m`:
     a unit that is a factor was printed as a unit standing alone, and `20 1 kN` reads as
