@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from html import escape
 
 import sympy as sp
-from sympy.core.function import _coeff_isneg
+from sympy.core.function import AppliedUndef, _coeff_isneg
 from sympy.printing.conventions import split_super_sub
 from sympy.printing.latex import LatexPrinter
 
@@ -225,6 +225,16 @@ class _EngineeringLatexPrinter(LatexPrinter):
         # What is being printed, outermost first: a node's parent decides whether a unit
         # in it is a factor or stands where a quantity stands. See `_print`.
         self._printing: list = []
+
+    def _print_AppliedUndef(self, expr):
+        r"""A call of a function of the sheet, `U_{1}\left(\frac{L}{2}\right)`.
+
+        Spelled as the page spells a function's own name on the left of its definition
+        (`_render_function_call_lhs`), not as SymPy's `U_{1}{\left(\frac{L}{2} \right)}`.
+        """
+        name = self._print(sp.Symbol(expr.func.__name__))
+        arguments = ", ".join(self._print(argument) for argument in expr.args)
+        return rf"{name}\left({arguments}\right)"
 
     def _print(self, expr, **kwargs):
         """Every node, with a unit standing alone written with its one.
@@ -3568,7 +3578,10 @@ def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> 
     value_rows = _bounded_expression_rows(value, settings=settings, unit_literals=units)
     lhs_width = _latex_visual_width(lhs) + 3.0 if lhs is not None else 0.0
     chain_width = lhs_width + _latex_visual_width(input_latex) + sum(_latex_visual_width(row) for row in value_rows) + 6.0
-    if len(value_rows) == 1 and chain_width <= _NUMERIC_ROW_VISUAL_BUDGET:
+    # `M_u = U1(L/2)` stands on a row of its own, so the formula it expands to opens the
+    # rows below it and is not said twice. See `test_a_call_of_the_sheet_is_written`.
+    called = isinstance(display_input, AppliedUndef)
+    if not called and len(value_rows) == 1 and chain_width <= _NUMERIC_ROW_VISUAL_BUDGET:
         return [_standard_result_row(result, settings)]
 
     rows: list[str] = []
@@ -3823,10 +3836,20 @@ def _opens_by_repeating(result_rows: list[str], previous_rows: list[str] | None)
     A single-row block is never dropped. Two identical definitions in a row are a
     sheet's own business, and swallowing the second is a worse answer than printing it.
     """
+    if previous_rows is None or len(result_rows) <= 1:
+        return False
+    if result_rows[0] == previous_rows[-1]:
+        return True
+    # `M_u = U1(L/2)` over `= 0.15 qD L^2 + ...`, then the evaluation opening with
+    # `M_u = 0.15 qD L^2 + ...`: the same name, and the formula the row above ends on.
+    head, _, formula = result_rows[0].partition(" & = & ")
+    above_head, _, above_formula = previous_rows[-1].partition(" & = & ")
     return (
-        previous_rows is not None
-        and len(result_rows) > 1
-        and result_rows[0] == previous_rows[-1]
+        len(previous_rows) > 1
+        and bool(formula)
+        and above_head.strip() == ""
+        and above_formula == formula
+        and previous_rows[0].partition(" & = & ")[0] == head
     )
 
 

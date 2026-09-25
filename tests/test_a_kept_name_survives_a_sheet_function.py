@@ -65,3 +65,13 @@ def test_a_function_without_a_kept_name_prints_as_before(sheet):
     definition = row(page, r"M\left(x\right)")
     # SymPy's order, as 0.35.0 prints it: the written order would put -2 kgf cm first.
     assert definition.startswith(r"3\,\mathrm{kgf}\,x - 2\,\mathrm{kgf}"), definition
+
+
+def test_a_call_keeps_the_kept_name_and_its_argument(sheet):
+    page, console = sheet(FUNCTION + "As_2 = As_req(876940*kgf*cm)\nnumeric(As_2)\n")
+    assert not console, console
+    rows = page.split(r"\mathrm{As}_{2} & = & ", 1)[1].split(r"\end{array}", 1)[0]
+    assert r"\mathrm{As}_{req}\left(876940\,\mathrm{kgf} \cdot \mathrm{cm}\right)" in rows, rows
+    assert "f_{cw}" in rows and r"2 \cdot 876940" in rows, rows
+    assert "2.06" not in rows and "0.85" not in rows.split(r"\left(178.50", 1)[0], rows
+    assert rows.rstrip().endswith(r"5.55\,\mathrm{cm}^{2}"), rows

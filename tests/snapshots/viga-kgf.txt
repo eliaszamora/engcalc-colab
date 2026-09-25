@@ -126,7 +126,8 @@ Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del
 \rule{0pt}{0.7em} \end{array}
 
 === 22 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle U_{1}\left(\frac{L}{2}\right) \\[8pt]
+& = & \displaystyle 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2} \\[8pt]
 & = & \displaystyle 0.15\,\left(18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[4pt]
 & & \displaystyle \quad + 0.2\,\left(12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[8pt]
 & = & \displaystyle 1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}

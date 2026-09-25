@@ -105,7 +105,9 @@ def test_a_zero_whose_unit_cannot_be_found_is_still_defined(monkeypatch, capsys)
     text = page(monkeypatch, "q := 10*kN/m\nG(x) = q*x - x\ng_0 = G(0*m)\n")
     capsys.readouterr()
 
-    assert text.rstrip().endswith(r"g_0 & = & \displaystyle 0 \endarray"), text
+    # Written as the call first since the call of the sheet is shown
+    # (`test_a_call_of_the_sheet_is_written`); what is pinned here is that it is defined.
+    assert text.rstrip().endswith(r"g_0 & = & \displaystyle G(0 m) \\[8pt] & = & \displaystyle 0 \endarray"), text
 
 
 def test_a_value_that_is_not_zero_is_untouched(monkeypatch, capsys):

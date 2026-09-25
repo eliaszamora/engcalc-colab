@@ -743,6 +743,9 @@ class EngineeringEngine:
         # cell run again keeps its numbers. See `_image_asked_for`.
         self.figure_numbers: dict[tuple[str, str | None], int] = {}
         # The members of a frame, by name, in the order declared. See `_member_asked_for`.
+        # A function's body as it was written, for a function that reads a kept name: a
+        # call of it is written from this. See `test_a_kept_name_survives_a_sheet_function`.
+        self.written_functions: dict[str, object] = {}
         self.frame_members: dict[str, FrameMember] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
@@ -1331,10 +1334,13 @@ class EngineeringEngine:
         written form already makes - and a statement that cannot be read so shows its
         value alone rather than a formula that is not its own.
         """
+        body = statement.expression.body
+        called = self._call_of_the_sheet_shown(statement)
+        if called is not None:
+            return called
         shown = evaluator.display_input
         if shown is None:
             return None
-        body = statement.expression.body
         if isinstance(body, ast.Call) and getattr(body.func, "id", None) in _CALLS_THAT_SHOW:
             return shown
         reader = _Evaluator(self, getattr(statement, "matrix_literals", ()))
@@ -1346,6 +1352,34 @@ class EngineeringEngine:
             return reader.visit(body)
         except Exception:
             return None
+
+    def _call_of_the_sheet_shown(self, statement):
+        """`M_u = U1(L/2)`: the call, as the row's first formula, before what it expands to.
+
+        The row read `M_u = 0.15 qD L^2 + 0.2 qL L^2`, and which combination and where
+        were gone from the page. Only a named line whose whole right side is one call to a
+        function or combination of the sheet; see `test_a_call_of_the_sheet_is_written`.
+        """
+        body = statement.expression.body
+        if not (
+            statement.target is not None
+            and statement.parameters is None
+            and isinstance(body, ast.Call)
+            and isinstance(body.func, ast.Name)
+            and body.func.id in self.functions
+            and not body.keywords
+        ):
+            return None
+        # Read as written, or `G(0*m)` is shown as `G(0)`: SymPy folds `0*m` to a bare zero.
+        reader = _WrittenFormEvaluator(self, getattr(statement, "matrix_literals", ()))
+        reader.showing = True
+        try:
+            arguments = [reader.visit(argument) for argument in body.args]
+        except Exception:
+            return None
+        if any(is_matrix(argument) for argument in arguments):
+            return None
+        return sp.Function(body.func.id)(*arguments)
 
     def _written_form(self, statement, evaluator, value):
         """The definition's expression as it was typed, or None to show the evaluated one.
@@ -1375,7 +1409,7 @@ class EngineeringEngine:
         for node in ast.walk(statement.expression):
             if isinstance(node, ast.Call):
                 name = getattr(node.func, "id", None)
-                if name not in _WRITTEN_FORM_SAFE_CALLS:
+                if name not in _WRITTEN_FORM_SAFE_CALLS and name not in self.written_functions:
                     return None
             # A name already bound to a symbolic definition is substituted here, and
             # what arrives is an expression SymPy has already evaluated. The written
@@ -1556,6 +1590,7 @@ class EngineeringEngine:
         self.units_read_by_line.clear()
         self.figure_numbers.clear()
         self.frame_members.clear()
+        self.written_functions.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -2152,6 +2187,11 @@ class EngineeringEngine:
                 written = self._written_form(statement, evaluator, value)
             else:
                 written = None
+            if statement.target is not None and statement.parameters is not None:
+                if written is None:
+                    self.written_functions.pop(statement.target, None)
+                else:
+                    self.written_functions[statement.target] = written
             return EvaluationResult(
                 statement=statement,
                 display_input=shown,
@@ -2520,6 +2560,10 @@ class _Evaluator(ast.NodeVisitor):
         )
         default = self.visit(node.args[-1])
         return build_piecewise(branches, default)
+
+    def _called(self, name, function, bindings):
+        """A call of a function of the sheet: its body, with the arguments put in."""
+        return substitute_symbolic_value(function.expression, bindings)
 
     def visit_Call(self, node: ast.Call):
         """A call, with a `solve` answered once for both readings of its statement.
@@ -3052,7 +3096,7 @@ class _Evaluator(ast.NodeVisitor):
                 self._substitute_numeric_guard(guard, bindings)
                 for guard in function.numeric_guards
             )
-            return substitute_symbolic_value(function.expression, bindings)
+            return self._called(name, function, bindings)
 
         if name in _SCALAR_SYMBOLIC_FUNCTIONS:
             self._require_arity(name, args, 1, "expression")
@@ -4673,6 +4717,26 @@ _WRITTEN_FORM_SAFE_CALLS = frozenset(
 )
 
 
+def _flat_products(expression):
+    r"""`expression` with each product flat, as `_flattened` builds them.
+
+    An argument put into a written body arrives as a product inside a product, and
+    `2*(876940*kgf*cm)` printed `2 876940 kgf cm` - one number, to the eye. Flat, the page
+    writes `2 \cdot 876940 kgf cm`, as it does for `2*3*c` typed by hand.
+    """
+    if not getattr(expression, "args", ()):
+        return expression
+    arguments = [_flat_products(argument) for argument in expression.args]
+    if isinstance(expression, sp.Mul):
+        return _flattened(sp.Mul, *arguments)
+    if isinstance(expression, sp.Add):
+        return _flattened(sp.Add, *arguments)
+    try:
+        return expression.func(*arguments, evaluate=False)
+    except TypeError:
+        return expression.func(*arguments)
+
+
 def _flattened(kind, *args):
     r"""An unevaluated ``Add`` or ``Mul`` with no nesting of its own kind inside it.
 
@@ -4937,6 +5001,16 @@ class _WrittenFormEvaluator(_Evaluator):
     # `a - (b + c)` is a `Sub` and goes through `_combine`, where the negation lands
     # inside an `Add` and keeps its brackets - so that one is written as typed rather
     # than flattened to `a - b - c`, and gains from this without needing a unary rule.
+
+    def _called(self, name, function, bindings):
+        # A function that reads a kept name is called on the body it was written with,
+        # so `As_req(Mu)` keeps its `f_cw` in the row that says what the call expands to;
+        # and the arguments go in as written, or `2*Mu` folds into one number.
+        written = self.engine.written_functions.get(name)
+        if written is None:
+            return super()._called(name, function, bindings)
+        with sp.evaluate(False):
+            return _flat_products(written.xreplace(bindings))
 
     def visit_Name(self, node: ast.Name):
         # A kept name stands for itself. This is the whole of RC-3: without it the
