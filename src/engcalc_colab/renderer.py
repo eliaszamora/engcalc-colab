@@ -371,6 +371,10 @@ class _EngineeringLatexPrinter(LatexPrinter):
         sixteen or seventeen. Up to `_TYPED_FIGURES` in plain notation is printed as
         typed; the rest is rounded as above.
         """
+        typed = getattr(expr, "typed", None)
+        if typed is not None:
+            # `0.90` as the sheet typed it. See `test_a_number_is_written_as_typed`.
+            return typed
         written = super()._print_Float(expr)
         decimals = written.partition(".")[2]
         if len(decimals) <= self.render_settings.precision:
@@ -2851,7 +2855,27 @@ def _shaped_product_rows(
         return _substitution_latex(part, substitutions, settings, unit_literals)
 
     rows = [("- " if negative else "") + shown(sp.Mul(*plain, evaluate=False))]
-    rows += [rf"\quad \cdot \left({shown(bracket)}\right)" for bracket in brackets]
+    for bracket in brackets:
+        whole = rf"\quad \cdot \left({shown(bracket)}\right)"
+        if _latex_visual_width(whole) <= _SHAPED_ROW_ALLOWANCE * _NUMERIC_ROW_VISUAL_BUDGET:
+            rows.append(whole)
+            continue
+        # Too wide for a row: it wraps inside itself, its terms whole, opened on the first
+        # row and closed on the last. `phiMn = phi*As*fy*(d - a/2)` over plain `d` and `a`
+        # was taken apart instead, `(0.90)(1935)(420)` in front of every term.
+        pieces = _adaptive_additive_rows(
+            bracket,
+            substitutions,
+            visual_budget=_NUMERIC_ROW_VISUAL_BUDGET - 8.0,
+            settings=settings,
+            unit_literals=unit_literals,
+        )
+        if len(pieces) == 1:
+            rows.append(whole)
+            continue
+        rows.append(rf"\quad \cdot \left({pieces[0]}\right.")
+        rows += [rf"\qquad \left.{piece}\right." for piece in pieces[1:-1]]
+        rows.append(rf"\qquad \left.{pieces[-1]}\right)")
     return rows
 
 
@@ -3362,7 +3386,7 @@ class _WrittenLine:
         if isinstance(node, ast.Name):
             return self._name(node.id)
         if isinstance(node, ast.Constant):
-            return str(node.value)
+            return getattr(node, "typed", str(node.value))
         if isinstance(node, ast.UnaryOp):
             sign = "-" if isinstance(node.op, ast.USub) else "+"
             return sign + self.grouped(node.operand, 2)
@@ -4250,7 +4274,11 @@ def render_table(
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
     point_unit = _aggregate_unit(result.point_values, active_settings, result.point_unit)
     column_units = [
-        _aggregate_unit(column.values, active_settings, column.unit)
+        _aggregate_unit(
+            column.values + ((column.reference,) if column.reference is not None else ()),
+            active_settings,
+            column.unit,
+        )
         for column in result.columns
     ]
     headers = [

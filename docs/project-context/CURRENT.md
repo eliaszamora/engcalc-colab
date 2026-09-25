@@ -843,6 +843,20 @@ Call names, keywords and examples stay as the language writes them. Translating 
 `table`'s last argument was documented as "how many intervals": it is the number of rows,
 both ends included (`table(..., 11)` = "Once estaciones"); fixed and held by a contract.
 
+**Points 1-4 of that list** (he asked, 2026-09-25: *"aborda el 1 y 2 y 3 y 4"*), branch
+`fix/four-points`:
+1. `99e65ea` a number keeps the figures it was typed with: the parser notes them
+   (`matrix_syntax.mark_typed_decimals`, `node.typed`), the written form carries a
+   `TypedFloat` (turned back into a Float before `srepr`), the printer writes `typed`.
+   `formas` moves one row: `A_c = 0.30 · 0.60 m·m`.
+2. `6767aaf` a bracket too wide for a row wraps inside itself (`\left( ... \right.` /
+   `\left. ... \right)`): `phiMn` over plain `d`, `a` takes 3 rows, not 5. No sheet moves.
+3. `82e0e16` a table column of zeros takes its unit from the expression at mid-range
+   (`TableColumn.reference`): `M(x) [kN·m]`, not `[N·m]`.
+4. No change: an undefined `N` already warns since 2026-09-24 ("Said, not changed" was his
+   decision then); listed as pending by mistake. Refusing the line instead is his call.
+Suite 2988 on SymPy 1.14 and 1.13.3.
+
 Re-checked on the page on 2026-09-25 (0.37.0 + this branch), still real, none requested:
 - `a = 0.90*b` is written `0.9 b` - a coefficient from a code loses its trailing zero.
 - A long substitution over plain (not `keep`) definitions still expands into rows of terms:

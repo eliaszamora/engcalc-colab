@@ -730,6 +730,9 @@ class TableColumn:
     display_label: str
     unit: Any
     values: tuple[Any, ...]
+    # The column's value between its stations, when every station reads zero: what its
+    # unit is chosen by. See `test_a_table_column_of_zeros_takes_the_unit_of_its_kind`.
+    reference: Any = None
 
 
 @dataclass(frozen=True)

@@ -5,7 +5,7 @@ import keyword
 import re
 
 from .errors import EngSyntaxError, diagnostic_hint
-from .matrix_syntax import consume_matrix_statement, rewrite_matrix_literals
+from .matrix_syntax import consume_matrix_statement, mark_typed_decimals, rewrite_matrix_literals
 from .models import ParsedHeading, ParsedNarrative, ParsedNumericAssignment, ParsedStatement
 
 # `in` is the inch, and it is the first thing a US engineer writes. It is also a Python
@@ -247,7 +247,7 @@ def parse_cell(
                 # read the same way; a line with no brackets is left exactly as it was.
                 rewritten, matrix_literals = rewrite_matrix_literals(normalized, line_no)
                 try:
-                    expression = ast.parse(rewritten, mode="eval")
+                    expression = mark_typed_decimals(ast.parse(rewritten, mode="eval"), rewritten)
                 except SyntaxError as exc:
                     raise _invalid_syntax(line_no, rewritten) from exc
                 _validate_ast(expression, line_no)
@@ -307,7 +307,7 @@ def parse_cell(
             normalized = normalize_expression(rhs.strip())
             rewritten, matrix_literals = rewrite_matrix_literals(normalized, line_no)
             try:
-                expression = ast.parse(rewritten, mode="eval")
+                expression = mark_typed_decimals(ast.parse(rewritten, mode="eval"), rewritten)
             except SyntaxError as exc:
                 raise _invalid_syntax(line_no, rewritten) from exc
             _validate_ast(expression, line_no, piecewise_parameters=parameters)

@@ -127,3 +127,26 @@ def test_a_fraction_of_a_bracket_is_still_a_fraction(sheet):
     )
     assert not console, console
     assert r"\frac{1}{" not in page, page
+
+
+PHI_MN = (
+    "h := 500*mm\ncover := 40*mm\ndb_st := 10*mm\ndb := 20*mm\nAs := 1935*mm^2\nfy := 420*MPa\n"
+    "fc := 28*MPa\nb := 300*mm\nphi := 0.9\nd = h - cover - db_st - db/2\n"
+    "a = As*fy/(0.85*fc*b)\nphiMn = phi*As*fy*(d - a/2)\nnumeric(phiMn)\n"
+)
+
+
+def test_a_bracket_too_wide_for_a_row_wraps_inside_itself(sheet):
+    """`phiMn = phi*As*fy*(d - a/2)` over plain definitions of `d` and `a` substituted into
+    five rows, `(0.90)(1935)(420)` repeated in front of each term of the bracket, one of
+    them `((1935 mm2))^2`. The bracket was wider than a row, so it was taken apart. It
+    keeps its shape now and wraps inside itself: `(0.90)(1935)(420)`, then `· (500 mm -
+    ...` over as many rows as it needs, closed where it ends. Asked for on 2026-09-25."""
+    page, console = sheet(PHI_MN)
+    assert not console, console
+    block = page.split(r"\mathrm{phiMn} & = &", 1)[1]
+    substitution = block.split(r"\[8pt]")[1]
+    assert substitution.count(r"\left(0.90\right)") == 1, substitution
+    assert r"\quad \cdot \left(" in substitution and r"\right)" in substitution, substitution
+    assert r"\left(\left(1935" not in substitution, substitution
+    assert block.rstrip().endswith(r"280.20\,\mathrm{kN} \cdot \mathrm{m} \end{array}"), block

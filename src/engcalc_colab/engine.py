@@ -3708,11 +3708,24 @@ class _Evaluator(ast.NodeVisitor):
                     "table response columns have incompatible units"
                 ) from exc
 
+            reference = None
+            if all(float(value.magnitude) == 0 for value in normalized_values):
+                # Zero at every station - a simply supported moment at its supports - says
+                # nothing about the unit the column reads in; the middle of the range does.
+                try:
+                    _, middle = context.evaluate_symbolic(
+                        response.comparison_expression,
+                        overrides={variable: (point_values[0] + point_values[-1]) / 2},
+                    )
+                    reference = middle.to(canonical_unit)
+                except (EngEvaluationError, DimensionalityError, AttributeError):
+                    reference = None
             columns.append(
                 TableColumn(
                     display_label=response.display_label,
                     unit=canonical_unit,
                     values=normalized_values,
+                    reference=reference,
                 )
             )
 
@@ -4776,6 +4789,38 @@ _WRITTEN_FORM_SAFE_CALLS = frozenset(
 )
 
 
+class TypedFloat(sp.Float):
+    """A number with the figures it was typed with: `0.90`, which a Float prints `0.9`.
+
+    Only ever in a written form, which is shown and not computed with: arithmetic that
+    evaluates returns an ordinary Float. It equals and hashes as the Float it is, and it
+    is turned back into one before a written form is verified.
+    """
+
+    __slots__ = ("typed",)
+
+    def __new__(cls, typed: str):
+        number = sp.Float.__new__(cls, typed)
+        number.typed = typed
+        return number
+
+
+def _plain_floats(expression):
+    """`expression` with every TypedFloat an ordinary Float, for `srepr` to read back."""
+    if isinstance(expression, TypedFloat):
+        # `sp.Float(x)` hands a Float subclass back unchanged; `_new` builds a Float.
+        return sp.Float._new(expression._mpf_, expression._prec)
+    if not getattr(expression, "args", ()):
+        return expression
+    arguments = [_plain_floats(argument) for argument in expression.args]
+    if all(new is old for new, old in zip(arguments, expression.args)):
+        return expression
+    try:
+        return expression.func(*arguments, evaluate=False)
+    except TypeError:
+        return expression.func(*arguments)
+
+
 def _flat_products(expression):
     r"""`expression` with each product flat, as `_flattened` builds them.
 
@@ -4960,7 +5005,7 @@ def _agrees_with(written, value, expansions: dict | None = None) -> bool:
         # through `srepr` would bring `WrittenMin` back as an unknown function of that
         # name: both sides are compared as SymPy's own `Min` and `Max`, whose order is
         # canonical. See `test_a_kept_name_survives_min_and_max`.
-        rebuilt = sp.sympify(sp.srepr(_canonical_limits(written)))
+        rebuilt = sp.sympify(sp.srepr(_canonical_limits(_plain_floats(written))))
         if expansions:
             # A `keep` name stands for itself in the written form and for its expression
             # in the evaluated one, so the two only agree once the names are put back.
@@ -5096,6 +5141,13 @@ class _WrittenFormEvaluator(_Evaluator):
     # `a - (b + c)` is a `Sub` and goes through `_combine`, where the negation lands
     # inside an `Add` and keeps its brackets - so that one is written as typed rather
     # than flattened to `a - b - c`, and gains from this without needing a unary rule.
+
+    def visit_Constant(self, node: ast.Constant):
+        # `0.90` as typed, not the float 0.9. See `test_a_number_is_written_as_typed`.
+        typed = getattr(node, "typed", None)
+        if typed is not None:
+            return TypedFloat(typed)
+        return super().visit_Constant(node)
 
     def _called(self, name, function, bindings):
         # A function that reads a kept name is called on the body it was written with,
