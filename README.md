@@ -13,7 +13,36 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.37.0**.
+Current version: **0.38.0**.
+
+
+## v0.38.0 help in Spanish, numbers as typed, brackets in shape
+
+**`%eng_help` is in Spanish**: every summary, note, argument and placeholder, its headings
+(Argumentos, Ejemplo, Sentencias, Funciones) and its messages (`no hay ayuda para ...`). The
+names of the calls, their keywords and the examples stay as the language writes them.
+Translating found that `table`'s last argument was documented as a number of intervals: it
+is the number of rows, both ends included; a contract now holds the help to what `table`
+draws.
+
+**A number keeps the figures it was typed with**: `a = 0.90*b` reads `0.90 b`, not `0.9 b` -
+a code's factors are checked against the code. Only what was typed: `0.9` stays `0.9`.
+
+**A bracket too wide for a row wraps inside itself**, keeping the shape of its formula:
+
+```text
+phiMn = (0.90)(1935.00 mm²)(420.00 MPa)
+        · ((500.00 mm) - 0.59 (1935.00 mm²)(420.00 MPa)/((28.00 MPa)(300.00 mm))
+             - (40.00 mm) - (20.00 mm)/2 - (10.00 mm))
+      = 280.20 kN·m
+```
+
+It read in five rows, `(0.90)(1935)(420)` in front of every term.
+
+**A table column that is zero at every station** takes the unit of its kind: `M(x) [kN·m]`,
+not `[N·m]`.
+
+`formas` moves one row: `A_c = 0.30 · 0.60 m·m`, as typed.
 
 
 ## v0.37.0 help for what a sheet writes, long rows in shape, zeros in their unit
@@ -3585,6 +3614,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.38.0** — `%eng_help` in Spanish; a number keeps the figures it was typed with (`0.90`); a bracket too wide for a row wraps inside itself; a table column of zeros takes the unit of its kind.
 - **0.37.0** — `%eng_help` for `keep`, `case`, `combo`, `:=`, `member`, `frame_plot` and `image`; a long substitution row keeps the shape of its formula; a zero in a `:=` matrix reads in its neighbours' unit. No reference sheet moves.
 - **0.36.0** — `governing` over polynomials in seconds; `M_u = U1(L/2)` written as called; a kept name survives a function of the sheet; `U(x) envelope` and `Governing along x`; `load=[w_1, w_2]` and `point=[P, a]` on a member, a moment on a joint; a unit in a `:=` matrix is not `1 kN`.
 - **0.35.0** — `member` and `frame_plot`: M, V, N and the deformed shape drawn on a frame; `image` and numbered figures (Figura N); the frame's beam designed; a kept name survives `min` and `max`. No reference sheet moves.
@@ -3697,4 +3727,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.37.0`.
+Version: `0.38.0`.

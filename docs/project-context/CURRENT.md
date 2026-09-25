@@ -12,10 +12,10 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.37.0** - #320, `4795c47`, carrying #319 (`4cfa805`); six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.36.0** - #317, `9ebbd78` |
-| open PRs | none |
-| default suite | **2980 passing**, about a minute with `-n auto` |
+| released | **0.38.0** - this release PR, carrying #322 (`91c74dd`) and #323 (`333d54f`); its closure is recorded below |
+| before that | **0.37.0** - #320, `4795c47` |
+| open PRs | this release's |
+| default suite | **2988 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -807,8 +807,10 @@ In his Colab (the runtime deletion did not take - cell 13 installed 0.37.0 but p
 0.36.0 "already loaded" - so the session was restarted and cell 13 run again): 0.37.0
 loaded clean; cell 15 shows `As_2` in option B's shape and `%eng_help keep` with its note.
 
-**Exact next step:** none open; ask him what next. Open question to him: the help is in
-English like the rest of it - translate it to Spanish?
+#322 (help in Spanish) and #323 (points 1-3) merged with his yes; released as 0.38.0 by
+the release PR (*"Sí, fusiona #323 y publica la 0.38.0"*).
+
+**Exact next step:** close 0.38.0 (checks after its merge, his Colab).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
