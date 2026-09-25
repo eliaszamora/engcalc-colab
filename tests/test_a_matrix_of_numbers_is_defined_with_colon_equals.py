@@ -292,3 +292,13 @@ def test_a_row_of_matrices_is_written_as_a_matrix(sheet):
     written = page.split(r"G & = & \displaystyle ", 1)[1].split(r"\\", 1)[0]
     assert "[d, d]" not in written, written
     assert r"\left[\begin{matrix}\displaystyle d & \displaystyle d\end{matrix}\right]" in written, written
+
+
+def test_a_unit_in_a_written_entry_is_not_one_of_it(sheet):
+    """`f := [0*kN; 20*kN; 0*kN*m]` wrote its entries `0 1 kN`, `20 1 kN`, `0 1 kN 1 m`:
+    a unit that is a factor was printed as a unit standing alone, and `20 1 kN` reads as
+    201 kN. Seen in his Colab on 2026-09-24, in a beam written for `frame_plot`."""
+    page, console = sheet("f := [0*kN; 20*kN; 0*kN*m]\n")
+    assert not console, console
+    assert r"20\,\mathrm{kN}" in page, page
+    assert r"1\,\mathrm{kN}" not in page and r"1\,\mathrm{m}" not in page, page

@@ -3338,6 +3338,9 @@ class _WrittenLine:
                 joint = r"\,"
             if isinstance(node.right, ast.Name) and node.right.id in self.unit_names:
                 joint = r"\,"
+                # A factor, not a unit standing alone: `20*kN` is `20 kN`, and the one a
+                # lone unit is written with made it `20 1 kN`, which reads as 201 kN.
+                right = right.removeprefix("1" + r"\,")
             return left + joint + right
         if isinstance(node.op, ast.Div):
             return rf"\frac{{{self.latex(node.left)}}}{{{self.latex(node.right)}}}"
