@@ -83,7 +83,7 @@ def test_the_other_branch_when_it_does_not_hold(sheet):
     assert not console, console
     (note,) = notes
     assert r"5000.00\,\mathrm{kgf} \leq \phi_{v} V_{c} = 7603.63\,\mathrm{kgf}" in note, note
-    assert "421.83" not in math and r"\frac{\mathrm{Vu}}{\phi_{v}}" not in math, math
+    assert "421.83" not in math and r"\frac{\mathit{Vu}}{\phi_{v}}" not in math, math
     assert r"10138.17\,\mathrm{kgf}" in math, math
 
 
