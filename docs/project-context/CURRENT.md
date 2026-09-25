@@ -895,7 +895,7 @@ pinned `\mathrm{name}` updated; `conftest.block_text` reads `\mathit` too. Rows 
 formas 17, viga 15, memoria 2, dinámica 1 (and their palettes), E1 E2 E3 E4 E8 E10 E11 E14,
 his design sheet 33. Told him: `qL` the name and `q L` the product look alike in italic;
 he was advised to write names with a subscript (`q_L`, `V_u`, `f_c`, `A_s`). Suite 3038 on the
-branch, SymPy 1.14 and 1.13.3; snapshots regenerated, 51 lines, each only `mathrm` -> `mathit`.
+branch, SymPy 1.14 and 1.13.3; snapshots regenerated, 51 lines, each only `\mathrm` -> `\mathit`.
 
 **Exact next step:** his yes to merge the italic PR. Then `% for`, `% while`,
 numeric `solve` with an interval, `table` over a list; a release when he asks.
