@@ -15,8 +15,8 @@ _2026-09-25._
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
 | merged, not released | #326 `% if` (`1f926db`), #327 a `=` line of values (`c8a6036`), #328 names in italic (`cf8ffa5`) |
-| open | `feat/solve-in-a-range` - waiting for his yes; #329 `% for` (`44a8ed6`) and #330 `% while` (`2ff83d2`) merged |
-| default suite | **3087 passing** on the `solve` branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| open | `fix/a-named-numeric-line-and-table` - waiting for his yes; merged since 0.38.0: #326-#331 (`% if`, `=` values, italic, `% for`, `% while`, `solve` in a range) |
+| default suite | **3092 passing** on the named-`numeric` branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -934,7 +934,7 @@ the sentence writes `|f(c)|` expanded (`|b c²/2 - n A_s (d - c)|`).
 Seen on his exercise 2.1 with `%eng_units kN`, NOT changed (his call): the palette writes a
 typed `6000*mm^2` as `0.006 m²` and δ as `0.00241 m`.
 
-### `solve` in a range (branch `feat/solve-in-a-range`, PR open, not merged)
+### `solve` in a range (#331, merged with his yes, `9ac0c26`)
 
 He said *"Sí, fusiona #330 y sigue con el solve"*. `solve(eq(...), c, lower, upper)` (and
 with an expression instead of `eq`): `_solves_in_a_range` tells it from a system - the
@@ -950,14 +950,34 @@ and `NumericAssignmentResult.equation` puts the equation above the value
 and said "could not validate a solution set" (NOT fixed, `roots` itself). 10 contracts +
 help; mutation 9/9. Suite 3087 on SymPy 1.14 and 1.13.3; no page moves.
 
-His question (2026-09-25): a way to show formula and result without `=` then `numeric`.
-Today `delta_ba = numeric(F_ba*L_ba/(E*A_ba))` does it in one line but labels the row with
-the formula instead of `δ_ba` (a defect). Proposed: fix that label, and/or make a `:=`
-line that reads names show formula, substitution and value (only 8 such lines in `tools/`,
-most of them matrices). Waiting for his choice.
+### A named `numeric` / `result` line (branch `fix/a-named-numeric-line-and-table`)
 
-**Exact next step:** his yes on the `solve` PR and his choice on the one-line form. Then
-`table` over a list, his exercise 2.1 as a reference exercise; a release when he asks. Nothing checked in his Colab this evening
+He got lost among the forms; shown on his exercise: `:=` value, `=` formula, `numeric(x)`
+formula + substitution + value, `result(x)` formula + value, `x := formula` value only.
+He accepted keeping the forms and fixing `d = numeric(...)` (*"corrige el numeric"*).
+Three defects, one line each: the row was written under the formula, not `d`
+(`renderer._display_lhs` now falls back to the statement's target); `d = result(...)`
+showed the substitution (`_shows_substitution` read `^result(` off the source - the parser
+hands `result` on as `numeric` - and now allows `name =` in front); and the name was never
+defined (the engine returned before storing; now `namespace[d]` = the formula). 5
+contracts. Suite 3092.
+
+`table` over a list: it ALREADY worked - `table(As_req(Mu), Mu, [Mu_pos, Mu_2, 8e5*kgf*cm])`
+gives the table, sheet names and sheet functions included. My earlier "unsupported" came
+from probing with `As_req` undefined. Possible improvement, not done: name the rows
+(`Mu_pos`) instead of only their numbers.
+
+Open presentation questions he raised (2026-09-25), NOT done - need measuring in his Colab
+(his Chrome window was minimized again, `innerWidth` 0):
+- the `"""` text is Colab's sans-serif Markdown, not the math's KaTeX serif; he expected
+  the LaTeX letter;
+- the text sits too close to the equations, and he wants one consistent spacing rule for
+  every kind of block, not patches;
+- with `%eng_units kN` a typed `6000*mm^2` reads `0.006 m²` and δ `0.00241 m`.
+
+**Exact next step:** his yes on this PR; then, with his Colab visible, measure the fonts
+and the gaps between every kind of output and propose one spacing rule with rows. His
+exercise 2.1 as a reference exercise; a release when he asks. Nothing checked in his Colab this evening
 (his Chrome window stayed minimized); the `Como` spacing is still to calibrate there.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
