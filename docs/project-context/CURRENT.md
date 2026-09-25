@@ -736,8 +736,21 @@ pendientes"*), branch `fix/pending-findings`, one commit each so a choice can dr
 His answer: *"Opción B, apruebo los nombres y la sintaxis de cargas"*. Suite 2958. The 13
 sheets and 18 exercises differ from 0.35.0 only by points 3 and 4.
 
-**Exact next step:** CI on #316, check it in his Colab, then his yes to merge; publish
-only when he says.
+Also fixed, found on his Colab page while checking: a `:=` matrix wrote a unit that is a
+factor as `1 kN` (`[0*kN; 20*kN]` read `0 1 kN`, `20 1 kN` - already in 0.35.0);
+`_WrittenLine._binary` drops the one. 1 contract. Suite 2959. Found, NOT fixed: without a
+palette a `0*kN` entry of a `:=` matrix reads `0.00 N` (the zero loses its written unit).
+
+**In his Colab** (runtime deleted; cell 13 installs `fix/pending-findings`, built fresh,
+loaded clean; cell 14 = frame + design in one cell; cell 15 is new and mine: two beams on
+the kN palette through `run_cell_magic`): the whole frame and design ran in about 20 s
+(governing had taken 55 s alone), "Governing along x" with U5/U3/U2/U4/U6, the envelope
+"U(x) envelope" with U_max/U_min and axis U(x) [kgf·cm]; the point load (30.00 kN,
+40.00 under it, shear 20.00/-10.00) and the triangular load (arrows growing to
+12.00 kN/m, 27.71). That run was the commit before the `1 kN` fix.
+
+**Exact next step:** his yes to merge #316 (then close #315 as carried); publish only
+when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
