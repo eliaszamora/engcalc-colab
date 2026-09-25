@@ -4254,7 +4254,11 @@ def render_table(
     active_settings = settings or _DEFAULT_RENDER_SETTINGS
     point_unit = _aggregate_unit(result.point_values, active_settings, result.point_unit)
     column_units = [
-        _aggregate_unit(column.values, active_settings, column.unit)
+        _aggregate_unit(
+            column.values + ((column.reference,) if column.reference is not None else ()),
+            active_settings,
+            column.unit,
+        )
         for column in result.columns
     ]
     headers = [

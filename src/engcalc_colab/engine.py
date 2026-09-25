@@ -3708,11 +3708,24 @@ class _Evaluator(ast.NodeVisitor):
                     "table response columns have incompatible units"
                 ) from exc
 
+            reference = None
+            if all(float(value.magnitude) == 0 for value in normalized_values):
+                # Zero at every station - a simply supported moment at its supports - says
+                # nothing about the unit the column reads in; the middle of the range does.
+                try:
+                    _, middle = context.evaluate_symbolic(
+                        response.comparison_expression,
+                        overrides={variable: (point_values[0] + point_values[-1]) / 2},
+                    )
+                    reference = middle.to(canonical_unit)
+                except (EngEvaluationError, DimensionalityError, AttributeError):
+                    reference = None
             columns.append(
                 TableColumn(
                     display_label=response.display_label,
                     unit=canonical_unit,
                     values=normalized_values,
+                    reference=reference,
                 )
             )
 

@@ -59,3 +59,14 @@ def test_a_matrix_line_keeps_it_as_well(sheet):
     page, console = sheet("K = [2*kN/m, -1*kN/m; -1*kN/m, 1*kN/m]\nF = [0*kN; 10*kN]\nd := 1.50*solve(K, F)\n")
     assert not console, console
     assert "1.50" in page, page
+
+
+def test_a_table_column_of_zeros_takes_the_unit_of_its_kind(sheet):
+    """`table(M(x), x, 0, L, 2)` has stations at the supports only, where a simply
+    supported moment is zero, and its header read `M(x) [N·m]` on a kN sheet: a column of
+    zeros has no size to choose a unit by. It takes the unit the moment reads in between.
+    Asked for with the other open points on 2026-09-25."""
+    page, console = sheet("L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\ntable(M(x), x, 0, L, 2)\n")
+    assert not console, console
+    header = page.split(r"\begin{array}{l|r}", 1)[1].split(r"\hline", 1)[0]
+    assert r"\mathrm{kN} \cdot \mathrm{m}" in header, header
