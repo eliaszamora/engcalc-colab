@@ -119,6 +119,28 @@ _STATEMENTS: tuple[CallHelp, ...] = (
         ),
     ),
     CallHelp(
+        name="for",
+        kind="statement",
+        summary="Repite líneas de la hoja una vez por cada valor; la memoria muestra las filas de cada vuelta, como escritas a mano.",
+        forms=("% for variable in lista:", "% end", "% n = 0"),
+        arguments=(
+            ("variable", "el nombre que toma cada valor; varios a la vez con i, (a, b)"),
+            ("lista", "una lista, range(...) o enumerate(..., start=1); puede seguir en las líneas % siguientes"),
+        ),
+        note=(
+            "Las líneas % son Python y no se escriben en la memoria. {...} pone un valor de "
+            "ellas en una línea de la hoja: M_U{i} se escribe M_U1, M({a}, {b}) se escribe "
+            "M(1.4, 0). Un nombre de la hoja se escribe como nombre: con [F_1, F_2], {F} es "
+            "F_1 y luego F_2. % n = 0 y % n += 1 guardan un contador. Dentro puede ir un % if."
+        ),
+        example=(
+            "q_D := 18*kN/m\nq_L := 12*kN/m\nL := 6*m\n"
+            "M(a, b) = (a*q_D + b*q_L)*L^2/8\n"
+            "% for i, (a, b) in enumerate([(1.4, 0), (1.2, 1.6)], start=1):\n"
+            "M_U{i} := M({a}, {b})\n% end"
+        ),
+    ),
+    CallHelp(
         name="case",
         kind="statement",
         summary="Nombra la respuesta de un caso de carga, como función de la coordenada a lo largo del elemento.",
