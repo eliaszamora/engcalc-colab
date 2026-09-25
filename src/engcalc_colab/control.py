@@ -1,11 +1,16 @@
-"""`% if`: lines of a cell that decide which other lines run.
+"""`% if` and `% for`: lines of a cell that decide which other lines run, and how often.
 
-A line that starts with `%` is control, written as Python: `% if`, `% elif`, `% else`, and
-`% end` closes the block. Every other line is the sheet's own. The condition reads the
-values the sheet has computed by then, with their units, and only the branch that holds
-runs; it opens with a sentence that states the condition in numbers - `Como Vu = 7920.00
-kgf > φ_v V_c = 7603.63 kgf:` - because that is what a reviewer checks. Approved on
-2026-09-25; see `tests/test_a_sheet_decides_with_if.py`.
+A line that starts with `%` is control, written as Python: `% if`, `% elif`, `% else`,
+`% for`, and `% end` closes the block; `% n = 0` and `% n += 1` keep a helper of the `%`
+layer. Every other line is the sheet's own. A condition reads the values the sheet has
+computed by then, with their units, and only the branch that holds runs; it opens with a
+sentence that states the condition in numbers - `Como Vu = 7920.00 kgf > φ_v V_c = 7603.63
+kgf:` - because that is what a reviewer checks. A `% for` runs its lines once per value,
+and `{...}` in a sheet line puts a value of the `%` layer into it: `M_U{i} := M({a}, {b})`
+is written `M_U1 := M(1.4, 0)`, then `M_U2 := ...`. The memoria shows the rows each time,
+as if they had been written by hand, and nothing of the `%` layer. Approved on
+2026-09-25; see `tests/test_a_sheet_decides_with_if.py` and
+`tests/test_a_sheet_repeats_with_for.py`.
 
 The cell's structure is read before anything runs, so a block written wrong refuses the
 whole cell, as a line written wrong always has. The lines themselves are parsed a stretch
@@ -16,6 +21,7 @@ lines above it.
 from __future__ import annotations
 
 import ast
+import itertools
 import re
 from dataclasses import dataclass, field
 from typing import Iterator
@@ -26,8 +32,24 @@ from pint.errors import DimensionalityError
 from .errors import EngCalcError, EngEvaluationError, EngSyntaxError
 from .parser import normalize_expression, parse_cell
 
-_CONTROL = re.compile(r"^%\s*(\w+)\b(.*)$")
-_KEYWORDS = ("if", "elif", "else", "end")
+_KEYWORD = re.compile(r"^(\w+)\b(.*)$", re.S)
+_BLOCKS = ("if", "elif", "else", "end", "for")
+_INSERTED = re.compile(r"\{([^{}]+)\}")
+# A `% for` that would write more rows than a memoria can hold is a mistake, and one that
+# never ends would hang the notebook. The same limit `% while` will have.
+_MOST_ITERATIONS = 1000
+# What the `%` layer can call. It is Python for arranging a sheet, not for reaching out of it.
+_BUILTINS = {
+    name: __builtins__[name] if isinstance(__builtins__, dict) else getattr(__builtins__, name)
+    for name in (
+        "abs", "enumerate", "float", "int", "len", "list", "max", "min", "range",
+        "reversed", "round", "sorted", "str", "sum", "tuple", "zip",
+    )
+}
+_WHAT_A_PERCENT_LINE_IS = (
+    "a line that starts with % is % if, % elif, % else, % for, % end, or a helper such "
+    "as % n = 0"
+)
 
 
 # Room above and below the sentence: a strut 1.5em over the baseline and 0.7em under it.
@@ -51,6 +73,8 @@ class ConditionNote:
 class _Stretch:
     first_line: int
     lines: list[str] = field(default_factory=list)
+    # Indices of the lines inside a `\"\"\"` block: text, where a brace is LaTeX's.
+    text: set[int] = field(default_factory=set)
 
 
 @dataclass
@@ -66,31 +90,110 @@ class _IfBlock:
     branches: list[_Branch] = field(default_factory=list)
 
 
-def _lines(cell: str) -> Iterator[tuple[int, str, bool]]:
-    """Each line, numbered, and whether it is control: `%` first, outside `\"\"\"` text."""
+@dataclass
+class _ForBlock:
+    line_no: int
+    header: ast.For
+    body: list = field(default_factory=list)
+
+
+@dataclass
+class _Helper:
+    line_no: int
+    code: str
+
+
+class _SheetName:
+    """A name of the sheet inside the `%` layer: it compares by its value, and `{F}` writes
+    `F_1` - the name, as a hand-written sheet would - not its number."""
+
+    def __init__(self, name: str, quantity) -> None:
+        self.name = name
+        self.quantity = quantity
+
+    def __repr__(self) -> str:
+        return self.name
+
+    # Arithmetic gives a plain value: it has no name to be written with.
+    def _other(self, other):
+        return other.quantity if isinstance(other, _SheetName) else other
+
+    def __add__(self, other): return self.quantity + self._other(other)
+    def __radd__(self, other): return self._other(other) + self.quantity
+    def __sub__(self, other): return self.quantity - self._other(other)
+    def __rsub__(self, other): return self._other(other) - self.quantity
+    def __mul__(self, other): return self.quantity * self._other(other)
+    def __rmul__(self, other): return self._other(other) * self.quantity
+    def __truediv__(self, other): return self.quantity / self._other(other)
+    def __rtruediv__(self, other): return self._other(other) / self.quantity
+    def __neg__(self): return -self.quantity
+    def __lt__(self, other): return self.quantity < self._other(other)
+    def __le__(self, other): return self.quantity <= self._other(other)
+    def __gt__(self, other): return self.quantity > self._other(other)
+    def __ge__(self, other): return self.quantity >= self._other(other)
+
+
+class _Scope(dict):
+    """The `%` layer's variables; a name it does not hold is looked up on the sheet."""
+
+    def __init__(self, engine) -> None:
+        super().__init__()
+        self.engine = engine
+
+    def __missing__(self, name):
+        value = self.engine.numeric_context.values.get(name)
+        if value is None:
+            raise KeyError(name)
+        return _SheetName(name, value)
+
+
+def _lines(cell: str) -> list[tuple[int, str, str]]:
+    """Each line, numbered, as `text` (inside `\"\"\"`), `sheet` or `control`.
+
+    A `%` line whose brackets are still open goes on in the `%` lines after it, as Python
+    does: `% for i, c in enumerate([(1.4, 0),` then `%   (1.2, 1.6)]):` is one header.
+    """
+    raw_lines = cell.splitlines()
+    out: list[tuple[int, str, str]] = []
     in_text = False
-    for index, raw in enumerate(cell.splitlines()):
+    index = 0
+    while index < len(raw_lines):
+        raw = raw_lines[index]
         text = raw.strip()
+        index += 1
         if in_text:
             in_text = '"""' not in text
-            yield index + 1, raw, False
+            out.append((index, raw, "text"))
             continue
         if text.startswith('"""'):
             # `"""` alone opens a block; `"""One line."""` opens and closes it.
             in_text = '"""' not in text[3:]
-            yield index + 1, raw, False
+            out.append((index, raw, "text"))
             continue
-        yield index + 1, raw, text.startswith("%")
+        if not text.startswith("%"):
+            out.append((index, raw, "sheet"))
+            continue
+        line_no = index
+        code = text[1:].strip()
+        while _open_brackets(code) > 0 and index < len(raw_lines) and raw_lines[index].strip().startswith("%"):
+            code += " " + raw_lines[index].strip()[1:].strip()
+            index += 1
+        out.append((line_no, code, "control"))
+    return out
+
+
+def _open_brackets(code: str) -> int:
+    return sum(code.count(c) for c in "([{") - sum(code.count(c) for c in ")]}")
 
 
 def has_control(cell: str) -> bool:
-    return any(control for _line_no, _raw, control in _lines(cell))
+    return any(kind == "control" for _line_no, _raw, kind in _lines(cell))
 
 
 def _structure(cell: str) -> list:
-    """The cell as stretches of sheet lines and `% if` blocks, nested."""
+    """The cell as stretches of sheet lines, helpers and `% if` / `% for` blocks, nested."""
     root: list = []
-    stack: list[tuple[_IfBlock, list]] = []
+    stack: list[tuple[object, list]] = []
     body = root
 
     def stretch(line_no: int) -> _Stretch:
@@ -100,24 +203,24 @@ def _structure(cell: str) -> list:
         body.append(new)
         return new
 
-    for line_no, raw, control in _lines(cell):
-        text = raw.strip()
-        if not control:
+    for line_no, raw, kind in _lines(cell):
+        if kind != "control":
             current = stretch(line_no)
             # Keep the stretch's lines aligned with the cell's, so a line inside it is
             # numbered as the cell numbers it.
             while current.first_line + len(current.lines) < line_no:
                 current.lines.append("")
+            if kind == "text":
+                current.text.add(len(current.lines))
             current.lines.append(raw)
             continue
-        match = _CONTROL.match(text)
+        code = raw
+        match = _KEYWORD.match(code)
         keyword = match.group(1) if match else ""
         rest = match.group(2).strip() if match else ""
-        if keyword not in _KEYWORDS:
-            raise EngSyntaxError(
-                f"line {line_no}: a line that starts with % is % if, % elif, % else "
-                "or % end"
-            )
+        if keyword not in _BLOCKS:
+            body.append(_helper(code, line_no))
+            continue
         condition = rest[:-1].strip() if rest.endswith(":") else rest
         if keyword == "if":
             if not condition:
@@ -126,10 +229,20 @@ def _structure(cell: str) -> list:
             body.append(block)
             stack.append((block, body))
             body = block.branches[-1].body
+        elif keyword == "for":
+            block = _ForBlock(line_no=line_no, header=_for_header(code, line_no))
+            body.append(block)
+            stack.append((block, body))
+            body = block.body
         elif keyword in ("elif", "else"):
             if not stack:
                 raise EngSyntaxError(f"line {line_no}: % {keyword} with no % if open above it")
             block, _outer = stack[-1]
+            if isinstance(block, _ForBlock):
+                raise EngSyntaxError(
+                    f"line {line_no}: % {keyword} belongs to a % if; the % for of line "
+                    f"{block.line_no} has none"
+                )
             if block.branches[-1].condition is None:
                 raise EngSyntaxError(f"line {line_no}: % {keyword} after the % else of line {block.branches[-1].line_no}")
             if keyword == "elif" and not condition:
@@ -138,30 +251,68 @@ def _structure(cell: str) -> list:
             body = block.branches[-1].body
         else:  # end
             if not stack:
-                raise EngSyntaxError(f"line {line_no}: % end with no % if open above it")
+                raise EngSyntaxError(f"line {line_no}: % end with no % if or % for open above it")
             _block, body = stack.pop()
     if stack:
         block, _outer = stack[-1]
-        raise EngSyntaxError(f"line {block.line_no}: this % if has no % end")
+        kind = "for" if isinstance(block, _ForBlock) else "if"
+        raise EngSyntaxError(f"line {block.line_no}: this % {kind} has no % end")
     return root
 
 
+def _for_header(code: str, line_no: int) -> ast.For:
+    """`for i, (a, b) in enumerate(...):` read as Python, or refused with its line."""
+    try:
+        (header,) = ast.parse(code + "\n    pass").body if code.endswith(":") else (None,)
+    except SyntaxError:
+        header = None
+    if not isinstance(header, ast.For):
+        raise EngSyntaxError(
+            f"line {line_no}: % for is written as Python, as in % for i in [1, 2]: - "
+            f"this one reads {code}"
+        )
+    return header
+
+
+def _helper(code: str, line_no: int) -> _Helper:
+    """`% n = 0`, `% n += 1`: a variable of the `%` layer, never on the page."""
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        tree = None
+    if tree is None or len(tree.body) != 1 or not isinstance(tree.body[0], (ast.Assign, ast.AugAssign)):
+        raise EngSyntaxError(f"line {line_no}: {_WHAT_A_PERCENT_LINE_IS}")
+    return _Helper(line_no, code)
+
+
 def _check_lines(nodes: list) -> None:
-    """Every sheet line parsed before any runs, as a cell without `%` lines is."""
+    """Every sheet line parsed before any runs, as a cell without `%` lines is.
+
+    A `{...}` is read as a number here: what it will hold is known only when it runs, and
+    a line written wrong around it is wrong whatever it holds.
+    """
     for node in nodes:
         if isinstance(node, _Stretch):
-            _parse_stretch(node)
-        else:
+            _parse_stretch(node, lambda _text, _line_no: "1")
+        elif isinstance(node, _ForBlock):
+            _check_lines(node.body)
+        elif isinstance(node, _IfBlock):
             for branch in node.branches:
                 if branch.condition is not None:
                     _condition_tree(branch.condition, branch.line_no)
                 _check_lines(branch.body)
 
 
-def _parse_stretch(stretch: _Stretch):
+def _parse_stretch(stretch: _Stretch, insert=None):
+    lines = list(stretch.lines)
+    if insert is not None:
+        for index, line in enumerate(lines):
+            if index not in stretch.text and "{" in line:
+                line_no = stretch.first_line + index
+                lines[index] = _INSERTED.sub(lambda m, n=line_no: insert(m.group(1), n), line)
     # Empty lines in front number the stretch as the cell does; a leading blank line
     # changes nothing on the page.
-    return parse_cell("\n" * (stretch.first_line - 1) + "\n".join(stretch.lines))
+    return parse_cell("\n" * (stretch.first_line - 1) + "\n".join(lines))
 
 
 def _condition_tree(text: str, line_no: int) -> ast.AST:
@@ -179,34 +330,154 @@ def run(cell: str, engine, settings) -> Iterator:
     """
     tree = _structure(cell)
     _check_lines(tree)
-    yield from _walk(tree, engine, settings)
+    yield from _walk(tree, engine, settings, _Scope(engine))
 
 
-def _walk(nodes: list, engine, settings) -> Iterator:
+def _walk(nodes: list, engine, settings, scope: _Scope) -> Iterator:
     for node in nodes:
         if isinstance(node, _Stretch):
-            yield from _parse_stretch(node)
-            continue
-        held = []
-        chosen = None
-        for branch in node.branches:
-            if branch.condition is None:
-                chosen = branch
-                break
-            tree = _condition_tree(branch.condition, branch.line_no)
-            verdict, stated = _decide(tree, branch.line_no, engine, settings)
-            if verdict:
-                chosen = branch
-                break
-            held.append((tree, branch.line_no))
-        if chosen is None:
-            continue
-        # Why this branch: the conditions above it that did not hold, then its own.
-        said = [_negated(tree, line_no, engine, settings) for tree, line_no in held]
-        if chosen.condition is not None:
-            said.append(stated)
-        yield ConditionNote(latex=f"{_ROOM}\\textbf{{Como}}\\;\\; {_AND.join(said)}\\,\\text{{:}}")
-        yield from _walk(chosen.body, engine, settings)
+            yield from _parse_stretch(node, lambda text, line_no: _inserted(text, line_no, scope))
+        elif isinstance(node, _Helper):
+            _run_helper(node, scope)
+        elif isinstance(node, _ForBlock):
+            yield from _repeat(node, engine, settings, scope)
+        else:
+            yield from _choose(node, engine, settings, scope)
+
+
+def _choose(node: _IfBlock, engine, settings, scope: _Scope) -> Iterator:
+    held = []
+    chosen = None
+    stated = ""
+    for branch in node.branches:
+        if branch.condition is None:
+            chosen = branch
+            break
+        tree = _in_scope(_condition_tree(branch.condition, branch.line_no), scope)
+        verdict, stated = _decide(tree, branch.line_no, engine, settings)
+        if verdict:
+            chosen = branch
+            break
+        held.append((tree, branch.line_no))
+    if chosen is None:
+        return
+    # Why this branch: the conditions above it that did not hold, then its own.
+    said = [_negated(tree, line_no, engine, settings) for tree, line_no in held]
+    if chosen.condition is not None:
+        said.append(stated)
+    yield ConditionNote(latex=f"{_ROOM}\\textbf{{Como}}\\;\\; {_AND.join(said)}\\,\\text{{:}}")
+    yield from _walk(chosen.body, engine, settings, scope)
+
+
+def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
+    line_no = node.line_no
+    source = ast.unparse(node.header.iter)
+    try:
+        values = iter(_evaluated(node.header.iter, scope, line_no))
+    except TypeError as exc:
+        raise EngEvaluationError(
+            f"line {line_no}: % for goes through a list, a range or an enumerate; "
+            f"{source} is not one"
+        ) from exc
+    values = list(itertools.islice(values, _MOST_ITERATIONS + 1))
+    if len(values) > _MOST_ITERATIONS:
+        raise EngEvaluationError(
+            f"line {line_no}: this % for runs more than {_MOST_ITERATIONS} times, more rows "
+            "than a memoria can hold"
+        )
+    assign = compile(
+        ast.fix_missing_locations(ast.Module(
+            body=[ast.Assign(targets=[node.header.target], value=ast.Name("__value__", ast.Load()))],
+            type_ignores=[],
+        )),
+        "<% for>",
+        "exec",
+    )
+    for value in values:
+        try:
+            exec(assign, {"__builtins__": _BUILTINS, "__value__": value}, scope)  # noqa: S102 - the sheet's own % layer
+        except (TypeError, ValueError) as exc:
+            raise EngEvaluationError(
+                f"line {line_no}: % for cannot give {ast.unparse(node.header.target)} the value "
+                f"{value!r}: {exc}"
+            ) from exc
+        yield from _walk(node.body, engine, settings, scope)
+
+
+def _run_helper(node: _Helper, scope: _Scope) -> None:
+    try:
+        exec(compile(node.code, "<% line>", "exec"), {"__builtins__": _BUILTINS}, scope)  # noqa: S102
+    except NameError as exc:
+        raise EngEvaluationError(f"line {node.line_no}: {_unknown(exc)}") from exc
+    except Exception as exc:  # noqa: BLE001 - said in the sheet's words, with its line
+        raise EngEvaluationError(f"line {node.line_no}: % {node.code} failed: {exc}") from exc
+
+
+def _evaluated(tree: ast.AST, scope: _Scope, line_no: int):
+    try:
+        return eval(  # noqa: S307 - the sheet's own % layer, with a short list of builtins
+            compile(ast.Expression(body=tree), "<% line>", "eval"), {"__builtins__": _BUILTINS}, scope
+        )
+    except NameError as exc:
+        raise EngEvaluationError(f"line {line_no}: {_unknown(exc)}") from exc
+    except EngCalcError:
+        raise
+    except TypeError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - said in the sheet's words, with its line
+        raise EngEvaluationError(f"line {line_no}: {ast.unparse(tree)} failed: {exc}") from exc
+
+
+def _unknown(exc: NameError) -> str:
+    name = getattr(exc, "name", None) or str(exc)
+    return f"{name} is neither a variable of the % lines nor a value of the sheet"
+
+
+def _inserted(text: str, line_no: int, scope: _Scope) -> str:
+    """What `{text}` writes into a sheet line: a number, a name of the sheet, or text."""
+    try:
+        tree = ast.parse(text.strip(), mode="eval").body
+    except SyntaxError as exc:
+        raise EngSyntaxError(f"line {line_no}: {{{text}}} is not something to put in a line") from exc
+    try:
+        value = _evaluated(tree, scope, line_no)
+    except TypeError as exc:
+        raise EngEvaluationError(f"line {line_no}: {{{text}}} failed: {exc}") from exc
+    if isinstance(value, _SheetName):
+        return value.name
+    if isinstance(value, str):
+        return value
+    if isinstance(value, int) and not isinstance(value, bool):
+        return str(value)
+    if isinstance(value, float):
+        return repr(value)
+    raise EngEvaluationError(
+        f"line {line_no}: {{{text}}} holds {value!r}, and a line can take a number, a name "
+        "of the sheet or text; put the arithmetic in the line itself, as 2*{F}"
+    )
+
+
+class _InScope(ast.NodeTransformer):
+    """A condition inside a `% for` reads its variables: `x > 2` with `x` = 3 is `3 > 2`."""
+
+    def __init__(self, scope: _Scope) -> None:
+        self.scope = scope
+
+    def visit_Name(self, node: ast.Name):
+        if node.id not in dict.keys(self.scope):
+            return node
+        value = dict.__getitem__(self.scope, node.id)
+        if isinstance(value, _SheetName):
+            return ast.copy_location(ast.Name(value.name, ast.Load()), node)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            return ast.copy_location(ast.Constant(value), node)
+        return node
+
+
+def _in_scope(tree: ast.AST, scope: _Scope) -> ast.AST:
+    if not dict.__len__(scope):
+        return tree
+    return _InScope(scope).visit(tree)
 
 
 # -- deciding, and saying it -------------------------------------------------------------

@@ -53,7 +53,7 @@ def run_help(monkeypatch, line: str):
 # He asked on 2026-09-24 what `keep` was for: it was the one thing on the frame's sheet
 # the help had no entry for, and neither had `member`, `frame_plot` or `image`.
 # `if` stands for its block: `% elif`, `% else` and `% end` are explained in its entry.
-DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":=", "if"}
+DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":=", "if", "for"}
 
 
 def test_every_call_the_language_accepts_can_be_looked_up():
@@ -175,6 +175,11 @@ def test_help_for_keep_says_what_it_is_for(monkeypatch):
     (html,) = [item.data for item in run_help(monkeypatch, "keep")]
     assert "keep nombre = expresión" in html
     assert "C = 0.85 b d fc" in html and "C = f_cw b d" in html, html
+
+
+def test_help_for_for_shows_the_block_and_the_braces(monkeypatch):
+    (html,) = [item.data for item in run_help(monkeypatch, "for")]
+    assert "% for" in html and "% end" in html and "M_U{i}" in html, html
 
 
 def test_help_for_if_shows_the_block_and_the_sentence(monkeypatch):

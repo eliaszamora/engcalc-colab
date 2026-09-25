@@ -14,8 +14,9 @@ _2026-09-25._
 |---|---|
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
-| merged, not released | #326 `% if` (`1f926db`) and #327 a `=` line of values - see "Control flow with %" |
-| default suite | **3029 passing** on `main` after both (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| merged, not released | #326 `% if` (`1f926db`), #327 a `=` line of values (`c8a6036`), #328 names in italic (`cf8ffa5`) |
+| open | `feat/for-blocks`: `% for` - waiting for his yes |
+| default suite | **3058 passing** on the `% for` branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -885,7 +886,7 @@ one-letter names). Headings and `"""` text are Colab's font. Found: a name of mo
 letter (`Vu`, `fc`, `As`, `phiMn`) is `\mathrm` - upright, the same letter as a unit -
 while `V_c` is italic. He chose italic: branch `feat/names-in-italic`.
 
-### Names of several letters in italic (branch `feat/names-in-italic`)
+### Names of several letters in italic (#328, merged with his yes, `cf8ffa5`)
 
 He asked (2026-09-25) to check the fonts, saw the rows that move, and approved (*"Apruebo
 la cursiva"*). `_print_Symbol` writes `\mathit{Vu}` - text italic, the letters kept one
@@ -897,8 +898,27 @@ his design sheet 33. Told him: `qL` the name and `q L` the product look alike in
 he was advised to write names with a subscript (`q_L`, `V_u`, `f_c`, `A_s`). Suite 3038 on the
 branch, SymPy 1.14 and 1.13.3; snapshots regenerated, 51 lines, each only `\mathrm` -> `\mathit`.
 
-**Exact next step:** his yes to merge the italic PR. Then `% for`, `% while`,
-numeric `solve` with an interval, `table` over a list; a release when he asks.
+### `% for` (branch `feat/for-blocks`, PR open, not merged)
+
+He said *"Sí, fusiona #328 y sigue con el for"*. `control.py`: `% for <target> in <iter>:`
+parsed as Python (`_for_header`); a `%` line with an open bracket continues on the `%`
+lines after it (`_lines`); `% end` closes it; any other `%` line must be one assignment,
+a helper (`% n = 0`, `% n += 1`, `_Helper`). One `_Scope` per cell: the `%` layer's
+variables, and a sheet `:=` name read in it is a `_SheetName` - `{F}` writes `F_1`, not a
+number; arithmetic on it gives a plain value that `{...}` refuses with its line. `{...}`
+is filled in on sheet lines only, never inside `"""` text (LaTeX braces); `_check_lines`
+reads each `{...}` as `1` so a body written wrong refuses the cell first. A `% if` inside
+reads the loop's variables (`_InScope`). Cap 1000 iterations. Builtins limited to range,
+enumerate, zip, len, abs, min, max, round, int, float, str, list, tuple, sum, sorted,
+reversed. `%eng_help for`. 17 contracts (`tests/test_a_sheet_repeats_with_for.py`),
+mutation 10/10. Suite 3058 on SymPy 1.14 and 1.13.3; 13 sheets and 18 exercises identical
+to `main`. His design sheet with its 24 combination lines as four `% for` blocks over one
+`% combos = [...]`: 179 -> 169 lines, and the page is the same 377 rows, byte for byte.
+
+**Exact next step:** his yes on the `% for` PR. Then `% while` (final value and the count,
+cap 1000), numeric `solve` with an interval, `table` over a list, his exercise 2.1 as a
+reference exercise; a release when he asks. Nothing checked in his Colab this evening
+(his Chrome window stayed minimized); the `Como` spacing is still to calibrate there.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
