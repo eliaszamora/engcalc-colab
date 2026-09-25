@@ -378,12 +378,12 @@ _ENTRIES: tuple[CallHelp, ...] = (
     CallHelp(
         name="table",
         summary="Tabula una o más expresiones en estaciones equiespaciadas.",
-        forms=("table(expresión, variable, inferior, superior, pasos)",),
+        forms=("table(expresión, variable, inferior, superior, estaciones)",),
         arguments=(
             ("expresión", "lo que se tabula"),
             ("variable", "la variable que avanza"),
             ("inferior, superior", "el intervalo"),
-            ("pasos", "cuántos tramos"),
+            ("estaciones", "cuántas filas, contando ambos extremos: 11 da x = 0, L/10, ..., L"),
         ),
         example="L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\ntable(M(x), x, 0, L, 4)",
     ),

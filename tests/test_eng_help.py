@@ -189,3 +189,25 @@ def test_the_help_is_written_in_spanish(monkeypatch):
     assert "numeric(expresión, unidad)" in html, html
     for entry in CATALOGUE.values():
         assert not entry.summary.startswith(("The ", "A ", "An ", "Draw", "Show")), entry.summary
+
+
+def test_the_help_for_table_counts_what_table_counts(monkeypatch):
+    """The last argument of `table` is the number of rows, both ends included - the beam
+    sheet's `table(..., 11)` is "Once estaciones". The help said "how many intervals",
+    which gives one row more than the table draws. Found translating the help."""
+    import contextlib
+    import io
+
+    import engcalc_colab.magic as magic_module
+    from IPython.display import Math
+
+    (html,) = [item.data for item in run_help(monkeypatch, "table")]
+    assert "estaciones" in html and "ambos extremos" in html, html
+    shown = []
+    monkeypatch.setattr(magic_module, "display", shown.append)
+    with contextlib.redirect_stdout(io.StringIO()):
+        magic_module.EngMagics(shell=None).eng(
+            "", "L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L-x)/2\ntable(M(x), x, 0, L, 4)\n"
+        )
+    table = [item.data for item in shown if isinstance(item, Math)][-1]
+    assert table.split(r"\hline", 1)[1].count("&") == 4, table
