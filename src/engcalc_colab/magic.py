@@ -8,6 +8,7 @@ from html import escape
 from IPython.core.magic import Magics, cell_magic, line_magic, magics_class
 from IPython.display import HTML, Markdown, Math, display
 
+from . import control
 from .engine import EngineeringEngine
 from .errors import EngCalcError
 from .reference import CATALOGUE
@@ -281,7 +282,23 @@ class EngMagics(Magics):
     def _eng_cell(self, cell: str):
         pending_results: list[CalculationResult] = []
         try:
-            for item in parse_cell(cell):
+            # A cell with `%` lines decides as it goes which of its lines run; one without
+            # is parsed whole and runs as it always has. See `control`.
+            items = (
+                control.run(cell, self.engine, self._settings)
+                if control.has_control(cell)
+                else parse_cell(cell)
+            )
+            for item in items:
+                if isinstance(item, control.ConditionNote):
+                    _display_equation_group(
+                        pending_results,
+                        self._settings(),
+                    )
+                    pending_results.clear()
+                    display(Markdown(item.markdown))
+                    continue
+
                 if isinstance(item, ParsedHeading):
                     _display_equation_group(
                         pending_results,
