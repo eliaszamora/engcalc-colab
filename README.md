@@ -13,7 +13,32 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.36.0**.
+Current version: **0.37.0**.
+
+
+## v0.37.0 help for what a sheet writes, long rows in shape, zeros in their unit
+
+**`%eng_help` explains the statements and the frame calls.** `keep`, `case`, `combo` and
+`:=` had no entry, nor had `member`, `frame_plot` or `image`. Each now says what it is for,
+its forms and an example that runs - `%eng_help keep` shows the page with and without it:
+`C = 0.85 b d fc` against `C = f_cw b d`. `%eng_help` lists the statements apart from the
+calls.
+
+**A long substitution row keeps the shape of its formula.**
+
+```text
+As_2 = As_req(876940 kgf·cm)
+     = f_cw b d/fy (1 - sqrt(1 - 2 · 876940 kgf·cm/(φ f_cw b d²)))
+     = (178.50 kgf/cm²)(30.00 cm)(44.00 cm)/(4200.00 kgf/cm²)
+       · (1 - sqrt(1 - 2 · 876940 kgf·cm/((0.90)(178.50 kgf/cm²)(30.00 cm)(44.00 cm)²)))
+     = 5.55 cm²
+```
+
+It was expanded before it was split, into two terms and a stray `· 1/(4200 kgf/cm²)`. A
+fraction of a bracket - a centroid - stays as it was. No reference sheet moves.
+
+**A zero in a matrix of numbers reads in the unit of its neighbours**: `[0*kN; 20*kN]` read
+`0.00 N` beside `20.00 kN` without a palette.
 
 
 ## v0.36.0 governing in seconds, calls written as called, loads on a member
@@ -3560,6 +3585,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.37.0** — `%eng_help` for `keep`, `case`, `combo`, `:=`, `member`, `frame_plot` and `image`; a long substitution row keeps the shape of its formula; a zero in a `:=` matrix reads in its neighbours' unit. No reference sheet moves.
 - **0.36.0** — `governing` over polynomials in seconds; `M_u = U1(L/2)` written as called; a kept name survives a function of the sheet; `U(x) envelope` and `Governing along x`; `load=[w_1, w_2]` and `point=[P, a]` on a member, a moment on a joint; a unit in a `:=` matrix is not `1 kN`.
 - **0.35.0** — `member` and `frame_plot`: M, V, N and the deformed shape drawn on a frame; `image` and numbered figures (Figura N); the frame's beam designed; a kept name survives `min` and `max`. No reference sheet moves.
 - **0.34.3** — what the second independent review found: a matrix given numbers drops its formula; `min`, sheet functions and comma rows on a `:=` line that reads a matrix; a `:=` matrix over several lines. No reference sheet moves.
@@ -3671,4 +3697,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.36.0`.
+Version: `0.37.0`.
