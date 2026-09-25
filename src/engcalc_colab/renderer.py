@@ -18,7 +18,7 @@ from pint.util import UnitsContainer
 
 from .matrix_modes import mode_key
 from .matrix_numeric import MATRIX_CALLS, QuantityMatrix
-from .unit_text import quantity_text, unit_text
+from .unit_text import quantity_text, unit_text, unit_was_written
 from .models import (
     AssumptionResult,
     CharacteristicInterval,
@@ -4805,7 +4805,11 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         # used `:=`. The two agree on `q := 2.8*tonf/m` and part company on
         # `phiMn := 0.9*As*fy*z`, where the units came from three stored values and the
         # statement declared only a name.
-        value = _quantity_latex(result.quantity, settings=active_settings, declared=bool(result.written_units))
+        value = _quantity_latex(
+            result.quantity,
+            settings=active_settings,
+            declared=unit_was_written(result.quantity, result.written_units),
+        )
         if result.shown_as_written:
             return rf"{lhs} = {_written_line_latex(result, active_settings)} = {value}"
         return rf"{lhs} = {value}"

@@ -122,7 +122,7 @@ from .piecewise import (
     substitute_keeping_condition_sides,
 )
 from .tables import normalize_explicit_points, normalize_uniform_points
-from .unit_text import quantity_text
+from .unit_text import quantity_text, unit_was_written
 
 
 _SCALAR_SYMBOLIC_FUNCTIONS = {
@@ -1830,11 +1830,24 @@ class EngineeringEngine:
                         statement.target,
                         statement.expression,
                     )
-                if written_units:
+                # Recorded as the sheet's own unit only when the line wrote every part of
+                # it: `k_1 := k(4*m)` wrote a metre, not the GPa·mm4/m its value came in.
+                if not unit_was_written(quantity, written_units):
+                    # Nor is the name then one whose unit was declared: its value is shown
+                    # in the unit of its kind wherever it is substituted.
+                    self.declared_unit_names.discard(statement.target)
+                if unit_was_written(quantity, written_units):
                     try:
                         self.written_units.add(str(quantity.units))
                     except AttributeError:
                         pass
+                # `Vu = max(a, b)` then `Vu := 5000*kgf`: the formula goes, as a matrix's
+                # does, or the page shows the number and computes with the formula.
+                for store in (self.namespace, self.written_namespace, self.numeric_guards):
+                    store.pop(statement.target, None)
+                if declaration != "keep":
+                    self.kept_names.discard(statement.target)
+                self.kept_values.discard(statement.target)
                 return NumericAssignmentResult(
                     statement=statement,
                     quantity=quantity,

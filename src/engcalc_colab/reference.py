@@ -98,6 +98,27 @@ _STATEMENTS: tuple[CallHelp, ...] = (
         ),
     ),
     CallHelp(
+        name="if",
+        kind="statement",
+        summary="Decide qué líneas se calculan: solo corre la rama cuya condición se cumple, y la memoria dice por qué.",
+        forms=("% if condición:", "% elif condición:", "% else:", "% end"),
+        arguments=(
+            ("condición", "una comparación entre valores con unidades, como Vu > phi_v*V_c; se unen con and y or"),
+        ),
+        note=(
+            "Una línea que empieza con % es de control, escrita como en Python, y % end "
+            "cierra el bloque. La rama elegida abre con la condición en números - Como "
+            "Vu = 7920.00 kgf > φ_v V_c = 7603.63 kgf: - que es lo que un revisor comprueba; "
+            "la rama que no se cumple no se calcula ni se escribe. Los bloques se anidan."
+        ),
+        example=(
+            "fc := 210*kgf/cm^2\nb := 30*cm\nd := 44*cm\nphi_v := 0.75\n"
+            "V_c := 0.53*sqrt(fc*kgf/cm^2)*b*d\nVu := 7920*kgf\n"
+            "% if Vu > phi_v*V_c:\nV_s = Vu/phi_v - V_c\nnumeric(V_s)\n"
+            "% else:\nV_s := 0*kgf\n% end"
+        ),
+    ),
+    CallHelp(
         name="case",
         kind="statement",
         summary="Nombra la respuesta de un caso de carga, como función de la coordenada a lo largo del elemento.",

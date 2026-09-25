@@ -82,3 +82,23 @@ def quantity_text(quantity, *, decimals: int | None = None) -> str:
     value = f"{magnitude:g}" if decimals is None else f"{magnitude:.{decimals}f}"
     unit = unit_text(quantity.units)
     return value if not unit else f"{value} {unit}"
+
+
+def unit_was_written(quantity, written_units) -> bool:
+    """True when every part of the value's unit was written on its line.
+
+    `q := 2.8*tonf/m` wrote tonf and m, and keeps tonf/m. `k_1 := k(4*m)` wrote a metre as
+    the argument and its value came out in the GPa and mm of what `k` reads - a unit nobody
+    wrote, which was kept as if chosen. See
+    `test_a_value_from_a_sheet_function_reads_in_its_unit`.
+    """
+    if not written_units:
+        return False
+    try:
+        registry = quantity._REGISTRY
+        parts = set()
+        for alias in written_units:
+            parts |= set(registry.parse_units(alias)._units)
+        return set(quantity.units._units) <= parts
+    except Exception:  # noqa: BLE001 - a unit that cannot be read keeps the old answer
+        return True

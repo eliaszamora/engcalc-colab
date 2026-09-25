@@ -15,17 +15,25 @@ form that fails, and the reader blames their own typing.
 import pytest
 from IPython.display import HTML
 
+from engcalc_colab import control
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import ParsedHeading
 from engcalc_colab.parser import _ALLOWED_CALLS, _DECLARATIONS, PLACING_CALLS, parse_cell
 from engcalc_colab.reference import CATALOGUE
+from engcalc_colab.renderer import RenderSettings
 
 
 def run_cell(source: str):
     engine = EngineeringEngine()
     results = []
-    for item in parse_cell(source):
-        if isinstance(item, ParsedHeading):
+    # An example with `%` lines runs as the magic runs it, deciding as it goes.
+    items = (
+        control.run(source, engine, RenderSettings)
+        if control.has_control(source)
+        else parse_cell(source)
+    )
+    for item in items:
+        if isinstance(item, (ParsedHeading, control.ConditionNote)):
             continue
         results.append(engine.evaluate(item))
     return results
@@ -44,7 +52,8 @@ def run_help(monkeypatch, line: str):
 # place something on the page, and the statement forms `keep`, `case`, `combo` and `:=`.
 # He asked on 2026-09-24 what `keep` was for: it was the one thing on the frame's sheet
 # the help had no entry for, and neither had `member`, `frame_plot` or `image`.
-DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":="}
+# `if` stands for its block: `% elif`, `% else` and `% end` are explained in its entry.
+DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":=", "if"}
 
 
 def test_every_call_the_language_accepts_can_be_looked_up():
@@ -166,6 +175,12 @@ def test_help_for_keep_says_what_it_is_for(monkeypatch):
     (html,) = [item.data for item in run_help(monkeypatch, "keep")]
     assert "keep nombre = expresión" in html
     assert "C = 0.85 b d fc" in html and "C = f_cw b d" in html, html
+
+
+def test_help_for_if_shows_the_block_and_the_sentence(monkeypatch):
+    (html,) = [item.data for item in run_help(monkeypatch, "if")]
+    assert "% if condición:" in html and "% end" in html, html
+    assert "Como" in html, html
 
 
 def test_help_explains_how_a_frame_is_drawn(monkeypatch):
