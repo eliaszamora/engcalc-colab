@@ -5026,11 +5026,47 @@ def _agrees_with(written, value, expansions: dict | None = None) -> bool:
         # nothing - and a written form that is genuinely wrong still cancels to something
         # non-zero, which is what keeps this a verification rather than a rubber stamp.
         try:
-            return sp.cancel(difference) == 0
+            if sp.cancel(difference) == 0:
+                return True
         except Exception:
-            return False
+            pass
+        # A float under a root is where `cancel` stops: Colab's SymPy (1.13.3) builds
+        # `As_req(876940*kgf*cm)` as `sqrt(219235)*sqrt(4.85e-7 - ...)`, which no
+        # normalisation brings back to the written `sqrt(1 - 2*876940 kgf cm/...)`, and
+        # the written form was thrown away. Asked at a few points instead, the two agree
+        # or they do not; a written form that is wrong still gives another number.
+        # See `test_a_written_form_agrees_when_a_float_sits_under_a_root`.
+        return _agree_at_points(rebuilt, sp.sympify(value))
     except Exception:
         return False
+
+
+def _agree_at_points(left, right) -> bool:
+    """True when two scalar expressions take the same value at three points.
+
+    Every name is given a value between 0.5 and 2 - the same three for both sides, from a
+    fixed seed - and the values are compared to nine figures. A root of something negative
+    is taken as SymPy takes it, the same on both sides.
+    """
+    import cmath
+    import random
+
+    symbols = sorted(left.free_symbols | right.free_symbols, key=lambda symbol: symbol.name)
+    if not symbols:
+        return False
+    chooser = random.Random(20260924)
+    for _ in range(3):
+        point = {symbol: sp.Float(chooser.uniform(0.5, 2.0), 30) for symbol in symbols}
+        try:
+            first = complex(left.xreplace(point).evalf(30))
+            second = complex(right.xreplace(point).evalf(30))
+        except (TypeError, ValueError):
+            return False
+        if not cmath.isfinite(first) or not cmath.isfinite(second):
+            return False
+        if not cmath.isclose(first, second, rel_tol=1e-9, abs_tol=1e-12):
+            return False
+    return True
 
 
 class _WrittenFormEvaluator(_Evaluator):

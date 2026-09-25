@@ -12,10 +12,10 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.35.0** - #314, `509e65e`, carrying #310 (`f887551`), #311 (`29bce85`), #312 (`79d5fe9`); six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.34.3** - #308, `f0e17d8` |
-| open PRs | none |
-| default suite | **2927 passing**, about a minute with `-n auto` |
+| released | **0.36.0** - this release PR, carrying #316 (`173835f`); its closure is recorded below |
+| before that | **0.35.0** - #314, `509e65e` |
+| open PRs | this release's |
+| default suite | **2959 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -749,8 +749,10 @@ the kN palette through `run_cell_magic`): the whole frame and design ran in abou
 40.00 under it, shear 20.00/-10.00) and the triangular load (arrows growing to
 12.00 kN/m, 27.71). That run was the commit before the `1 kN` fix.
 
-**Exact next step:** his yes to merge #316 (then close #315 as carried); publish only
-when he says.
+Merged as #316 (`173835f`) with his yes (*"Sí, fusiona #316 y publica la 0.36.0"*); #315
+closed as carried. Released as 0.36.0 by the release PR.
+
+**Exact next step:** close 0.36.0 (checks after its merge, his Colab).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
