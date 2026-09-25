@@ -14,8 +14,8 @@ _2026-09-25._
 |---|---|
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
-| in progress | branch `feat/if-blocks`: `% if` blocks, a `:=` redefinition fix, the `k_1` unit fix - PR open, **not merged**, waiting for his yes (see "Control flow with %") |
-| default suite | **3015 passing** on the branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| merged, not released | #326 `% if` (`1f926db`) and #327 a `=` line of values - see "Control flow with %" |
+| default suite | **3016 passing** on `main` after both (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -837,15 +837,16 @@ assigns, `c := solve(eq(...), c, 0*cm, d)` ("unsupported numeric function" today
 `table` over a list of values, `table(As_req(Mu), Mu, [Mu_pos, Mu_2, Mu_3])`; (3) fix the
 unit of `k_1 := k(4*m)`.
 
-Branch `feat/if-blocks` (PR open, not merged):
+**#326 merged with his yes** (`1f926db`, *"fusiona #326 y #327"*), branch `feat/if-blocks`:
 - `f3cfa88` (point 3): a `:=` value keeps its unit only when its line wrote every part of it
   (`unit_text.unit_was_written`). `k_1 := k(4*m)` reads `16000.00 kN·m`, not GPa·mm⁴/m. 5
   contracts. No page moves.
 - `4ead9b6` + `f673ad0` `% if / % elif / % else / % end` (`control.py`; `magic._eng_cell`
   routes a cell with `%` lines through `control.run`). The structure and every line are read
   before anything runs. A condition is Python comparisons joined by `and`/`or`/`not` over the
-  sheet's values (`numeric(...)` through the engine). The sentence is Markdown with `$...$`:
-  `Como Vu = 7920.00 kgf > φ_v V_c = 7603.63 kgf:`. Each side is written as the page writes
+  sheet's values (`numeric(...)` through the engine). The sentence - `Como Vu = 7920.00 kgf >
+  φ_v V_c = 7603.63 kgf:` - is a Math output (his option 1b, `23516b7`): the rows' letter and
+  size, **Como** bold, a `\rule` strut for room above and below (to calibrate in Colab). Each side is written as the page writes
   it, and the other sides in the first side's unit. A branch that does not hold is neither
   computed nor written. Conditions that did not hold are stated negated (`≤`) before the
   one that did, joined with " y ". A `%` inside a `"""` block is text. 15 contracts
@@ -855,17 +856,38 @@ Branch `feat/if-blocks` (PR open, not merged):
   `Vu := 5000*kgf` printed 5000.00 kgf and kept computing with `max(a, b)`. The scalar `:=`
   path now drops the formula, as the matrix path did. 4 contracts (3 RED).
 - `1af5e62` `%eng_help if`.
-The 13 sheets and 18 exercises are identical to `main`. His shear design, rendered with
-`% if` (real numbers `Como Vu = 77.67 kN > φ_v V_c = 74.57 kN:`, and with `Vu := 5000*kgf`
-the `else` branch), is to be shown to him before merging.
+The 13 sheets and 18 exercises are identical to 0.38.0. His shear design rendered with
+`% if` was shown to him (`Como Vu = 77.67 kN > φ_v V_c = 74.57 kN:`).
 
 Found, NOT fixed (on 0.38.0, not caused by this branch): on `portico_diseno.eng`,
 `Vu = max(V_U1, ...)` has a row in base units (`57663.10 kg·m/s²`), and
 `s_e = min(s_req, s_max)` has one in `cm·kgf·s²/(kg·m)`.
 
-**Exact next step:** show him the `% if` rows and get his yes on the PR. Then `% for` with
-`{...}`, then `% while`, then points 1 and 2. Each goes RED→GREEN, runs on both SymPy
-versions, and gets a page comparison.
+
+### His exercise 2.1 - a `=` line of values (#327, branch `fix/equals-lines-with-values`)
+
+He wrote data with `=` (`E = 200*MPa`, `L_ba = sqrt(6**2+4**2)*m`) and `delta_ba` ended on
+`6.68e-4 kN·m·√13/(mm²·MPa)`. He asked (2026-09-25) to fix points 2, 3 and 4:
+- 2: a `=` line with nothing left to substitute (numbers and units only) whose value is
+  not already a number in a unit is written as `numeric` writes one: formula in its names
+  (`_NamesStandEvaluator`), each name's value, the value (`engine._in_numbers`,
+  `_reads_as_a_number`). A formula over `:=` values is untouched (left to `numeric()`).
+- 3: `sqrt(6^2 + 4^2)*m` no longer raises the "'m' is read as a unit" notice
+  (`_worked_out_from_numbers`).
+- 4: a factor with no free symbols sorts with the numbers: `√(4²+6²) m`; E14 moves two
+  rows to `π² E I/(K² Lk²)`. The order inside the sum follows #243 (`4² + 6²`).
+14 contracts, mutation 9/9. Suite 3002 on SymPy 1.14 and 1.13.3. The 13 sheets are
+identical to `main`; of the 18 exercises only E14 moves.
+
+Fonts, measured with KaTeX 0.16.28 (Colab's): all mathematics is KaTeX's own LaTeX fonts
+(KaTeX_Main upright for numbers, units, operators and `\mathrm`; KaTeX_Math italic for
+one-letter names). Headings and `"""` text are Colab's font. Found: a name of more than one
+letter (`Vu`, `fc`, `As`, `phiMn`) is `\mathrm` - upright, the same letter as a unit -
+while `V_c` is italic. He chose italic: branch `feat/names-in-italic`.
+
+**Exact next step:** #327 merged after #326 with his yes; open the PR of
+`feat/names-in-italic` (rows approved: *"Apruebo la cursiva"*). Then `% for`, `% while`,
+numeric `solve` with an interval, `table` over a list; a release when he asks.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
