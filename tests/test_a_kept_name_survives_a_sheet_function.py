@@ -75,3 +75,30 @@ def test_a_call_keeps_the_kept_name_and_its_argument(sheet):
     assert "f_{cw}" in rows and r"2 \cdot 876940" in rows, rows
     assert "2.06" not in rows and "0.85" not in rows.split(r"\left(178.50", 1)[0], rows
     assert rows.rstrip().endswith(r"5.55\,\mathrm{cm}^{2}"), rows
+
+
+def test_a_written_form_agrees_when_a_float_sits_under_a_root():
+    """The check that a written form is the value found no proof on Colab's SymPy.
+
+    SymPy 1.13.3 - Colab's - builds `As_req(876940*kgf*cm)` with the numbers taken out of
+    the root, `sqrt(219235)*sqrt(4.85e-7 - ...)`, and `cancel` cannot bring that back to
+    the written `sqrt(1 - 2*876940 kgf cm/(phi f_cw b d^2))`. The written form was thrown
+    away and the page printed `2.61 b d fc sqrt(219235) ...`. Found running the suite
+    against the 0.36.0 wheel in a Colab-like environment, before the release merged.
+    The expression below is the one 1.13.3 builds, so this fails on any SymPy.
+    """
+    import sympy as sp
+
+    from engcalc_colab.engine import _agrees_with
+
+    b, d, fc, fy, phi, cm, kgf, f_cw = sp.symbols("b d fc fy phi cm kgf f_cw", positive=True)
+    written = b * d * f_cw * (1 - sp.sqrt(1 - 2 * 876940 * kgf * cm / (phi * f_cw * b * d**2))) / fy
+    value = (
+        sp.Float("0.85") * b * d * fc
+        * (-sp.Float("3.06785995538948") * sp.sqrt(219235)
+           * sp.sqrt(sp.Float("4.846397701097e-7") - cm * kgf / (b * d**2 * fc * phi)) + 1)
+        / fy
+    )
+    assert _agrees_with(written, value, {f_cw: sp.Float("0.85") * fc})
+    # And a written form that is not the value is still refused.
+    assert not _agrees_with(written * 2, value, {f_cw: sp.Float("0.85") * fc})

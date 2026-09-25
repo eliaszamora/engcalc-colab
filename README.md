@@ -36,7 +36,11 @@ M_u = U1(L/2)
 The row read `M_u = 0.15 qD L^2 + ...`, and which combination and where were gone.
 
 **A kept name stays a name inside a function of the sheet**, in its definition and at its
-calls: `As_req(Mu)` keeps `f_cw`, and 2/0.85 is no longer folded into 2.35.
+calls: `As_req(Mu)` keeps `f_cw`, and 2/0.85 is no longer folded into 2.35. On Colab's
+SymPy (1.13.3) the check that a written form is the computed value found no proof for a
+call like `As_req(876940*kgf*cm)` - that SymPy takes the numbers out of the root - so the
+written form was dropped; where no normalisation proves it, the two are now compared at
+three points.
 
 **Combinations envelope as a family**: `U1` ... `U6` are the family `U`, so the envelope
 reads `U(x) envelope`, `U_max(x)`, `U_min(x)` instead of `Comparison`; `governing` heads its
