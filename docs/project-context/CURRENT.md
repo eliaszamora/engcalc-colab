@@ -12,10 +12,10 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.36.0** - this release PR, carrying #316 (`173835f`); its closure is recorded below |
+| released | **0.36.0** - #317, `9ebbd78`, carrying #316 (`173835f`) and one fix its validation found; six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.35.0** - #314, `509e65e` |
-| open PRs | this release's |
-| default suite | **2959 passing**, about a minute with `-n auto` |
+| open PRs | none |
+| default suite | **2960 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -752,7 +752,32 @@ the kN palette through `run_cell_magic`): the whole frame and design ran in abou
 Merged as #316 (`173835f`) with his yes (*"Sí, fusiona #316 y publica la 0.36.0"*); #315
 closed as carried. Released as 0.36.0 by the release PR.
 
-**Exact next step:** close 0.36.0 (checks after its merge, his Colab).
+**The release found one defect of #316 and fixed it in the release PR** (told to him): the
+suite against the wheel on Colab's SymPy 1.13.3 failed `As_2 = As_req(876940*kgf*cm)` -
+that SymPy builds `sqrt(219235)*sqrt(4.85e-7 - ...)` and `cancel` cannot prove the written
+form equal, so it was dropped. `_agrees_with` now falls back to `_agree_at_points` (three
+fixed-seed points in 0.5..2, nine figures). The dev venv has SymPy 1.14 and did not see
+it: **a presentation contract must also run on 1.13.3** (`PYTHONPATH=src` with the
+Colab-like venv's python) - the release's wheel suite is where that happens.
+
+**0.36.0 is closed.** On the release commit: version assertions RED (7) then GREEN; suite
+2960 twice (SymPy 1.14) and 2960 on 1.13.3; wheel 32 files identical to `src`; clean
+Colab-like venv gained only Pint and four small deps; smoke 86/86 (`smoke-0360/`: the
+frame's design whole with Governing along x in <40 s, U(x) envelope, a call written as
+called, a kept name through a call, point and linear loads, no `1 kN`); suite against the
+wheel 2959 + the by-path test on the wheel's `magic.py`; 13 sheets and 18 exercises move
+only as approved. After its merge: CI (six jobs) and the deep gate green on `9ebbd78`;
+`git+https` resolved to it, upgraded nothing, 24 modules identical, smoke 86/86. In his
+Colab (runtime deleted; cell 13 back to the plain `--upgrade` install from `main`; cell 15
+gained the `As_req` call): 0.36.0 built fresh, the frame + design, the loads, `f_p` as
+`0 kN / 20 kN`, and `As_2 = As_req(876940 kgf·cm) = f_cw b d/fy (1 - sqrt(1 - 2·876940
+kgf·cm/(φ f_cw b d^2))) = ... = 5.55 cm^2`.
+
+Found, NOT fixed (to propose): a long substitution row wraps into additive terms with a
+trailing `· 1/(4200 kgf/cm^2)`; without a palette a `0*kN` entry of a `:=` matrix reads
+`0.00 N`.
+
+**Exact next step:** none open; ask him what next.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
