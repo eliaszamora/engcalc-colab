@@ -15,7 +15,7 @@ _2026-09-25._
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
 | merged, not released | #326 `% if` (`1f926db`) and #327 a `=` line of values - see "Control flow with %" |
-| default suite | **3016 passing** on `main` after both (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| default suite | **3029 passing** on `main` after both (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
