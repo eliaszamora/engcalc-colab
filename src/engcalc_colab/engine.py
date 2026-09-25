@@ -2258,6 +2258,14 @@ class EngineeringEngine:
                     # saw it. A recomputed result is the same result, not a second row,
                     # and a correction belongs in place rather than at the bottom.
                     self.reported[evaluator.report_request] = quantity
+                # `d = numeric(...)` defines `d`, as any `=` line defines its name: by its
+                # formula, which a later line reads. It returned before storing anything.
+                if statement.target is not None and statement.parameters is None and isinstance(
+                    symbolic_expression, sp.Expr
+                ):
+                    self.namespace[statement.target] = symbolic_expression
+                    self.numeric_context.matrices.pop(statement.target, None)
+                    self.written_namespace.pop(statement.target, None)
                 return NumericEvaluationResult(
                     statement=statement,
                     symbolic_expression=symbolic_expression,
