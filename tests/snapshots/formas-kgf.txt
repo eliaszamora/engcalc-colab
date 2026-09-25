@@ -20,20 +20,20 @@ Un módulo resistente es una longitud al cubo y una curvatura es una longitud a 
 \displaystyle b & = & \displaystyle 30.00\,\mathrm{cm} \\[8pt]
 \displaystyle h & = & \displaystyle 60.00\,\mathrm{cm} \\[8pt]
 \displaystyle E & = & \displaystyle 239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}} \\[8pt]
-\displaystyle \mathrm{qD} & = & \displaystyle 18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
-\displaystyle \mathrm{qL} & = & \displaystyle 12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[16pt]
+\displaystyle \mathit{qD} & = & \displaystyle 18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\displaystyle \mathit{qL} & = & \displaystyle 12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[16pt]
 \displaystyle I & = & \displaystyle \frac{b h^{3}}{12} \\[8pt]
 \displaystyle c & = & \displaystyle 30.00\,\mathrm{cm} \\[16pt]
 \displaystyle W & = & \displaystyle \frac{I}{c} \\[8pt]
 & = & \displaystyle \frac{\left(540000.00\,\mathrm{cm}^{4}\right)}{\left(30.00\,\mathrm{cm}\right)} \\[8pt]
 & = & \displaystyle 18000.00\,\mathrm{cm}^{3} \\[16pt]
-\displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle \mathrm{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle U_{1}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathrm{Lv}\left(x\right) \\[16pt]
+\displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle \mathit{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle U_{1}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathit{Lv}\left(x\right) \\[16pt]
 \displaystyle M_{u} & = & \displaystyle U_{1}\left(\frac{L}{2}\right) \\[8pt]
-& = & \displaystyle 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2} \\[8pt]
+& = & \displaystyle 0.15\,\mathit{qD}\,L^{2} + 0.2\,\mathit{qL}\,L^{2} \\[8pt]
 \displaystyle \kappa & = & \displaystyle \frac{M_{u}}{E I} \\[8pt]
 & = & \displaystyle \frac{\left(1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right)}{\left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(540000.00\,\mathrm{cm}^{4}\right)} \\[8pt]
 & = & \displaystyle 1.45 \times 10^{-5}\,\frac{1}{\mathrm{cm}} \end{array}
@@ -65,7 +65,7 @@ La leyenda con la precisión de la página y el panel resumen con sus encabezado
 
 === 11 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle P_{2} & = & \displaystyle 20394.32\,\mathrm{kgf} \\[8pt]
-\displaystyle \mathrm{Md}\left(x\right) & = & \displaystyle \frac{P_{2} x \left(L - x\right)}{L} \end{array}
+\displaystyle \mathit{Md}\left(x\right) & = & \displaystyle \frac{P_{2} x \left(L - x\right)}{L} \end{array}
 
 === 12 · Figure ===
 title: Md(x)
@@ -111,18 +111,18 @@ summary: $1.22 \times 10^{7}$
 El empotramiento es un borde y no vale cero, así que distingue la expresión escrita de la simplificada donde la viga, con sus dos bordes en cero, no puede.
 
 === 15 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{Dv}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x^{2}}{2} \\[8pt]
-\displaystyle M_{Lv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x^{2}}{2} \\[8pt]
-\displaystyle \mathrm{Dv}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x^{2}}{2} \\[8pt]
-\displaystyle \mathrm{Lvv}\left(x\right) & = & \displaystyle \frac{\mathrm{qL}\,x^{2}}{2} \\[8pt]
-\displaystyle U_{3}\left(x\right) & = & \displaystyle 1.2 \, \mathrm{Dv}\left(x\right) + 1.6 \, \mathrm{Lvv}\left(x\right) \end{array}
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{Dv}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x^{2}}{2} \\[8pt]
+\displaystyle M_{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x^{2}}{2} \\[8pt]
+\displaystyle \mathit{Dv}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x^{2}}{2} \\[8pt]
+\displaystyle \mathit{Lvv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x^{2}}{2} \\[8pt]
+\displaystyle U_{3}\left(x\right) & = & \displaystyle 1.2 \, \mathit{Dv}\left(x\right) + 1.6 \, \mathit{Lvv}\left(x\right) \end{array}
 
 === 16 · Math ===
 \hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
 \displaystyle \textbf{Extrema} \text{ — } U_{3}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
-\displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.6\,\mathrm{qD}\,L^{2} + 0.8\,\mathrm{qL}\,L^{2}\,\left(7.49 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global max} \\[4pt]
+\displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.6\,\mathit{qD}\,L^{2} + 0.8\,\mathit{qL}\,L^{2}\,\left(7.49 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global max} \\[4pt]
 \rule{0pt}{0.7em} \end{array}
 
 === 17 · HTML ===
@@ -201,8 +201,8 @@ Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos defe
 & & \displaystyle v^{2} = \frac{25}{\mathrm{s}^{2}} \\[8pt]
 \displaystyle v & = & \displaystyle \frac{5}{\mathrm{s}} \\[8pt]
 & & \displaystyle \text{discarded by } v > 0:\;\; - \frac{5}{\mathrm{s}} \\[16pt]
-\displaystyle M_{Dv2}\left(x\right) & = & \displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle M_{Lv2}\left(x\right) & = & \displaystyle 0.75\,\mathrm{qL}\,x \left(L - x\right) \end{array}
+\displaystyle M_{Dv2}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle M_{Lv2}\left(x\right) & = & \displaystyle 0.75\,\mathit{qL}\,x \left(L - x\right) \end{array}
 
 === 34 · Math ===
 \hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
