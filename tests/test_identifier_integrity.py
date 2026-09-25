@@ -15,7 +15,7 @@ aside. It had recognised it, and thrown three characters away.
 
 `As_prov` is EngCalc's own. The uprighting rule handed SymPy a name containing braces,
 and `LatexPrinter._split_super_sub` returns early on those: `if '{' in name: return
-(name, [], [])`. So the subscript was never split or braced, and `\mathrm{As}_prov`
+(name, [], [])`. So the subscript was never split or braced, and `\mathit{As}_prov`
 subscripts only the `p`, leaving `rov` beside it.
 
 The rule these contracts pin is deliberately narrow: the printer may not drop or
@@ -44,7 +44,7 @@ ENGINEERING_NAMES = [
 
 def _letters(latex: str) -> str:
     """The letters a reader sees, with LaTeX scaffolding removed."""
-    text = re.sub(r"\\mathrm|\\left|\\right|\\displaystyle", "", latex)
+    text = re.sub(r"\\mathrm|\\mathit|\\left|\\right|\\displaystyle", "", latex)
     return re.sub(r"[\\{}^_,. ]", "", text)
 
 
@@ -120,23 +120,24 @@ def test_greek_that_has_a_glyph_still_prints_as_that_glyph(name):
 
 
 @pytest.mark.parametrize("name", GREEK_WITHOUT_ONE)
-def test_greek_without_a_glyph_is_set_upright_with_its_letters(name):
+def test_greek_without_a_glyph_is_set_with_its_letters(name):
     """Twenty names that print as a Latin letter, so the name itself must survive.
 
     Thirteen of these changed with this fix, every one of them from losing letters to
-    keeping them. The other seven were already upright and are here so that stays true.
+    keeping them. The other seven were already kept whole and are here so that stays
+    true. Italic since 2026-09-25, as every name of several letters is.
     """
-    assert _latex(sp.Symbol(name)) == rf"\mathrm{{{name}}}"
+    assert _latex(sp.Symbol(name)) == rf"\mathit{{{name}}}"
 
 
 def test_a_multi_letter_base_keeps_its_whole_subscript():
-    r"""`\mathrm{As}_prov` subscripts the `p` and leaves `rov` standing beside it.
+    r"""`\mathit{As}_prov` subscripts the `p` and leaves `rov` standing beside it.
 
     LaTeX takes one token after `_`. SymPy would have braced this itself, but only for
     a name it was allowed to split, and a name carrying `\mathrm{...}` is not one.
     """
-    assert _latex(sp.Symbol("As_prov")) == r"\mathrm{As}_{prov}"
-    assert _latex(sp.Symbol("db_st")) == r"\mathrm{db}_{st}"
+    assert _latex(sp.Symbol("As_prov")) == r"\mathit{As}_{prov}"
+    assert _latex(sp.Symbol("db_st")) == r"\mathit{db}_{st}"
 
 
 def test_a_multi_letter_base_keeps_its_whole_superscript():
@@ -145,14 +146,14 @@ def test_a_multi_letter_base_keeps_its_whole_superscript():
     Same defect as the subscript, same cause, and reachable from a cell: `As__1 :=
     500*mm**2` prints through this branch.
     """
-    assert _latex(sp.Symbol("As__1")) == r"\mathrm{As}^{1}"
-    assert _latex(sp.Symbol("As__1_prov")) == r"\mathrm{As}^{1}_{prov}"
+    assert _latex(sp.Symbol("As__1")) == r"\mathit{As}^{1}"
+    assert _latex(sp.Symbol("As__1_prov")) == r"\mathit{As}^{1}_{prov}"
 
 
 def test_the_multi_letter_uprighting_still_holds():
     """The rule this fix sits inside is unchanged: a label is upright, a quantity italic."""
-    assert _latex(sp.Symbol("eqFy")) == r"\mathrm{eqFy}"
-    assert _latex(sp.Symbol("phiMn")) == r"\mathrm{phiMn}"
+    assert _latex(sp.Symbol("eqFy")) == r"\mathit{eqFy}"
+    assert _latex(sp.Symbol("phiMn")) == r"\mathit{phiMn}"
 
 
 def test_single_letter_names_are_untouched():
@@ -169,7 +170,7 @@ def test_a_name_ending_in_a_sympy_modifier_is_not_reinterpreted():
     show `re` with a bar over it for a variable the engineer called `rebar`.
     """
     printed = _latex(sp.Symbol("rebar"))
-    assert printed == r"\mathrm{rebar}", printed
+    assert printed == r"\mathit{rebar}", printed
 
 
 def test_the_memoria_prints_Mu_as_Mu(monkeypatch):
@@ -182,5 +183,5 @@ def test_the_memoria_prints_Mu_as_Mu(monkeypatch):
         "wu = 1.2*DL + 1.6*LL\nMu = wu*L^2/8\nnumeric(Mu, kN*m)\n",
     )
     latex = "".join(getattr(obj, "data", "") for obj in captured)
-    assert r"\mathrm{Mu}" in latex, latex
+    assert r"\mathit{Mu}" in latex, latex
     assert "273.71" in latex, latex

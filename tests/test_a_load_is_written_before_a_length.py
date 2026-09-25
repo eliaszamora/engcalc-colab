@@ -128,7 +128,7 @@ def test_a_product_of_two_settled_names_is_untouched(page):
     written = page("As := 1935*mm**2\nfy := 420*MPa\nT = As*fy\n")
 
     assert last_body(written) == (
-        r"\displaystyle \mathrm{As}\,\mathrm{fy}"
+        r"\displaystyle \mathit{As}\,\mathit{fy}"
     ), last_body(written)
 
 
@@ -168,7 +168,7 @@ def test_a_distributed_moment_is_unchanged(page):
     written = page("qD := 18*kN/m\nL := 6*m\nM_D(x) = qD*x*(L - x)/2\n")
 
     assert last_body(written) == (
-        r"\displaystyle \frac{\mathrm{qD}\,x \left(L - x\right)}{2}"
+        r"\displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2}"
     ), last_body(written)
 
 

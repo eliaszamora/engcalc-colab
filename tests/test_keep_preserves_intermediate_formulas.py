@@ -84,7 +84,7 @@ def test_keep_takes_a_plain_name():
 def test_a_formula_shows_the_names_it_was_written_with(cell):
     """The finding. Without `keep` this reads in `cover`, `db_st`, `h`, `b` and `fc`."""
     latex = cell(KEPT + "phiMn = phi*As*fy*(d - a/2)\n")
-    assert r"\mathrm{cover}" not in latex.split("phiMn")[-1], latex
+    assert r"\mathit{cover}" not in latex.split("phiMn")[-1], latex
     assert "d" in latex, latex
     assert "a" in latex, latex
 
@@ -95,7 +95,7 @@ def test_the_evaluation_shows_the_same_formula_and_the_kept_values(cell):
     is not restated by its own evaluation stops firing, so the reader gets both."""
     latex = cell(KEPT + "phiMn = phi*As*fy*(d - a/2)\nnumeric(phiMn)\n")
     body = latex.split("phiMn")[-1]
-    assert r"\mathrm{cover}" not in body, latex
+    assert r"\mathit{cover}" not in body, latex
     # d = 500 - 40 - 10 - 10 = 440 mm, and a = 1935 x 420 / (0.85 x 25 x 300) = 127.48 mm
     assert "440.00" in latex, latex
     assert "127.48" in latex, latex
@@ -150,7 +150,7 @@ def test_a_kept_definition_shows_its_own_formula(cell):
     """The barrier is for the names *inside* a later formula. `keep d = ...` still shows
     what `d` is, on its own line, or the reader has no way to know."""
     latex = cell(KEPT)
-    assert r"\mathrm{cover}" in latex, latex
+    assert r"\mathit{cover}" in latex, latex
     assert "h" in latex, latex
 
 
@@ -162,7 +162,7 @@ def test_an_unmarked_definition_is_expanded_as_before(cell):
     latex = cell(
         BEAM + "d = h - cover - db_st - db/2\nphiMn = phi*As*fy*d\n"
     )
-    assert r"\mathrm{cover}" in latex.split("phiMn")[-1], latex
+    assert r"\mathit{cover}" in latex.split("phiMn")[-1], latex
 
 
 def test_a_reset_forgets_what_was_kept(monkeypatch):

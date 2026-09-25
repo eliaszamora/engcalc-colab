@@ -71,8 +71,8 @@ def test_the_floor_case_still_falls_back_and_ordinary_numbers_do_not():
 
 
 def test_a_multi_letter_name_is_one_name_and_not_a_product():
-    assert _latex(sp.Symbol("eqFy")) == r"\mathrm{eqFy}"
-    assert _latex(sp.Symbol("Lk")) == r"\mathrm{Lk}"
+    assert _latex(sp.Symbol("eqFy")) == r"\mathit{eqFy}"
+    assert _latex(sp.Symbol("Lk")) == r"\mathit{Lk}"
 
 
 def test_greek_names_are_still_greek():
@@ -107,8 +107,8 @@ def test_the_reactions_block_reads_as_names_rather_than_products():
         "eqMA = eq(R_B*L, q*L*L/2)\n"
         "solve(eqFy, eqMA, R_A, R_B)"
     )
-    assert r"\mathrm{eqFy}" in latex
-    assert r"\mathrm{eqMA}" in latex
+    assert r"\mathit{eqFy}" in latex
+    assert r"\mathit{eqMA}" in latex
 
 
 def test_a_power_of_ten_and_a_wrapped_product_use_different_marks():

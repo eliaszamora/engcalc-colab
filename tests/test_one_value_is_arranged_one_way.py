@@ -140,7 +140,7 @@ def test_the_resolution_lands_on_the_expression_as_written(cell, capsys):
     )
     capsys.readouterr()
 
-    assert r"0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2}" in page, page
+    assert r"0.15\,\mathit{qD}\,L^{2} + 0.2\,\mathit{qL}\,L^{2}" in page, page
     assert r"\left(0.15" not in page and r"\left(0.6" not in page, page
     assert "183.60" in page, page
 
@@ -164,7 +164,7 @@ def test_a_boundary_value_is_arranged_the_same_way(cell, capsys):
     )
     capsys.readouterr()
 
-    written = r"0.6\,\mathrm{qD}\,L^{2} + 0.8\,\mathrm{qL}\,L^{2}"
+    written = r"0.6\,\mathit{qD}\,L^{2} + 0.8\,\mathit{qL}\,L^{2}"
     assert page.count(written) >= 2, page
     assert r"L^{2} \left(0.6" not in page, page
 
@@ -221,12 +221,12 @@ def test_a_name_is_spelled_the_way_the_page_spells_it(cell, capsys):
     This block printed through `sp.latex` while every other block prints through the
     renderer's `_latex`, and the two disagree about a multi-letter name: SymPy sets `qD`
     in italic, which MathJax spaces as a product of `q` and `D`, and #96 made this page
-    write `\\mathrm{qD}`. So the design moment was italic in the extrema block and upright
+    write `\\mathit{qD}`. So the design moment was italic in the extrema block and upright
     four lines below.
     """
     page = cell(HIS_SHEET, palette="kgf")
     capsys.readouterr()
 
     body = page.split("Extrema", 1)[-1].split("M_{u}", 1)[0]
-    assert r"\mathrm{qD}" in body, body
+    assert r"\mathit{qD}" in body, body
     assert re.search(r"[^{]qD", body) is None, body

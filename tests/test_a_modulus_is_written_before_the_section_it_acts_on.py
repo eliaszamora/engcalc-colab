@@ -129,7 +129,7 @@ def test_a_tension_capacity_is_untouched(page):
     written = page("As := 1935*mm**2\nfy := 420*MPa\nT = As*fy\n")
 
     assert last_body(written) == (
-        r"\displaystyle \mathrm{As}\,\mathrm{fy}"
+        r"\displaystyle \mathit{As}\,\mathit{fy}"
     ), last_body(written)
 
 

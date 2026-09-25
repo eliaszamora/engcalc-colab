@@ -57,18 +57,18 @@ def last(source: str) -> str:
 
 def test_a_name_of_several_letters_is_set_apart_from_what_follows_it():
     assert last("M_D(x) = qD*x*(L - x)/2") == (
-        r"M_{D}\left(x\right) = \frac{\mathrm{qD}\,x \left(L - x\right)}{2}"
+        r"M_{D}\left(x\right) = \frac{\mathit{qD}\,x \left(L - x\right)}{2}"
     )
 
 
 def test_a_coefficient_does_not_run_into_the_name_after_it():
     assert last("W = 0.15*qD*L^2 + 0.2*qL*L^2") == (
-        r"W = 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2}"
+        r"W = 0.15\,\mathit{qD}\,L^{2} + 0.2\,\mathit{qL}\,L^{2}"
     )
 
 
 def test_two_names_of_several_letters_are_set_apart_from_each_other():
-    assert last("z = qD*qL") == r"z = \mathrm{qD}\,\mathrm{qL}"
+    assert last("z = qD*qL") == r"z = \mathit{qD}\,\mathit{qL}"
 
 
 def test_a_name_with_a_subscript_is_set_apart_by_its_base():
@@ -78,7 +78,7 @@ def test_a_name_with_a_subscript_is_set_apart_by_its_base():
     here; that is the ordering defect `test_two_units_multiplied_read_as_one_unit`
     describes and neither file corrects.
     """
-    assert last("T = As_prov*f_y") == r"T = f_{y}\,\mathrm{As}_{prov}"
+    assert last("T = As_prov*f_y") == r"T = f_{y}\,\mathit{As}_{prov}"
 
 
 def test_a_power_of_such_a_name_is_set_apart_by_its_base():
@@ -87,7 +87,7 @@ def test_a_power_of_such_a_name_is_set_apart_by_its_base():
     Found by mutation: asking a `Pow` whether it is a name answers no, and nothing here
     noticed.
     """
-    assert last("z = qD^2*x") == r"z = \mathrm{qD}^{2}\,x"
+    assert last("z = qD^2*x") == r"z = \mathit{qD}^{2}\,x"
 
 
 # --- what must not move ---------------------------------------------------------------
@@ -98,7 +98,7 @@ def test_a_name_of_several_letters_beside_a_unit_already_had_its_space():
 
     Green before this correction and after it: nothing here may turn one space into two.
     """
-    assert last("p = qD*m") == r"p = \mathrm{m}\,\mathrm{qD}"
+    assert last("p = qD*m") == r"p = \mathrm{m}\,\mathit{qD}"
 
 
 @pytest.mark.parametrize(
@@ -125,7 +125,7 @@ def test_a_greek_letter_spelled_out_is_one_letter_and_keeps_its_juxtaposition():
     every Greek pair and nothing noticed.
     """
     assert last("w = alpha*beta") == r"w = \alpha \beta"
-    assert last("u = alpha*qD") == r"u = \alpha\,\mathrm{qD}"
+    assert last("u = alpha*qD") == r"u = \alpha\,\mathit{qD}"
 
 
 def test_a_number_and_its_unit_still_take_one_thin_space():

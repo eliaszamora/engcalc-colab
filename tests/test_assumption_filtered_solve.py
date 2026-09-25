@@ -117,7 +117,7 @@ def test_the_sheet_shows_the_discard():
 
     assert r"\text{discarded by }" in rendered
     # Upright, because `Lk` is one name and not a product of L and k.
-    assert r"\mathrm{Lk} > 0" in rendered
+    assert r"\mathit{Lk} > 0" in rendered
 
     # The note must carry the root itself. Counting `sqrt` across the whole rendering
     # proves nothing: the kept root has two of its own, so "1 root discarded" would

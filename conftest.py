@@ -110,7 +110,7 @@ def block_text(html: str) -> str:
     # A characteristic block sets its formulas `$\displaystyle ...$` with `\dfrac`, so they
     # read at the page's size; both are sizes, not words.
     text = text.replace(r"$\displaystyle ", "$")
-    text = _re.sub(r"\\mathrm\{([^}]*)\}", r"\1", text)
+    text = _re.sub(r"\\math(?:rm|it)\{([^}]*)\}", r"\1", text)
     text = _re.sub(r"\\d?frac\{([^}]*)\}\{([^}]*)\}", r"\1/\2", text)
     text = _re.sub(r"\^\{?(-?\d+)\}?", lambda m: _superscript(m.group(1)), text)
     for latex, plain in _LATEX_TEXT.items():

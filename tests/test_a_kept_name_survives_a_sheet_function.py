@@ -48,7 +48,7 @@ def row(page: str, head: str) -> str:
 def test_the_kept_name_stays_in_the_definition(sheet):
     page, console = sheet(FUNCTION)
     assert not console, console
-    definition = row(page, r"\mathrm{As}_{req}\left(\mathrm{Mu}\right)")
+    definition = row(page, r"\mathit{As}_{req}\left(\mathit{Mu}\right)")
     assert "f_{cw}" in definition, definition
     assert "2.35" not in definition and "0.85" not in definition, definition
 
@@ -70,8 +70,8 @@ def test_a_function_without_a_kept_name_prints_as_before(sheet):
 def test_a_call_keeps_the_kept_name_and_its_argument(sheet):
     page, console = sheet(FUNCTION + "As_2 = As_req(876940*kgf*cm)\nnumeric(As_2)\n")
     assert not console, console
-    rows = page.split(r"\mathrm{As}_{2} & = & ", 1)[1].split(r"\end{array}", 1)[0]
-    assert r"\mathrm{As}_{req}\left(876940\,\mathrm{kgf} \cdot \mathrm{cm}\right)" in rows, rows
+    rows = page.split(r"\mathit{As}_{2} & = & ", 1)[1].split(r"\end{array}", 1)[0]
+    assert r"\mathit{As}_{req}\left(876940\,\mathrm{kgf} \cdot \mathrm{cm}\right)" in rows, rows
     assert "f_{cw}" in rows and r"2 \cdot 876940" in rows, rows
     assert "2.06" not in rows and "0.85" not in rows.split(r"\left(178.50", 1)[0], rows
     assert rows.rstrip().endswith(r"5.55\,\mathrm{cm}^{2}"), rows
@@ -111,7 +111,7 @@ def test_a_long_row_keeps_the_shape_of_its_formula(sheet):
     one fraction, the bracket on the next row. Seen in his Colab on 0.36.0."""
     page, console = sheet(FUNCTION + "As_2 = As_req(876940*kgf*cm)\nnumeric(As_2)\n")
     assert not console, console
-    rows = page.split(r"\mathrm{As}_{2} & = & ", 1)[1].split(r"\end{array}", 1)[0]
+    rows = page.split(r"\mathit{As}_{2} & = & ", 1)[1].split(r"\end{array}", 1)[0]
     substitution = rows.split(r"\[8pt]")[2]
     assert r"\quad \cdot \left(1 - \sqrt{" in substitution, substitution
     assert r"\frac{1}{" not in substitution, substitution
@@ -144,7 +144,7 @@ def test_a_bracket_too_wide_for_a_row_wraps_inside_itself(sheet):
     ...` over as many rows as it needs, closed where it ends. Asked for on 2026-09-25."""
     page, console = sheet(PHI_MN)
     assert not console, console
-    block = page.split(r"\mathrm{phiMn} & = &", 1)[1]
+    block = page.split(r"\mathit{phiMn} & = &", 1)[1]
     substitution = block.split(r"\[8pt]")[1]
     assert substitution.count(r"\left(0.90\right)") == 1, substitution
     assert r"\quad \cdot \left(" in substitution and r"\right)" in substitution, substitution

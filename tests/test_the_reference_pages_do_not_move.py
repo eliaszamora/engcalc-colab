@@ -18,7 +18,7 @@ whether anything at all moved.
 
 * Every output the magic hands to `display()`, in order, as the source it was handed -
   raw LaTeX and HTML, not read back through `block_text`. Reading it back would erase the
-  difference between `qD` and `\mathrm{qD}`, which was a real defect (#160).
+  difference between `qD` and `\mathit{qD}`, which was a real defect (#160).
 * What was printed to the console: the palette announcement, the config line.
 * For a figure, what EngCalc *writes* on it: title, axis labels, legend, annotations and
   the dense summary panel. Not pixels - they move between machines and font builds while
