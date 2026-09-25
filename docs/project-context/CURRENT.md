@@ -715,22 +715,29 @@ pendientes"*), branch `fix/pending-findings`, one commit each so a choice can dr
 2. `d4716c4` + part of `ad6f71e`: a function that reads a kept name is written as typed
    (`As_req(Mu)` keeps `f_cw`, no 2.35) and a call of it substitutes into that written body
    (`engine.written_functions`, `_flat_products`: `2 · 876940 kgf·cm`). 5 contracts.
-3. `ad6f71e` **option B, awaiting his choice**: `M_u = U1(L/2)` on its own row, then
+3. `ad6f71e` **option B, his choice**: `M_u = U1(L/2)` on its own row, then
    `= 0.15 qD L^2 + 0.2 qL L^2`, substitution, value (`_call_of_the_sheet_shown`,
    `_print_AppliedUndef`, `_opens_by_repeating` accepts the split). Moves one row on
    formas, formas-kgf, viga, viga-kgf and corta (`M_c = M(L/2)`, `M_0 = M(0 mm) = 0`).
-4. `294e980` **awaiting his choice**: `U1`..`U6` are the family `U` (envelope `U(x) envelope`,
+4. `294e980` **approved**: `U1`..`U6` are the family `U` (envelope `U(x) envelope`,
    `U_max/U_min`, axis `U(x)`), and "Governing along x" for "Governing — x". Moves viga,
    viga-kgf, corta and E11 headings/figure labels.
 5. `4a8ca70`: a moment applied at a free joint is read back from the end moments and drawn
    (red arc + value); a fixed end of one member is a wall across it (cantilever). The
-   frame's figures are unchanged. **Non-uniform loads need syntax - proposed, not built**:
-   `load=[w_1, w_2]` (linear start->end) and `point=[P, a]` (rows for several).
-Suite 2947. The 13 sheets and 18 exercises differ from 0.35.0 only by points 3 and 4.
+   frame's figures are unchanged. `da70eb9` (approved syntax): `load=[w_1, w_2]` runs
+   linearly start->end, `point=[P, a]` (rows `[P_1, a_1; P_2, a_2]` for several), both
+   towards -y'. V and M follow (`_internal`), the moment's peaks where the shear crosses
+   zero (`_shear_zeros`, bisection), labels under point loads and on both sides of a jump,
+   the deformed shape adds the fixed-end deflection under any of them
+   (`_held_deflection`: particular solution + c2 s^2 + c3 s^3), drawn in red. A typed load
+   keeps its typed unit (`declared=True`; it read `2.00 tonf/m` for `2000*kgf/m`).
+   Checked against textbook values: wL^2/(9 sqrt 3), Pab/L, PL^3/(192EI), wL^4/(764EI).
+   11 contracts; mutation 7/7.
+His answer: *"Opción B, apruebo los nombres y la sintaxis de cargas"*. Suite 2958. The 13
+sheets and 18 exercises differ from 0.35.0 only by points 3 and 4.
 
-**Exact next step:** his choices - option B (or A/C) for point 3, the two names for point
-4, the load syntax for point 5 - then build the load syntax, merge with his yes, and
-publish only when he says.
+**Exact next step:** CI on #316, check it in his Colab, then his yes to merge; publish
+only when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
