@@ -2448,6 +2448,12 @@ def _display_lhs(
     ),
 ) -> str | None:
     if result.display_name is None:
+        # `d = numeric(F*L/(E*A))`: the row goes under the name the line gives it. It put
+        # the formula in the name's column, and `d` was nowhere on the page.
+        statement = result.statement
+        target = getattr(statement, "target", None)
+        if target is not None and getattr(statement, "parameters", None) is None:
+            return _render_lhs(target, None)
         return None
     if result.display_arguments is None:
         return _render_lhs(result.display_name, None)
@@ -2470,8 +2476,13 @@ def _shows_substitution(
         | PartialMatrixNumericEvaluationResult
     ),
 ) -> bool:
-    """Return False for the compact result(...) presentation alias."""
-    return re.match(r"^result\s*\(", result.statement.source.strip()) is None
+    """Return False for the compact result(...) presentation alias.
+
+    Read off the line as written - the parser hands `result` on as `numeric` - and with a
+    name allowed in front: `d = result(...)` does not start with `result(`, and showed the
+    substitution it was written to leave out.
+    """
+    return re.match(r"^(?:[A-Za-z_]\w*\s*=\s*)?result\s*\(", result.statement.source.strip()) is None
 
 
 _NUMERIC_ROW_VISUAL_BUDGET = 64.0
