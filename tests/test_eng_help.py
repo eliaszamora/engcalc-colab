@@ -112,8 +112,8 @@ def test_help_for_one_call_shows_its_forms_and_its_example(monkeypatch):
 
     assert len(displayed) == 1 and isinstance(displayed[0], HTML)
     html = displayed[0].data
-    assert "integrate(expression, variable, lower, upper)" in html
-    assert "the variable of integration" in html
+    assert "integrate(expresión, variable, inferior, superior)" in html
+    assert "la variable de integración" in html
     # The example is shown, not merely stored.
     assert "V(x) = q*L/2 - q*x" in html
 
@@ -133,14 +133,14 @@ def test_an_unknown_name_suggests_rather_than_raising(monkeypatch, capsys):
 
     assert displayed == []
     printed = capsys.readouterr().out
-    assert "no help for 'integrat'" in printed
+    assert "no hay ayuda para 'integrat'" in printed
     assert "integrate" in printed
 
 
 def test_a_name_with_no_near_match_still_explains_how_to_list(monkeypatch, capsys):
     run_help(monkeypatch, "zzz")
     printed = capsys.readouterr().out
-    assert "%eng_help with no name lists every call" in printed
+    assert "%eng_help sin nombre lista todo" in printed
 
 
 def test_an_entry_that_takes_arguments_documents_them():
@@ -164,17 +164,28 @@ def test_an_entry_that_takes_arguments_documents_them():
 def test_help_for_keep_says_what_it_is_for(monkeypatch):
     """He asked what `keep` is for. The entry answers with the page, before and after."""
     (html,) = [item.data for item in run_help(monkeypatch, "keep")]
-    assert "keep name = expression" in html
+    assert "keep nombre = expresión" in html
     assert "C = 0.85 b d fc" in html and "C = f_cw b d" in html, html
 
 
 def test_help_explains_how_a_frame_is_drawn(monkeypatch):
     (html,) = [item.data for item in run_help(monkeypatch, "member")]
     assert "N_i; V_i; M_i; N_j; V_j; M_j" in html
-    assert "equilibrium" in html, html
+    assert "equilibrio" in html, html
 
 
 def test_the_list_shows_the_statements_apart(monkeypatch):
     (html,) = [item.data for item in run_help(monkeypatch, "")]
-    assert "Statements" in html and "keep name = expression" in html
-    assert html.index("Statements") < html.index("Calls"), html
+    assert "Sentencias" in html and "keep nombre = expresión" in html
+    assert html.index("Sentencias") < html.index("Funciones"), html
+
+
+def test_the_help_is_written_in_spanish(monkeypatch):
+    """He asked for it in Spanish (2026-09-25): *"Tradúcela al español"*. The names of the
+    calls and the examples stay as the language writes them."""
+    (html,) = [item.data for item in run_help(monkeypatch, "numeric")]
+    assert "Argumentos" in html and "Ejemplo" in html, html
+    assert "Evalúa" in html, html
+    assert "numeric(expresión, unidad)" in html, html
+    for entry in CATALOGUE.values():
+        assert not entry.summary.startswith(("The ", "A ", "An ", "Draw", "Show")), entry.summary
