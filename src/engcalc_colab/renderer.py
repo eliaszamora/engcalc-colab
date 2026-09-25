@@ -4887,6 +4887,9 @@ def render_call_help(entry) -> str:
         if arguments
         else ""
     )
+    note = (
+        f'<div class="engcalc-help-summary">{escape(entry.note)}</div>' if entry.note else ""
+    )
     return (
         _HELP_STYLE
         + '<div class="engcalc-help">'
@@ -4894,6 +4897,7 @@ def render_call_help(entry) -> str:
         + f'<div class="engcalc-help-summary">{escape(entry.summary)}</div>'
         + forms
         + argument_block
+        + note
         + '<div class="engcalc-help-heading">Example</div>'
         + f'<div class="engcalc-help-example">{escape(entry.example)}</div>'
         + "</div>"
@@ -4901,19 +4905,26 @@ def render_call_help(entry) -> str:
 
 
 def render_call_index(entries) -> str:
-    """Every call with its first form, for `%eng_help` with no argument."""
-    rows = "".join(
-        f'<div class="engcalc-help-row"><code>{escape(entry.forms[0])}</code>'
-        f" \u2014 {escape(entry.summary)}</div>"
-        for entry in entries
-    )
+    """Every statement form, then every call, each with its first form, for `%eng_help`."""
+
+    def rows(kind: str) -> str:
+        return "".join(
+            f'<div class="engcalc-help-row"><code>{escape(entry.forms[0])}</code>'
+            f" \u2014 {escape(entry.summary)}</div>"
+            for entry in entries
+            if entry.kind == kind
+        )
+
     return (
         _HELP_STYLE
         + '<div class="engcalc-help">'
-        + '<div class="engcalc-help-name">EngCalc calls</div>'
+        + '<div class="engcalc-help-name">EngCalc</div>'
         + '<div class="engcalc-help-summary">'
-        + "%eng_help &lt;name&gt; for the arguments and an example."
+        + "%eng_help &lt;name&gt; for the arguments and an example: %eng_help keep, %eng_help :=."
         + "</div>"
-        + rows
+        + '<div class="engcalc-help-heading">Statements</div>'
+        + rows("statement")
+        + '<div class="engcalc-help-heading">Calls</div>'
+        + rows("call")
         + "</div>"
     )

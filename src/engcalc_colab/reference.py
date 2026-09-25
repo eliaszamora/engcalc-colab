@@ -26,6 +26,11 @@ class CallHelp:
     forms: tuple[str, ...]
     arguments: tuple[tuple[str, str], ...]
     example: str
+    # "call", or "statement" for the forms written without parentheses: `keep`, `case`,
+    # `combo` and `:=`.
+    kind: str = "call"
+    # What it is for, when the forms and the example do not say it by themselves.
+    note: str = ""
 
     def __post_init__(self) -> None:
         if not self.forms:
@@ -43,6 +48,158 @@ def _scalar(name: str, summary: str, example_argument: str) -> CallHelp:
         example=f"y = {name}({example_argument})",
     )
 
+
+_STATEMENTS: tuple[CallHelp, ...] = (
+    CallHelp(
+        name=":=",
+        kind="statement",
+        summary="Give a name its value, a number with its unit; a line that reads a matrix is worked out in numbers.",
+        forms=("name := expression", "d := solve(K, F)"),
+        arguments=(
+            ("name", "the name the value is kept under"),
+            ("expression", "a value with its unit, or arithmetic on values already given; with a matrix, solve, inv, transpose, + - *, and entries such as d[2,1]"),
+        ),
+        note=(
+            "`=` defines a formula and keeps it in symbols; `:=` defines a value. "
+            "numeric() puts the `:=` values into a `=` formula and shows the substitution. "
+            "`d := solve(K, F)` solves in numbers - a symbolic solve of a real stiffness "
+            "matrix would not finish - and the page writes the line as typed, then its numbers."
+        ),
+        example=(
+            "L := 6*m\nq := 10*kN/m\nM = q*L^2/8\nnumeric(M)\n"
+            "K = [2*kN/m, -1*kN/m; -1*kN/m, 1*kN/m]\nF = [0*kN; 10*kN]\nd := solve(K, F)"
+        ),
+    ),
+    CallHelp(
+        name="keep",
+        kind="statement",
+        summary="Define a value that later formulas show by its name, not by what it expands to.",
+        forms=("keep name = expression",),
+        arguments=(
+            ("name", "the name later formulas keep, as the code names it: f_cw, R_n, As_min, d"),
+            ("expression", "its definition, shown once, on its own row"),
+        ),
+        note=(
+            "Without keep, a formula that uses the name is written with the name replaced "
+            "by its definition. With f_cw = 0.85*fc, then C = f_cw*b*d, the page reads "
+            "C = 0.85 b d fc. With keep f_cw = 0.85*fc it reads C = f_cw b d - the "
+            "formula of the code - and the substitution puts in f_cw's own value "
+            "(178.50 kgf/cm2). Use it for every intermediate a code or your reasoning "
+            "names; a given value (fc := 210*kgf/cm^2) does not need it."
+        ),
+        example=(
+            "fc := 210*kgf/cm^2\nb := 30*cm\nd := 44*cm\n"
+            "keep f_cw = 0.85*fc\nC = f_cw*b*d\nnumeric(C)"
+        ),
+    ),
+    CallHelp(
+        name="case",
+        kind="statement",
+        summary="Name the response of one load case, as a function of the coordinate along the member.",
+        forms=("case name = expression",),
+        arguments=(
+            ("name", "the case, such as D, Lv or EQ"),
+            ("expression", "the response it gives, such as M_D(x)"),
+        ),
+        note=(
+            "A combo adds cases with their factors. The coordinate is found rather than "
+            "declared: it is the one name left once every other has a value."
+        ),
+        example=(
+            "L := 6*m\nqD := 18*kN/m\nqL := 12*kN/m\n"
+            "M_D(x) = qD*x*(L - x)/2\nM_L(x) = qL*x*(L - x)/2\n"
+            "case D = M_D(x)\ncase Lv = M_L(x)\ncombo U1 = 1.2*D + 1.6*Lv\n"
+            "M_u = U1(L/2)\nnumeric(M_u)"
+        ),
+    ),
+    CallHelp(
+        name="combo",
+        kind="statement",
+        summary="Combine load cases with the factors a code gives; the combination is then a function, U1(x).",
+        forms=("combo name = factor*case + ...",),
+        arguments=(
+            ("name", "the combination, such as U1"),
+            ("factor*case + ...", "each case by its factor, as 1.2*D + 1.6*Lv"),
+        ),
+        note=(
+            "Written with its factors, so a reviewer checks it against the code without "
+            "redoing the arithmetic. Use it as a function: U1(L/2), "
+            "envelope(U1(x), U2(x), x, 0, L), governing(U1(x), U2(x), x, 0, L)."
+        ),
+        example=(
+            "L := 6*m\nqD := 18*kN/m\nqL := 12*kN/m\n"
+            "M_D(x) = qD*x*(L - x)/2\nM_L(x) = qL*x*(L - x)/2\n"
+            "case D = M_D(x)\ncase Lv = M_L(x)\n"
+            "combo U1 = 1.4*D\ncombo U2 = 1.2*D + 1.6*Lv\n"
+            "governing(U1(x), U2(x), x, 0, L)"
+        ),
+    ),
+)
+
+_PLACING: tuple[CallHelp, ...] = (
+    CallHelp(
+        name="image",
+        summary="Place a picture - a file or a URL - as a numbered Figura, embedded in the notebook.",
+        forms=('image("file.png")', 'image("file.png", "caption", width=12*cm)'),
+        arguments=(
+            ("file", "in quotes: a path from where the notebook runs - in Colab /content, or /content/drive/MyDrive/... with Drive mounted - or an http(s) URL; png, jpg, gif, svg or webp"),
+            ("caption", "optional, in quotes; it may hold $...$"),
+            ("width", "optional, a length, such as 12*cm"),
+        ),
+        note="Figures are numbered on their own, image and frame_plot alike; a cell run again keeps its numbers and %eng_reset starts again at 1.",
+        example='image("portico.png", "Geometría del pórtico", width=9*cm)',
+    ),
+    CallHelp(
+        name="member",
+        summary="Declare a member of a frame from what the sheet worked out, for frame_plot; it puts nothing on the page.",
+        forms=(
+            'member("name", start=[x_1, y_1], end=[x_2, y_2], forces=f)',
+            'member("name", start=..., end=..., forces=f, displacements=u, EI=E*I, load=w)',
+            'member("name", start=..., end=..., forces=f, load=[w_1, w_2], point=[P, a])',
+        ),
+        arguments=(
+            ("name", "in quotes; declaring it again replaces it"),
+            ("start, end", "its ends, two lengths each; x' runs from start to end, y' a quarter turn anticlockwise from it"),
+            ("forces", "the six end forces in local axes, acting on the member, [N_i; V_i; M_i; N_j; V_j; M_j] - as k*T*D + f_0 gives them"),
+            ("displacements", "the six end displacements in local axes, [u_i; v_i; θ_i; u_j; v_j; θ_j] - T*D; for the deformed shape"),
+            ("EI", "its flexural stiffness; the deformed shape of a loaded member needs it"),
+            ("load", "a load towards -y': w uniform, or [w_1, w_2] running linearly from start to end"),
+            ("point", "[P, a], a load P towards -y' at a from start; several are rows, [P_1, a_1; P_2, a_2]"),
+        ),
+        note=(
+            "Nothing is solved again. frame_plot applies equilibrium to each member from its "
+            "start: N(s) = -N_i, V(s) = V_i minus the load up to s, M(s) = -M_i + V_i s minus "
+            "the moment of that load. The load on a joint is read back from the end forces "
+            "meeting there; a support is a joint the displacements hold still."
+        ),
+        example=(
+            "L := 6*m\nP := 30*kN\nf := [0*kN; 20*kN; 0*kN*m; 0*kN; 10*kN; 0*kN*m]\n"
+            'member("V", start=[0*m, 0*m], end=[L, 0*m], forces=f, point=[P, 2*m])\n'
+            'frame_plot(M, "Momento flector")'
+        ),
+    ),
+    CallHelp(
+        name="frame_plot",
+        summary="Draw M, V, N or the deformed shape on every member declared, as a numbered Figura.",
+        forms=('frame_plot(M, "caption")', "frame_plot(V)", "frame_plot(N)", 'frame_plot(deformed, "caption", scale=150)'),
+        arguments=(
+            ("M, V, N, deformed", "the diagram; M is drawn on the tension side and is positive when it pulls the inside fibre, each member read as a beam seen from inside the frame"),
+            ("caption", "optional, in quotes; the figure reads Figura n. caption"),
+            ("scale", "deformed only: how many times the displacements are drawn; chosen when left out"),
+        ),
+        note=(
+            "Values carry their sign, in boxes, in the unit the page writes; the moment's "
+            "peak is marked where the shear crosses zero. The deformed shape follows the end "
+            "displacements with the member's own shape functions and adds the deflection its "
+            "load gives with both ends held."
+        ),
+        example=(
+            "L := 6*m\nw := 12*kN/m\nf := [0*kN; 36*kN; 0*kN*m; 0*kN; 36*kN; 0*kN*m]\n"
+            'member("V", start=[0*m, 0*m], end=[L, 0*m], forces=f, load=w)\n'
+            'frame_plot(M, "Momento flector")\nframe_plot(V, "Fuerza cortante")'
+        ),
+    ),
+)
 
 _ENTRIES: tuple[CallHelp, ...] = (
     CallHelp(
@@ -459,4 +616,6 @@ _ENTRIES: tuple[CallHelp, ...] = (
     ),
 )
 
-CATALOGUE: dict[str, CallHelp] = {entry.name: entry for entry in _ENTRIES}
+CATALOGUE: dict[str, CallHelp] = {
+    entry.name: entry for entry in _STATEMENTS + _PLACING + _ENTRIES
+}
