@@ -1841,6 +1841,13 @@ class EngineeringEngine:
                         self.written_units.add(str(quantity.units))
                     except AttributeError:
                         pass
+                # `Vu = max(a, b)` then `Vu := 5000*kgf`: the formula goes, as a matrix's
+                # does, or the page shows the number and computes with the formula.
+                for store in (self.namespace, self.written_namespace, self.numeric_guards):
+                    store.pop(statement.target, None)
+                if declaration != "keep":
+                    self.kept_names.discard(statement.target)
+                self.kept_values.discard(statement.target)
                 return NumericAssignmentResult(
                     statement=statement,
                     quantity=quantity,
