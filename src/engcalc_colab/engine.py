@@ -604,6 +604,25 @@ def measured_units_in(tree) -> frozenset[str]:
     return frozenset(measured)
 
 
+def _worked_out_from_numbers(node) -> bool:
+    """A number, or arithmetic and calls on numbers alone: `30`, `sqrt(6^2 + 4^2)`, `(6 + 4)`.
+
+    `sqrt(6^2 + 4^2)*m` writes the metre as plainly as `7.21*m` does; asked only about a
+    bare number, it said `'m' is read as a unit, and nothing on the sheet writes it as
+    one`. Found on his exercise 2.1 (2026-09-25).
+    """
+    called = {id(call.func) for call in ast.walk(node) if isinstance(call, ast.Call)}
+    numbers = False
+    for part in ast.walk(node):
+        if isinstance(part, ast.Name) and id(part) not in called:
+            return False
+        if isinstance(part, ast.Constant):
+            if not isinstance(part.value, (int, float)) or isinstance(part.value, bool):
+                return False
+            numbers = True
+    return numbers
+
+
 def letters_written_as_units_in(tree) -> frozenset[str]:
     """The one-letter unit aliases a statement writes where a unit is written.
 
@@ -630,11 +649,9 @@ def letters_written_as_units_in(tree) -> frozenset[str]:
             found: list = []
             factors(node, found)
             names = [f.id for f in found if isinstance(f, ast.Name) and f.id in _UNIT_ALIASES]
-            beside = any(
-                isinstance(f, ast.Constant) and isinstance(f.value, (int, float))
-                and not isinstance(f.value, bool)
-                for f in found
-            ) or any(len(name) > 1 for name in names)
+            beside = any(_worked_out_from_numbers(f) for f in found) or any(
+                len(name) > 1 for name in names
+            )
             if beside:
                 written.update(name for name in names if len(name) == 1)
         for child in ast.iter_child_nodes(node):
@@ -1433,6 +1450,60 @@ class EngineeringEngine:
         if any(is_matrix(argument) for argument in arguments):
             return None
         return sp.Function(body.func.id)(*arguments)
+
+    def _in_numbers(self, statement, declaration, value):
+        """A `=` line with every name valued, written as `numeric` writes one; else None.
+
+        `delta_ba = F_ba*L_ba/E/A_ba` over `E = 200*GPa`, `L_ba = sqrt(6^2 + 4^2)*m`...
+        ended on `6.68e-4 kN·m·√13/(mm²·GPa)`: nothing symbolic was left, and still no
+        number. His exercise 2.1, 2026-09-25. Such a line now reads as the formula in its
+        names, the values put in, and the value. The name is stored as before, a formula.
+
+        Only where the value would not already read as a number in its unit - `L = 6*m`
+        and `M = q*L^2/8` over values, `45 kN·m`, stay one row - and only for arithmetic
+        and the calls a second walk is free to repeat.
+        """
+        if (
+            statement.target is None
+            or statement.parameters is not None
+            or declaration is not None
+            or not isinstance(value, sp.Expr)
+            or isinstance(value, sp.MatrixBase)
+        ):
+            return None
+        for node in ast.walk(statement.expression):
+            if isinstance(node, ast.Call) and getattr(node.func, "id", None) not in _WRITTEN_FORM_SAFE_CALLS:
+                return None
+        context = self.numeric_context
+        try:
+            read, quantity = context.evaluate_symbolic(value)
+        except Exception:  # noqa: BLE001 - a name without a value: the formula stays a formula
+            return None
+        # A formula over `:=` values is what `=` is for, and `numeric(...)` writes its
+        # numbers when the sheet asks: `M = q*L^2/8` then `numeric(M)`. Only a value with
+        # nothing left to substitute - numbers and units - is written out here.
+        if read or _reads_as_a_number(value, quantity):
+            return None
+        try:
+            formula = _NamesStandEvaluator(self).visit(statement.expression.body)
+            # Each name's own value: `evaluate_symbolic` would expand a `=` name into its
+            # definition before substituting, and the row would have nothing to put in.
+            substitutions = {
+                symbol.name: context.evaluate_symbolic(self.namespace[symbol.name])[1]
+                for symbol in formula.free_symbols
+                if symbol.name in self.namespace
+            }
+        except Exception:  # noqa: BLE001 - nothing to show beyond the formula it had
+            return None
+        return NumericEvaluationResult(
+            statement=statement,
+            symbolic_expression=formula,
+            substitutions=substitutions,
+            quantity=quantity,
+            display_name=statement.target,
+            unit_literals=self._unit_literals_of(formula),
+            declared_names=frozenset(self.declared_unit_names),
+        )
 
     def _written_form(self, statement, evaluator, value):
         """The definition's expression as it was typed, or None to show the evaluated one.
@@ -2258,6 +2329,9 @@ class EngineeringEngine:
                     self.written_functions.pop(statement.target, None)
                 else:
                     self.written_functions[statement.target] = written
+            in_numbers = self._in_numbers(statement, declaration, value)
+            if in_numbers is not None:
+                return in_numbers
             return EvaluationResult(
                 statement=statement,
                 display_input=shown,
@@ -5203,3 +5277,39 @@ class _WrittenFormEvaluator(_Evaluator):
         if isinstance(op, ast.Pow):
             return sp.Pow(left, right, evaluate=False)
         return super()._combine(op, left, right)
+
+
+class _NamesStandEvaluator(_WrittenFormEvaluator):
+    """The line as typed with every name of the sheet standing for itself.
+
+    What `numeric` opens with over `:=` values - `F_ba L_ba / (E A_ba)` - for a `=` line
+    whose names were defined with `=` and would otherwise be replaced by what they hold.
+    See `EngineeringEngine._in_numbers`.
+    """
+
+    def visit_Name(self, node: ast.Name):
+        if node.id in self.engine.namespace:
+            return self.engine.resolve_symbol(node.id)
+        return super().visit_Name(node)
+
+
+def _reads_as_a_number(value, quantity) -> bool:
+    """True when `value` is already a number in a unit: `6 m`, `45 kN·m`, `900 cm²`.
+
+    Not when it keeps a root or π (`m √13`), a fraction (`kN/15`), a sum (`3 m + 20 cm`),
+    or units that reduce against each other (`kN·m/(mm²·GPa)`): those have a number the
+    page has not written yet.
+    """
+    coefficient, rest = value.as_coeff_Mul()
+    if not (coefficient.is_Integer or coefficient.is_Float):
+        return False
+    for factor in sp.Mul.make_args(rest):
+        if factor == 1:
+            continue
+        base, exponent = factor.as_base_exp()
+        if not (isinstance(base, sp.Symbol) and exponent.is_Integer):
+            return False
+    try:
+        return quantity.to_reduced_units().units == quantity.units
+    except Exception:  # noqa: BLE001 - a quantity Pint cannot reduce is left as it reads
+        return True

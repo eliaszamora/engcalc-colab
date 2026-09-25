@@ -37,8 +37,12 @@ def test_pi_resolves_to_exact_sympy_constant():
 
     result = run(engine, "p = pi")
 
-    assert result.value == sp.pi
-    assert result.value.is_number is True
+    # The name holds π exactly. The row now ends on its number too (`p = π = 3.14`): a
+    # `=` line with nothing left to substitute is written as `numeric` writes one. See
+    # `test_an_equals_line_of_values_ends_on_its_value.py`.
+    assert engine.namespace["p"] == sp.pi
+    assert engine.namespace["p"].is_number is True
+    assert result.symbolic_expression == sp.pi
 
 
 @pytest.mark.parametrize("name", ("sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"))
