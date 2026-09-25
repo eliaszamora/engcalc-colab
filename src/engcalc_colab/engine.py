@@ -943,10 +943,12 @@ class EngineeringEngine:
         return probe
 
     def _calls_a_function_of_the_sheet(self, expression: ast.AST) -> bool:
+        # `solve(eq(...), c, lower, upper)` too: its root is found by the symbolic layer,
+        # as a sheet function's value is, and a `:=` line takes it the same way.
         return any(
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
-            and node.func.id in self.functions
+            and (node.func.id in self.functions or _solves_in_a_range(node, self.namespace))
             for node in ast.walk(expression)
         )
 
@@ -977,7 +979,13 @@ class EngineeringEngine:
         quantity = probe.numeric_evaluation[2]
         self.numeric_context.values[statement.target] = quantity
         self.numeric_context.matrices.pop(statement.target, None)
-        return quantity
+        # A `solve` on the line: the equation it solved goes on the page above the value.
+        equation = (
+            probe.display_input
+            if probe.solved_for is not None and isinstance(probe.display_input, sp.Equality)
+            else None
+        )
+        return quantity, equation
 
     def _image_asked_for(self, statement):
         """`image("portico.png", "Geometría y cargas", width=12*cm)`, read and numbered.
@@ -1894,8 +1902,9 @@ class EngineeringEngine:
                     statement.expression.body, ast.List
                 ):
                     return self._assign_numbers(statement, numbers, written_units)
+                equation = None
                 if self._calls_a_function_of_the_sheet(statement.expression):
-                    quantity = self._assign_through_the_sheet(statement)
+                    quantity, equation = self._assign_through_the_sheet(statement)
                 else:
                     quantity = self.numeric_context.assign(
                         statement.target,
@@ -1923,6 +1932,7 @@ class EngineeringEngine:
                     statement=statement,
                     quantity=quantity,
                     written_units=written_units,
+                    equation=equation,
                 )
 
             if statement.target is not None:
@@ -3107,6 +3117,9 @@ class _Evaluator(ast.NodeVisitor):
             if node.args and isinstance(node.args[0], ast.Compare):
                 return self._evaluate_inequality(node)
 
+            if _solves_in_a_range(node, self.engine.namespace):
+                return self._solve_in_a_range(node)
+
             if len(node.args) != 2:
                 self._visit_equation_system(node)
                 return None
@@ -3434,6 +3447,188 @@ class _Evaluator(ast.NodeVisitor):
         if message.startswith("characteristic domain"):
             message = name + message[len("characteristic"):]
         return EngEvaluationError(message)
+
+    def _solve_in_a_range(self, node: ast.Call):
+        """`solve(eq(b*c^2/2, n*A_s*(d - c)), c, 0*cm, d)`: the one root inside the range.
+
+        Found as `roots(...)` finds it - exactly where it can, numerically where there is no
+        closed form - and refused, with what the range holds, when it holds none or more
+        than one. His ask of 2026-09-25: the neutral axis of a cracked section is a quadratic
+        whose other root is negative. See `test_solve_takes_the_root_inside_a_range`.
+        """
+        if len(node.args) != 4:
+            raise EngEvaluationError(
+                "solve with a range takes the equation, the unknown, a lower and an upper "
+                "bound, as in solve(eq(b*c^2/2, n*A_s*(d - c)), c, 0*cm, d)"
+            )
+        equation_node, unknown_node, lower_node, upper_node = node.args
+        is_eq = (
+            isinstance(equation_node, ast.Call)
+            and getattr(equation_node.func, "id", None) == "eq"
+            and len(equation_node.args) == 2
+        )
+        unknown_name = unknown_node.id
+        # The equation, shown above the answer, as a single `solve` shows it.
+        unknown = self.engine.resolve_symbol(unknown_name)
+        previous = self.symbol_overrides.get(unknown_name)
+        self.symbol_overrides[unknown_name] = unknown
+        try:
+            equation = self.visit(equation_node)
+        finally:
+            if previous is None:
+                self.symbol_overrides.pop(unknown_name, None)
+            else:
+                self.symbol_overrides[unknown_name] = previous
+        if not isinstance(equation, sp.Equality):
+            equation = sp.Eq(equation, 0, evaluate=False)
+        self.display_input = equation
+        self.solved_for = unknown_name
+
+        # Every other name has a value: the roots are found in numbers, across the range.
+        # A closed form is not needed and not always to be had - a cubic in symbols took
+        # twenty seconds and came back with none - and the page shows the number anyway.
+        found = self._roots_in_numbers(
+            equation.lhs - equation.rhs, unknown_name, lower_node, upper_node
+        )
+        if found is not None:
+            roots, lower, upper = found
+            chosen = self._one_root(roots, unknown_name, lower, upper)
+            return _as_written_quantity(chosen, self)
+
+        # A sheet of symbols: the exact roots, as `roots(...)` finds them.
+        response = (
+            ast.BinOp(left=equation_node.args[0], op=ast.Sub(), right=equation_node.args[1])
+            if is_eq
+            else equation_node
+        )
+        call = ast.fix_missing_locations(ast.copy_location(
+            ast.Call(
+                func=ast.Name(id="roots", ctx=ast.Load()),
+                args=[response, unknown_node, lower_node, upper_node],
+                keywords=[],
+            ),
+            node,
+        ))
+        saved = self.characteristic_evaluation
+        try:
+            self._evaluate_characteristic(call, "roots")
+            characteristic = self.characteristic_evaluation
+        finally:
+            self.characteristic_evaluation = saved
+        if characteristic.intervals:
+            raise EngEvaluationError(
+                f"the equation holds for every {unknown_name} between "
+                f"{_said_quantity(characteristic.lower_quantity)} and "
+                f"{_said_quantity(characteristic.upper_quantity)}: there is no one root"
+            )
+        points = [point for point in characteristic.points if point.x_quantity is not None]
+        self._one_root(
+            [point.x_quantity for point in points],
+            unknown_name,
+            characteristic.lower_quantity,
+            characteristic.upper_quantity,
+        )
+        return points[0].x_symbolic
+
+    def _one_root(self, roots, unknown_name, lower, upper):
+        between = f"between {_said_quantity(lower)} and {_said_quantity(upper)}"
+        if not roots:
+            raise EngEvaluationError(f"solve found no root for {unknown_name} {between}")
+        if len(roots) > 1:
+            listed = ", ".join(_said_quantity(root) for root in roots)
+            raise EngEvaluationError(
+                f"solve found {len(roots)} roots for {unknown_name} {between}: {listed}; "
+                "narrow the range to the one you want"
+            )
+        return roots[0]
+
+    def _roots_in_numbers(self, expression, unknown_name, lower_node, upper_node):
+        """The roots of `expression` for `unknown_name` in the range, found in numbers.
+
+        None when a name other than the unknown has no value: the sheet is then worked in
+        symbols, and its roots are found as `roots(...)` finds them.
+
+        The range is cut in `_ROOT_SAMPLES` pieces, every change of sign is closed in on by
+        halving, and a change of sign that is not a zero - across a pole, `1/(c - a)` - is
+        told apart by its value there. A root where the curve only touches zero, with no
+        change of sign, is not seen; neither is it by `roots(...)`'s numbers.
+        """
+        context = self.engine.numeric_context
+        try:
+            lower = self._resolve_domain_numeric_value(lower_node)
+            upper = self._resolve_domain_numeric_value(upper_node)
+        except EngCalcError:
+            return None
+        quantity = context.ureg.Quantity
+        lower = lower if hasattr(lower, "units") else quantity(float(lower))
+        upper = upper if hasattr(upper, "units") else quantity(float(upper))
+        # A bare `0` has no unit: the range's unit is the other bound's, and it is 0 in it.
+        lower_zero = lower.dimensionless and lower.magnitude == 0
+        upper_zero = upper.dimensionless and upper.magnitude == 0
+        unit = upper.units if lower_zero else lower.units
+        try:
+            a = 0.0 if lower_zero else float(lower.to(unit).magnitude)
+            b = 0.0 if upper_zero else float(upper.to(unit).magnitude)
+        except Exception:  # noqa: BLE001 - bounds of different kinds: the other path says so
+            return None
+        if b < a:
+            a, b = b, a
+        units = context.unit_literal_overrides(expression)
+
+        def value(x: float) -> float:
+            _read, result = context.evaluate_symbolic(
+                expression, overrides={**units, unknown_name: quantity(x, unit)}
+            )
+            return float(result.to_base_units().magnitude) if hasattr(result, "units") else float(result)
+
+        def value_or_nothing(x: float) -> float:
+            # A point the equation has no value at - a pole - is no root and no sample.
+            try:
+                return value(x)
+            except EngEvaluationError as exc:
+                if "requires values for" in str(exc):
+                    raise
+                return math.nan
+
+        try:
+            samples = [a + (b - a) * i / _ROOT_SAMPLES for i in range(_ROOT_SAMPLES + 1)]
+            values = [value_or_nothing(x) for x in samples]
+        except EngCalcError:
+            return None
+        scale = max((abs(v) for v in values if math.isfinite(v)), default=0.0) or 1.0
+        roots: list[float] = []
+        for (x0, v0), (x1, v1) in zip(zip(samples, values), zip(samples[1:], values[1:])):
+            if not (math.isfinite(v0) and math.isfinite(v1)):
+                continue
+            if v0 == 0:
+                roots.append(x0)
+                continue
+            if v0 * v1 > 0:
+                continue
+            lo, hi, vlo = x0, x1, v0
+            for _ in range(_ROOT_HALVINGS):
+                mid = (lo + hi) / 2
+                vmid = value_or_nothing(mid)
+                if not math.isfinite(vmid):
+                    break
+                if vmid == 0:
+                    lo = hi = mid
+                    break
+                if (vmid > 0) == (vlo > 0):
+                    lo, vlo = mid, vmid
+                else:
+                    hi = mid
+            root = (lo + hi) / 2
+            if abs(value_or_nothing(root)) <= 1e-6 * scale:
+                roots.append(root)
+        if values and values[-1] == 0:
+            roots.append(samples[-1])
+        tolerance = 1e-9 * max(1.0, abs(b - a))
+        distinct: list[float] = []
+        for root in sorted(roots):
+            if not distinct or root - distinct[-1] > tolerance:
+                distinct.append(root)
+        return [quantity(root, unit) for root in distinct], lower, upper
 
     def _evaluate_characteristic(self, node: ast.Call, name: str):
         if node.keywords:
@@ -5313,3 +5508,48 @@ def _reads_as_a_number(value, quantity) -> bool:
         return quantity.to_reduced_units().units == quantity.units
     except Exception:  # noqa: BLE001 - a quantity Pint cannot reduce is left as it reads
         return True
+
+
+# `solve` in a range: pieces the range is cut in, and halvings of each change of sign.
+_ROOT_SAMPLES = 256
+_ROOT_HALVINGS = 60
+
+
+def _as_written_quantity(quantity, evaluator):
+    """A root in numbers, back in the symbolic layer as a number times its unit: `10.55 cm`."""
+    magnitude = sp.Float(float(quantity.magnitude), 15)
+    text = f"{quantity.units:~}".replace(" ", "")
+    if not text or quantity.dimensionless:
+        return magnitude
+    return magnitude * evaluator.visit(ast.parse(text, mode="eval").body)
+
+
+def _solves_in_a_range(node: ast.Call, namespace) -> bool:
+    """`solve(equation, unknown, lower, upper)` - not a system, `solve(eqFy, eqMA, R_A, R_B)`,
+    whose second argument is an equation of its own, by name or written out.
+
+    Three arguments with a bound that is not a bare name, `solve(eq(...), c, 0*cm)`, are a
+    range with its upper bound missing, and are told so; `solve(eq(...), x, y)` is a system
+    short of an equation, as it always was.
+    """
+    if not (
+        isinstance(node.func, ast.Name)
+        and node.func.id == "solve"
+        and len(node.args) in (3, 4)
+        and isinstance(node.args[1], ast.Name)
+        and not isinstance(node.args[0], (ast.Compare, ast.List))
+    ):
+        return False
+    if isinstance(namespace.get(node.args[1].id), sp.Equality):
+        return False
+    if len(node.args) == 3:
+        return not isinstance(node.args[2], ast.Name)
+    return True
+
+
+def _said_quantity(quantity) -> str:
+    """`20.00 cm`: a bound or a root, as a message says it."""
+    try:
+        return f"{float(quantity.magnitude):.2f} {quantity.units:~P}".strip()
+    except (AttributeError, TypeError, ValueError):
+        return str(quantity)
