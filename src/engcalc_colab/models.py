@@ -211,6 +211,9 @@ class NumericAssignmentResult:
     # alone would not tell the reader where it came from.
     shown_as_written: bool = False
     matrix_names: frozenset[str] = frozenset()
+    # `c := solve(eq(b*c^2/2, n*A_s*(d - c)), c, 0*cm, d)`: the equation, written above the
+    # value as a `solve` on a `=` line writes it.
+    equation: Any = None
 
 
 @dataclass(frozen=True)

@@ -3729,6 +3729,10 @@ def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[s
         return _system_solve_rows(result, settings)
     if isinstance(result, EvaluationResult):
         return _symbolic_evaluation_rows(result, settings)
+    if isinstance(result, NumericAssignmentResult) and result.equation is not None:
+        return _equality_stage_rows(
+            result.equation, settings, frozenset(result.written_units)
+        ) + [_standard_result_row(result, settings)]
     return [_standard_result_row(result, settings)]
 
 
@@ -3789,6 +3793,10 @@ def _value_row_spacings(
 
     if isinstance(result, (LoadCaseResult, LoadCombinationResult)):
         return _stage_spacing_sequence([len(result_rows)])
+
+    if isinstance(result, NumericAssignmentResult):
+        # The equation a `solve` answered, then the value: two stages.
+        return _stage_spacing_sequence([len(result_rows) - 1, 1])
 
     if isinstance(result, SystemSolveResult):
         stage_lengths = [len(result.equations), len(result.solutions)]

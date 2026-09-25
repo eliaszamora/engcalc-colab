@@ -327,6 +327,7 @@ _ENTRIES: tuple[CallHelp, ...] = (
         forms=(
             "solve(ecuación, incógnita)",
             "solve(ec_1, ..., ec_n, x_1, ..., x_n)",
+            "solve(ecuación, incógnita, inferior, superior)",
             "solve(inecuación, variable, inferior, superior)",
             "solve(matriz, vector)",
         ),
@@ -335,7 +336,14 @@ _ENTRIES: tuple[CallHelp, ...] = (
             ("incógnita", "el nombre que se despeja"),
             ("ec_1 ... ec_n", "n ecuaciones, seguidas de exactamente n incógnitas"),
             ("inecuación", "una comparación como `M(x) > 20*kN*m`"),
-            ("inferior, superior", "para una inecuación, el dominio; de ahí toma la variable su unidad"),
+            ("inferior, superior", "el dominio; de ahí toma la variable su unidad. Con una ecuación, entrega la única raíz que hay entre ellos"),
+        ),
+        note=(
+            "Con un intervalo, solve entrega una sola raíz: la que hay entre inferior y "
+            "superior, aunque la ecuación no tenga forma cerrada. Sirve con := : "
+            "c := solve(eq(b*c^2/2, n*A_s*(d - c)), c, 0*cm, d) escribe la ecuación y luego "
+            "c = 10.55 cm. Si en el intervalo no hay raíz, o hay más de una, lo dice con sus "
+            "valores."
         ),
         example=(
             "L := 6*m\nq := 10*kN/m\n"

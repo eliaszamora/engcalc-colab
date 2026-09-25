@@ -15,8 +15,8 @@ _2026-09-25._
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
 | merged, not released | #326 `% if` (`1f926db`), #327 a `=` line of values (`c8a6036`), #328 names in italic (`cf8ffa5`) |
-| open | `feat/while-blocks`: `% while` - waiting for his yes; #329 `% for` merged (`44a8ed6`) |
-| default suite | **3076 passing** on the `% while` branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| open | `feat/solve-in-a-range` - waiting for his yes; #329 `% for` (`44a8ed6`) and #330 `% while` (`2ff83d2`) merged |
+| default suite | **3087 passing** on the `solve` branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -915,7 +915,7 @@ mutation 10/10. Suite 3058 on SymPy 1.14 and 1.13.3; 13 sheets and 18 exercises 
 to `main`. His design sheet with its 24 combination lines as four `% for` blocks over one
 `% combos = [...]`: 179 -> 169 lines, and the page is the same 377 rows, byte for byte.
 
-### `% while` (branch `feat/while-blocks`, PR open, not merged)
+### `% while` (#330, merged with his yes, `2ff83d2`)
 
 He said *"Sí, fusiona #329 y sigue con el while"*. `control._iterate` works each iteration
 out itself (`engine.evaluate`), writes nothing, and at the end yields a `ConditionNote`
@@ -934,7 +934,29 @@ the sentence writes `|f(c)|` expanded (`|b c²/2 - n A_s (d - c)|`).
 Seen on his exercise 2.1 with `%eng_units kN`, NOT changed (his call): the palette writes a
 typed `6000*mm^2` as `0.006 m²` and δ as `0.00241 m`.
 
-**Exact next step:** his yes on the `% while` PR. Then numeric `solve` with an interval,
+### `solve` in a range (branch `feat/solve-in-a-range`, PR open, not merged)
+
+He said *"Sí, fusiona #330 y sigue con el solve"*. `solve(eq(...), c, lower, upper)` (and
+with an expression instead of `eq`): `_solves_in_a_range` tells it from a system - the
+second argument is a name that is not an equation of the sheet; three arguments with a
+non-name third are a range missing its upper bound. `_Evaluator._solve_in_a_range`: with
+every other name valued, `_roots_in_numbers` evaluates the equation with Pint at 256
+pieces of the range, halves each change of sign 60 times, drops a pole by its value and a
+point with no value (nan); the root comes back as `Float * unit` (`_as_written_quantity`).
+A sheet of symbols keeps the exact `roots(...)` path. None / several roots are refused
+with bounds and roots (`_one_root`). On `:=` the line goes through `_assign_through_the_sheet`
+and `NumericAssignmentResult.equation` puts the equation above the value
+(`renderer._display_rows`, two stages). Found: `roots` on a cubic in symbols took 20-34 s
+and said "could not validate a solution set" (NOT fixed, `roots` itself). 10 contracts +
+help; mutation 9/9. Suite 3087 on SymPy 1.14 and 1.13.3; no page moves.
+
+His question (2026-09-25): a way to show formula and result without `=` then `numeric`.
+Today `delta_ba = numeric(F_ba*L_ba/(E*A_ba))` does it in one line but labels the row with
+the formula instead of `δ_ba` (a defect). Proposed: fix that label, and/or make a `:=`
+line that reads names show formula, substitution and value (only 8 such lines in `tools/`,
+most of them matrices). Waiting for his choice.
+
+**Exact next step:** his yes on the `solve` PR and his choice on the one-line form. Then
 `table` over a list, his exercise 2.1 as a reference exercise; a release when he asks. Nothing checked in his Colab this evening
 (his Chrome window stayed minimized); the `Como` spacing is still to calibrate there.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

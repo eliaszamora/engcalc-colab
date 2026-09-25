@@ -188,6 +188,12 @@ def test_help_for_while_says_what_the_page_shows(monkeypatch):
     assert "% while" in html and "% end" in html and "iteraciones" in html, html
 
 
+def test_help_for_solve_shows_the_root_inside_a_range(monkeypatch):
+    (html,) = [item.data for item in run_help(monkeypatch, "solve")]
+    assert "solve(ecuación, incógnita, inferior, superior)" in html, html
+    assert "una sola raíz" in html, html
+
+
 def test_help_for_if_shows_the_block_and_the_sentence(monkeypatch):
     (html,) = [item.data for item in run_help(monkeypatch, "if")]
     assert "% if condición:" in html and "% end" in html, html
