@@ -15,8 +15,8 @@ _2026-09-25._
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
 | merged, not released | #326 `% if` (`1f926db`), #327 a `=` line of values (`c8a6036`), #328 names in italic (`cf8ffa5`) |
-| open | `feat/for-blocks`: `% for` - waiting for his yes |
-| default suite | **3058 passing** on the `% for` branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| open | `feat/while-blocks`: `% while` - waiting for his yes; #329 `% for` merged (`44a8ed6`) |
+| default suite | **3076 passing** on the `% while` branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -898,7 +898,7 @@ his design sheet 33. Told him: `qL` the name and `q L` the product look alike in
 he was advised to write names with a subscript (`q_L`, `V_u`, `f_c`, `A_s`). Suite 3038 on the
 branch, SymPy 1.14 and 1.13.3; snapshots regenerated, 51 lines, each only `\mathrm` -> `\mathit`.
 
-### `% for` (branch `feat/for-blocks`, PR open, not merged)
+### `% for` (#329, merged with his yes, `44a8ed6`)
 
 He said *"Sí, fusiona #328 y sigue con el for"*. `control.py`: `% for <target> in <iter>:`
 parsed as Python (`_for_header`); a `%` line with an open bracket continues on the `%`
@@ -915,9 +915,27 @@ mutation 10/10. Suite 3058 on SymPy 1.14 and 1.13.3; 13 sheets and 18 exercises 
 to `main`. His design sheet with its 24 combination lines as four `% for` blocks over one
 `% combos = [...]`: 179 -> 169 lines, and the page is the same 377 rows, byte for byte.
 
-**Exact next step:** his yes on the `% for` PR. Then `% while` (final value and the count,
-cap 1000), numeric `solve` with an interval, `table` over a list, his exercise 2.1 as a
-reference exercise; a release when he asks. Nothing checked in his Colab this evening
+### `% while` (branch `feat/while-blocks`, PR open, not merged)
+
+He said *"Sí, fusiona #329 y sigue con el while"*. `control._iterate` works each iteration
+out itself (`engine.evaluate`), writes nothing, and at the end yields a `ConditionNote`
+**En N iteraciones:** (singular for 1) with the condition as it stands now, negated, which
+shows it converged, then the last iteration's results as `control.Evaluated` (the magic
+displays them without evaluating again). Zero iterations: the note and no rows. Cap 1000
+iterations: "does not converge from this start". Found writing it and fixed in the same
+branch: a zero compares with a value of any unit (`x > 0*m`: `0*kN` arrives as a plain 0);
+the sentence's sides share one unit even when the first side's leaves another with no
+figure (`_reads_in`), so `1e-6 m²` no longer reads `0.00 m²` beside `0.01 cm²`.
+`%eng_help while`. 12 + 2 contracts; mutation 9/9 (the cap's mutant hangs, as it should).
+Suite 3076 on SymPy 1.14 and 1.13.3; no page moves. His neutral axis by Newton (b 30, d 44,
+As 5.55, n 9): `c = 10.55 cm` in 4 iterations, `I_cr = 67631.59 cm⁴`. Seen, not changed:
+the sentence writes `|f(c)|` expanded (`|b c²/2 - n A_s (d - c)|`).
+
+Seen on his exercise 2.1 with `%eng_units kN`, NOT changed (his call): the palette writes a
+typed `6000*mm^2` as `0.006 m²` and δ as `0.00241 m`.
+
+**Exact next step:** his yes on the `% while` PR. Then numeric `solve` with an interval,
+`table` over a list, his exercise 2.1 as a reference exercise; a release when he asks. Nothing checked in his Colab this evening
 (his Chrome window stayed minimized); the `Como` spacing is still to calibrate there.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the

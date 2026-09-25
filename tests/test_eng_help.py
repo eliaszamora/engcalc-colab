@@ -35,7 +35,8 @@ def run_cell(source: str):
     for item in items:
         if isinstance(item, (ParsedHeading, control.ConditionNote)):
             continue
-        results.append(engine.evaluate(item))
+        # A `% while` hands over its last iteration already worked out.
+        results.append(item.result if isinstance(item, control.Evaluated) else engine.evaluate(item))
     return results
 
 
@@ -53,7 +54,7 @@ def run_help(monkeypatch, line: str):
 # He asked on 2026-09-24 what `keep` was for: it was the one thing on the frame's sheet
 # the help had no entry for, and neither had `member`, `frame_plot` or `image`.
 # `if` stands for its block: `% elif`, `% else` and `% end` are explained in its entry.
-DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":=", "if", "for"}
+DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":=", "if", "for", "while"}
 
 
 def test_every_call_the_language_accepts_can_be_looked_up():
@@ -180,6 +181,11 @@ def test_help_for_keep_says_what_it_is_for(monkeypatch):
 def test_help_for_for_shows_the_block_and_the_braces(monkeypatch):
     (html,) = [item.data for item in run_help(monkeypatch, "for")]
     assert "% for" in html and "% end" in html and "M_U{i}" in html, html
+
+
+def test_help_for_while_says_what_the_page_shows(monkeypatch):
+    (html,) = [item.data for item in run_help(monkeypatch, "while")]
+    assert "% while" in html and "% end" in html and "iteraciones" in html, html
 
 
 def test_help_for_if_shows_the_block_and_the_sentence(monkeypatch):

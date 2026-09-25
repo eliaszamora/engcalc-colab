@@ -141,7 +141,7 @@ def test_a_condition_joins_with_and(sheet):
         ("% if 1 > 0:\ny := 1*m\n", ("line 1", "% end")),
         ("y := 1*m\n% else:\n", ("line 2", "% else")),
         ("y := 1*m\n% end\n", ("line 2", "% end")),
-        ("% while 1 > 0:\n% end\n", ("line 1", "% if")),
+        ("% switch x:\n% end\n", ("line 1", "% if")),
         ("% if 2*m > 3*kgf:\ny := 1*m\n% end\n", ("line 1", "compare")),
         ("% if Q > 0:\ny := 1*m\n% end\n", ("line 1", "Q")),
     ],
@@ -169,3 +169,17 @@ def test_a_line_written_wrong_in_a_branch_that_does_not_run_still_refuses_the_ce
 def test_a_line_inside_a_branch_is_counted_in_the_cell(sheet):
     _math, _notes, console = sheet("% if 1 > 0:\ny := 1*m\nz = w +\n% end\n")
     assert "line 3" in console, console
+
+
+@pytest.mark.parametrize("zero", ["0", "0*kN"])
+def test_a_value_compares_with_zero_whatever_its_unit(sheet, zero):
+    # `0*kN` reaches the condition as a plain 0: a zero has no unit left to disagree with.
+    math, notes, console = sheet(f"V := 5*kN\n% if V > {zero}:\ny := 1*m\n% end\n")
+    assert not console, console
+    (note,) = notes
+    assert r"y & = & \displaystyle 1.00\,\mathrm{m}" in math, math
+
+
+def test_a_number_other_than_zero_still_needs_its_unit(sheet):
+    _math, _notes, console = sheet("V := 5*kN\n% if V > 3:\ny := 1*m\n% end\n")
+    assert "compare" in console, console
