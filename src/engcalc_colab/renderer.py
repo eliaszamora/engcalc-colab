@@ -2855,7 +2855,27 @@ def _shaped_product_rows(
         return _substitution_latex(part, substitutions, settings, unit_literals)
 
     rows = [("- " if negative else "") + shown(sp.Mul(*plain, evaluate=False))]
-    rows += [rf"\quad \cdot \left({shown(bracket)}\right)" for bracket in brackets]
+    for bracket in brackets:
+        whole = rf"\quad \cdot \left({shown(bracket)}\right)"
+        if _latex_visual_width(whole) <= _SHAPED_ROW_ALLOWANCE * _NUMERIC_ROW_VISUAL_BUDGET:
+            rows.append(whole)
+            continue
+        # Too wide for a row: it wraps inside itself, its terms whole, opened on the first
+        # row and closed on the last. `phiMn = phi*As*fy*(d - a/2)` over plain `d` and `a`
+        # was taken apart instead, `(0.90)(1935)(420)` in front of every term.
+        pieces = _adaptive_additive_rows(
+            bracket,
+            substitutions,
+            visual_budget=_NUMERIC_ROW_VISUAL_BUDGET - 8.0,
+            settings=settings,
+            unit_literals=unit_literals,
+        )
+        if len(pieces) == 1:
+            rows.append(whole)
+            continue
+        rows.append(rf"\quad \cdot \left({pieces[0]}\right.")
+        rows += [rf"\qquad \left.{piece}\right." for piece in pieces[1:-1]]
+        rows.append(rf"\qquad \left.{pieces[-1]}\right)")
     return rows
 
 
