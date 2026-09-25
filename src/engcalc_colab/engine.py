@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import math
 import re
 from dataclasses import dataclass, replace
 
@@ -743,6 +744,9 @@ class EngineeringEngine:
         # cell run again keeps its numbers. See `_image_asked_for`.
         self.figure_numbers: dict[tuple[str, str | None], int] = {}
         # The members of a frame, by name, in the order declared. See `_member_asked_for`.
+        # A function's body as it was written, for a function that reads a kept name: a
+        # call of it is written from this. See `test_a_kept_name_survives_a_sheet_function`.
+        self.written_functions: dict[str, object] = {}
         self.frame_members: dict[str, FrameMember] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
@@ -1080,6 +1084,60 @@ class EngineeringEngine:
                     )
             return matrix
 
+        # `load=w`, or `load=[w_1, w_2]` running linearly from start to end.
+        loads = (None, None)
+        if "load" in given:
+            written = given["load"]
+            ends = written.elts if isinstance(written, ast.List) else [written]
+            values = [
+                scalar(end_value, "load", "[force] / [length]", "a force per length")
+                for end_value in ends
+            ]
+            loads = (values[0], values[1] if len(values) == 2 else None)
+
+        # `point=[P, a]`, one row per load: P towards -y' at a from start.
+        points = []
+        if "point" in given:
+            node = given["point"]
+            if isinstance(node, ast.List):
+                # `[P, a]`, one load: its two values, read as any value on the line is.
+                pairs = [tuple(numbers.value(element) for element in node.elts)]
+            else:
+                try:
+                    value = numbers.value(node)
+                except DimensionalityError as exc:
+                    raise EngEvaluationError(f"member {name}: point has incompatible units") from exc
+                if not isinstance(value, NumberMatrix) or value.cols != 2:
+                    raise EngEvaluationError(
+                        f"member {name}: point is [P, a], a load and its distance from start; "
+                        "several are rows, [P_1, a_1; P_2, a_2]"
+                    )
+                rows = quantity_matrix_of(value, ureg)
+                pairs = [(rows.entry(row, 0), rows.entry(row, 1)) for row in range(rows.rows)]
+            span = math.hypot(*(float((b - a).to_base_units().magnitude) for a, b in zip(start, end)))
+            for row, (force, where) in enumerate(pairs):
+                force = self.numeric_context._as_quantity(force)
+                where = self.numeric_context._as_quantity(where)
+                if not force.check("[force]"):
+                    raise EngEvaluationError(
+                        f"member {name}: point load {row + 1} is {force.units:~P}, not a force"
+                    )
+                if not (where.magnitude == 0 and where.dimensionless) and not where.check("[length]"):
+                    raise EngEvaluationError(
+                        f"member {name}: point {row + 1} is at {where.units:~P}; its distance "
+                        "from start is a length"
+                    )
+                distance = float(where.to_base_units().magnitude)
+                if not 0 <= distance <= span * (1 + 1e-12):
+                    unit = where.units if not where.dimensionless else ureg.meter
+                    raise EngEvaluationError(
+                        f"member {name}: point {row + 1} at {float(where.to(unit).magnitude):g} "
+                        f"{unit:~P} is off the member, which is "
+                        f"{ureg.Quantity(span, 'm').to(unit).magnitude:g} {unit:~P} long"
+                    )
+                points.append((force, where))
+        points = tuple(points)
+
         member = FrameMember(
             name=name,
             start=start,
@@ -1099,11 +1157,9 @@ class EngineeringEngine:
                 if "EI" in given
                 else None
             ),
-            load=(
-                scalar(given["load"], "load", "[force] / [length]", "a force per length")
-                if "load" in given
-                else None
-            ),
+            load=loads[0],
+            load_end=loads[1],
+            points=points,
         )
         self.frame_members[name] = member
         return MemberResult(statement=statement, member=member)
@@ -1138,7 +1194,7 @@ class EngineeringEngine:
             unbending = [
                 member.name
                 for member in members
-                if member.load is not None and member.stiffness is None
+                if (member.load is not None or member.points) and member.stiffness is None
             ]
             if unbending:
                 raise EngEvaluationError(
@@ -1331,10 +1387,13 @@ class EngineeringEngine:
         written form already makes - and a statement that cannot be read so shows its
         value alone rather than a formula that is not its own.
         """
+        body = statement.expression.body
+        called = self._call_of_the_sheet_shown(statement)
+        if called is not None:
+            return called
         shown = evaluator.display_input
         if shown is None:
             return None
-        body = statement.expression.body
         if isinstance(body, ast.Call) and getattr(body.func, "id", None) in _CALLS_THAT_SHOW:
             return shown
         reader = _Evaluator(self, getattr(statement, "matrix_literals", ()))
@@ -1346,6 +1405,34 @@ class EngineeringEngine:
             return reader.visit(body)
         except Exception:
             return None
+
+    def _call_of_the_sheet_shown(self, statement):
+        """`M_u = U1(L/2)`: the call, as the row's first formula, before what it expands to.
+
+        The row read `M_u = 0.15 qD L^2 + 0.2 qL L^2`, and which combination and where
+        were gone from the page. Only a named line whose whole right side is one call to a
+        function or combination of the sheet; see `test_a_call_of_the_sheet_is_written`.
+        """
+        body = statement.expression.body
+        if not (
+            statement.target is not None
+            and statement.parameters is None
+            and isinstance(body, ast.Call)
+            and isinstance(body.func, ast.Name)
+            and body.func.id in self.functions
+            and not body.keywords
+        ):
+            return None
+        # Read as written, or `G(0*m)` is shown as `G(0)`: SymPy folds `0*m` to a bare zero.
+        reader = _WrittenFormEvaluator(self, getattr(statement, "matrix_literals", ()))
+        reader.showing = True
+        try:
+            arguments = [reader.visit(argument) for argument in body.args]
+        except Exception:
+            return None
+        if any(is_matrix(argument) for argument in arguments):
+            return None
+        return sp.Function(body.func.id)(*arguments)
 
     def _written_form(self, statement, evaluator, value):
         """The definition's expression as it was typed, or None to show the evaluated one.
@@ -1375,7 +1462,7 @@ class EngineeringEngine:
         for node in ast.walk(statement.expression):
             if isinstance(node, ast.Call):
                 name = getattr(node.func, "id", None)
-                if name not in _WRITTEN_FORM_SAFE_CALLS:
+                if name not in _WRITTEN_FORM_SAFE_CALLS and name not in self.written_functions:
                     return None
             # A name already bound to a symbolic definition is substituted here, and
             # what arrives is an expression SymPy has already evaluated. The written
@@ -1556,6 +1643,7 @@ class EngineeringEngine:
         self.units_read_by_line.clear()
         self.figure_numbers.clear()
         self.frame_members.clear()
+        self.written_functions.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -2141,11 +2229,22 @@ class EngineeringEngine:
                         self.numeric_guards[statement.target] = tuple(evaluator.numeric_guards)
                     else:
                         self.numeric_guards.pop(statement.target, None)
-            written = (
-                self.written_namespace.get(statement.target)
-                if statement.target is not None
-                else self._written_form(statement, evaluator, value)
-            )
+            if statement.target is None:
+                written = self._written_form(statement, evaluator, value)
+            elif statement.parameters is None:
+                written = self.written_namespace.get(statement.target)
+            elif self._reaches_a_kept_name(statement.expression):
+                # A function that reads a kept name is written as typed, or `f_cw` in
+                # `As_req(Mu)` is expanded and 2/0.85 folded into 2.35. Any other function
+                # prints as it always has. See `test_a_kept_name_survives_a_sheet_function`.
+                written = self._written_form(statement, evaluator, value)
+            else:
+                written = None
+            if statement.target is not None and statement.parameters is not None:
+                if written is None:
+                    self.written_functions.pop(statement.target, None)
+                else:
+                    self.written_functions[statement.target] = written
             return EvaluationResult(
                 statement=statement,
                 display_input=shown,
@@ -2514,6 +2613,10 @@ class _Evaluator(ast.NodeVisitor):
         )
         default = self.visit(node.args[-1])
         return build_piecewise(branches, default)
+
+    def _called(self, name, function, bindings):
+        """A call of a function of the sheet: its body, with the arguments put in."""
+        return substitute_symbolic_value(function.expression, bindings)
 
     def visit_Call(self, node: ast.Call):
         """A call, with a `solve` answered once for both readings of its statement.
@@ -3046,7 +3149,7 @@ class _Evaluator(ast.NodeVisitor):
                 self._substitute_numeric_guard(guard, bindings)
                 for guard in function.numeric_guards
             )
-            return substitute_symbolic_value(function.expression, bindings)
+            return self._called(name, function, bindings)
 
         if name in _SCALAR_SYMBOLIC_FUNCTIONS:
             self._require_arity(name, args, 1, "expression")
@@ -3345,9 +3448,28 @@ class _Evaluator(ast.NodeVisitor):
             upper_quantity = domain.upper_quantity
             unit = lower_quantity.units
 
+            # Only where a crossing is, as a number, is kept. When both responses are
+            # polynomials once the sheet's values are in, that is a real root of their
+            # difference: six quadratic combinations took 54 s through fifteen symbolic
+            # closed forms. See `test_governing_is_quick_over_polynomials`.
+            polynomials = [
+                _polynomial_in_base_units(
+                    self.engine.numeric_context, item.comparison_expression, variable_symbol
+                )
+                for item in resolved
+            ]
             crossovers = []
             for index, left in enumerate(resolved):
-                for right in resolved[index + 1 :]:
+                for offset, right in enumerate(resolved[index + 1 :], start=index + 1):
+                    if polynomials[index] is not None and polynomials[offset] is not None:
+                        crossovers.extend(
+                            _real_roots_between(
+                                polynomials[index] - polynomials[offset],
+                                lower_quantity,
+                                upper_quantity,
+                            )
+                        )
+                        continue
                     points, _intervals, unresolved = solve_intersections_exact(
                         left.comparison_expression,
                         right.comparison_expression,
@@ -4446,7 +4568,13 @@ class _Evaluator(ast.NodeVisitor):
                 return "Comparison"
             function_names.append(label[: -(len(variable) + 2)])
 
-        families = {name.split("_", 1)[0] for name in function_names}
+        # `M_1`, `M_2` are the family `M`, and so are `U1`, `U2`: a code's combinations
+        # are written with their number and no underscore, and the frame's envelope was
+        # titled `Comparison envelope`. See `test_combinations_are_named_as_a_family`.
+        families = {
+            re.sub(r"(?<=[A-Za-z])\d+$", "", name.split("_", 1)[0])
+            for name in function_names
+        }
         if len(families) == 1:
             family = next(iter(families))
             return f"{family}({variable})"
@@ -4648,6 +4776,26 @@ _WRITTEN_FORM_SAFE_CALLS = frozenset(
 )
 
 
+def _flat_products(expression):
+    r"""`expression` with each product flat, as `_flattened` builds them.
+
+    An argument put into a written body arrives as a product inside a product, and
+    `2*(876940*kgf*cm)` printed `2 876940 kgf cm` - one number, to the eye. Flat, the page
+    writes `2 \cdot 876940 kgf cm`, as it does for `2*3*c` typed by hand.
+    """
+    if not getattr(expression, "args", ()):
+        return expression
+    arguments = [_flat_products(argument) for argument in expression.args]
+    if isinstance(expression, sp.Mul):
+        return _flattened(sp.Mul, *arguments)
+    if isinstance(expression, sp.Add):
+        return _flattened(sp.Add, *arguments)
+    try:
+        return expression.func(*arguments, evaluate=False)
+    except TypeError:
+        return expression.func(*arguments)
+
+
 def _flattened(kind, *args):
     r"""An unevaluated ``Add`` or ``Mul`` with no nesting of its own kind inside it.
 
@@ -4671,6 +4819,63 @@ def _in_mode_order(entries) -> tuple:
     counts in. A two-by-two written in names lists its roots in SymPy's order, which the
     numbers need not follow."""
     return tuple(sorted(entries, key=lambda entry: float(entry.value.to_base_units().magnitude)))
+
+
+def _polynomial_in_base_units(context, expression, variable):
+    """`expression` as a polynomial in `variable` with every other name a number, or None.
+
+    Each name and unit takes its value's magnitude in base units, and the variable stands
+    for its own magnitude in base units, so the polynomial's roots are positions in base
+    units. Base units are what make this sound: converting to them only multiplies, so a
+    sum that agrees in units agrees in base magnitudes. None when a name has no value, or
+    when what is left is not a polynomial - a `piecewise`, a Macaulay bracket - and the
+    caller keeps its exact path.
+    """
+    expression = sp.sympify(expression)
+    if expression.has(sp.Piecewise):
+        return None
+    try:
+        units = context.unit_literal_overrides(expression, None)
+    except EngEvaluationError:
+        return None
+    substitutions = {}
+    for symbol in expression.free_symbols:
+        if symbol == variable:
+            continue
+        value = units.get(symbol.name, context.values.get(symbol.name))
+        if value is None:
+            return None
+        try:
+            magnitude = context._as_quantity(value).to_base_units().magnitude
+            substitutions[symbol] = sp.Float(float(magnitude))
+        except (TypeError, ValueError, AttributeError):
+            return None
+    try:
+        polynomial = sp.Poly(expression.xreplace(substitutions), variable)
+    except sp.PolynomialError:
+        return None
+    if not all(coefficient.is_real for coefficient in polynomial.all_coeffs()):
+        return None
+    return polynomial
+
+
+def _real_roots_between(polynomial, lower_quantity, upper_quantity):
+    """The real roots of `polynomial` strictly inside the domain, as quantities."""
+    unit = lower_quantity.units
+    base = lower_quantity.to_base_units()
+    low = float(base.magnitude)
+    high = float(upper_quantity.to_base_units().magnitude)
+    if polynomial.is_zero or polynomial.degree() < 1:
+        return []
+    roots = []
+    for root in polynomial.nroots(n=15, maxsteps=200):
+        value = complex(root)
+        # A root this close to the axis is a real crossing computed in floating point.
+        if abs(value.imag) > 1e-9 * max(1.0, abs(value.real)):
+            continue
+        if low < value.real < high:
+            roots.append(base._REGISTRY.Quantity(value.real, base.units).to(unit))
+    return roots
 
 
 def _standalone_call(statement, name: str, message: str):
@@ -4855,6 +5060,16 @@ class _WrittenFormEvaluator(_Evaluator):
     # `a - (b + c)` is a `Sub` and goes through `_combine`, where the negation lands
     # inside an `Add` and keeps its brackets - so that one is written as typed rather
     # than flattened to `a - b - c`, and gains from this without needing a unary rule.
+
+    def _called(self, name, function, bindings):
+        # A function that reads a kept name is called on the body it was written with,
+        # so `As_req(Mu)` keeps its `f_cw` in the row that says what the call expands to;
+        # and the arguments go in as written, or `2*Mu` folds into one number.
+        written = self.engine.written_functions.get(name)
+        if written is None:
+            return super()._called(name, function, bindings)
+        with sp.evaluate(False):
+            return _flat_products(written.xreplace(bindings))
 
     def visit_Name(self, node: ast.Name):
         # A kept name stands for itself. This is the whole of RC-3: without it the

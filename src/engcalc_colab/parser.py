@@ -573,7 +573,7 @@ def _validate_image_call(node: ast.Call, line_no: int) -> None:
 
 
 # What a member of a frame is declared with; see `EngineeringEngine._member_asked_for`.
-MEMBER_KEYWORDS = ("start", "end", "forces", "displacements", "EI", "load")
+MEMBER_KEYWORDS = ("start", "end", "forces", "displacements", "EI", "load", "point")
 FRAME_DIAGRAMS = ("M", "V", "N", "deformed")
 
 
@@ -595,6 +595,16 @@ def _validate_member_call(node: ast.Call, line_no: int) -> None:
                 f"not {named}; {usage}"
             )
         given.add(item.arg)
+        if item.arg == "load" and isinstance(item.value, ast.List) and len(item.value.elts) != 2:
+            raise EngSyntaxError(
+                f"line {line_no}: member load is one value w, or two [w_1, w_2] from start "
+                "to end"
+            )
+        if item.arg == "point" and isinstance(item.value, ast.List) and len(item.value.elts) != 2:
+            raise EngSyntaxError(
+                f"line {line_no}: member point is [P, a], a load and its distance from start; "
+                "several are rows, [P_1, a_1; P_2, a_2]"
+            )
         if item.arg in ("start", "end") and not (
             isinstance(item.value, ast.List) and len(item.value.elts) == 2
         ):

@@ -55,6 +55,10 @@ combo U6 = 0.9*D - 1.0*EQ
 
 envelope(U1(x), U2(x), U3(x), U4(x), U5(x), U6(x), x, 0, L)
 
+### Qué combinación gobierna
+
+governing(U1(x), U2(x), U3(x), U4(x), U5(x), U6(x), x, 0, L)
+
 ### Momentos de diseño
 
 """

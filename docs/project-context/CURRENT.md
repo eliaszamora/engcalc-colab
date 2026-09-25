@@ -12,9 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.35.0** - this release PR, carrying #310 (`f887551`), #311 (`29bce85`), #312 (`79d5fe9`); its closure is recorded below |
+| released | **0.35.0** - #314, `509e65e`, carrying #310 (`f887551`), #311 (`29bce85`), #312 (`79d5fe9`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.34.3** - #308, `f0e17d8` |
-| open PRs | this release's |
+| open PRs | none |
 | default suite | **2927 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -688,7 +688,69 @@ rebased onto it (tree identical to what ran in his Colab, 0 diff lines), retarge
 
 Released as 0.35.0 with his yes (*"Sí, fusiona #313 y publica la 0.35.0"*).
 
-**Exact next step:** close 0.35.0 (checks after its merge, his Colab).
+**0.35.0 is closed.** On the release commit: version assertions RED (7) then GREEN; suite
+2927 twice; wheel from `git archive` 32 files identical to `src`; a clean Colab-like venv
+(3.12, ipython 7.34.0, numpy 2.2.6, matplotlib 3.10.0, sympy 1.13.3) gained only Pint and
+four small deps; smoke 80/80 outside the repository (`smoke-0350/`: the frame's four
+diagrams as Figuras 1-4, one moment at the knee, 3 000 kgf read back, Δx 0.63 cm, an image
+embedded keeping its number, a kept name inside `min`); suite against the wheel 2926 + the
+by-path IPython-surface test on the wheel's `magic.py`; 13 sheets and 18 exercises
+identical to 0.34.3. After its merge: CI (six jobs) and the deep gate green on `509e65e`;
+`git+https` resolved to it, upgraded nothing, 24 modules identical, smoke 80/80. In his
+Colab (runtime deleted, cell 13 back to the plain `--upgrade` install from `main`): 0.35.0,
+the whole frame with `image` and the four diagrams, no error.
+
+Found while designing the beam, still NOT fixed (to propose to him): `governing` over six
+quadratics takes 54 s; a `keep` name inside a sheet function is expanded; a call to a
+combination is written expanded (`U1(L/2)`); "Governing - x" heading; "Comparison
+envelope" title. Not drawn by `frame_plot` (no syntax yet): a moment on a joint, a
+non-uniform load.
+
+**The five pending points** (he asked: *"La idea es que abarques todos esos puntos
+pendientes"*), branch `fix/pending-findings`, one commit each so a choice can drop one:
+1. `a7d4b01` `governing` over polynomials finds crossings as numeric roots of their
+   difference (`_polynomial_in_base_units`, `_real_roots_between`); piecewise/Macaulay keep
+   the exact path. Frame design: 55.9 s -> the whole design cell in 7 s, boundaries equal
+   the exact path's to 1e-9. `tools/portico_diseno.eng` now shows `governing`. 5 contracts.
+2. `d4716c4` + part of `ad6f71e`: a function that reads a kept name is written as typed
+   (`As_req(Mu)` keeps `f_cw`, no 2.35) and a call of it substitutes into that written body
+   (`engine.written_functions`, `_flat_products`: `2 · 876940 kgf·cm`). 5 contracts.
+3. `ad6f71e` **option B, his choice**: `M_u = U1(L/2)` on its own row, then
+   `= 0.15 qD L^2 + 0.2 qL L^2`, substitution, value (`_call_of_the_sheet_shown`,
+   `_print_AppliedUndef`, `_opens_by_repeating` accepts the split). Moves one row on
+   formas, formas-kgf, viga, viga-kgf and corta (`M_c = M(L/2)`, `M_0 = M(0 mm) = 0`).
+4. `294e980` **approved**: `U1`..`U6` are the family `U` (envelope `U(x) envelope`,
+   `U_max/U_min`, axis `U(x)`), and "Governing along x" for "Governing — x". Moves viga,
+   viga-kgf, corta and E11 headings/figure labels.
+5. `4a8ca70`: a moment applied at a free joint is read back from the end moments and drawn
+   (red arc + value); a fixed end of one member is a wall across it (cantilever). The
+   frame's figures are unchanged. `da70eb9` (approved syntax): `load=[w_1, w_2]` runs
+   linearly start->end, `point=[P, a]` (rows `[P_1, a_1; P_2, a_2]` for several), both
+   towards -y'. V and M follow (`_internal`), the moment's peaks where the shear crosses
+   zero (`_shear_zeros`, bisection), labels under point loads and on both sides of a jump,
+   the deformed shape adds the fixed-end deflection under any of them
+   (`_held_deflection`: particular solution + c2 s^2 + c3 s^3), drawn in red. A typed load
+   keeps its typed unit (`declared=True`; it read `2.00 tonf/m` for `2000*kgf/m`).
+   Checked against textbook values: wL^2/(9 sqrt 3), Pab/L, PL^3/(192EI), wL^4/(764EI).
+   11 contracts; mutation 7/7.
+His answer: *"Opción B, apruebo los nombres y la sintaxis de cargas"*. Suite 2958. The 13
+sheets and 18 exercises differ from 0.35.0 only by points 3 and 4.
+
+Also fixed, found on his Colab page while checking: a `:=` matrix wrote a unit that is a
+factor as `1 kN` (`[0*kN; 20*kN]` read `0 1 kN`, `20 1 kN` - already in 0.35.0);
+`_WrittenLine._binary` drops the one. 1 contract. Suite 2959. Found, NOT fixed: without a
+palette a `0*kN` entry of a `:=` matrix reads `0.00 N` (the zero loses its written unit).
+
+**In his Colab** (runtime deleted; cell 13 installs `fix/pending-findings`, built fresh,
+loaded clean; cell 14 = frame + design in one cell; cell 15 is new and mine: two beams on
+the kN palette through `run_cell_magic`): the whole frame and design ran in about 20 s
+(governing had taken 55 s alone), "Governing along x" with U5/U3/U2/U4/U6, the envelope
+"U(x) envelope" with U_max/U_min and axis U(x) [kgf·cm]; the point load (30.00 kN,
+40.00 under it, shear 20.00/-10.00) and the triangular load (arrows growing to
+12.00 kN/m, 27.71). That run was the commit before the `1 kN` fix.
+
+**Exact next step:** his yes to merge #316 (then close #315 as carried); publish only
+when he says.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

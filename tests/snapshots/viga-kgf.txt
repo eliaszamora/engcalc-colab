@@ -72,7 +72,7 @@ Las dos combinaciones mayoradas del código, escritas con sus factores para que 
 
 === 14 · Math ===
 \hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Governing} \text{ — } x \\[8pt]
+\displaystyle \textbf{Governing} \text{ along } x \\[8pt]
 \displaystyle \begin{array}{ll} \displaystyle 0.00\,\mathrm{cm} \text{ to } 266.67\,\mathrm{cm} & \qquad \displaystyle U_{1}\left(x\right) \\[8pt]
 \displaystyle 266.67\,\mathrm{cm} \text{ to } 333.33\,\mathrm{cm} & \qquad \displaystyle U_{2}\left(x\right) \\[8pt]
 \displaystyle 333.33\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} & \qquad \displaystyle U_{1}\left(x\right) \end{array} \\[4pt]
@@ -82,12 +82,12 @@ Las dos combinaciones mayoradas del código, escritas con sus factores para que 
 <div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Envolvente</div>
 
 === 16 · Figure ===
-title: Comparison envelope
+title: U(x) envelope
 xlabel: x [$\mathrm{cm}$]
-ylabel: Comparison [$\mathrm{kgf} \cdot \mathrm{cm}$]
+ylabel: U(x) [$\mathrm{kgf} \cdot \mathrm{cm}$]
 offset: ×10⁶
 positive: down
-legend: max | min
+legend: U_max(x) | U_min(x)
 annotation: (0, 0)
 annotation: (300, $1.97 \times 10^{6}$)
 
@@ -126,7 +126,8 @@ Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del
 \rule{0pt}{0.7em} \end{array}
 
 === 22 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle U_{1}\left(\frac{L}{2}\right) \\[8pt]
+& = & \displaystyle 0.15\,\mathrm{qD}\,L^{2} + 0.2\,\mathrm{qL}\,L^{2} \\[8pt]
 & = & \displaystyle 0.15\,\left(18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[4pt]
 & & \displaystyle \quad + 0.2\,\left(12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[8pt]
 & = & \displaystyle 1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}

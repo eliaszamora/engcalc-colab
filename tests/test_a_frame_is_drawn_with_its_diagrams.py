@@ -202,6 +202,9 @@ def test_a_beam_alone_is_drawn(tmp_path):
     # page writes f without a palette - not in the base units a matrix of numbers keeps.
     assert "29.42" in labels and "-58.84" in labels, labels
     assert "kN" in title(figure), title(figure)
+    # The load keeps the unit the sheet typed, as `w := 2000*kgf/m` does on the page; it
+    # read `2.00 tonf/m`, a unit the sheet never wrote.
+    assert "2 000 kgf/m" in labels, labels
 
 
 @pytest.mark.parametrize(
@@ -245,3 +248,47 @@ def test_a_reset_forgets_the_members():
         magics.eng_reset("")
     _outputs, console = _run(magics, "frame_plot(M)\n")
     assert "member" in console, console
+
+
+# A cantilever, fixed at the left, with a moment of 10 kN·m applied at its free end:
+# the member's end moments are -10 and +10 kN·m, the tip turns M L / EI and rises
+# M L^2 / (2 EI). Nothing but the moment loads it.
+CANTILEVER = """
+L := 3*m
+M_0 := 10*kN*m
+EI_c := 5000*kN*m^2
+f := [0*kN; 0*kN; -M_0; 0*kN; 0*kN; M_0]
+u := [0*m; 0*m; 0; 0*m; M_0*L^2/(2*EI_c); M_0*L/EI_c]
+member("B", start=[0*m, 0*m], end=[L, 0*m], forces=f, displacements=u, EI=EI_c)
+"""
+
+
+def test_a_moment_on_a_joint_is_read_back_and_drawn():
+    """Asked for with the rest of the pending points: a moment applied at a joint was
+    not drawn. It needs no syntax - the end moments meeting at a free joint add up to
+    it, as the end forces add up to the force there."""
+    outputs, console = _fresh(CANTILEVER + "frame_plot(M)\n")
+    assert not console, console
+    (figure,) = [item for item in outputs if isinstance(item, Figure)]
+    moments = _arrows(figure, "joint-moment")
+    labels = [text.get_text() for text in moments if text.get_text()]
+    assert len(labels) == 1 and labels[0].startswith("10.00"), labels
+    assert matplotlib.colors.to_hex(moments[0].get_color()) == "#b03a2e"
+    assert not [text for text in _arrows(figure, "joint-load") if text.get_text()]
+
+
+def test_the_frame_has_no_moment_on_its_joints(frame):
+    assert not _arrows(frame["figures"]["M"], "joint-moment")
+
+
+def test_a_fixed_end_is_a_wall_across_its_member():
+    """A cantilever's fixed end stood on the ground under the beam; it is a wall."""
+    outputs, console = _fresh(CANTILEVER + "frame_plot(M)\n")
+    assert not console, console
+    (figure,) = [item for item in outputs if isinstance(item, Figure)]
+    lines = [line for axis in figure.axes for line in axis.lines if line.get_gid() == "support"]
+    wall = [line for line in lines if len(set(line.get_xdata())) == 1]
+    assert wall and all(line.get_xdata()[0] == pytest.approx(0.0) for line in wall), [
+        (list(line.get_xdata()), list(line.get_ydata())) for line in lines
+    ]
+    assert all(max(line.get_xdata()) <= 1e-9 for line in lines), "the hatching is not behind the wall"

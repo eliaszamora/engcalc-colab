@@ -112,7 +112,7 @@ def test_the_words_of_a_block_are_set_as_text(outputs):
     assert r"\textbf{Extrema} \text{ — }" in found["extrema"].data, found["extrema"].data
     assert r"\text{Domain: }" in found["extrema"].data, found["extrema"].data
     assert r"\text{local max, global max}" in found["extrema"].data, found["extrema"].data
-    assert r"\textbf{Governing} \text{ — }" in found["governing"].data, found["governing"].data
+    assert r"\textbf{Governing} \text{ along }" in found["governing"].data, found["governing"].data
     assert r"\textbf{Summary}" in found["summary"].data, found["summary"].data
 
 

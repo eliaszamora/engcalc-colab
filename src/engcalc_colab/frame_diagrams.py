@@ -53,6 +53,8 @@ class _Member:
     load: float
     stiffness: float | None
     inside: float = 1.0  # +1 when -y' faces the inside of the frame, -1 when +y' does
+    load_end: float = 0.0  # the load at end; equal to `load` when it is uniform
+    points: tuple = ()  # (P, a) in base units, P towards -y' at a from start
 
     def at(self, s: float) -> tuple[float, float]:
         """The drawing point a base-unit distance `s` along the member."""
@@ -96,15 +98,31 @@ class _Units:
                     candidates.setdefault(kind, []).extend(entries[p] for p in positions)
             if member.load is not None:
                 candidates.setdefault("load", []).append(member.load)
+            if member.load_end is not None:
+                candidates.setdefault("load", []).append(member.load_end)
+            for force, _where in member.points:
+                candidates.setdefault("point", []).append(force)
             candidates.setdefault("length", []).extend((*member.start, *member.end))
         for kind, quantities in candidates.items():
             quantities = [q for q in quantities if hasattr(q, "to_base_units") and q.magnitude != 0]
             if quantities:
                 self.references[kind] = max(quantities, key=lambda q: abs(_base(q)))
 
+    # What the sheet typed - a load, a point load, a coordinate - keeps the unit it was
+    # typed in, as a `:=` value does on the page; what was worked out takes the family's.
+    _TYPED = frozenset({"load", "point", "length"})
+
+    def _converted(self, kind: str, reference):
+        if kind in self._TYPED:
+            try:
+                return self.convert(reference, declared=True)
+            except TypeError:  # a `convert` that knows nothing of typed values
+                return self.convert(reference)
+        return self.convert(reference)
+
     def unit(self, kind: str):
         reference = self.references.get(kind)
-        return None if reference is None else self.convert(reference).units
+        return None if reference is None else self._converted(kind, reference).units
 
     def written(self, kind: str, value: float) -> float:
         """A base-unit value in the unit its kind is written in."""
@@ -113,7 +131,7 @@ class _Units:
             return value
         base = reference.to_base_units()
         quantity = base._REGISTRY.Quantity(value, base.units)
-        return float(quantity.to(self.convert(reference).units).magnitude)
+        return float(quantity.to(self._converted(kind, reference).units).magnitude)
 
     def text(self, kind: str) -> str:
         unit = self.unit(kind)
@@ -168,6 +186,15 @@ def _members(result: FramePlotResult, units: _Units) -> list[_Member]:
                 displacements=_entries(member.displacements),
                 load=_base(member.load) if member.load is not None else 0.0,
                 stiffness=_base(member.stiffness) if member.stiffness is not None else None,
+                load_end=(
+                    _base(member.load_end)
+                    if member.load_end is not None
+                    else (_base(member.load) if member.load is not None else 0.0)
+                ),
+                points=tuple(
+                    (_base(force), 0.0 if where.dimensionless else _base(where))
+                    for force, where in member.points
+                ),
             )
         )
     # The inside of the frame is towards the middle of its joints. A member with the middle
@@ -192,17 +219,92 @@ def _size(members: list[_Member]) -> float:
 
 
 def _along(member: _Member) -> list[float]:
-    return [member.length * index / (_SAMPLES - 1) for index in range(_SAMPLES)]
+    """Where a member is drawn: evenly, and on both sides of each point load's jump."""
+    samples = [member.length * index / (_SAMPLES - 1) for index in range(_SAMPLES)]
+    step = 1e-9 * member.length
+    for _force, where in member.points:
+        samples += [max(0.0, where - step), min(member.length, where + step)]
+    return sorted(samples)
+
+
+def _loaded(member: _Member) -> bool:
+    return bool(member.load or member.load_end or member.points)
 
 
 def _internal(member: _Member, diagram: str, s: float) -> float:
-    """N, V or M at `s`, in local axes: tension, +y' on the left face, sagging (-y') fibre."""
-    f, q = member.forces, member.load
+    """N, V or M at `s`, in local axes: tension, +y' on the left face, sagging (-y') fibre.
+
+    The load runs linearly from `load` at start to `load_end` at end, and each point load
+    acts past its own position.
+    """
+    f, q, rise, length = member.forces, member.load, member.load_end - member.load, member.length
     if diagram == "N":
         return -f[0]
     if diagram == "V":
-        return f[1] - q * s
-    return -f[2] + f[1] * s - q * s * s / 2
+        return f[1] - q * s - rise * s * s / (2 * length) - sum(
+            force for force, where in member.points if s > where
+        )
+    return (
+        -f[2] + f[1] * s - q * s * s / 2 - rise * s**3 / (6 * length)
+        - sum(force * (s - where) for force, where in member.points if s > where)
+    )
+
+
+def _held_deflection(member: _Member, s: float) -> float:
+    """The deflection of the member under its own loads, both ends held fixed.
+
+    Added to the curve its end displacements give. A particular solution of
+    EI v^(4) = -q(s) that starts flat at s = 0, plus c2 s^2 + c3 s^3 so it ends flat at
+    s = L; for a uniform load this is -q s^2 (L - s)^2 / (24 EI).
+    """
+    q, rise, length, stiffness = member.load, member.load_end - member.load, member.length, member.stiffness
+
+    def shape(x):
+        return -(
+            q * x**4 / 24 + rise * x**5 / (120 * length)
+            + sum(force * max(x - where, 0.0) ** 3 / 6 for force, where in member.points)
+        ) / stiffness
+
+    def slope(x):
+        return -(
+            q * x**3 / 6 + rise * x**4 / (24 * length)
+            + sum(force * max(x - where, 0.0) ** 2 / 2 for force, where in member.points)
+        ) / stiffness
+
+    right, turn = -shape(length), -slope(length)
+    determinant = length**4
+    c2 = (right * 3 * length**2 - length**3 * turn) / determinant
+    c3 = (length**2 * turn - 2 * length * right) / determinant
+    return shape(s) + c2 * s**2 + c3 * s**3
+
+
+def _shear_zeros(member: _Member) -> list[float]:
+    """Where the shear crosses zero inside the member: the moment's own extremes.
+
+    Not across a point load's jump, where the extreme is the load's position and is
+    labelled there. Refined by bisection, so a peak is the peak and not a sample near it.
+    """
+    samples = _along(member)
+    values = [_internal(member, "V", s) for s in samples]
+    scale = max((abs(value) for value in values), default=0.0)
+    found = []
+    # A zero that falls on a sample - the middle of a uniformly loaded span - is the zero.
+    for before, (s, value), after in zip(values, zip(samples[1:], values[1:]), values[2:]):
+        if abs(value) <= _NOISE * scale and before * after < 0:
+            found.append(s)
+    for (left, low), (right, high) in zip(zip(samples, values), zip(samples[1:], values[1:])):
+        if abs(low) <= _NOISE * scale or abs(high) <= _NOISE * scale or (low > 0) == (high > 0):
+            continue
+        if any(left <= where <= right for _force, where in member.points):
+            continue
+        for _ in range(60):
+            middle = (left + right) / 2
+            if (_internal(member, "V", middle) > 0) == (low > 0):
+                left = middle
+            else:
+                right = middle
+        found.append((left + right) / 2)
+    return [s for s in found if 0.02 * member.length < s < 0.98 * member.length]
 
 
 def _key(point: tuple[float, float], size: float) -> tuple[int, int]:
@@ -263,7 +365,7 @@ class _Drawing:
             for end, point in ((0, member.start), (1, member.end)):
                 joint = joints.setdefault(
                     _key(point, self.size),
-                    {"point": point, "moves": [], "known": True, "forces": [0.0, 0.0]},
+                    {"point": point, "moves": [], "known": True, "forces": [0.0, 0.0], "moment": 0.0},
                 )
                 if member.displacements is None:
                     joint["known"] = False
@@ -276,6 +378,7 @@ class _Drawing:
                     n, shear = member.forces[3 * end], member.forces[3 * end + 1]
                     joint["forces"][0] += n * member.ex[0] + shear * member.ey[0]
                     joint["forces"][1] += n * member.ex[1] + shear * member.ey[1]
+                    joint["moment"] += member.forces[3 * end + 2]
                 else:
                     joint["known"] = False
         largest = max(
@@ -299,22 +402,51 @@ class _Drawing:
             if not (joint["known"] and joint["held"]):
                 continue
             x, y = joint["point"]
-            lines = [([x - width / 2, x + width / 2], [y, y])]
+            # Which way the structure leaves the support. A fixed end of one member is a
+            # wall across that member - a cantilever's is upright - and anything else
+            # stands on the ground, as a column's base does.
+            into = (0.0, 1.0)
+            meeting = [
+                member for member in self.members
+                if _key(member.start, self.size) == _key(joint["point"], self.size)
+                or _key(member.end, self.size) == _key(joint["point"], self.size)
+            ]
+            if joint["fixed"] and len(meeting) == 1:
+                member = meeting[0]
+                sign = 1.0 if _key(member.start, self.size) == _key(joint["point"], self.size) else -1.0
+                into = (sign * member.ex[0], sign * member.ex[1])
+            across = (into[1], -into[0])
+
+            def at(a, b, x=x, y=y, across=across, into=into):
+                """A point `a` along the support and `b` away from the structure."""
+                return (x + a * across[0] - b * into[0], y + a * across[1] - b * into[1])
+
+            segments = [[(-width / 2, 0.0), (width / 2, 0.0)]]
+            base = 0.0
             if not joint["fixed"]:
-                lines.append(([x - width / 3, x, x + width / 3], [y - width / 2, y, y - width / 2]))
-                y -= width / 2
-                lines.append(([x - width / 2, x + width / 2], [y, y]))
+                segments.append([(-width / 3, width / 2), (0.0, 0.0), (width / 3, width / 2)])
+                base = width / 2
+                segments.append([(-width / 2, base), (width / 2, base)])
             for index in range(6):
-                left = x - width / 2 + index * width / 6
-                lines.append(([left, left + width / 6], [y, y - width / 6]))
-            for xs, ys in lines:
-                (line,) = self.axis.plot(xs, ys, color=FRAME_COLOUR, lw=1.0 if len(xs) == 2 else 1.2)
+                left = -width / 2 + index * width / 6
+                segments.append([(left, base), (left + width / 6, base + width / 6)])
+            for segment in segments:
+                points = [at(a, b) for a, b in segment]
+                (line,) = self.axis.plot(
+                    [point[0] for point in points], [point[1] for point in points],
+                    color=FRAME_COLOUR, lw=1.0 if len(points) == 2 else 1.2,
+                )
                 line.set_gid("support")
-            self.points.append((x, y - width / 5))
+            self.points.append(at(0.0, base + width / 5))
 
     def loads(self):
         arrow = {"arrowstyle": "-|>", "color": LOAD_COLOUR, "lw": 0.9}
         for member in self.members:
+            for force, where in member.points:
+                self._point_load(member, force, where)
+            if member.load_end != member.load:
+                self._linear_load(member, arrow)
+                continue
             if not member.load:
                 continue
             # A load towards -y' is drawn on the +y' side, pointing at the member.
@@ -346,6 +478,68 @@ class _Drawing:
             self.points += tails
         self.joint_loads()
 
+    def _clear_of_the_diagram(self, member, side: float) -> float:
+        """How far out a load stands so that it stays off the diagram on its side."""
+        return max(
+            _LOAD_NEAR * self.size,
+            self.reach.get(id(member), {}).get(side, 0.0) + 0.06 * self.size,
+        )
+
+    def _linear_load(self, member, arrow):
+        """`load=[w_1, w_2]`: arrows growing from w_1 to w_2, an arrow at each end."""
+        start, finish = member.load, member.load_end
+        largest = max(abs(start), abs(finish))
+        side = 1.0 if (start + finish) > 0 else -1.0
+        normal = (side * member.ey[0], side * member.ey[1])
+        count = max(5, round(member.length * self.per_base / self.size * 8) + 1)
+        near = self._clear_of_the_diagram(member, side)
+        reach = (_LOAD_FAR - _LOAD_NEAR) * self.size
+        tails = []
+        for index in range(count):
+            s = member.length * index / (count - 1)
+            q = start + (finish - start) * s / member.length
+            x, y = member.at(s)
+            tip = (x + near * normal[0], y + near * normal[1])
+            far = near + reach * abs(q) / largest
+            tail = (x + far * normal[0], y + far * normal[1])
+            if abs(q) > 1e-9 * largest:
+                self.axis.annotate("", xy=tip, xytext=tail, arrowprops=arrow).set_gid("distributed-load")
+            tails.append(tail)
+        self.axis.plot([p[0] for p in tails], [p[1] for p in tails], color=LOAD_COLOUR, lw=0.9)
+        for value, tail, along in ((start, tails[0], -1.0), (finish, tails[-1], 1.0)):
+            if abs(value) <= 1e-9 * largest:
+                continue
+            written = self.units.written("load", abs(value))
+            self.axis.annotate(
+                f"{_number(written)} {self.units.text('load')}".strip(),
+                xy=tail, xytext=(8 * normal[0] + 6 * along * member.ex[0], 8 * normal[1] + 6 * along * member.ex[1]),
+                textcoords="offset points", ha="center", va="center", fontsize=8, color=LOAD_COLOUR,
+            )
+        self.points += tails
+
+    def _point_load(self, member, force, where):
+        """`point=[P, a]`: an arrow onto the member at a, with P beside it."""
+        side = 1.0 if force > 0 else -1.0
+        normal = (side * member.ey[0], side * member.ey[1])
+        gap = self.reach.get(id(member), {}).get(side, 0.0)
+        gap = gap + 0.02 * self.size if gap else 0.0
+        x, y = member.at(where)
+        tip = (x + gap * normal[0], y + gap * normal[1])
+        length = _JOINT_ARROW * self.size
+        tail = (tip[0] + length * normal[0], tip[1] + length * normal[1])
+        self.axis.annotate(
+            "", xy=tip, xytext=tail, zorder=5,
+            arrowprops={"arrowstyle": "-|>", "color": LOAD_COLOUR, "lw": 1.6},
+        ).set_gid("point-load")
+        written = self.units.written("point", abs(force))
+        label = self.axis.annotate(
+            f"{_number(written)} {self.units.text('point')}".strip(),
+            xy=tail, xytext=(8 * normal[0], 8 * normal[1]), textcoords="offset points",
+            ha="center", va="center", fontsize=8, color=LOAD_COLOUR,
+        )
+        label.set_gid("point-load")
+        self.points.append(tail)
+
     def joint_loads(self):
         joints = [joint for joint in self._joint_state() if joint["known"] and not joint["held"]]
         largest = max(
@@ -370,6 +564,45 @@ class _Drawing:
                 )
                 label.set_gid("joint-load")
                 self.points.append(tail)
+            self._joint_moment(joint)
+
+    def _joint_moment(self, joint):
+        """A moment applied at a joint: the end moments meeting there add up to it.
+
+        Drawn as a red arc beside the joint, anticlockwise when positive, with its size.
+        """
+        from matplotlib.patches import FancyArrowPatch
+
+        moments = [
+            abs(member.forces[index])
+            for member in self.members
+            if member.forces
+            for index in (2, 5)
+        ]
+        value = joint["moment"]
+        if not moments or abs(value) <= 1e-6 * max(moments):
+            return
+        x, y = joint["point"]
+        radius = 0.07 * self.size
+        low, high = math.radians(-60), math.radians(60)
+        start = (x + radius * math.cos(low), y + radius * math.sin(low))
+        end = (x + radius * math.cos(high), y + radius * math.sin(high))
+        if value < 0:
+            start, end = end, start
+        self.axis.add_patch(
+            FancyArrowPatch(
+                start, end, connectionstyle=f"arc3,rad={0.55 if value > 0 else -0.55}",
+                arrowstyle="-|>", mutation_scale=10, color=LOAD_COLOUR, lw=1.4, zorder=5,
+            )
+        )
+        written = self.units.written("M", abs(value))
+        label = self.axis.annotate(
+            f"{_number(written)} {self.units.text('M')}".strip(),
+            xy=(x + 1.35 * radius, y), xytext=(4, 0), textcoords="offset points",
+            ha="left", va="center", fontsize=8, color=LOAD_COLOUR,
+        )
+        label.set_gid("joint-moment")
+        self.points.append((x + 2.6 * radius, y))
 
     # -- the diagrams ------------------------------------------------------------------
 
@@ -380,6 +613,13 @@ class _Drawing:
             for member in self.members
         }
         largest = max(abs(value) for member_values in values.values() for value in member_values)
+        if diagram not in self.units.references and largest:
+            # Every end value is zero - a simply supported beam's end moments: the unit is
+            # the one the page would write the largest value in.
+            length_reference = self.units.references["length"]
+            self.units.references[diagram] = length_reference._REGISTRY.Quantity(
+                largest, "N*m" if diagram == "M" else "N"
+            )
         scale = _DIAGRAM_PEAK * self.size / largest if largest else 0.0
         # Drawn on the tension side for M; outside when positive for V and N.
         towards = -1.0 if diagram == "M" else 1.0
@@ -406,22 +646,33 @@ class _Drawing:
             self.axis.plot([p[0] for p in curve], [p[1] for p in curve], color=colour, lw=1.6, zorder=2)
             self.points += curve
             marks = [(0, base[0]), (len(local) - 1, base[-1])]
-            if diagram == "M" and member.load:
-                peak = member.forces[1] / member.load
-                if 0.02 * member.length < peak < 0.98 * member.length:
-                    index = min(range(len(local)), key=lambda i: abs(_along(member)[i] - peak))
-                    marks.append((index, None))
             for index, joint in marks:
                 value = shown_sign * local[index]
-                if diagram == "M" and joint is None:
-                    value = shown_sign * _internal(member, "M", member.forces[1] / member.load)
                 text = _number(self.units.written(diagram, value), self.units.written(diagram, largest))
-                if joint is not None:
-                    key = (_key(joint, self.size), text)
-                    if key in shown:  # the same value at a joint, from the other member
-                        continue
-                    shown.add(key)
+                key = (_key(joint, self.size), text)
+                if key in shown:  # the same value at a joint, from the other member
+                    continue
+                shown.add(key)
                 self.box(curve[index], text)
+            # Inside the member: the moment's extremes where the shear crosses zero, and
+            # at each point load the moment under it and the shear on either side.
+            inner = []
+            if diagram == "M":
+                inner += [(s, 0.0) for s in _shear_zeros(member)]
+                inner += [(where, 0.0) for _force, where in member.points]
+            elif diagram == "V":
+                step = 1e-9 * member.length
+                inner += [(where - step, -10.0) for _force, where in member.points if where > 0]
+                inner += [(where + step, 10.0) for _force, where in member.points if where < member.length]
+            for s, shift in inner:
+                value = _internal(member, diagram, s)
+                x, y = member.at(s)
+                offset = towards * shown_sign * value * scale
+                point = (x + offset * outside[0], y + offset * outside[1])
+                text = _number(
+                    self.units.written(diagram, shown_sign * value), self.units.written(diagram, largest)
+                )
+                self.box(point, text, offset=(shift * member.ex[0] * 2.2, shift * member.ex[1] * 2.2))
         return f"{diagram}{self.units.title(diagram)}"
 
     def deformed(self):
@@ -440,12 +691,18 @@ class _Drawing:
                     + (3 * xi**2 - 2 * xi**3) * v_j
                     + length * (-(xi**2) + xi**3) * t_j
                 )
-                if member.load:
-                    v -= member.load * s**2 * (length - s) ** 2 / (24 * member.stiffness)
+                if _loaded(member):
+                    v += _held_deflection(member, s)
                 u = (1 - xi) * u_i + xi * u_j
                 shape.append((s, u, v))
                 largest = max(largest, abs(u), abs(v))
             shapes.append((member, shape))
+        if "displacement" not in self.units.references and largest:
+            # Every end held still, as in a fixed beam: the unit is the deflection's own.
+            length_reference = self.units.references["length"]
+            self.units.references["displacement"] = length_reference._REGISTRY.Quantity(
+                largest, "m"
+            ).to(length_reference.to_base_units().units)
         per_base = self.per_base
         scale = self.result.scale
         if scale is None:
@@ -459,7 +716,7 @@ class _Drawing:
                 curve.append((x + scale * per_base * dx, y + scale * per_base * dy))
             self.axis.plot([p[0] for p in curve], [p[1] for p in curve], color=colour, lw=1.8, zorder=4)
             self.points += curve
-            if member.load:
+            if _loaded(member):
                 s, _u, v = max(shape, key=lambda sample: abs(sample[2]))
                 index = [sample[0] for sample in shape].index(s)
                 text = f"δ = {_number(self.units.written('displacement', v))} {self.units.text('displacement')}"
