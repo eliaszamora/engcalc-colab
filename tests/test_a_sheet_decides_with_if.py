@@ -10,7 +10,9 @@ Approved on 2026-09-25 (*"Apruebo tus recomendaciones en los 4 puntos, empieza p
 if"*): a line that starts with `%` is control, written as Python - `if`, `elif`, `else` -
 and a block closes with `% end`. The condition reads the sheet's values with their units.
 Only the branch that holds runs, and it is opened by a sentence with the numbers, `Como
-Vu = 7920.00 kgf > φ_v V_c = 7603.63 kgf:`, which is what a reviewer needs to see. The
+Vu = 7920.00 kgf > φ_v V_c = 7603.63 kgf:`, which is what a reviewer needs to see. He
+could not find it the first time: it was Colab's text, smaller and in another letter than
+the rows. It is now typeset as the rows are, "Como" in bold, with room above and below. The
 branch that does not hold is neither computed nor written. A cell without `%` lines runs
 exactly as before.
 """
@@ -22,6 +24,8 @@ import pytest
 from IPython.display import Markdown, Math
 
 import engcalc_colab.magic as magic
+
+NOTE = r"\textbf{Como}"
 
 SHEAR = (
     "fc := 210*kgf/cm^2\nb := 30*cm\nd := 44*cm\nphi_v := 0.75\n"
@@ -37,8 +41,12 @@ def sheet(monkeypatch):
         console = io.StringIO()
         with contextlib.redirect_stdout(console):
             magic.EngMagics().eng("", source)
-        math = " ".join(item.data for item in captured if isinstance(item, Math))
-        notes = [item.data for item in captured if isinstance(item, Markdown)]
+        # The sentence is typeset as the rows are, in their letter and size (his choice,
+        # option 1b, 2026-09-25): a Math output that opens with a bold "Como".
+        assert not [item for item in captured if isinstance(item, Markdown) and "Como" in item.data], captured
+        shown = [item.data for item in captured if isinstance(item, Math)]
+        notes = [data for data in shown if NOTE in data]
+        math = " ".join(data for data in shown if NOTE not in data)
         return math, notes, console.getvalue()
 
     return run
@@ -60,7 +68,9 @@ def test_the_branch_that_holds_runs_and_says_why(sheet):
     math, notes, console = sheet(SHEAR + "Vu := 7920*kgf\n" + IF_ELSE)
     assert not console, console
     (note,) = notes
-    assert note.startswith("Como $") and note.endswith("$:"), note
+    assert NOTE in note and note.endswith(r"\,\text{:}"), note
+    # Room above and below, so the sentence stands apart from the rows around it.
+    assert note.startswith(r"\rule["), note
     assert r"7920.00\,\mathrm{kgf} > \phi_{v} V_{c} = 7603.63\,\mathrm{kgf}" in note, note
     assert r"421.83\,\mathrm{kgf}" in math, math
     assert r"V_{s} & = & \displaystyle 0.00" not in math, math
@@ -122,7 +132,7 @@ def test_a_condition_joins_with_and(sheet):
     math, notes, console = sheet(SHEAR + "Vu := 7920*kgf\n% if Vu > phi_v*V_c and d < 50*cm:\ny := 1*m\n% end\n")
     assert not console, console
     (note,) = notes
-    assert "$ y $" in note, note
+    assert r"\;\text{y}\;" in note, note
 
 
 @pytest.mark.parametrize(

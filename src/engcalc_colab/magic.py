@@ -296,7 +296,7 @@ class EngMagics(Magics):
                         self._settings(),
                     )
                     pending_results.clear()
-                    display(Markdown(item.markdown))
+                    display(Math(item.latex))
                     continue
 
                 if isinstance(item, ParsedHeading):

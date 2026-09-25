@@ -30,11 +30,21 @@ _CONTROL = re.compile(r"^%\s*(\w+)\b(.*)$")
 _KEYWORDS = ("if", "elif", "else", "end")
 
 
+# Room above and below the sentence: a strut 1.5em over the baseline and 0.7em under it.
+# KaTeX, which is what Colab typesets with, reads `\rule` as LaTeX does.
+_ROOM = r"\rule[-0.7em]{0pt}{2.2em}"
+
+
 @dataclass(frozen=True)
 class ConditionNote:
-    """The sentence a branch opens with: Markdown, its mathematics between `$`."""
+    """The sentence a branch opens with, as LaTeX, typeset in the letter and size of the rows.
 
-    markdown: str
+    It was first Markdown - Colab's text around `$...$` - and he could not find it on the
+    page: smaller than the rows and in another letter. He chose (2026-09-25, option 1b) the
+    whole sentence typeset as the rows are, "Como" in bold, with room above and below.
+    """
+
+    latex: str
 
 
 @dataclass
@@ -195,7 +205,7 @@ def _walk(nodes: list, engine, settings) -> Iterator:
         said = [_negated(tree, line_no, engine, settings) for tree, line_no in held]
         if chosen.condition is not None:
             said.append(stated)
-        yield ConditionNote(markdown=f"Como {' y '.join(said)}:")
+        yield ConditionNote(latex=f"{_ROOM}\\textbf{{Como}}\\;\\; {_AND.join(said)}\\,\\text{{:}}")
         yield from _walk(chosen.body, engine, settings)
 
 
@@ -209,6 +219,10 @@ _OPERATORS = {
     ast.Eq: ("==", "=", lambda a, b: a == b),
     ast.NotEq: ("!=", r"\neq", lambda a, b: a != b),
 }
+# The words of the sentence, typeset as text inside it.
+_AND = r"\;\text{y}\;"
+_OR = r"\;\text{o}\;"
+_NOT = r"\text{no se cumple }"
 _NEGATED = {ast.Gt: ast.LtE, ast.GtE: ast.Lt, ast.Lt: ast.GtE, ast.LtE: ast.Gt, ast.Eq: ast.NotEq, ast.NotEq: ast.Eq}
 
 
@@ -216,7 +230,7 @@ def _decide(tree: ast.AST, line_no: int, engine, settings) -> tuple[bool, str]:
     """Whether the condition holds, and the condition said in numbers."""
     if isinstance(tree, ast.BoolOp):
         parts = []
-        joiner = " y " if isinstance(tree.op, ast.And) else " o "
+        joiner = _AND if isinstance(tree.op, ast.And) else _OR
         for value in tree.values:
             verdict, said = _decide(value, line_no, engine, settings)
             parts.append((verdict, said))
@@ -228,7 +242,7 @@ def _decide(tree: ast.AST, line_no: int, engine, settings) -> tuple[bool, str]:
         return isinstance(tree.op, ast.And), joiner.join(said for _, said in parts)
     if isinstance(tree, ast.UnaryOp) and isinstance(tree.op, ast.Not):
         verdict, said = _decide(tree.operand, line_no, engine, settings)
-        return (not verdict), f"no se cumple {said}"
+        return (not verdict), f"{_NOT}{said}"
     if isinstance(tree, ast.Compare):
         return _compare(tree, line_no, engine, settings, tree.ops)
     raise EngEvaluationError(
@@ -243,7 +257,7 @@ def _negated(tree: ast.AST, line_no: int, engine, settings) -> str:
         _verdict, said = _compare(tree, line_no, engine, settings, [_NEGATED[type(tree.ops[0])]()])
         return said
     _verdict, said = _decide(tree, line_no, engine, settings)
-    return f"no se cumple {said}"
+    return f"{_NOT}{said}"
 
 
 def _compare(tree: ast.Compare, line_no: int, engine, settings, operators) -> tuple[bool, str]:
@@ -268,7 +282,7 @@ def _compare(tree: ast.Compare, line_no: int, engine, settings, operators) -> tu
     said = pieces[0]
     for operator, piece in zip(operators, pieces[1:]):
         said += f" {_OPERATORS[type(operator)][1]} {piece}"
-    return verdict, f"${said}$"
+    return verdict, said
 
 
 def _value(operand: ast.AST, line_no: int, engine):
