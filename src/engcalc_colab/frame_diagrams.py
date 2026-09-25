@@ -263,7 +263,7 @@ class _Drawing:
             for end, point in ((0, member.start), (1, member.end)):
                 joint = joints.setdefault(
                     _key(point, self.size),
-                    {"point": point, "moves": [], "known": True, "forces": [0.0, 0.0]},
+                    {"point": point, "moves": [], "known": True, "forces": [0.0, 0.0], "moment": 0.0},
                 )
                 if member.displacements is None:
                     joint["known"] = False
@@ -276,6 +276,7 @@ class _Drawing:
                     n, shear = member.forces[3 * end], member.forces[3 * end + 1]
                     joint["forces"][0] += n * member.ex[0] + shear * member.ey[0]
                     joint["forces"][1] += n * member.ex[1] + shear * member.ey[1]
+                    joint["moment"] += member.forces[3 * end + 2]
                 else:
                     joint["known"] = False
         largest = max(
@@ -299,18 +300,42 @@ class _Drawing:
             if not (joint["known"] and joint["held"]):
                 continue
             x, y = joint["point"]
-            lines = [([x - width / 2, x + width / 2], [y, y])]
+            # Which way the structure leaves the support. A fixed end of one member is a
+            # wall across that member - a cantilever's is upright - and anything else
+            # stands on the ground, as a column's base does.
+            into = (0.0, 1.0)
+            meeting = [
+                member for member in self.members
+                if _key(member.start, self.size) == _key(joint["point"], self.size)
+                or _key(member.end, self.size) == _key(joint["point"], self.size)
+            ]
+            if joint["fixed"] and len(meeting) == 1:
+                member = meeting[0]
+                sign = 1.0 if _key(member.start, self.size) == _key(joint["point"], self.size) else -1.0
+                into = (sign * member.ex[0], sign * member.ex[1])
+            across = (into[1], -into[0])
+
+            def at(a, b, x=x, y=y, across=across, into=into):
+                """A point `a` along the support and `b` away from the structure."""
+                return (x + a * across[0] - b * into[0], y + a * across[1] - b * into[1])
+
+            segments = [[(-width / 2, 0.0), (width / 2, 0.0)]]
+            base = 0.0
             if not joint["fixed"]:
-                lines.append(([x - width / 3, x, x + width / 3], [y - width / 2, y, y - width / 2]))
-                y -= width / 2
-                lines.append(([x - width / 2, x + width / 2], [y, y]))
+                segments.append([(-width / 3, width / 2), (0.0, 0.0), (width / 3, width / 2)])
+                base = width / 2
+                segments.append([(-width / 2, base), (width / 2, base)])
             for index in range(6):
-                left = x - width / 2 + index * width / 6
-                lines.append(([left, left + width / 6], [y, y - width / 6]))
-            for xs, ys in lines:
-                (line,) = self.axis.plot(xs, ys, color=FRAME_COLOUR, lw=1.0 if len(xs) == 2 else 1.2)
+                left = -width / 2 + index * width / 6
+                segments.append([(left, base), (left + width / 6, base + width / 6)])
+            for segment in segments:
+                points = [at(a, b) for a, b in segment]
+                (line,) = self.axis.plot(
+                    [point[0] for point in points], [point[1] for point in points],
+                    color=FRAME_COLOUR, lw=1.0 if len(points) == 2 else 1.2,
+                )
                 line.set_gid("support")
-            self.points.append((x, y - width / 5))
+            self.points.append(at(0.0, base + width / 5))
 
     def loads(self):
         arrow = {"arrowstyle": "-|>", "color": LOAD_COLOUR, "lw": 0.9}
@@ -370,6 +395,45 @@ class _Drawing:
                 )
                 label.set_gid("joint-load")
                 self.points.append(tail)
+            self._joint_moment(joint)
+
+    def _joint_moment(self, joint):
+        """A moment applied at a joint: the end moments meeting there add up to it.
+
+        Drawn as a red arc beside the joint, anticlockwise when positive, with its size.
+        """
+        from matplotlib.patches import FancyArrowPatch
+
+        moments = [
+            abs(member.forces[index])
+            for member in self.members
+            if member.forces
+            for index in (2, 5)
+        ]
+        value = joint["moment"]
+        if not moments or abs(value) <= 1e-6 * max(moments):
+            return
+        x, y = joint["point"]
+        radius = 0.07 * self.size
+        low, high = math.radians(-60), math.radians(60)
+        start = (x + radius * math.cos(low), y + radius * math.sin(low))
+        end = (x + radius * math.cos(high), y + radius * math.sin(high))
+        if value < 0:
+            start, end = end, start
+        self.axis.add_patch(
+            FancyArrowPatch(
+                start, end, connectionstyle=f"arc3,rad={0.55 if value > 0 else -0.55}",
+                arrowstyle="-|>", mutation_scale=10, color=LOAD_COLOUR, lw=1.4, zorder=5,
+            )
+        )
+        written = self.units.written("M", abs(value))
+        label = self.axis.annotate(
+            f"{_number(written)} {self.units.text('M')}".strip(),
+            xy=(x + 1.35 * radius, y), xytext=(4, 0), textcoords="offset points",
+            ha="left", va="center", fontsize=8, color=LOAD_COLOUR,
+        )
+        label.set_gid("joint-moment")
+        self.points.append((x + 2.6 * radius, y))
 
     # -- the diagrams ------------------------------------------------------------------
 
