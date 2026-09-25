@@ -12,9 +12,9 @@ _2026-09-24._
 
 | | |
 |---|---|
-| released | **0.37.0** - this release PR, carrying #319 (`4cfa805`); its closure is recorded below |
+| released | **0.37.0** - #320, `4795c47`, carrying #319 (`4cfa805`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.36.0** - #317, `9ebbd78` |
-| open PRs | this release's |
+| open PRs | none |
 | default suite | **2980 passing**, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -796,7 +796,19 @@ Suite 2980 on SymPy 1.14 and on 1.13.3.
 Merged as #319 (`4cfa805`) with his yes; released as 0.37.0 by the release PR (*"Publica la
 0.37.0"*).
 
-**Exact next step:** close 0.37.0 (checks after its merge, his Colab).
+**0.37.0 is closed.** On the release commit: version assertions RED (7) then GREEN; suite
+2980 twice (SymPy 1.14) and 2980 on 1.13.3; wheel 32 files identical to `src`; clean
+Colab-like venv gained only Pint and four small deps; smoke 89/89 (`smoke-0370/`: `%eng_help
+keep` and the statement list, a long row in shape, a zero in its neighbours' unit); suite
+against the wheel 2979 + the by-path test on the wheel's `magic.py`; 13 sheets and 18
+exercises identical to 0.36.0. After its merge: CI (six jobs) and the deep gate green on
+`4795c47`; `git+https` resolved to it, upgraded nothing, 24 modules identical, smoke 89/89.
+In his Colab (the runtime deletion did not take - cell 13 installed 0.37.0 but printed
+0.36.0 "already loaded" - so the session was restarted and cell 13 run again): 0.37.0
+loaded clean; cell 15 shows `As_2` in option B's shape and `%eng_help keep` with its note.
+
+**Exact next step:** none open; ask him what next. Open question to him: the help is in
+English like the rest of it - translate it to Spanish?
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
