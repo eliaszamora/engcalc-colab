@@ -1240,7 +1240,39 @@ Mechanics for the next session: after he signed the extension in with the new ac
 `list_connected_browsers` stayed empty until this Code session was restarted; it then
 listed "Browser 1" in use.
 
-**Exact next step:** ask him what to take next.
+### The text under a heading is small and stops short (his report, 2026-09-26)
+
+On his exercise 2.1 in Colab he found the paragraph under "Compatibilidad" a little small,
+and its lines ending well before the width of the output. Three causes, read in
+`renderer.narrative_latex`:
+
+1. The size is `\footnotesize` (0.8 of the working: about 13.6 px beside the formulas'
+   16.9 px, under Colab's own 14 px text). It was chosen on 2026-09-25, when he asked for the
+   text two points smaller than the working.
+2. The paragraph is broken at `NARRATIVE_LINE` = 76 characters of *source*, and a `$...$`
+   span counts its LaTeX: `$u \cos\theta + v \sin\theta = \delta_{ab}$` counts 42 and shows
+   about 15, so a line holding a formula breaks at a third of the width.
+3. 76 characters (about 445 px) were measured for his window of 2026-09-25 (an output
+   489 px wide). A wider output still breaks at 445 px; a narrower one scrolls. KaTeX does
+   not break a paragraph that sits in an array inside a `{...}` group.
+
+Measured, not assumed: typeset inline at the top level, as `\small \text{Lo }\allowbreak
+\text{que }\allowbreak ... {u \cos\theta + ...}`, KaTeX 0.16.28 gives the browser 25 break
+points in that paragraph against 1 today (`strict: "error"` accepts it). In his Colab
+("Untitled9", cell 4, mine) the paragraph then filled the output's width at
+`\footnotesize`, `\small` and normal size, the formulas unbroken. Proposed to him: the
+browser breaks the lines (not a character count), and `\small`; the size is his choice.
+To settle when building it: the room between paragraphs, the left edge beside the
+working, the snapshots (every narrative line changes its LaTeX, not its words).
+
+Re-measured on 0.41.1, from the "known" lists above: `0.90` is written `0.90` (fixed by
+#323); an `N` never defined warns (his decision); `extrema(atan(x/L), x, 0, L)` still
+stops with "extrema response values have incompatible dimensions"; `phiMn` over plain `d`
+and `a` still expands them (`h - 0.59 As fy/(fc b) - cover`, the 0.85 and the 1/2 folded),
+now in two rows, and `keep` still avoids it.
+
+**Exact next step:** his choice of size (and yes to the browser breaking the lines), then
+build it on this branch (`fix/text-fills-the-width`) with TDD and check it in his Colab.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
