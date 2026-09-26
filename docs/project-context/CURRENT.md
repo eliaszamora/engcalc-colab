@@ -14,9 +14,9 @@ _2026-09-25._
 |---|---|
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
-| merged, not released | #326 `% if`, #327 `=` values, #328 italic, #329 `% for`, #330 `% while`, #331 `solve` in a range, #332 named `numeric`, #333 one spacing rule + KaTeX letter (`8f40539`) |
-| open | `fix/a-fraction-row-has-room` - a row holding a fraction takes its depth on top of the break; waiting for his yes (it moves rows on every page) |
-| default suite | **3117 passing** on the fraction branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| merged, not released | #326 `% if`, #327 `=` values, #328 italic, #329 `% for`, #330 `% while`, #331 `solve` in a range, #332 named `numeric`, #333 one spacing rule + KaTeX letter (`8f40539`), #334 room under a fraction row |
+| open | nothing |
+| default suite | **3117 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto`; CI six jobs green on #334 |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1000,9 +1000,8 @@ item after normalising them (scratchpad `check_snapshots.py`). 17 contracts; mut
 10/10; suite 3109 on SymPy 1.14 and 1.13.3. Verified in his Colab with the branch
 installed: gaps 15-20 px, all text KaTeX.
 
-Still open, his: with `%eng_units kN` a typed `6000*mm^2` reads `0.006 m²` and δ `0.00241 m`.
 
-### A row holding a fraction keeps its room (branch `fix/a-fraction-row-has-room`, PR open)
+### A row holding a fraction keeps its room (#334, merged with his yes 2026-09-25)
 
 Seen in the images of #333 (he asked to correct what I noticed): `R_A = qL/2` stood on
 `R_B = qL/2`, measured -4 px apart (ink on ink); `q` on `E` -5 px; the `d_max` derivation
@@ -1017,8 +1016,14 @@ pages changed only by that depth (126 breaks, checked item by item, scratchpad
 `check_fraction_snapshots.py`). 5 contracts; mutation 2/2; suite 3117 on SymPy 1.14 and
 1.13.3.
 
-**Exact next step:** his yes on the fraction PR, with the before/after images in front of
-him. Then his exercise 2.1 (a truss: compatibility, not the sum of the two elongation
+He saw the before/after images and approved (*"Tienes mi aprobación"*). He also said to
+leave the English `Where` / `Domain: ... to ...` / `x in` of the region block as it is.
+
+The kN palette question is closed, not his to decide again: `%eng_units kN` shows one
+unit per dimension by his earlier choice (`6000*mm^2` reads `0.006 m²`, δ `0.00241 m`);
+`numeric(delta, mm)` or no `%eng_units` line gives millimetres. Explained to him.
+
+**Exact next step:** his exercise 2.1 (a truss: compatibility, not the sum of the two elongation
 vectors - see the conversation of 2026-09-25) as a reference exercise, the kN palette
 question; a release when he asks.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
