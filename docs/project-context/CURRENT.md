@@ -12,10 +12,10 @@ _2026-09-25._
 
 | | |
 |---|---|
-| released | **0.39.0** - this release PR, carrying #326-#335; its closure is recorded below |
-| before that | **0.38.0** - #324, `a53613d` |
+| released | **0.40.0** - this release PR, carrying #336, #337, #338; its closure is recorded below |
+| before that | **0.39.0** - #339, `edc95d5`, carrying #326-#335; closed (below) |
 | open PRs | this release's |
-| default suite | **3119 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto`; CI six jobs green on #335 |
+| default suite | **3158 passing** (SymPy 1.14 and 1.13.3), about a minute and a half with `-n auto`; CI six jobs green on #338 |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1084,9 +1084,23 @@ Found on the way, both on `main` (`3eb4c40`), not fixed:
 - (by design, worth asking) a `:=` line cannot read a name defined by `=`:
   `D := [delta_ab; delta_ac]` after `delta_ab = ...` says "unknown numeric name".
 
-**Exact next step:** his exercise 2.1 (a truss: compatibility, not the sum of the two elongation
-vectors - see the conversation of 2026-09-25) as a reference exercise, the kN palette
-question; a release when he asks.
+All three findings above were addressed with his yes (*"tienes mi Sí para todo"*,
+2026-09-26): #336 (brackets once, sums as written), #337 (`:=` reads `=`), and his
+exercise is `tools/ejercicio_2_1.eng` (#338).
+
+**0.39.0 is closed** (#339, `edc95d5`, carrying #326-#335). On the release tree: version
+assertions RED (7) then GREEN; suite 3119 twice (SymPy 1.14), 3117 on 1.13.3 (the two
+installed-metadata contracts deselected: that venv holds the 0.38.0 wheel); wheel from
+`git archive`, 33 files identical to `src`; a clean Colab-like venv (3.12, ipython 7.34.0,
+numpy 2.2.6, matplotlib 3.10.0, sympy 1.13.3) gains only Pint 0.26.1 and four small deps;
+smoke outside the repository 101/101 (scratchpad `smoke-0390/`; its first run found the
+`% while` counter defect, fixed by #335 before the release); suite against the wheel 3118 +
+the by-construction `test_the_ipython_surface_stays_small`. After the merge: CI, Quality
+Gate Deep (push) and Deep in qualification mode green on `edc95d5`; a clean
+`git+https` install resolved to `edc95d5`, reported 0.39.0, upgraded nothing, 33 files
+identical to the tree, smoke 101/101.
+
+**Exact next step:** close 0.40.0 (checks after its merge, his Colab).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
