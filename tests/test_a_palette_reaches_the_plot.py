@@ -193,7 +193,8 @@ def test_a_dimension_the_palette_does_not_cover_is_left_alone(cell, capsys):
     capsys.readouterr()
     axis = _figure(cell).axes[0]
 
-    assert "deg" in axis.get_ylabel(), axis.get_ylabel()
+    # Degrees, written with their sign since 2026-09-26 (test_an_angle_reads_in_degrees).
+    assert r"^{\circ}" in axis.get_ylabel(), axis.get_ylabel()
     assert max(axis.lines[0].get_ydata()) == pytest.approx(30.0), max(
         axis.lines[0].get_ydata()
     )

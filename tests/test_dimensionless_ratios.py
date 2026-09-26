@@ -91,7 +91,8 @@ def test_the_same_ratio_in_the_disguise_that_two_unit_symbols_would_have_missed(
 def test_degrees_survive(cell):
     """Pint calls a degree dimensionless. Reducing it would turn 30 deg into 0.52."""
     final = _final(cell("theta := 30*deg\nnumeric(theta)\n"))
-    assert "30.00" in final and "deg" in final, final
+    # Since 2026-09-26 a degree is written with its sign; see test_an_angle_reads_in_degrees.
+    assert "30.00" in final and r"^{\circ}" in final, final
 
 
 def test_radians_survive(cell):
@@ -102,7 +103,7 @@ def test_radians_survive(cell):
 def test_an_angle_reached_through_arithmetic_survives(cell):
     """`declared` is about the row, not the value: this one is computed and still an angle."""
     final = _final(cell("theta := 60*deg\nhalf = theta/2\nnumeric(half)\n"))
-    assert "30.00" in final and "deg" in final, final
+    assert "30.00" in final and r"^{\circ}" in final, final
 
 
 def test_a_plain_number_is_unchanged(cell):

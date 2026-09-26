@@ -1783,6 +1783,12 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
         except DimensionalityError:
             pass
 
+    # An angle the sheet worked out reads in degrees, as a memoria reads angles: `atan(4/6)`
+    # is `33.69°`, not `0.59 rad` (his exercise 2.1, 2026-09-26). Only an angle nobody wrote
+    # a unit for: `t := 0.5*rad` keeps its radians, and `rad/s` is not an angle.
+    if not declared and quantity.units == quantity._REGISTRY.radian:
+        return quantity.to("degree")
+
     family = _unit_family(quantity)
 
     # Zero-ness is decided in a unit the reader will actually see, not in whatever the
@@ -1973,6 +1979,9 @@ def _quantity_latex(
     unit_name = str(quantity.units)
     if getattr(quantity, "dimensionless", False) and unit_name == "dimensionless":
         return magnitude_latex
+    # The degree sign against the number, as a drawing writes it: `30.00°`, not `30.00 deg`.
+    if unit_name == "degree":
+        return rf"{magnitude_latex}^{{\circ}}"
 
     unit_latex = format(quantity.units, "~L")
     return rf"{magnitude_latex}\,{unit_latex}"
@@ -3153,7 +3162,35 @@ def _numeric_matrix_stages(
     return _without_a_repeated_stage(stages)
 
 
+def _is_a_value_by_its_name(result) -> bool:
+    """`numeric(w)`, `numeric(d, mm)`: the name of a value, asked for as itself.
+
+    Its rows were the name, the name again, its value in brackets and its value - `w = w
+    = (374.98 1/s) = 374.98 1/s` - with nothing worked out between them (2026-09-26). One
+    row says it: `w = 374.98 1/s`, in the unit asked for.
+    """
+    expression = result.symbolic_expression
+    return (
+        isinstance(expression, sp.Symbol)
+        and result.display_name == expression.name
+        and result.display_arguments is None
+    )
+
+
 def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSettings) -> list[str]:
+    if _is_a_value_by_its_name(result):
+        # An angle written in radians keeps them here as on its own row, `alpha := 0.5*rad`;
+        # every other unit is shown as the final row always showed it (`slope := 2*mm/m`
+        # reads the ratio, test_dimensionless_ratios).
+        keeps_its_angle = result.symbolic_expression.name in getattr(
+            result, "declared_names", frozenset()
+        ) and str(result.quantity.units) in _ANGLE_UNIT_NAMES
+        final_latex = _quantity_latex(
+            result.quantity,
+            settings=_settings_for(result, settings),
+            declared=_shows_as_stored(result) or keeps_its_angle,
+        )
+        return [rf"{_display_lhs(result)} & = & \displaystyle {final_latex}"]
     formula_rows = _bounded_expression_rows(
         result.symbolic_expression,
         settings=settings,
@@ -3906,6 +3943,9 @@ def _value_row_spacings(
     elif isinstance(result, PartialMatrixNumericEvaluationResult):
         stage_lengths = [1] * len(_numeric_matrix_stages(result, settings, value=None))
 
+    elif isinstance(result, NumericEvaluationResult) and _is_a_value_by_its_name(result):
+        stage_lengths = [1]
+
     elif isinstance(result, NumericEvaluationResult):
         # The same rows `_numeric_evaluation_rows` draws, from the same functions: this
         # counted rows built without the row's units and without its piecewise branches.
@@ -4361,6 +4401,8 @@ def _latex_unit_text(unit) -> str:
     """
     if str(unit) == "dimensionless":
         return ""
+    if str(unit) == "degree":
+        return r"{}^{\circ}"
     return format(unit, "~L")
 
 
@@ -4392,7 +4434,13 @@ def _in_unit(quantity, unit, settings: RenderSettings):
     A value that is a genuine zero in its stored unit is zeroed before conversion,
     so it cannot cross ``zero_tolerance`` on the way. See ``_is_genuine_zero``.
     """
-    if unit is None or getattr(quantity, "dimensionless", False):
+    if unit is None:
+        return quantity
+    # An angle is dimensionless to Pint and still converts: radians to the degrees a
+    # column of angles is shown in.
+    if getattr(quantity, "dimensionless", False) and not (
+        str(quantity.units) in _ANGLE_UNIT_NAMES and str(unit) in _ANGLE_UNIT_NAMES
+    ):
         return quantity
     if _is_genuine_zero(quantity, settings):
         quantity = quantity * 0.0
@@ -4454,6 +4502,11 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
     value cannot drag the whole column into a unit that flattens the rest. Ties
     keep the unit the values already carry.
     """
+    # A column of angles the sheet worked out reads in degrees, as a single one does.
+    if fallback is not None and str(fallback) == "radian":
+        angles = [quantity for quantity in quantities if quantity is not None]
+        if angles:
+            return angles[0]._REGISTRY.degree
     physical = [
         quantity
         for quantity in quantities

@@ -73,5 +73,6 @@ def test_his_exercise_reads_sin_of_the_angle(monkeypatch):
         )
     assert not console.getvalue(), console.getvalue()
     page = " ".join(item.data for item in captured if isinstance(item, Math))
-    assert r"\sin{\left(0.93\,\mathrm{rad} \right)}" in page, page
+    # The angle reads in degrees (test_an_angle_reads_in_degrees).
+    assert r"\sin{\left(53.13^{\circ} \right)}" in page, page
     assert r"\left(\left(" not in page, page

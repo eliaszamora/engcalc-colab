@@ -184,8 +184,9 @@ STAYS_REAL = [
     ("z := (-2)^(-1)\n", r"\displaystyle -0.50"),
     ("z := (-4)^2.0\n", r"\displaystyle 16.00"),
     ("z := sqrt(0)\n", r"z & = & \displaystyle 0.00"),
-    ("z := asin(1)\n", r"1.57\,\mathrm{rad}"),
-    ("z := acos(-1)\n", r"3.14\,\mathrm{rad}"),
+    # A computed angle reads in degrees (test_an_angle_reads_in_degrees).
+    ("z := asin(1)\n", r"90.00^{\circ}"),
+    ("z := acos(-1)\n", r"180.00^{\circ}"),
     ("z := log(1)\n", r"z & = & \displaystyle 0.00"),
     ("f(x) = sqrt(x) - 1\nroots(f(x), x, -1, 4)\n", r"\text{root}"),
 ]
