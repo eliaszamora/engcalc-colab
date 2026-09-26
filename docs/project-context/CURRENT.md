@@ -12,10 +12,10 @@ _2026-09-26._
 
 | | |
 |---|---|
-| released | **0.41.0** - #344, `e879667`, carrying #342 (`465a2dd`) and #343 (`a8d68ac`); closed, see below |
-| before that | **0.40.0** - #340, `ea79f53`, closed |
-| open PRs | #346 (`=` drops a `:=` value) and #347 (`%eng_units none`, stacked on #346), awaiting his yes; see the end of 0.41.0's closure |
-| default suite | **3192 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto`; CI six jobs green on `e879667` |
+| released | **0.41.1** - the release PR, carrying #346 (`5a10d74`) and #347 (`f4d5e03`); see the end of 0.41.0's closure |
+| before that | **0.41.0** - #344, `e879667`, closed |
+| open PRs | the 0.41.1 release PR |
+| default suite | **3209 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `ada6e0f` (#347's head) |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1207,9 +1207,25 @@ the 24 `tools/*.eng` pages byte-identical to `main`.
 case is the empty argument; the empty argument is unchanged; README says so. 5 contracts,
 all RED before; the `.lower()` mutant killed; suite 3209.
 
-**Exact next step:** his yes to merge #346, then #347 rebased onto `main` and retargeted
-(check its diff is only its own commits), then his yes to merge it; release when he asks;
-the user's Colab check of 0.41.0.
+He then authorised the merges and the release (*"Tienes mi autorización para proceder con
+fusiones, publicaciones etc..."*). #346 squashed as `5a10d74` on green CI at `88d1a26`;
+#347 rebased onto it (diff byte-identical to the stacked one, tree identical to the tested
+head), retargeted to `main`, green at `ada6e0f`, squashed as `f4d5e03`.
+
+**0.41.1 before its merge**, on the release commit's tree: version assertions RED (7) then
+GREEN; source suite 3209 twice (SymPy 1.14); a wheel from `git archive`, 33 files identical
+to `src`; installed in a clean Python 3.12 venv holding Colab's pins (ipython 7.34.0, numpy
+2.2.6, matplotlib 3.10.0, sympy 1.13.3) it adds Pint 0.26.1, flexcache, flexparser,
+platformdirs, typing_extensions and upgrades nothing; `tools/smoke_installed.py` (three
+checks added: `=` drops a `:=` value, `=` after `keep`, `%eng_units none`) 30/30 from
+outside the repository; the suite against the wheel on SymPy 1.13.3, from a copy of the
+tree with no `src/` and KaTeX installed: 3208 + `test_the_ipython_surface_stays_small`
+passing on the wheel's own `magic.py`; the 8 `tools/*.eng` sheets in three palettes, 24
+pages, byte-identical from the wheel and from the tree.
+
+**Exact next step:** after the release merge, CI and the deep gate on the merge commit, a
+clean `git+https` install of `main` with the smoke; the user's Colab check of 0.41.1 - the
+Claude in Chrome extension was not connected to the new account.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

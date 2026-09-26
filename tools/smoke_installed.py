@@ -77,6 +77,11 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.41.1: the last definition is the one read
+check("= drops a := value", "p := 500*kg\na := 2\np = 3*a\nx := 4*p",
+      r"x & = & \displaystyle 24.00", absent=("2000.00",))
+check("= after keep drops the kept number", "h := 60*cm\nkeep d = h - 4*cm\nd = 3*h\nx := 2*d",
+      r"x & = & \displaystyle 360.00\,\mathrm{cm}", absent=("112.00",))
 # 0.41.0: a unit in brackets; a unit letter the sheet defined is that name
 check("sheet formula outranks its unit spelling", "a := 2\nm = 3*a\nx := 4*m", "24.00")
 check("bracketed unit", "L := 6[m]\nq := 10[kN/m]\nM := q*L^2/8",
@@ -124,6 +129,14 @@ help_text = buf.getvalue() + "".join(str(getattr(o, "data", "")) for o in OUT)
 for name, want in (("eng_help := recommends 6[m]", "6[m]"), ("eng_help in Spanish", "Ejemplo")):
     results.append(want in help_text)
     print(("PASS " if results[-1] else "FAIL ") + name)
+
+# 0.41.1: `%eng_units none` clears the palette
+buf = io.StringIO()
+with contextlib.redirect_stdout(buf):
+    ip.run_line_magic("eng_units", "kN")
+    ip.run_line_magic("eng_units", "none")
+results.append("engcalc units: cleared (was kN)" in buf.getvalue())
+print(("PASS " if results[-1] else "FAIL ") + "eng_units none clears the palette")
 
 print(f"{sum(results)}/{len(results)}")
 sys.exit(0 if all(results) else 1)
