@@ -13,10 +13,10 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.40.0**.
+Current version: **0.41.0**.
 
 
-## Units in brackets
+## v0.41.0 units in brackets, angles in degrees
 
 **A unit can be written in brackets after its number**: `L := 6[m]`, `q := 10[kN/m]`,
 `A := 6000[mm^2]`, in `:=` and `=` lines and inside matrices. What stands in the brackets
@@ -30,6 +30,14 @@ brackets. `6*m` still works as it did.
 another unit - `2000*kN/m`, `5*m/s` - it could be either, and the line stops and asks for
 the unit in brackets. The single degree of freedom run twice read `k = 4.00 kN/kg`; it
 now stops and says `2000[kN/m]`.
+
+**An angle the sheet works out reads in degrees**: `theta := atan(4/6)` is `θ = 33.69°`, not
+`0.59 rad`, and it is substituted as `sin(33.69°)`. An angle written in radians keeps them
+(`t := 0.5[rad]`), and `rad/s` is not an angle. A degree is written with its sign, `30.00°`,
+in rows, tables (`h(x) [°]`), text and the plot axis. And `numeric` of a name that holds a
+value is one row: `w = 374.98 1/s`, not `w = w = (374.98 1/s) = 374.98 1/s`.
+
+No reference page moves.
 
 
 ## v0.40.0 a value line reads a formula, a sum as written, one pair of brackets
@@ -3702,6 +3710,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.41.0** — a unit in brackets after its number, `6[m]`, so `m`, `s` and `N` can be names of a sheet; a name spelled like a unit beside another unit stops the line; a computed angle reads in degrees, written `°`; `numeric` of a value is one row.
 - **0.40.0** — a `:=` line reads a name defined with `=`; a sum reads in the order it was written; a value inside a function's parentheses is not bracketed again; his exercise 2.1 is a reference sheet.
 - **0.39.0** — `% if` / `% elif` / `% else`, `% for` and `% while`; `solve` takes the one root in a range; `d = numeric(...)` is written under `d`; a `=` line of values ends on its value; names of several letters in italic; one spacing rule between blocks and the text in KaTeX's letter; room under a fraction row.
 - **0.38.0** — `%eng_help` in Spanish; a number keeps the figures it was typed with (`0.90`); a bracket too wide for a row wraps inside itself; a table column of zeros takes the unit of its kind.
@@ -3817,4 +3826,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.40.0`.
+Version: `0.41.0`.

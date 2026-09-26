@@ -12,10 +12,10 @@ _2026-09-25._
 
 | | |
 |---|---|
-| released | **0.40.0** - #340, `ea79f53`, carrying #336, #337, #338; closed and verified in his Colab (below) |
-| before that | **0.39.0** - #339, `edc95d5`, carrying #326-#335; closed (below) |
-| open PRs | none |
-| default suite | **3158 passing** (SymPy 1.14 and 1.13.3), about a minute and a half with `-n auto`; CI six jobs green on #338 |
+| released | **0.41.0** - this release PR, carrying #342 (`465a2dd`) and #343 (`a8d68ac`); its closure is recorded below |
+| before that | **0.40.0** - #340, `ea79f53`, closed |
+| open PRs | this release's |
+| default suite | **3192 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto`; CI six jobs green on #343 |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1154,7 +1154,15 @@ compound units (`10_kN/m` cannot say where the unit ends). Built:
   README section. 23 contracts; 5 older ones updated (the re-run notices became a stop);
   no reference page moves; the 13 harness sheets move only by the notice's words.
 
-**Exact next step:** his yes on the brackets PR after seeing it.
+#343 merged with his yes (*"Fusiona #343 y publica la 0.41.0"*), released as 0.41.0 with #342.
+
+**0.41.0 before its merge**: version assertions RED (7) then GREEN; suite 3192 twice
+(SymPy 1.14); wheel 33 files identical to `src`; clean Colab-like venv gains only Pint and
+four small deps; smoke 107/107 (new scratchpad `c0d9fc55.../smoke-0410/`: brackets, the
+re-run stop, degrees; the old re-run notice and `sin(0.93 rad)` checks now read the new
+behaviour); suite against the wheel on SymPy 1.13.3: 3191 + the by-construction one.
+
+**Exact next step:** close 0.41.0 (checks after its merge, his Colab).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
