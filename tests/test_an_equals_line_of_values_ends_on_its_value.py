@@ -73,9 +73,9 @@ def test_a_length_worked_out_from_numbers_ends_on_its_value(sheet):
     page, _console = sheet("L_ba = sqrt(6^2 + 4^2)*m\n")
     rows = rows_of(page, r"L_{ba}")
     assert r"7.21\,\mathrm{m}" in rows, rows
-    # The number before its unit, as it was written. (The sum inside follows the page's
-    # rule for sums, #243: `4² + 6²`.)
-    assert r"\sqrt{4^{2} + 6^{2}}\,\mathrm{m}" in rows and r"\mathrm{m}\,\sqrt" not in rows, rows
+    # The number before its unit, as it was written, and the sum inside as it was written
+    # too: `6² + 4²` (test_a_sum_keeps_the_order_it_was_written_in).
+    assert r"\sqrt{6^{2} + 4^{2}}\,\mathrm{m}" in rows and r"\mathrm{m}\,\sqrt" not in rows, rows
 
 
 @pytest.mark.parametrize(

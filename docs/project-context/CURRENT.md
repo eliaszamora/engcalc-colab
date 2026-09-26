@@ -1000,6 +1000,24 @@ item after normalising them (scratchpad `check_snapshots.py`). 17 contracts; mut
 installed: gaps 15-20 px, all text KaTeX.
 
 
+### A value in a function, and a sum as written (branch `fix/function-arguments`)
+
+The two findings of his exercise 2.1, which he asked to address (*"Aborda estos
+hallazgos"*, 2026-09-26):
+- `renderer._bracketed`: a substituted value directly inside a function's own
+  parentheses (`_FUNCTIONS_IN_PARENTHESES`: trig, inverse trig, hyperbolic, log, sign,
+  Min, Max, a sheet function) takes no brackets of its own - `sin(0.93 rad)`,
+  `max(45.00 kN, 30.00 kN)`. In a product, sum or power, under a root, between bars or in
+  an exponent it keeps them.
+- `engine.record_written_sums` + `renderer.WRITTEN_SUMS` / `sum_term_key`: a sum the
+  sheet wrote reads in its written order (`sin(θ + φ)`, `√(6² + 4²)`,
+  `h - cover - db_st - db/2`). A term is known by its names, or by its size when it has
+  none; only a sum whose terms are exactly the written ones is reordered, the first
+  writing is kept, and a written order that opens with a minus leaves the sum to the
+  0.31.17 rule as before.
+No reference page and none of the 13 harness sheets move. 20 contracts; suite 3137 on
+SymPy 1.14 and 1.13.3.
+
 ### A `% while` reads its counter every pass (branch `fix/while-reads-its-counter`)
 
 Found by the smoke of 0.39.0 before publishing: `% k = 0`, `% while k < 3:` with `% k += 1`

@@ -85,7 +85,8 @@ def test_a_measured_unit_still_has_its_one(magics, capsys, source, shown):
 def test_what_is_not_a_measurement_measures_nothing(magics, capsys, source):
     page = run(magics, source)
     assert "engcalc:" not in without_letter_notices(capsys.readouterr().out)
-    assert r"a + \mathrm{m}" in page, page
+    # `m + a` as written (test_a_sum_keeps_the_order_it_was_written_in).
+    assert r"\mathrm{m} + a" in page, page
     assert r"1\,\mathrm{m}" not in page, page
 
 
