@@ -1167,14 +1167,15 @@ green on `e879667`; a clean `git+https` install of `main` in a Colab-like venv (
 ipython 7.34.0, numpy 2.2.6, matplotlib 3.10.0, sympy 1.13.3) resolved to `e879667`,
 reported 0.41.0, upgraded nothing (adds Pint 0.26.1, flexcache, flexparser, platformdirs,
 typing_extensions), 33 files identical to `src`. The 107-check smoke of `smoke-0410/` lived
-in the previous session's scratchpad and is gone; a new one, 27 checks through
+in the previous session's scratchpad and is gone; a new one, kept as
+`tools/smoke_installed.py`, 27 checks through
 `%load_ext` from outside the repository (brackets, the re-run stop, degrees, one-row
 `numeric`, `:=` reads `=`, sums as written, `min`, no real value, `% if/for/while`, Hz,
 eigen units, kgf, `%eng_help :=`), each after `%eng_reset`: 27/27. The 8 `tools/*.eng`
 sheets in three palettes (none, kN, kgf), 24 pages, render byte-identical from the
 installed package and from the tree. Source suite on `e879667`: 3192 passed (SymPy 1.14,
-KaTeX installed with `npm ci --prefix tools/katex`; without it 30 skip). **Not done: his Colab** - not reachable from the
-session that closed it; he checks it with his cell 0 after a restart from the menu.
+KaTeX installed with `npm ci --prefix tools/katex`; without it 30 skip). **Not done: the user's Colab** - not reachable from
+the session that closed it; the user checks it with cell 0 after a restart from the menu.
 
 Found while closing, not caused by 0.41.0, not fixed:
 - **A `:=` value outlives a later `=` of the same name** (also on 0.40.0, any name):
@@ -1182,12 +1183,13 @@ Found while closing, not caused by 0.41.0, not fixed:
   silence; the other order (`=` then `:=`) is right. With a unit letter (`m`) the notice
   printed says the line "read 'm' as a unit when it ran before", which is not what
   happened. Proposed: a `=` line drops the name's `:=` value, as a `:=` replaces a
-  formula. Needs his yes (it changes which value a sheet reads).
+  formula. Needs the user's yes (it changes which value a sheet reads).
 - `%eng_units none` is refused with "unknown unit palette 'none'; available: kN, kgf
   (or none to clear)" - the help means an empty argument. Either accept `none` or say
   "(or nothing, to clear)".
 
-**Exact next step:** ask him about the two findings above; his Colab check of 0.41.0.
+**Exact next step:** ask the user about the two findings above; the user's Colab check of
+0.41.0.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
@@ -1880,24 +1882,26 @@ and the rendering.
 
 ## How to resume in a new conversation
 
-Read this file first. `main` is at `9a9d6e3`, **EngCalc 0.13.0**, CI green on Python
-3.10-3.14, Deep Gate qualified, 1116 tests green, and verified installable and working in
-Google Colab from the documented `git+https` path.
+_Rewritten 2026-09-26 (the text before it described 0.13.0)._ A new conversation - in
+this Claude account or another one - knows only what is in the repository. Start it on
+`eliaszamora/engcalc-colab`, branch `main`, and:
 
-**No defect is open.** The active work is Etapa 1 of the roadmap above, chosen from the
-measured gap map rather than from a feature list: 1.0, 1.1 and 1.2 are done and **1.3,
-multi-solution `solve`, is next**. The gap map has gone from 4/18 to 7/18 exercises
-running end to end, with broken lines down from 24 to 17; re-measure with
-`python tools/gap_map.py`.
-
-Two things are carried rather than open: the gap 1.2 uncovered - a definition captures
-its free symbols and `numeric(...)` does not resolve them from the symbolic namespace -
-and the seven families `docs/quality-gate.md` says the gate does not cover.
-
-Read `docs/quality-gate.md` for how to operate the gate: the isolated configuration that
-historical sensitivity runs require, the qualification-SHA rule and the consequence that
-its run identifiers can only be recorded after a merge, and the requirement that the
-Hypothesis profile set every setting the environment could otherwise decide.
+1. Read `AGENTS.md`, then the block **Where things stand today** at the top of this file
+   and the newest sections just above **Current baseline** (the last is 0.41.0's closure,
+   with the open findings and the **Exact next step**), then `NEXT.md` for how a release
+   is cut. The sections between were written at 0.13.0; their approved behaviour still
+   holds, their numbers do not.
+2. Verify against GitHub before relying on it: `main`'s SHA and version, open PRs, CI.
+3. Tooling in a fresh container: a venv with `pip install -e ".[dev]" pytest-xdist`,
+   `npm ci --prefix tools/katex` (without it 30 KaTeX tests skip), then
+   `pytest -q -n auto`. A release closure also runs `tools/smoke_installed.py` from
+   outside the repository against a clean `git+https` install (its docstring has the
+   recipe) and compares the `tools/*.eng` pages rendered from the install and from `src`.
+4. The user's Colab is in their Google account, not in the repository; the notebooks
+   named here ("Untitled9", "Ejercicio 2.2") are theirs. A session cannot open it unless
+   given a browser; the user checks a release there with the install cell after a restart
+   from the menu.
+5. The user writes in Spanish; answer in Spanish. The documents here are in English.
 
 Two rules that have each paid for themselves repeatedly: never merge without explicit user
 approval, and never let whoever built something be the one to certify it. The second is
