@@ -16,7 +16,7 @@ _2026-09-25._
 | before that | **0.37.0** - #320, `4795c47` |
 | merged, not released | #326 `% if` (`1f926db`), #327 a `=` line of values (`c8a6036`), #328 names in italic (`cf8ffa5`) |
 | open | `feat/one-spacing-rule` - waiting for his yes; merged since 0.38.0: #326-#332 (`% if`, `=` values, italic, `% for`, `% while`, `solve` in a range, named `numeric`) |
-| default suite | **3109 passing** on the spacing branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| default suite | **3111 passing** on the spacing branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -982,7 +982,8 @@ Shown three options in his Colab; he chose option 2 (*"Me gusta más tu recomend
   page opens wider by itself (36 px). No block has room of its own any more: the computed
   block's empty rows (#192) and the `Como` strut are gone.
 - `renderer.narrative_latex`: a paragraph is a `Math` output - words in `\text{}`, `$...$`
-  spans as mathematics, lines <= 80 characters, paragraphs `\\[8pt]` apart, `**bold**` /
+  spans as mathematics, lines <= 62 characters (80 ran off a 489 px output at a 1254 px
+  window in his Colab; KaTeX sets ~7.3 px a character), paragraphs `\\[8pt]` apart, `**bold**` /
   `*italic*` only when paired, `# $ % & _ { } ~ ^ \\ < >` written as text, `·` as `$\cdot$`
   (KaTeX has `\cdotp` only in maths). KaTeX 0.16.28 lacks `\textquestiondown`,
   `\guillemotleft`, `@{}`: `¿ ¡ « »` stay as they are (a strict-mode warning, no error);
