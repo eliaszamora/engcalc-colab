@@ -31,13 +31,13 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 \displaystyle b & = & \displaystyle 30.00\,\mathrm{cm} \\[8pt]
 \displaystyle h & = & \displaystyle 60.00\,\mathrm{cm} \\[8pt]
 \displaystyle \mathit{rec} & = & \displaystyle 4.00\,\mathrm{cm} \\[16pt]
-\displaystyle \mathit{fc} & = & \displaystyle 250.00\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}} \\[8pt]
-\displaystyle E & = & \displaystyle 239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}} \\[16pt]
+\displaystyle \mathit{fc} & = & \displaystyle 250.00\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}} \\[17pt]
+\displaystyle E & = & \displaystyle 239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}} \\[25pt]
 \displaystyle d & = & \displaystyle h - \mathit{rec} \\[8pt]
 & = & \displaystyle \left(60.00\,\mathrm{cm}\right) - \left(4.00\,\mathrm{cm}\right) \\[8pt]
 & = & \displaystyle 56.00\,\mathrm{cm} \\[16pt]
-\displaystyle I & = & \displaystyle \frac{b h^{3}}{12} \\[8pt]
-& = & \displaystyle \frac{\left(30.00\,\mathrm{cm}\right)\,\left(60.00\,\mathrm{cm}\right)^{3}}{12} \\[8pt]
+\displaystyle I & = & \displaystyle \frac{b h^{3}}{12} \\[17pt]
+& = & \displaystyle \frac{\left(30.00\,\mathrm{cm}\right)\,\left(60.00\,\mathrm{cm}\right)^{3}}{12} \\[17pt]
 & = & \displaystyle 540000.00\,\mathrm{cm}^{4} \end{array}
 
 === 7 · HTML ===
@@ -59,8 +59,8 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 12 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle \mathit{qD} & = & \displaystyle 18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
-\displaystyle \mathit{qL} & = & \displaystyle 12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle \mathit{qD} & = & \displaystyle 18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[17pt]
+\displaystyle \mathit{qL} & = & \displaystyle 12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[17pt]
 \displaystyle P & = & \displaystyle 4078.86\,\mathrm{kgf} \end{array}
 
 === 13 · HTML ===
@@ -85,13 +85,13 @@ M = P x / 2\text{ hasta el centro y }M = P (L - x) / 2\text{ después. Escrita c
 <div style="height:18px"></div>
 
 === 18 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[17pt]
+\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[17pt]
 \displaystyle M_{P}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
 \displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[16pt]
-\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle \mathit{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle 0 & \text{otherwise} \end{cases} \\[25pt]
+\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[17pt]
+\displaystyle \mathit{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[17pt]
 \displaystyle \mathit{Mo}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
 \displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \end{array}
@@ -201,10 +201,10 @@ annotation: (300, $1.97 \times 10^{6}$)
 <div style="height:18px"></div>
 
 === 44 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle U_{1}\left(\frac{L}{2}\right) \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle U_{1}\left(\frac{L}{2}\right) \\[17pt]
 & = & \displaystyle 0.15\,\mathit{qD}\,L^{2} + 0.2\,\mathit{qL}\,L^{2} \\[8pt]
-& = & \displaystyle 0.15\,\left(18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[4pt]
-& & \displaystyle \quad + 0.2\,\left(12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[8pt]
+& = & \displaystyle 0.15\,\left(18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[13pt]
+& & \displaystyle \quad + 0.2\,\left(12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[17pt]
 & = & \displaystyle 1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}
 
 === 45 · HTML ===
@@ -225,11 +225,11 @@ annotation: (300, $1.97 \times 10^{6}$)
 
 === 50 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{s} & = & \displaystyle \mathit{qD} + \mathit{qL} \\[16pt]
-\displaystyle \delta & = & \displaystyle \frac{5 q_{s} L^{4}}{384 E I} \\[8pt]
-& = & \displaystyle \frac{5\,\left(30.59\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{4}}{384\,\left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(540000.00\,\mathrm{cm}^{4}\right)} \\[8pt]
+\displaystyle \delta & = & \displaystyle \frac{5 q_{s} L^{4}}{384 E I} \\[17pt]
+& = & \displaystyle \frac{5\,\left(30.59\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{4}}{384\,\left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(540000.00\,\mathrm{cm}^{4}\right)} \\[17pt]
 & = & \displaystyle 0.40\,\mathrm{cm} \\[16pt]
-\displaystyle \delta_{adm} & = & \displaystyle \frac{L}{300} \\[8pt]
-& = & \displaystyle \frac{\left(600.00\,\mathrm{cm}\right)}{300} \\[8pt]
+\displaystyle \delta_{adm} & = & \displaystyle \frac{L}{300} \\[17pt]
+& = & \displaystyle \frac{\left(600.00\,\mathrm{cm}\right)}{300} \\[17pt]
 & = & \displaystyle 2.00\,\mathrm{cm} \end{array}
 
 === 51 · HTML ===

@@ -1,5 +1,7 @@
 import pytest
 
+from conftest import without_fraction_depth
+
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.errors import EngSyntaxError
 from engcalc_colab.parser import parse_cell
@@ -67,7 +69,7 @@ def test_result_aligned_output_uses_formula_and_final_as_two_stages():
     evaluate(engine, "q := 2.8*tonf/m")
     evaluate(engine, "L := 4*m")
 
-    rendered = render_aligned_results([evaluate(engine, "result(M_A)")])
+    rendered = without_fraction_depth(render_aligned_results([evaluate(engine, "result(M_A)")]))
 
     assert rendered.count(" & = & ") == 2
     assert rendered.count(r"\\[8pt]") == 1

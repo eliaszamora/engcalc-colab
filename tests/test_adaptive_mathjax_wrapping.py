@@ -1,5 +1,7 @@
 from IPython.display import Math
 
+from conftest import without_fraction_depth
+
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.magic import _display_equation_group
 from engcalc_colab.parser import parse_cell
@@ -60,7 +62,7 @@ def test_final_numeric_result_is_always_a_separate_row():
     evaluate(engine, "q := 2.8*tonf/m")
     evaluate(engine, "L := 4*m")
 
-    latex = render_aligned_results([evaluate(engine, "numeric(V)")])
+    latex = without_fraction_depth(render_aligned_results([evaluate(engine, "numeric(V)")]))
 
     assert latex.count(" & = & ") == 3
     assert latex.count(r"\\[8pt]") == 2

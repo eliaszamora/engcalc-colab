@@ -37,22 +37,22 @@
 \displaystyle b & = & \displaystyle 300.00\,\mathrm{mm} \\[8pt]
 \displaystyle h & = & \displaystyle 600.00\,\mathrm{mm} \\[8pt]
 \displaystyle E & = & \displaystyle 23500.00\,\mathrm{MPa} \\[8pt]
-\displaystyle \mathit{qD} & = & \displaystyle 18.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
-\displaystyle \mathit{qL} & = & \displaystyle 12.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[16pt]
-\displaystyle I & = & \displaystyle \frac{b h^{3}}{12} \\[8pt]
+\displaystyle \mathit{qD} & = & \displaystyle 18.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[17pt]
+\displaystyle \mathit{qL} & = & \displaystyle 12.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[25pt]
+\displaystyle I & = & \displaystyle \frac{b h^{3}}{12} \\[17pt]
 \displaystyle c & = & \displaystyle 30.00\,\mathrm{cm} \\[16pt]
-\displaystyle W & = & \displaystyle \frac{I}{c} \\[8pt]
-& = & \displaystyle \frac{\left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)}{\left(30.00\,\mathrm{cm}\right)} \\[8pt]
+\displaystyle W & = & \displaystyle \frac{I}{c} \\[17pt]
+& = & \displaystyle \frac{\left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)}{\left(30.00\,\mathrm{cm}\right)} \\[17pt]
 & = & \displaystyle 18000.00\,\mathrm{cm}^{3} \\[16pt]
-\displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
-\displaystyle \mathit{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[8pt]
+\displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[17pt]
+\displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[17pt]
+\displaystyle D\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[17pt]
+\displaystyle \mathit{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[17pt]
 \displaystyle U_{1}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathit{Lv}\left(x\right) \\[16pt]
-\displaystyle M_{u} & = & \displaystyle U_{1}\left(\frac{L}{2}\right) \\[8pt]
+\displaystyle M_{u} & = & \displaystyle U_{1}\left(\frac{L}{2}\right) \\[17pt]
 & = & \displaystyle 0.15\,\mathit{qD}\,L^{2} + 0.2\,\mathit{qL}\,L^{2} \\[8pt]
-\displaystyle \kappa & = & \displaystyle \frac{M_{u}}{E I} \\[8pt]
-& = & \displaystyle \frac{\left(183.60\,\mathrm{kN} \cdot \mathrm{m}\right)}{\left(23500.00\,\mathrm{MPa}\right)\,\left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)} \\[8pt]
+\displaystyle \kappa & = & \displaystyle \frac{M_{u}}{E I} \\[17pt]
+& = & \displaystyle \frac{\left(183.60\,\mathrm{kN} \cdot \mathrm{m}\right)}{\left(23500.00\,\mathrm{MPa}\right)\,\left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)} \\[17pt]
 & = & \displaystyle 0.00145\,\frac{1}{\mathrm{m}} \end{array}
 
 === 9 · HTML ===
@@ -72,7 +72,7 @@
 <div style="height:18px"></div>
 
 === 14 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q & = & \displaystyle 30.00\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q & = & \displaystyle 30.00\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[17pt]
 \displaystyle w\left(x\right) & = & \displaystyle q \left(1 + \frac{x}{L}\right) \end{array}
 
 === 15 · HTML ===
@@ -165,10 +165,10 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 30 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{Dv}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x^{2}}{2} \\[8pt]
-\displaystyle M_{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x^{2}}{2} \\[8pt]
-\displaystyle \mathit{Dv}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x^{2}}{2} \\[8pt]
-\displaystyle \mathit{Lvv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x^{2}}{2} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle M_{Dv}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x^{2}}{2} \\[17pt]
+\displaystyle M_{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x^{2}}{2} \\[17pt]
+\displaystyle \mathit{Dv}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x^{2}}{2} \\[17pt]
+\displaystyle \mathit{Lvv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x^{2}}{2} \\[17pt]
 \displaystyle U_{3}\left(x\right) & = & \displaystyle 1.2 \, \mathit{Dv}\left(x\right) + 1.6 \, \mathit{Lvv}\left(x\right) \end{array}
 
 === 31 · HTML ===
@@ -198,7 +198,7 @@ summary: 1200
 
 === 38 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle R_{uso} & = & \displaystyle -9.00\,\mathrm{kN} \\[8pt]
-\displaystyle q_{uso} & = & \displaystyle 1.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
+\displaystyle q_{uso} & = & \displaystyle 1.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[17pt]
 \displaystyle L_{c} & = & \displaystyle 2.00\,\mathrm{m} \\[8pt]
 \displaystyle V_{uso}\left(x\right) & = & \displaystyle R_{uso} + q_{uso} x \end{array}
 
@@ -232,7 +232,7 @@ summary: 1200
 
 === 46 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle L_{mm} & = & \displaystyle 6000.00\,\mathrm{mm} \\[8pt]
-\displaystyle q_{mm} & = & \displaystyle 18.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
+\displaystyle q_{mm} & = & \displaystyle 18.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[17pt]
 \displaystyle M_{mm}\left(x\right) & = & \displaystyle \frac{q_{mm} x \left(L_{mm} - x\right)}{2} \end{array}
 
 === 47 · HTML ===
@@ -313,14 +313,14 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 66 · Math ===
-\hspace{0.2em}\begin{array}{lcl}  & & \displaystyle w^{2} = \frac{25}{\mathrm{s}^{2}} \\[8pt]
-\displaystyle w & = & \displaystyle - \frac{5}{\mathrm{s}}\;\;\left(-5.00\,\frac{1}{\mathrm{s}}\right) \\[4pt]
-\displaystyle w & = & \displaystyle \frac{5}{\mathrm{s}}\;\;\left(5.00\,\frac{1}{\mathrm{s}}\right) \\[16pt]
+\hspace{0.2em}\begin{array}{lcl}  & & \displaystyle w^{2} = \frac{25}{\mathrm{s}^{2}} \\[17pt]
+\displaystyle w & = & \displaystyle - \frac{5}{\mathrm{s}}\;\;\left(-5.00\,\frac{1}{\mathrm{s}}\right) \\[13pt]
+\displaystyle w & = & \displaystyle \frac{5}{\mathrm{s}}\;\;\left(5.00\,\frac{1}{\mathrm{s}}\right) \\[25pt]
 & & \displaystyle v > 0 \\[8pt]
-& & \displaystyle v^{2} = \frac{25}{\mathrm{s}^{2}} \\[8pt]
-\displaystyle v & = & \displaystyle \frac{5}{\mathrm{s}} \\[8pt]
-& & \displaystyle \text{discarded by } v > 0:\;\; - \frac{5}{\mathrm{s}} \\[16pt]
-\displaystyle M_{Dv2}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
+& & \displaystyle v^{2} = \frac{25}{\mathrm{s}^{2}} \\[17pt]
+\displaystyle v & = & \displaystyle \frac{5}{\mathrm{s}} \\[17pt]
+& & \displaystyle \text{discarded by } v > 0:\;\; - \frac{5}{\mathrm{s}} \\[25pt]
+\displaystyle M_{Dv2}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[17pt]
 \displaystyle M_{Lv2}\left(x\right) & = & \displaystyle 0.75\,\mathit{qL}\,x \left(L - x\right) \end{array}
 
 === 67 · HTML ===
@@ -352,15 +352,15 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 74 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{1} & = & \displaystyle 8.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
-\displaystyle q_{2} & = & \displaystyle 4.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{1} & = & \displaystyle 8.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[17pt]
+\displaystyle q_{2} & = & \displaystyle 4.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[17pt]
 \displaystyle a_{q} & = & \displaystyle 3.00\,\mathrm{m} \\[8pt]
 \displaystyle q_{v}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
 \displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\[4pt]
 \displaystyle 4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
 \displaystyle 0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
@@ -385,9 +385,9 @@ summary: 1200
 
 === 80 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
-\displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle \left(5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\[4pt]
 \displaystyle 5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
 
@@ -413,10 +413,10 @@ summary: 1200
 === 86 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
 \displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) < \left(3.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle 0.00\,\frac{\mathrm{kN}}{\mathrm{m}} \end{array}
 
 === 87 · HTML ===
@@ -442,10 +442,10 @@ summary: 1200
 \hspace{0.2em}\begin{array}{lcl} \displaystyle P_{v} & = & \displaystyle 40.00\,\mathrm{kN} \\[8pt]
 \displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P_{v} x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
 \displaystyle \dfrac{P_{v} \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,x}{2} & \text{for}\: x \leq \dfrac{\left(6.00\,\mathrm{m}\right)}{2} \\[4pt]
 \displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,\left(\left(6.00\,\mathrm{m}\right) - x\right)}{2} & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) & \text{otherwise} \end{cases} \\[8pt]
+\displaystyle \left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 3.00\,\mathrm{m} \\[4pt]
 \displaystyle 120.00\,\mathrm{kN} \cdot \mathrm{m} - 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
 \displaystyle 0.00\,\mathrm{kN} \cdot \mathrm{m} & \text{otherwise} \end{cases} \end{array}

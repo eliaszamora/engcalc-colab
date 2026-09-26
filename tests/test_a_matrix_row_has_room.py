@@ -34,6 +34,8 @@ Every matrix, symbolic or numeric, is built by `_matrix_from_cells_latex`. The w
 estimator reads a row's space as nothing: it adds height, not width.
 """
 
+import re
+
 import pytest
 
 from IPython.display import Math
@@ -174,4 +176,7 @@ def test_the_stages_of_one_matrix_have_it_too(page):
 def test_rows_without_a_matrix_are_as_they_were(page):
     shown = page("N_b = E*A*(u_2 - u_1)/L\nf_1 = -N_b\n")
     assert SPACER not in shown, shown
-    assert r"\\[8pt] \displaystyle f_{1}" in shown, shown
+    # After a fraction the break is the stage's space plus the fraction's depth (8 + 9 =
+    # 17pt): KaTeX reads a break as the least depth of the row above. See
+    # test_a_fraction_row_has_room.
+    assert r"\\[17pt] \displaystyle f_{1}" in shown, shown

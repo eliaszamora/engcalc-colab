@@ -31,6 +31,8 @@ import pytest
 
 import engcalc_colab.magic as magic
 
+from conftest import without_fraction_depth
+
 SHEET = pathlib.Path("tools/viga.eng").read_text(encoding="utf-8")
 
 
@@ -131,7 +133,7 @@ def test_no_formula_is_printed_twice(page):
     from collections import Counter
 
     rows = []
-    for chunk in page.split(r"\\[8pt]"):
+    for chunk in without_fraction_depth(page).split(r"\\[8pt]"):
         for piece in chunk.split(r"\\[16pt]"):
             collapsed = " ".join(piece.split())
             head, separator, tail = collapsed.partition("&")
