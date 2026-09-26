@@ -62,6 +62,16 @@ Every reference page moves: the italic names, the room between blocks and under 
 the text in the letter of the mathematics. No number changes.
 
 
+## A value line reads a formula
+
+A `:=` line reads a name the sheet defined with `=`, as it already read a matrix and a kept
+name: `delta_ab = F_ab*L_ab/(E*A_ab)` then `D := [delta_ab; delta_ac]` takes both numbers.
+It said "unknown numeric name". The number is the one the formula has with the values
+given so far - a `:=` line takes a value when it is written, as `y := 2*x` does. A formula
+that still needs a value says which; a formula named like a unit (`m`, `N`) still reads
+as the unit.
+
+
 ## v0.38.0 help in Spanish, numbers as typed, brackets in shape
 
 **`%eng_help` is in Spanish**: every summary, note, argument and placeholder, its headings

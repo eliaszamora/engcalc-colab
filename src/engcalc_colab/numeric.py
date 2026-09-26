@@ -259,8 +259,37 @@ class NumericContext:
             return math.pi
         if name in _UNIT_ALIASES:
             return self.ureg.Unit(_UNIT_ALIASES[name])
+        formula = self._scalar_formula(name)
+        if formula is not None:
+            return self._number_of_the_formula(name, formula)
         hint = diagnostic_hint("unknown_numeric_name", name=name)
         raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")
+
+    def _scalar_formula(self, name: str):
+        """The formula a name was given with `=`, when it is one number's worth of it.
+
+        A `:=` line read a matrix built with `=` and a kept name, and stopped at a plain
+        scalar formula: `D := [delta_ab; delta_ac]` after `delta_ab = F*L/(E*A)` said
+        "unknown numeric name" (his exercise 2.1, 2026-09-25). Asked only after the unit
+        aliases, so a formula named `m` or `N` reads as the unit it always did.
+        """
+        formula = getattr(self, "symbolic_namespace", {}).get(name)
+        if not isinstance(formula, sp.Expr) or isinstance(formula, sp.MatrixBase):
+            return None
+        return formula
+
+    def _number_of_the_formula(self, name: str, formula: sp.Expr):
+        """The formula's number with the values settled now: a `:=` line takes a value."""
+        try:
+            _substitutions, quantity = self.evaluate_symbolic(formula)
+        except EngEvaluationError as exc:
+            if "numeric evaluation requires values for:" not in str(exc):
+                raise
+            missing = str(exc).split("requires values for:", 1)[1].split(".", 1)[0].strip()
+            raise EngEvaluationError(
+                f"{name} is a formula (=) and its number needs values for: {missing}"
+            ) from exc
+        return quantity
 
     def _has_explicit_angle_unit(self, quantity) -> bool:
         return (
