@@ -8,7 +8,7 @@ of `CURRENT.md` was written at 0.13.0 and says so._
 
 | | |
 |---|---|
-| `main` | 0.41.0 released by the release PR (before it #342, #343) |
+| `main` | 0.41.0 released by #344 (`e879667`, before it #342, #343), closed |
 | declared version | **0.41.0** — carrying #342 and #343 |
 | default suite (`pytest -q`) | **3192 passing**, about 3 minutes — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
