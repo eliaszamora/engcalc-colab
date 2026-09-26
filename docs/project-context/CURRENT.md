@@ -12,10 +12,10 @@ _2026-09-26._
 
 | | |
 |---|---|
-| released | **0.41.1** - the release PR, carrying #346 (`5a10d74`) and #347 (`f4d5e03`); see the end of 0.41.0's closure |
+| released | **0.41.1** - #348, `05c5bf5`, carrying #346 (`5a10d74`) and #347 (`f4d5e03`); closed, see the end of 0.41.0's closure |
 | before that | **0.41.0** - #344, `e879667`, closed |
-| open PRs | the 0.41.1 release PR |
-| default suite | **3209 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `ada6e0f` (#347's head) |
+| open PRs | none |
+| default suite | **3209 passing** (SymPy 1.14; 3208 + the by-path one against the wheel on 1.13.3), about two minutes with `-n auto`; CI six jobs green on `05c5bf5` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1223,9 +1223,18 @@ tree with no `src/` and KaTeX installed: 3208 + `test_the_ipython_surface_stays_
 passing on the wheel's own `magic.py`; the 8 `tools/*.eng` sheets in three palettes, 24
 pages, byte-identical from the wheel and from the tree.
 
-**Exact next step:** after the release merge, CI and the deep gate on the merge commit, a
-clean `git+https` install of `main` with the smoke; the user's Colab check of 0.41.1 - the
-Claude in Chrome extension was not connected to the new account.
+**0.41.1 is closed** (#348, `05c5bf5`). After its merge: CI (six jobs), Quality Gate Deep
+(push) and Deep in qualification mode by dispatch green on `05c5bf5`; a clean
+`pip install --upgrade --no-cache-dir git+https://...@main` in a Colab-like venv resolved
+to `05c5bf5`, reported 0.41.1, upgraded nothing (adds Pint 0.26.1 and the same four small
+deps), installed 33 files identical to `src`, and `tools/smoke_installed.py` passed 30/30
+from outside the repository. **In his Colab**, run by him after a restart from the menu:
+the install cell printed `0.41.1`. The two check cells he was given (`x = 24.00`,
+`y = 360.00 cm`; `engcalc units: cleared (was kN)`) had not been reported yet. He signed
+the Claude in Chrome extension in, but this session still could not reach it
+(`list_connected_browsers` empty), so the check was his, not mine.
+
+**Exact next step:** his results of the two check cells; then ask him what to take next.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
