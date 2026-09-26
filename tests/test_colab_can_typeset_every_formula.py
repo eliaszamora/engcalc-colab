@@ -62,6 +62,8 @@ def _sheets() -> list[tuple[str, str, str]]:
         + "\n" + (ROOT / "tools" / "portico_diseno.eng").read_text(encoding="utf-8"),
         "kgf",
     ))
+    # His exercise 2.1, solved with the angles, with the palette his notebook sets.
+    sheets.append(("exercise-2-1", (ROOT / "tools" / "ejercicio_2_1.eng").read_text(encoding="utf-8"), "kN"))
     # The gap map's exercises last. Some ask for what EngCalc does not do - that is what the
     # gap map measures - and the cell is refused whole, so they may put nothing on the page.
     sheets += [(title.split()[0], source, "") for title, _area, source in EXERCISES]
