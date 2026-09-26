@@ -1228,13 +1228,19 @@ pages, byte-identical from the wheel and from the tree.
 `pip install --upgrade --no-cache-dir git+https://...@main` in a Colab-like venv resolved
 to `05c5bf5`, reported 0.41.1, upgraded nothing (adds Pint 0.26.1 and the same four small
 deps), installed 33 files identical to `src`, and `tools/smoke_installed.py` passed 30/30
-from outside the repository. **In his Colab**, run by him after a restart from the menu:
-the install cell printed `0.41.1`. The two check cells he was given (`x = 24.00`,
-`y = 360.00 cm`; `engcalc units: cleared (was kN)`) had not been reported yet. He signed
-the Claude in Chrome extension in, but this session still could not reach it
-(`list_connected_browsers` empty), so the check was his, not mine.
+from outside the repository. **In his Colab** ("Untitled9"): his install cell printed
+`0.41.1`; then, once the Claude in Chrome extension reached this session, I added cell 3
+at the end (his cells 0-2 untouched), ran his cell 0 on a fresh runtime (26 s) and cell 3:
+`engcalc 0.41.1`, `engcalc units: cleared (was kN)` for `none`, `x_t = 24.00` for
+`p_t := 500*kg; a_t := 2; p_t = 3*a_t; x_t := 4*p_t`, `y_t = 3.60 m` (kN palette) for
+`keep d_t = h_t - 4*cm; d_t = 3*h_t; y_t := 2*d_t`, and `th_t = 33.69°`. Cell 3 is marked
+as mine and can be deleted; the palette was set back to kN.
 
-**Exact next step:** his results of the two check cells; then ask him what to take next.
+Mechanics for the next session: after he signed the extension in with the new account,
+`list_connected_browsers` stayed empty until this Code session was restarted; it then
+listed "Browser 1" in use.
+
+**Exact next step:** ask him what to take next.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
