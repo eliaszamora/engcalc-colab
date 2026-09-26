@@ -16,7 +16,7 @@ _2026-09-25._
 | before that | **0.37.0** - #320, `4795c47` |
 | merged, not released | #326 `% if` (`1f926db`), #327 a `=` line of values (`c8a6036`), #328 names in italic (`cf8ffa5`) |
 | open | `feat/one-spacing-rule` - waiting for his yes; merged since 0.38.0: #326-#332 (`% if`, `=` values, italic, `% for`, `% while`, `solve` in a range, named `numeric`) |
-| default suite | **3111 passing** on the spacing branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| default suite | **3112 passing** on the spacing branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -989,6 +989,10 @@ Shown three options in his Colab; he chose option 2 (*"Me gusta más tu recomend
   `\guillemotleft`, `@{}`: `¿ ¡ « »` stay as they are (a strict-mode warning, no error);
   the frame is `\hspace{-5pt}\begin{array}{l}` instead of `@{}l@{}`.
 - headings in `KaTeX_Main` (20 / 17.6 px).
+- On seeing it he asked the text two points smaller: `{\footnotesize ...}` (0.8, 2.5 pt, the
+  nearest KaTeX step), lines of 76 characters. Measured in his Colab: text 13.55 px, the
+  paragraph 414 px wide in a 641 px output. (A local preview must set KaTeX's container
+  to 14 px: KaTeX multiplies by 1.21, and 16.94 px is what Colab shows.)
 Tests that count outputs use `conftest.blocks_into` (records all but the spacer); the
 Markdown-era narrative contracts were translated to the Math form, keeping what they
 protect. The five reference pages move only by these four kinds of change, checked item by
