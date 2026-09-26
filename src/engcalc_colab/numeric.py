@@ -252,6 +252,10 @@ class NumericContext:
         band rule returns it whichever answer `declared` gives. Measured, not assumed:
         moving the call after the assignment changes no test. Kept as the order that is
         correct rather than the order that happens to agree.
+
+        A formula of the sheet comes before the alias too, as it does there: `m = 3*a`
+        then `x := 4*m` reads the formula, and counting `m` a unit here made the cell,
+        run again, say `m` "has been read as a unit" at `m := 500*kg`.
         """
         return frozenset(
             node.id
@@ -259,6 +263,7 @@ class NumericContext:
             if isinstance(node, ast.Name)
             and node.id not in self.values
             and node.id in _UNIT_ALIASES
+            and self._scalar_formula(node.id) is None
         )
 
     def resolve_numeric_name(self, name: str):

@@ -950,6 +950,17 @@ class EngineeringEngine:
         self.numeric_context.values[name] = self.zero_in_its_unit(name, quantity)
         self.kept_values.add(name)
 
+    def _drop_the_number(self, name: str) -> None:
+        """A `=` line without `keep` makes `name` its formula, and only its formula.
+
+        `p := 500*kg` then `p = 3*a` left the 500 kg in the values, and a `:=` line reads
+        a value before a formula: `x := 4*p` gave 2000 kg while `numeric(p)` gave 6. The
+        same number outlived `keep d = ...` then `d = 3*h`. A `:=` line already drops a
+        formula; this is the other half (2026-09-26, his yes).
+        """
+        self.numeric_context.values.pop(name, None)
+        self.kept_names.discard(name)
+
     def _refresh_kept_values(self) -> None:
         """Take every kept name's number again, from the values settled now.
 
@@ -2385,6 +2396,10 @@ class EngineeringEngine:
                     self.namespace[statement.target] = symbolic_expression
                     self.numeric_context.matrices.pop(statement.target, None)
                     self.written_namespace.pop(statement.target, None)
+                    if declaration == "keep":
+                        self._store_kept_value(statement.target, symbolic_expression)
+                    else:
+                        self._drop_the_number(statement.target)
                 return NumericEvaluationResult(
                     statement=statement,
                     symbolic_expression=symbolic_expression,
@@ -2441,6 +2456,8 @@ class EngineeringEngine:
                         self.zero_quantities[statement.target] = zero
                     if declaration == "keep":
                         self._store_kept_value(statement.target, value)
+                    else:
+                        self._drop_the_number(statement.target)
                     written_form = self._written_form(statement, evaluator, value)
                     if written_form is None:
                         self.written_namespace.pop(statement.target, None)
