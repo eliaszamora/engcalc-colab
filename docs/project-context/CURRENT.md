@@ -8,14 +8,14 @@
 
 ## Where things stand today
 
-_2026-09-25._
+_2026-09-26._
 
 | | |
 |---|---|
-| released | **0.41.0** - this release PR, carrying #342 (`465a2dd`) and #343 (`a8d68ac`); its closure is recorded below |
+| released | **0.41.0** - #344, `e879667`, carrying #342 (`465a2dd`) and #343 (`a8d68ac`); closed, see below |
 | before that | **0.40.0** - #340, `ea79f53`, closed |
-| open PRs | this release's |
-| default suite | **3192 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto`; CI six jobs green on #343 |
+| open PRs | none |
+| default suite | **3192 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto`; CI six jobs green on `e879667` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1162,7 +1162,32 @@ four small deps; smoke 107/107 (new scratchpad `c0d9fc55.../smoke-0410/`: bracke
 re-run stop, degrees; the old re-run notice and `sin(0.93 rad)` checks now read the new
 behaviour); suite against the wheel on SymPy 1.13.3: 3191 + the by-construction one.
 
-**Exact next step:** close 0.41.0 (checks after its merge, his Colab).
+**0.41.0 is closed.** After its merge: CI, Quality Gate Deep (push) and Deep by dispatch
+green on `e879667`; a clean `git+https` install of `main` in a Colab-like venv (3.12,
+ipython 7.34.0, numpy 2.2.6, matplotlib 3.10.0, sympy 1.13.3) resolved to `e879667`,
+reported 0.41.0, upgraded nothing (adds Pint 0.26.1, flexcache, flexparser, platformdirs,
+typing_extensions), 33 files identical to `src`. The 107-check smoke of `smoke-0410/` lived
+in the previous session's scratchpad and is gone; a new one, 27 checks through
+`%load_ext` from outside the repository (brackets, the re-run stop, degrees, one-row
+`numeric`, `:=` reads `=`, sums as written, `min`, no real value, `% if/for/while`, Hz,
+eigen units, kgf, `%eng_help :=`), each after `%eng_reset`: 27/27. The 8 `tools/*.eng`
+sheets in three palettes (none, kN, kgf), 24 pages, render byte-identical from the
+installed package and from the tree. Source suite on `e879667`: 3192 passed (SymPy 1.14,
+KaTeX installed with `npm ci --prefix tools/katex`; without it 30 skip). **Not done: his Colab** - not reachable from the
+session that closed it; he checks it with his cell 0 after a restart from the menu.
+
+Found while closing, not caused by 0.41.0, not fixed:
+- **A `:=` value outlives a later `=` of the same name** (also on 0.40.0, any name):
+  `p := 500*kg`, `a := 2`, `p = 3*a`, `x := 4*p` gives `x = 2000.00 kg`, not 24, in
+  silence; the other order (`=` then `:=`) is right. With a unit letter (`m`) the notice
+  printed says the line "read 'm' as a unit when it ran before", which is not what
+  happened. Proposed: a `=` line drops the name's `:=` value, as a `:=` replaces a
+  formula. Needs his yes (it changes which value a sheet reads).
+- `%eng_units none` is refused with "unknown unit palette 'none'; available: kN, kgf
+  (or none to clear)" - the help means an empty argument. Either accept `none` or say
+  "(or nothing, to clear)".
+
+**Exact next step:** ask him about the two findings above; his Colab check of 0.41.0.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
