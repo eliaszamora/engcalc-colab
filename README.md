@@ -13,7 +13,53 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.38.0**.
+Current version: **0.39.0**.
+
+
+## v0.39.0 a sheet that decides and repeats, a root in a range, one spacing rule
+
+**`%` lines decide and repeat.** A line that starts with `%` belongs to the sheet's control,
+not to the memoria:
+
+```text
+% if d > b:
+h := d + 6*cm
+% else:
+h := b
+% end
+```
+
+The page writes the reason in its own sentence - **Como** `d = 44.00 cm > b = 30.00 cm`**:** -
+and then the lines that ran. `% elif` and `% else` as in Python. `% for c in [1.2, 1.4]:`
+runs its lines once per value, `{c}` writes the value into a line (`M_{c} = ...`), and
+`% n = 0` / `% n += 1` keep a helper that never reaches the page. `% while abs(r) > 0.001:`
+iterates in silence and shows the last iteration under **En N iteraciones:**. A loop stops
+at 1000 iterations and says so.
+
+**`solve(eq(...), c, lower, upper)` takes the one root inside a range**, in numbers, even
+where the equation has no closed form: `c := solve(eq(b*c^2/2, n*A_s*(d - c)), c, 0*cm, d)`
+writes the equation and then `c = 10.55 cm`. No root there, or more than one, and it says
+which, with their values.
+
+**`d = numeric(...)` and `d = result(...)` are written under `d`**, and define it.
+
+**A `=` line of pure values ends on its value** - `L = sqrt(6^2 + 4^2)*m` writes the root
+and then `= 7.21 m` - and no longer warns that `m` was read as a unit.
+
+**A name of several letters is italic**, as a one-letter name is: `As`, `phiMn`, `eqFy`.
+
+**One rule for the room between blocks.** Every block - equations, a paragraph, a heading,
+a table, a figure with its caption - stands 18 px from the next, measured in Colab; room
+given case by case is gone. The text between `"""` is typeset in KaTeX's letter, the
+letter of the equations, two points smaller (`\footnotesize`), in lines that fit the page;
+`**bold**`, `*italic*` and `$...$` are kept. Headings take the same letter.
+
+**A row holding a fraction keeps its room from the row below.** KaTeX reads the space
+between rows as the least depth of the row above, and a fraction is deeper than that:
+`R_A = qL/2` stood on `R_B = qL/2`. The fraction's depth now goes on top of the space.
+
+Every reference page moves: the italic names, the room between blocks and under fractions,
+the text in the letter of the mathematics. No number changes.
 
 
 ## v0.38.0 help in Spanish, numbers as typed, brackets in shape
@@ -3614,6 +3660,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.39.0** — `% if` / `% elif` / `% else`, `% for` and `% while`; `solve` takes the one root in a range; `d = numeric(...)` is written under `d`; a `=` line of values ends on its value; names of several letters in italic; one spacing rule between blocks and the text in KaTeX's letter; room under a fraction row.
 - **0.38.0** — `%eng_help` in Spanish; a number keeps the figures it was typed with (`0.90`); a bracket too wide for a row wraps inside itself; a table column of zeros takes the unit of its kind.
 - **0.37.0** — `%eng_help` for `keep`, `case`, `combo`, `:=`, `member`, `frame_plot` and `image`; a long substitution row keeps the shape of its formula; a zero in a `:=` matrix reads in its neighbours' unit. No reference sheet moves.
 - **0.36.0** — `governing` over polynomials in seconds; `M_u = U1(L/2)` written as called; a kept name survives a function of the sheet; `U(x) envelope` and `Governing along x`; `load=[w_1, w_2]` and `point=[P, a]` on a member, a moment on a joint; a unit in a `:=` matrix is not `1 kN`.
@@ -3727,4 +3774,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.38.0`.
+Version: `0.39.0`.

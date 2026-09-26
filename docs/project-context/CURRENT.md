@@ -12,11 +12,10 @@ _2026-09-25._
 
 | | |
 |---|---|
-| released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.37.0** - #320, `4795c47` |
-| merged, not released | #326 `% if`, #327 `=` values, #328 italic, #329 `% for`, #330 `% while`, #331 `solve` in a range, #332 named `numeric`, #333 one spacing rule + KaTeX letter (`8f40539`), #334 room under a fraction row |
-| open | nothing |
-| default suite | **3117 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto`; CI six jobs green on #334 |
+| released | **0.39.0** - this release PR, carrying #326-#335; its closure is recorded below |
+| before that | **0.38.0** - #324, `a53613d` |
+| open PRs | this release's |
+| default suite | **3119 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto`; CI six jobs green on #335 |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1030,6 +1029,22 @@ leave the English `Where` / `Domain: ... to ...` / `x in` of the region block as
 The kN palette question is closed, not his to decide again: `%eng_units kN` shows one
 unit per dimension by his earlier choice (`6000*mm^2` reads `0.006 m²`, δ `0.00241 m`);
 `numeric(delta, mm)` or no `%eng_units` line gives millimetres. Explained to him.
+
+### His exercise 2.1 solved in his Colab (2026-09-25)
+
+Notebook "Untitled9" (`12CCpV_S6Q5GdXDEo_j2yUvfFwtpP0zhH`), cell 2 (index 2, mine; his
+attempt in cell 1 untouched; cell 0 installs and sets `%eng_units kN`). He asked for the
+solution with angles only, no matrix: `keep delta_ab = F L/(E A)`, then
+`keep u = (delta_ab*sin(phi) - delta_ac*sin(theta))/sin(theta + phi)`, `v` likewise;
+u 2.41, v 0.72, aa' 2.52 mm, as the book. His runtime runs an older install (upright `aa`).
+
+Found on the way, both on `main` (`3eb4c40`), not fixed:
+- a substituted value inside a function call is bracketed twice: `sin((0.50))`,
+  `sin((0.93 rad) + (0.59 rad))` reads right but `sin((0.93 rad))` does not;
+- a sum inside a function keeps SymPy's order, not the written one: `sin(b + a)` reads
+  `sin(a + b)`, his `sin(theta + phi)` reads `sin(φ + θ)`.
+- (by design, worth asking) a `:=` line cannot read a name defined by `=`:
+  `D := [delta_ab; delta_ac]` after `delta_ab = ...` says "unknown numeric name".
 
 **Exact next step:** his exercise 2.1 (a truss: compatibility, not the sum of the two elongation
 vectors - see the conversation of 2026-09-25) as a reference exercise, the kN palette
