@@ -1100,6 +1100,12 @@ Gate Deep (push) and Deep in qualification mode green on `edc95d5`; a clean
 `git+https` install resolved to `edc95d5`, reported 0.39.0, upgraded nothing, 33 files
 identical to the tree, smoke 101/101.
 
+**0.40.0 before its merge** (#336-#338): version assertions RED (7) then GREEN; suite 3158
+twice (SymPy 1.14); wheel 33 files identical to `src`; clean Colab-like venv gains only
+Pint and four small deps; smoke 104/104 (`smoke-0400/`: brackets once, sums as written,
+`:=` reads `=`; the `min` check now reads `min(2.00 m, 2.22 m, 3.00 m)`); suite against the
+wheel on SymPy 1.13.3: 3157 + the by-construction one.
+
 **Exact next step:** close 0.40.0 (checks after its merge, his Colab).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
