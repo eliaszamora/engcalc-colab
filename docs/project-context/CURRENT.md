@@ -1000,6 +1000,18 @@ item after normalising them (scratchpad `check_snapshots.py`). 17 contracts; mut
 installed: gaps 15-20 px, all text KaTeX.
 
 
+### A value line reads a formula (branch `feat/a-value-line-reads-a-formula`)
+
+He left it to me (*"Lo dejo a tu decisión. Think carefully"*, 2026-09-26). A `:=` line
+already read a matrix built with `=` and a kept name; a plain scalar `=` formula was the
+one gap (`D := [delta_ab; delta_ac]` said "unknown numeric name"). Decided: read it.
+`NumericContext.resolve_numeric_name` asks `_scalar_formula` (the shared
+`symbolic_namespace`) after the unit aliases, so only names that failed before are read
+and a formula named `m`/`N` is still the unit. The number is taken with the values settled
+then, as every `:=` line; a formula still missing values says which. `%eng_help :=` and a
+README section say so. 6 contracts (5 RED before; the precedence one killed its
+mutant); suite 3123 on SymPy 1.14 and 1.13.3.
+
 ### A value in a function, and a sum as written (branch `fix/function-arguments`)
 
 The two findings of his exercise 2.1, which he asked to address (*"Aborda estos

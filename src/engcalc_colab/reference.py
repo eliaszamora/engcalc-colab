@@ -66,6 +66,8 @@ _STATEMENTS: tuple[CallHelp, ...] = (
         note=(
             "`=` define una fórmula y la conserva en símbolos; `:=` define un valor. "
             "numeric() pone los valores `:=` en una fórmula `=` y muestra la sustitución. "
+            "Una línea := puede leer un nombre definido con `=`: toma su número con los "
+            "valores dados hasta ahí, como D := [delta_ab; delta_ac]. "
             "`d := solve(K, F)` resuelve en números - resolver en símbolos una matriz de "
             "rigidez real no terminaría - y la memoria escribe la línea como se tipeó y "
             "luego sus números."
