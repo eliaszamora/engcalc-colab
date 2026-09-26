@@ -94,6 +94,25 @@ def test_a_counter_of_the_percent_layer_counts_the_iterations(sheet):
     assert r"k & = & \displaystyle 2.00\,\mathrm{m}" in math, math
 
 
+def test_a_condition_on_a_counter_reads_the_counter_each_time(sheet):
+    # Found by the smoke of 0.39.0 before it was published: `% while k < 3` with `% k += 1`
+    # in the body ran 1000 times. The condition was read with the counter's value put in
+    # its place, and put there for good - `0 < 3` every time after the first.
+    math, notes, console = sheet("% k = 0\nx := 1*m\n% while k < 3:\n% k += 1\nx := x + 1*m\n% end\n")
+    assert not console, console
+    assert r"\textbf{En 3 iteraciones:}" in notes[0], notes
+    assert r"x & = & \displaystyle 4.00\,\mathrm{m}" in math, math
+
+
+def test_a_counter_in_a_condition_inside_a_for_is_read_each_time(sheet):
+    # The same reading, for `% if` inside a `% for`: each pass reads its own value.
+    math, _notes, console = sheet(
+        "% for i in [1, 2, 3]:\n% if i > 1:\nx_{i} := {i}*m\n% end\n% end\n"
+    )
+    assert not console, console
+    assert r"x_{1}" not in math and r"x_{2}" in math and r"x_{3}" in math, math
+
+
 def test_a_loop_that_does_not_stop_is_refused_with_its_line(sheet, monkeypatch):
     monkeypatch.setattr(control, "_MOST_ITERATIONS", 20)
     math, _notes, console = sheet("x := 1*m\n% while x > 0*m:\nx := x + 1*m\n% end\n")

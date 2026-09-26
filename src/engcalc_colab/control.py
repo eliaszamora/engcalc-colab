@@ -21,6 +21,7 @@ lines above it.
 from __future__ import annotations
 
 import ast
+import copy
 import itertools
 import re
 from dataclasses import dataclass, field
@@ -541,7 +542,9 @@ class _InScope(ast.NodeTransformer):
 def _in_scope(tree: ast.AST, scope: _Scope) -> ast.AST:
     if not dict.__len__(scope):
         return tree
-    return _InScope(scope).visit(tree)
+    # On a copy: a transformer rewrites the tree it is given, and a `% while` reads its
+    # condition again after every pass - `k < 3` became `0 < 3` for good (2026-09-25).
+    return _InScope(scope).visit(copy.deepcopy(tree))
 
 
 # -- deciding, and saying it -------------------------------------------------------------

@@ -1001,6 +1001,14 @@ item after normalising them (scratchpad `check_snapshots.py`). 17 contracts; mut
 installed: gaps 15-20 px, all text KaTeX.
 
 
+### A `% while` reads its counter every pass (branch `fix/while-reads-its-counter`)
+
+Found by the smoke of 0.39.0 before publishing: `% k = 0`, `% while k < 3:` with `% k += 1`
+in the body ran 1000 times. `control._in_scope` is a `NodeTransformer` and rewrote the
+condition's tree in place, so the first pass put `0` where `k` stood for good. It now
+works on a copy. 2 contracts (1 RED before; the `% for` + `% if` one guards the same
+reading), suite 3119 on SymPy 1.14 and 1.13.3.
+
 ### A row holding a fraction keeps its room (#334, merged with his yes 2026-09-25)
 
 Seen in the images of #333 (he asked to correct what I noticed): `R_A = qL/2` stood on
