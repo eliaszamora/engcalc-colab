@@ -31,6 +31,7 @@ from .presentation import render_presented_plot
 from .renderer import (
     MEASURED_UNITS,
     WRITTEN_ORDER,
+    WRITTEN_SUMS,
     PALETTE_NAMES,
     RenderSettings,
     palette_unit_names,
@@ -300,9 +301,12 @@ class EngMagics(Magics):
         token = MEASURED_UNITS.set(self.engine.measured_units)
         # And the order its products were written in, so `E*A` reads `E A`.
         order = WRITTEN_ORDER.set(self.engine.written_order)
+        # And the order its sums were written in, so `theta + phi` reads `θ + φ`.
+        sums = WRITTEN_SUMS.set(self.engine.written_sums)
         try:
             return self._eng_cell(cell)
         finally:
+            WRITTEN_SUMS.reset(sums)
             WRITTEN_ORDER.reset(order)
             MEASURED_UNITS.reset(token)
 

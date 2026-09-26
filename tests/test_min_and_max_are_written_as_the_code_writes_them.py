@@ -61,8 +61,9 @@ def test_each_limit_is_worked_out_before_the_smallest_is_taken(magics, capsys):
     page = run(magics, FLANGE + "numeric(b_eff)\n")
     assert "engcalc:" not in capsys.readouterr().out
     compared = (
-        r"\min\left(\left(2.00\,\mathrm{m}\right), \left(2.22\,\mathrm{m}\right), "
-        r"\left(3.00\,\mathrm{m}\right)\right)"
+        # Inside the parentheses of `min` a value takes no brackets of its own; see
+        # test_a_value_in_a_function_is_bracketed_once.
+        r"\min\left(2.00\,\mathrm{m}, 2.22\,\mathrm{m}, 3.00\,\mathrm{m}\right)"
     )
     assert compared in page, page
     rows = page.split(r"\\[")
@@ -75,7 +76,7 @@ def test_a_limit_already_a_value_is_not_worked_out_twice(magics, capsys):
     """`max(V_B, V_A)` substitutes into two values; a row of the same two values again would
     be the substitution printed twice."""
     page = run(magics, "V_A := 30*kN\nV_B := 45*kN\nV_max = max(V_B, V_A)\nnumeric(V_max)\n")
-    assert page.count(r"\max\left(\left(45.00\,\mathrm{kN}\right), \left(30.00\,\mathrm{kN}\right)\right)") == 1, page
+    assert page.count(r"\max\left(45.00\,\mathrm{kN}, 30.00\,\mathrm{kN}\right)") == 1, page
 
 
 def test_the_compact_form_shows_no_working(magics, capsys):

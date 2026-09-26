@@ -703,6 +703,55 @@ def record_written_order(tree, order: dict) -> None:
     visit(tree, False)
 
 
+def record_written_sums(tree, sums: dict) -> None:
+    """Note in `sums` the order each sum of a statement writes its terms in.
+
+    SymPy sorts a sum the moment it reads it, as it does a product: `theta + phi` is stored
+    `phi + theta`. A term is known by the names it holds - `F_ab*L_ab/(E*A_ab)` by those
+    four, a call by its arguments and not the function's name - or, holding none, by its
+    size: `6^2` is 36. `renderer.sum_term_key` knows a SymPy term the same way. A sum
+    whose terms cannot be told apart, two of them holding the same names, is not noted.
+    The first writing is kept, as for products.
+    """
+
+    def terms(node, found: list) -> None:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub)):
+            terms(node.left, found)
+            terms(node.right, found)
+            return
+        found.append(node)
+
+    def visit(node) -> None:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub)):
+            found: list = []
+            terms(node, found)
+            keys = [written_term_key(term) for term in found]
+            if None not in keys and len(set(keys)) == len(keys):
+                sums.setdefault(frozenset(keys), tuple(keys))
+            for term in found:
+                visit(term)
+            return
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+
+    visit(tree)
+
+
+def written_term_key(term):
+    """What a written term is known by: its names, or its size when it holds none."""
+    called = {id(node.func) for node in ast.walk(term) if isinstance(node, ast.Call)}
+    names = frozenset(
+        node.id for node in ast.walk(term) if isinstance(node, ast.Name) and id(node) not in called
+    )
+    if names:
+        return names
+    try:
+        value = eval(compile(ast.Expression(body=term), "<term>", "eval"), {"__builtins__": {}})  # noqa: S307 - numbers only, no names
+        return ("value", round(abs(float(value)), 9))
+    except Exception:  # noqa: BLE001 - a term that is not plain arithmetic is not noted
+        return None
+
+
 # The calls that leave a form of their own for the row to show. A statement that is one
 # of them shows that form; a statement holding one inside something larger is read again.
 _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
@@ -752,6 +801,8 @@ class EngineeringEngine:
         # Which name this sheet wrote before which in a product, first writing kept. See
         # `record_written_order`.
         self.written_order: dict[frozenset[str], tuple[str, str]] = {}
+        # And the order each sum wrote its terms in. See `record_written_sums`.
+        self.written_sums: dict[frozenset, tuple] = {}
         # The one-letter aliases the sheet has written where a unit is written, and those a
         # line has already been told are read as units. See `_notice_a_letter_read_as_a_unit`.
         self.letters_written_as_units: set[str] = set()
@@ -1717,6 +1768,7 @@ class EngineeringEngine:
         self.names_read_as_units.clear()
         self.measured_units.clear()
         self.written_order.clear()
+        self.written_sums.clear()
         self.letters_written_as_units.clear()
         self.letters_said_to_be_units.clear()
         self.units_read_by_line.clear()
@@ -1766,6 +1818,7 @@ class EngineeringEngine:
             self.measured_units |= measured_units_in(expression)
             self.letters_written_as_units |= letters_written_as_units_in(expression)
             record_written_order(expression, self.written_order)
+            record_written_sums(expression, self.written_sums)
         # A matrix written `[a, b; c, d]` keeps its entries apart from the statement's own
         # tree, and a stiffness matrix is where `-1*kN/m` is most often written.
         for binding in getattr(statement, "matrix_literals", ()):
@@ -1774,6 +1827,7 @@ class EngineeringEngine:
                     self.measured_units |= measured_units_in(entry)
                     self.letters_written_as_units |= letters_written_as_units_in(entry)
                     record_written_order(entry, self.written_order)
+                    record_written_sums(entry, self.written_sums)
         # A settled value moves the numbers kept names stand for.
         if isinstance(statement, ParsedNumericAssignment) and self.kept_names:
             self._refresh_kept_values()

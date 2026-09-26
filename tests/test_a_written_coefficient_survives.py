@@ -82,9 +82,11 @@ def test_the_value_behind_it_is_unchanged(cell):
         ("M = R_A*x - q*x**2/2", r"R_{A} x - \frac{q x^{2}}{2}"),
         # This read backwards - `- cover - db/2 - db_st + h`, SymPy's order - until a sum
         # stopped opening with a minus; see test_a_sum_does_not_open_with_a_minus. The
-        # written form and the evaluated one still agree, which is what this pins.
+        # written form and the evaluated one still agree, which is what this pins. Since
+        # 2026-09-26 a sum reads in the order it was written; see
+        # test_a_sum_keeps_the_order_it_was_written_in.
         ("d = h - cover - db_st - db/2",
-         r"h - \mathit{cover} - \frac{\mathit{db}}{2} - \mathit{db}_{st}"),
+         r"h - \mathit{cover} - \mathit{db}_{st} - \frac{\mathit{db}}{2}"),
         ("w = 1.2*D + 1.6*L", "1.2 D + 1.6 L"),
         ("Vc = 0.17*fc*b", r"0.17\,\mathit{fc}\,b"),
     ],

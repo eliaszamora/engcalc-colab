@@ -109,6 +109,42 @@ MEASURED_UNITS: ContextVar = ContextVar("measured_units", default=frozenset())
 # prints. Empty outside a cell, which leaves every product to `_engineering_factor_key`.
 WRITTEN_ORDER: ContextVar = ContextVar("written_order", default={})
 
+# The order each sum of the sheet being printed wrote its terms in, as the engine's
+# `written_sums` - `{frozenset(keys): keys in written order}`, a term known by
+# `sum_term_key`. Empty outside a cell, which leaves every sum to `_ordered_sum_terms`.
+WRITTEN_SUMS: ContextVar = ContextVar("written_sums", default={})
+
+
+def sum_term_key(term):
+    """What a term of a sum is known by: the names it holds, or its size when it holds none.
+
+    The same question `engine.written_term_key` asks of the written line, so a term the
+    sheet wrote is recognised on the page: `F_ab*L_ab/(E*A_ab)` by its four names, `6^2` by
+    36, a sign aside.
+    """
+    names = frozenset(symbol.name for symbol in term.free_symbols)
+    if names:
+        return names
+    try:
+        return ("value", round(abs(float(term)), 9))
+    except (TypeError, ValueError):
+        return None
+
+
+def _in_written_sum_order(terms: list) -> list:
+    """The terms of a sum in the order the sheet wrote them, when it wrote this sum."""
+    written = WRITTEN_SUMS.get()
+    if not written or len(terms) < 2:
+        return terms
+    keys = [sum_term_key(term) for term in terms]
+    if None in keys or len(set(keys)) != len(keys):
+        return terms
+    order = written.get(frozenset(keys))
+    if order is None:
+        return terms
+    by_key = dict(zip(keys, terms))
+    return [by_key[key] for key in order]
+
 
 def _in_written_order(args: list, is_name) -> list:
     """The names of one product put in the order the sheet wrote them.
@@ -615,6 +651,21 @@ class _EngineeringLatexPrinter(LatexPrinter):
         return self._is_unit_literal(term) or self._is_upright_name(term)
 
 
+# The functions the printer writes as a name and its arguments in parentheses: `\sin{\left(
+# ... \right)}`, `\max\left(...\right)`, `f\left(...\right)`. Not `Abs`, `exp`, `floor`,
+# a root or a piecewise, which enclose their argument some other way or not at all.
+_FUNCTIONS_IN_PARENTHESES = (
+    sp.functions.elementary.trigonometric.TrigonometricFunction,
+    sp.functions.elementary.trigonometric.InverseTrigonometricFunction,
+    sp.functions.elementary.hyperbolic.HyperbolicFunction,
+    sp.log,
+    sp.sign,
+    sp.Min,
+    sp.Max,
+    AppliedUndef,
+)
+
+
 class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
     def __init__(
         self,
@@ -629,15 +680,27 @@ class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
         quantity = self.substitutions.get(expr.name)
         if quantity is None:
             return super()._print_Symbol(expr)
-        return rf"\left({_quantity_latex(quantity, settings=self.render_settings)}\right)"
+        return self._bracketed(expr, _quantity_latex(quantity, settings=self.render_settings))
 
     def _print_mode(self, expr, written, exp):
         """A mode in the substitution stage is its value, like any name there."""
         quantity = self.substitutions.get(mode_key(expr))
         if quantity is None:
             return written(expr, exp)
-        value = rf"\left({_quantity_latex(quantity, settings=self.render_settings)}\right)"
+        value = self._bracketed(expr, _quantity_latex(quantity, settings=self.render_settings))
         return value if exp is None else rf"{value}^{{{exp}}}"
+
+    def _bracketed(self, expr, value: str) -> str:
+        r"""A value in brackets, so it stays one thing beside what it multiplies.
+
+        Not a second time inside a function's own parentheses: his `sin(phi)` read
+        `sin((0.93 rad))` (2026-09-25). Only where those parentheses stand directly around
+        the value - `sin(2 (0.50 rad))` keeps them - and only for a function that writes
+        parentheses: a radical, bars and an exponent do not.
+        """
+        if isinstance(self._parent_of(expr), _FUNCTIONS_IN_PARENTHESES):
+            return value
+        return rf"\left({value}\right)"
 
     def _print_ModeEigenvalue(self, expr, exp=None):
         return self._print_mode(expr, super()._print_ModeEigenvalue, exp)
@@ -2652,6 +2715,12 @@ def _ordered_sum_terms(terms, negative) -> list:
     one of them only would have made them disagree.
     """
     terms = list(terms)
+    # The order the sheet wrote, when it wrote this sum (`_in_written_sum_order`) - unless
+    # it opens with a minus, and then the rule below decides as it did: a written
+    # `-q*x^4/24 + ...` would otherwise be taken apart by it, powers and all.
+    written = _in_written_sum_order(terms)
+    if written is not terms and not negative(written[0]):
+        return written
     if len(terms) < 2 or not negative(terms[0]):
         return terms
     exponents: dict[sp.Symbol, set] = {}
