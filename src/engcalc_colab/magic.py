@@ -216,7 +216,12 @@ def _display_equation_group(
 # block, a strut in the "Como" sentence. A Markdown output cannot carry room of its own -
 # Colab strips its style - but an HTML one keeps it. So the room is one output, the same
 # between any two blocks, and nothing else gives any. His choice, 2026-09-25.
-BLOCK_SPACER = '<div style="height:10px"></div>'
+#
+# Its height, measured in his Colab: the gap two blocks show is the spacer's height, give or
+# take a pixel (0 px left them touching). 18 px sets blocks ~1.4 times further apart than
+# the rows inside one (~13 px), so each block reads as a group; before a heading the page
+# opens wider on its own (34 px), with the heading's margin.
+BLOCK_SPACER = '<div style="height:18px"></div>'
 
 
 class _Page:

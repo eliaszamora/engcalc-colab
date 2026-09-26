@@ -4,16 +4,29 @@
 engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1/s
 
 === 0 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Viga simplemente apoyada con combinaciones de carga</div>
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Viga simplemente apoyada con combinaciones de carga</div>
 
-=== 1 · Markdown ===
-Una viga de hormigón armado de un vano, con carga permanente distribuida, sobrecarga distribuida y una sobrecarga puntual de montaje al centro. El objetivo es la envolvente de momentos de diseño, qué combinación gobierna en cada tramo, y la verificación de flecha bajo carga de servicio.
-Esta hoja existe para ejercitar lo que la memoria del pórtico no toca: casos de carga, combinaciones, envolvente, intervalos gobernantes y tablas.
+=== 1 · HTML ===
+<div style="height:18px"></div>
 
-=== 2 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Geometría y materiales</div>
+=== 2 · Math ===
+\hspace{-5pt}\begin{array}{l} \text{Una viga de hormigón armado de un vano, con carga permanente distribuida,} \\[2pt]
+\text{sobrecarga distribuida y una sobrecarga puntual de montaje al centro. El} \\[2pt]
+\text{objetivo es la envolvente de momentos de diseño, qué combinación gobierna en} \\[2pt]
+\text{cada tramo, y la verificación de flecha bajo carga de servicio.} \\[8pt]
+\text{Esta hoja existe para ejercitar lo que la memoria del pórtico no toca: casos de} \\[2pt]
+\text{carga, combinaciones, envolvente, intervalos gobernantes y tablas.} \end{array}
 
-=== 3 · Math ===
+=== 3 · HTML ===
+<div style="height:18px"></div>
+
+=== 4 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Geometría y materiales</div>
+
+=== 5 · HTML ===
+<div style="height:18px"></div>
+
+=== 6 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle L & = & \displaystyle 600.00\,\mathrm{cm} \\[8pt]
 \displaystyle b & = & \displaystyle 30.00\,\mathrm{cm} \\[8pt]
 \displaystyle h & = & \displaystyle 60.00\,\mathrm{cm} \\[8pt]
@@ -27,25 +40,51 @@ Esta hoja existe para ejercitar lo que la memoria del pórtico no toca: casos de
 & = & \displaystyle \frac{\left(30.00\,\mathrm{cm}\right)\,\left(60.00\,\mathrm{cm}\right)^{3}}{12} \\[8pt]
 & = & \displaystyle 540000.00\,\mathrm{cm}^{4} \end{array}
 
-=== 4 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Cargas</div>
+=== 7 · HTML ===
+<div style="height:18px"></div>
 
-=== 5 · Markdown ===
-La permanente incluye el peso propio. La sobrecarga distribuida es de uso, y la puntual representa un equipo de montaje que puede situarse en cualquier punto del vano; aquí se la evalúa al centro, que es su posición más desfavorable para momento.
+=== 8 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Cargas</div>
 
-=== 6 · Math ===
+=== 9 · HTML ===
+<div style="height:18px"></div>
+
+=== 10 · Math ===
+\hspace{-5pt}\begin{array}{l} \text{La permanente incluye el peso propio. La sobrecarga distribuida es de uso, y la} \\[2pt]
+\text{puntual representa un equipo de montaje que puede situarse en cualquier punto} \\[2pt]
+\text{del vano; aquí se la evalúa al centro, que es su posición más desfavorable para} \\[2pt]
+\text{momento.} \end{array}
+
+=== 11 · HTML ===
+<div style="height:18px"></div>
+
+=== 12 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle \mathit{qD} & = & \displaystyle 18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
 \displaystyle \mathit{qL} & = & \displaystyle 12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
 \displaystyle P & = & \displaystyle 4078.86\,\mathrm{kgf} \end{array}
 
-=== 7 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Casos de carga</div>
+=== 13 · HTML ===
+<div style="height:18px"></div>
 
-=== 8 · Markdown ===
-Cada caso es el momento flector que produce esa carga, escrito como función de la coordenada del vano. Una carga distribuida da la parábola $M = q x (L - x) / 2$.
-La puntual al centro da dos tramos rectos, y hay que escribirlos como tales: $M = P x / 2$ hasta el centro y $M = P (L - x) / 2$ después. Escrita como una sola recta la hoja decía $M(L) = P L / 2$, un momento flector en un apoyo simple, que no existe.
+=== 14 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Casos de carga</div>
 
-=== 9 · Math ===
+=== 15 · HTML ===
+<div style="height:18px"></div>
+
+=== 16 · Math ===
+\hspace{-5pt}\begin{array}{l} \text{Cada caso es el momento flector que produce esa carga, escrito como función de} \\[2pt]
+\text{la coordenada del vano. Una carga distribuida da la parábola} \\[2pt]
+M = q x (L - x) / 2\text{.} \\[8pt]
+\text{La puntual al centro da dos tramos rectos, y hay que escribirlos como tales:} \\[2pt]
+M = P x / 2\text{ hasta el centro y }M = P (L - x) / 2\text{ después. Escrita como una sola} \\[2pt]
+\text{recta la hoja decía }M(L) = P L / 2\text{, un momento flector en un apoyo simple, que} \\[2pt]
+\text{no existe.} \end{array}
+
+=== 17 · HTML ===
+<div style="height:18px"></div>
+
+=== 18 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle M_{P}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
@@ -57,31 +96,51 @@ La puntual al centro da dos tramos rectos, y hay que escribirlos como tales: $M 
 \displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \end{array}
 
-=== 10 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Combinaciones</div>
+=== 19 · HTML ===
+<div style="height:18px"></div>
 
-=== 11 · Markdown ===
-Las dos combinaciones mayoradas del código, escritas con sus factores para que un revisor pueda contrastarlas contra la norma sin rehacer la aritmética.
+=== 20 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Combinaciones</div>
 
-=== 12 · Math ===
+=== 21 · HTML ===
+<div style="height:18px"></div>
+
+=== 22 · Math ===
+\hspace{-5pt}\begin{array}{l} \text{Las dos combinaciones mayoradas del código, escritas con sus factores para que} \\[2pt]
+\text{un revisor pueda contrastarlas contra la norma sin rehacer la aritmética.} \end{array}
+
+=== 23 · HTML ===
+<div style="height:18px"></div>
+
+=== 24 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle U_{1}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathit{Lv}\left(x\right) \\[8pt]
 \displaystyle U_{2}\left(x\right) & = & \displaystyle 1.2 \, D\left(x\right) + 1.6 \, \mathit{Mo}\left(x\right) \end{array}
 
-=== 13 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Qué combinación gobierna</div>
+=== 25 · HTML ===
+<div style="height:18px"></div>
 
-=== 14 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Governing} \text{ along } x \\[8pt]
+=== 26 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Qué combinación gobierna</div>
+
+=== 27 · HTML ===
+<div style="height:18px"></div>
+
+=== 28 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Governing} \text{ along } x \\[8pt]
 \displaystyle \begin{array}{ll} \displaystyle 0.00\,\mathrm{cm} \text{ to } 266.67\,\mathrm{cm} & \qquad \displaystyle U_{1}\left(x\right) \\[8pt]
 \displaystyle 266.67\,\mathrm{cm} \text{ to } 333.33\,\mathrm{cm} & \qquad \displaystyle U_{2}\left(x\right) \\[8pt]
-\displaystyle 333.33\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} & \qquad \displaystyle U_{1}\left(x\right) \end{array} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle 333.33\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} & \qquad \displaystyle U_{1}\left(x\right) \end{array} \end{array}
 
-=== 15 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Envolvente</div>
+=== 29 · HTML ===
+<div style="height:18px"></div>
 
-=== 16 · Figure ===
+=== 30 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Envolvente</div>
+
+=== 31 · HTML ===
+<div style="height:18px"></div>
+
+=== 32 · Figure ===
 title: U(x) envelope
 xlabel: x [$\mathrm{cm}$]
 ylabel: U(x) [$\mathrm{kgf} \cdot \mathrm{cm}$]
@@ -91,15 +150,24 @@ legend: U_max(x) | U_min(x)
 annotation: (0, 0)
 annotation: (300, $1.97 \times 10^{6}$)
 
-=== 17 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">La tabla de momentos</div>
+=== 33 · HTML ===
+<div style="height:18px"></div>
 
-=== 18 · Markdown ===
-Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del otro.
+=== 34 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">La tabla de momentos</div>
 
-=== 19 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \begin{array}{l|r|r} x\,[\mathrm{cm}] & U_{1}\left(x\right)\,[\mathrm{kgf} \cdot \mathrm{cm}] & U_{2}\left(x\right)\,[\mathrm{kgf} \cdot \mathrm{cm}] \\
+=== 35 · HTML ===
+<div style="height:18px"></div>
+
+=== 36 · Math ===
+\hspace{-5pt}\begin{array}{l} \text{Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del} \\[2pt]
+\text{otro.} \end{array}
+
+=== 37 · HTML ===
+<div style="height:18px"></div>
+
+=== 38 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \begin{array}{l|r|r} x\,[\mathrm{cm}] & U_{1}\left(x\right)\,[\mathrm{kgf} \cdot \mathrm{cm}] & U_{2}\left(x\right)\,[\mathrm{kgf} \cdot \mathrm{cm}] \\
 \hline \rule{0pt}{1.4em}0.00 & 0.00 & 0.00 \\[3pt]
 60.00 & 6.74 \times 10^{5} & 5.53 \times 10^{5} \\[3pt]
 120.00 & 1.20 \times 10^{6} & 1.03 \times 10^{6} \\[3pt]
@@ -110,35 +178,51 @@ Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado del
 420.00 & 1.57 \times 10^{6} & 1.42 \times 10^{6} \\[3pt]
 480.00 & 1.20 \times 10^{6} & 1.03 \times 10^{6} \\[3pt]
 540.00 & 6.74 \times 10^{5} & 5.53 \times 10^{5} \\[3pt]
-600.00 & 0.00 & 0.00 \end{array} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+600.00 & 0.00 & 0.00 \end{array} \end{array}
 
-=== 20 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Momento máximo de diseño</div>
+=== 39 · HTML ===
+<div style="height:18px"></div>
 
-=== 21 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Extrema} \text{ — } U_{1}\left(x\right) \\[8pt]
+=== 40 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Momento máximo de diseño</div>
+
+=== 41 · HTML ===
+<div style="height:18px"></div>
+
+=== 42 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Extrema} \text{ — } U_{1}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{cm} \text{ to } 600.00\,\mathrm{cm} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
 \displaystyle x = \dfrac{L}{2}\,\left(300.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0.15\,\mathit{qD}\,L^{2} + 0.2\,\mathit{qL}\,L^{2}\,\left(1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{local max, global max} \\[8pt]
-\displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle x = L\,\left(600.00\,\mathrm{cm}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) \quad\cdot\quad \text{boundary, global min} \end{array}
 
-=== 22 · Math ===
+=== 43 · HTML ===
+<div style="height:18px"></div>
+
+=== 44 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle U_{1}\left(\frac{L}{2}\right) \\[8pt]
 & = & \displaystyle 0.15\,\mathit{qD}\,L^{2} + 0.2\,\mathit{qL}\,L^{2} \\[8pt]
 & = & \displaystyle 0.15\,\left(18.35\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[4pt]
 & & \displaystyle \quad + 0.2\,\left(12.24\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{2} \\[8pt]
 & = & \displaystyle 1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}
 
-=== 23 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Flecha bajo servicio</div>
+=== 45 · HTML ===
+<div style="height:18px"></div>
 
-=== 24 · Markdown ===
-La flecha se verifica con la carga de servicio sin mayorar, y el límite habitual es $L/300$ para el vano completo.
+=== 46 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Flecha bajo servicio</div>
 
-=== 25 · Math ===
+=== 47 · HTML ===
+<div style="height:18px"></div>
+
+=== 48 · Math ===
+\hspace{-5pt}\begin{array}{l} \text{La flecha se verifica con la carga de servicio sin mayorar, y el límite habitual} \\[2pt]
+\text{es }L/300\text{ para el vano completo.} \end{array}
+
+=== 49 · HTML ===
+<div style="height:18px"></div>
+
+=== 50 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{s} & = & \displaystyle \mathit{qD} + \mathit{qL} \\[16pt]
 \displaystyle \delta & = & \displaystyle \frac{5 q_{s} L^{4}}{384 E I} \\[8pt]
 & = & \displaystyle \frac{5\,\left(30.59\,\frac{\mathrm{kgf}}{\mathrm{cm}}\right)\,\left(600.00\,\mathrm{cm}\right)^{4}}{384\,\left(239633.31\,\frac{\mathrm{kgf}}{\mathrm{cm}^{2}}\right)\,\left(540000.00\,\mathrm{cm}^{4}\right)} \\[8pt]
@@ -147,10 +231,11 @@ La flecha se verifica con la carga de servicio sin mayorar, y el límite habitua
 & = & \displaystyle \frac{\left(600.00\,\mathrm{cm}\right)}{300} \\[8pt]
 & = & \displaystyle 2.00\,\mathrm{cm} \end{array}
 
-=== 26 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Summary} \\[8pt]
+=== 51 · HTML ===
+<div style="height:18px"></div>
+
+=== 52 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Summary} \\[8pt]
 \displaystyle \begin{array}{lcl} \displaystyle M_{u} & = & \displaystyle 1.87 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
 \displaystyle \delta & = & \displaystyle 0.40\,\mathrm{cm} \\[8pt]
-\displaystyle \delta_{adm} & = & \displaystyle 2.00\,\mathrm{cm} \end{array} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle \delta_{adm} & = & \displaystyle 2.00\,\mathrm{cm} \end{array} \end{array}

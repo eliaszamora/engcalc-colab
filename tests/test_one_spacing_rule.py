@@ -141,3 +141,30 @@ def test_colab_typesets_the_text_without_a_complaint(katex_ready):  # noqa: F811
     assert result["error"] is None, result
     # Only the letters KaTeX draws from the system's font, `¿ ¡ « »`, may warn.
     assert all(warning.startswith("unknownSymbol") for warning in result["warnings"]), result
+
+
+def test_the_room_is_the_height_measured_in_colab():
+    """18 px, measured in his Colab on 2026-09-25: a gap shows the spacer's height, give or
+    take a pixel, and rows inside a block stand ~13 px apart. Changing it is a presentation
+    decision, and his."""
+    assert BLOCK_SPACER == '<div style="height:18px"></div>'
+
+
+def test_a_caption_stays_with_its_figure(sheet, tmp_path, monkeypatch):
+    import base64
+
+    (tmp_path / "portico.png").write_bytes(base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    ))
+    monkeypatch.chdir(tmp_path)
+    captured, console = sheet('q := 1*m\nimage("portico.png", "Geometría")\nr := 2*m\n')
+    assert not console, console
+    caption = next(i for i, item in enumerate(captured) if isinstance(item, Markdown) and "Figura" in item.data)
+    # The figure right above it, and the room only before the figure and after the caption.
+    assert isinstance(captured[caption - 1], HTML) and captured[caption - 1].data != BLOCK_SPACER, captured
+    assert captured[caption - 2].data == BLOCK_SPACER and captured[caption + 1].data == BLOCK_SPACER, captured
+
+
+def test_two_lone_stars_are_not_emphasis():
+    # A `*` pairs only around a word, as a `$...$` span does: `5 * 3 y 2 * 4` is arithmetic.
+    assert r"\text{5 * 3 y 2 * 4}" in narrative_latex(["5 * 3 y 2 * 4"])
