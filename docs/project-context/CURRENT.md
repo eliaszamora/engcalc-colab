@@ -1031,6 +1031,22 @@ The kN palette question is closed, not his to decide again: `%eng_units kN` show
 unit per dimension by his earlier choice (`6000*mm^2` reads `0.006 m²`, δ `0.00241 m`);
 `numeric(delta, mm)` or no `%eng_units` line gives millimetres. Explained to him.
 
+### His exercise 2.1 solved in his Colab (2026-09-25)
+
+Notebook "Untitled9" (`12CCpV_S6Q5GdXDEo_j2yUvfFwtpP0zhH`), cell 2 (index 2, mine; his
+attempt in cell 1 untouched; cell 0 installs and sets `%eng_units kN`). He asked for the
+solution with angles only, no matrix: `keep delta_ab = F L/(E A)`, then
+`keep u = (delta_ab*sin(phi) - delta_ac*sin(theta))/sin(theta + phi)`, `v` likewise;
+u 2.41, v 0.72, aa' 2.52 mm, as the book. His runtime runs an older install (upright `aa`).
+
+Found on the way, both on `main` (`3eb4c40`), not fixed:
+- a substituted value inside a function call is bracketed twice: `sin((0.50))`,
+  `sin((0.93 rad) + (0.59 rad))` reads right but `sin((0.93 rad))` does not;
+- a sum inside a function keeps SymPy's order, not the written one: `sin(b + a)` reads
+  `sin(a + b)`, his `sin(theta + phi)` reads `sin(φ + θ)`.
+- (by design, worth asking) a `:=` line cannot read a name defined by `=`:
+  `D := [delta_ab; delta_ac]` after `delta_ab = ...` says "unknown numeric name".
+
 **Exact next step:** his exercise 2.1 (a truss: compatibility, not the sum of the two elongation
 vectors - see the conversation of 2026-09-25) as a reference exercise, the kN palette
 question; a release when he asks.
