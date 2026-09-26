@@ -58,12 +58,18 @@ _STATEMENTS: tuple[CallHelp, ...] = (
         name=":=",
         kind="statement",
         summary="Da a un nombre su valor, un número con su unidad; una línea que lee una matriz se resuelve en números.",
-        forms=("nombre := expresión", "d := solve(K, F)"),
+        forms=("nombre := número[unidad]", "nombre := expresión", "d := solve(K, F)"),
         arguments=(
             ("nombre", "el nombre con que se guarda el valor"),
+            ("número[unidad]", "un valor con su unidad entre corchetes: 6[m], 10[kN/m], 6000[mm^2]"),
             ("expresión", "un valor con su unidad, o aritmética sobre valores ya dados; con una matriz, solve, inv, transpose, + - * y entradas como d[2,1]"),
         ),
         note=(
+            "La unidad va entre corchetes después de su número, 6[m] o 10[kN/m]: así nunca "
+            "se confunde con un nombre de la hoja, y m, s o N pueden ser variables (una masa, "
+            "una separación, una fuerza). La memoria la escribe sin corchetes, 6.00 m. 6*m "
+            "sigue sirviendo; si m es una variable de la hoja y está junto a otra unidad, "
+            "como en 2000*kN/m, la línea se detiene y pide 2000[kN/m]. "
             "`=` define una fórmula y la conserva en símbolos; `:=` define un valor. "
             "numeric() pone los valores `:=` en una fórmula `=` y muestra la sustitución. "
             "Una línea := puede leer un nombre definido con `=`: toma su número con los "
@@ -73,8 +79,8 @@ _STATEMENTS: tuple[CallHelp, ...] = (
             "luego sus números."
         ),
         example=(
-            "L := 6*m\nq := 10*kN/m\nM = q*L^2/8\nnumeric(M)\n"
-            "K = [2*kN/m, -1*kN/m; -1*kN/m, 1*kN/m]\nF = [0*kN; 10*kN]\nd := solve(K, F)"
+            "L := 6[m]\nq := 10[kN/m]\nM = q*L^2/8\nnumeric(M)\nm := 500[kg]\nk := 2000[kN/m]\n"
+            "K = [2[kN/m], -1[kN/m]; -1[kN/m], 1[kN/m]]\nF = [0[kN]; 10[kN]]\nd := solve(K, F)"
         ),
     ),
     CallHelp(

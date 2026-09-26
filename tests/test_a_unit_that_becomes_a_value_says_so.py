@@ -83,30 +83,28 @@ def test_giving_the_value_is_said_once(magics, capsys):
     assert NOTICE not in capsys.readouterr().out
 
 
-def test_running_the_line_again_says_its_result_changed(magics, capsys):
-    """The usual single degree of freedom, run twice. On `main` before this, the second
-    run drew `k = 4.00 kN/kg` and `w = 0.0894 kN^0.5/kg` and printed nothing."""
+def test_running_the_line_again_stops_instead_of_changing_its_result(magics, capsys):
+    """The usual single degree of freedom, run twice. Before this file the second run drew
+    `k = 4.00 kN/kg` in silence; then it drew it and said so. Since 2026-09-26 it does not
+    draw it: `2000*kN/m` holds a name of the sheet beside a unit, so the line stops and asks
+    for `2000[kN/m]` (test_a_unit_letter_that_is_a_name)."""
     sheet = "k := 2000*kN/m\nm := 500*kg\nsolve(k - w^2*m = 0, w)\n"
     run(magics, sheet)
     capsys.readouterr()
     page = run(magics, sheet)
     printed = capsys.readouterr().out
-    assert (
-        "engcalc: line 1: this line read 'm' as a unit (meter) when it ran before, "
-        "and reads it as a value now" in printed
-    ), printed
-    assert r"4.00\,\frac{\mathrm{kN}}{\mathrm{kg}}" in page, page  # said, not changed
+    assert "engcalc: line 1:" in printed and "2000[kN/m]" in printed, printed
+    assert r"\frac{\mathrm{kN}}{\mathrm{kg}}" not in page, page
 
 
-def test_every_run_after_the_first_says_it_again(magics, capsys):
-    """Each of those runs draws the changed result, so each one says so: a third run that
-    fell silent would be the silence this exists to end."""
+def test_every_run_after_the_first_stops_again(magics, capsys):
+    """A third run that went back to a number would be the silence this exists to end."""
     sheet = "k := 2000*kN/m\nm := 500*kg\n"
     run(magics, sheet)
     capsys.readouterr()
     for _ in range(2):
         run(magics, sheet)
-        assert "this line read 'm' as a unit" in capsys.readouterr().out
+        assert "2000[kN/m]" in capsys.readouterr().out
 
 
 def test_a_consistent_sheet_run_twice_says_nothing(magics, capsys):
@@ -141,12 +139,15 @@ def test_a_reset_forgets_what_was_read(magics, capsys):
 
 
 def test_a_reset_forgets_what_each_line_read(magics, capsys):
-    """After a reset the same line is a new line: `m` holds a mass from the start."""
+    """After a reset the same line is a new line: `m` holds a mass from the start, and
+    `2000*kN/m` below it is a line that stops, not a line whose result changed."""
     run(magics, "k := 2000*kN/m\n")
     magics.eng_reset("")
     capsys.readouterr()
     run(magics, "m := 500*kg\nk := 2000*kN/m\n")
-    assert without_letter_notices(capsys.readouterr().out) == ""
+    printed = capsys.readouterr().out
+    assert "line 2" in printed and "2000[kN/m]" in printed, printed
+    assert "this line read 'm' as a unit" not in printed, printed
 
 
 def test_saying_so_changes_no_value(magics, capsys):

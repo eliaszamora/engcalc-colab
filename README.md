@@ -16,6 +16,22 @@ reinstalls every dependency, Colab's own IPython among them, and forces a restar
 Current version: **0.40.0**.
 
 
+## Units in brackets
+
+**A unit can be written in brackets after its number**: `L := 6[m]`, `q := 10[kN/m]`,
+`A := 6000[mm^2]`, in `:=` and `=` lines and inside matrices. What stands in the brackets
+is a unit and nothing else, so `m`, `s` and `N` can be names of the sheet - a mass, a
+spacing, an axial force - and `k := 2000[kN/m]` still reads kilonewtons per metre, the
+first time a cell runs and every time after. The memoria writes `6.00 m`, without the
+brackets. `6*m` still works as it did.
+
+**A name the sheet defined is that name**, with `:=` or with `=`: `m = 3*a` then
+`x := 4*m` is four times that mass (it read four metres). Where such a name stands beside
+another unit - `2000*kN/m`, `5*m/s` - it could be either, and the line stops and asks for
+the unit in brackets. The single degree of freedom run twice read `k = 4.00 kN/kg`; it
+now stops and says `2000[kN/m]`.
+
+
 ## v0.40.0 a value line reads a formula, a sum as written, one pair of brackets
 
 **A `:=` line reads a name the sheet defined with `=`**, as it already read a matrix and a

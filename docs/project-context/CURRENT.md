@@ -1130,12 +1130,31 @@ text and were updated; no reference page and none of the 13 harness sheets move;
 Found, not fixed: `extrema(atan(x/L), x, 0, L)` says "extrema response values have
 incompatible dimensions" (also on 0.40.0).
 
-**Open, his decision:** the name-that-is-a-unit trap - `a := 2*kg`, `m = 3*a`,
-`x := 4*m` gives 4.00 m, silently. Proposed: a sheet cannot name a value with a unit's
-name (m, s, N, kN, ...): refused with a clear message; costs 5 tests, no tools sheet.
+Angles merged with his yes as #342 (`465a2dd`).
 
-**Exact next step:** his yes on the angles PR (images shown) and his decision on the
-unit-name trap.
+### Units in brackets (branch `feat/units-in-brackets`, PR open)
+
+The name-that-is-a-unit trap. He rejected refusing unit-named variables (*"sí hay veces
+que uso como variable m, s o N"*), asked for a different way to write units, and chose
+brackets with no brackets on the page (2026-09-26). `6_m` was discussed: rejected for
+compound units (`10_kN/m` cannot say where the unit ends). Built:
+- `parser._rewrite_bracketed_units` (in `normalize_expression`, before `^` and before
+  matrix literals): `number[units]` -> `(number*__u_unit...)`; only after a number, so
+  `d[1,1]` stays an index; a name inside that is not a unit alias is refused with its
+  line; `__u_` names cannot be targets. `numeric.BRACKETED_UNIT_PREFIX` entries join
+  `_UNIT_ALIASES`, so everything downstream reads them as units; `_print_Symbol` drops
+  the prefix.
+- `resolve_numeric_name`: a sheet formula outranks the unit its name spells, as a value
+  did (reverses #337's order): `m = 3*a`, `x := 4*m` = 24 kg.
+- `engine._refuse_a_name_beside_a_unit`: a name of the sheet spelled like a unit, in
+  one product with another plain unit (`2000*kN/m`, `5*m/s`), stops the line with
+  `write the unit in brackets ..., as 2000[kN/m]`; `numeric`'s target unit is not read.
+  The SDOF re-run no longer draws `4.00 kN/kg`.
+- `%eng_help :=` recommends `6[m]` (its example runs with brackets, matrices too);
+  README section. 23 contracts; 5 older ones updated (the re-run notices became a stop);
+  no reference page moves; the 13 harness sheets move only by the notice's words.
+
+**Exact next step:** his yes on the brackets PR after seeing it.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
