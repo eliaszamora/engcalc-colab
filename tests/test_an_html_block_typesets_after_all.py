@@ -47,6 +47,7 @@ import pytest
 from IPython.display import Markdown, Math
 
 import engcalc_colab.magic as magic
+from conftest import in_one_run
 
 
 @pytest.fixture
@@ -130,7 +131,7 @@ def test_a_narrative_typesets_its_relations(displayed):
     its words in `\\text{}` and its relation as mathematics - which typesets in Colab too.
     """
     items = displayed('"""Una viga de seis metros con $q = 10$ kN/m."""\nL := 6*m\n')
-    prose = [item.data for item in items if isinstance(item, Math) and "viga" in item.data]
+    prose = [in_one_run(item.data) for item in items if isinstance(item, Math) and "viga" in item.data]
     assert prose and r"\text{Una viga de seis metros con }q = 10\text{ kN/m.}" in prose[0], [
         type(item).__name__ for item in items
     ]

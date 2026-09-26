@@ -10,14 +10,8 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 2 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Se analiza un pórtico plano de un nivel y un vano con dos columnas} \\[2pt]
-\text{empotradas a la viga superior y articuladas en sus bases, arriostrado por} \\[2pt]
-\text{una diagonal que trabaja sólo axialmente. La viga superior se supone} \\[2pt]
-\text{infinitamente rígida a flexión, de modo que impone un único desplazamiento} \\[2pt]
-\text{lateral en su nivel.} \\[8pt]
-\text{El objetivo es obtener la rigidez lateral equivalente y el período natural} \\[2pt]
-\text{mediante la formulación matricial completa, sin recurrir a ninguna fórmula} \\[2pt]
-\text{cerrada: la rigidez debe salir del ensamblaje de los elementos.} \end{array}}
+\small \text{Se }\allowbreak \text{analiza }\allowbreak \text{un }\allowbreak \text{pórtico }\allowbreak \text{plano }\allowbreak \text{de }\allowbreak \text{un }\allowbreak \text{nivel }\allowbreak \text{y }\allowbreak \text{un }\allowbreak \text{vano }\allowbreak \text{con }\allowbreak \text{dos }\allowbreak \text{columnas }\allowbreak \text{empotradas }\allowbreak \text{a }\allowbreak \text{la }\allowbreak \text{viga }\allowbreak \text{superior }\allowbreak \text{y }\allowbreak \text{articuladas }\allowbreak \text{en }\allowbreak \text{sus }\allowbreak \text{bases, }\allowbreak \text{arriostrado }\allowbreak \text{por }\allowbreak \text{una }\allowbreak \text{diagonal }\allowbreak \text{que }\allowbreak \text{trabaja }\allowbreak \text{sólo }\allowbreak \text{axialmente. }\allowbreak \text{La }\allowbreak \text{viga }\allowbreak \text{superior }\allowbreak \text{se }\allowbreak \text{supone }\allowbreak \text{infinitamente }\allowbreak \text{rígida }\allowbreak \text{a }\allowbreak \text{flexión, }\allowbreak \text{de }\allowbreak \text{modo }\allowbreak \text{que }\allowbreak \text{impone }\allowbreak \text{un }\allowbreak \text{único }\allowbreak \text{desplazamiento }\allowbreak \text{lateral }\allowbreak \text{en }\allowbreak \text{su }\allowbreak \text{nivel.} \\[8pt]
+\text{El }\allowbreak \text{objetivo }\allowbreak \text{es }\allowbreak \text{obtener }\allowbreak \text{la }\allowbreak \text{rigidez }\allowbreak \text{lateral }\allowbreak \text{equivalente }\allowbreak \text{y }\allowbreak \text{el }\allowbreak \text{período }\allowbreak \text{natural }\allowbreak \text{mediante }\allowbreak \text{la }\allowbreak \text{formulación }\allowbreak \text{matricial }\allowbreak \text{completa, }\allowbreak \text{sin }\allowbreak \text{recurrir }\allowbreak \text{a }\allowbreak \text{ninguna }\allowbreak \text{fórmula }\allowbreak \text{cerrada: }\allowbreak \text{la }\allowbreak \text{rigidez }\allowbreak \text{debe }\allowbreak \text{salir }\allowbreak \text{del }\allowbreak \text{ensamblaje }\allowbreak \text{de }\allowbreak \text{los }\allowbreak \text{elementos.}
 
 === 3 · HTML ===
 <div style="height:18px"></div>
@@ -29,9 +23,7 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 6 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Los cuatro nodos se numeran 1 y 4 en las bases y 2 y 3 en el nivel superior.} \\[2pt]
-\text{Fijar sus coordenadas permite derivar longitudes y cosenos directores de la} \\[2pt]
-\text{geometría en vez de introducirlos a mano.} \end{array}}
+\small \text{Los }\allowbreak \text{cuatro }\allowbreak \text{nodos }\allowbreak \text{se }\allowbreak \text{numeran }\allowbreak \text{1 }\allowbreak \text{y }\allowbreak \text{4 }\allowbreak \text{en }\allowbreak \text{las }\allowbreak \text{bases }\allowbreak \text{y }\allowbreak \text{2 }\allowbreak \text{y }\allowbreak \text{3 }\allowbreak \text{en }\allowbreak \text{el }\allowbreak \text{nivel }\allowbreak \text{superior. }\allowbreak \text{Fijar }\allowbreak \text{sus }\allowbreak \text{coordenadas }\allowbreak \text{permite }\allowbreak \text{derivar }\allowbreak \text{longitudes }\allowbreak \text{y }\allowbreak \text{cosenos }\allowbreak \text{directores }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{geometría }\allowbreak \text{en }\allowbreak \text{vez }\allowbreak \text{de }\allowbreak \text{introducirlos }\allowbreak \text{a }\allowbreak \text{mano.}
 
 === 7 · HTML ===
 <div style="height:18px"></div>
@@ -58,9 +50,7 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 12 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las columnas son rectangulares de 300 mm por 450 mm, con los 450 mm en el} \\[2pt]
-\text{plano de flexión del pórtico. La diagonal es cuadrada de 25 mm de lado y} \\[2pt]
-\text{sólo transmite fuerza axial.} \end{array}}
+\small \text{Las }\allowbreak \text{columnas }\allowbreak \text{son }\allowbreak \text{rectangulares }\allowbreak \text{de }\allowbreak \text{300 }\allowbreak \text{mm }\allowbreak \text{por }\allowbreak \text{450 }\allowbreak \text{mm, }\allowbreak \text{con }\allowbreak \text{los }\allowbreak \text{450 }\allowbreak \text{mm }\allowbreak \text{en }\allowbreak \text{el }\allowbreak \text{plano }\allowbreak \text{de }\allowbreak \text{flexión }\allowbreak \text{del }\allowbreak \text{pórtico. }\allowbreak \text{La }\allowbreak \text{diagonal }\allowbreak \text{es }\allowbreak \text{cuadrada }\allowbreak \text{de }\allowbreak \text{25 }\allowbreak \text{mm }\allowbreak \text{de }\allowbreak \text{lado }\allowbreak \text{y }\allowbreak \text{sólo }\allowbreak \text{transmite }\allowbreak \text{fuerza }\allowbreak \text{axial.}
 
 === 13 · HTML ===
 <div style="height:18px"></div>
@@ -94,8 +84,7 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 18 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Cada elemento necesita su longitud y la orientación de su eje local respecto} \\[2pt]
-\text{del global. Ambas salen de las coordenadas nodales.} \end{array}}
+\small \text{Cada }\allowbreak \text{elemento }\allowbreak \text{necesita }\allowbreak \text{su }\allowbreak \text{longitud }\allowbreak \text{y }\allowbreak \text{la }\allowbreak \text{orientación }\allowbreak \text{de }\allowbreak \text{su }\allowbreak \text{eje }\allowbreak \text{local }\allowbreak \text{respecto }\allowbreak \text{del }\allowbreak \text{global. }\allowbreak \text{Ambas }\allowbreak \text{salen }\allowbreak \text{de }\allowbreak \text{las }\allowbreak \text{coordenadas }\allowbreak \text{nodales.}
 
 === 19 · HTML ===
 <div style="height:18px"></div>
@@ -130,15 +119,11 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 24 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El pórtico tiene cuatro nodos con tres grados de libertad cada uno, de modo} \\[2pt]
-\text{que el vector nodal completo tiene doce componentes:} \\[8pt]
-U = [u_1,\ v_1,\ \theta_1,\ u_2,\ v_2,\ \theta_2,\ u_3,\ v_3,\ \theta_3,\ u_4,\ v_4,\ \theta_4]^T \\[8pt]
-\text{De esos doce, la mayoría están determinados. Las bases están articuladas,} \\[2pt]
-\text{así que sus traslaciones son nulas pero sus giros no. La viga rígida obliga} \\[2pt]
-\text{a que ambos nodos superiores compartan el mismo desplazamiento lateral, sin} \\[2pt]
-\text{descenso ni giro. Quedan tres coordenadas independientes:} \\[8pt]
-q = [\theta_1,\ \Delta,\ \theta_4]^T \\[8pt]
-\text{donde Delta es el desplazamiento lateral del nivel.} \end{array}}
+\small \text{El }\allowbreak \text{pórtico }\allowbreak \text{tiene }\allowbreak \text{cuatro }\allowbreak \text{nodos }\allowbreak \text{con }\allowbreak \text{tres }\allowbreak \text{grados }\allowbreak \text{de }\allowbreak \text{libertad }\allowbreak \text{cada }\allowbreak \text{uno, }\allowbreak \text{de }\allowbreak \text{modo }\allowbreak \text{que }\allowbreak \text{el }\allowbreak \text{vector }\allowbreak \text{nodal }\allowbreak \text{completo }\allowbreak \text{tiene }\allowbreak \text{doce }\allowbreak \text{componentes:} \\[8pt]
+{U = [u_1,\ v_1,\ \theta_1,\ u_2,\ v_2,\ \theta_2,\ u_3,\ v_3,\ \theta_3,\ u_4,\ v_4,\ \theta_4]^T} \\[8pt]
+\text{De }\allowbreak \text{esos }\allowbreak \text{doce, }\allowbreak \text{la }\allowbreak \text{mayoría }\allowbreak \text{están }\allowbreak \text{determinados. }\allowbreak \text{Las }\allowbreak \text{bases }\allowbreak \text{están }\allowbreak \text{articuladas, }\allowbreak \text{así }\allowbreak \text{que }\allowbreak \text{sus }\allowbreak \text{traslaciones }\allowbreak \text{son }\allowbreak \text{nulas }\allowbreak \text{pero }\allowbreak \text{sus }\allowbreak \text{giros }\allowbreak \text{no. }\allowbreak \text{La }\allowbreak \text{viga }\allowbreak \text{rígida }\allowbreak \text{obliga }\allowbreak \text{a }\allowbreak \text{que }\allowbreak \text{ambos }\allowbreak \text{nodos }\allowbreak \text{superiores }\allowbreak \text{compartan }\allowbreak \text{el }\allowbreak \text{mismo }\allowbreak \text{desplazamiento }\allowbreak \text{lateral, }\allowbreak \text{sin }\allowbreak \text{descenso }\allowbreak \text{ni }\allowbreak \text{giro. }\allowbreak \text{Quedan }\allowbreak \text{tres }\allowbreak \text{coordenadas }\allowbreak \text{independientes:} \\[8pt]
+{q = [\theta_1,\ \Delta,\ \theta_4]^T} \\[8pt]
+\text{donde }\allowbreak \text{Delta }\allowbreak \text{es }\allowbreak \text{el }\allowbreak \text{desplazamiento }\allowbreak \text{lateral }\allowbreak \text{del }\allowbreak \text{nivel.}
 
 === 25 · HTML ===
 <div style="height:18px"></div>
@@ -158,13 +143,9 @@ q = [\theta_1,\ \Delta,\ \theta_4]^T \\[8pt]
 <div style="height:18px"></div>
 
 === 30 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{T resuelve el primer problema de la cadena: qué desplaza cada nodo cuando se} \\[2pt]
-\text{mueven las coordenadas independientes. Cada fila de T corresponde a una} \\[2pt]
-\text{componente de U y dice cómo depende de q, de modo que} \\[8pt]
-U = T\,q \\[8pt]
-\text{reproduce automáticamente los apoyos y las restricciones cinemáticas. Las} \\[2pt]
-\text{filas nulas son los grados de libertad impedidos; las filas con un uno son} \\[2pt]
-\text{los que siguen directamente a una coordenada independiente.} \end{array}}
+\small \text{T }\allowbreak \text{resuelve }\allowbreak \text{el }\allowbreak \text{primer }\allowbreak \text{problema }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{cadena: }\allowbreak \text{qué }\allowbreak \text{desplaza }\allowbreak \text{cada }\allowbreak \text{nodo }\allowbreak \text{cuando }\allowbreak \text{se }\allowbreak \text{mueven }\allowbreak \text{las }\allowbreak \text{coordenadas }\allowbreak \text{independientes. }\allowbreak \text{Cada }\allowbreak \text{fila }\allowbreak \text{de }\allowbreak \text{T }\allowbreak \text{corresponde }\allowbreak \text{a }\allowbreak \text{una }\allowbreak \text{componente }\allowbreak \text{de }\allowbreak \text{U }\allowbreak \text{y }\allowbreak \text{dice }\allowbreak \text{cómo }\allowbreak \text{depende }\allowbreak \text{de }\allowbreak \text{q, }\allowbreak \text{de }\allowbreak \text{modo }\allowbreak \text{que} \\[8pt]
+{U = T\,q} \\[8pt]
+\text{reproduce }\allowbreak \text{automáticamente }\allowbreak \text{los }\allowbreak \text{apoyos }\allowbreak \text{y }\allowbreak \text{las }\allowbreak \text{restricciones }\allowbreak \text{cinemáticas. }\allowbreak \text{Las }\allowbreak \text{filas }\allowbreak \text{nulas }\allowbreak \text{son }\allowbreak \text{los }\allowbreak \text{grados }\allowbreak \text{de }\allowbreak \text{libertad }\allowbreak \text{impedidos; }\allowbreak \text{las }\allowbreak \text{filas }\allowbreak \text{con }\allowbreak \text{un }\allowbreak \text{uno }\allowbreak \text{son }\allowbreak \text{los }\allowbreak \text{que }\allowbreak \text{siguen }\allowbreak \text{directamente }\allowbreak \text{a }\allowbreak \text{una }\allowbreak \text{coordenada }\allowbreak \text{independiente.}
 
 === 31 · HTML ===
 <div style="height:18px"></div>
@@ -206,14 +187,9 @@ U = T\,q \\[8pt]
 <div style="height:18px"></div>
 
 === 36 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Cada elemento sólo ve los grados de libertad de sus propios nodos. L\_e} \\[2pt]
-\text{extrae del vector nodal completo el subvector que corresponde al elemento,} \\[2pt]
-\text{en el orden en que su matriz de rigidez los espera:} \\[8pt]
-u_e^g = L_e\,U \\[8pt]
-\text{Se construye desde la conectividad: la columna izquierda une los nodos 1 y} \\[2pt]
-\text{2, la derecha une el 4 con el 3, y la diagonal une el 2 con el 4. Para las} \\[2pt]
-\text{columnas el subvector tiene seis componentes y para la diagonal, que es una} \\[2pt]
-\text{barra, sólo cuatro traslaciones.} \end{array}}
+\small \text{Cada }\allowbreak \text{elemento }\allowbreak \text{sólo }\allowbreak \text{ve }\allowbreak \text{los }\allowbreak \text{grados }\allowbreak \text{de }\allowbreak \text{libertad }\allowbreak \text{de }\allowbreak \text{sus }\allowbreak \text{propios }\allowbreak \text{nodos. }\allowbreak \text{L\_e }\allowbreak \text{extrae }\allowbreak \text{del }\allowbreak \text{vector }\allowbreak \text{nodal }\allowbreak \text{completo }\allowbreak \text{el }\allowbreak \text{subvector }\allowbreak \text{que }\allowbreak \text{corresponde }\allowbreak \text{al }\allowbreak \text{elemento, }\allowbreak \text{en }\allowbreak \text{el }\allowbreak \text{orden }\allowbreak \text{en }\allowbreak \text{que }\allowbreak \text{su }\allowbreak \text{matriz }\allowbreak \text{de }\allowbreak \text{rigidez }\allowbreak \text{los }\allowbreak \text{espera:} \\[8pt]
+{u_e^g = L_e\,U} \\[8pt]
+\text{Se }\allowbreak \text{construye }\allowbreak \text{desde }\allowbreak \text{la }\allowbreak \text{conectividad: }\allowbreak \text{la }\allowbreak \text{columna }\allowbreak \text{izquierda }\allowbreak \text{une }\allowbreak \text{los }\allowbreak \text{nodos }\allowbreak \text{1 }\allowbreak \text{y }\allowbreak \text{2, }\allowbreak \text{la }\allowbreak \text{derecha }\allowbreak \text{une }\allowbreak \text{el }\allowbreak \text{4 }\allowbreak \text{con }\allowbreak \text{el }\allowbreak \text{3, }\allowbreak \text{y }\allowbreak \text{la }\allowbreak \text{diagonal }\allowbreak \text{une }\allowbreak \text{el }\allowbreak \text{2 }\allowbreak \text{con }\allowbreak \text{el }\allowbreak \text{4. }\allowbreak \text{Para }\allowbreak \text{las }\allowbreak \text{columnas }\allowbreak \text{el }\allowbreak \text{subvector }\allowbreak \text{tiene }\allowbreak \text{seis }\allowbreak \text{componentes }\allowbreak \text{y }\allowbreak \text{para }\allowbreak \text{la }\allowbreak \text{diagonal, }\allowbreak \text{que }\allowbreak \text{es }\allowbreak \text{una }\allowbreak \text{barra, }\allowbreak \text{sólo }\allowbreak \text{cuatro }\allowbreak \text{traslaciones.}
 
 === 37 · HTML ===
 <div style="height:18px"></div>
@@ -267,13 +243,9 @@ u_e^g = L_e\,U \\[8pt]
 <div style="height:18px"></div>
 
 === 42 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{La matriz de rigidez de un elemento está escrita en sus ejes locales, con el} \\[2pt]
-\text{primer eje a lo largo de la barra. R\_e gira el subvector global a esos ejes:} \\[8pt]
-u_e^l = R_e\,u_e^g \\[8pt]
-\text{Para un elemento de pórtico plano la rotación actúa sobre las dos} \\[2pt]
-\text{traslaciones de cada nodo y deja el giro intacto. Para la diagonal, que sólo} \\[2pt]
-\text{tiene rigidez axial, basta proyectar las traslaciones de cada extremo sobre} \\[2pt]
-\text{la dirección de la barra: dos filas para dos desplazamientos axiales.} \end{array}}
+\small \text{La }\allowbreak \text{matriz }\allowbreak \text{de }\allowbreak \text{rigidez }\allowbreak \text{de }\allowbreak \text{un }\allowbreak \text{elemento }\allowbreak \text{está }\allowbreak \text{escrita }\allowbreak \text{en }\allowbreak \text{sus }\allowbreak \text{ejes }\allowbreak \text{locales, }\allowbreak \text{con }\allowbreak \text{el }\allowbreak \text{primer }\allowbreak \text{eje }\allowbreak \text{a }\allowbreak \text{lo }\allowbreak \text{largo }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{barra. }\allowbreak \text{R\_e }\allowbreak \text{gira }\allowbreak \text{el }\allowbreak \text{subvector }\allowbreak \text{global }\allowbreak \text{a }\allowbreak \text{esos }\allowbreak \text{ejes:} \\[8pt]
+{u_e^l = R_e\,u_e^g} \\[8pt]
+\text{Para }\allowbreak \text{un }\allowbreak \text{elemento }\allowbreak \text{de }\allowbreak \text{pórtico }\allowbreak \text{plano }\allowbreak \text{la }\allowbreak \text{rotación }\allowbreak \text{actúa }\allowbreak \text{sobre }\allowbreak \text{las }\allowbreak \text{dos }\allowbreak \text{traslaciones }\allowbreak \text{de }\allowbreak \text{cada }\allowbreak \text{nodo }\allowbreak \text{y }\allowbreak \text{deja }\allowbreak \text{el }\allowbreak \text{giro }\allowbreak \text{intacto. }\allowbreak \text{Para }\allowbreak \text{la }\allowbreak \text{diagonal, }\allowbreak \text{que }\allowbreak \text{sólo }\allowbreak \text{tiene }\allowbreak \text{rigidez }\allowbreak \text{axial, }\allowbreak \text{basta }\allowbreak \text{proyectar }\allowbreak \text{las }\allowbreak \text{traslaciones }\allowbreak \text{de }\allowbreak \text{cada }\allowbreak \text{extremo }\allowbreak \text{sobre }\allowbreak \text{la }\allowbreak \text{dirección }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{barra: }\allowbreak \text{dos }\allowbreak \text{filas }\allowbreak \text{para }\allowbreak \text{dos }\allowbreak \text{desplazamientos }\allowbreak \text{axiales.}
 
 === 43 · HTML ===
 <div style="height:18px"></div>
@@ -306,13 +278,9 @@ u_e^l = R_e\,u_e^g \\[8pt]
 <div style="height:18px"></div>
 
 === 48 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Encadenando las tres transformaciones se llega directamente de las} \\[2pt]
-\text{coordenadas independientes a los desplazamientos locales de cada elemento:} \\[8pt]
-A_e = R_e\,L_e\,T\text{ y }u_e^l = A_e\,q \\[8pt]
-\text{A\_e es la única matriz que hace falta después. Cada columna suya es la} \\[2pt]
-\text{deformada local del elemento cuando una coordenada independiente vale la} \\[2pt]
-\text{unidad y las demás cero, que es exactamente lo que su matriz de rigidez} \\[2pt]
-\text{necesita saber.} \end{array}}
+\small \text{Encadenando }\allowbreak \text{las }\allowbreak \text{tres }\allowbreak \text{transformaciones }\allowbreak \text{se }\allowbreak \text{llega }\allowbreak \text{directamente }\allowbreak \text{de }\allowbreak \text{las }\allowbreak \text{coordenadas }\allowbreak \text{independientes }\allowbreak \text{a }\allowbreak \text{los }\allowbreak \text{desplazamientos }\allowbreak \text{locales }\allowbreak \text{de }\allowbreak \text{cada }\allowbreak \text{elemento:} \\[8pt]
+{A_e = R_e\,L_e\,T}\text{ }\allowbreak \text{y }\allowbreak {u_e^l = A_e\,q} \\[8pt]
+\text{A\_e }\allowbreak \text{es }\allowbreak \text{la }\allowbreak \text{única }\allowbreak \text{matriz }\allowbreak \text{que }\allowbreak \text{hace }\allowbreak \text{falta }\allowbreak \text{después. }\allowbreak \text{Cada }\allowbreak \text{columna }\allowbreak \text{suya }\allowbreak \text{es }\allowbreak \text{la }\allowbreak \text{deformada }\allowbreak \text{local }\allowbreak \text{del }\allowbreak \text{elemento }\allowbreak \text{cuando }\allowbreak \text{una }\allowbreak \text{coordenada }\allowbreak \text{independiente }\allowbreak \text{vale }\allowbreak \text{la }\allowbreak \text{unidad }\allowbreak \text{y }\allowbreak \text{las }\allowbreak \text{demás }\allowbreak \text{cero, }\allowbreak \text{que }\allowbreak \text{es }\allowbreak \text{exactamente }\allowbreak \text{lo }\allowbreak \text{que }\allowbreak \text{su }\allowbreak \text{matriz }\allowbreak \text{de }\allowbreak \text{rigidez }\allowbreak \text{necesita }\allowbreak \text{saber.}
 
 === 49 · HTML ===
 <div style="height:18px"></div>
@@ -345,9 +313,7 @@ A_e = R_e\,L_e\,T\text{ y }u_e^l = A_e\,q \\[8pt]
 <div style="height:18px"></div>
 
 === 54 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las columnas son elementos de pórtico plano con rigidez axial y flexional.} \\[2pt]
-\text{La diagonal es una barra: su matriz es de 2x2 y sólo relaciona los dos} \\[2pt]
-\text{desplazamientos axiales de sus extremos.} \end{array}}
+\small \text{Las }\allowbreak \text{columnas }\allowbreak \text{son }\allowbreak \text{elementos }\allowbreak \text{de }\allowbreak \text{pórtico }\allowbreak \text{plano }\allowbreak \text{con }\allowbreak \text{rigidez }\allowbreak \text{axial }\allowbreak \text{y }\allowbreak \text{flexional. }\allowbreak \text{La }\allowbreak \text{diagonal }\allowbreak \text{es }\allowbreak \text{una }\allowbreak \text{barra: }\allowbreak \text{su }\allowbreak \text{matriz }\allowbreak \text{es }\allowbreak \text{de }\allowbreak \text{2x2 }\allowbreak \text{y }\allowbreak \text{sólo }\allowbreak \text{relaciona }\allowbreak \text{los }\allowbreak \text{dos }\allowbreak \text{desplazamientos }\allowbreak \text{axiales }\allowbreak \text{de }\allowbreak \text{sus }\allowbreak \text{extremos.}
 
 === 55 · HTML ===
 <div style="height:18px"></div>
@@ -373,11 +339,9 @@ A_e = R_e\,L_e\,T\text{ y }u_e^l = A_e\,q \\[8pt]
 <div style="height:18px"></div>
 
 === 60 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El trabajo interno de un elemento escrito en las coordenadas independientes} \\[2pt]
-\text{da su contribución a la rigidez del conjunto:} \\[8pt]
-K_e = A_e^{T}\,k_e\,A_e \\[8pt]
-\text{Las tres contribuciones se suman porque comparten las mismas coordenadas q,} \\[2pt]
-\text{que es justamente lo que consiguió la cadena T, L\_e, R\_e.} \end{array}}
+\small \text{El }\allowbreak \text{trabajo }\allowbreak \text{interno }\allowbreak \text{de }\allowbreak \text{un }\allowbreak \text{elemento }\allowbreak \text{escrito }\allowbreak \text{en }\allowbreak \text{las }\allowbreak \text{coordenadas }\allowbreak \text{independientes }\allowbreak \text{da }\allowbreak \text{su }\allowbreak \text{contribución }\allowbreak \text{a }\allowbreak \text{la }\allowbreak \text{rigidez }\allowbreak \text{del }\allowbreak \text{conjunto:} \\[8pt]
+{K_e = A_e^{T}\,k_e\,A_e} \\[8pt]
+\text{Las }\allowbreak \text{tres }\allowbreak \text{contribuciones }\allowbreak \text{se }\allowbreak \text{suman }\allowbreak \text{porque }\allowbreak \text{comparten }\allowbreak \text{las }\allowbreak \text{mismas }\allowbreak \text{coordenadas }\allowbreak \text{q, }\allowbreak \text{que }\allowbreak \text{es }\allowbreak \text{justamente }\allowbreak \text{lo }\allowbreak \text{que }\allowbreak \text{consiguió }\allowbreak \text{la }\allowbreak \text{cadena }\allowbreak \text{T, }\allowbreak \text{L\_e, }\allowbreak \text{R\_e.}
 
 === 61 · HTML ===
 <div style="height:18px"></div>
@@ -417,12 +381,9 @@ K_e = A_e^{T}\,k_e\,A_e \\[8pt]
 <div style="height:18px"></div>
 
 === 66 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las rotaciones de las bases no tienen masa asociada, de modo que las} \\[2pt]
-\text{ecuaciones que les corresponden son de equilibrio estático puro. Separando} \\[2pt]
-\text{las coordenadas internas theta\_1 y theta\_4 del grado de libertad dinámico} \\[2pt]
-\text{Delta mediante matrices de selección, el equilibrio de las internas da} \\[8pt]
-\theta = C\,\Delta\text{ con }C = -K_{ii}^{-1}\,K_{id} \\[8pt]
-\text{y sustituyendo en la ecuación de Delta queda la rigidez lateral equivalente.} \end{array}}
+\small \text{Las }\allowbreak \text{rotaciones }\allowbreak \text{de }\allowbreak \text{las }\allowbreak \text{bases }\allowbreak \text{no }\allowbreak \text{tienen }\allowbreak \text{masa }\allowbreak \text{asociada, }\allowbreak \text{de }\allowbreak \text{modo }\allowbreak \text{que }\allowbreak \text{las }\allowbreak \text{ecuaciones }\allowbreak \text{que }\allowbreak \text{les }\allowbreak \text{corresponden }\allowbreak \text{son }\allowbreak \text{de }\allowbreak \text{equilibrio }\allowbreak \text{estático }\allowbreak \text{puro. }\allowbreak \text{Separando }\allowbreak \text{las }\allowbreak \text{coordenadas }\allowbreak \text{internas }\allowbreak \text{theta\_1 }\allowbreak \text{y }\allowbreak \text{theta\_4 }\allowbreak \text{del }\allowbreak \text{grado }\allowbreak \text{de }\allowbreak \text{libertad }\allowbreak \text{dinámico }\allowbreak \text{Delta }\allowbreak \text{mediante }\allowbreak \text{matrices }\allowbreak \text{de }\allowbreak \text{selección, }\allowbreak \text{el }\allowbreak \text{equilibrio }\allowbreak \text{de }\allowbreak \text{las }\allowbreak \text{internas }\allowbreak \text{da} \\[8pt]
+{\theta = C\,\Delta}\text{ }\allowbreak \text{con }\allowbreak {C = -K_{ii}^{-1}\,K_{id}} \\[8pt]
+\text{y }\allowbreak \text{sustituyendo }\allowbreak \text{en }\allowbreak \text{la }\allowbreak \text{ecuación }\allowbreak \text{de }\allowbreak \text{Delta }\allowbreak \text{queda }\allowbreak \text{la }\allowbreak \text{rigidez }\allowbreak \text{lateral }\allowbreak \text{equivalente.}
 
 === 67 · HTML ===
 <div style="height:18px"></div>
@@ -464,8 +425,7 @@ K_e = A_e^{T}\,k_e\,A_e \\[8pt]
 <div style="height:18px"></div>
 
 === 72 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Con la rigidez condensada y la masa concentrada en el nivel se obtienen la} \\[2pt]
-\text{frecuencia circular, la frecuencia natural y el período.} \end{array}}
+\small \text{Con }\allowbreak \text{la }\allowbreak \text{rigidez }\allowbreak \text{condensada }\allowbreak \text{y }\allowbreak \text{la }\allowbreak \text{masa }\allowbreak \text{concentrada }\allowbreak \text{en }\allowbreak \text{el }\allowbreak \text{nivel }\allowbreak \text{se }\allowbreak \text{obtienen }\allowbreak \text{la }\allowbreak \text{frecuencia }\allowbreak \text{circular, }\allowbreak \text{la }\allowbreak \text{frecuencia }\allowbreak \text{natural }\allowbreak \text{y }\allowbreak \text{el }\allowbreak \text{período.}
 
 === 73 · HTML ===
 <div style="height:18px"></div>

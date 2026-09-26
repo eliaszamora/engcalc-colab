@@ -55,6 +55,7 @@ import pytest
 from IPython.display import HTML, Markdown, Math
 
 import engcalc_colab.magic as magic
+from conftest import in_one_run
 
 
 @pytest.fixture
@@ -66,7 +67,9 @@ def cell(monkeypatch):
     def run(source: str) -> str:
         captured.clear()
         magics.eng("", source)
-        return "".join(getattr(obj, "data", "") for obj in captured)
+        # A paragraph is typeset a word at a time since 2026-09-26; these contracts are about
+        # what it says, read one run per style (`conftest.in_one_run`).
+        return "".join(in_one_run(getattr(obj, "data", "")) for obj in captured)
 
     return run
 

@@ -10,12 +10,8 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 2 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Una viga de hormigón armado de un vano, con carga permanente distribuida,} \\[2pt]
-\text{sobrecarga distribuida y una sobrecarga puntual de montaje al centro. El} \\[2pt]
-\text{objetivo es la envolvente de momentos de diseño, qué combinación gobierna en} \\[2pt]
-\text{cada tramo, y la verificación de flecha bajo carga de servicio.} \\[8pt]
-\text{Esta hoja existe para ejercitar lo que la memoria del pórtico no toca: casos} \\[2pt]
-\text{de carga, combinaciones, envolvente, intervalos gobernantes y tablas.} \end{array}}
+\small \text{Una }\allowbreak \text{viga }\allowbreak \text{de }\allowbreak \text{hormigón }\allowbreak \text{armado }\allowbreak \text{de }\allowbreak \text{un }\allowbreak \text{vano, }\allowbreak \text{con }\allowbreak \text{carga }\allowbreak \text{permanente }\allowbreak \text{distribuida, }\allowbreak \text{sobrecarga }\allowbreak \text{distribuida }\allowbreak \text{y }\allowbreak \text{una }\allowbreak \text{sobrecarga }\allowbreak \text{puntual }\allowbreak \text{de }\allowbreak \text{montaje }\allowbreak \text{al }\allowbreak \text{centro. }\allowbreak \text{El }\allowbreak \text{objetivo }\allowbreak \text{es }\allowbreak \text{la }\allowbreak \text{envolvente }\allowbreak \text{de }\allowbreak \text{momentos }\allowbreak \text{de }\allowbreak \text{diseño, }\allowbreak \text{qué }\allowbreak \text{combinación }\allowbreak \text{gobierna }\allowbreak \text{en }\allowbreak \text{cada }\allowbreak \text{tramo, }\allowbreak \text{y }\allowbreak \text{la }\allowbreak \text{verificación }\allowbreak \text{de }\allowbreak \text{flecha }\allowbreak \text{bajo }\allowbreak \text{carga }\allowbreak \text{de }\allowbreak \text{servicio.} \\[8pt]
+\text{Esta }\allowbreak \text{hoja }\allowbreak \text{existe }\allowbreak \text{para }\allowbreak \text{ejercitar }\allowbreak \text{lo }\allowbreak \text{que }\allowbreak \text{la }\allowbreak \text{memoria }\allowbreak \text{del }\allowbreak \text{pórtico }\allowbreak \text{no }\allowbreak \text{toca: }\allowbreak \text{casos }\allowbreak \text{de }\allowbreak \text{carga, }\allowbreak \text{combinaciones, }\allowbreak \text{envolvente, }\allowbreak \text{intervalos }\allowbreak \text{gobernantes }\allowbreak \text{y }\allowbreak \text{tablas.}
 
 === 3 · HTML ===
 <div style="height:18px"></div>
@@ -50,10 +46,7 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 10 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{La permanente incluye el peso propio. La sobrecarga distribuida es de uso, y} \\[2pt]
-\text{la puntual representa un equipo de montaje que puede situarse en cualquier} \\[2pt]
-\text{punto del vano; aquí se la evalúa al centro, que es su posición más} \\[2pt]
-\text{desfavorable para momento.} \end{array}}
+\small \text{La }\allowbreak \text{permanente }\allowbreak \text{incluye }\allowbreak \text{el }\allowbreak \text{peso }\allowbreak \text{propio. }\allowbreak \text{La }\allowbreak \text{sobrecarga }\allowbreak \text{distribuida }\allowbreak \text{es }\allowbreak \text{de }\allowbreak \text{uso, }\allowbreak \text{y }\allowbreak \text{la }\allowbreak \text{puntual }\allowbreak \text{representa }\allowbreak \text{un }\allowbreak \text{equipo }\allowbreak \text{de }\allowbreak \text{montaje }\allowbreak \text{que }\allowbreak \text{puede }\allowbreak \text{situarse }\allowbreak \text{en }\allowbreak \text{cualquier }\allowbreak \text{punto }\allowbreak \text{del }\allowbreak \text{vano; }\allowbreak \text{aquí }\allowbreak \text{se }\allowbreak \text{la }\allowbreak \text{evalúa }\allowbreak \text{al }\allowbreak \text{centro, }\allowbreak \text{que }\allowbreak \text{es }\allowbreak \text{su }\allowbreak \text{posición }\allowbreak \text{más }\allowbreak \text{desfavorable }\allowbreak \text{para }\allowbreak \text{momento.}
 
 === 11 · HTML ===
 <div style="height:18px"></div>
@@ -73,13 +66,8 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 16 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Cada caso es el momento flector que produce esa carga, escrito como función} \\[2pt]
-\text{de la coordenada del vano. Una carga distribuida da la parábola} \\[2pt]
-M = q x (L - x) / 2\text{.} \\[8pt]
-\text{La puntual al centro da dos tramos rectos, y hay que escribirlos como tales:} \\[2pt]
-M = P x / 2\text{ hasta el centro y }M = P (L - x) / 2\text{ después. Escrita como una} \\[2pt]
-\text{sola recta la hoja decía }M(L) = P L / 2\text{, un momento flector en un apoyo} \\[2pt]
-\text{simple, que no existe.} \end{array}}
+\small \text{Cada }\allowbreak \text{caso }\allowbreak \text{es }\allowbreak \text{el }\allowbreak \text{momento }\allowbreak \text{flector }\allowbreak \text{que }\allowbreak \text{produce }\allowbreak \text{esa }\allowbreak \text{carga, }\allowbreak \text{escrito }\allowbreak \text{como }\allowbreak \text{función }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{coordenada }\allowbreak \text{del }\allowbreak \text{vano. }\allowbreak \text{Una }\allowbreak \text{carga }\allowbreak \text{distribuida }\allowbreak \text{da }\allowbreak \text{la }\allowbreak \text{parábola }\allowbreak {M = q x (L - x) / 2}\text{.} \\[8pt]
+\text{La }\allowbreak \text{puntual }\allowbreak \text{al }\allowbreak \text{centro }\allowbreak \text{da }\allowbreak \text{dos }\allowbreak \text{tramos }\allowbreak \text{rectos, }\allowbreak \text{y }\allowbreak \text{hay }\allowbreak \text{que }\allowbreak \text{escribirlos }\allowbreak \text{como }\allowbreak \text{tales: }\allowbreak {M = P x / 2}\text{ }\allowbreak \text{hasta }\allowbreak \text{el }\allowbreak \text{centro }\allowbreak \text{y }\allowbreak {M = P (L - x) / 2}\text{ }\allowbreak \text{después. }\allowbreak \text{Escrita }\allowbreak \text{como }\allowbreak \text{una }\allowbreak \text{sola }\allowbreak \text{recta }\allowbreak \text{la }\allowbreak \text{hoja }\allowbreak \text{decía }\allowbreak {M(L) = P L / 2}\text{, }\allowbreak \text{un }\allowbreak \text{momento }\allowbreak \text{flector }\allowbreak \text{en }\allowbreak \text{un }\allowbreak \text{apoyo }\allowbreak \text{simple, }\allowbreak \text{que }\allowbreak \text{no }\allowbreak \text{existe.}
 
 === 17 · HTML ===
 <div style="height:18px"></div>
@@ -106,9 +94,7 @@ M = P x / 2\text{ hasta el centro y }M = P (L - x) / 2\text{ después. Escrita c
 <div style="height:18px"></div>
 
 === 22 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las dos combinaciones mayoradas del código, escritas con sus factores para} \\[2pt]
-\text{que un revisor pueda contrastarlas contra la norma sin rehacer la} \\[2pt]
-\text{aritmética.} \end{array}}
+\small \text{Las }\allowbreak \text{dos }\allowbreak \text{combinaciones }\allowbreak \text{mayoradas }\allowbreak \text{del }\allowbreak \text{código, }\allowbreak \text{escritas }\allowbreak \text{con }\allowbreak \text{sus }\allowbreak \text{factores }\allowbreak \text{para }\allowbreak \text{que }\allowbreak \text{un }\allowbreak \text{revisor }\allowbreak \text{pueda }\allowbreak \text{contrastarlas }\allowbreak \text{contra }\allowbreak \text{la }\allowbreak \text{norma }\allowbreak \text{sin }\allowbreak \text{rehacer }\allowbreak \text{la }\allowbreak \text{aritmética.}
 
 === 23 · HTML ===
 <div style="height:18px"></div>
@@ -161,8 +147,7 @@ annotation: (300, $1.97 \times 10^{6}$)
 <div style="height:18px"></div>
 
 === 36 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Once estaciones a lo largo del vano, con los dos casos mayorados uno al lado} \\[2pt]
-\text{del otro.} \end{array}}
+\small \text{Once }\allowbreak \text{estaciones }\allowbreak \text{a }\allowbreak \text{lo }\allowbreak \text{largo }\allowbreak \text{del }\allowbreak \text{vano, }\allowbreak \text{con }\allowbreak \text{los }\allowbreak \text{dos }\allowbreak \text{casos }\allowbreak \text{mayorados }\allowbreak \text{uno }\allowbreak \text{al }\allowbreak \text{lado }\allowbreak \text{del }\allowbreak \text{otro.}
 
 === 37 · HTML ===
 <div style="height:18px"></div>
@@ -217,8 +202,7 @@ annotation: (300, $1.97 \times 10^{6}$)
 <div style="height:18px"></div>
 
 === 48 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{La flecha se verifica con la carga de servicio sin mayorar, y el límite} \\[2pt]
-\text{habitual es }L/300\text{ para el vano completo.} \end{array}}
+\small \text{La }\allowbreak \text{flecha }\allowbreak \text{se }\allowbreak \text{verifica }\allowbreak \text{con }\allowbreak \text{la }\allowbreak \text{carga }\allowbreak \text{de }\allowbreak \text{servicio }\allowbreak \text{sin }\allowbreak \text{mayorar, }\allowbreak \text{y }\allowbreak \text{el }\allowbreak \text{límite }\allowbreak \text{habitual }\allowbreak \text{es }\allowbreak {L/300}\text{ }\allowbreak \text{para }\allowbreak \text{el }\allowbreak \text{vano }\allowbreak \text{completo.}
 
 === 49 · HTML ===
 <div style="height:18px"></div>

@@ -33,7 +33,7 @@ from IPython.display import Math
 
 import engcalc_colab.magic as magic
 
-from conftest import blocks_into, block_text
+from conftest import blocks_into, block_text, in_one_run
 
 
 SHEET = (
@@ -163,4 +163,4 @@ def test_a_heading_and_a_narrative_are_still_text(monkeypatch):
     magic.EngMagics().eng("", '### Viga\n"""\nUna viga simplemente apoyada.\n"""\nL := 6*m\n')
     kinds = [type(output).__name__ for output in captured]
     assert kinds == ["HTML", "Math", "Math"], kinds
-    assert r"\text{Una viga simplemente apoyada.}" in captured[1].data, captured[1].data
+    assert r"\text{Una viga simplemente apoyada.}" in in_one_run(captured[1].data), captured[1].data

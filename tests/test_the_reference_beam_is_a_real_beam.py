@@ -37,13 +37,18 @@ SHEET = pathlib.Path("tools/viga.eng").read_text(encoding="utf-8")
 
 
 @pytest.fixture
-def page():
+def outputs():
     captured = []
     magic.display = captured.append
     magics = magic.EngMagics()
     with redirect_stdout(io.StringIO()):
         magics.eng("", SHEET)
-    return "".join(getattr(obj, "data", "") for obj in captured)
+    return [getattr(obj, "data", "") for obj in captured]
+
+
+@pytest.fixture
+def page(outputs):
+    return "".join(outputs)
 
 
 def test_the_beam_has_no_moment_at_its_supports(page):
@@ -117,7 +122,7 @@ def test_no_value_is_derived_twice():
     assert not marked & computed, sorted(marked & computed)
 
 
-def test_no_formula_is_printed_twice(page):
+def test_no_formula_is_printed_twice(page, outputs):
     r"""The rest of the same problem, found by rendering the page and reading it.
 
     Removing the `report`/`numeric` pair left four rows still printing twice - `d`,
@@ -132,8 +137,11 @@ def test_no_formula_is_printed_twice(page):
     """
     from collections import Counter
 
+    # A fraction's depth is taken out of each output on its own: read over the joined page,
+    # a paragraph's break - at the top level since 2026-09-26 - became the "outermost" rows
+    # and the working's `\\[17pt]` were left, so a whole working read as one row.
     rows = []
-    for chunk in without_fraction_depth(page).split(r"\\[8pt]"):
+    for chunk in "".join(without_fraction_depth(output) for output in outputs).split(r"\\[8pt]"):
         for piece in chunk.split(r"\\[16pt]"):
             collapsed = " ".join(piece.split())
             head, separator, tail = collapsed.partition("&")

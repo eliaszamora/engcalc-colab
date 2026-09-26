@@ -6,6 +6,9 @@
 // is what KaTeX throws (Colab would show the formula as red source text), `warnings` what
 // its strict mode reports about LaTeX it accepts but would not take from real TeX.
 //
+// `bases` counts the pieces KaTeX hands the browser: it can break a line between two of
+// them and nowhere else (tests/test_the_text_fills_the_width.py).
+//
 // Used by tests/test_colab_can_typeset_every_formula.py. Install with
 //     npm ci --prefix tools/katex
 const katex = require("katex");
@@ -18,12 +21,13 @@ process.stdin.on("end", () => {
   const results = formulas.map(({ tex, display }) => {
     const warnings = [];
     try {
-      katex.renderToString(tex, {
+      const html = katex.renderToString(tex, {
         displayMode: display,
         throwOnError: true,
         strict: (code, message) => { warnings.push(`${code}: ${message}`); return "ignore"; },
       });
-      return { error: null, warnings };
+      const bases = (html.match(/class="base"/g) || []).length;
+      return { error: null, warnings, bases };
     } catch (error) {
       return { error: String(error.message || error), warnings };
     }

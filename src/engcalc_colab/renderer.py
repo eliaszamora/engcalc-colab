@@ -4233,24 +4233,21 @@ def _computed_block(rows: list[str]) -> str:
     return r"\hspace{0.2em}\begin{array}{l} " + body + r" \end{array}"
 
 
-# An array with no room at its edge: KaTeX 0.16.28 has no `@{}`, and pads each side 5pt.
-_FRAME = r"\hspace{-5pt}\begin{array}{l} "
-
-
 # -- a paragraph, in the letter of the mathematics ----------------------------------------
 #
 # Colab sets a Markdown output in its own letter, Google Sans at 14 px, beside KaTeX's
 # 16.94 px, and strips any style put on it - a margin, a font; measured in his Colab. So a
 # paragraph is typeset as the mathematics is: its words in `\text{}`, its `$...$` as
-# mathematics, in lines of at most `NARRATIVE_LINE` characters, which KaTeX does not break
-# by itself. His choice, 2026-09-25.
-# Two points smaller than the working, his ask on seeing it in Colab: KaTeX sizes by step,
-# and `\footnotesize` (0.8, 2.5 points smaller) is the step nearest to two (`\small` is 1.3).
-_NARRATIVE_SIZE = r"\footnotesize "
-# 76 characters. At that size KaTeX sets them ~5.8 px each, ~445 px, and his Colab gave the
-# output 489 px at a window of 1254 px: 80 characters at full size (582 px) ran off the right
-# edge. Measured 2026-09-25.
-NARRATIVE_LINE = 76
+# mathematics. His choice, 2026-09-25.
+#
+# The browser breaks its lines, where the output ends (his choice, 2026-09-26). It was cut
+# here every 76 characters of source - a `$...$` span counted its LaTeX - for the width of
+# one window, and KaTeX breaks nothing inside an array or a `{...}` group. Typeset inline
+# at the top level, a word at a time with `\allowbreak` between, KaTeX hands the browser one
+# piece per word; a formula is a group, so it is never cut.
+# `\small`, 0.9 of the working (15.2 px): `\footnotesize`, asked for as "two points smaller"
+# on 2026-09-25, read too small beside it (2026-09-26).
+_NARRATIVE_SIZE = r"\small "
 _NARRATIVE_SPAN = re.compile(r"\$(\S|\S[^$]*?\S)\$")
 # What LaTeX would read as a command, written as text. `¿ ¡ « »` have no command in KaTeX:
 # they are left as they are and KaTeX draws them from the system's letter.
@@ -4340,58 +4337,39 @@ def _narrative_tokens(paragraph: str) -> list[tuple[bool, list[tuple[str, str]]]
     return words
 
 
-def _narrative_line_latex(words) -> str:
-    """One line: runs of one style joined into one `\\text{}`, the mathematics between."""
-    chunks: list[list] = []
-    for word_index, (space_before, runs) in enumerate(words):
-        for run_index, (kind, text) in enumerate(runs):
-            space = " " if (space_before and word_index and run_index == 0) else ""
-            if kind == "math":
-                if space and chunks and chunks[-1][0] != "math":
-                    chunks[-1][1] += " "
-                elif space:
-                    chunks.append(["", " "])
-                chunks.append(["math", text])
-            elif chunks and chunks[-1][0] == kind:
-                chunks[-1][1] += space + text
-            elif space and chunks and chunks[-1][0] == "":
-                # The space between plain text and a bold word belongs to the plain text.
-                chunks[-1][1] += space
-                chunks.append([kind, text])
-            else:
-                chunks.append([kind, space + text])
+def _narrative_word_latex(runs, space_after: bool) -> str:
+    """One word: each run in its `\\text{}`, a formula as a group, then the word's space.
+
+    No two runs of a word share a style: `_styled_runs` alternates them, and a formula
+    stands between two stretches of text. The space goes inside the word's last text, so a
+    line the browser ends there ends on it and the next begins on a letter; after a formula
+    it is a `\\text{ }` of its own.
+    """
+    chunks = [[kind, text] for kind, text in runs]
+    if space_after:
+        if chunks[-1][0] == "math":
+            chunks.append(["", " "])
+        else:
+            chunks[-1][1] += " "
     return "".join(
-        text if kind == "math" else f"{_TEXT_STYLES[kind]}{{{_escaped_text(text)}}}"
+        "{" + text + "}" if kind == "math" else f"{_TEXT_STYLES[kind]}{{{_escaped_text(text)}}}"
         for kind, text in chunks
     )
 
 
-def narrative_latex(paragraphs, width: int = NARRATIVE_LINE) -> str:
-    """Paragraphs as lines of `\\text{}` and mathematics, a line at most `width` long."""
-    lines: list[str] = []
-    for paragraph_index, paragraph in enumerate(paragraphs):
-        line: list = []
-        length = 0
-        for space_before, runs in _narrative_tokens(paragraph):
-            size = sum(len(text) for _kind, text in runs)
-            if line and length + 1 + size > width:
-                lines.append(_narrative_line_latex(line))
-                line, length = [], 0
-            line.append((space_before, runs))
-            length += size + (1 if length else 0)
-        if line:
-            lines.append(_narrative_line_latex(line))
-        if paragraph_index < len(paragraphs) - 1:
-            lines.append(None)  # a paragraph ends: more room than a line
-    rows = []
-    for line in lines:
-        if line is None:
-            rows[-1] += r" \\[8pt]"
-        else:
-            if rows and not rows[-1].endswith("[8pt]"):
-                rows[-1] += r" \\[2pt]"
-            rows.append(line)
-    return "{" + _NARRATIVE_SIZE + _FRAME + " ".join(rows) + r" \end{array}}"
+def narrative_latex(paragraphs) -> str:
+    """Paragraphs typeset inline, a place to break after every word; see `_NARRATIVE_SIZE`."""
+    typeset = []
+    for paragraph in paragraphs:  # never empty: the parser refuses an empty narrative
+        words = _narrative_tokens(paragraph)
+        # A space stands before every word but the first: `_narrative_tokens` glues what has
+        # none to the word before it (`$M$,`).
+        typeset.append(r"\allowbreak ".join(
+            _narrative_word_latex(runs, index + 1 < len(words))
+            for index, (_space_before, runs) in enumerate(words)
+        ))
+    # A paragraph ends: a line of its own, with more room than between two lines.
+    return _NARRATIVE_SIZE + r" \\[8pt] ".join(typeset)
 
 
 def _latex_unit_text(unit) -> str:

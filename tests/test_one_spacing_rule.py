@@ -86,21 +86,24 @@ def test_a_figure_and_its_caption_are_one_block(sheet):
 def test_a_paragraph_is_typeset_as_the_mathematics_is(sheet):
     captured, _console = sheet(EVERY_KIND)
     assert not [item for item in captured if isinstance(item, Markdown)], captured
-    paragraph = next(item.data for item in captured if isinstance(item, Math) and "párrafo con" in item.data)
-    assert r"\text{Un párrafo con una relación }M = q L^2/8\text{ en medio.}" in paragraph, paragraph
+    paragraph = next(item.data for item in captured if isinstance(item, Math) and "párrafo" in item.data)
+    # A word at a time since 2026-09-26, so the browser can break the line after any of them;
+    # see test_the_text_fills_the_width.
+    assert (
+        r"\text{relación }\allowbreak {M = q L^2/8}\text{ }\allowbreak \text{en }"
+        r"\allowbreak \text{medio.}"
+    ) in paragraph, paragraph
 
 
-def test_a_long_paragraph_is_cut_into_lines_that_fit(sheet):
+def test_a_long_paragraph_keeps_its_words_in_order(sheet):
+    # It was cut here into lines of 76 characters, for the width of one window; since
+    # 2026-09-26 the browser breaks it where the output ends (test_the_text_fills_the_width).
     words = " ".join(f"palabra{i}" for i in range(60))
     captured, _console = sheet(f'"""{words}"""\n')
     (paragraph,) = [item.data for item in captured if isinstance(item, Math)]
-    lines = re.findall(r"\\text\{([^}]*)\}", paragraph)
-    assert len(lines) > 3, lines
-    # 76 characters: set `\footnotesize`, KaTeX takes ~5.8 px each, ~445 px, and his Colab gave
-    # the output 489 px at a window of 1254 px - 80 characters at full size (582 px) ran off
-    # the right. Measured 2026-09-25.
-    assert all(len(line) <= 76 for line in lines), [len(line) for line in lines]
-    assert " ".join(line.strip() for line in lines) == words
+    pieces = re.findall(r"\\text\{([^}]*)\}", paragraph)
+    assert len(pieces) == 60 and r"\\" not in paragraph, paragraph
+    assert "".join(pieces) == words
 
 
 def test_two_paragraphs_stay_two(sheet):
@@ -109,27 +112,29 @@ def test_two_paragraphs_stay_two(sheet):
     assert paragraph.index(r"\text{Primero.}") < paragraph.index(r"\text{Segundo.}"), paragraph
 
 
+# A word at a time since 2026-09-26, each `\text{}` holding one word and its space.
 @pytest.mark.parametrize(
     "written, typeset",
     [
-        ("50 % de 10 & más", r"50 \% de 10 \& más"),
-        ("la barra #3 y a_b", r"la barra \#3 y a\_b"),
+        ("50 % de 10 & más", [r"\text{\% }", r"\text{\& }"]),
+        ("la barra #3 y a_b", [r"\text{\#3 }", r"\text{a\_b}"]),
         # KaTeX has no command for them; written as they are, they show in the system's
         # letter with a warning and no error, in Colab as here.
-        ("¿Cuánto? ¡Sí!", "¿Cuánto? ¡Sí!"),
-        ("uno — dos – tres", r"uno \textemdash{} dos \textendash{} tres"),
+        ("¿Cuánto? ¡Sí!", [r"\text{¿Cuánto? }", r"\text{¡Sí!}"]),
+        ("uno — dos – tres", [r"\text{\textemdash{} }", r"\text{\textendash{} }"]),
         # KaTeX reads `·` in text as `\cdotp`, which it has only in mathematics.
-        ("en cm·kgf", r"en cm$\cdot$kgf"),
+        ("en cm·kgf", [r"\text{cm$\cdot$kgf}"]),
     ],
 )
 def test_what_latex_would_read_is_written_as_text(written, typeset):
-    assert typeset in narrative_latex([written]), narrative_latex([written])
+    latex = narrative_latex([written])
+    assert all(word in latex for word in typeset), latex
 
 
 def test_bold_and_italic_are_kept(sheet):
     captured, _console = sheet('"""Una **fuerza** y una *longitud*."""\n')
     (paragraph,) = [item.data for item in captured if isinstance(item, Math)]
-    assert r"\textbf{fuerza}" in paragraph and r"\textit{longitud}" in paragraph, paragraph
+    assert r"\textbf{fuerza }" in paragraph and r"\textit{longitud}" in paragraph, paragraph
 
 
 def test_a_heading_takes_the_letter_of_the_mathematics(sheet):
@@ -170,11 +175,11 @@ def test_a_caption_stays_with_its_figure(sheet, tmp_path, monkeypatch):
 
 def test_two_lone_stars_are_not_emphasis():
     # A `*` pairs only around a word, as a `$...$` span does: `5 * 3 y 2 * 4` is arithmetic.
-    assert r"\text{5 * 3 y 2 * 4}" in narrative_latex(["5 * 3 y 2 * 4"])
+    latex = narrative_latex(["5 * 3 y 2 * 4"])
+    assert r"\textit" not in latex and latex.count(r"\text{* }") == 2, latex
 
 
-def test_a_paragraph_is_two_points_smaller_than_the_working():
-    # His ask on seeing it in Colab (2026-09-25): the text two points smaller. KaTeX sizes by
-    # step; `\footnotesize` is 0.8 of the working's 16.94 px, 2.5 points smaller - the step
-    # nearest to two (`\small` is 1.3).
-    assert narrative_latex(["Un párrafo."]).startswith(r"{\footnotesize ")
+def test_a_paragraph_is_a_little_smaller_than_the_working():
+    # His ask on seeing it in Colab (2026-09-25) was two points smaller, `\footnotesize` (0.8);
+    # beside the working it read too small, and he chose `\small` (0.9) on 2026-09-26.
+    assert narrative_latex(["Un párrafo."]).startswith(r"\small ")

@@ -9,11 +9,7 @@
 <div style="height:18px"></div>
 
 === 2 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Esta hoja no es una memoria: existe para que la comparación de páginas de} \\[2pt]
-\text{referencia vea formas que ni la viga ni la memoria contienen. Medido contra} \\[2pt]
-\text{los mutantes de las correcciones 0.30.8 a 0.30.11, esas dos hojas dejaban} \\[2pt]
-\text{pasar 21 de 40, y casi todos por la misma razón - la forma no estaba en} \\[2pt]
-\text{ninguna página. Cada bloque dice cuál cubre.} \end{array}}
+\small \text{Esta }\allowbreak \text{hoja }\allowbreak \text{no }\allowbreak \text{es }\allowbreak \text{una }\allowbreak \text{memoria: }\allowbreak \text{existe }\allowbreak \text{para }\allowbreak \text{que }\allowbreak \text{la }\allowbreak \text{comparación }\allowbreak \text{de }\allowbreak \text{páginas }\allowbreak \text{de }\allowbreak \text{referencia }\allowbreak \text{vea }\allowbreak \text{formas }\allowbreak \text{que }\allowbreak \text{ni }\allowbreak \text{la }\allowbreak \text{viga }\allowbreak \text{ni }\allowbreak \text{la }\allowbreak \text{memoria }\allowbreak \text{contienen. }\allowbreak \text{Medido }\allowbreak \text{contra }\allowbreak \text{los }\allowbreak \text{mutantes }\allowbreak \text{de }\allowbreak \text{las }\allowbreak \text{correcciones }\allowbreak \text{0.30.8 }\allowbreak \text{a }\allowbreak \text{0.30.11, }\allowbreak \text{esas }\allowbreak \text{dos }\allowbreak \text{hojas }\allowbreak \text{dejaban }\allowbreak \text{pasar }\allowbreak \text{21 }\allowbreak \text{de }\allowbreak \text{40, }\allowbreak \text{y }\allowbreak \text{casi }\allowbreak \text{todos }\allowbreak \text{por }\allowbreak \text{la }\allowbreak \text{misma }\allowbreak \text{razón }\allowbreak \text{- }\allowbreak \text{la }\allowbreak \text{forma }\allowbreak \text{no }\allowbreak \text{estaba }\allowbreak \text{en }\allowbreak \text{ninguna }\allowbreak \text{página. }\allowbreak \text{Cada }\allowbreak \text{bloque }\allowbreak \text{dice }\allowbreak \text{cuál }\allowbreak \text{cubre.}
 
 === 3 · HTML ===
 <div style="height:18px"></div>
@@ -25,9 +21,7 @@
 <div style="height:18px"></div>
 
 === 6 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Un módulo resistente es una longitud al cubo y una curvatura es una longitud} \\[2pt]
-\text{a la menos uno. Con la paleta kgf salían en otro sistema que el trabajo de} \\[2pt]
-\text{la línea de arriba.} \end{array}}
+\small \text{Un }\allowbreak \text{módulo }\allowbreak \text{resistente }\allowbreak \text{es }\allowbreak \text{una }\allowbreak \text{longitud }\allowbreak \text{al }\allowbreak \text{cubo }\allowbreak \text{y }\allowbreak \text{una }\allowbreak \text{curvatura }\allowbreak \text{es }\allowbreak \text{una }\allowbreak \text{longitud }\allowbreak \text{a }\allowbreak \text{la }\allowbreak \text{menos }\allowbreak \text{uno. }\allowbreak \text{Con }\allowbreak \text{la }\allowbreak \text{paleta }\allowbreak \text{kgf }\allowbreak \text{salían }\allowbreak \text{en }\allowbreak \text{otro }\allowbreak \text{sistema }\allowbreak \text{que }\allowbreak \text{el }\allowbreak \text{trabajo }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{línea }\allowbreak \text{de }\allowbreak \text{arriba.}
 
 === 7 · HTML ===
 <div style="height:18px"></div>
@@ -65,8 +59,7 @@
 <div style="height:18px"></div>
 
 === 12 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Una carga distribuida en el eje: `kgf/cm` en una línea y no como fracción} \\[2pt]
-\text{apilada.} \end{array}}
+\small \text{Una }\allowbreak \text{carga }\allowbreak \text{distribuida }\allowbreak \text{en }\allowbreak \text{el }\allowbreak \text{eje: }\allowbreak \text{`kgf/cm` }\allowbreak \text{en }\allowbreak \text{una }\allowbreak \text{línea }\allowbreak \text{y }\allowbreak \text{no }\allowbreak \text{como }\allowbreak \text{fracción }\allowbreak \text{apilada.}
 
 === 13 · HTML ===
 <div style="height:18px"></div>
@@ -97,8 +90,7 @@ annotation: (6, 60)
 <div style="height:18px"></div>
 
 === 20 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{La leyenda con la precisión de la página y el panel resumen con sus} \\[2pt]
-\text{encabezados en negrita, que solo aparece con cuatro curvas o más.} \end{array}}
+\small \text{La }\allowbreak \text{leyenda }\allowbreak \text{con }\allowbreak \text{la }\allowbreak \text{precisión }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{página }\allowbreak \text{y }\allowbreak \text{el }\allowbreak \text{panel }\allowbreak \text{resumen }\allowbreak \text{con }\allowbreak \text{sus }\allowbreak \text{encabezados }\allowbreak \text{en }\allowbreak \text{negrita, }\allowbreak \text{que }\allowbreak \text{solo }\allowbreak \text{aparece }\allowbreak \text{con }\allowbreak \text{cuatro }\allowbreak \text{curvas }\allowbreak \text{o }\allowbreak \text{más.}
 
 === 21 · HTML ===
 <div style="height:18px"></div>
@@ -157,9 +149,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 28 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El empotramiento es un borde y no vale cero, así que distingue la expresión} \\[2pt]
-\text{escrita de la simplificada donde la viga, con sus dos bordes en cero, no} \\[2pt]
-\text{puede.} \end{array}}
+\small \text{El }\allowbreak \text{empotramiento }\allowbreak \text{es }\allowbreak \text{un }\allowbreak \text{borde }\allowbreak \text{y }\allowbreak \text{no }\allowbreak \text{vale }\allowbreak \text{cero, }\allowbreak \text{así }\allowbreak \text{que }\allowbreak \text{distingue }\allowbreak \text{la }\allowbreak \text{expresión }\allowbreak \text{escrita }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{simplificada }\allowbreak \text{donde }\allowbreak \text{la }\allowbreak \text{viga, }\allowbreak \text{con }\allowbreak \text{sus }\allowbreak \text{dos }\allowbreak \text{bordes }\allowbreak \text{en }\allowbreak \text{cero, }\allowbreak \text{no }\allowbreak \text{puede.}
 
 === 29 · HTML ===
 <div style="height:18px"></div>
@@ -190,8 +180,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 36 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Un cortante que no cambia de signo en el tramo: el valor absoluto se} \\[2pt]
-\text{resuelve, y con el signo que corresponde.} \end{array}}
+\small \text{Un }\allowbreak \text{cortante }\allowbreak \text{que }\allowbreak \text{no }\allowbreak \text{cambia }\allowbreak \text{de }\allowbreak \text{signo }\allowbreak \text{en }\allowbreak \text{el }\allowbreak \text{tramo: }\allowbreak \text{el }\allowbreak \text{valor }\allowbreak \text{absoluto }\allowbreak \text{se }\allowbreak \text{resuelve, }\allowbreak \text{y }\allowbreak \text{con }\allowbreak \text{el }\allowbreak \text{signo }\allowbreak \text{que }\allowbreak \text{corresponde.}
 
 === 37 · HTML ===
 <div style="height:18px"></div>
@@ -221,11 +210,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 44 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{La carga por metro y la luz en milímetros dejan el momento en una unidad que} \\[2pt]
-\text{nadie escribe. Sin paleta, los apoyos salían en ella al lado del máximo; con} \\[2pt]
-\text{paleta nunca se vio, por eso esta hoja se compara también sin paleta. Seis} \\[2pt]
-\text{metros y no setenta centímetros: así el máximo sale en kN$\cdot$m, y un cero que} \\[2pt]
-\text{eligiera solo, sin mirar a su vecino, saldría en N$\cdot$m.} \end{array}}
+\small \text{La }\allowbreak \text{carga }\allowbreak \text{por }\allowbreak \text{metro }\allowbreak \text{y }\allowbreak \text{la }\allowbreak \text{luz }\allowbreak \text{en }\allowbreak \text{milímetros }\allowbreak \text{dejan }\allowbreak \text{el }\allowbreak \text{momento }\allowbreak \text{en }\allowbreak \text{una }\allowbreak \text{unidad }\allowbreak \text{que }\allowbreak \text{nadie }\allowbreak \text{escribe. }\allowbreak \text{Sin }\allowbreak \text{paleta, }\allowbreak \text{los }\allowbreak \text{apoyos }\allowbreak \text{salían }\allowbreak \text{en }\allowbreak \text{ella }\allowbreak \text{al }\allowbreak \text{lado }\allowbreak \text{del }\allowbreak \text{máximo; }\allowbreak \text{con }\allowbreak \text{paleta }\allowbreak \text{nunca }\allowbreak \text{se }\allowbreak \text{vio, }\allowbreak \text{por }\allowbreak \text{eso }\allowbreak \text{esta }\allowbreak \text{hoja }\allowbreak \text{se }\allowbreak \text{compara }\allowbreak \text{también }\allowbreak \text{sin }\allowbreak \text{paleta. }\allowbreak \text{Seis }\allowbreak \text{metros }\allowbreak \text{y }\allowbreak \text{no }\allowbreak \text{setenta }\allowbreak \text{centímetros: }\allowbreak \text{así }\allowbreak \text{el }\allowbreak \text{máximo }\allowbreak \text{sale }\allowbreak \text{en }\allowbreak \text{kN$\cdot$m, }\allowbreak \text{y }\allowbreak \text{un }\allowbreak \text{cero }\allowbreak \text{que }\allowbreak \text{eligiera }\allowbreak \text{solo, }\allowbreak \text{sin }\allowbreak \text{mirar }\allowbreak \text{a }\allowbreak \text{su }\allowbreak \text{vecino, }\allowbreak \text{saldría }\allowbreak \text{en }\allowbreak \text{N$\cdot$m.}
 
 === 45 · HTML ===
 <div style="height:18px"></div>
@@ -255,12 +240,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 52 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Un momento límite escrito con sus dos unidades, y un área escrita como largo} \\[2pt]
-\text{por ancho. Ninguna de las tres hojas tenía un producto de dos unidades} \\[2pt]
-\text{dentro de una fórmula, así que la comparación de páginas no podía ver cómo} \\[2pt]
-\text{se separan. Se separaban con un espacio: la fórmula decía 20 kN m al lado de} \\[2pt]
-\text{su propio resultado 20.00 kN$\cdot$m, y el área decía 0.30 m 0.60 m, donde m m es} \\[2pt]
-\text{mm con un hueco.} \end{array}}
+\small \text{Un }\allowbreak \text{momento }\allowbreak \text{límite }\allowbreak \text{escrito }\allowbreak \text{con }\allowbreak \text{sus }\allowbreak \text{dos }\allowbreak \text{unidades, }\allowbreak \text{y }\allowbreak \text{un }\allowbreak \text{área }\allowbreak \text{escrita }\allowbreak \text{como }\allowbreak \text{largo }\allowbreak \text{por }\allowbreak \text{ancho. }\allowbreak \text{Ninguna }\allowbreak \text{de }\allowbreak \text{las }\allowbreak \text{tres }\allowbreak \text{hojas }\allowbreak \text{tenía }\allowbreak \text{un }\allowbreak \text{producto }\allowbreak \text{de }\allowbreak \text{dos }\allowbreak \text{unidades }\allowbreak \text{dentro }\allowbreak \text{de }\allowbreak \text{una }\allowbreak \text{fórmula, }\allowbreak \text{así }\allowbreak \text{que }\allowbreak \text{la }\allowbreak \text{comparación }\allowbreak \text{de }\allowbreak \text{páginas }\allowbreak \text{no }\allowbreak \text{podía }\allowbreak \text{ver }\allowbreak \text{cómo }\allowbreak \text{se }\allowbreak \text{separan. }\allowbreak \text{Se }\allowbreak \text{separaban }\allowbreak \text{con }\allowbreak \text{un }\allowbreak \text{espacio: }\allowbreak \text{la }\allowbreak \text{fórmula }\allowbreak \text{decía }\allowbreak \text{20 }\allowbreak \text{kN }\allowbreak \text{m }\allowbreak \text{al }\allowbreak \text{lado }\allowbreak \text{de }\allowbreak \text{su }\allowbreak \text{propio }\allowbreak \text{resultado }\allowbreak \text{20.00 }\allowbreak \text{kN$\cdot$m, }\allowbreak \text{y }\allowbreak \text{el }\allowbreak \text{área }\allowbreak \text{decía }\allowbreak \text{0.30 }\allowbreak \text{m }\allowbreak \text{0.60 }\allowbreak \text{m, }\allowbreak \text{donde }\allowbreak \text{m }\allowbreak \text{m }\allowbreak \text{es }\allowbreak \text{mm }\allowbreak \text{con }\allowbreak \text{un }\allowbreak \text{hueco.}
 
 === 53 · HTML ===
 <div style="height:18px"></div>
@@ -281,10 +261,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 58 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El orden de las dos unidades. Una cantidad guarda el orden en que se} \\[2pt]
-\text{construyó, y las tablas de la página escriben todo momento con la fuerza} \\[2pt]
-\text{primero; una fórmula recibía sus factores en orden alfabético, y decía} \\[2pt]
-\text{cm$\cdot$kgf una línea antes de su propio valor en kgf$\cdot$cm.} \end{array}}
+\small \text{El }\allowbreak \text{orden }\allowbreak \text{de }\allowbreak \text{las }\allowbreak \text{dos }\allowbreak \text{unidades. }\allowbreak \text{Una }\allowbreak \text{cantidad }\allowbreak \text{guarda }\allowbreak \text{el }\allowbreak \text{orden }\allowbreak \text{en }\allowbreak \text{que }\allowbreak \text{se }\allowbreak \text{construyó, }\allowbreak \text{y }\allowbreak \text{las }\allowbreak \text{tablas }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{página }\allowbreak \text{escriben }\allowbreak \text{todo }\allowbreak \text{momento }\allowbreak \text{con }\allowbreak \text{la }\allowbreak \text{fuerza }\allowbreak \text{primero; }\allowbreak \text{una }\allowbreak \text{fórmula }\allowbreak \text{recibía }\allowbreak \text{sus }\allowbreak \text{factores }\allowbreak \text{en }\allowbreak \text{orden }\allowbreak \text{alfabético, }\allowbreak \text{y }\allowbreak \text{decía }\allowbreak \text{cm$\cdot$kgf }\allowbreak \text{una }\allowbreak \text{línea }\allowbreak \text{antes }\allowbreak \text{de }\allowbreak \text{su }\allowbreak \text{propio }\allowbreak \text{valor }\allowbreak \text{en }\allowbreak \text{kgf$\cdot$cm.}
 
 === 59 · HTML ===
 <div style="height:18px"></div>
@@ -303,11 +280,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 64 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos} \\[2pt]
-\text{defectos: las unidades de un solve con varias respuestas y de la fila del} \\[2pt]
-\text{descarte salían en cursiva, y una respuesta única sin nombre salía sin decir} \\[2pt]
-\text{de qué es. Un modo se escribe 1/s en las tres filas o no se escribe igual en} \\[2pt]
-\text{ninguna.} \end{array}}
+\small \text{Ninguna }\allowbreak \text{hoja }\allowbreak \text{de }\allowbreak \text{referencia }\allowbreak \text{dibujaba }\allowbreak \text{estos }\allowbreak \text{bloques, }\allowbreak \text{y }\allowbreak \text{ahí }\allowbreak \text{se }\allowbreak \text{escondían }\allowbreak \text{dos }\allowbreak \text{defectos: }\allowbreak \text{las }\allowbreak \text{unidades }\allowbreak \text{de }\allowbreak \text{un }\allowbreak \text{solve }\allowbreak \text{con }\allowbreak \text{varias }\allowbreak \text{respuestas }\allowbreak \text{y }\allowbreak \text{de }\allowbreak \text{la }\allowbreak \text{fila }\allowbreak \text{del }\allowbreak \text{descarte }\allowbreak \text{salían }\allowbreak \text{en }\allowbreak \text{cursiva, }\allowbreak \text{y }\allowbreak \text{una }\allowbreak \text{respuesta }\allowbreak \text{única }\allowbreak \text{sin }\allowbreak \text{nombre }\allowbreak \text{salía }\allowbreak \text{sin }\allowbreak \text{decir }\allowbreak \text{de }\allowbreak \text{qué }\allowbreak \text{es. }\allowbreak \text{Un }\allowbreak \text{modo }\allowbreak \text{se }\allowbreak \text{escribe }\allowbreak \text{1/s }\allowbreak \text{en }\allowbreak \text{las }\allowbreak \text{tres }\allowbreak \text{filas }\allowbreak \text{o }\allowbreak \text{no }\allowbreak \text{se }\allowbreak \text{escribe }\allowbreak \text{igual }\allowbreak \text{en }\allowbreak \text{ninguna.}
 
 === 65 · HTML ===
 <div style="height:18px"></div>
@@ -342,11 +315,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 72 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Ninguna hoja de referencia dibujaba un piecewise con números y la variable} \\[2pt]
-\text{todavía libre, y ahí vive una tercera fila que ninguna otra escribe: la} \\[2pt]
-\text{respuesta, construida aparte del printer de SymPy. Sus ramas salían en} \\[2pt]
-\text{estilo de texto, con la fracción de unidades dibujada pequeña, y la} \\[2pt]
-\text{comparación de páginas no podía verlo porque la fila no estaba en ninguna.} \end{array}}
+\small \text{Ninguna }\allowbreak \text{hoja }\allowbreak \text{de }\allowbreak \text{referencia }\allowbreak \text{dibujaba }\allowbreak \text{un }\allowbreak \text{piecewise }\allowbreak \text{con }\allowbreak \text{números }\allowbreak \text{y }\allowbreak \text{la }\allowbreak \text{variable }\allowbreak \text{todavía }\allowbreak \text{libre, }\allowbreak \text{y }\allowbreak \text{ahí }\allowbreak \text{vive }\allowbreak \text{una }\allowbreak \text{tercera }\allowbreak \text{fila }\allowbreak \text{que }\allowbreak \text{ninguna }\allowbreak \text{otra }\allowbreak \text{escribe: }\allowbreak \text{la }\allowbreak \text{respuesta, }\allowbreak \text{construida }\allowbreak \text{aparte }\allowbreak \text{del }\allowbreak \text{printer }\allowbreak \text{de }\allowbreak \text{SymPy. }\allowbreak \text{Sus }\allowbreak \text{ramas }\allowbreak \text{salían }\allowbreak \text{en }\allowbreak \text{estilo }\allowbreak \text{de }\allowbreak \text{texto, }\allowbreak \text{con }\allowbreak \text{la }\allowbreak \text{fracción }\allowbreak \text{de }\allowbreak \text{unidades }\allowbreak \text{dibujada }\allowbreak \text{pequeña, }\allowbreak \text{y }\allowbreak \text{la }\allowbreak \text{comparación }\allowbreak \text{de }\allowbreak \text{páginas }\allowbreak \text{no }\allowbreak \text{podía }\allowbreak \text{verlo }\allowbreak \text{porque }\allowbreak \text{la }\allowbreak \text{fila }\allowbreak \text{no }\allowbreak \text{estaba }\allowbreak \text{en }\allowbreak \text{ninguna.}
 
 === 73 · HTML ===
 <div style="height:18px"></div>
@@ -375,10 +344,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 78 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se} \\[2pt]
-\text{escondía un error que mataba la celda: con la variable libre, el motor pedía} \\[2pt]
-\text{que le definieran el kilonewton. La definición, el mismo llamado en un punto} \\[2pt]
-\text{y su extrema ya respondían; el único camino roto era éste.} \end{array}}
+\small \text{Ninguna }\allowbreak \text{hoja }\allowbreak \text{escribía }\allowbreak \text{un }\allowbreak \text{número }\allowbreak \text{con }\allowbreak \text{unidad }\allowbreak \text{dentro }\allowbreak \text{de }\allowbreak \text{una }\allowbreak \text{rama, }\allowbreak \text{y }\allowbreak \text{ahí }\allowbreak \text{se }\allowbreak \text{escondía }\allowbreak \text{un }\allowbreak \text{error }\allowbreak \text{que }\allowbreak \text{mataba }\allowbreak \text{la }\allowbreak \text{celda: }\allowbreak \text{con }\allowbreak \text{la }\allowbreak \text{variable }\allowbreak \text{libre, }\allowbreak \text{el }\allowbreak \text{motor }\allowbreak \text{pedía }\allowbreak \text{que }\allowbreak \text{le }\allowbreak \text{definieran }\allowbreak \text{el }\allowbreak \text{kilonewton. }\allowbreak \text{La }\allowbreak \text{definición, }\allowbreak \text{el }\allowbreak \text{mismo }\allowbreak \text{llamado }\allowbreak \text{en }\allowbreak \text{un }\allowbreak \text{punto }\allowbreak \text{y }\allowbreak \text{su }\allowbreak \text{extrema }\allowbreak \text{ya }\allowbreak \text{respondían; }\allowbreak \text{el }\allowbreak \text{único }\allowbreak \text{camino }\allowbreak \text{roto }\allowbreak \text{era }\allowbreak \text{éste.}
 
 === 79 · HTML ===
 <div style="height:18px"></div>
@@ -401,11 +367,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 84 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El mismo piecewise, pero preguntado en un punto. Ninguna hoja lo escribía, y} \\[2pt]
-\text{por eso nadie veía que la fila de sustitución escribía la rama por defecto} \\[2pt]
-\text{como un cero pelado mientras la respuesta, dos líneas más abajo, la escribía} \\[2pt]
-\text{con su unidad. Acá el punto cae fuera de todo tramo, así que la rama que} \\[2pt]
-\text{responde es justamente la que salía sin unidad.} \end{array}}
+\small \text{El }\allowbreak \text{mismo }\allowbreak \text{piecewise, }\allowbreak \text{pero }\allowbreak \text{preguntado }\allowbreak \text{en }\allowbreak \text{un }\allowbreak \text{punto. }\allowbreak \text{Ninguna }\allowbreak \text{hoja }\allowbreak \text{lo }\allowbreak \text{escribía, }\allowbreak \text{y }\allowbreak \text{por }\allowbreak \text{eso }\allowbreak \text{nadie }\allowbreak \text{veía }\allowbreak \text{que }\allowbreak \text{la }\allowbreak \text{fila }\allowbreak \text{de }\allowbreak \text{sustitución }\allowbreak \text{escribía }\allowbreak \text{la }\allowbreak \text{rama }\allowbreak \text{por }\allowbreak \text{defecto }\allowbreak \text{como }\allowbreak \text{un }\allowbreak \text{cero }\allowbreak \text{pelado }\allowbreak \text{mientras }\allowbreak \text{la }\allowbreak \text{respuesta, }\allowbreak \text{dos }\allowbreak \text{líneas }\allowbreak \text{más }\allowbreak \text{abajo, }\allowbreak \text{la }\allowbreak \text{escribía }\allowbreak \text{con }\allowbreak \text{su }\allowbreak \text{unidad. }\allowbreak \text{Acá }\allowbreak \text{el }\allowbreak \text{punto }\allowbreak \text{cae }\allowbreak \text{fuera }\allowbreak \text{de }\allowbreak \text{todo }\allowbreak \text{tramo, }\allowbreak \text{así }\allowbreak \text{que }\allowbreak \text{la }\allowbreak \text{rama }\allowbreak \text{que }\allowbreak \text{responde }\allowbreak \text{es }\allowbreak \text{justamente }\allowbreak \text{la }\allowbreak \text{que }\allowbreak \text{salía }\allowbreak \text{sin }\allowbreak \text{unidad.}
 
 === 85 · HTML ===
 <div style="height:18px"></div>
@@ -429,11 +391,7 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 90 · Math ===
-{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las hojas ya dibujaban un piecewise con la variable libre, pero con ramas} \\[2pt]
-\text{que son nombres, y ahí cada rama resuelve a una cantidad y el grupo le} \\[2pt]
-\text{presta su unidad al cero. Una viga real se escribe con fórmulas en la} \\[2pt]
-\text{variable: ninguna resuelve, el cero queda solo y salía sin unidad, un} \\[2pt]
-\text{momento escrito 0.00 en la fila que se lee.} \end{array}}
+\small \text{Las }\allowbreak \text{hojas }\allowbreak \text{ya }\allowbreak \text{dibujaban }\allowbreak \text{un }\allowbreak \text{piecewise }\allowbreak \text{con }\allowbreak \text{la }\allowbreak \text{variable }\allowbreak \text{libre, }\allowbreak \text{pero }\allowbreak \text{con }\allowbreak \text{ramas }\allowbreak \text{que }\allowbreak \text{son }\allowbreak \text{nombres, }\allowbreak \text{y }\allowbreak \text{ahí }\allowbreak \text{cada }\allowbreak \text{rama }\allowbreak \text{resuelve }\allowbreak \text{a }\allowbreak \text{una }\allowbreak \text{cantidad }\allowbreak \text{y }\allowbreak \text{el }\allowbreak \text{grupo }\allowbreak \text{le }\allowbreak \text{presta }\allowbreak \text{su }\allowbreak \text{unidad }\allowbreak \text{al }\allowbreak \text{cero. }\allowbreak \text{Una }\allowbreak \text{viga }\allowbreak \text{real }\allowbreak \text{se }\allowbreak \text{escribe }\allowbreak \text{con }\allowbreak \text{fórmulas }\allowbreak \text{en }\allowbreak \text{la }\allowbreak \text{variable: }\allowbreak \text{ninguna }\allowbreak \text{resuelve, }\allowbreak \text{el }\allowbreak \text{cero }\allowbreak \text{queda }\allowbreak \text{solo }\allowbreak \text{y }\allowbreak \text{salía }\allowbreak \text{sin }\allowbreak \text{unidad, }\allowbreak \text{un }\allowbreak \text{momento }\allowbreak \text{escrito }\allowbreak \text{0.00 }\allowbreak \text{en }\allowbreak \text{la }\allowbreak \text{fila }\allowbreak \text{que }\allowbreak \text{se }\allowbreak \text{lee.}
 
 === 91 · HTML ===
 <div style="height:18px"></div>
