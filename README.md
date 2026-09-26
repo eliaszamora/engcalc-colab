@@ -13,17 +13,33 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.39.0**.
+Current version: **0.40.0**.
 
 
-## A value line reads a formula
+## v0.40.0 a value line reads a formula, a sum as written, one pair of brackets
 
-A `:=` line reads a name the sheet defined with `=`, as it already read a matrix and a kept
-name: `delta_ab = F_ab*L_ab/(E*A_ab)` then `D := [delta_ab; delta_ac]` takes both numbers.
+**A `:=` line reads a name the sheet defined with `=`**, as it already read a matrix and a
+kept name: `delta_ab = F_ab*L_ab/(E*A_ab)` then `D := [delta_ab; delta_ac]` takes both numbers.
 It said "unknown numeric name". The number is the one the formula has with the values
 given so far - a `:=` line takes a value when it is written, as `y := 2*x` does. A formula
 that still needs a value says which; a formula named like a unit (`m`, `N`) still reads
 as the unit.
+
+**A sum the sheet wrote reads in the order it was written**, as a product has since
+0.33.0: `sin(theta + phi)` reads `sin(θ + φ)`, not `sin(φ + θ)`; `sqrt(6^2 + 4^2)` reads
+`√(6² + 4²)`; `h - cover - db_st - db/2` as typed. Only a sum whose terms reach the page as
+they were written; one the algebra made keeps the page's order, and a written sum that opens
+with a minus still does not (0.31.17).
+
+**A value inside a function's parentheses is not bracketed again**: `sin(0.93 rad)`, not
+`sin((0.93 rad))`; `max(45.00 kN, 30.00 kN)`. In a product, a sum or a power it keeps its
+brackets: `sin(2 (0.50 rad))`.
+
+**His exercise 2.1 is a reference sheet**, `tools/ejercicio_2_1.eng`: a two-bar joint solved
+by compatibility with the angles alone, checked against the book (u = 2.41 mm, v = 0.72 mm,
+aa' = 2.52 mm) with the kN palette and without.
+
+No reference page moves.
 
 
 ## v0.39.0 a sheet that decides and repeats, a root in a range, one spacing rule
@@ -3670,6 +3686,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.40.0** — a `:=` line reads a name defined with `=`; a sum reads in the order it was written; a value inside a function's parentheses is not bracketed again; his exercise 2.1 is a reference sheet.
 - **0.39.0** — `% if` / `% elif` / `% else`, `% for` and `% while`; `solve` takes the one root in a range; `d = numeric(...)` is written under `d`; a `=` line of values ends on its value; names of several letters in italic; one spacing rule between blocks and the text in KaTeX's letter; room under a fraction row.
 - **0.38.0** — `%eng_help` in Spanish; a number keeps the figures it was typed with (`0.90`); a bracket too wide for a row wraps inside itself; a table column of zeros takes the unit of its kind.
 - **0.37.0** — `%eng_help` for `keep`, `case`, `combo`, `:=`, `member`, `frame_plot` and `image`; a long substitution row keeps the shape of its formula; a zero in a `:=` matrix reads in its neighbours' unit. No reference sheet moves.
@@ -3784,4 +3801,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.39.0`.
+Version: `0.40.0`.
