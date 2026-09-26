@@ -96,9 +96,10 @@ def test_a_long_paragraph_is_cut_into_lines_that_fit(sheet):
     (paragraph,) = [item.data for item in captured if isinstance(item, Math)]
     lines = re.findall(r"\\text\{([^}]*)\}", paragraph)
     assert len(lines) > 3, lines
-    # 62 characters: KaTeX sets ~7.3 px each, and his Colab gave a paragraph 489 px at a
-    # window of 1254 px - 80 characters (582 px) ran off the right. Measured 2026-09-25.
-    assert all(len(line) <= 62 for line in lines), [len(line) for line in lines]
+    # 76 characters: set `\footnotesize`, KaTeX takes ~5.8 px each, ~445 px, and his Colab gave
+    # the output 489 px at a window of 1254 px - 80 characters at full size (582 px) ran off
+    # the right. Measured 2026-09-25.
+    assert all(len(line) <= 76 for line in lines), [len(line) for line in lines]
     assert " ".join(line.strip() for line in lines) == words
 
 
@@ -170,3 +171,10 @@ def test_a_caption_stays_with_its_figure(sheet, tmp_path, monkeypatch):
 def test_two_lone_stars_are_not_emphasis():
     # A `*` pairs only around a word, as a `$...$` span does: `5 * 3 y 2 * 4` is arithmetic.
     assert r"\text{5 * 3 y 2 * 4}" in narrative_latex(["5 * 3 y 2 * 4"])
+
+
+def test_a_paragraph_is_two_points_smaller_than_the_working():
+    # His ask on seeing it in Colab (2026-09-25): the text two points smaller. KaTeX sizes by
+    # step; `\footnotesize` is 0.8 of the working's 16.94 px, 2.5 points smaller - the step
+    # nearest to two (`\small` is 1.3).
+    assert narrative_latex(["Un párrafo."]).startswith(r"{\footnotesize ")

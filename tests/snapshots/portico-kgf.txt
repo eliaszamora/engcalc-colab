@@ -10,16 +10,14 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 2 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Se analiza un pórtico plano de un nivel y un vano con dos} \\[2pt]
-\text{columnas empotradas a la viga superior y articuladas en sus} \\[2pt]
-\text{bases, arriostrado por una diagonal que trabaja sólo} \\[2pt]
-\text{axialmente. La viga superior se supone infinitamente rígida a} \\[2pt]
-\text{flexión, de modo que impone un único desplazamiento lateral en} \\[2pt]
-\text{su nivel.} \\[8pt]
-\text{El objetivo es obtener la rigidez lateral equivalente y el} \\[2pt]
-\text{período natural mediante la formulación matricial completa,} \\[2pt]
-\text{sin recurrir a ninguna fórmula cerrada: la rigidez debe salir} \\[2pt]
-\text{del ensamblaje de los elementos.} \end{array}
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Se analiza un pórtico plano de un nivel y un vano con dos columnas} \\[2pt]
+\text{empotradas a la viga superior y articuladas en sus bases, arriostrado por} \\[2pt]
+\text{una diagonal que trabaja sólo axialmente. La viga superior se supone} \\[2pt]
+\text{infinitamente rígida a flexión, de modo que impone un único desplazamiento} \\[2pt]
+\text{lateral en su nivel.} \\[8pt]
+\text{El objetivo es obtener la rigidez lateral equivalente y el período natural} \\[2pt]
+\text{mediante la formulación matricial completa, sin recurrir a ninguna fórmula} \\[2pt]
+\text{cerrada: la rigidez debe salir del ensamblaje de los elementos.} \end{array}}
 
 === 3 · HTML ===
 <div style="height:18px"></div>
@@ -31,10 +29,9 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 6 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Los cuatro nodos se numeran 1 y 4 en las bases y 2 y 3 en el} \\[2pt]
-\text{nivel superior. Fijar sus coordenadas permite derivar} \\[2pt]
-\text{longitudes y cosenos directores de la geometría en vez de} \\[2pt]
-\text{introducirlos a mano.} \end{array}
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Los cuatro nodos se numeran 1 y 4 en las bases y 2 y 3 en el nivel superior.} \\[2pt]
+\text{Fijar sus coordenadas permite derivar longitudes y cosenos directores de la} \\[2pt]
+\text{geometría en vez de introducirlos a mano.} \end{array}}
 
 === 7 · HTML ===
 <div style="height:18px"></div>
@@ -61,9 +58,9 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 12 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Las columnas son rectangulares de 300 mm por 450 mm, con los} \\[2pt]
-\text{450 mm en el plano de flexión del pórtico. La diagonal es} \\[2pt]
-\text{cuadrada de 25 mm de lado y sólo transmite fuerza axial.} \end{array}
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las columnas son rectangulares de 300 mm por 450 mm, con los 450 mm en el} \\[2pt]
+\text{plano de flexión del pórtico. La diagonal es cuadrada de 25 mm de lado y} \\[2pt]
+\text{sólo transmite fuerza axial.} \end{array}}
 
 === 13 · HTML ===
 <div style="height:18px"></div>
@@ -97,9 +94,8 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 18 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Cada elemento necesita su longitud y la orientación de su eje} \\[2pt]
-\text{local respecto del global. Ambas salen de las coordenadas} \\[2pt]
-\text{nodales.} \end{array}
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Cada elemento necesita su longitud y la orientación de su eje local respecto} \\[2pt]
+\text{del global. Ambas salen de las coordenadas nodales.} \end{array}}
 
 === 19 · HTML ===
 <div style="height:18px"></div>
@@ -134,17 +130,15 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 24 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{El pórtico tiene cuatro nodos con tres grados de libertad cada} \\[2pt]
-\text{uno, de modo que el vector nodal completo tiene doce} \\[2pt]
-\text{componentes:} \\[8pt]
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El pórtico tiene cuatro nodos con tres grados de libertad cada uno, de modo} \\[2pt]
+\text{que el vector nodal completo tiene doce componentes:} \\[8pt]
 U = [u_1,\ v_1,\ \theta_1,\ u_2,\ v_2,\ \theta_2,\ u_3,\ v_3,\ \theta_3,\ u_4,\ v_4,\ \theta_4]^T \\[8pt]
-\text{De esos doce, la mayoría están determinados. Las bases están} \\[2pt]
-\text{articuladas, así que sus traslaciones son nulas pero sus giros} \\[2pt]
-\text{no. La viga rígida obliga a que ambos nodos superiores} \\[2pt]
-\text{compartan el mismo desplazamiento lateral, sin descenso ni} \\[2pt]
-\text{giro. Quedan tres coordenadas independientes:} \\[8pt]
+\text{De esos doce, la mayoría están determinados. Las bases están articuladas,} \\[2pt]
+\text{así que sus traslaciones son nulas pero sus giros no. La viga rígida obliga} \\[2pt]
+\text{a que ambos nodos superiores compartan el mismo desplazamiento lateral, sin} \\[2pt]
+\text{descenso ni giro. Quedan tres coordenadas independientes:} \\[8pt]
 q = [\theta_1,\ \Delta,\ \theta_4]^T \\[8pt]
-\text{donde Delta es el desplazamiento lateral del nivel.} \end{array}
+\text{donde Delta es el desplazamiento lateral del nivel.} \end{array}}
 
 === 25 · HTML ===
 <div style="height:18px"></div>
@@ -164,15 +158,13 @@ q = [\theta_1,\ \Delta,\ \theta_4]^T \\[8pt]
 <div style="height:18px"></div>
 
 === 30 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{T resuelve el primer problema de la cadena: qué desplaza cada} \\[2pt]
-\text{nodo cuando se mueven las coordenadas independientes. Cada} \\[2pt]
-\text{fila de T corresponde a una componente de U y dice cómo} \\[2pt]
-\text{depende de q, de modo que} \\[8pt]
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{T resuelve el primer problema de la cadena: qué desplaza cada nodo cuando se} \\[2pt]
+\text{mueven las coordenadas independientes. Cada fila de T corresponde a una} \\[2pt]
+\text{componente de U y dice cómo depende de q, de modo que} \\[8pt]
 U = T\,q \\[8pt]
-\text{reproduce automáticamente los apoyos y las restricciones} \\[2pt]
-\text{cinemáticas. Las filas nulas son los grados de libertad} \\[2pt]
-\text{impedidos; las filas con un uno son los que siguen} \\[2pt]
-\text{directamente a una coordenada independiente.} \end{array}
+\text{reproduce automáticamente los apoyos y las restricciones cinemáticas. Las} \\[2pt]
+\text{filas nulas son los grados de libertad impedidos; las filas con un uno son} \\[2pt]
+\text{los que siguen directamente a una coordenada independiente.} \end{array}}
 
 === 31 · HTML ===
 <div style="height:18px"></div>
@@ -214,16 +206,14 @@ U = T\,q \\[8pt]
 <div style="height:18px"></div>
 
 === 36 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Cada elemento sólo ve los grados de libertad de sus propios} \\[2pt]
-\text{nodos. L\_e extrae del vector nodal completo el subvector que} \\[2pt]
-\text{corresponde al elemento, en el orden en que su matriz de} \\[2pt]
-\text{rigidez los espera:} \\[8pt]
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Cada elemento sólo ve los grados de libertad de sus propios nodos. L\_e} \\[2pt]
+\text{extrae del vector nodal completo el subvector que corresponde al elemento,} \\[2pt]
+\text{en el orden en que su matriz de rigidez los espera:} \\[8pt]
 u_e^g = L_e\,U \\[8pt]
-\text{Se construye desde la conectividad: la columna izquierda une} \\[2pt]
-\text{los nodos 1 y 2, la derecha une el 4 con el 3, y la diagonal} \\[2pt]
-\text{une el 2 con el 4. Para las columnas el subvector tiene seis} \\[2pt]
-\text{componentes y para la diagonal, que es una barra, sólo cuatro} \\[2pt]
-\text{traslaciones.} \end{array}
+\text{Se construye desde la conectividad: la columna izquierda une los nodos 1 y} \\[2pt]
+\text{2, la derecha une el 4 con el 3, y la diagonal une el 2 con el 4. Para las} \\[2pt]
+\text{columnas el subvector tiene seis componentes y para la diagonal, que es una} \\[2pt]
+\text{barra, sólo cuatro traslaciones.} \end{array}}
 
 === 37 · HTML ===
 <div style="height:18px"></div>
@@ -277,15 +267,13 @@ u_e^g = L_e\,U \\[8pt]
 <div style="height:18px"></div>
 
 === 42 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{La matriz de rigidez de un elemento está escrita en sus ejes} \\[2pt]
-\text{locales, con el primer eje a lo largo de la barra. R\_e gira el} \\[2pt]
-\text{subvector global a esos ejes:} \\[8pt]
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{La matriz de rigidez de un elemento está escrita en sus ejes locales, con el} \\[2pt]
+\text{primer eje a lo largo de la barra. R\_e gira el subvector global a esos ejes:} \\[8pt]
 u_e^l = R_e\,u_e^g \\[8pt]
-\text{Para un elemento de pórtico plano la rotación actúa sobre las} \\[2pt]
-\text{dos traslaciones de cada nodo y deja el giro intacto. Para la} \\[2pt]
-\text{diagonal, que sólo tiene rigidez axial, basta proyectar las} \\[2pt]
-\text{traslaciones de cada extremo sobre la dirección de la barra:} \\[2pt]
-\text{dos filas para dos desplazamientos axiales.} \end{array}
+\text{Para un elemento de pórtico plano la rotación actúa sobre las dos} \\[2pt]
+\text{traslaciones de cada nodo y deja el giro intacto. Para la diagonal, que sólo} \\[2pt]
+\text{tiene rigidez axial, basta proyectar las traslaciones de cada extremo sobre} \\[2pt]
+\text{la dirección de la barra: dos filas para dos desplazamientos axiales.} \end{array}}
 
 === 43 · HTML ===
 <div style="height:18px"></div>
@@ -318,14 +306,13 @@ u_e^l = R_e\,u_e^g \\[8pt]
 <div style="height:18px"></div>
 
 === 48 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Encadenando las tres transformaciones se llega directamente de} \\[2pt]
-\text{las coordenadas independientes a los desplazamientos locales} \\[2pt]
-\text{de cada elemento:} \\[8pt]
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Encadenando las tres transformaciones se llega directamente de las} \\[2pt]
+\text{coordenadas independientes a los desplazamientos locales de cada elemento:} \\[8pt]
 A_e = R_e\,L_e\,T\text{ y }u_e^l = A_e\,q \\[8pt]
-\text{A\_e es la única matriz que hace falta después. Cada columna} \\[2pt]
-\text{suya es la deformada local del elemento cuando una coordenada} \\[2pt]
-\text{independiente vale la unidad y las demás cero, que es} \\[2pt]
-\text{exactamente lo que su matriz de rigidez necesita saber.} \end{array}
+\text{A\_e es la única matriz que hace falta después. Cada columna suya es la} \\[2pt]
+\text{deformada local del elemento cuando una coordenada independiente vale la} \\[2pt]
+\text{unidad y las demás cero, que es exactamente lo que su matriz de rigidez} \\[2pt]
+\text{necesita saber.} \end{array}}
 
 === 49 · HTML ===
 <div style="height:18px"></div>
@@ -358,10 +345,9 @@ A_e = R_e\,L_e\,T\text{ y }u_e^l = A_e\,q \\[8pt]
 <div style="height:18px"></div>
 
 === 54 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Las columnas son elementos de pórtico plano con rigidez axial} \\[2pt]
-\text{y flexional. La diagonal es una barra: su matriz es de 2x2 y} \\[2pt]
-\text{sólo relaciona los dos desplazamientos axiales de sus} \\[2pt]
-\text{extremos.} \end{array}
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las columnas son elementos de pórtico plano con rigidez axial y flexional.} \\[2pt]
+\text{La diagonal es una barra: su matriz es de 2x2 y sólo relaciona los dos} \\[2pt]
+\text{desplazamientos axiales de sus extremos.} \end{array}}
 
 === 55 · HTML ===
 <div style="height:18px"></div>
@@ -387,12 +373,11 @@ A_e = R_e\,L_e\,T\text{ y }u_e^l = A_e\,q \\[8pt]
 <div style="height:18px"></div>
 
 === 60 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{El trabajo interno de un elemento escrito en las coordenadas} \\[2pt]
-\text{independientes da su contribución a la rigidez del conjunto:} \\[8pt]
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El trabajo interno de un elemento escrito en las coordenadas independientes} \\[2pt]
+\text{da su contribución a la rigidez del conjunto:} \\[8pt]
 K_e = A_e^{T}\,k_e\,A_e \\[8pt]
-\text{Las tres contribuciones se suman porque comparten las mismas} \\[2pt]
-\text{coordenadas q, que es justamente lo que consiguió la cadena T,} \\[2pt]
-\text{L\_e, R\_e.} \end{array}
+\text{Las tres contribuciones se suman porque comparten las mismas coordenadas q,} \\[2pt]
+\text{que es justamente lo que consiguió la cadena T, L\_e, R\_e.} \end{array}}
 
 === 61 · HTML ===
 <div style="height:18px"></div>
@@ -432,14 +417,12 @@ K_e = A_e^{T}\,k_e\,A_e \\[8pt]
 <div style="height:18px"></div>
 
 === 66 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Las rotaciones de las bases no tienen masa asociada, de modo} \\[2pt]
-\text{que las ecuaciones que les corresponden son de equilibrio} \\[2pt]
-\text{estático puro. Separando las coordenadas internas theta\_1 y} \\[2pt]
-\text{theta\_4 del grado de libertad dinámico Delta mediante matrices} \\[2pt]
-\text{de selección, el equilibrio de las internas da} \\[8pt]
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las rotaciones de las bases no tienen masa asociada, de modo que las} \\[2pt]
+\text{ecuaciones que les corresponden son de equilibrio estático puro. Separando} \\[2pt]
+\text{las coordenadas internas theta\_1 y theta\_4 del grado de libertad dinámico} \\[2pt]
+\text{Delta mediante matrices de selección, el equilibrio de las internas da} \\[8pt]
 \theta = C\,\Delta\text{ con }C = -K_{ii}^{-1}\,K_{id} \\[8pt]
-\text{y sustituyendo en la ecuación de Delta queda la rigidez} \\[2pt]
-\text{lateral equivalente.} \end{array}
+\text{y sustituyendo en la ecuación de Delta queda la rigidez lateral equivalente.} \end{array}}
 
 === 67 · HTML ===
 <div style="height:18px"></div>
@@ -481,9 +464,8 @@ K_e = A_e^{T}\,k_e\,A_e \\[8pt]
 <div style="height:18px"></div>
 
 === 72 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Con la rigidez condensada y la masa concentrada en el nivel se} \\[2pt]
-\text{obtienen la frecuencia circular, la frecuencia natural y el} \\[2pt]
-\text{período.} \end{array}
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Con la rigidez condensada y la masa concentrada en el nivel se obtienen la} \\[2pt]
+\text{frecuencia circular, la frecuencia natural y el período.} \end{array}}
 
 === 73 · HTML ===
 <div style="height:18px"></div>
