@@ -1,0 +1,26 @@
+## Example 2.1 - solución con los ángulos
+"""Dos barras articuladas en A: AB de 6 m en horizontal y 4 m en vertical, AC de 3 m y 4 m. Con las fuerzas de las barras, el desplazamiento de A: $u$ hacia la derecha, $v$ hacia arriba."""
+### Datos
+E := 200000*MPa
+A_ab := 6000*mm^2
+A_ac := 8000*mm^2
+F_ab := 400.6*kN
+F_ac := -277.8*kN
+L_ab := sqrt(6^2 + 4^2)*m
+L_ac := sqrt(3^2 + 4^2)*m
+theta := atan(4/6)
+phi := atan(4/3)
+### Alargamiento de cada barra
+"""Ley de Hooke, $\delta = F L/(E A)$. AC está en compresión, así que se acorta."""
+keep delta_ab = F_ab*L_ab/(E*A_ab)
+numeric(delta_ab, mm)
+keep delta_ac = F_ac*L_ac/(E*A_ac)
+numeric(delta_ac, mm)
+### Compatibilidad
+"""Lo que A se mueve a lo largo de cada barra es lo que esa barra se alarga: $u \cos\theta + v \sin\theta = \delta_{ab}$ y $-u \cos\phi + v \sin\phi = \delta_{ac}$. Despejando u y v:"""
+keep u = (delta_ab*sin(phi) - delta_ac*sin(theta))/sin(theta + phi)
+numeric(u, mm)
+keep v = (delta_ab*cos(phi) + delta_ac*cos(theta))/sin(theta + phi)
+numeric(v, mm)
+aa = sqrt(u^2 + v^2)
+numeric(aa, mm)

@@ -1000,6 +1000,14 @@ item after normalising them (scratchpad `check_snapshots.py`). 17 contracts; mut
 installed: gaps 15-20 px, all text KaTeX.
 
 
+### His exercise 2.1 as a reference sheet (branch `test/exercise-2-1-reference`)
+
+His call left to me (*"lo dejo a tu criterio"*, 2026-09-26). `tools/ejercicio_2_1.eng` is
+the angles solution he chose; `test_his_exercise_2_1_gives_the_book_s_answer.py` runs it
+with the kN palette and without, no notice, u 2.41 / v 0.72 / aa' 2.52 / δ 2.41, -0.87 mm;
+it is also typeset by Colab's KaTeX (`exercise-2-1` in
+`test_colab_can_typeset_every_formula`).
+
 ### A value line reads a formula (branch `feat/a-value-line-reads-a-formula`)
 
 He left it to me (*"Lo dejo a tu decisión. Think carefully"*, 2026-09-26). A `:=` line
