@@ -2,10 +2,11 @@ from IPython.display import Math
 from matplotlib.figure import Figure
 import engcalc_colab.magic as magic_module
 from engcalc_colab.magic import EngMagics
+from conftest import blocks_into
 
 def test_eng_magic_displays_equations_then_table_then_plot_in_source_order(monkeypatch):
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
     magic = EngMagics(shell=None)
     cell = (
         "q1 := 8*kN/m\nq2 := 4*kN/m\na := 3*m\nL := 6*m\n"

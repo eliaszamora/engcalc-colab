@@ -102,10 +102,28 @@ def without_spacer_rows(latex: str) -> str:
     return _SPACER_ROW.sub(r"\1", latex)
 
 
+def blocks_into(items: list):
+    """A `display` for contracts about what the blocks are: every output but the room.
+
+    The magic puts one spacer between any two blocks (`magic.BLOCK_SPACER`, his choice of
+    2026-09-25). A contract that asks which blocks a cell draws, in what order, is asking
+    about the blocks; the room between them has contracts of its own in
+    `tests/test_one_spacing_rule.py`.
+    """
+    from engcalc_colab.magic import BLOCK_SPACER
+
+    def record(item) -> None:
+        if getattr(item, "data", None) != BLOCK_SPACER:
+            items.append(item)
+
+    return record
+
+
 def block_text(html: str) -> str:
     """One rendered block as the reader sees it: tags gone, LaTeX read back as text."""
     text = without_spacer_rows(_re.sub(r"<[^>]+>", " ", html))
-    if r"\rule{0pt}{0.7em} \\[-4pt]" in text:
+    # A computed block opens `\hspace{0.2em}\begin{array}{l}`; the working opens `{lcl}`.
+    if r"\hspace{0.2em}\begin{array}{l} " in text:
         text = _computed_block_text(text)
     # A characteristic block sets its formulas `$\displaystyle ...$` with `\dfrac`, so they
     # read at the page's size; both are sizes, not words.

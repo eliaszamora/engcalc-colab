@@ -45,14 +45,19 @@ from .renderer import (
     render_result,
     render_table,
 )
+from .renderer import narrative_latex
 
+# The letter of the mathematics, KaTeX's own - his choice, 2026-09-25: a heading in Colab's
+# Google Sans stood above paragraphs and working set in KaTeX's. An HTML output keeps its
+# style in Colab (a Markdown one does not); `serif` is what shows until KaTeX's letter loads.
+_HEADING_LETTER = "font-family:KaTeX_Main,'Times New Roman',serif;"
 _HEADING_STYLE = {
     2: (
-        "font-size:1.06rem;font-weight:600;"
+        _HEADING_LETTER + "font-size:1.25rem;font-weight:700;"
         "margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;"
         "border-bottom:1px solid rgba(127,127,127,0.18);"
     ),
-    3: "font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;",
+    3: _HEADING_LETTER + "font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;",
 }
 # A narrative used to carry its own font size and margins, in a styled `<div>`. It does
 # not any more: a markdown output takes the notebook's paragraph styling, and the
@@ -145,31 +150,18 @@ def _narrative_paragraph_markdown(paragraph: str) -> str:
     return _escape_list_marker("".join(parts))
 
 
-def _render_narrative(narrative: ParsedNarrative) -> Markdown:
-    """Markdown, not HTML, because Colab does not typeset a `display(HTML(...))` at all.
+def _render_narrative(narrative: ParsedNarrative) -> Math:
+    """A paragraph, typeset as the mathematics is: its words in `\\text{}`, its `$...$` as
+    mathematics, in the letter and size of the working, with the room every block has.
 
-    #96 made a narrative's marked spans reach the page as MathJax's parenthesis
-    delimiters, and it was verified against a rendering harness this repository writes -
-    which configures MathJax with exactly those delimiters, so it could not have failed.
-    In Colab the relations came out as raw text, across a memoria that explains a matrix
-    formulation and has nowhere else to put them.
-
-    Measured in Colab rather than reasoned about, and the answer was not a delimiter. Of
-    the parenthesis form, the dollar form, the bracket form and an explicit
-    `MathJax.typeset()` call, *none* renders inside an HTML output; Colab isolates it.
-    `Markdown`, `Latex` and `Math` outputs all typeset. Markdown is the one that keeps
-    prose as prose rather than wrapping every sentence in `\\text{}`.
-
-    The cost is the paragraph styling this used to set, which a markdown output does not
-    take. Correctness over cosmetics: a relation that does not render is a memoria that
-    does not say what it means.
+    It was a Markdown output, because Colab typesets `$...$` there and not in an HTML one
+    (#96, measured in Colab). That set it in Colab's own letter, Google Sans at 14 px beside
+    KaTeX's 16.94 px, and Colab strips any style put on it - a margin, a font; measured in
+    his Colab on 2026-09-25 - so it sat 5-7 px from the equations, closer than two rows of
+    one block. His choice: the paragraph in the letter of the mathematics. See
+    `renderer.narrative_latex` and `tests/test_one_spacing_rule.py`.
     """
-    return Markdown(
-        "\n\n".join(
-            _narrative_paragraph_markdown(paragraph)
-            for paragraph in narrative.paragraphs
-        )
-    )
+    return Math(narrative_latex(narrative.paragraphs))
 
 
 def _render_image(result: ImageResult) -> HTML:
@@ -206,10 +198,40 @@ CalculationResult = (
 def _display_equation_group(
     results: list[CalculationResult],
     settings: RenderSettings | None = None,
+    page: "_Page | None" = None,
 ) -> None:
     if not results:
         return
-    display(Math(render_aligned_results(results, settings=settings)))
+    (page.show if page is not None else display)(
+        Math(render_aligned_results(results, settings=settings))
+    )
+
+
+# -- one rule for the room between blocks ------------------------------------------------
+#
+# Measured in his Colab on 2026-09-25: Colab stands every output 6-8 px from the next, the
+# rows inside a block of equations are ~13 px apart, and a paragraph sat 5-7 px from the
+# equations around it - closer than two rows of one block, so it read as part of its
+# neighbour. Room had been given case by case: empty rows around a table and a `roots`
+# block, a strut in the "Como" sentence. A Markdown output cannot carry room of its own -
+# Colab strips its style - but an HTML one keeps it. So the room is one output, the same
+# between any two blocks, and nothing else gives any. His choice, 2026-09-25.
+BLOCK_SPACER = '<div style="height:10px"></div>'
+
+
+class _Page:
+    """What a cell puts on the page, a block at a time, with the same room between any two."""
+
+    def __init__(self) -> None:
+        self.blocks = 0
+
+    def show(self, *outputs) -> None:
+        """One block - a figure and its caption are one - after the room every block has."""
+        if self.blocks:
+            display(HTML(BLOCK_SPACER))
+        for output in outputs:
+            display(output)
+        self.blocks += 1
 
 
 def _palette_help() -> str:
@@ -281,6 +303,7 @@ class EngMagics(Magics):
 
     def _eng_cell(self, cell: str):
         pending_results: list[CalculationResult] = []
+        page = _Page()
         try:
             # A cell with `%` lines decides as it goes which of its lines run; one without
             # is parsed whole and runs as it always has. See `control`.
@@ -294,27 +317,30 @@ class EngMagics(Magics):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
-                    display(Math(item.latex))
+                    page.show(Math(item.latex))
                     continue
 
                 if isinstance(item, ParsedHeading):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
-                    display(_render_heading(item))
+                    page.show(_render_heading(item))
                     continue
 
                 if isinstance(item, ParsedNarrative):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
-                    display(_render_narrative(item))
+                    page.show(_render_narrative(item))
                     continue
 
                 # A `% while` hands over its last iteration already worked out.
@@ -329,9 +355,10 @@ class EngMagics(Magics):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
-                    display(
+                    page.show(
                         render_presented_plot(
                             plot_in_palette(result, self._settings())
                         )
@@ -345,37 +372,42 @@ class EngMagics(Magics):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
                     settings = self._settings()
-                    display(
+                    page.show(
                         render_frame_plot(
                             result,
                             lambda quantity, declared=False: quantity_as_displayed(
                                 quantity, settings, declared=declared
                             ),
-                        )
+                        ),
+                        Markdown(_figure_caption(result.number, result.caption)),
                     )
-                    display(Markdown(_figure_caption(result.number, result.caption)))
                     continue
 
                 if isinstance(result, ImageResult):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
-                    display(_render_image(result))
-                    display(Markdown(_figure_caption(result.number, result.caption)))
+                    page.show(
+                        _render_image(result),
+                        Markdown(_figure_caption(result.number, result.caption)),
+                    )
                     continue
 
                 if isinstance(result, TableResult):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
-                    display(
+                    page.show(
                         Math(
                             render_table(
                                 result,
@@ -395,9 +427,10 @@ class EngMagics(Magics):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
-                    display(
+                    page.show(
                         Math(render_result(result, settings=self._settings()))
                     )
                     continue
@@ -406,9 +439,10 @@ class EngMagics(Magics):
                     _display_equation_group(
                         pending_results,
                         self._settings(),
+                        page,
                     )
                     pending_results.clear()
-                    display(
+                    page.show(
                         Math(
                             render_characteristic_result(
                                 result,
@@ -423,11 +457,13 @@ class EngMagics(Magics):
             _display_equation_group(
                 pending_results,
                 self._settings(),
+                page,
             )
         except EngCalcError as exc:
             _display_equation_group(
                 pending_results,
                 self._settings(),
+                page,
             )
             print(f"engcalc: {exc}")
         return None

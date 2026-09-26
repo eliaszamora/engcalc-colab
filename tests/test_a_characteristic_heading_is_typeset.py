@@ -33,7 +33,7 @@ def headings(monkeypatch, source: str) -> list[str]:
     monkeypatch.setattr(magic, "display", captured.append)
     magic.EngMagics().eng("", source)
     raw = "".join(str(getattr(obj, "data", "")) for obj in captured)
-    found = re.findall(r"\\rule\{0pt\}\{0\.7em\} \\\\\[-4pt\] \\displaystyle (.*?) \\\\\[8pt\]", raw)
+    found = re.findall(r"\\hspace\{0\.2em\}\\begin\{array\}\{l\} \\displaystyle (.*?) \\\\\[8pt\]", raw)
     assert found, raw
     return found
 

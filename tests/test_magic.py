@@ -1,5 +1,6 @@
 from IPython.display import HTML, Math
 from IPython.terminal.interactiveshell import TerminalInteractiveShell
+from conftest import blocks_into
 
 
 def _fresh_shell():
@@ -80,7 +81,7 @@ def test_magic_renders_consecutive_results_with_eight_point_spacing(monkeypatch)
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "A = 1\nB = 2")
@@ -94,7 +95,7 @@ def test_magic_renders_blank_lines_inside_one_math_group(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "A = 1\n\n\nB = 2")
@@ -115,7 +116,7 @@ def test_magic_uses_mathjax_when_group_contains_numeric_evaluation(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "V_B = 3*q*L/8\nq := 2.8*tonf/m\nL := 4*m\nnumeric(V_B)")
@@ -161,7 +162,7 @@ def test_eng_magic_flushes_math_before_plot_and_resumes_after(monkeypatch):
     from matplotlib.figure import Figure
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "A = q*L\nq := 2.8*tonf/m\nL := 4*m\nplot(A*x, x, 0, L)\nB = 2*A")
     assert [type(item) for item in displayed] == [Math, Figure, Math]
@@ -172,7 +173,7 @@ def test_eng_magic_displays_one_figure_for_parameter_sweep_in_source_order(monke
     from matplotlib.figure import Figure
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "A = q*L\nM(x) = q*x*(L-x)/2\nL := 6*m\nplot(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])\nB = 2*A")
@@ -184,7 +185,7 @@ def test_eng_magic_displays_one_envelope_figure_in_source_order(monkeypatch):
     from matplotlib.figure import Figure
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "A = q*L\nM(x) = q*x*(L-x)/2\nL := 6*m\nenvelope(M(x), x, 0, L, q=[5*kN/m, 10*kN/m])\nB = 2*A")
@@ -196,7 +197,7 @@ def test_eng_magic_displays_magnitude_envelope_in_source_order(monkeypatch):
     from matplotlib.figure import Figure
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng(
@@ -218,7 +219,7 @@ def test_eng_magic_flushes_math_before_table_and_resumes_after(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "A = 1\ntable(x, x, 0, 1, 3)\nB = 2")
@@ -231,7 +232,7 @@ def test_eng_magic_preserves_heading_equation_table_heading_equation_order(monke
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng(

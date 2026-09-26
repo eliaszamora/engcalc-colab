@@ -4101,27 +4101,170 @@ def _computed_block(rows: list[str]) -> str:
     r"""One computed block, in the frame the working has.
 
     `\hspace{0.2em}` and an array, so it starts at the working's edge; every row in display
-    style, `\\[8pt]` apart, as the working's rows are. An empty row above the first and below
-    the last gives it room from the blocks around it. Measured, not assumed: a strut in the
-    first row put the room *under* a table, whose array is centred on its row, and a
-    trailing `\\` alone is dropped by MathJax. And one row per point: a row too wide for the
-    cell scrolls sideways, which is what the engineer asked of a long term.
+    style, `\\[8pt]` apart, as the working's rows are. One row per point: a row too wide for
+    the cell scrolls sideways, which is what the engineer asked of a long term.
 
-    Those two rows hold a strut and not a `\phantom{0}`. A phantom reserves the space of
-    a character by *being* that character with the ink left off, so the zero was in the
-    block's text: selecting a roots block and copying it gave
-    `0Roots — V(x)Domain: …root0`, and anything reading the page as text - a reader
-    pasting a block into a report, a search - got two zeros that say nothing. A screen
-    reader was never affected; MathJax emits `<mphantom>`, which is skipped. Measured in
-    MathJax at the page's own width: a block with `\rule{0pt}{0.7em}` in those rows is
-    101.8 px against the phantom's 101.8 px, row for row.
+    It had an empty row above the first and below the last, for room from the blocks around
+    it - a table's and a `roots` block's room alone. The room between blocks is now one rule
+    for every block, the magic's (`magic._Page`), measured in his Colab on 2026-09-25.
     """
     body = r" \\[8pt] ".join(rf"\displaystyle {row}" for row in rows)
-    return (
-        r"\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt] "
-        + body
-        + r" \\[4pt] \rule{0pt}{0.7em} \end{array}"
+    return r"\hspace{0.2em}\begin{array}{l} " + body + r" \end{array}"
+
+
+# An array with no room at its edge: KaTeX 0.16.28 has no `@{}`, and pads each side 5pt.
+_FRAME = r"\hspace{-5pt}\begin{array}{l} "
+
+
+# -- a paragraph, in the letter of the mathematics ----------------------------------------
+#
+# Colab sets a Markdown output in its own letter, Google Sans at 14 px, beside KaTeX's
+# 16.94 px, and strips any style put on it - a margin, a font; measured in his Colab. So a
+# paragraph is typeset as the mathematics is: its words in `\text{}`, its `$...$` as
+# mathematics, in lines of at most `NARRATIVE_LINE` characters, which KaTeX does not break
+# by itself. His choice, 2026-09-25.
+NARRATIVE_LINE = 80
+_NARRATIVE_SPAN = re.compile(r"\$(\S|\S[^$]*?\S)\$")
+# What LaTeX would read as a command, written as text. `¿ ¡ « »` have no command in KaTeX:
+# they are left as they are and KaTeX draws them from the system's letter.
+_TEXT_ESCAPES = {
+    "\\": r"\textbackslash{}",
+    "{": r"\{",
+    "}": r"\}",
+    "%": r"\%",
+    "&": r"\&",
+    "#": r"\#",
+    "_": r"\_",
+    "^": r"\textasciicircum{}",
+    "~": r"\textasciitilde{}",
+    "$": r"\$",
+    # KaTeX would draw `<` and `>` as they are; written as commands, no `<script>` reaches the
+    # output's data at all, whatever later reads it as.
+    "<": r"\textless{}",
+    ">": r"\textgreater{}",
+    # `·` in text is `\cdotp` to KaTeX, which has it only in mathematics: `cm·kgf` failed.
+    "·": r"$\cdot$",
+    "—": r"\textemdash{}",
+    "–": r"\textendash{}",
+}
+_TEXT_STYLES = {"": r"\text", "bf": r"\textbf", "it": r"\textit"}
+
+
+def _escaped_text(text: str) -> str:
+    return "".join(_TEXT_ESCAPES.get(character, character) for character in text)
+
+
+# Emphasis only where it is paired, as a `$...$` span is: `**x**` and `*x*` whose content
+# neither begins nor ends with a space. A lone `*` - `5 * 3`, a footnote mark - stays a `*`,
+# where toggling on every one set the rest of the paragraph in italic.
+_EMPHASIS = re.compile(r"\*\*(\S|\S.*?\S)\*\*|(?<!\*)\*(?!\*)(\S|\S[^*]*?\S)(?<!\*)\*(?!\*)")
+
+
+def _styled_runs(text: str) -> list[tuple[str, str]]:
+    """`Una **fuerza** y *x*.` as runs of plain, bold and italic text."""
+    runs: list[tuple[str, str]] = []
+    index = 0
+    for match in _EMPHASIS.finditer(text):
+        runs.append(("", text[index:match.start()]))
+        if match.group(1) is not None:
+            runs.append(("bf", match.group(1)))
+        else:
+            runs.append(("it", match.group(2)))
+        index = match.end()
+    runs.append(("", text[index:]))
+    return [(style, run) for style, run in runs if run]
+
+
+def _narrative_tokens(paragraph: str) -> list[tuple[bool, list[tuple[str, str]]]]:
+    """The paragraph as words, each `(space before, [(kind, text), ...])`.
+
+    A word is text runs and mathematics glued together - `$M$,` is one word - and the kind
+    is a text style (`""`, `bf`, `it`) or `math`.
+    """
+    pieces: list[tuple[str, str]] = []
+    index = 0
+    for match in _NARRATIVE_SPAN.finditer(paragraph):
+        pieces += _styled_runs(paragraph[index:match.start()])
+        pieces.append(("math", match.group(1)))
+        index = match.end()
+    pieces += _styled_runs(paragraph[index:])
+
+    words: list[tuple[bool, list[tuple[str, str]]]] = []
+    space_before = False
+    for kind, text in pieces:
+        if kind == "math":
+            if words and not space_before:
+                words[-1][1].append((kind, text))
+            else:
+                words.append((space_before, [(kind, text)]))
+            space_before = False
+            continue
+        for position, part in enumerate(re.split(r"(\s+)", text)):
+            if not part:
+                continue
+            if part.isspace():
+                space_before = True
+                continue
+            if words and not space_before and position == 0:
+                words[-1][1].append((kind, part))
+            else:
+                words.append((space_before, [(kind, part)]))
+            space_before = False
+    return words
+
+
+def _narrative_line_latex(words) -> str:
+    """One line: runs of one style joined into one `\\text{}`, the mathematics between."""
+    chunks: list[list] = []
+    for word_index, (space_before, runs) in enumerate(words):
+        for run_index, (kind, text) in enumerate(runs):
+            space = " " if (space_before and word_index and run_index == 0) else ""
+            if kind == "math":
+                if space and chunks and chunks[-1][0] != "math":
+                    chunks[-1][1] += " "
+                elif space:
+                    chunks.append(["", " "])
+                chunks.append(["math", text])
+            elif chunks and chunks[-1][0] == kind:
+                chunks[-1][1] += space + text
+            elif space and chunks and chunks[-1][0] == "":
+                # The space between plain text and a bold word belongs to the plain text.
+                chunks[-1][1] += space
+                chunks.append([kind, text])
+            else:
+                chunks.append([kind, space + text])
+    return "".join(
+        text if kind == "math" else f"{_TEXT_STYLES[kind]}{{{_escaped_text(text)}}}"
+        for kind, text in chunks
     )
+
+
+def narrative_latex(paragraphs, width: int = NARRATIVE_LINE) -> str:
+    """Paragraphs as lines of `\\text{}` and mathematics, a line at most `width` long."""
+    lines: list[str] = []
+    for paragraph_index, paragraph in enumerate(paragraphs):
+        line: list = []
+        length = 0
+        for space_before, runs in _narrative_tokens(paragraph):
+            size = sum(len(text) for _kind, text in runs)
+            if line and length + 1 + size > width:
+                lines.append(_narrative_line_latex(line))
+                line, length = [], 0
+            line.append((space_before, runs))
+            length += size + (1 if length else 0)
+        if line:
+            lines.append(_narrative_line_latex(line))
+        if paragraph_index < len(paragraphs) - 1:
+            lines.append(None)  # a paragraph ends: more room than a line
+    rows = []
+    for line in lines:
+        if line is None:
+            rows[-1] += r" \\[8pt]"
+        else:
+            if rows and not rows[-1].endswith("[8pt]"):
+                rows[-1] += r" \\[2pt]"
+            rows.append(line)
+    return _FRAME + " ".join(rows) + r" \end{array}"
 
 
 def _latex_unit_text(unit) -> str:

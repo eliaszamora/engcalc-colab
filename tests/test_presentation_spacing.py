@@ -1,11 +1,12 @@
 from IPython.display import HTML, Markdown, Math
+from conftest import blocks_into
 
 
 def test_section_heading_has_slightly_more_vertical_separation(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "## Análisis de la viga\nA = 1")
 
@@ -17,7 +18,7 @@ def test_subsection_heading_has_slightly_more_vertical_separation(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "### Momento flector\nA = 1")
 
@@ -39,9 +40,11 @@ def test_a_narrative_carries_no_styling_of_its_own(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", '"""Texto explicativo."""\nA = 1')
 
-    assert [type(item) for item in displayed] == [Markdown, Math]
-    assert displayed[0].data == "Texto explicativo."
+    # Typeset as the mathematics is since 2026-09-25 (his choice): a `Math` output, its words
+    # in `\text{}`. Still no HTML: a relation inside HTML would stop rendering, as before.
+    assert [type(item) for item in displayed] == [Math, Math]
+    assert r"\text{Texto explicativo.}" in displayed[0].data and "<" not in displayed[0].data

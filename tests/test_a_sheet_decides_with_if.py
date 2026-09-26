@@ -69,8 +69,9 @@ def test_the_branch_that_holds_runs_and_says_why(sheet):
     assert not console, console
     (note,) = notes
     assert NOTE in note and note.endswith(r"\,\text{:}"), note
-    # Room above and below, so the sentence stands apart from the rows around it.
-    assert note.startswith(r"\rule["), note
+    # No room of its own: it stands apart from the rows around it by the one rule every
+    # block has, the magic's spacer (test_one_spacing_rule).
+    assert note.startswith(r"\textbf{Como}"), note
     assert r"7920.00\,\mathrm{kgf} > \phi_{v} V_{c} = 7603.63\,\mathrm{kgf}" in note, note
     assert r"421.83\,\mathrm{kgf}" in math, math
     assert r"V_{s} & = & \displaystyle 0.00" not in math, math

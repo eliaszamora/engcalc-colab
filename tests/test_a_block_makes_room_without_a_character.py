@@ -18,6 +18,11 @@ A strut of the same height says nothing and takes the same room. Measured in Mat
 the page's own width, not assumed: `\rule{0pt}{0.7em}` in those two rows gives a table
 101.8 px tall, against 101.8 px for the phantom, with the same four row heights. Without
 the rows at all the same block is 54.3 px, which is what the rows are there for.
+
+Since 2026-09-25 a block has no room of its own at all: the room between any two blocks is
+one rule, the magic's spacer (`magic.BLOCK_SPACER`, see `test_one_spacing_rule`), measured
+in his Colab. What this file still pins is that nothing in a block is a character with no
+ink, and that each block stands apart from the next.
 """
 
 import matplotlib
@@ -26,7 +31,8 @@ import pytest
 from IPython.display import Math
 
 import engcalc_colab.magic as magic
-from conftest import _computed_block_text, block_text
+from conftest import block_text
+from engcalc_colab.magic import BLOCK_SPACER
 
 matplotlib.use("Agg")
 
@@ -45,27 +51,20 @@ report(M_u)
 summary()
 """
 
-SPACER = r"\rule{0pt}{0.7em}"
-OPENS = r"\hspace{0.2em}\begin{array}{l} " + SPACER + r" \\[-4pt] "
-CLOSES = r" \\[4pt] " + SPACER + r" \end{array}"
-
-
-def rows_of(block: str) -> str:
-    """Just the rows: the block with its frame and its two spacer rows taken off."""
-    assert block.startswith(OPENS) and block.endswith(CLOSES), block[:120]
-    return block[len(OPENS) : -len(CLOSES)]
+OPENS = r"\hspace{0.2em}\begin{array}{l} "
 
 
 @pytest.fixture
-def blocks(monkeypatch):
-    captured = []
-    monkeypatch.setattr(magic, "display", captured.append)
+def captured(monkeypatch):
+    shown = []
+    monkeypatch.setattr(magic, "display", shown.append)
     magic.EngMagics().eng("", SHEET)
-    found = [
-        item.data
-        for item in captured
-        if isinstance(item, Math) and r"\rule{0pt}{0.7em} \\[-4pt]" in item.data
-    ]
+    return shown
+
+
+@pytest.fixture
+def blocks(captured):
+    found = [item.data for item in captured if isinstance(item, Math) and item.data.startswith(OPENS)]
     assert found, "no computed block reached the notebook"
     return found
 
@@ -77,24 +76,18 @@ def test_no_computed_block_makes_room_with_a_character(blocks):
         assert r"\phantom" not in block, block[:120]
 
 
-def test_the_room_is_still_there_above_and_below(blocks):
+def test_a_block_carries_no_room_of_its_own(blocks):
     for block in blocks:
         assert block.startswith(OPENS + r"\displaystyle "), block[:120]
-        assert block.endswith(CLOSES), block[-60:]
+        assert r"\rule{0pt}{0.7em}" not in block, block[:120]
 
 
-def test_the_room_adds_nothing_to_what_the_block_says(blocks):
-    """The block read as text is the block without its two spacer rows, read as text.
-
-    This is the question the defect answers no to, asked so that it cannot be answered
-    by a helper. `conftest.block_text` used to strip `\\phantom{0}` by name, which is
-    why no contract in this repository ever saw the zeros: the reader saw them and the
-    tests did not. That line is gone, so a spacer that says anything shows up here.
-    """
-    for block in blocks:
-        whole = " ".join(_computed_block_text(block).split())
-        rows = " ".join(_computed_block_text(rows_of(block)).split())
-        assert whole == rows, block[:120]
+def test_each_block_stands_apart_by_the_one_rule(captured):
+    """Between any two outputs of the cell, the same spacer - and none inside a block."""
+    for before, after in zip(captured, captured[1:]):
+        is_room = [getattr(item, "data", None) == BLOCK_SPACER for item in (before, after)]
+        assert any(is_room), (before, after)
+        assert not all(is_room), (before, after)
 
 
 def test_each_block_still_says_what_it_said(blocks):

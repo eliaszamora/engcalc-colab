@@ -40,9 +40,19 @@ markdown reads the span between two of them as emphasis, so they are escaped. So
 `<`, `>` and `&`, as entities rather than backslashes, because markdown passes raw HTML
 through and the HTML path used to escape them: a formula that does not typeset is not
 worth trading for a paragraph that can inject markup.
+
+**Since 2026-09-25 the output is a `Math`, and a paragraph is typeset as the working is.**
+Colab set the Markdown in its own letter, Google Sans at 14 px beside KaTeX's 16.94 px, and
+strips any style put on it; he chose the paragraph in the letter of the mathematics. The
+words go in `\\text{}` and each `$...$` span is mathematics between them - still never
+HTML, which is the point above and still true. What Markdown ate is now what LaTeX would
+read as a command, `# $ % & _ { } ~ ^ \\`, and it is written as text; the prose stays
+inert, the mathematics is still read whole, and the same rule decides which dollars are a
+formula. The contracts below are the ones this file held, asked of the new form.
 """
 
 import pytest
+from IPython.display import HTML, Markdown, Math
 
 import engcalc_colab.magic as magic
 
@@ -69,157 +79,111 @@ def narrative(text: str) -> str:
 
 def test_a_paired_span_becomes_inline_math(cell):
     out = cell(narrative("La cadena termina en $A_e = R_e L_e T$ y nada más."))
-    assert "$A_e = R_e L_e T$" in out, out
-    assert "La cadena termina en" in out, out
+    assert r"\text{La cadena termina en }A_e = R_e L_e T\text{ y nada más.}" in out, out
 
 
 def test_several_spans_in_one_paragraph(cell):
     out = cell(narrative("Primero $U = T q$, después $u_e = L_e U$."))
-    assert "$U = T q$" in out, out
-    assert "$u_e = L_e U$" in out, out
+    assert r"\text{Primero }U = T q\text{, después }u_e = L_e U\text{.}" in out, out
 
 
-def test_the_output_is_a_markdown_not_an_html(monkeypatch):
+def test_the_output_is_typeset_and_never_html(monkeypatch):
     """The whole point, and the thing a later edit is most likely to undo. An `HTML`
     output does not typeset in Colab at all, whatever delimiter it carries."""
-    from IPython.display import Markdown
-
     captured = []
     monkeypatch.setattr(magic, "display", captured.append)
     magic.EngMagics().eng("", narrative("Se cumple $U = T q$ siempre."))
-    assert any(isinstance(obj, Markdown) for obj in captured), captured
+    assert [type(obj) for obj in captured] == [Math], captured
 
 
 # --- the prose is inert -----------------------------------------------------------------
 
-def test_the_prose_around_it_is_still_escaped(cell):
-    """A narrative block is text the sheet's author typed, and it stays inert. Markdown
-    passes raw HTML through, so this is entities rather than the HTML path's escaping -
-    and it is the property that nearly went while the rendering was being fixed."""
+def test_markup_in_prose_is_text(cell):
+    """A narrative block is text the sheet's author typed, and it stays inert: inside
+    `\\text{}` a `<b>` is three characters, not bold - and written as `\\textless{}`, so no
+    `<` reaches the output's data at all."""
     out = cell(narrative("Antes <b>x</b> y luego $K_e = A^T k A$ después."))
-    assert "&lt;b&gt;" in out, out
-    assert "<b>" not in out, out
-    assert "$K_e = A^T k A$" in out, out
-
-
-def test_the_prose_after_the_last_span_is_escaped_too(cell):
-    """The half the first draft missed. Its only escaping contract put the markup
-    *before* the mathematics, so the tail after the last span was never exercised and
-    dropping its escape survived mutation."""
-    out = cell(narrative("Primero $K = A$ y luego <b>negrita</b>."))
-    assert "&lt;b&gt;" in out, out
+    assert r"\text{Antes \textless{}b\textgreater{}x\textless{}/b\textgreater{} y luego }K_e = A^T k A" in out, out
     assert "<b>" not in out, out
 
 
 def test_an_ampersand_is_an_ampersand(cell):
     out = cell(narrative("Acero A & B en la tabla."))
-    assert "&amp;" in out, out
+    assert r"A \& B" in out, out
 
 
-def test_an_underscore_in_prose_does_not_become_emphasis(cell):
+def test_an_underscore_in_prose_is_an_underscore(cell):
     """Measured on this repository's own benchmark: seven of these, in `L_e`, `R_e`,
-    `A_e`, `theta_1` and `theta_4`. Left unescaped, "la cadena T, L_e, R_e" prints with
-    "e, R" in italics and the underscores gone."""
+    `A_e`, `theta_1` and `theta_4`. In prose they are underscores, not subscripts."""
     out = cell(narrative("La cadena T, L_e, R_e y nada más."))
-    assert r"L\_e" in out, out
-    assert r"R\_e" in out, out
+    assert r"L\_e" in out and r"R\_e" in out, out
 
 
 @pytest.mark.parametrize(
-    "character, meaning",
+    "character, written",
     [
-        ("_", "emphasis"),
-        ("*", "emphasis"),
-        ("`", "code"),
-        ("#", "a heading"),
-        ("\\", "an escape"),
+        ("_", r"\_"),
+        ("#", r"\#"),
+        ("%", r"\%"),
+        ("{", r"\{"),
+        ("}", r"\}"),
+        ("~", r"\textasciitilde{}"),
+        ("^", r"\textasciicircum{}"),
+        ("\\", r"\textbackslash{}"),
+        ("*", "*"),
     ],
 )
-def test_every_markdown_special_stays_literal_in_prose(cell, character, meaning):
+def test_every_latex_special_stays_literal_in_prose(cell, character, written):
     """One rule, not a list of remembered characters: a narrative is text the author
-    typed, and it reads back the way it was typed. The HTML path guaranteed that by
-    escaping everything; markdown keeps the guarantee only if the whole set is escaped,
-    and a set is exactly the kind of thing a later edit trims a member from.
-
-    `#` is the one that looks like padding and is not - `estribos #3 @ 20 cm` is how a
-    Chilean sheet writes rebar, and at the start of a paragraph markdown reads it as a
-    heading.
-    """
+    typed, and it reads back the way it was typed. `#` is `estribos #3 @ 20 cm`, how a
+    Chilean sheet writes rebar; a lone `*` is not emphasis."""
     out = cell(narrative(f"Un texto con {character} en medio."))
-    assert "\\" + character in out, out
+    assert rf"\text{{Un texto con {written} en medio.}}" in out, out
 
 
 def test_a_numbered_paragraph_keeps_its_own_number(cell):
-    """The worst thing markdown can do to a memoria, because nothing looks wrong.
-
-    Two paragraphs opening "3." and "5." are one ordered list to markdown, and an ordered
-    list renumbers: `<ol start="3">` with items 3 and *4*. The paragraph the engineer
-    numbered 5 prints as 4. Measured with the same markdown converter the notebook uses,
-    not assumed.
-    """
+    """Markdown renumbered `3.` and `5.` as a list, 3 and 4. Typeset, a number is a number."""
     out = cell(narrative("3. Tercera etapa.\n\n5. Quinta etapa."))
-    assert out == "3\\. Tercera etapa.\n\n5\\. Quinta etapa.", out
+    assert r"\text{3. Tercera etapa.}" in out and r"\text{5. Quinta etapa.}" in out, out
 
 
 def test_a_paragraph_opening_with_a_dash_is_not_a_bullet(cell):
     out = cell(narrative("- El acero llega en barras."))
-    assert out == "\\- El acero llega en barras.", out
+    assert r"\text{- El acero llega en barras.}" in out, out
 
 
-def test_a_decimal_at_the_start_is_left_alone(cell):
-    """`3.` is a list marker only when a space follows it, so the escape must not fire
-    here - `3\\.7 m` would put a backslash on the page of every sheet that opens a
-    paragraph with a measurement."""
-    out = cell(narrative("3.7 m es la altura libre del piso."))
-    assert out == "3.7 m es la altura libre del piso.", out
-
-
-def test_a_bracket_is_an_entity_and_never_a_backslash(cell):
-    r"""The one member of the set that cannot take a backslash. `\[` is MathJax's
-    default display delimiter, and the notebook lifts mathematics out before markdown
-    runs, so `el vector U [doce componentes]` escaped the markdown way arrives as
-    `\[doce componentes\]` and the sentence turns into a centred formula.
-
-    Found by a mutant: removing `]` from the escape set killed nothing, and asking why
-    `]` was there at all was what exposed what `[` was doing.
-    """
+def test_a_bracket_is_a_bracket(cell):
     out = cell(narrative("El vector U [doce componentes] se toma aparte."))
-    assert "&#91;doce componentes] se toma" in out, out
-    assert "\\[" not in out, out
+    assert r"\text{El vector U [doce componentes] se toma aparte.}" in out, out
 
 
 def test_the_mathematics_itself_is_not_escaped(cell):
     """The other half of the same rule, and the one an over-eager escape breaks. LaTeX
-    is read whole by MathJax: `\\,` is a thin space and `<` is a relation, and escaping
-    either turns a formula into rubble."""
+    is read whole: `\\,` is a thin space and `<` is a relation."""
     out = cell(narrative(r"Se cumple $A_e = R_e\,L_e\,T$ cuando $a < b$."))
-    assert r"$A_e = R_e\,L_e\,T$" in out, out
-    assert "$a < b$" in out, out
+    assert r"A_e = R_e\,L_e\,T" in out and r"a < b" in out, out
 
 
 # --- the dollars that are not mathematics -------------------------------------------------
 
 def test_a_lone_dollar_stays_a_dollar(cell):
     out = cell(narrative("El coste es de 5 $ por metro."))
-    assert r"5 \$ por metro" in out, out
+    assert r"\text{El coste es de 5 \$ por metro.}" in out, out
 
 
 def test_two_amounts_are_not_read_as_one_formula(cell):
     """The rule that makes `$...$` safe in prose: a span whose content begins or ends
-    with a space is not mathematics. Escaped as well, because Colab reads a markdown
-    output's dollars itself and turned `cuesta $5 el kilo y $10 el metro` into one
-    formula when they were left bare."""
+    with a space is not mathematics, so `cuesta $5 y $10` keeps its dollars."""
     out = cell(narrative("Cuesta $5 y $10 según el caso."))
-    assert r"\$5 y \$10" in out, out
+    assert r"\text{Cuesta \$5 y \$10 según el caso.}" in out, out
 
 
 def test_an_empty_span_is_left_alone(cell):
     out = cell(narrative("Nada aquí $$ tampoco."))
-    assert r"\$\$" in out, out
+    assert r"\text{Nada aquí \$\$ tampoco.}" in out, out
 
 
-def test_a_narrative_without_any_dollar_is_unchanged(cell):
-    """The half that must not move: every memoria written before this."""
+def test_a_narrative_without_any_dollar_is_written_whole(cell):
+    """The half that must not move: every memoria written before this reads the same."""
     out = cell(narrative("Una explicación corriente, sin matemáticas."))
-    assert "Una explicación corriente, sin matemáticas." in out, out
-    assert "$" not in out, out
+    assert r"\text{Una explicación corriente, sin matemáticas.}" in out, out

@@ -1,11 +1,12 @@
 from IPython.display import HTML, Math
+from conftest import blocks_into
 
 
 def _capture(cell, monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", cell)
     return displayed

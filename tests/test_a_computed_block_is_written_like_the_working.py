@@ -33,7 +33,7 @@ from IPython.display import Math
 
 import engcalc_colab.magic as magic
 
-from conftest import block_text
+from conftest import blocks_into, block_text
 
 
 SHEET = (
@@ -99,12 +99,13 @@ def test_every_block_starts_at_the_working_s_edge(outputs):
         assert output.data.startswith(r"\hspace{0.2em}\begin{array}"), (kind, output.data[:60])
 
 
-def test_every_block_has_room_above_and_below(outputs):
+def test_every_block_opens_and_closes_in_one_frame(outputs):
+    """Its room from the blocks around it is no longer its own: one rule for every block,
+    the magic's spacer, since 2026-09-25 - see test_one_spacing_rule."""
     for kind, output in blocks(outputs).items():
-        assert output.data.startswith(
-            r"\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt] \displaystyle "
-        ), (kind, output.data[:120])
-        assert output.data.endswith(r"\\[4pt] \rule{0pt}{0.7em} \end{array}"), (kind, output.data[-60:])
+        assert output.data.startswith(r"\hspace{0.2em}\begin{array}{l} \displaystyle "), (kind, output.data[:120])
+        assert output.data.endswith(r" \end{array}"), (kind, output.data[-60:])
+        assert r"\rule{0pt}{0.7em}" not in output.data, (kind, output.data[:120])
 
 
 def test_the_words_of_a_block_are_set_as_text(outputs):
@@ -155,8 +156,11 @@ def test_what_each_block_says_is_unchanged(outputs):
 
 
 def test_a_heading_and_a_narrative_are_still_text(monkeypatch):
+    """A heading is HTML, and a paragraph is set as the working is since 2026-09-25 (his
+    choice): a Math output whose words are `\\text{}`."""
     captured = []
-    monkeypatch.setattr(magic, "display", captured.append)
+    monkeypatch.setattr(magic, "display", blocks_into(captured))
     magic.EngMagics().eng("", '### Viga\n"""\nUna viga simplemente apoyada.\n"""\nL := 6*m\n')
     kinds = [type(output).__name__ for output in captured]
-    assert kinds == ["HTML", "Markdown", "Math"], kinds
+    assert kinds == ["HTML", "Math", "Math"], kinds
+    assert r"\text{Una viga simplemente apoyada.}" in captured[1].data, captured[1].data
