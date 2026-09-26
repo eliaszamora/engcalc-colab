@@ -1,5 +1,7 @@
 import sympy as sp
 
+from conftest import without_fraction_depth
+
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.renderer import (
@@ -56,7 +58,7 @@ def test_long_solve_equation_is_wrapped_and_solution_gets_its_own_row():
     result = evaluate(engine, "R_B(q) = solve(delta_B, R_B_aux)")
 
     rows = _display_rows(result, RenderSettings())
-    latex = render_aligned_results([result])
+    latex = without_fraction_depth(render_aligned_results([result]))
 
     assert len(rows) >= 3
     assert r"\\[4pt]" in latex

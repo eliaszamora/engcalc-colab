@@ -14,9 +14,9 @@ _2026-09-25._
 |---|---|
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
-| merged, not released | #326 `% if` (`1f926db`), #327 a `=` line of values (`c8a6036`), #328 names in italic (`cf8ffa5`) |
-| open | `feat/one-spacing-rule` - waiting for his yes; merged since 0.38.0: #326-#332 (`% if`, `=` values, italic, `% for`, `% while`, `solve` in a range, named `numeric`) |
-| default suite | **3112 passing** on the spacing branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| merged, not released | #326 `% if`, #327 `=` values, #328 italic, #329 `% for`, #330 `% while`, #331 `solve` in a range, #332 named `numeric`, #333 one spacing rule + KaTeX letter (`8f40539`) |
+| open | `fix/a-fraction-row-has-room` - a row holding a fraction takes its depth on top of the break; waiting for his yes (it moves rows on every page) |
+| default suite | **3117 passing** on the fraction branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -967,7 +967,7 @@ gives the table, sheet names and sheet functions included. My earlier "unsupport
 from probing with `As_req` undefined. Possible improvement, not done: name the rows
 (`Mu_pos`) instead of only their numbers.
 
-### One rule for the room between blocks (branch `feat/one-spacing-rule`, PR open)
+### One rule for the room between blocks (#333, merged with his yes, `8f40539`)
 
 He asked (2026-09-25) why the `"""` text looked like another letter, why it sat so close to
 the equations, and for one spacing rule instead of patches. MEASURED IN HIS COLAB (cell 15,
@@ -1002,9 +1002,25 @@ installed: gaps 15-20 px, all text KaTeX.
 
 Still open, his: with `%eng_units kN` a typed `6000*mm^2` reads `0.006 m²` and δ `0.00241 m`.
 
-**Exact next step:** his yes on the spacing PR (he can see it in cell 15 of "Ejercicio 2.2";
-cell 15 now installs the branch). After merging, cell 13 reinstalls `main`. Then his
-exercise 2.1 as a reference exercise, the kN palette question; a release when he asks.
+### A row holding a fraction keeps its room (branch `fix/a-fraction-row-has-room`, PR open)
+
+Seen in the images of #333 (he asked to correct what I noticed): `R_A = qL/2` stood on
+`R_B = qL/2`, measured -4 px apart (ink on ink); `q` on `E` -5 px; the `d_max` derivation
+-1..6 px; plain rows 11 px. KaTeX reads `\[Npt]` as the least depth of the row above, and a
+display fraction is already ~0.69 em deep (11.6 px of 16.94 px), so the space added
+nothing. `renderer._row_break`: a row that `_is_tall` (fraction, integral, sum, cases...)
+and has no matrix above or below takes `_FRACTION_DEPTH_PT` = 9 pt on top of its space
+(`8pt` -> `17pt`, `4pt` -> `13pt`, `16pt` -> `25pt`). A unit fraction (`kN/m`) counts:
+it is as deep. After: R_A->R_B 11 px, q->E 3 px, d_max 6..18 px. Tests that read which
+space stands between stages use `conftest.without_fraction_depth`; the five reference
+pages changed only by that depth (126 breaks, checked item by item, scratchpad
+`check_fraction_snapshots.py`). 5 contracts; mutation 2/2; suite 3117 on SymPy 1.14 and
+1.13.3.
+
+**Exact next step:** his yes on the fraction PR, with the before/after images in front of
+him. Then his exercise 2.1 (a truss: compatibility, not the sum of the two elongation
+vectors - see the conversation of 2026-09-25) as a reference exercise, the kN palette
+question; a release when he asks.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

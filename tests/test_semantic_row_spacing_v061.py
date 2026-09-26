@@ -1,3 +1,4 @@
+from conftest import without_fraction_depth
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.parser import parse_cell
 from engcalc_colab.renderer import _display_rows, render_aligned_results
@@ -23,7 +24,7 @@ def test_numeric_uses_eight_points_between_formula_substitution_and_result():
         "L := 4*m\n"
         "numeric(M_A)"
     )[-1]
-    latex = render_aligned_results([result])
+    latex = without_fraction_depth(render_aligned_results([result]))
 
     assert latex.count(r"\\[8pt]") == 2
     assert r"\\[2pt]" not in latex

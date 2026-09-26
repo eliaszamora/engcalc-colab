@@ -21,6 +21,8 @@ from IPython.display import Math
 
 import engcalc_colab.magic as magic
 
+from conftest import without_fraction_depth
+
 VALUES = (
     "fc := 210*kgf/cm^2\nfy := 4200*kgf/cm^2\nb := 30*cm\nd := 44*cm\nphi := 0.9\n"
     "keep f_cw = 0.85*fc\n"
@@ -111,7 +113,7 @@ def test_a_long_row_keeps_the_shape_of_its_formula(sheet):
     one fraction, the bracket on the next row. Seen in his Colab on 0.36.0."""
     page, console = sheet(FUNCTION + "As_2 = As_req(876940*kgf*cm)\nnumeric(As_2)\n")
     assert not console, console
-    rows = page.split(r"\mathit{As}_{2} & = & ", 1)[1].split(r"\end{array}", 1)[0]
+    rows = without_fraction_depth(page).split(r"\mathit{As}_{2} & = & ", 1)[1].split(r"\end{array}", 1)[0]
     substitution = rows.split(r"\[8pt]")[2]
     assert r"\quad \cdot \left(1 - \sqrt{" in substitution, substitution
     assert r"\frac{1}{" not in substitution, substitution
@@ -144,7 +146,7 @@ def test_a_bracket_too_wide_for_a_row_wraps_inside_itself(sheet):
     ...` over as many rows as it needs, closed where it ends. Asked for on 2026-09-25."""
     page, console = sheet(PHI_MN)
     assert not console, console
-    block = page.split(r"\mathit{phiMn} & = &", 1)[1]
+    block = without_fraction_depth(page).split(r"\mathit{phiMn} & = &", 1)[1]
     substitution = block.split(r"\[8pt]")[1]
     assert substitution.count(r"\left(0.90\right)") == 1, substitution
     assert r"\quad \cdot \left(" in substitution and r"\right)" in substitution, substitution

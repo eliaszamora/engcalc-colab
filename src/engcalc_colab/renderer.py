@@ -3991,7 +3991,16 @@ def _row_break(spacing: str, above: str, below: str) -> str:
     """
     if _MATRIX_OPENING in above or _MATRIX_OPENING in below:
         return rf"\\[{spacing}] \rule{{0pt}}{{0.7em}} \\"
+    # A fraction above is deeper than the space, which is only the least depth the row may
+    # have: `R_A = qL/2` stood on `R_B = qL/2`, 0-4 px apart (2026-09-25). Its depth goes on
+    # top, so the room between the two is the room the page meant.
+    if _is_tall(above) and spacing.endswith("pt"):
+        return rf"\\[{int(spacing[:-2]) + _FRACTION_DEPTH_PT}pt]"
     return rf"\\[{spacing}]"
+
+
+# The depth of a display fraction, ~0.69 em of KaTeX's 16.94 px in Colab: 11.6 px, 9 pt.
+_FRACTION_DEPTH_PT = 9
 
 
 _MATRIX_OPENING = r"\begin{matrix}"

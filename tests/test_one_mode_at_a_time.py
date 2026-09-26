@@ -29,7 +29,7 @@ import pytest
 
 import engcalc_colab.magic as magic
 
-from conftest import block_text
+from conftest import block_text, without_fraction_depth
 
 from test_a_building_with_many_storeys_has_modes import building, reference
 
@@ -42,7 +42,7 @@ def cell(monkeypatch):
     def run(source: str) -> tuple[str, str]:
         captured.clear()
         magic.EngMagics().eng("", source)
-        raw = "".join(str(getattr(obj, "data", "")) for obj in captured)
+        raw = without_fraction_depth("".join(str(getattr(obj, "data", "")) for obj in captured))
         return raw, block_text(raw)
 
     return run

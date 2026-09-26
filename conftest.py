@@ -102,6 +102,57 @@ def without_spacer_rows(latex: str) -> str:
     return _SPACER_ROW.sub(r"\1", latex)
 
 
+_ARRAY_TOKEN = _re.compile(r"\\begin\{|\\end\{|\\\\\[(\d+)pt\]")
+
+
+def without_fraction_depth(latex: str) -> str:
+    r"""The working with the depth a fraction adds to the break under it taken back out.
+
+    A row holding a fraction is followed by the space the page meant plus the fraction's
+    depth, `\\[17pt]` for `\\[8pt]`, because KaTeX reads the space as the least depth of the
+    row. A contract about which space stands between two stages is about the space, not
+    about that depth - which `test_a_fraction_row_has_room` pins on its own. Only the breaks
+    of the outermost rows are read; a matrix's own rows keep theirs.
+    """
+    from engcalc_colab.renderer import _FRACTION_DEPTH_PT, _MATRIX_OPENING, _is_tall
+
+    tokens = list(_ARRAY_TOKEN.finditer(latex))
+    depth, levels = 0, []
+    for token in tokens:
+        if token.group(0) == r"\begin{":
+            depth += 1
+        elif token.group(0) == r"\end{":
+            depth -= 1
+        else:
+            levels.append(depth)
+    if not levels:
+        return latex
+    outermost = min(levels)
+    # The outermost rows: where each starts, and the break that ends it.
+    breaks, starts, depth = [], [0], 0
+    for token in tokens:
+        if token.group(0) == r"\begin{":
+            depth += 1
+            if depth == outermost:  # the array the rows stand in opens here
+                opening = _re.compile(r"\\begin\{\w+\}(?:\{[^}]*\})?").match(latex, token.start())
+                starts[-1] = opening.end()
+        elif token.group(0) == r"\end{":
+            depth -= 1
+        elif depth == outermost:
+            breaks.append(token)
+            starts.append(token.end())
+    rows = [latex[start:(breaks[i].start() if i < len(breaks) else len(latex))] for i, start in enumerate(starts)]
+    out, last = [], 0
+    for index, token in enumerate(breaks):
+        above, below = rows[index], rows[index + 1]
+        space = int(token.group(1))
+        if _MATRIX_OPENING not in above and _MATRIX_OPENING not in below and _is_tall(above):
+            space -= _FRACTION_DEPTH_PT
+        out.append(latex[last:token.start()] + rf"\\[{space}pt]")
+        last = token.end()
+    return "".join(out) + latex[last:]
+
+
 def blocks_into(items: list):
     """A `display` for contracts about what the blocks are: every output but the room.
 

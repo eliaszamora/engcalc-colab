@@ -1,3 +1,4 @@
+from conftest import without_fraction_depth
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import ParsedHeading
 from engcalc_colab.parser import parse_cell
@@ -97,7 +98,7 @@ def test_numeric_rows_preserve_three_column_layout_and_spacing():
         "q := 2.8*tonf/m\nL := 4*m\n\nP := q*L",
     )
 
-    latex = render_aligned_results(results)
+    latex = without_fraction_depth(render_aligned_results(results))
 
     assert r"\begin{array}{lcl}" in latex
     assert r"\\[8pt]" in latex
@@ -112,7 +113,7 @@ def test_aligned_named_numeric_evaluation_uses_vertical_stage_rows():
     evaluate(engine, "L := 4*m")
 
     result = evaluate(engine, "numeric(M_A)")
-    latex = render_aligned_results([result])
+    latex = without_fraction_depth(render_aligned_results([result]))
 
     assert r"M_{A} & = & \displaystyle \frac{q L^{2}}{8}" in latex
     assert latex.count(" & = & ") == 3

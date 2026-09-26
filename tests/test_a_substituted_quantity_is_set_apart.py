@@ -27,6 +27,8 @@ from IPython.display import Math
 
 import engcalc_colab.magic as magic
 
+from conftest import without_fraction_depth
+
 matplotlib.use("Agg")
 
 
@@ -49,7 +51,7 @@ def rows(monkeypatch):
         magic.EngMagics().eng("", SHEET + source)
         maths = [item.data for item in captured if isinstance(item, Math)]
         assert maths, "the cell displayed no mathematics"
-        body = maths[-1]
+        body = without_fraction_depth(maths[-1])
         body = body[body.index(r"{lcl}") + len(r"{lcl}") :].replace(r"\end{array}", "")
         return [row.strip() for row in body.split(r"\\[8pt]")]
 
