@@ -3,18 +3,36 @@
 === console ===
 
 === 0 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Formas que las otras dos hojas no tocan</div>
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Formas que las otras dos hojas no tocan</div>
 
-=== 1 · Markdown ===
-Esta hoja no es una memoria: existe para que la comparación de páginas de referencia vea formas que ni la viga ni la memoria contienen. Medido contra los mutantes de las correcciones 0.30.8 a 0.30.11, esas dos hojas dejaban pasar 21 de 40, y casi todos por la misma razón - la forma no estaba en ninguna página. Cada bloque dice cuál cubre.
+=== 1 · HTML ===
+<div style="height:18px"></div>
 
-=== 2 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Potencias de la longitud en la paleta</div>
+=== 2 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Esta hoja no es una memoria: existe para que la comparación de páginas de} \\[2pt]
+\text{referencia vea formas que ni la viga ni la memoria contienen. Medido contra} \\[2pt]
+\text{los mutantes de las correcciones 0.30.8 a 0.30.11, esas dos hojas dejaban} \\[2pt]
+\text{pasar 21 de 40, y casi todos por la misma razón - la forma no estaba en} \\[2pt]
+\text{ninguna página. Cada bloque dice cuál cubre.} \end{array}}
 
-=== 3 · Markdown ===
-Un módulo resistente es una longitud al cubo y una curvatura es una longitud a la menos uno. Con la paleta kgf salían en otro sistema que el trabajo de la línea de arriba.
+=== 3 · HTML ===
+<div style="height:18px"></div>
 
-=== 4 · Math ===
+=== 4 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Potencias de la longitud en la paleta</div>
+
+=== 5 · HTML ===
+<div style="height:18px"></div>
+
+=== 6 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Un módulo resistente es una longitud al cubo y una curvatura es una longitud} \\[2pt]
+\text{a la menos uno. Con la paleta kgf salían en otro sistema que el trabajo de} \\[2pt]
+\text{la línea de arriba.} \end{array}}
+
+=== 7 · HTML ===
+<div style="height:18px"></div>
+
+=== 8 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle L & = & \displaystyle 6.00\,\mathrm{m} \\[8pt]
 \displaystyle b & = & \displaystyle 300.00\,\mathrm{mm} \\[8pt]
 \displaystyle h & = & \displaystyle 600.00\,\mathrm{mm} \\[8pt]
@@ -37,17 +55,30 @@ Un módulo resistente es una longitud al cubo y una curvatura es una longitud a 
 & = & \displaystyle \frac{\left(183.60\,\mathrm{kN} \cdot \mathrm{m}\right)}{\left(23500.00\,\mathrm{MPa}\right)\,\left(5.40 \times 10^{9}\,\mathrm{mm}^{4}\right)} \\[8pt]
 & = & \displaystyle 0.00145\,\frac{1}{\mathrm{m}} \end{array}
 
-=== 5 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un eje con cociente</div>
+=== 9 · HTML ===
+<div style="height:18px"></div>
 
-=== 6 · Markdown ===
-Una carga distribuida en el eje: \`kgf/cm\` en una línea y no como fracción apilada.
+=== 10 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un eje con cociente</div>
 
-=== 7 · Math ===
+=== 11 · HTML ===
+<div style="height:18px"></div>
+
+=== 12 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Una carga distribuida en el eje: `kgf/cm` en una línea y no como fracción} \\[2pt]
+\text{apilada.} \end{array}}
+
+=== 13 · HTML ===
+<div style="height:18px"></div>
+
+=== 14 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q & = & \displaystyle 30.00\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[8pt]
 \displaystyle w\left(x\right) & = & \displaystyle q \left(1 + \frac{x}{L}\right) \end{array}
 
-=== 8 · Figure ===
+=== 15 · HTML ===
+<div style="height:18px"></div>
+
+=== 16 · Figure ===
 title: w(x)
 xlabel: x [$\mathrm{m}$]
 ylabel: w(x) [$\mathrm{kgf}/\mathrm{cm}$]
@@ -56,17 +87,30 @@ positive: up
 annotation: (0, 30)
 annotation: (6, 60)
 
-=== 9 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un barrido de cuatro curvas</div>
+=== 17 · HTML ===
+<div style="height:18px"></div>
 
-=== 10 · Markdown ===
-La leyenda con la precisión de la página y el panel resumen con sus encabezados en negrita, que solo aparece con cuatro curvas o más.
+=== 18 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un barrido de cuatro curvas</div>
 
-=== 11 · Math ===
+=== 19 · HTML ===
+<div style="height:18px"></div>
+
+=== 20 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{La leyenda con la precisión de la página y el panel resumen con sus} \\[2pt]
+\text{encabezados en negrita, que solo aparece con cuatro curvas o más.} \end{array}}
+
+=== 21 · HTML ===
+<div style="height:18px"></div>
+
+=== 22 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle P_{2} & = & \displaystyle 200.00\,\mathrm{kN} \\[8pt]
 \displaystyle \mathit{Md}\left(x\right) & = & \displaystyle \frac{P_{2} x \left(L - x\right)}{L} \end{array}
 
-=== 12 · Figure ===
+=== 23 · HTML ===
+<div style="height:18px"></div>
+
+=== 24 · Figure ===
 title: Md(x)
 xlabel: x [$\mathrm{m}$]
 ylabel: Md(x) [$\mathrm{kN} \cdot \mathrm{m}$]
@@ -103,96 +147,172 @@ summary: P2 = 800.00 kN
 summary: max
 summary: 1200
 
-=== 13 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un voladizo</div>
+=== 25 · HTML ===
+<div style="height:18px"></div>
 
-=== 14 · Markdown ===
-El empotramiento es un borde y no vale cero, así que distingue la expresión escrita de la simplificada donde la viga, con sus dos bordes en cero, no puede.
+=== 26 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un voladizo</div>
 
-=== 15 · Math ===
+=== 27 · HTML ===
+<div style="height:18px"></div>
+
+=== 28 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El empotramiento es un borde y no vale cero, así que distingue la expresión} \\[2pt]
+\text{escrita de la simplificada donde la viga, con sus dos bordes en cero, no} \\[2pt]
+\text{puede.} \end{array}}
+
+=== 29 · HTML ===
+<div style="height:18px"></div>
+
+=== 30 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{Dv}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x^{2}}{2} \\[8pt]
 \displaystyle M_{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x^{2}}{2} \\[8pt]
 \displaystyle \mathit{Dv}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x^{2}}{2} \\[8pt]
 \displaystyle \mathit{Lvv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x^{2}}{2} \\[8pt]
 \displaystyle U_{3}\left(x\right) & = & \displaystyle 1.2 \, \mathit{Dv}\left(x\right) + 1.6 \, \mathit{Lvv}\left(x\right) \end{array}
 
-=== 16 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Extrema} \text{ — } U_{3}\left(x\right) \\[8pt]
+=== 31 · HTML ===
+<div style="height:18px"></div>
+
+=== 32 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Extrema} \text{ — } U_{3}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{m} \text{ to } 6.00\,\mathrm{m} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
-\displaystyle x = L\,\left(6.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0.6\,\mathit{qD}\,L^{2} + 0.8\,\mathit{qL}\,L^{2}\,\left(734.40\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{boundary, global max} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle x = L\,\left(6.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0.6\,\mathit{qD}\,L^{2} + 0.8\,\mathit{qL}\,L^{2}\,\left(734.40\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{boundary, global max} \end{array}
 
-=== 17 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un valor absoluto</div>
+=== 33 · HTML ===
+<div style="height:18px"></div>
 
-=== 18 · Markdown ===
-Un cortante que no cambia de signo en el tramo: el valor absoluto se resuelve, y con el signo que corresponde.
+=== 34 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un valor absoluto</div>
 
-=== 19 · Math ===
+=== 35 · HTML ===
+<div style="height:18px"></div>
+
+=== 36 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Un cortante que no cambia de signo en el tramo: el valor absoluto se} \\[2pt]
+\text{resuelve, y con el signo que corresponde.} \end{array}}
+
+=== 37 · HTML ===
+<div style="height:18px"></div>
+
+=== 38 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle R_{uso} & = & \displaystyle -9.00\,\mathrm{kN} \\[8pt]
 \displaystyle q_{uso} & = & \displaystyle 1.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
 \displaystyle L_{c} & = & \displaystyle 2.00\,\mathrm{m} \\[8pt]
 \displaystyle V_{uso}\left(x\right) & = & \displaystyle R_{uso} + q_{uso} x \end{array}
 
-=== 20 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Extrema} \text{ — } \left|V_{uso}\left(x\right)\right| \\[8pt]
+=== 39 · HTML ===
+<div style="height:18px"></div>
+
+=== 40 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Extrema} \text{ — } \left|V_{uso}\left(x\right)\right| \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{m} \text{ to } 2.00\,\mathrm{m} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = - R_{uso}\,\left(9.00\,\mathrm{kN}\right) \quad\cdot\quad \text{boundary, global max} \\[8pt]
-\displaystyle x = L_{c}\,\left(2.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = - q_{uso} L_{c} - R_{uso}\,\left(7.00\,\mathrm{kN}\right) \quad\cdot\quad \text{boundary, global min} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle x = L_{c}\,\left(2.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = - q_{uso} L_{c} - R_{uso}\,\left(7.00\,\mathrm{kN}\right) \quad\cdot\quad \text{boundary, global min} \end{array}
 
-=== 21 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Una luz escrita en milímetros</div>
+=== 41 · HTML ===
+<div style="height:18px"></div>
 
-=== 22 · Markdown ===
-La carga por metro y la luz en milímetros dejan el momento en una unidad que nadie escribe. Sin paleta, los apoyos salían en ella al lado del máximo; con paleta nunca se vio, por eso esta hoja se compara también sin paleta. Seis metros y no setenta centímetros: así el máximo sale en kN·m, y un cero que eligiera solo, sin mirar a su vecino, saldría en N·m.
+=== 42 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Una luz escrita en milímetros</div>
 
-=== 23 · Math ===
+=== 43 · HTML ===
+<div style="height:18px"></div>
+
+=== 44 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{La carga por metro y la luz en milímetros dejan el momento en una unidad que} \\[2pt]
+\text{nadie escribe. Sin paleta, los apoyos salían en ella al lado del máximo; con} \\[2pt]
+\text{paleta nunca se vio, por eso esta hoja se compara también sin paleta. Seis} \\[2pt]
+\text{metros y no setenta centímetros: así el máximo sale en kN$\cdot$m, y un cero que} \\[2pt]
+\text{eligiera solo, sin mirar a su vecino, saldría en N$\cdot$m.} \end{array}}
+
+=== 45 · HTML ===
+<div style="height:18px"></div>
+
+=== 46 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle L_{mm} & = & \displaystyle 6000.00\,\mathrm{mm} \\[8pt]
 \displaystyle q_{mm} & = & \displaystyle 18.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
 \displaystyle M_{mm}\left(x\right) & = & \displaystyle \frac{q_{mm} x \left(L_{mm} - x\right)}{2} \end{array}
 
-=== 24 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Extrema} \text{ — } M_{mm}\left(x\right) \\[8pt]
+=== 47 · HTML ===
+<div style="height:18px"></div>
+
+=== 48 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Extrema} \text{ — } M_{mm}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{m} \text{ to } 6.00\,\mathrm{m} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{boundary, global min} \\[8pt]
 \displaystyle x = \dfrac{L_{mm}}{2}\,\left(3.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = \dfrac{q_{mm} L_{mm}^{2}}{8}\,\left(81.00\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{local max, global max} \\[8pt]
-\displaystyle x = L_{mm}\,\left(6.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{boundary, global min} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle x = L_{mm}\,\left(6.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{boundary, global min} \end{array}
 
-=== 25 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Dos unidades multiplicadas en una fórmula</div>
+=== 49 · HTML ===
+<div style="height:18px"></div>
 
-=== 26 · Markdown ===
-Un momento límite escrito con sus dos unidades, y un área escrita como largo por ancho. Ninguna de las tres hojas tenía un producto de dos unidades dentro de una fórmula, así que la comparación de páginas no podía ver cómo se separan. Se separaban con un espacio: la fórmula decía 20 kN m al lado de su propio resultado 20.00 kN·m, y el área decía 0.30 m 0.60 m, donde m m es mm con un hueco.
+=== 50 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Dos unidades multiplicadas en una fórmula</div>
 
-=== 27 · Math ===
+=== 51 · HTML ===
+<div style="height:18px"></div>
+
+=== 52 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Un momento límite escrito con sus dos unidades, y un área escrita como largo} \\[2pt]
+\text{por ancho. Ninguna de las tres hojas tenía un producto de dos unidades} \\[2pt]
+\text{dentro de una fórmula, así que la comparación de páginas no podía ver cómo} \\[2pt]
+\text{se separan. Se separaban con un espacio: la fórmula decía 20 kN m al lado de} \\[2pt]
+\text{su propio resultado 20.00 kN$\cdot$m, y el área decía 0.30 m 0.60 m, donde m m es} \\[2pt]
+\text{mm con un hueco.} \end{array}}
+
+=== 53 · HTML ===
+<div style="height:18px"></div>
+
+=== 54 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{lim} & = & \displaystyle 20\,\mathrm{kN} \cdot \mathrm{m} \\[8pt]
 & = & \displaystyle 20.00\,\mathrm{kN} \cdot \mathrm{m} \\[8pt]
 \displaystyle A_{c} & = & \displaystyle 0.30 \cdot 0.60\,\mathrm{m} \cdot \mathrm{m} \\[8pt]
 & = & \displaystyle 1800.00\,\mathrm{cm}^{2} \end{array}
 
-=== 28 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un momento escrito en kgf·cm dentro de una fórmula</div>
+=== 55 · HTML ===
+<div style="height:18px"></div>
 
-=== 29 · Markdown ===
-El orden de las dos unidades. Una cantidad guarda el orden en que se construyó, y las tablas de la página escriben todo momento con la fuerza primero; una fórmula recibía sus factores en orden alfabético, y decía cm·kgf una línea antes de su propio valor en kgf·cm.
+=== 56 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un momento escrito en kgf·cm dentro de una fórmula</div>
 
-=== 30 · Math ===
+=== 57 · HTML ===
+<div style="height:18px"></div>
+
+=== 58 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El orden de las dos unidades. Una cantidad guarda el orden en que se} \\[2pt]
+\text{construyó, y las tablas de la página escriben todo momento con la fuerza} \\[2pt]
+\text{primero; una fórmula recibía sus factores en orden alfabético, y decía} \\[2pt]
+\text{cm$\cdot$kgf una línea antes de su propio valor en kgf$\cdot$cm.} \end{array}}
+
+=== 59 · HTML ===
+<div style="height:18px"></div>
+
+=== 60 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{kgf} & = & \displaystyle 20000\,\mathrm{kgf} \cdot \mathrm{cm} \\[8pt]
 & = & \displaystyle 20000.00\,\mathrm{kgf} \cdot \mathrm{cm} \end{array}
 
-=== 31 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un solve con dos respuestas, un descarte y unas intersecciones</div>
+=== 61 · HTML ===
+<div style="height:18px"></div>
 
-=== 32 · Markdown ===
-Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos defectos: las unidades de un solve con varias respuestas y de la fila del descarte salían en cursiva, y una respuesta única sin nombre salía sin decir de qué es. Un modo se escribe 1/s en las tres filas o no se escribe igual en ninguna.
+=== 62 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un solve con dos respuestas, un descarte y unas intersecciones</div>
 
-=== 33 · Math ===
+=== 63 · HTML ===
+<div style="height:18px"></div>
+
+=== 64 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos} \\[2pt]
+\text{defectos: las unidades de un solve con varias respuestas y de la fila del} \\[2pt]
+\text{descarte salían en cursiva, y una respuesta única sin nombre salía sin decir} \\[2pt]
+\text{de qué es. Un modo se escribe 1/s en las tres filas o no se escribe igual en} \\[2pt]
+\text{ninguna.} \end{array}}
+
+=== 65 · HTML ===
+<div style="height:18px"></div>
+
+=== 66 · Math ===
 \hspace{0.2em}\begin{array}{lcl}  & & \displaystyle w^{2} = \frac{25}{\mathrm{s}^{2}} \\[8pt]
 \displaystyle w & = & \displaystyle - \frac{5}{\mathrm{s}}\;\;\left(-5.00\,\frac{1}{\mathrm{s}}\right) \\[4pt]
 \displaystyle w & = & \displaystyle \frac{5}{\mathrm{s}}\;\;\left(5.00\,\frac{1}{\mathrm{s}}\right) \\[16pt]
@@ -203,21 +323,35 @@ Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos defe
 \displaystyle M_{Dv2}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[8pt]
 \displaystyle M_{Lv2}\left(x\right) & = & \displaystyle 0.75\,\mathit{qL}\,x \left(L - x\right) \end{array}
 
-=== 34 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Intersections} \text{ — } M_{Dv2}\left(x\right) \text{ / } M_{Lv2}\left(x\right) \\[8pt]
+=== 67 · HTML ===
+<div style="height:18px"></div>
+
+=== 68 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Intersections} \text{ — } M_{Dv2}\left(x\right) \text{ / } M_{Lv2}\left(x\right) \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{m} \text{ to } 6.00\,\mathrm{m} \\[8pt]
 \displaystyle x = 0\,\left(0.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{intersection} \\[8pt]
-\displaystyle x = L\,\left(6.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{intersection} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle x = L\,\left(6.00\,\mathrm{m}\right) \quad\cdot\quad \text{value} = 0\,\left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) \quad\cdot\quad \text{intersection} \end{array}
 
-=== 35 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un piecewise evaluado con la variable libre</div>
+=== 69 · HTML ===
+<div style="height:18px"></div>
 
-=== 36 · Markdown ===
-Ninguna hoja de referencia dibujaba un piecewise con números y la variable todavía libre, y ahí vive una tercera fila que ninguna otra escribe: la respuesta, construida aparte del printer de SymPy. Sus ramas salían en estilo de texto, con la fracción de unidades dibujada pequeña, y la comparación de páginas no podía verlo porque la fila no estaba en ninguna.
+=== 70 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un piecewise evaluado con la variable libre</div>
 
-=== 37 · Math ===
+=== 71 · HTML ===
+<div style="height:18px"></div>
+
+=== 72 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Ninguna hoja de referencia dibujaba un piecewise con números y la variable} \\[2pt]
+\text{todavía libre, y ahí vive una tercera fila que ninguna otra escribe: la} \\[2pt]
+\text{respuesta, construida aparte del printer de SymPy. Sus ramas salían en} \\[2pt]
+\text{estilo de texto, con la fracción de unidades dibujada pequeña, y la} \\[2pt]
+\text{comparación de páginas no podía verlo porque la fila no estaba en ninguna.} \end{array}}
+
+=== 73 · HTML ===
+<div style="height:18px"></div>
+
+=== 74 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{1} & = & \displaystyle 8.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
 \displaystyle q_{2} & = & \displaystyle 4.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
 \displaystyle a_{q} & = & \displaystyle 3.00\,\mathrm{m} \\[8pt]
@@ -231,13 +365,25 @@ Ninguna hoja de referencia dibujaba un piecewise con números y la variable toda
 \displaystyle 4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
 \displaystyle 0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
 
-=== 38 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Una cantidad literal dentro de una rama</div>
+=== 75 · HTML ===
+<div style="height:18px"></div>
 
-=== 39 · Markdown ===
-Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se escondía un error que mataba la celda: con la variable libre, el motor pedía que le definieran el kilonewton. La definición, el mismo llamado en un punto y su extrema ya respondían; el único camino roto era éste.
+=== 76 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Una cantidad literal dentro de una rama</div>
 
-=== 40 · Math ===
+=== 77 · HTML ===
+<div style="height:18px"></div>
+
+=== 78 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se} \\[2pt]
+\text{escondía un error que mataba la celda: con la variable libre, el motor pedía} \\[2pt]
+\text{que le definieran el kilonewton. La definición, el mismo llamado en un punto} \\[2pt]
+\text{y su extrema ya respondían; el único camino roto era éste.} \end{array}}
+
+=== 79 · HTML ===
+<div style="height:18px"></div>
+
+=== 80 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
 \displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
@@ -245,13 +391,26 @@ Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se escon
 & = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\[4pt]
 \displaystyle 5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
 
-=== 41 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un piecewise evaluado en un punto</div>
+=== 81 · HTML ===
+<div style="height:18px"></div>
 
-=== 42 · Markdown ===
-El mismo piecewise, pero preguntado en un punto. Ninguna hoja lo escribía, y por eso nadie veía que la fila de sustitución escribía la rama por defecto como un cero pelado mientras la respuesta, dos líneas más abajo, la escribía con su unidad. Acá el punto cae fuera de todo tramo, así que la rama que responde es justamente la que salía sin unidad.
+=== 82 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un piecewise evaluado en un punto</div>
 
-=== 43 · Math ===
+=== 83 · HTML ===
+<div style="height:18px"></div>
+
+=== 84 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{El mismo piecewise, pero preguntado en un punto. Ninguna hoja lo escribía, y} \\[2pt]
+\text{por eso nadie veía que la fila de sustitución escribía la rama por defecto} \\[2pt]
+\text{como un cero pelado mientras la respuesta, dos líneas más abajo, la escribía} \\[2pt]
+\text{con su unidad. Acá el punto cae fuera de todo tramo, así que la rama que} \\[2pt]
+\text{responde es justamente la que salía sin unidad.} \end{array}}
+
+=== 85 · HTML ===
+<div style="height:18px"></div>
+
+=== 86 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
 \displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \\[8pt]
@@ -260,13 +419,26 @@ El mismo piecewise, pero preguntado en un punto. Ninguna hoja lo escribía, y po
 \displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[8pt]
 & = & \displaystyle 0.00\,\frac{\mathrm{kN}}{\mathrm{m}} \end{array}
 
-=== 44 · HTML ===
-<div style="font-size:0.95rem;font-weight:600;margin:0.46rem 0 0.24rem 0;">Un piecewise cuyas ramas son fórmulas en la variable</div>
+=== 87 · HTML ===
+<div style="height:18px"></div>
 
-=== 45 · Markdown ===
-Las hojas ya dibujaban un piecewise con la variable libre, pero con ramas que son nombres, y ahí cada rama resuelve a una cantidad y el grupo le presta su unidad al cero. Una viga real se escribe con fórmulas en la variable: ninguna resuelve, el cero queda solo y salía sin unidad, un momento escrito 0.00 en la fila que se lee.
+=== 88 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.1rem;font-weight:700;margin:0.46rem 0 0.24rem 0;">Un piecewise cuyas ramas son fórmulas en la variable</div>
 
-=== 46 · Math ===
+=== 89 · HTML ===
+<div style="height:18px"></div>
+
+=== 90 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Las hojas ya dibujaban un piecewise con la variable libre, pero con ramas} \\[2pt]
+\text{que son nombres, y ahí cada rama resuelve a una cantidad y el grupo le} \\[2pt]
+\text{presta su unidad al cero. Una viga real se escribe con fórmulas en la} \\[2pt]
+\text{variable: ninguna resuelve, el cero queda solo y salía sin unidad, un} \\[2pt]
+\text{momento escrito 0.00 en la fila que se lee.} \end{array}}
+
+=== 91 · HTML ===
+<div style="height:18px"></div>
+
+=== 92 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle P_{v} & = & \displaystyle 40.00\,\mathrm{kN} \\[8pt]
 \displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P_{v} x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
 \displaystyle \dfrac{P_{v} \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]

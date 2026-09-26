@@ -3,38 +3,64 @@
 === console ===
 
 === 0 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Viga simplemente apoyada con carga distribuida</div>
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Viga simplemente apoyada con carga distribuida</div>
 
-=== 1 · Markdown ===
-Se calculan las reacciones, la ley de momentos, la zona donde se supera el momento admisible y la flecha maxima de una viga de acero de 6 m con carga uniforme de servicio.
+=== 1 · HTML ===
+<div style="height:18px"></div>
 
-=== 2 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Datos</div>
+=== 2 · Math ===
+{\footnotesize \hspace{-5pt}\begin{array}{l} \text{Se calculan las reacciones, la ley de momentos, la zona donde se supera el} \\[2pt]
+\text{momento admisible y la flecha maxima de una viga de acero de 6 m con carga} \\[2pt]
+\text{uniforme de servicio.} \end{array}}
 
-=== 3 · Math ===
+=== 3 · HTML ===
+<div style="height:18px"></div>
+
+=== 4 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Datos</div>
+
+=== 5 · HTML ===
+<div style="height:18px"></div>
+
+=== 6 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle L & = & \displaystyle 6.00\,\mathrm{m} \\[8pt]
 \displaystyle q & = & \displaystyle 10.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[8pt]
 \displaystyle E & = & \displaystyle 200.00\,\mathrm{GPa} \\[8pt]
 \displaystyle I_{z} & = & \displaystyle 8.00 \times 10^{7}\,\mathrm{mm}^{4} \end{array}
 
-=== 4 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Reacciones</div>
+=== 7 · HTML ===
+<div style="height:18px"></div>
 
-=== 5 · Math ===
+=== 8 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Reacciones</div>
+
+=== 9 · HTML ===
+<div style="height:18px"></div>
+
+=== 10 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle \mathit{eqFy} & = & \displaystyle R_{A} + R_{B} = q L \\[8pt]
 \displaystyle \mathit{eqMA} & = & \displaystyle R_{B} L = \frac{q L^{2}}{2} \\[8pt]
 \displaystyle R_{A} & = & \displaystyle \frac{q L}{2} \\[4pt]
 \displaystyle R_{B} & = & \displaystyle \frac{q L}{2} \end{array}
 
-=== 6 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Ley de momentos</div>
+=== 11 · HTML ===
+<div style="height:18px"></div>
 
-=== 7 · Math ===
+=== 12 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Ley de momentos</div>
+
+=== 13 · HTML ===
+<div style="height:18px"></div>
+
+=== 14 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M\left(x\right) & = & \displaystyle \frac{q L x}{2} - \frac{q x^{2}}{2} \\[8pt]
 \displaystyle \frac{q L^{2}}{8} & = & \displaystyle \frac{\left(10.00\,\frac{\mathrm{kN}}{\mathrm{m}}\right)\,\left(6.00\,\mathrm{m}\right)^{2}}{8} \\[8pt]
 & = & \displaystyle 45.00\,\mathrm{kN} \cdot \mathrm{m} \end{array}
 
-=== 8 · Figure ===
+=== 15 · HTML ===
+<div style="height:18px"></div>
+
+=== 16 · Figure ===
 title: M(x)
 xlabel: x [$\mathrm{m}$]
 ylabel: M(x) [$\mathrm{kN} \cdot \mathrm{m}$]
@@ -43,20 +69,30 @@ positive: down
 annotation: (0, 0)
 annotation: (3, 45)
 
-=== 9 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Zona donde se supera el momento admisible</div>
+=== 17 · HTML ===
+<div style="height:18px"></div>
 
-=== 10 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Where} \text{ — } M\left(x\right) > 20\,\mathrm{kN} \cdot \mathrm{m} \\[8pt]
+=== 18 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Zona donde se supera el momento admisible</div>
+
+=== 19 · HTML ===
+<div style="height:18px"></div>
+
+=== 20 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Where} \text{ — } M\left(x\right) > 20\,\mathrm{kN} \cdot \mathrm{m} \\[8pt]
 \displaystyle \text{Domain: } 0.00\,\mathrm{m} \text{ to } 6.00\,\mathrm{m} \\[8pt]
-\displaystyle x \text{ in } \left(0.76\,\mathrm{m}, 5.24\,\mathrm{m}\right) \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle x \text{ in } \left(0.76\,\mathrm{m}, 5.24\,\mathrm{m}\right) \end{array}
 
-=== 11 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Flecha</div>
+=== 21 · HTML ===
+<div style="height:18px"></div>
 
-=== 12 · Math ===
+=== 22 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Flecha</div>
+
+=== 23 · HTML ===
+<div style="height:18px"></div>
+
+=== 24 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle d_{max} & = & \displaystyle \frac{5 q L^{4}}{384 E I_{z}} \\[8pt]
 & = & \displaystyle \frac{5\,\left(10.00\,\frac{\mathrm{kN}}{\mathrm{m}}\right)\,\left(6.00\,\mathrm{m}\right)^{4}}{384\,\left(200.00\,\mathrm{GPa}\right)\,\left(8.00 \times 10^{7}\,\mathrm{mm}^{4}\right)} \\[8pt]
 & = & \displaystyle 10.55\,\mathrm{mm} \\[8pt]
@@ -64,12 +100,16 @@ annotation: (3, 45)
 & = & \displaystyle \frac{\left(6.00\,\mathrm{m}\right)}{300} \\[8pt]
 & = & \displaystyle 20.00\,\mathrm{mm} \end{array}
 
-=== 13 · HTML ===
-<div style="font-size:1.06rem;font-weight:600;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Resumen</div>
+=== 25 · HTML ===
+<div style="height:18px"></div>
 
-=== 14 · Math ===
-\hspace{0.2em}\begin{array}{l} \rule{0pt}{0.7em} \\[-4pt]
-\displaystyle \textbf{Summary} \\[8pt]
+=== 26 · HTML ===
+<div style="font-family:KaTeX_Main,'Times New Roman',serif;font-size:1.25rem;font-weight:700;margin:0.60rem 0 0.34rem 0;padding-bottom:0.14rem;border-bottom:1px solid rgba(127,127,127,0.18);">Resumen</div>
+
+=== 27 · HTML ===
+<div style="height:18px"></div>
+
+=== 28 · Math ===
+\hspace{0.2em}\begin{array}{l} \displaystyle \textbf{Summary} \\[8pt]
 \displaystyle \begin{array}{lcl} \displaystyle d_{max} & = & \displaystyle 10.55\,\mathrm{mm} \\[8pt]
-\displaystyle d_{adm} & = & \displaystyle 20.00\,\mathrm{mm} \end{array} \\[4pt]
-\rule{0pt}{0.7em} \end{array}
+\displaystyle d_{adm} & = & \displaystyle 20.00\,\mathrm{mm} \end{array} \end{array}

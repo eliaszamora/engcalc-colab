@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from IPython.display import HTML, Math
 
-from conftest import block_text
+from conftest import block_text, blocks_into
 from conftest import figure_text
 from matplotlib.figure import Figure
 
@@ -121,7 +121,7 @@ def test_acceptance_real_eng_mixes_heading_equations_table_plot_in_source_order(
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = EngMagics(shell=None)
     magics.eng(

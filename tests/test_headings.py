@@ -2,6 +2,7 @@ from IPython.display import HTML, Math
 
 from engcalc_colab.models import ParsedStatement
 from engcalc_colab.parser import parse_cell
+from conftest import blocks_into
 
 
 def test_parser_preserves_double_and_triple_hash_headings():
@@ -25,7 +26,7 @@ def test_magic_renders_headings_as_html_and_equations_as_math(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "## Cálculo de reacciones\nA = 1\n### Equilibrio vertical\nB = 2")
 
@@ -38,7 +39,7 @@ def test_heading_html_escapes_user_text(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
     magics = magic_module.EngMagics(shell=None)
     magics.eng("", "## <script>alert(1)</script>\nA = 1")
 

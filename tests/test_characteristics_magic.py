@@ -1,12 +1,13 @@
 import pytest
 from IPython.display import Math
+from conftest import blocks_into
 
 
 def test_eng_magic_flushes_equations_before_characteristic_block_and_resumes(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     try:
@@ -21,9 +22,10 @@ def test_eng_magic_flushes_equations_before_characteristic_block_and_resumes(mon
         pytest.fail(f"characteristic magic routing is missing or broken: {exc}")
 
     assert [type(item) for item in displayed] == [Math, Math, Math]
-    # Its own output, and a computed block rather than equation rows: it carries the
-    # block's spacer row. See test_a_computed_block_is_written_like_the_working.
-    assert r"\rule{0pt}{0.7em} \\[-4pt]" in displayed[1].data
+    # Its own output, and a computed block rather than equation rows: it opens as one. Its
+    # room from the rows around it is the magic's, one rule for every block since
+    # 2026-09-25 - see test_one_spacing_rule.
+    assert r"\hspace{0.2em}\begin{array}{l} " in displayed[1].data
     assert "Roots" in displayed[1].data
 
 
@@ -31,7 +33,7 @@ def test_eng_magic_displays_consecutive_characteristic_results_in_source_order(m
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     try:

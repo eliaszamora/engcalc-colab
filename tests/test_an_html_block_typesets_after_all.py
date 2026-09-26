@@ -86,7 +86,7 @@ def _blocks(displayed) -> list[str]:
     blocks = [
         item.data
         for item in items
-        if isinstance(item, Math) and r"\rule{0pt}{0.7em} \\[-4pt]" in item.data
+        if isinstance(item, Math) and r"\hspace{0.2em}\begin{array}{l} " in item.data
     ]
     assert len(blocks) == 4, [type(item).__name__ for item in items]
     return blocks
@@ -123,10 +123,15 @@ def test_a_math_row_never_carries_markup(displayed):
             assert "<table" not in item.data, item.data[:200]
 
 
-def test_a_narrative_is_still_a_markdown_output(displayed):
-    """#120's own fix, unchanged. It reached this answer first, for prose."""
+def test_a_narrative_typesets_its_relations(displayed):
+    """#120's point, kept: the relations in prose must typeset, so prose is never HTML.
+
+    It was a Markdown output for that. Since 2026-09-25 (his choice) it is a Math output,
+    its words in `\\text{}` and its relation as mathematics - which typesets in Colab too.
+    """
     items = displayed('"""Una viga de seis metros con $q = 10$ kN/m."""\nL := 6*m\n')
-    assert any(isinstance(item, Markdown) for item in items), [
+    prose = [item.data for item in items if isinstance(item, Math) and "viga" in item.data]
+    assert prose and r"\text{Una viga de seis metros con }q = 10\text{ kN/m.}" in prose[0], [
         type(item).__name__ for item in items
     ]
 

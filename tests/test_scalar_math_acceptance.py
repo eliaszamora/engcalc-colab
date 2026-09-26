@@ -5,6 +5,7 @@ from matplotlib.figure import Figure
 from engcalc_colab.engine import EngineeringEngine
 from engcalc_colab.models import PartialNumericEvaluationResult, PlotResult
 from engcalc_colab.parser import parse_cell
+from conftest import blocks_into
 
 
 def run_cell(source: str):
@@ -52,7 +53,7 @@ def test_eng_magic_accepts_scalar_math_and_plot(monkeypatch, capsys):
     import engcalc_colab.magic as magic_module
 
     displayed = []
-    monkeypatch.setattr(magic_module, "display", displayed.append)
+    monkeypatch.setattr(magic_module, "display", blocks_into(displayed))
 
     magics = magic_module.EngMagics(shell=None)
     magics.eng(

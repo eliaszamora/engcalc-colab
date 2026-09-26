@@ -52,18 +52,14 @@ _WHAT_A_PERCENT_LINE_IS = (
 )
 
 
-# Room above and below the sentence: a strut 1.5em over the baseline and 0.7em under it.
-# KaTeX, which is what Colab typesets with, reads `\rule` as LaTeX does.
-_ROOM = r"\rule[-0.7em]{0pt}{2.2em}"
-
-
 @dataclass(frozen=True)
 class ConditionNote:
     """The sentence a branch opens with, as LaTeX, typeset in the letter and size of the rows.
 
     It was first Markdown - Colab's text around `$...$` - and he could not find it on the
     page: smaller than the rows and in another letter. He chose (2026-09-25, option 1b) the
-    whole sentence typeset as the rows are, "Como" in bold, with room above and below.
+    whole sentence typeset as the rows are, "Como" in bold. Its room above and below is the
+    room every block has (`renderer.page_block`), no longer a strut of its own.
     """
 
     latex: str
@@ -397,7 +393,7 @@ def _choose(node: _IfBlock, engine, settings, scope: _Scope) -> Iterator:
     said = [_negated(tree, line_no, engine, settings) for tree, line_no in held]
     if chosen.condition is not None:
         said.append(stated)
-    yield ConditionNote(latex=f"{_ROOM}\\textbf{{Como}}\\;\\; {_AND.join(said)}\\,\\text{{:}}")
+    yield ConditionNote(latex=f"\\textbf{{Como}}\\;\\; {_AND.join(said)}\\,\\text{{:}}")
     yield from _walk(chosen.body, engine, settings, scope)
 
 
@@ -468,7 +464,7 @@ def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:
                 last.append(Evaluated(result, tuple(engine.notices)))
     word = "iteración" if count == 1 else "iteraciones"
     stated = _negated(current, node.line_no, engine, settings)
-    yield ConditionNote(latex=f"{_ROOM}\\textbf{{En {count} {word}:}}\\;\\; {stated}")
+    yield ConditionNote(latex=f"\\textbf{{En {count} {word}:}}\\;\\; {stated}")
     yield from last
 
 
