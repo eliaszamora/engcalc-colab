@@ -15,8 +15,8 @@ _2026-09-25._
 | released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
 | before that | **0.37.0** - #320, `4795c47` |
 | merged, not released | #326 `% if` (`1f926db`), #327 a `=` line of values (`c8a6036`), #328 names in italic (`cf8ffa5`) |
-| open | `fix/a-named-numeric-line-and-table` - waiting for his yes; merged since 0.38.0: #326-#331 (`% if`, `=` values, italic, `% for`, `% while`, `solve` in a range) |
-| default suite | **3092 passing** on the named-`numeric` branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| open | `feat/one-spacing-rule` - waiting for his yes; merged since 0.38.0: #326-#332 (`% if`, `=` values, italic, `% for`, `% while`, `solve` in a range, named `numeric`) |
+| default suite | **3109 passing** on the spacing branch (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -950,7 +950,7 @@ and `NumericAssignmentResult.equation` puts the equation above the value
 and said "could not validate a solution set" (NOT fixed, `roots` itself). 10 contracts +
 help; mutation 9/9. Suite 3087 on SymPy 1.14 and 1.13.3; no page moves.
 
-### A named `numeric` / `result` line (branch `fix/a-named-numeric-line-and-table`)
+### A named `numeric` / `result` line (#332, merged with his yes, `39097c7`)
 
 He got lost among the forms; shown on his exercise: `:=` value, `=` formula, `numeric(x)`
 formula + substitution + value, `result(x)` formula + value, `x := formula` value only.
@@ -967,18 +967,39 @@ gives the table, sheet names and sheet functions included. My earlier "unsupport
 from probing with `As_req` undefined. Possible improvement, not done: name the rows
 (`Mu_pos`) instead of only their numbers.
 
-Open presentation questions he raised (2026-09-25), NOT done - need measuring in his Colab
-(his Chrome window was minimized again, `innerWidth` 0):
-- the `"""` text is Colab's sans-serif Markdown, not the math's KaTeX serif; he expected
-  the LaTeX letter;
-- the text sits too close to the equations, and he wants one consistent spacing rule for
-  every kind of block, not patches;
-- with `%eng_units kN` a typed `6000*mm^2` reads `0.006 m²` and δ `0.00241 m`.
+### One rule for the room between blocks (branch `feat/one-spacing-rule`, PR open)
 
-**Exact next step:** his yes on this PR; then, with his Colab visible, measure the fonts
-and the gaps between every kind of output and propose one spacing rule with rows. His
-exercise 2.1 as a reference exercise; a release when he asks. Nothing checked in his Colab this evening
-(his Chrome window stayed minimized); the `Como` spacing is still to calibrate there.
+He asked (2026-09-25) why the `"""` text looked like another letter, why it sat so close to
+the equations, and for one spacing rule instead of patches. MEASURED IN HIS COLAB (cell 15,
+a Javascript output answering `postMessage` from the page): every output is its own
+`div.display_data`; rows inside a block ~13 px apart; text 5-7 px from the equations; text
+and headings Google Sans 14 px vs KaTeX 16.94 px. Colab STRIPS style from HTML inside a
+Markdown output (spacer, font: five ways, no effect), but keeps an HTML output's style.
+Shown three options in his Colab; he chose option 2 (*"Me gusta más tu recomendación"*):
+- `magic._Page.show`: one spacer, `BLOCK_SPACER` = 18 px HTML, between any two blocks (a
+  figure and its caption are one block). Calibrated in his Colab: the gap shown is the
+  spacer's height (0 px: blocks touch); 18 px = ~1.4 x the row gap; before a heading the
+  page opens wider by itself (36 px). No block has room of its own any more: the computed
+  block's empty rows (#192) and the `Como` strut are gone.
+- `renderer.narrative_latex`: a paragraph is a `Math` output - words in `\text{}`, `$...$`
+  spans as mathematics, lines <= 80 characters, paragraphs `\\[8pt]` apart, `**bold**` /
+  `*italic*` only when paired, `# $ % & _ { } ~ ^ \\ < >` written as text, `·` as `$\cdot$`
+  (KaTeX has `\cdotp` only in maths). KaTeX 0.16.28 lacks `\textquestiondown`,
+  `\guillemotleft`, `@{}`: `¿ ¡ « »` stay as they are (a strict-mode warning, no error);
+  the frame is `\hspace{-5pt}\begin{array}{l}` instead of `@{}l@{}`.
+- headings in `KaTeX_Main` (20 / 17.6 px).
+Tests that count outputs use `conftest.blocks_into` (records all but the spacer); the
+Markdown-era narrative contracts were translated to the Math form, keeping what they
+protect. The five reference pages move only by these four kinds of change, checked item by
+item after normalising them (scratchpad `check_snapshots.py`). 17 contracts; mutation
+10/10; suite 3109 on SymPy 1.14 and 1.13.3. Verified in his Colab with the branch
+installed: gaps 15-20 px, all text KaTeX.
+
+Still open, his: with `%eng_units kN` a typed `6000*mm^2` reads `0.006 m²` and δ `0.00241 m`.
+
+**Exact next step:** his yes on the spacing PR (he can see it in cell 15 of "Ejercicio 2.2";
+cell 15 now installs the branch). After merging, cell 13 reinstalls `main`. Then his
+exercise 2.1 as a reference exercise, the kN palette question; a release when he asks.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
