@@ -12,10 +12,9 @@ _2026-09-25._
 
 | | |
 |---|---|
-| released | **0.38.0** - #324, `a53613d`, carrying #322 (`91c74dd`) and #323 (`333d54f`); six jobs and both qualification runs green on it, verified after its merge (below) |
-| before that | **0.37.0** - #320, `4795c47` |
-| merged, not released | #326 `% if`, #327 `=` values, #328 italic, #329 `% for`, #330 `% while`, #331 `solve` in a range, #332 named `numeric`, #333 one spacing rule + KaTeX letter (`8f40539`), #334 room under a fraction row |
-| open | nothing |
+| released | **0.39.0** - this release PR, carrying #326-#334; its closure is recorded below |
+| before that | **0.38.0** - #324, `a53613d` |
+| open PRs | this release's |
 | default suite | **3117 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto`; CI six jobs green on #334 |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
