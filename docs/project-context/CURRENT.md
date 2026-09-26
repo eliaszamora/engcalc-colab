@@ -12,9 +12,9 @@ _2026-09-25._
 
 | | |
 |---|---|
-| released | **0.40.0** - this release PR, carrying #336, #337, #338; its closure is recorded below |
+| released | **0.40.0** - #340, `ea79f53`, carrying #336, #337, #338; closed and verified in his Colab (below) |
 | before that | **0.39.0** - #339, `edc95d5`, carrying #326-#335; closed (below) |
-| open PRs | this release's |
+| open PRs | none |
 | default suite | **3158 passing** (SymPy 1.14 and 1.13.3), about a minute and a half with `-n auto`; CI six jobs green on #338 |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -1106,7 +1106,16 @@ Pint and four small deps; smoke 104/104 (`smoke-0400/`: brackets once, sums as w
 `:=` reads `=`; the `min` check now reads `min(2.00 m, 2.22 m, 3.00 m)`); suite against the
 wheel on SymPy 1.13.3: 3157 + the by-construction one.
 
-**Exact next step:** close 0.40.0 (checks after its merge, his Colab).
+**0.40.0 is closed.** After its merge: CI, Quality Gate Deep (push) and Deep in qualification
+mode green on `ea79f53`; a clean `git+https` install resolved to `ea79f53`, reported
+0.40.0, upgraded nothing, 33 files identical to the tree, smoke 104/104. In his Colab
+("Untitled9"): session restarted from the menu, his cell 0 (`--upgrade --no-cache-dir`)
+built and installed it, cell 2 (the angles sheet) reads `sin(θ + φ)`, `cos(0.93 rad)`,
+italic `aa`, u 2.41 / v 0.72 / aa' 2.52 mm. Slip recorded: a `Ctrl+M .` sent while his
+cell 1 editor had focus typed `period` into its first line; removed at once by checking
+the exact text (583 characters, as before). Restart from the menu, never by keys.
+
+**Exact next step:** none open; ask him what next.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
