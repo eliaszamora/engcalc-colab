@@ -194,4 +194,5 @@ def test_a_dimension_outside_the_palette_is_left_alone(cell):
     is how a palette turns back into the rules it replaced."""
     final = _last(cell("theta := 30*deg\nnumeric(theta)\n", units="kN"))
     assert "30.00" in final, final
-    assert "deg" in final, final
+    # Since 2026-09-26 a degree is written with its sign; see test_an_angle_reads_in_degrees.
+    assert r"^{\circ}" in final, final

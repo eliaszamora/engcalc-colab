@@ -44,6 +44,9 @@ def unit_text(unit) -> str:
     """
     if str(unit) == "dimensionless":
         return ""
+    # A degree is its sign, as a drawing writes it (test_an_angle_reads_in_degrees).
+    if str(unit) == "degree":
+        return "°"
     return normalise(format(unit, "~P"))
 
 
@@ -81,6 +84,8 @@ def quantity_text(quantity, *, decimals: int | None = None) -> str:
     magnitude = float(quantity.magnitude)
     value = f"{magnitude:g}" if decimals is None else f"{magnitude:.{decimals}f}"
     unit = unit_text(quantity.units)
+    if unit == "°":
+        return f"{value}°"
     return value if not unit else f"{value} {unit}"
 
 

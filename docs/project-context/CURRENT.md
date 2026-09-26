@@ -1115,7 +1115,27 @@ italic `aa`, u 2.41 / v 0.72 / aa' 2.52 mm. Slip recorded: a `Ctrl+M .` sent whi
 cell 1 editor had focus typed `period` into its first line; removed at once by checking
 the exact text (583 characters, as before). Restart from the menu, never by keys.
 
-**Exact next step:** none open; ask him what next.
+### Angles in degrees (branch `feat/angles-in-degrees`, PR open, left to me)
+
+He left it to me (*"Aborda el punto 2 según tu recomendación, lo dejo a tu criterio"*,
+2026-09-26). `renderer._display_quantity`: an undeclared plain radian (an `atan`, an
+`asin`) is shown in degrees - `θ = 33.69°`, `sin(53.13°)`; `t := 0.5*rad` keeps rad,
+`rad/s` untouched. A degree is written `33.69^{\circ}` (`_quantity_latex`,
+`_latex_unit_text`, `unit_text` / `quantity_text` "°"), tables of angles convert
+(`_aggregate_unit`, `_in_unit`) and read `[°]`, the plot axis too. `numeric(name)` of a
+value is one row (`_is_a_value_by_its_name`): `w = 374.98 1/s`, not `w = w = (...) = ...`;
+a declared angle keeps its radians there. 13 contracts; 8 older ones pinned `rad`/`deg`
+text and were updated; no reference page and none of the 13 harness sheets move; suite
+3169 (1.14), 3167 (1.13.3, the two installed-metadata contracts deselected).
+Found, not fixed: `extrema(atan(x/L), x, 0, L)` says "extrema response values have
+incompatible dimensions" (also on 0.40.0).
+
+**Open, his decision:** the name-that-is-a-unit trap - `a := 2*kg`, `m = 3*a`,
+`x := 4*m` gives 4.00 m, silently. Proposed: a sheet cannot name a value with a unit's
+name (m, s, N, kN, ...): refused with a clear message; costs 5 tests, no tools sheet.
+
+**Exact next step:** his yes on the angles PR (images shown) and his decision on the
+unit-name trap.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

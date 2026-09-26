@@ -21,7 +21,7 @@ def test_exact_numeric_inverse_trig_retains_radian_unit():
     assert result.quantity.to("rad").magnitude == pytest.approx(0.7853981633974483)
 
 
-def test_eng_magic_renders_radian_unit_for_inverse_trig_assignment(monkeypatch):
+def test_eng_magic_renders_an_inverse_trig_angle_in_degrees(monkeypatch):
     import engcalc_colab.magic as magic_module
 
     displayed = []
@@ -31,7 +31,8 @@ def test_eng_magic_renders_radian_unit_for_inverse_trig_assignment(monkeypatch):
     magics.eng("", "a := atan(1)")
 
     assert [type(item) for item in displayed] == [Math]
-    assert "rad" in displayed[0].data
+    # Stored in radians (the test above), shown in degrees: test_an_angle_reads_in_degrees.
+    assert r"45.00^{\circ}" in displayed[0].data
 
 
 def test_eng_magic_renders_requested_degree_unit_for_inverse_trig_numeric(monkeypatch):
@@ -44,7 +45,8 @@ def test_eng_magic_renders_requested_degree_unit_for_inverse_trig_numeric(monkey
     magics.eng("", "numeric(atan(1), deg)")
 
     assert [type(item) for item in displayed] == [Math]
-    assert "deg" in displayed[0].data
+    # Since 2026-09-26 a degree is written with its sign; see test_an_angle_reads_in_degrees.
+    assert r"^{\circ}" in displayed[0].data
 
 
 @pytest.mark.parametrize("function_name", ["asin", "acos", "atan", "exp", "log"])
