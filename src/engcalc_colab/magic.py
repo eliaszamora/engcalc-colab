@@ -509,7 +509,7 @@ class EngMagics(Magics):
 
         The input stays free: `b := 500*mm` on a kN sheet is still five hundred
         millimetres and still computes as such, and reads `0.50 m`. `%eng_units` with no
-        name clears it and the sheet reads as it always has.
+        name, or `%eng_units none`, clears it and the sheet reads as it always has.
 
         Where one unit per dimension is the wrong answer for a particular line - a
         deflection is a length and so is a span - `numeric(delta, mm)` shows the unit it
@@ -518,7 +518,8 @@ class EngMagics(Magics):
         this feature rests on: the renderer cannot know which lengths are deflections.
         """
         name = line.strip()
-        if not name:
+        # `none` clears it, as every report here says: "(or none to clear)" (2026-09-26).
+        if not name or name.lower() == "none":
             # `engcalc units:`, not `engcalc:`. The bare prefix is what this module says
             # when something went wrong - an unknown option, a token it cannot parse -
             # and `engcalc config:` and `engcalc units:` are what it says when reporting.

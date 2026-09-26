@@ -137,6 +137,35 @@ def test_clearing_the_palette_restores_that(cell, monkeypatch):
     assert r"\mathrm{mm}" in final, final
 
 
+@pytest.mark.parametrize("word", ["none", "None", "NONE", " none "])
+def test_none_clears_the_palette_as_the_message_says(monkeypatch, word):
+    """Every report ends "(or none to clear)", and `%eng_units none` answered "unknown
+    unit palette 'none'" (found closing 0.41.0). He chose to accept the word and keep the
+    empty argument (2026-09-26). `None` too: it is how Python spells nothing."""
+    printed = []
+    monkeypatch.setattr("builtins.print", lambda *args: printed.append(" ".join(map(str, args))))
+    captured = []
+    monkeypatch.setattr(magic, "display", captured.append)
+    magics = magic.EngMagics()
+    magics.eng_units("kN")
+    magics.eng_units(word)
+    assert magics.units == "", magics.units
+    assert printed[-1] == "engcalc units: cleared (was kN)", printed[-1]
+    captured.clear()
+    magics.eng("", "b := 300*mm\nnumeric(b)\n")
+    final = _last("".join(getattr(obj, "data", "") for obj in captured))
+    assert "300.00" in final and r"\mathrm{mm}" in final, final
+
+
+def test_none_with_no_palette_reports_as_the_empty_argument_does(monkeypatch):
+    printed = []
+    monkeypatch.setattr("builtins.print", lambda *args: printed.append(" ".join(map(str, args))))
+    magic.EngMagics().eng_units("none")
+    magic.EngMagics().eng_units("")
+    assert printed[0] == printed[1], printed
+    assert printed[0].startswith("engcalc units: none; available:"), printed[0]
+
+
 def test_an_unknown_palette_says_so_and_changes_nothing(cell, monkeypatch):
     printed = []
     monkeypatch.setattr("builtins.print", lambda *args: printed.append(" ".join(map(str, args))))

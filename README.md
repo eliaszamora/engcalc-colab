@@ -1790,7 +1790,7 @@ Two palettes, named after the force unit the sheet is anchored on:
 | area, inertia | m², m⁴ | cm², cm⁴ |
 | mass, time | kg, s | kg, s |
 
-`%eng_units` with no name clears it, and a sheet that never declares one renders exactly
+`%eng_units none`, or `%eng_units` with no name, clears it, and a sheet that never declares one renders exactly
 as it always has. A dimension with no entry — an angle, a temperature — is left alone.
 
 **Why one unit per dimension, and not something cleverer.** A span, a section depth and a
