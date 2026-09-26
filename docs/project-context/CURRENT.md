@@ -14,7 +14,7 @@ _2026-09-26._
 |---|---|
 | released | **0.41.0** - #344, `e879667`, carrying #342 (`465a2dd`) and #343 (`a8d68ac`); closed, see below |
 | before that | **0.40.0** - #340, `ea79f53`, closed |
-| open PRs | none |
+| open PRs | #346 (`=` drops a `:=` value), awaiting his yes; see the end of 0.41.0's closure |
 | default suite | **3192 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto`; CI six jobs green on `e879667` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -1188,8 +1188,23 @@ Found while closing, not caused by 0.41.0, not fixed:
   (or none to clear)" - the help means an empty argument. Either accept `none` or say
   "(or nothing, to clear)".
 
-**Exact next step:** ask the user about the two findings above; the user's Colab check of
-0.41.0.
+He answered both on 2026-09-26 (*"Sí a los dos, procede con TDD"*), from a new Claude
+account; the handoff through this file and `NEXT.md` matched what the old session held.
+
+**#346 (`fix/an-equals-line-drops-the-old-value`), a `=` line drops the number.**
+`engine._drop_the_number`: a `=` line without `keep` (and a named `p = numeric(...)` line)
+drops the name's `:=` value and its keep mark; `keep p = numeric(...)` stores the new kept
+number. Reproduced first, and it reached `keep` too: `keep d = h - 4*cm`, `d = 3*h`,
+`x := 2*d` read 112 cm (the old kept number) and, left marked, `numeric(2*d)` stopped
+asking for `d`. `numeric.written_unit_names` now asks for a sheet formula before the unit
+alias, as `resolve_numeric_name` has since #343 - that is what made the `m` sheet, run
+again, say "'m' has been read as a unit". 12 contracts
+(`test_the_last_definition_is_the_one_read.py`), 9 RED on `4f0b77d`; mutation 6/6 (a
+seventh line, `kept_values.discard`, had no observable effect and was removed); suite 3204;
+the 24 `tools/*.eng` pages byte-identical to `main`.
+
+**Exact next step:** his yes to merge #346; then `%eng_units none` (accept it, keep the
+empty argument); the user's Colab check of 0.41.0.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
