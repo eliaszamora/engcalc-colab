@@ -19,6 +19,7 @@ from pint.util import UnitsContainer
 from .matrix_modes import mode_key
 from .matrix_numeric import MATRIX_CALLS, QuantityMatrix
 from .unit_text import quantity_text, unit_text, unit_was_written
+from .numeric import BRACKETED_UNIT_PREFIX
 from .models import (
     AssumptionResult,
     CharacteristicInterval,
@@ -452,7 +453,9 @@ class _EngineeringLatexPrinter(LatexPrinter):
         split and `\mathrm{As}_prov` subscripted the `p` alone, leaving `rov` beside it.
         """
         if expr.name in self.unit_literals:
-            unit = sp.Symbol(rf"\mathrm{{{expr.name}}}")
+            # `6[m]` reaches the printer as `__u_m`; the page writes the unit.
+            written = expr.name.removeprefix(BRACKETED_UNIT_PREFIX)
+            unit = sp.Symbol(rf"\mathrm{{{written}}}")
             return super()._print_Symbol(unit, style) if style else super()._print_Symbol(unit)
 
         base, supers, subs = split_super_sub(expr.name)

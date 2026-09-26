@@ -114,7 +114,12 @@ from .matrix_numeric import (
 from .matrix_solve import solve_linear_system
 from .interpolation import Interpolation
 from .min_max import WrittenMax, WrittenMin
-from .numeric import _UNIT_ALIASES, NumericContext, _NumericAstEvaluator
+from .numeric import BRACKETED_UNIT_PREFIX, _UNIT_ALIASES, NumericContext, _NumericAstEvaluator
+
+# The units a sheet writes plainly, `m` and `kN`, and not the `__u_m` of `6[m]`.
+_PLAIN_UNIT_NAMES = frozenset(
+    name for name in _UNIT_ALIASES if not name.startswith(BRACKETED_UNIT_PREFIX)
+)
 from .piecewise import (
     build_piecewise,
     build_relation,
@@ -1792,6 +1797,64 @@ class EngineeringEngine:
             return self.namespace[name]
         return self.resolve_symbol(name)
 
+    def _refuse_a_name_beside_a_unit(self, statement) -> None:
+        """Stop a line where a name of the sheet spelled like a unit stands beside a unit.
+
+        `m := 500*kg` makes `m` the mass wherever it is written, and `x := 4*m` is four
+        times it. But `2000*kN/m` holds a unit beside it, and there `m` could be the metre
+        as well as the mass - the single degree of freedom run twice read `4.00 kN/kg`
+        (2026-09-26). Nothing is decided: the line stops and says how to write the unit so
+        it cannot be mistaken, in brackets after its number. The unit a `numeric` is asked
+        for is always a unit, and is not read here.
+        """
+        expression = getattr(statement, "expression", None)
+        if expression is None:
+            return
+        taken = set(self.numeric_context.values) | {
+            name
+            for name, value in self.namespace.items()
+            if isinstance(value, sp.Expr) and not is_matrix(value)
+        }
+        taken &= _PLAIN_UNIT_NAMES
+        if not taken:
+            return
+
+        def names(node, found: list) -> None:
+            if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Div)):
+                names(node.left, found)
+                names(node.right, found)
+            elif isinstance(node, ast.UnaryOp):
+                names(node.operand, found)
+            elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+                names(node.left, found)
+            elif isinstance(node, ast.Name):
+                found.append(node.id)
+
+        def visit(node, inside: bool) -> None:
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "numeric":
+                for argument in node.args[:1]:
+                    visit(argument, False)
+                return
+            product = isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Div))
+            if product and not inside:
+                found: list = []
+                names(node, found)
+                units = [name for name in found if name in _PLAIN_UNIT_NAMES]
+                named = [name for name in units if name in taken]
+                if named and any(name not in taken for name in units):
+                    written = ast.unparse(node).replace(" ", "").replace("**", "^")
+                    number = re.match(r"^(-?[\d.]+(?:[eE][+-]?\d+)?)\*(.+)$", written)
+                    advice = f"{number.group(1)}[{number.group(2)}]" if number else "6[m]"
+                    raise EngEvaluationError(
+                        f"'{named[0]}' is a name of this sheet and also a unit "
+                        f"({_UNIT_ALIASES[named[0]]}), and {written} could mean either; write "
+                        f"the unit in brackets after its number, as {advice}"
+                    )
+            for child in ast.iter_child_nodes(node):
+                visit(child, product or (inside and isinstance(node, ast.UnaryOp)))
+
+        visit(expression, False)
+
     def evaluate(self, statement: ParsedStatement | ParsedNumericAssignment):
         """One statement, a note of every alias it read as a unit, and what that means.
 
@@ -1893,8 +1956,9 @@ class EngineeringEngine:
         return (
             f"line {statement.line_no}: '{name}' has been read as a unit "
             f"({_UNIT_ALIASES[name]}); from here on it is this value wherever it is "
-            f"written, and a line that used the unit reads the value when it is "
-            f"evaluated again. Give the value another name, such as {name}_1, to keep both."
+            f"written, and a line that writes it beside another unit stops and asks for "
+            f"the unit in brackets, as 2000[kN/{name}]. Or give the value another name, "
+            f"such as {name}_1."
         )
 
     def _evaluate_statement(
@@ -1915,6 +1979,7 @@ class EngineeringEngine:
     ):
         evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))
         try:
+            self._refuse_a_name_beside_a_unit(statement)
             declaration = getattr(statement, "declaration", None)
             if declaration is not None and declaration != "keep":
                 return self._declare_load(statement, evaluator)

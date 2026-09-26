@@ -128,7 +128,9 @@ def test_a_mass_named_m_is_still_a_mass(monkeypatch, capsys):
 
     `m a` since 0.33.0, the order it was written in; it read `a m` by the alphabet. See
     `test_a_product_keeps_the_order_it_was_written_in`."""
-    math = page(monkeypatch, "m := 500*kg\na := 2*m/s^2\nF = m*a\n")
+    # `2[m/s^2]`: with `m` a mass, `2*m/s^2` stops and asks for the brackets
+    # (test_a_unit_letter_that_is_a_name).
+    math = page(monkeypatch, "m := 500*kg\na := 2[m/s^2]\nF = m*a\n")
     capsys.readouterr()
 
     assert r"F & = & \displaystyle m a" in math, math

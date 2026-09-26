@@ -78,6 +78,15 @@ _UNIT_ALIASES = {
     "ft": "foot",
 }
 
+# `6[m]`, `10[kN/m]`: a unit written in brackets after its number. The parser renames each
+# unit inside them with this prefix - `__u_m`, a name no sheet can take - so a name of the
+# sheet spelled like a unit (`m` a mass, `s` a spacing, `N` a force) can never stand in for
+# it. Each prefixed name is the unit its plain spelling is, and the page drops the prefix.
+BRACKETED_UNIT_PREFIX = "__u_"
+_UNIT_ALIASES.update(
+    {BRACKETED_UNIT_PREFIX + name: unit for name, unit in list(_UNIT_ALIASES.items())}
+)
+
 
 _ENGINEERING_REGISTRY: UnitRegistry | None = None
 
@@ -257,11 +266,13 @@ class NumericContext:
             return self.values[name]
         if name == "pi":
             return math.pi
-        if name in _UNIT_ALIASES:
-            return self.ureg.Unit(_UNIT_ALIASES[name])
+        # A formula of the sheet before the unit its name spells, as a value already was:
+        # `m = 3*a` then `x := 4*m` is four times that mass, not four metres (2026-09-26).
         formula = self._scalar_formula(name)
         if formula is not None:
             return self._number_of_the_formula(name, formula)
+        if name in _UNIT_ALIASES:
+            return self.ureg.Unit(_UNIT_ALIASES[name])
         hint = diagnostic_hint("unknown_numeric_name", name=name)
         raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")
 
@@ -270,8 +281,8 @@ class NumericContext:
 
         A `:=` line read a matrix built with `=` and a kept name, and stopped at a plain
         scalar formula: `D := [delta_ab; delta_ac]` after `delta_ab = F*L/(E*A)` said
-        "unknown numeric name" (his exercise 2.1, 2026-09-25). Asked only after the unit
-        aliases, so a formula named `m` or `N` reads as the unit it always did.
+        "unknown numeric name" (his exercise 2.1, 2026-09-25). Asked before the unit
+        aliases since 2026-09-26, as a value is: a formula named `m` is that formula.
         """
         formula = getattr(self, "symbolic_namespace", {}).get(name)
         if not isinstance(formula, sp.Expr) or isinstance(formula, sp.MatrixBase):

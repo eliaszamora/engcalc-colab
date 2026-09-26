@@ -7,6 +7,7 @@ import re
 from .errors import EngSyntaxError, diagnostic_hint
 from .matrix_syntax import consume_matrix_statement, mark_typed_decimals, rewrite_matrix_literals
 from .models import ParsedHeading, ParsedNarrative, ParsedNumericAssignment, ParsedStatement
+from .numeric import BRACKETED_UNIT_PREFIX, _UNIT_ALIASES
 
 # `in` is the inch, and it is the first thing a US engineer writes. It is also a Python
 # keyword, so `b := 12*in` can never parse and said nothing but "invalid syntax" - true,
@@ -100,7 +101,43 @@ _PIECEWISE_COMPARATORS = (ast.Lt, ast.LtE, ast.Gt, ast.GtE)
 _MACAULAY_BRACKET = re.compile(r"<([^<>,()]+)>\s*\^\s*(-?\d+)")
 
 
-def normalize_expression(text: str) -> str:
+# `6[m]`, `10[kN/m]`, `6000[mm^2]`: a number, then a unit in brackets. Only after a number -
+# `d[1,1]` follows a name and stays an index, and a matrix opens with its bracket - and not
+# inside a name: the `2` of `x2[1]` is not a number.
+_BRACKETED_UNIT = re.compile(r"(?<![\w.])((?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*\[([^\[\]]*)\]")
+_UNIT_WORD = re.compile(r"[A-Za-z_]\w*")
+
+
+def _rewrite_bracketed_units(text: str, line_no: int | None) -> str:
+    """`10[kN/m]` as `(10*__u_kN/__u_m)`: each unit in the brackets under a name that is a
+    unit and nothing else. Asked for on 2026-09-26, so that `m`, `s` and `N` can be names of
+    a sheet and `2000[kN/m]` still reads kilonewtons per metre."""
+    where = f"line {line_no}: " if line_no is not None else ""
+
+    def quantity(match: re.Match) -> str:
+        number, inside = match.group(1), match.group(2)
+
+        def unit(word: re.Match) -> str:
+            name = word.group(0)
+            if name not in _UNIT_ALIASES or name.startswith(BRACKETED_UNIT_PREFIX):
+                raise EngSyntaxError(
+                    f"{where}'{name}' in {number}[{inside}] is not a unit; the brackets after a "
+                    "number hold its unit, as in 6[m], 10[kN/m] or 6000[mm^2]"
+                )
+            return BRACKETED_UNIT_PREFIX + name
+
+        units = _UNIT_WORD.sub(unit, inside)
+        if not _UNIT_WORD.search(inside):
+            raise EngSyntaxError(
+                f"{where}{number}[{inside}] holds no unit; write it as 6[m] or 10[kN/m]"
+            )
+        return f"({number}*{units})"
+
+    return _BRACKETED_UNIT.sub(quantity, text)
+
+
+def normalize_expression(text: str, line_no: int | None = None) -> str:
+    text = _rewrite_bracketed_units(text, line_no)
     # Before the `^` substitution below, because the bracket notation is written with `^`.
     text = _MACAULAY_BRACKET.sub(r"macaulay(\1, \2)", text)
     text = text.replace("^", "**")
@@ -242,7 +279,7 @@ def parse_cell(
                         f"line {line_no}: invalid numeric assignment target '{target}'"
                     )
                 _validate_target(target, line_no)
-                normalized = normalize_expression(numeric_rhs.strip())
+                normalized = normalize_expression(numeric_rhs.strip(), line_no)
                 # `D := [0; d[1,1]]` writes a matrix the way a `=` line does, and it is
                 # read the same way; a line with no brackets is left exactly as it was.
                 rewritten, matrix_literals = rewrite_matrix_literals(normalized, line_no)
@@ -304,7 +341,7 @@ def parse_cell(
             else:
                 rhs = source
 
-            normalized = normalize_expression(rhs.strip())
+            normalized = normalize_expression(rhs.strip(), line_no)
             rewritten, matrix_literals = rewrite_matrix_literals(normalized, line_no)
             try:
                 expression = mark_typed_decimals(ast.parse(rewritten, mode="eval"), rewritten)
@@ -383,7 +420,7 @@ def _parse_function_target(
 
 
 def _validate_target(name: str, line_no: int) -> None:
-    if keyword.iskeyword(name) or name in _RESERVED:
+    if keyword.iskeyword(name) or name in _RESERVED or name.startswith(BRACKETED_UNIT_PREFIX):
         raise EngSyntaxError(f"line {line_no}: reserved identifier '{name}'")
 
 

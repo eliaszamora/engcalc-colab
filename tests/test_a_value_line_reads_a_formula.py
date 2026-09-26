@@ -73,7 +73,8 @@ def test_a_formula_of_a_value_line_reads_on_in_a_formula(sheet):
     assert r"16.00\,\mathrm{m}" in page, page
 
 
-def test_a_formula_named_like_a_unit_still_reads_as_the_unit(sheet):
-    # As before this change: `m` on a `:=` line is the metre, whatever `m = ...` said.
+def test_a_formula_named_like_a_unit_is_the_formula(sheet):
+    # It read the metre until 2026-09-26: `m = 3*a` then `x := 4*m` is four times that mass,
+    # as it is when `m` has a value (test_a_unit_letter_that_is_a_name).
     page, _console = sheet("a := 2*kg\nm = 3*a\nx := 4*m\n")
-    assert r"x & = & \displaystyle 4.00\,\mathrm{m}" in page, page
+    assert r"x & = & \displaystyle 24.00\,\mathrm{kg}" in page, page
