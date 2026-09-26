@@ -96,7 +96,9 @@ def test_a_long_paragraph_is_cut_into_lines_that_fit(sheet):
     (paragraph,) = [item.data for item in captured if isinstance(item, Math)]
     lines = re.findall(r"\\text\{([^}]*)\}", paragraph)
     assert len(lines) > 3, lines
-    assert all(len(line) <= 80 for line in lines), [len(line) for line in lines]
+    # 62 characters: KaTeX sets ~7.3 px each, and his Colab gave a paragraph 489 px at a
+    # window of 1254 px - 80 characters (582 px) ran off the right. Measured 2026-09-25.
+    assert all(len(line) <= 62 for line in lines), [len(line) for line in lines]
     assert " ".join(line.strip() for line in lines) == words
 
 

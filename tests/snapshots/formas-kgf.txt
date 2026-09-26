@@ -10,11 +10,12 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 2 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Esta hoja no es una memoria: existe para que la comparación de páginas de} \\[2pt]
-\text{referencia vea formas que ni la viga ni la memoria contienen. Medido contra los} \\[2pt]
-\text{mutantes de las correcciones 0.30.8 a 0.30.11, esas dos hojas dejaban pasar 21} \\[2pt]
-\text{de 40, y casi todos por la misma razón - la forma no estaba en ninguna página.} \\[2pt]
-\text{Cada bloque dice cuál cubre.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{Esta hoja no es una memoria: existe para que la comparación de} \\[2pt]
+\text{páginas de referencia vea formas que ni la viga ni la memoria} \\[2pt]
+\text{contienen. Medido contra los mutantes de las correcciones} \\[2pt]
+\text{0.30.8 a 0.30.11, esas dos hojas dejaban pasar 21 de 40, y} \\[2pt]
+\text{casi todos por la misma razón - la forma no estaba en ninguna} \\[2pt]
+\text{página. Cada bloque dice cuál cubre.} \end{array}
 
 === 3 · HTML ===
 <div style="height:18px"></div>
@@ -26,9 +27,9 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 6 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Un módulo resistente es una longitud al cubo y una curvatura es una longitud a} \\[2pt]
-\text{la menos uno. Con la paleta kgf salían en otro sistema que el trabajo de la} \\[2pt]
-\text{línea de arriba.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{Un módulo resistente es una longitud al cubo y una curvatura} \\[2pt]
+\text{es una longitud a la menos uno. Con la paleta kgf salían en} \\[2pt]
+\text{otro sistema que el trabajo de la línea de arriba.} \end{array}
 
 === 7 · HTML ===
 <div style="height:18px"></div>
@@ -66,8 +67,8 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 <div style="height:18px"></div>
 
 === 12 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Una carga distribuida en el eje: `kgf/cm` en una línea y no como fracción} \\[2pt]
-\text{apilada.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{Una carga distribuida en el eje: `kgf/cm` en una línea y no} \\[2pt]
+\text{como fracción apilada.} \end{array}
 
 === 13 · HTML ===
 <div style="height:18px"></div>
@@ -98,8 +99,9 @@ annotation: (600, 60)
 <div style="height:18px"></div>
 
 === 20 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{La leyenda con la precisión de la página y el panel resumen con sus encabezados} \\[2pt]
-\text{en negrita, que solo aparece con cuatro curvas o más.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{La leyenda con la precisión de la página y el panel resumen} \\[2pt]
+\text{con sus encabezados en negrita, que solo aparece con cuatro} \\[2pt]
+\text{curvas o más.} \end{array}
 
 === 21 · HTML ===
 <div style="height:18px"></div>
@@ -158,8 +160,9 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 28 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{El empotramiento es un borde y no vale cero, así que distingue la expresión} \\[2pt]
-\text{escrita de la simplificada donde la viga, con sus dos bordes en cero, no puede.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{El empotramiento es un borde y no vale cero, así que distingue} \\[2pt]
+\text{la expresión escrita de la simplificada donde la viga, con sus} \\[2pt]
+\text{dos bordes en cero, no puede.} \end{array}
 
 === 29 · HTML ===
 <div style="height:18px"></div>
@@ -190,8 +193,8 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 36 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Un cortante que no cambia de signo en el tramo: el valor absoluto se resuelve, y} \\[2pt]
-\text{con el signo que corresponde.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{Un cortante que no cambia de signo en el tramo: el valor} \\[2pt]
+\text{absoluto se resuelve, y con el signo que corresponde.} \end{array}
 
 === 37 · HTML ===
 <div style="height:18px"></div>
@@ -221,10 +224,11 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 44 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{La carga por metro y la luz en milímetros dejan el momento en una unidad que} \\[2pt]
-\text{nadie escribe. Sin paleta, los apoyos salían en ella al lado del máximo; con} \\[2pt]
-\text{paleta nunca se vio, por eso esta hoja se compara también sin paleta. Seis} \\[2pt]
-\text{metros y no setenta centímetros: así el máximo sale en kN$\cdot$m, y un cero que} \\[2pt]
+\hspace{-5pt}\begin{array}{l} \text{La carga por metro y la luz en milímetros dejan el momento en} \\[2pt]
+\text{una unidad que nadie escribe. Sin paleta, los apoyos salían en} \\[2pt]
+\text{ella al lado del máximo; con paleta nunca se vio, por eso esta} \\[2pt]
+\text{hoja se compara también sin paleta. Seis metros y no setenta} \\[2pt]
+\text{centímetros: así el máximo sale en kN$\cdot$m, y un cero que} \\[2pt]
 \text{eligiera solo, sin mirar a su vecino, saldría en N$\cdot$m.} \end{array}
 
 === 45 · HTML ===
@@ -255,12 +259,13 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 52 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Un momento límite escrito con sus dos unidades, y un área escrita como largo por} \\[2pt]
-\text{ancho. Ninguna de las tres hojas tenía un producto de dos unidades dentro de una} \\[2pt]
-\text{fórmula, así que la comparación de páginas no podía ver cómo se separan. Se} \\[2pt]
-\text{separaban con un espacio: la fórmula decía 20 kN m al lado de su propio} \\[2pt]
-\text{resultado 20.00 kN$\cdot$m, y el área decía 0.30 m 0.60 m, donde m m es mm con un} \\[2pt]
-\text{hueco.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{Un momento límite escrito con sus dos unidades, y un área} \\[2pt]
+\text{escrita como largo por ancho. Ninguna de las tres hojas tenía} \\[2pt]
+\text{un producto de dos unidades dentro de una fórmula, así que la} \\[2pt]
+\text{comparación de páginas no podía ver cómo se separan. Se} \\[2pt]
+\text{separaban con un espacio: la fórmula decía 20 kN m al lado de} \\[2pt]
+\text{su propio resultado 20.00 kN$\cdot$m, y el área decía 0.30 m 0.60 m,} \\[2pt]
+\text{donde m m es mm con un hueco.} \end{array}
 
 === 53 · HTML ===
 <div style="height:18px"></div>
@@ -281,9 +286,10 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 58 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{El orden de las dos unidades. Una cantidad guarda el orden en que se construyó,} \\[2pt]
-\text{y las tablas de la página escriben todo momento con la fuerza primero; una} \\[2pt]
-\text{fórmula recibía sus factores en orden alfabético, y decía cm$\cdot$kgf una línea antes} \\[2pt]
+\hspace{-5pt}\begin{array}{l} \text{El orden de las dos unidades. Una cantidad guarda el orden en} \\[2pt]
+\text{que se construyó, y las tablas de la página escriben todo} \\[2pt]
+\text{momento con la fuerza primero; una fórmula recibía sus} \\[2pt]
+\text{factores en orden alfabético, y decía cm$\cdot$kgf una línea antes} \\[2pt]
 \text{de su propio valor en kgf$\cdot$cm.} \end{array}
 
 === 59 · HTML ===
@@ -303,10 +309,11 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 64 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Ninguna hoja de referencia dibujaba estos bloques, y ahí se escondían dos} \\[2pt]
-\text{defectos: las unidades de un solve con varias respuestas y de la fila del} \\[2pt]
-\text{descarte salían en cursiva, y una respuesta única sin nombre salía sin decir de} \\[2pt]
-\text{qué es. Un modo se escribe 1/s en las tres filas o no se escribe igual en} \\[2pt]
+\hspace{-5pt}\begin{array}{l} \text{Ninguna hoja de referencia dibujaba estos bloques, y ahí se} \\[2pt]
+\text{escondían dos defectos: las unidades de un solve con varias} \\[2pt]
+\text{respuestas y de la fila del descarte salían en cursiva, y una} \\[2pt]
+\text{respuesta única sin nombre salía sin decir de qué es. Un modo} \\[2pt]
+\text{se escribe 1/s en las tres filas o no se escribe igual en} \\[2pt]
 \text{ninguna.} \end{array}
 
 === 65 · HTML ===
@@ -342,11 +349,12 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 72 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Ninguna hoja de referencia dibujaba un piecewise con números y la variable} \\[2pt]
-\text{todavía libre, y ahí vive una tercera fila que ninguna otra escribe: la} \\[2pt]
-\text{respuesta, construida aparte del printer de SymPy. Sus ramas salían en estilo de} \\[2pt]
-\text{texto, con la fracción de unidades dibujada pequeña, y la comparación de páginas} \\[2pt]
-\text{no podía verlo porque la fila no estaba en ninguna.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{Ninguna hoja de referencia dibujaba un piecewise con números y} \\[2pt]
+\text{la variable todavía libre, y ahí vive una tercera fila que} \\[2pt]
+\text{ninguna otra escribe: la respuesta, construida aparte del} \\[2pt]
+\text{printer de SymPy. Sus ramas salían en estilo de texto, con la} \\[2pt]
+\text{fracción de unidades dibujada pequeña, y la comparación de} \\[2pt]
+\text{páginas no podía verlo porque la fila no estaba en ninguna.} \end{array}
 
 === 73 · HTML ===
 <div style="height:18px"></div>
@@ -375,9 +383,10 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 78 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Ninguna hoja escribía un número con unidad dentro de una rama, y ahí se escondía} \\[2pt]
-\text{un error que mataba la celda: con la variable libre, el motor pedía que le} \\[2pt]
-\text{definieran el kilonewton. La definición, el mismo llamado en un punto y su} \\[2pt]
+\hspace{-5pt}\begin{array}{l} \text{Ninguna hoja escribía un número con unidad dentro de una rama,} \\[2pt]
+\text{y ahí se escondía un error que mataba la celda: con la} \\[2pt]
+\text{variable libre, el motor pedía que le definieran el} \\[2pt]
+\text{kilonewton. La definición, el mismo llamado en un punto y su} \\[2pt]
 \text{extrema ya respondían; el único camino roto era éste.} \end{array}
 
 === 79 · HTML ===
@@ -401,11 +410,12 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 84 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{El mismo piecewise, pero preguntado en un punto. Ninguna hoja lo escribía, y por} \\[2pt]
-\text{eso nadie veía que la fila de sustitución escribía la rama por defecto como un} \\[2pt]
-\text{cero pelado mientras la respuesta, dos líneas más abajo, la escribía con su} \\[2pt]
-\text{unidad. Acá el punto cae fuera de todo tramo, así que la rama que responde es} \\[2pt]
-\text{justamente la que salía sin unidad.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{El mismo piecewise, pero preguntado en un punto. Ninguna hoja} \\[2pt]
+\text{lo escribía, y por eso nadie veía que la fila de sustitución} \\[2pt]
+\text{escribía la rama por defecto como un cero pelado mientras la} \\[2pt]
+\text{respuesta, dos líneas más abajo, la escribía con su unidad.} \\[2pt]
+\text{Acá el punto cae fuera de todo tramo, así que la rama que} \\[2pt]
+\text{responde es justamente la que salía sin unidad.} \end{array}
 
 === 85 · HTML ===
 <div style="height:18px"></div>
@@ -429,11 +439,12 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 90 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Las hojas ya dibujaban un piecewise con la variable libre, pero con ramas que} \\[2pt]
-\text{son nombres, y ahí cada rama resuelve a una cantidad y el grupo le presta su} \\[2pt]
-\text{unidad al cero. Una viga real se escribe con fórmulas en la variable: ninguna} \\[2pt]
-\text{resuelve, el cero queda solo y salía sin unidad, un momento escrito 0.00 en la} \\[2pt]
-\text{fila que se lee.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{Las hojas ya dibujaban un piecewise con la variable libre,} \\[2pt]
+\text{pero con ramas que son nombres, y ahí cada rama resuelve a una} \\[2pt]
+\text{cantidad y el grupo le presta su unidad al cero. Una viga real} \\[2pt]
+\text{se escribe con fórmulas en la variable: ninguna resuelve, el} \\[2pt]
+\text{cero queda solo y salía sin unidad, un momento escrito 0.00 en} \\[2pt]
+\text{la fila que se lee.} \end{array}
 
 === 91 · HTML ===
 <div style="height:18px"></div>

@@ -4123,7 +4123,10 @@ _FRAME = r"\hspace{-5pt}\begin{array}{l} "
 # paragraph is typeset as the mathematics is: its words in `\text{}`, its `$...$` as
 # mathematics, in lines of at most `NARRATIVE_LINE` characters, which KaTeX does not break
 # by itself. His choice, 2026-09-25.
-NARRATIVE_LINE = 80
+# 62 characters. KaTeX sets them ~7.3 px each, and his Colab gave the output 489 px at a
+# window of 1254 px: 80 characters (582 px) ran off the right edge. Measured 2026-09-25; it
+# is also the length a line of prose reads comfortably at.
+NARRATIVE_LINE = 62
 _NARRATIVE_SPAN = re.compile(r"\$(\S|\S[^$]*?\S)\$")
 # What LaTeX would read as a command, written as text. `¿ ¡ « »` have no command in KaTeX:
 # they are left as they are and KaTeX draws them from the system's letter.

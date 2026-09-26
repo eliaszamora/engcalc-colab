@@ -9,9 +9,9 @@
 <div style="height:18px"></div>
 
 === 2 · Math ===
-\hspace{-5pt}\begin{array}{l} \text{Se calculan las reacciones, la ley de momentos, la zona donde se supera el} \\[2pt]
-\text{momento admisible y la flecha maxima de una viga de acero de 6 m con carga} \\[2pt]
-\text{uniforme de servicio.} \end{array}
+\hspace{-5pt}\begin{array}{l} \text{Se calculan las reacciones, la ley de momentos, la zona donde} \\[2pt]
+\text{se supera el momento admisible y la flecha maxima de una viga} \\[2pt]
+\text{de acero de 6 m con carga uniforme de servicio.} \end{array}
 
 === 3 · HTML ===
 <div style="height:18px"></div>
