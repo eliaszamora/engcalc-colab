@@ -1156,6 +1156,12 @@ compound units (`10_kN/m` cannot say where the unit ends). Built:
 
 #343 merged with his yes (*"Fusiona #343 y publica la 0.41.0"*), released as 0.41.0 with #342.
 
+**0.41.0 before its merge**: version assertions RED (7) then GREEN; suite 3192 twice
+(SymPy 1.14); wheel 33 files identical to `src`; clean Colab-like venv gains only Pint and
+four small deps; smoke 107/107 (new scratchpad `c0d9fc55.../smoke-0410/`: brackets, the
+re-run stop, degrees; the old re-run notice and `sin(0.93 rad)` checks now read the new
+behaviour); suite against the wheel on SymPy 1.13.3: 3191 + the by-construction one.
+
 **Exact next step:** close 0.41.0 (checks after its merge, his Colab).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
