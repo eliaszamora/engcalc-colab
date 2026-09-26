@@ -13,7 +13,23 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.41.0**.
+Current version: **0.41.1**.
+
+
+## v0.41.1 the last definition is the one read
+
+**A name is what its last line made it.** `p := 500*kg`, `a := 2`, `p = 3*a`, `x := 4*p`
+gave `x = 2000.00 kg` while `numeric(p)` on the same page said `6.00`: the `=` line wrote
+a formula and left the old value in place, and a `:=` line reads a value first. A `=` line
+now drops the name's `:=` value, as a `:=` line already dropped a formula, so `x = 24.00`.
+The same number outlived a plain `=` after `keep` (`keep d = h - 4*cm`, then `d = 3*h`,
+read 112 cm for `2*d` instead of 360 cm); a plain `=` line after `keep` is a definition
+without the mark. The `m` sheet run twice no longer says `m` "has been read as a unit".
+
+**`%eng_units none` clears the palette**, as every report of it says; the empty argument
+still does.
+
+No reference page moves.
 
 
 ## v0.41.0 units in brackets, angles in degrees
@@ -3710,6 +3726,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.41.1** — a `=` line drops the value a `:=` line gave the same name, and the number a `keep` gave it; `%eng_units none` clears the palette.
 - **0.41.0** — a unit in brackets after its number, `6[m]`, so `m`, `s` and `N` can be names of a sheet; a name spelled like a unit beside another unit stops the line; a computed angle reads in degrees, written `°`; `numeric` of a value is one row.
 - **0.40.0** — a `:=` line reads a name defined with `=`; a sum reads in the order it was written; a value inside a function's parentheses is not bracketed again; his exercise 2.1 is a reference sheet.
 - **0.39.0** — `% if` / `% elif` / `% else`, `% for` and `% while`; `solve` takes the one root in a range; `d = numeric(...)` is written under `d`; a `=` line of values ends on its value; names of several letters in italic; one spacing rule between blocks and the text in KaTeX's letter; room under a fraction row.
@@ -3826,4 +3843,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.41.0`.
+Version: `0.41.1`.
