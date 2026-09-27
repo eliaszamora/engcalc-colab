@@ -77,6 +77,11 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.41.2: a paragraph fills the width; extrema of an angle
+check("a paragraph breaks where the page ends", '"""Una viga de $L = 6$ m de luz."""',
+      r"\small \text{Una }\allowbreak", r"{L = 6}\text{ }\allowbreak", absent=(r"\footnotesize",))
+check("extrema of an angle", "L := 4*m\nh(x) = atan(x/L)\nextrema(h(x), x, 0*m, L)",
+      r"\left(45.00^{\circ}\right)", absent=("incompatible",))
 # 0.41.1: the last definition is the one read
 check("= drops a := value", "p := 500*kg\na := 2\np = 3*a\nx := 4*p",
       r"x & = & \displaystyle 24.00", absent=("2000.00",))
