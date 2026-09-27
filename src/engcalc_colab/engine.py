@@ -760,6 +760,9 @@ def written_term_key(term):
 # The calls that leave a form of their own for the row to show. A statement that is one
 # of them shows that form; a statement holding one inside something larger is read again.
 _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
+# Walked by a written form only on a line that reaches a kept name. See
+# `EngineeringEngine._a_written_form_may_call`.
+_CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff"})
 
 
 class EngineeringEngine:
@@ -1495,9 +1498,13 @@ class EngineeringEngine:
                 continue
             if node.id in self.kept_names or self._shows_its_written_form(node.id):
                 return True
+            # A call of a function whose body keeps a name: `W(x) = 2*V(x)` over
+            # `V(x) = R_A - q*x` read `q L - 2 q x` (2026-09-27).
+            if node.id in self.written_functions:
+                return True
         return False
 
-    def _shown_input(self, statement, evaluator):
+    def _shown_input(self, statement, evaluator, value=None):
         """The formula a row shows beside its value: the whole statement, never a part.
 
         A derivative or an integral leaves its unevaluated form in one slot for the row
@@ -1516,6 +1523,9 @@ class EngineeringEngine:
         shown = evaluator.display_input
         if shown is None:
             return None
+        kept = self._shown_in_kept_names(statement, value)
+        if kept is not None:
+            return kept
         if isinstance(body, ast.Call) and getattr(body.func, "id", None) in _CALLS_THAT_SHOW:
             return shown
         reader = _Evaluator(self, getattr(statement, "matrix_literals", ()))
@@ -1527,6 +1537,60 @@ class EngineeringEngine:
             return reader.visit(body)
         except Exception:
             return None
+
+    def _a_written_form_may_call(self, name, carries_kept: bool) -> bool:
+        """The calls a written form may walk through: pure arithmetic, a function whose
+        written body keeps a name, and - only on a line that reaches a kept name - an
+        integral or a derivative.
+
+        `M(x) = integrate(V(x), x, 0, x)` under `V(x) = R_A - q*x` read `q L x/2 - q x^2/2`,
+        the reaction the memoria names gone (2026-09-27). Neither records an effect a
+        second walk repeats; each is worked out twice and `_agrees_with` checks the answer.
+        Not on every line: `y = 2*diff(x^2, x)` would then read `2 · 2 x` for `4 x`.
+        """
+        if name in _WRITTEN_FORM_SAFE_CALLS or name in self.written_functions:
+            return True
+        return carries_kept and name in _CALLS_A_KEPT_NAME_MAY_WALK
+
+    def _shown_in_kept_names(self, statement, value):
+        """The integral or derivative a row shows, read with its kept names standing.
+
+        `M(x) = integrate(V(x), x, 0, x)` under `V(x) = R_A - q x` showed `∫_0^x (qL/2 - qx)
+        dx`: the call was read by the evaluator, which expands every name. Read as the
+        written form reads it - kept names standing, a function called on its written body
+        - it shows `∫_0^x (R_A - q x) dx`. Only for a statement that reaches a kept name and
+        calls nothing a second walk would repeat, and only once what it shows, worked out,
+        agrees with the value computed beside it (2026-09-27, his ask).
+        """
+        # Containment, as for the written form: a line that reaches no kept name is not
+        # read a second time. Measured without it: no page and no exercise moves, and the
+        # eighteen exercises take 3.73 s against 3.67 s - kept so that the promise "a sheet
+        # with no kept name renders as before" does not rest on an equivalence.
+        if value is None or not self._reaches_a_kept_name(statement.expression):
+            return None
+        for node in ast.walk(statement.expression):
+            if isinstance(node, ast.Call):
+                if not self._a_written_form_may_call(getattr(node.func, "id", None), True):
+                    return None
+        reader = _WrittenFormEvaluator(self, getattr(statement, "matrix_literals", ()))
+        reader.showing = True
+        body = statement.expression.body
+        try:
+            if statement.parameters is not None:
+                shown = reader.visit_function_body(body, statement.parameters)
+            else:
+                shown = reader.visit(body)
+            worked_out = sp.sympify(shown).doit()
+        except Exception:  # noqa: BLE001 - it shows what it showed before
+            return None
+        expansions = {
+            self.resolve_symbol(name): self.namespace[name]
+            for name in self.kept_names
+            if name in self.namespace
+        }
+        if not _agrees_with(worked_out, value, expansions):
+            return None
+        return shown
 
     def _call_of_the_sheet_shown(self, statement):
         """`M_u = U1(L/2)`: the call, as the row's first formula, before what it expands to.
@@ -1638,7 +1702,7 @@ class EngineeringEngine:
         for node in ast.walk(statement.expression):
             if isinstance(node, ast.Call):
                 name = getattr(node.func, "id", None)
-                if name not in _WRITTEN_FORM_SAFE_CALLS and name not in self.written_functions:
+                if not self._a_written_form_may_call(name, carries_kept):
                     return None
             # A name already bound to a symbolic definition is substituted here, and
             # what arrives is an expression SymPy has already evaluated. The written
@@ -2464,7 +2528,7 @@ class EngineeringEngine:
 
             # The formula is read before the name is stored: read after, `v = v + 2*diff(t^2, t)`
             # showed the new `v` inside the formula that defines it.
-            shown = self._shown_input(statement, evaluator)
+            shown = self._shown_input(statement, evaluator, value)
             if statement.target is not None:
                 if statement.parameters is not None:
                     for parameter in statement.parameters:
