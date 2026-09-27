@@ -1336,7 +1336,34 @@ reinstalled, my cell 3 printed `engcalc 0.41.2`, a long paragraph reached the ou
 with `M = qL^2/8` whole, and `extrema(atan(x/L_t), ...)` read `0 (0.00°)` global min and
 `π/4 (45.00°)` global max. Cells 3 and 4 are mine and can be deleted.
 
-**Exact next step:** ask him about rule 2 (a valued scalar formula stays a name), above.
+### A formula whose names have values stays a name (rule 2, his yes)
+
+He chose it (*"Sí, adopta la regla 2 por defecto. Lo dejo a tu criterio"*, 2026-09-26).
+Branch `feat/a-valued-formula-stays-a-name`: `engine._a_formula_with_a_number` gives an
+unmarked `=` definition the `keep` mark when the names it reads are all sheet names holding
+a number (`:=` values or names kept before) and it works out as one number. Refined from
+the measured rule 2 by what the first draft drew: a formula over a value written with `=`
+(`M = q*L^2/8` over `L = 6*m`) was kept and then drew `10 kN (6 m)^2/(8 m)` - a sheet with a
+kept name writes every `=` name in its written form - so such a formula folds as before. A
+formula of a free variable (`M = q*x*(L - x)/2`) and a matrix are not numbers and are left.
+`%eng_help keep` rewritten (its three claims run). 9 contracts
+(`test_a_valued_formula_stays_a_name.py`, 4 RED); nine older contracts pinned "an unmarked
+definition expands" and were rewritten with notes to reach their cases again - names without
+values where they needed an expansion, the bracket and the 0.59 coefficient written out
+or with the formulas before the values; mutation 6/6, two redundant conditions removed;
+suite 3237 (and the changed files on SymPy 1.13.3); none of the 24 pages moves against
+`main` rendered with the same Python (the figures differ between matplotlib 3.10 and 3.11,
+nothing else); gap-map E4, E7, E8 read in their names.
+
+Found with it, not caused by it, not fixed:
+- a written form puts two numbers side by side with a space: `phiMn = fy*As*(d -
+  fy*As/(0.85*fc*b)/2)` reads `\frac{fy As}{2 0.85 fc b}` (on 0.41.2 too) - it reads as
+  "20.85"; its own PR next;
+- E4's `M(x) = integrate(V(x), x, 0, x)` shows the integrand as `q L/2 - q x` under
+  `V(x) = R_A - q x` (a kept name inside an integral's shown input; the same with `keep`).
+
+**Exact next step:** this PR on green CI; then the two numbers side by side; release 0.42.0
+(a change of what an unmarked sheet shows) when both are in.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

@@ -93,12 +93,12 @@ _STATEMENTS: tuple[CallHelp, ...] = (
             ("expresión", "su definición, que se muestra una vez, en su propia fila"),
         ),
         note=(
-            "Sin keep, una fórmula que usa el nombre se escribe con el nombre reemplazado "
-            "por su definición. Con f_cw = 0.85*fc y luego C = f_cw*b*d, la memoria dice "
-            "C = 0.85 b d fc. Con keep f_cw = 0.85*fc dice C = f_cw b d - la fórmula de "
-            "la norma - y la sustitución pone el valor propio de f_cw (178.50 kgf/cm2). "
-            "Úsalo en todo valor intermedio que la norma o tu razonamiento nombran; un dato "
-            "(fc := 210*kgf/cm^2) no lo necesita."
+            "Una definición cuyos nombres ya tienen valor se muestra por su nombre sin keep: "
+            "con fc := 210*kgf/cm^2, f_cw = 0.85*fc y luego C = f_cw*b*d, la memoria dice "
+            "C = f_cw b d - la fórmula de la norma - y la sustitución pone el valor propio "
+            "de f_cw (178.50 kgf/cm2). keep hace lo mismo con una definición que todavía no "
+            "tiene número: sin valores, f_cw = 0.85*fc da C = 0.85 b d fc, y keep "
+            "f_cw = 0.85*fc da C = f_cw b d. Un dato (fc := 210*kgf/cm^2) no lo necesita."
         ),
         example=(
             "fc := 210*kgf/cm^2\nb := 30*cm\nd := 44*cm\n"

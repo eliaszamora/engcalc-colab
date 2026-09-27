@@ -74,8 +74,9 @@ def test_a_coefficient_written_in_a_denominator_survives_in_a_matrix(cell):
 
 
 def test_a_matrix_built_on_an_unmarked_definition_still_expands(cell):
-    """`keep` stays opt-in inside a matrix exactly as it is outside one."""
-    final = _final(cell("b := 300*mm\nd := 450*mm\nA_c = b*d\nM = [A_c, 0; 0, A_c]\n"))
+    """A formula whose names have no value expands inside a matrix as outside one. (With
+    values it stays a name since 2026-09-26: test_a_valued_formula_stays_a_name.)"""
+    final = _final(cell("A_c = b*d\nM = [A_c, 0; 0, A_c]\n"))
     assert "b d" in final, final
 
 

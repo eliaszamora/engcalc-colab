@@ -950,6 +950,36 @@ class EngineeringEngine:
         self.numeric_context.values[name] = self.zero_in_its_unit(name, quantity)
         self.kept_values.add(name)
 
+    def _a_formula_with_a_number(self, statement, value) -> bool:
+        """A scalar formula of the sheet's own names that is a number now: kept, unmarked.
+
+        `phiMn = phi*As*fy*(d - a/2)` over plain `d` and `a` read `φ As fy (h - 0.59 As
+        fy/(fc b) - cover)`; a memoria reads `φ As fy (d - a/2)` and puts in `d` and `a`.
+        His decision, 2026-09-26: such a definition stays a name, as `keep` makes one.
+
+        Every name it reads must hold a number - a `:=` value or a name kept before - and
+        it must read one. A value written out (`L = 6*m`) names no one; a formula over
+        names written with `=` (`M = q*L^2/8` over `L = 6*m`) folds into `45 kN·m` as it
+        always has - kept, it drew `10 kN (6 m)^2/(8 m)`, because a sheet with a kept name
+        writes every `=` name in its written form. A formula whose names have no value, a
+        derivation's `a = E*A/L`, still expands. Keeping every definition was measured
+        and made the frames worse (`R_2 = R_1` for a matrix); a matrix is not worked out
+        as one number, so `evaluate_symbolic` below refuses it.
+        """
+        names = [
+            node.id
+            for node in ast.walk(statement.expression)
+            if isinstance(node, ast.Name)
+            and (node.id in self.namespace or node.id in self.numeric_context.values)
+        ]
+        if not names or any(self.numeric_context.get(name) is None for name in names):
+            return False
+        try:
+            self.numeric_context.evaluate_symbolic(value)
+        except Exception:  # noqa: BLE001 - nothing to work out in numbers: it expands
+            return False
+        return True
+
     def _drop_the_number(self, name: str) -> None:
         """A `=` line without `keep` makes `name` its formula, and only its formula.
 
@@ -2454,7 +2484,9 @@ class EngineeringEngine:
                         self.zero_quantities.pop(statement.target, None)
                     else:
                         self.zero_quantities[statement.target] = zero
-                    if declaration == "keep":
+                    # `case` and `combo` returned above: here a line is plain or `keep`.
+                    if declaration == "keep" or self._a_formula_with_a_number(statement, value):
+                        self.kept_names.add(statement.target)
                         self._store_kept_value(statement.target, value)
                     else:
                         self._drop_the_number(statement.target)

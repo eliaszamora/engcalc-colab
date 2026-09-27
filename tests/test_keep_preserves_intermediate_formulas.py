@@ -157,10 +157,12 @@ def test_a_kept_definition_shows_its_own_formula(cell):
 # --- what must not move -----------------------------------------------------------
 
 def test_an_unmarked_definition_is_expanded_as_before(cell):
-    """The whole reason this is opt-in. Twenty-four of a hundred and thirty-one
-    memoria-shaped tests move if every definition becomes a barrier."""
+    """Why this was opt-in: twenty-four of a hundred and thirty-one memoria-shaped tests
+    moved if every definition became a barrier. Since 2026-09-26 a formula whose names all
+    have a value stays a name unmarked (test_a_valued_formula_stays_a_name); one that
+    reads a name with no value - `r` here - is expanded as before."""
     latex = cell(
-        BEAM + "d = h - cover - db_st - db/2\nphiMn = phi*As*fy*d\n"
+        BEAM + "d = h - cover - db_st - db/2 - r\nphiMn = phi*As*fy*d\n"
     )
     assert r"\mathit{cover}" in latex.split("phiMn")[-1], latex
 
@@ -184,7 +186,9 @@ def test_a_reset_forgets_what_was_kept(monkeypatch):
     assert magics.engine.written_namespace == {}
 
     captured.clear()
-    magics.eng("", "b := 300*mm\nw = 2*b\nz = 3*w\n")
+    # `b` without a value this time: a formula whose names all have one stays a name
+    # unmarked since 2026-09-26, and this is about the mark the reset must clear.
+    magics.eng("", "w = 2*b\nz = 3*w\n")
     latex = "".join(getattr(obj, "data", "") for obj in captured)
     # `w` is an ordinary definition again, so `z` shows what it stands for.
     assert r"\displaystyle z & = & \displaystyle 6 b" in latex, latex
