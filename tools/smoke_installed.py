@@ -77,6 +77,12 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.42.3: a kept name in a matrix function; a derivative worked out with its factor
+check("a kept name in a matrix function and a derivative's number",
+      "E := 200[GPa]\nA := 10[cm^2]\nL := 3[m]\nk = E*A/L\nK(x) = [k*x, 0; 0, k]\n"
+      "q := 10[kN/m]\nR_A = q*L/2\nZ = 2*diff(R_A*x^2, x)",
+      r"\left[\begin{matrix}\displaystyle k x & \displaystyle 0", r"= 4 R_{A} x",
+      absent=(r"\frac{E A x}{L}", r"2 \cdot 2 R_{A}"))
 # 0.42.2: a kept name reaches an equation and numeric of a call
 check("a kept name in an equation and a call",
       "L := 6[m]\nq := 10[kN/m]\nR_A = q*L/2\nV(x) = R_A - q*x\nx_0 = solve(eq(V(x), 0), x)\n"
