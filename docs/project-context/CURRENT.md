@@ -12,10 +12,10 @@ _2026-09-26._
 
 | | |
 |---|---|
-| released | **0.41.1** - #348, `05c5bf5`, carrying #346 (`5a10d74`) and #347 (`f4d5e03`); closed, see the end of 0.41.0's closure |
-| before that | **0.41.0** - #344, `e879667`, closed |
-| open PRs | none |
-| default suite | **3209 passing** (SymPy 1.14; 3208 + the by-path one against the wheel on 1.13.3), about two minutes with `-n auto`; CI six jobs green on `05c5bf5` |
+| released | **0.41.2** - the release PR, carrying #351 (`d5fcd2f`) and #352 (`9996f29`); see the end of 0.41.0's closure |
+| before that | **0.41.1** - #348, `05c5bf5`, closed |
+| open PRs | the 0.41.2 release PR |
+| default suite | **3228 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `80ed5cf` (#352's head) |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1297,8 +1297,37 @@ in degrees is written `45.00^{\circ}`, as a row writes it, not `45.00\,{}^{\circ
 (`_characteristic_quantity_latex`; no block could show one before). 8 contracts (4 RED,
 then 2 more for the sign); mutation 7/7; suite 3228; no reference page moves.
 
-**Exact next step:** merge #351 on green CI, then this branch rebased onto `main`; then the
-plain definitions that expand (to analyse with him).
+Merged, each on green CI at its exact head: #351 as `d5fcd2f`; #352 rebased onto it (diff
+and tree identical to the tested ones), retargeted, as `9996f29`. Released as 0.41.2 with
+his standing authorisation (*"Tienes mi autorización para proceder con fusiones,
+publicaciones etc..."*).
+
+**The plain definitions that expand - measured, his decision.** `phiMn = phi*As*fy*(d -
+a/2)` over plain `d = h - cover` and `a = As*fy/(0.85*fc*b)` reads `φ As fy (h - 0.59 As
+fy/(fc b) - cover)`, the substitution in two rows; with `keep d`, `keep a` it reads `φ As fy
+(d - a/2)` and `(0.90)(1500 mm²)(420 MPa)((460 mm) - (88.24 mm)/2)`. Two rules were tried in
+scratch copies, not committed:
+1. every scalar `=` definition kept: frames and the derivation get worse - `R_2 = R_1`
+   hides the matrix, `k_v` reads `[k_11 ...]`, `K_c` loses its `b_1` - on 3 of the 8 sheets;
+2. a scalar formula whose value is already a number kept (formulas over names without a
+   value keep expanding, as a derivation needs): none of the 24 pages moves (they use
+   `keep` where it matters), `phiMn` reads as with `keep`, and 11 contracts fail, among
+   them the design's own `test_an_unmarked_definition_is_expanded_as_before` and
+   `test_a_sheet_with_no_kept_name_is_unchanged` (`keep` was made opt-in on purpose, RC-3),
+   `test_one_mode_at_a_time` and a value line of #327.
+Rule 2 changes what an unmarked sheet shows, so it is his call.
+
+**0.41.2 before its merge**, on the release commit's tree: version assertions RED (7) then
+GREEN; source suite 3228 twice (SymPy 1.14); wheel from `git archive`, 33 files identical
+to `src`; a clean Python 3.12 venv with Colab's pins gains only Pint 0.26.1 and the four
+small deps, upgrades nothing; `tools/smoke_installed.py` (two checks added: a paragraph's
+break points, `extrema` of an angle) 32/32 from outside the repository; the suite against
+the wheel on SymPy 1.13.3, from a copy with no `src/` and KaTeX installed: 3227 +
+`test_the_ipython_surface_stays_small` passing on the wheel's `magic.py`; the 24
+`tools/*.eng` pages byte-identical from the wheel and from the tree.
+
+**Exact next step:** after the merge, CI and the deep gate on the merge commit, a clean
+`git+https` install with the smoke, his Colab; ask him about rule 2.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
