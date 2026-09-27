@@ -675,6 +675,52 @@ _FUNCTIONS_IN_PARENTHESES = (
 )
 
 
+class _WrittenArgument:
+    """An argument of a call, written into the body where its parameter stands.
+
+    The first row of `numeric(M(L/2))` under `M(x) = R_A*x - q*x^2/2` read `R_A x - q x^2/2`,
+    the left saying `L/2` and the right `x`, and only the substitution row below it put
+    `x = 3.00 m`. It reads `R_A (L/2) - q (L/2)^2/2` (his decision, 2026-09-27). The argument
+    travels in the row's substitutions, so the first row is printed by the printer that
+    prints the second. See `test_numeric_of_a_call_writes_its_argument`.
+    """
+
+    __slots__ = ("expression",)
+
+    def __init__(self, expression):
+        self.expression = expression
+
+
+def _is_an_atomic_argument(argument, unit_literals) -> bool:
+    """A name or a plain number, which goes in bare: `M(a)`, `f(2)`."""
+    if isinstance(argument, sp.Symbol):
+        return argument.name not in unit_literals
+    return (argument.is_Integer or argument.is_Float) and not argument.could_extract_minus_sign()
+
+
+def _written_arguments(result):
+    written = getattr(result, "written_arguments", None)
+    if not written:
+        return None
+    return {name: _WrittenArgument(expression) for name, expression in written.items()}
+
+
+def _first_row_latex(result, settings):
+    """A numeric row's formula, with the arguments of its call written in."""
+    written = _written_arguments(result)
+    if written:
+        return _substitution_latex(result.symbolic_expression, written, settings)
+    return _latex(result.symbolic_expression)
+
+
+def _first_matrix_stage(result, settings):
+    """A numeric matrix's first stage, with the arguments of its call written in."""
+    written = _written_arguments(result)
+    if written:
+        return _matrix_substitution_latex(result.symbolic_matrix, written, settings)
+    return _matrix_latex(result.symbolic_matrix, settings=settings)
+
+
 class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
     def __init__(
         self,
@@ -689,7 +735,41 @@ class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
         quantity = self.substitutions.get(expr.name)
         if quantity is None:
             return super()._print_Symbol(expr)
+        if isinstance(quantity, _WrittenArgument):
+            return self._written_argument(expr, quantity.expression)
         return self._bracketed(expr, _quantity_latex(quantity, settings=self.render_settings))
+
+    def _written_argument(self, expr, argument):
+        latex = _EngineeringLatexPrinter(
+            unit_literals=self.unit_literals, render_settings=self.render_settings
+        ).doprint(argument)
+        if _is_an_atomic_argument(argument, self.unit_literals):
+            return latex
+        if not self._argument_needs_brackets(expr, argument):
+            return latex
+        return self._bracketed(expr, latex)
+
+    def _argument_needs_brackets(self, expr, argument) -> bool:
+        """Brackets unless nothing around the parameter binds tighter than the argument.
+
+        A term of a sum, which the additive rows print alone and join with a sign, takes
+        them only when the argument is negative: `L + x` read `L + - a`. In a comparison
+        (`9 m < a_q`), inside a function's own parentheses, under a radical and in an
+        exponent it goes in bare; as a factor or the base of a power, in brackets.
+        """
+        parent = self._parent_of(expr)
+        if parent is None or isinstance(parent, sp.Add):
+            return argument.could_extract_minus_sign()
+        # A function writes its own delimiters - parentheses, bars, `e^{...}` - so an
+        # argument inside one needs none: `e^{(1/2)}`.
+        if isinstance(parent, (sp.core.relational.Relational, sp.Function)):
+            return False
+        if isinstance(parent, sp.Pow):
+            if parent.base != expr:
+                return False
+            exponent = parent.exp
+            return not (exponent.is_Rational and abs(exponent.p) == 1 and exponent.q > 1)
+        return True
 
     def _print_mode(self, expr, written, exp):
         """A mode in the substitution stage is its value, like any name there."""
@@ -731,6 +811,11 @@ class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
         """
         base = term.base if term.is_Pow else term
         if isinstance(base, sp.Symbol) and base.name in self.substitutions:
+            value = self.substitutions[base.name]
+            if isinstance(value, _WrittenArgument) and _is_an_atomic_argument(
+                value.expression, self.unit_literals
+            ):
+                return super()._is_set_apart(value.expression)
             return True
         if mode_key(base) in self.substitutions:
             return True
@@ -3157,7 +3242,7 @@ def _numeric_matrix_stages(
     One function because two places need the answer: the rows themselves, and the
     spacing between them, which counts the stages a second time.
     """
-    stages = [_matrix_latex(result.symbolic_matrix, settings=settings)]
+    stages = [_first_matrix_stage(result, settings)]
     if _shows_substitution(result):
         stages.append(
             _matrix_substitution_latex(
@@ -3202,6 +3287,7 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
         return [rf"{_display_lhs(result)} & = & \displaystyle {final_latex}"]
     formula_rows = _bounded_expression_rows(
         result.symbolic_expression,
+        _written_arguments(result),
         settings=settings,
         unit_literals=result.unit_literals,
     )
@@ -3411,6 +3497,7 @@ def _named_value_branches(expression, branch_values, substitutions):
 def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, settings: RenderSettings) -> list[str]:
     formula_rows = _bounded_expression_rows(
         result.symbolic_expression,
+        _written_arguments(result),
         settings=settings,
         unit_literals=result.unit_literals,
     )
@@ -3960,6 +4047,7 @@ def _value_row_spacings(
         # counted rows built without the row's units and without its piecewise branches.
         formula_rows = _bounded_expression_rows(
             result.symbolic_expression,
+            _written_arguments(result),
             settings=settings,
             unit_literals=result.unit_literals,
         )
@@ -3986,6 +4074,7 @@ def _value_row_spacings(
     elif isinstance(result, PartialNumericEvaluationResult):
         formula_rows = _bounded_expression_rows(
             result.symbolic_expression,
+            _written_arguments(result),
             settings=settings,
         )
         substituted_rows = []
@@ -5116,7 +5205,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         return rf"{_render_lhs(result.statement.target, None)} = " + " = ".join(stages)
 
     if isinstance(result, PartialMatrixNumericEvaluationResult):
-        stages = [_matrix_latex(result.symbolic_matrix, settings=active_settings)]
+        stages = [_first_matrix_stage(result, active_settings)]
         if _shows_substitution(result):
             stages.append(
                 _matrix_substitution_latex(
@@ -5130,7 +5219,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         return rf"{lhs} = {right}" if lhs is not None else right
 
     if isinstance(result, NumericMatrixEvaluationResult):
-        stages = [_matrix_latex(result.symbolic_matrix, settings=active_settings)]
+        stages = [_first_matrix_stage(result, active_settings)]
         if _shows_substitution(result):
             stages.append(
                 _matrix_substitution_latex(
@@ -5145,7 +5234,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         return rf"{lhs} = {right}" if lhs is not None else right
 
     if isinstance(result, PartialNumericEvaluationResult):
-        formula_latex = _latex(result.symbolic_expression)
+        formula_latex = _first_row_latex(result, active_settings)
         evaluated_latex = None
         if result.piecewise_evaluation is not None:
             evaluated_latex = _piecewise_partial_latex(
@@ -5178,7 +5267,7 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         return right
 
     if isinstance(result, NumericEvaluationResult):
-        formula_latex = _latex(result.symbolic_expression)
+        formula_latex = _first_row_latex(result, active_settings)
         final_latex = _quantity_latex(
             result.quantity,
             settings=_settings_for(result, active_settings),

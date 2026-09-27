@@ -2481,6 +2481,7 @@ class EngineeringEngine:
                 ) = evaluator.partial_matrix_numeric_evaluation
                 return PartialMatrixNumericEvaluationResult(
                     statement=statement,
+                    written_arguments=evaluator.written_arguments,
                     symbolic_matrix=symbolic_matrix,
                     substitutions=substitutions,
                     unresolved_symbols=unresolved_symbols,
@@ -2500,6 +2501,7 @@ class EngineeringEngine:
                 ) = evaluator.numeric_matrix_evaluation
                 return NumericMatrixEvaluationResult(
                     statement=statement,
+                    written_arguments=evaluator.written_arguments,
                     symbolic_matrix=symbolic_matrix,
                     substitutions=substitutions,
                     quantity_matrix=quantity_matrix,
@@ -2521,6 +2523,7 @@ class EngineeringEngine:
                 ) = evaluator.partial_numeric_evaluation
                 return PartialNumericEvaluationResult(
                     statement=statement,
+                    written_arguments=evaluator.written_arguments,
                     symbolic_expression=symbolic_expression,
                     substitutions=substitutions,
                     unresolved_symbols=unresolved_symbols,
@@ -2567,6 +2570,7 @@ class EngineeringEngine:
                         self._drop_the_number(statement.target)
                 return NumericEvaluationResult(
                     statement=statement,
+                    written_arguments=evaluator.written_arguments,
                     symbolic_expression=symbolic_expression,
                     substitutions=substitutions,
                     quantity=quantity,
@@ -2688,6 +2692,7 @@ class _Evaluator(ast.NodeVisitor):
         self.answered: dict[int, object] = {}
         self.solved_for = None
         self.numeric_evaluation = None
+        self.written_arguments = None
         # Set when `numeric(expr, unit)` named a unit. `convert_quantity` already
         # stores the result in it; the renderer needs to know it was *asked for*,
         # because a unit a family also knows was being overruled by the family.
@@ -3214,6 +3219,18 @@ class _Evaluator(ast.NodeVisitor):
                         )
                     else:
                         overrides[parameter] = argument_value
+
+                # A parameter bound to a value is written on the first row as the argument
+                # the call gave it, `R_A (L/2)` for `R_A x` (2026-09-27); one bound to a free
+                # expression was substituted into the body above already.
+                written_arguments = {
+                    parameter: sp.sympify(argument_expression)
+                    for parameter, argument_expression in zip(
+                        function.parameters, argument_expressions
+                    )
+                    if parameter in overrides
+                }
+                self.written_arguments = written_arguments or None
 
                 if bindings:
                     symbolic_expression = substitute_symbolic_value(

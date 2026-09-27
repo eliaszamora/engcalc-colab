@@ -14,8 +14,8 @@ _2026-09-27._
 |---|---|
 | released | **0.42.3** - #367, `7377aa0`, closed, carrying #365 (`708b3ce`) and #366 (`496eb54`); see the end of 0.41.0's closure |
 | before that | **0.42.2** - #363, `0134b9e`, closed |
-| open PRs | this closure |
-| default suite | **3275 passing** (SymPy 1.14), about two minutes with `-n auto` |
+| open PRs | `feat/numeric-call-writes-its-argument`; the mixed fold stacked on it |
+| default suite | **3294 passing** (SymPy 1.14 and 1.13.3) on the numeric-call branch, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1580,7 +1580,34 @@ Open, his decisions (rows shown to him):
 Cosmetic, found: a function's written body called inside an indefinite integral on a
 plain line reads `x R_A` where its own row reads `R_A x` (`Z = integrate(M(x), x)`).
 
-**Exact next step:** his answer on the two decisions; CURRENT.md condensation (docs only).
+His answer (2026-09-27): *"Procede según tus recomendaciones"* - both alternatives, and he
+asked that the Colab checks be mine, with screenshots sent to him. 0.42.3 was checked in
+his Colab that way (Untitled9 cell 3; screenshots via a localhost receiver page that
+the extension's `upload_image` fills, `scratchpad/shot_receiver.py`).
+
+### `numeric` of a call writes its argument (his decision, 2026-09-27)
+
+Branch `feat/numeric-call-writes-its-argument`. The evaluator records the arguments of the
+parameters bound to a value (`written_arguments` on the four numeric result types); the
+renderer prints the first row with the substitution printer, each parameter standing as
+`renderer._WrittenArgument`: `M(L/2) = R_A (L/2) - q (L/2)²/2`, then the substitution and
+the answer as before. A name or a plain non-negative number goes in bare (`f(2) = 2 q L`,
+`K(2) = [k · 2, 0; 0, k]`); otherwise brackets unless nothing binds tighter: alone or as a
+term of a sum only when negative (the additive rows print terms alone - `L + - a` in the
+first prototype), none in a comparison (`q_v(9 m)`: `9 m < a_q`), inside a function
+(`e^{1/2}`, `sin(...)`), under a radical or in an exponent; brackets as a factor or a
+power's base. A lone numerator/denominator keeps them (`q/(L/2)`), like the substitution
+row. Found by prototyping first (a workflow explorer, `scratchpad/explore-arg`): the
+spacing metadata counts rows a second time, and without the argument a wrapped first row
+raised "spacing metadata does not match". Moves: the three `formas` pages, one row each
+(`q_v(9 m)`'s conditions); no exercise. 19 contracts (the first 7 RED); 5 older contracts
+rewritten (2 snapshots, 3 assertions, each with a note); mutation 25 mutants: 24 killed,
+the survivor (a call at its own variable writing `x` for `x`) measured equivalent on the
+whole suite, pages and exercises, and its condition removed; an unreachable default
+branch left as it was. Suite 3294 on SymPy 1.14 and on 1.13.3.
+
+**Exact next step:** the mixed `=` fold on its own branch stacked on this one; rows shown
+to him in his Colab (screenshots) before merging; then 0.43.0.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

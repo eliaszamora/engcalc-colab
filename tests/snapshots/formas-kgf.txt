@@ -374,8 +374,8 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 86 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
-\displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: 9\,\mathrm{m} < a_{q} \\[4pt]
+\displaystyle q_{2} & \text{for}\: 9\,\mathrm{m} \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: \left(900.00\,\mathrm{cm}\right) < \left(300.00\,\mathrm{cm}\right) \\[4pt]
 \displaystyle \left(4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: \left(900.00\,\mathrm{cm}\right) \leq \left(600.00\,\mathrm{cm}\right) \\[4pt]

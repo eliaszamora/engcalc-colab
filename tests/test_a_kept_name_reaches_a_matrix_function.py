@@ -47,7 +47,9 @@ def test_the_function_row_reads_the_kept_name(monkeypatch):
 def test_the_call_opens_with_the_written_body_and_its_number_is_the_same(monkeypatch):
     page, _console = _page(SHEET, monkeypatch)
     rows = page[page.index(r"K\left(2\right) & = &"):]
-    assert r"k x & 0\\" in rows, rows
+    # The call writes its argument where `x` was (2026-09-27): `k \cdot 2`, the kept `k`
+    # standing. See `test_numeric_of_a_call_writes_its_argument`.
+    assert r"k \cdot 2 & 0\\" in rows, rows
     assert r"\frac{E A x}{L}" not in rows, rows
     assert rows.rstrip().endswith(
         r"10^{3}\,\left[\begin{matrix}133.33 & 0.00\\[3pt]0.00 & 66.67\end{matrix}\right]"

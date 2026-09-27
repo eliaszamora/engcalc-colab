@@ -5,6 +5,10 @@ Seen in his Colab checking 0.42.1 (2026-09-27), older than 0.42 - the same on 0.
 with `q L x/2 - q x^2/2` and put in `q` and `L` for the reaction, one row under `M(x) = R_A
 x - q x^2/2`. `numeric(name)` already opened with the written form; a call now does too,
 and the kept name is put in as its own number, 30 kN. The number is the same.
+
+Since his decision of 2026-09-27 the first row also writes the argument where `x` was,
+`R_A (L/2) - q (L/2)^2/2` (`test_numeric_of_a_call_writes_its_argument`); what this file
+guards - the kept name standing, the body as written - is asserted on that row.
 """
 
 import contextlib
@@ -35,8 +39,8 @@ def test_the_call_opens_with_the_written_body(monkeypatch):
     page, console = _page(SHEET, monkeypatch)
     assert not console, console
     rows = _call_rows(page)
-    assert r"R_{A} x - \frac{q x^{2}}{2}" in rows, rows
-    assert r"\frac{q L x}{2}" not in rows, rows
+    assert r"R_{A}\,\left(\frac{L}{2}\right) - \frac{q\,\left(\frac{L}{2}\right)^{2}}{2}" in rows, rows
+    assert r"\frac{q L" not in rows, rows
 
 
 def test_the_kept_name_is_put_in_as_its_own_number(monkeypatch):
@@ -51,5 +55,5 @@ def test_a_call_with_nothing_kept_is_as_it_was(monkeypatch):
         "L := 6*m\nq := 10*kN/m\nM(x) = q*x*(L - x)/2\nnumeric(M(L/2))\n", monkeypatch
     )
     rows = _call_rows(page)
-    assert r"\frac{q x \left(L - x\right)}{2}" in rows, rows
+    assert r"\frac{q\,\left(\frac{L}{2}\right)\,\left(L - \frac{L}{2}\right)}{2}" in rows, rows
     assert rows.rstrip().endswith(r"45.00\,\mathrm{kN} \cdot \mathrm{m} \end{array}"), rows

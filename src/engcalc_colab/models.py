@@ -248,6 +248,7 @@ class NumericEvaluationResult:
     # it; this says it was asked for, which is what stops the family overruling a
     # request it happens to have an opinion about.
     unit_was_requested: bool = False
+    written_arguments: dict | None = None
     # Every branch of a piecewise evaluated at a point, in the unit the branches share -
     # what `PartialNumericEvaluationResult.piecewise_evaluation` carries on the path that
     # leaves the variable free. The substitution row needs it to write a zero branch in a
@@ -275,6 +276,7 @@ class NumericEvaluationResult:
         unit_literals: frozenset[str] = frozenset(),
         declared_names: frozenset[str] = frozenset(),
         unit_was_requested: bool = False,
+        written_arguments: dict | None = None,
         piecewise_branch_values: tuple[Any, ...] | None = None,
         extremum_values: tuple[Any, ...] | None = None,
         interpolation_values: tuple[Any, ...] | None = None,
@@ -295,6 +297,7 @@ class NumericEvaluationResult:
         object.__setattr__(self, "unit_literals", frozenset(unit_literals))
         object.__setattr__(self, "declared_names", frozenset(declared_names))
         object.__setattr__(self, "unit_was_requested", bool(unit_was_requested))
+        object.__setattr__(self, "written_arguments", written_arguments)
         object.__setattr__(
             self,
             "piecewise_branch_values",
@@ -332,6 +335,7 @@ class NumericMatrixEvaluationResult:
     # it; this says it was asked for, which is what stops the family overruling a
     # request it happens to have an opinion about.
     unit_was_requested: bool = False
+    written_arguments: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -348,6 +352,7 @@ class PartialMatrixNumericEvaluationResult:
     # it; this says it was asked for, which is what stops the family overruling a
     # request it happens to have an opinion about.
     unit_was_requested: bool = False
+    written_arguments: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -383,6 +388,7 @@ class PartialNumericEvaluationResult:
     # it; this says it was asked for, which is what stops the family overruling a
     # request it happens to have an opinion about.
     unit_was_requested: bool = False
+    written_arguments: dict | None = None
 
     def __init__(
         self,
@@ -399,6 +405,7 @@ class PartialNumericEvaluationResult:
         unit_literals: frozenset[str] = frozenset(),
         declared_names: frozenset[str] = frozenset(),
         unit_was_requested: bool = False,
+        written_arguments: dict | None = None,
     ) -> None:
         if display_arguments is not None and display_argument is not None:
             raise TypeError("provide either display_arguments or display_argument, not both")
@@ -418,6 +425,7 @@ class PartialNumericEvaluationResult:
         object.__setattr__(self, "unit_literals", frozenset(unit_literals))
         object.__setattr__(self, "declared_names", frozenset(declared_names))
         object.__setattr__(self, "unit_was_requested", bool(unit_was_requested))
+        object.__setattr__(self, "written_arguments", written_arguments)
 
     @property
     def display_argument(self) -> Any | None:
