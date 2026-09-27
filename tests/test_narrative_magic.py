@@ -1,6 +1,6 @@
 from IPython.display import HTML, Math
 
-from conftest import blocks_into
+from conftest import blocks_into, in_one_run
 
 
 def test_magic_renders_narrative_in_source_order_between_heading_and_equations(monkeypatch):
@@ -25,8 +25,8 @@ def test_magic_renders_narrative_in_source_order_between_heading_and_equations(m
     # choice), a `Math` output - never HTML, which Colab does not typeset.
     assert [type(item) for item in displayed] == [HTML, Math, Math, Math, Math]
     assert "Análisis de la viga" in displayed[0].data
-    assert r"\text{Se analiza una viga simplemente apoyada.}" in displayed[1].data
-    assert r"\text{Luego se determina la segunda magnitud.}" in displayed[3].data
+    assert r"\text{Se analiza una viga simplemente apoyada.}" in in_one_run(displayed[1].data)
+    assert r"\text{Luego se determina la segunda magnitud.}" in in_one_run(displayed[3].data)
 
 
 def test_narrative_escapes_user_text(monkeypatch):
@@ -43,7 +43,7 @@ def test_narrative_escapes_user_text(monkeypatch):
     assert isinstance(displayed[0], Math)
     assert "<script>" not in displayed[0].data and "<" not in displayed[0].data
     assert r"\textless{}script\textgreater{}" in displayed[0].data
-    assert r"\& cálculo" in displayed[0].data
+    assert r"\& cálculo" in in_one_run(displayed[0].data)
 
 
 def test_narrative_renders_blank_line_as_separate_paragraph(monkeypatch):
@@ -62,5 +62,6 @@ def test_narrative_renders_blank_line_as_separate_paragraph(monkeypatch):
     # The lines within one paragraph are joined into a single line, and a blank line
     # starts the next paragraph with more room than a line break. Asserted together,
     # because the join is what makes the break mean anything.
-    data = displayed[0].data
+    # Read one run per style (`conftest.in_one_run`): typeset a word at a time since 2026-09-26.
+    data = in_one_run(displayed[0].data)
     assert r"\text{Primera línea continúa aquí.} \\[8pt] \text{Segundo párrafo.}" in data, data

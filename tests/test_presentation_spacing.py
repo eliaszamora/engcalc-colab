@@ -1,5 +1,5 @@
 from IPython.display import HTML, Markdown, Math
-from conftest import blocks_into
+from conftest import blocks_into, in_one_run
 
 
 def test_section_heading_has_slightly_more_vertical_separation(monkeypatch):
@@ -47,4 +47,4 @@ def test_a_narrative_carries_no_styling_of_its_own(monkeypatch):
     # Typeset as the mathematics is since 2026-09-25 (his choice): a `Math` output, its words
     # in `\text{}`. Still no HTML: a relation inside HTML would stop rendering, as before.
     assert [type(item) for item in displayed] == [Math, Math]
-    assert r"\text{Texto explicativo.}" in displayed[0].data and "<" not in displayed[0].data
+    assert r"\text{Texto explicativo.}" in in_one_run(displayed[0].data) and "<" not in displayed[0].data

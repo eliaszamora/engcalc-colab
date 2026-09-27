@@ -153,6 +153,59 @@ def without_fraction_depth(latex: str) -> str:
     return "".join(out) + latex[last:]
 
 
+_RUN_OPENING = _re.compile(r"\\text(bf|it)?\{")
+
+
+def _group_end(latex: str, start: int) -> int:
+    """The index of the `}` closing the group whose content starts at `start`."""
+    depth, index = 1, start
+    while True:
+        if latex[index] == "\\":
+            index += 2  # an escaped `\{` or `\}`, or a command's first letter
+            continue
+        depth += {"{": 1, "}": -1}.get(latex[index], 0)
+        if depth == 0:
+            return index
+        index += 1
+
+
+def in_one_run(latex: str) -> str:
+    r"""A paragraph as one `\text{}` per run of a style, its formulas bare, as it was set
+    until 2026-09-26; any other output as it is.
+
+    A paragraph is typeset a word at a time now, `\allowbreak` between, so the browser can
+    break its lines (`renderer.narrative_latex`). A contract about what a paragraph *says* -
+    an escape, an emphasis, where a formula begins and ends - is about the words, not about
+    where the lines break, which `test_the_text_fills_the_width` pins on its own.
+    """
+    size = r"\small "
+    if not latex.startswith(size):
+        return latex
+    rest = latex[len(size):].replace(r"\allowbreak ", "")
+    runs: list[list[str]] = []
+    index = 0
+    while index < len(rest):
+        opening = _RUN_OPENING.match(rest, index)
+        if opening is not None:
+            end = _group_end(rest, opening.end())
+            kind, text = opening.group(1) or "", rest[opening.end():end]
+        elif rest[index] == "{":
+            end = _group_end(rest, index + 1)
+            kind, text = "math", rest[index + 1:end]
+        else:
+            end = index
+            kind, text = "between", rest[index]
+        if runs and runs[-1][0] == kind != "math":
+            runs[-1][1] += text
+        else:
+            runs.append([kind, text])
+        index = end + 1
+    styles = {"": r"\text", "bf": r"\textbf", "it": r"\textit"}
+    return size + "".join(
+        text if kind in ("math", "between") else f"{styles[kind]}{{{text}}}" for kind, text in runs
+    )
+
+
 def blocks_into(items: list):
     """A `display` for contracts about what the blocks are: every output but the room.
 
