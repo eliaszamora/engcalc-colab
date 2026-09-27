@@ -12,10 +12,10 @@ _2026-09-26._
 
 | | |
 |---|---|
-| released | **0.41.2** - the release PR, carrying #351 (`d5fcd2f`) and #352 (`9996f29`); see the end of 0.41.0's closure |
+| released | **0.41.2** - #353, `915936b`, carrying #351 (`d5fcd2f`) and #352 (`9996f29`); closed, see the end of 0.41.0's closure |
 | before that | **0.41.1** - #348, `05c5bf5`, closed |
-| open PRs | the 0.41.2 release PR |
-| default suite | **3228 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `80ed5cf` (#352's head) |
+| open PRs | none |
+| default suite | **3228 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `915936b` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1326,8 +1326,17 @@ the wheel on SymPy 1.13.3, from a copy with no `src/` and KaTeX installed: 3227 
 `test_the_ipython_surface_stays_small` passing on the wheel's `magic.py`; the 24
 `tools/*.eng` pages byte-identical from the wheel and from the tree.
 
-**Exact next step:** after the merge, CI and the deep gate on the merge commit, a clean
-`git+https` install with the smoke, his Colab; ask him about rule 2.
+**0.41.2 is closed** (#353, `915936b`). After its merge: CI (six jobs), Quality Gate Deep
+(push) and Deep in qualification mode by dispatch green on `915936b`; his Colab path,
+`pip install --upgrade --no-cache-dir git+https://...@main`, in the Colab-like venv that
+held 0.41.1 changed only `engcalc-colab` (`05c5bf5` -> `915936b`), 33 files identical to
+`src`, smoke 32/32 from outside the repository. **In his Colab** ("Untitled9"): session
+restarted from the menu (Entorno de ejecución > Reiniciar la sesión > Sí), his cell 0
+reinstalled, my cell 3 printed `engcalc 0.41.2`, a long paragraph reached the output's edge
+with `M = qL^2/8` whole, and `extrema(atan(x/L_t), ...)` read `0 (0.00°)` global min and
+`π/4 (45.00°)` global max. Cells 3 and 4 are mine and can be deleted.
+
+**Exact next step:** ask him about rule 2 (a valued scalar formula stays a name), above.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
