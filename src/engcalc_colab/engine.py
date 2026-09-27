@@ -5421,6 +5421,17 @@ def _plain_floats(expression):
         return expression.func(*arguments)
 
 
+def _holds_a_worked_call(node) -> bool:
+    """True for a derivative or an integral, or arithmetic with one in it: `3*x*diff(...)`."""
+    if isinstance(node, ast.Call):
+        return getattr(node.func, "id", None) in ("integrate", "diff")
+    if isinstance(node, ast.UnaryOp):
+        return _holds_a_worked_call(node.operand)
+    if isinstance(node, ast.BinOp):
+        return _holds_a_worked_call(node.left) or _holds_a_worked_call(node.right)
+    return False
+
+
 def _flat_products(expression):
     r"""`expression` with each product flat, as `_flattened` builds them.
 
@@ -5773,6 +5784,18 @@ class _WrittenFormEvaluator(_Evaluator):
         if self.engine._shows_its_written_form(node.id):
             return self.engine.written_namespace[node.id]
         return super().visit_Name(node)
+
+    def visit_BinOp(self, node: ast.BinOp):
+        # A derivative or an integral is worked out here, and what it is combined with is
+        # worked out with it: `2*diff(R_A*x^2, x)` read `= 2 \cdot 2 R_A x`, unevaluated
+        # beside the 2 typed (2026-09-27). The row shows the typed formula before the `=`;
+        # when `showing`, the calls are left standing and nothing is worked out, or
+        # `2*0.85*diff(...)` would show `1.7`.
+        if not self.showing and (
+            _holds_a_worked_call(node.left) or _holds_a_worked_call(node.right)
+        ):
+            return super()._combine(node.op, self.visit(node.left), self.visit(node.right))
+        return super().visit_BinOp(node)
 
     def _combine(self, op, left, right):
         if not (isinstance(left, sp.Expr) and isinstance(right, sp.Expr)):
