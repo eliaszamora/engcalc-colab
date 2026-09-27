@@ -752,14 +752,17 @@ class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
     def _argument_needs_brackets(self, expr, argument) -> bool:
         """Brackets unless nothing around the parameter binds tighter than the argument.
 
-        A term of a sum, which the additive rows print alone and join with a sign, takes
-        them only when the argument is negative: `L + x` read `L + - a`. In a comparison
-        (`9 m < a_q`), inside a function's own parentheses, under a radical and in an
-        exponent it goes in bare; as a factor or the base of a power, in brackets.
+        A term of a sum, or a term or factor a wrapped row prints alone and joins with a
+        sign or a dot, takes them when the argument is a sum or negative: SymPy prints the
+        term `-x` as ` - ` and then `x`, so `L - x` at `L - a` read `L - L - a`, and a
+        wrapped product ended `c q a + b` (the audit, 2026-09-27); `L + x` read `L + - a`.
+        In a comparison (`9 m < a_q`), inside a function's own parentheses, under a
+        radical and in an exponent it goes in bare; as a factor or a power's base, in
+        brackets.
         """
         parent = self._parent_of(expr)
         if parent is None or isinstance(parent, sp.Add):
-            return argument.could_extract_minus_sign()
+            return argument.is_Add or argument.could_extract_minus_sign()
         # A function writes its own delimiters - parentheses, bars, `e^{...}` - so an
         # argument inside one needs none: `e^{(1/2)}`.
         if isinstance(parent, (sp.core.relational.Relational, sp.Function)):
@@ -4072,10 +4075,13 @@ def _value_row_spacings(
         stage_lengths.append(1)
 
     elif isinstance(result, PartialNumericEvaluationResult):
+        # With the row's units, as `_partial_numeric_evaluation_rows` draws it: a unit in a
+        # written argument, `F(3 m, y)`, counted without them printed wider (2026-09-27).
         formula_rows = _bounded_expression_rows(
             result.symbolic_expression,
             _written_arguments(result),
             settings=settings,
+            unit_literals=result.unit_literals,
         )
         substituted_rows = []
         if _shows_substitution(result):

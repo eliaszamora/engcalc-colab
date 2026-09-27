@@ -104,6 +104,48 @@ def test_a_negative_argument_in_a_sum_keeps_its_brackets(monkeypatch):
     assert "+ - a" not in right, right
 
 
+def test_a_subtracted_parameter_keeps_the_brackets_of_its_argument(monkeypatch):
+    # Found by the audit (2026-09-27): `L - x` at `L - a` read `L - L - a`, which is `-a`;
+    # SymPy prints the `-x` term as ` - ` and then `x`, as a term of the sum.
+    page = _page(
+        "L := 6[m]\na := 2[m]\nqD := 18[kN/m]\nM_D(x) = qD*x*(L - x)/2\nnumeric(M_D(L - a))\n"
+        "f(x) = L - x\nnumeric(f(a + L/2))\n",
+        monkeypatch,
+    )
+    first = _rows_from(page, r"M_{D}\left(L - a\right)")[0]
+    assert r"L - \left(L - a\right)" in first, first
+    assert "L - L - a" not in first, first
+    first = _rows_from(page, r"f\left(\frac{L}{2} + a\right)")[0]
+    assert r"L - \left(\frac{L}{2} + a\right)" in first, first
+
+
+def test_a_factor_of_a_wrapped_product_keeps_its_brackets(monkeypatch):
+    # A product over the row's width is drawn one factor at a time, each alone.
+    names = [f"c_{n}" for n in ("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten")]
+    head = "".join(f"{n} := {i}.5\n" for i, n in enumerate(names, 1))
+    page = _page(
+        "a := 1[m]\nb := 2[m]\nq := 10[kN/m]\n" + head
+        + "K(x) = " + "*".join(names) + "*q*x\nnumeric(K(a + b))\n",
+        monkeypatch,
+    )
+    first = page[page.index(r"K\left(a + b\right) & = &"):]
+    first = first[: first.index(r"& = &", len(r"K\left(a + b\right) & = &"))]
+    assert r"\left(a + b\right)" in first, first
+    assert "q a + b" not in first, first
+
+
+def test_a_partial_call_with_a_unit_argument_renders(monkeypatch):
+    # Counted without the row's units the argument printed wider, and the spacing count
+    # disagreed with the rows drawn: the whole cell raised.
+    page = _page(
+        "q := 10[kN/m]\nP := 20[kN]\nw := 3[kN/m^2]\nF(x, y) = q*x*y - q*x^2/2 + P*x - w*x^3/6\n"
+        "numeric(F(3[m], y))\n",
+        monkeypatch,
+    )
+    first = _rows_from(page, r"F\left(3\,\mathrm{m}, y\right)")[0]
+    assert r"\left(3\,\mathrm{m}\right)" in first, first
+
+
 def test_a_negative_number_keeps_its_brackets(monkeypatch):
     first = _rows_from(
         _page("L := 6[m]\nq := 10[kN/m]\nf(n) = n*q*L\nnumeric(f(-2))\n", monkeypatch), r"f\left(-2\right)"
