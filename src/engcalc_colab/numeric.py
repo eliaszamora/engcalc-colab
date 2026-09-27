@@ -717,7 +717,7 @@ class NumericContext:
             evaluated_terms.append((int(power), quantity))
         return tuple(evaluated_terms)
 
-    def _resolve_symbolic_names(self, expr: sp.Expr) -> sp.Expr:
+    def _resolve_symbolic_names(self, expr: sp.Expr, standing=frozenset()) -> sp.Expr:
         """Replace free symbols that the symbolic namespace defines.
 
         A definition captures its free symbols, so `v(x) = integrate(...) + C1` keeps
@@ -728,6 +728,9 @@ class NumericContext:
         self-referential definition - `a = b` then `b = a`, where the second captures the
         symbol `b` - substitutes to itself and falls through to the ordinary
         missing-value message, which is the right thing to say about it.
+
+        A name given its number by the caller (`standing`) is not replaced: a value
+        written out that stands in a formula is put in as its number, `(10.00 kN/m)`.
         """
         namespace = getattr(self, "symbolic_namespace", None)
         if not namespace:
@@ -738,6 +741,7 @@ class NumericContext:
                 symbol: namespace[symbol.name]
                 for symbol in expr.free_symbols
                 if symbol.name in namespace and symbol.name not in kept
+                and symbol.name not in standing
             }
             if not replacements:
                 return expr
@@ -753,7 +757,7 @@ class NumericContext:
     ):
         expr = sp.sympify(expression)
         overrides = overrides or {}
-        expr = self._resolve_symbolic_names(expr)
+        expr = self._resolve_symbolic_names(expr, frozenset(overrides))
         # A unit is an ordinary free symbol in the symbolic layer, so `M = 5*kN` leaves
         # `kN` behind and asking for its number used to fail with "define kN := <value>",
         # which is advice nobody should follow. The numeric layer has always read an

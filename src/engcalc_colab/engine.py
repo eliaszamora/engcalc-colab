@@ -824,6 +824,16 @@ class EngineeringEngine:
         # A function's body as it was written, for a function that reads a kept name: a
         # call of it is written from this. See `test_a_kept_name_survives_a_sheet_function`.
         self.written_functions: dict[str, object] = {}
+        # Names an `=` line gave a number (`L = 6*m`, `R_A = q*L/2` over values). One stands
+        # as its name in a line that has another name standing - `M = q*L^2/2` read
+        # `9 m^2 q/2` (his decision, 2026-09-27); a line of values alone folds to its number
+        # as it always has. `_standing_now` is what the line being evaluated lets stand, and
+        # `written_with_values` what each written form that let some stand read them as, so
+        # a form is not read after one of them changed. See
+        # `test_a_value_written_out_stands_beside_a_name`.
+        self.values_of_equals: set[str] = set()
+        self._standing_now: frozenset[str] = frozenset()
+        self.written_with_values: dict[str, dict[str, object]] = {}
         self.frame_members: dict[str, FrameMember] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
@@ -961,11 +971,12 @@ class EngineeringEngine:
         fy/(fc b) - cover)`; a memoria reads `φ As fy (d - a/2)` and puts in `d` and `a`.
         His decision, 2026-09-26: such a definition stays a name, as `keep` makes one.
 
-        Every name it reads must hold a number - a `:=` value or a name kept before - and
-        it must read one. A value written out (`L = 6*m`) names no one; a formula over
-        names written with `=` (`M = q*L^2/8` over `L = 6*m`) folds into `45 kN·m` as it
-        always has - kept, it drew `10 kN (6 m)^2/(8 m)`, because a sheet with a kept name
-        writes every `=` name in its written form. A formula whose names have no value, a
+        Every name it reads must hold a number - a `:=` value, a name kept before, or a
+        name an `=` line gave a number (`L = 6*m`) standing in this line beside another
+        name - and it must read one. A line of such values alone (`M = q*L^2/8` over `L = 6*m`,
+        `q = 10*kN/m`) folds into `45 kN·m` as it always has; beside `q := 10*kN/m` it reads
+        `q L^2/8` and stays a name (2026-09-27; before, kept, it drew `10 kN (6 m)^2/(8 m)`,
+        `L` folded inside it). A formula whose names have no value, a
         derivation's `a = E*A/L`, still expands. Keeping every definition was measured
         and made the frames worse (`R_2 = R_1` for a matrix); a matrix is not worked out
         as one number, so `evaluate_symbolic` below refuses it.
@@ -976,7 +987,10 @@ class EngineeringEngine:
             if isinstance(node, ast.Name)
             and (node.id in self.namespace or node.id in self.numeric_context.values)
         ]
-        if not names or any(self.numeric_context.get(name) is None for name in names):
+        if not names or any(
+            self.numeric_context.get(name) is None and name not in self._standing_now
+            for name in names
+        ):
             return False
         try:
             self.numeric_context.evaluate_symbolic(value)
@@ -1488,9 +1502,90 @@ class EngineeringEngine:
         stays there" is the change this repository made one release before RC-3. The
         narrow rule folded it back into a 1.18 one formula further down.
         """
+        # Containment: a line that read a form no longer true would refuse it at its own
+        # `_agrees_with`; measured, nothing moves without `_still_holds` here (2026-09-27).
+        if name in self.written_with_values:
+            return self.written_namespace.get(name) is not None and self._still_holds(name)
         if not self.kept_names:
             return False
         return self.written_namespace.get(name) is not None
+
+    def _comes_to_a_number(self, value) -> bool:
+        """A number in its units: `L = 6*m`, and `R_A = q*L/2` over values written so.
+
+        Read from the value, not the line: on the narrower rule, a line reading no name,
+        `V(x) = R_A - q*x` over `R_A = q*L/2` read `30 kN - q x` - the mixture decided
+        against, one step further on.
+        """
+        if not isinstance(value, sp.Expr) or is_matrix(value):
+            return False
+        units = self.numeric_context.unit_literal_names(value)
+        return all(symbol.name in units for symbol in value.free_symbols)
+
+    def _values_standing_in(self, statement, value) -> frozenset[str]:
+        """The values of `=` a line lets stand: the ones it reads, when its value has
+        another name standing - a name with no value, a `:=` value, a kept name, a
+        parameter. A line of values alone lets none stand, and folds to its number."""
+        if not self.values_of_equals or value is None:
+            return frozenset()
+        try:
+            symbols = value.free_symbols
+            units = self.numeric_context.unit_literal_names(value)
+        except Exception:  # noqa: BLE001 - not an expression: nothing stands in it
+            return frozenset()
+        if not any(symbol.name not in units for symbol in symbols):
+            return frozenset()
+        trees = [statement.expression] + [
+            cell
+            for binding in getattr(statement, "matrix_literals", ())
+            for row in binding.literal.rows
+            for cell in row
+        ]
+        return frozenset(
+            node.id
+            for tree in trees
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and node.id in self.values_of_equals
+        )
+
+    def _still_holds(self, name: str) -> bool:
+        """A written form that let values of `=` stand is read while they still hold
+        what they held: `L = 3*m`, `M = q*L^2/2`, `L = 4*m` - `M` was worked out with 3 m."""
+        held = self.written_with_values.get(name)
+        if held is None:
+            return True
+        return all(
+            other in self.values_of_equals and self.namespace.get(other) == value
+            for other, value in held.items()
+        )
+
+    def _record_values_held(self, name: str, written) -> None:
+        names = set()
+        try:
+            names = {symbol.name for symbol in sp.sympify(written).free_symbols}
+        except Exception:  # noqa: BLE001 - no form: nothing held
+            pass
+        held = {other: self.namespace[other] for other in names & self.values_of_equals}
+        if held:
+            self.written_with_values[name] = held
+        else:
+            self.written_with_values.pop(name, None)
+
+    def _numbers_of_equals(self, expression) -> dict[str, object]:
+        """The number of each value of `=` standing in `expression`, for a numeric
+        row to put in as a `:=` value's is: `(3.00 m)` where `L` stands."""
+        try:
+            entries = list(expression) if is_matrix(expression) else [sp.sympify(expression)]
+            names = {symbol.name for entry in entries for symbol in sp.sympify(entry).free_symbols}
+        except Exception:  # noqa: BLE001
+            return {}
+        numbers = {}
+        for name in names & self.values_of_equals:
+            try:
+                numbers[name] = self.numeric_context.evaluate_symbolic(self.namespace[name])[1]
+            except Exception:  # noqa: BLE001 - left to the evaluation to resolve
+                continue
+        return numbers
 
     def _reaches_a_kept_name(self, expression) -> bool:
         """True when this statement mentions a kept name, directly or through one."""
@@ -1498,6 +1593,8 @@ class EngineeringEngine:
             if not isinstance(node, ast.Name):
                 continue
             if node.id in self.kept_names or self._shows_its_written_form(node.id):
+                return True
+            if node.id in self._standing_now:
                 return True
             # A call of a function whose body keeps a name: `W(x) = 2*V(x)` over
             # `V(x) = R_A - q*x` read `q L - 2 q x` (2026-09-27).
@@ -1604,7 +1701,7 @@ class EngineeringEngine:
             return None
         expansions = {
             self.resolve_symbol(name): self.namespace[name]
-            for name in self.kept_names
+            for name in self.kept_names | self.values_of_equals
             if name in self.namespace
         }
         if not _agrees_with(worked_out, value, expansions):
@@ -1772,7 +1869,7 @@ class EngineeringEngine:
             return None
         expansions = {
             self.resolve_symbol(name): self.namespace[name]
-            for name in self.kept_names
+            for name in self.kept_names | self.values_of_equals
             if name in self.namespace
         }
         if equation:
@@ -1823,7 +1920,7 @@ class EngineeringEngine:
             written = sp.Eq(written, 0, evaluate=False)
         expansions = {
             self.resolve_symbol(name): self.namespace[name]
-            for name in self.kept_names
+            for name in self.kept_names | self.values_of_equals
             if name in self.namespace
         }
         if not _agrees_with(written.lhs - written.rhs, equation.lhs - equation.rhs, expansions):
@@ -1956,6 +2053,9 @@ class EngineeringEngine:
         self.figure_numbers.clear()
         self.frame_members.clear()
         self.written_functions.clear()
+        self.values_of_equals.clear()
+        self._standing_now = frozenset()
+        self.written_with_values.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -2154,6 +2254,13 @@ class EngineeringEngine:
         | ExtremaResult
     ):
         evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))
+        # Containment: only the definition path reads what a line lets stand, and sets it
+        # first; measured, nothing moves without this. It keeps one line's set from the next.
+        self._standing_now = frozenset()
+        target = getattr(statement, "target", None)
+        if target is not None:
+            self.values_of_equals.discard(target)
+            self.written_with_values.pop(target, None)
         try:
             self._refuse_a_name_beside_a_unit(statement)
             declaration = getattr(statement, "declaration", None)
@@ -2603,6 +2710,7 @@ class EngineeringEngine:
 
             # The formula is read before the name is stored: read after, `v = v + 2*diff(t^2, t)`
             # showed the new `v` inside the formula that defines it.
+            self._standing_now = self._values_standing_in(statement, value)
             shown = self._shown_input(statement, evaluator, value)
             if statement.target is not None:
                 if statement.parameters is not None:
@@ -2616,7 +2724,11 @@ class EngineeringEngine:
                         numeric_guards=tuple(evaluator.numeric_guards),
                     )
                 else:
+                    # A kept name stands already, and keeps its own number.
+                    written_out = declaration != "keep" and self._comes_to_a_number(value)
                     self.namespace[statement.target] = value
+                    if written_out:
+                        self.values_of_equals.add(statement.target)
                     self.numeric_context.matrices.pop(statement.target, None)
                     zero = self._unit_of_a_zero(statement, value)
                     if zero is None:
@@ -2634,6 +2746,7 @@ class EngineeringEngine:
                         self.written_namespace.pop(statement.target, None)
                     else:
                         self.written_namespace[statement.target] = written_form
+                    self._record_values_held(statement.target, written_form)
                     if evaluator.numeric_guards:
                         self.numeric_guards[statement.target] = tuple(evaluator.numeric_guards)
                     else:
@@ -2654,6 +2767,7 @@ class EngineeringEngine:
                     self.written_functions.pop(statement.target, None)
                 else:
                     self.written_functions[statement.target] = written
+                self._record_values_held(statement.target, written)
             in_numbers = self._in_numbers(statement, declaration, value)
             if in_numbers is not None:
                 return in_numbers
@@ -3189,7 +3303,7 @@ class _Evaluator(ast.NodeVisitor):
                 # `M(x) = R_A x - q x^2/2` opened with `q L x/2 - q x^2/2` (2026-09-27).
                 # The kept name is put in as its own number; the answer is the same.
                 written = self.engine.written_functions.get(function_name)
-                if isinstance(written, sp.Expr):
+                if isinstance(written, sp.Expr) and self.engine._still_holds(function_name):
                     symbolic_expression = written
                 display_name = function_name
                 display_arguments = argument_expressions
@@ -3231,6 +3345,9 @@ class _Evaluator(ast.NodeVisitor):
                     if parameter in overrides
                 }
                 self.written_arguments = written_arguments or None
+                # A value of `=` standing in the body is put in as its own number, `(6.00 m)`.
+                for name, number in self.engine._numbers_of_equals(symbolic_expression).items():
+                    overrides.setdefault(name, number)
 
                 if bindings:
                     symbolic_expression = substitute_symbolic_value(
@@ -3387,7 +3504,7 @@ class _Evaluator(ast.NodeVisitor):
                 # being expanded again.
                 if isinstance(argument, ast.Name) and isinstance(symbolic_expression, sp.Expr):
                     written = self.engine.written_namespace.get(argument.id)
-                    if isinstance(written, sp.Expr):
+                    if isinstance(written, sp.Expr) and self.engine._still_holds(argument.id):
                         symbolic_expression = written
                 guard_validations = self._validate_numeric_guards()
                 if isinstance(symbolic_expression, EigenvalueSet):
@@ -3406,6 +3523,7 @@ class _Evaluator(ast.NodeVisitor):
                     substitutions, unresolved_symbols, quantity_matrix = (
                         self.engine.numeric_context.evaluate_matrix(
                             symbolic_expression,
+                            overrides=self.engine._numbers_of_equals(symbolic_expression),
                             target_unit=target_unit,
                         )
                     )
@@ -3428,7 +3546,8 @@ class _Evaluator(ast.NodeVisitor):
                     return symbolic_expression
 
                 substitutions, quantity = self.engine.numeric_context.evaluate_symbolic(
-                    symbolic_expression
+                    symbolic_expression,
+                    overrides=self.engine._numbers_of_equals(symbolic_expression),
                 )
                 if isinstance(argument, ast.Name):
                     quantity = self.engine.zero_in_its_unit(argument.id, quantity)
@@ -5791,7 +5910,7 @@ class _WrittenFormEvaluator(_Evaluator):
         # A kept name stands for itself. This is the whole of RC-3: without it the
         # symbolic layer replaces `d` with `h - cover - db_st - db/2` where it is used,
         # and the formula an engineer would check against the code is not on the page.
-        if node.id in self.engine.kept_names:
+        if node.id in self.engine.kept_names or node.id in self.engine._standing_now:
             return self.engine.resolve_symbol(node.id)
         # And a name that is *not* kept but was written in terms of one stands for its
         # written form, so the kept names inside it reach this formula too. Without this

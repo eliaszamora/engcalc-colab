@@ -65,12 +65,14 @@ def test_a_value_written_out_still_folds(run):
     assert r"M & = & \displaystyle 45\,\mathrm{kN} \cdot \mathrm{m}" in page, page
 
 
-def test_a_formula_that_reads_a_value_written_out_is_left_as_it_was(run):
-    """`L = 6*m` holds no number of its own: `M` reads as on 0.41.2, not in `L`'s
-    written form, which a kept `M` would have drawn."""
+def test_a_formula_that_reads_a_value_written_out_reads_it_as_a_name(run):
+    """`M` read `9 m^2 q/2` here, and was left out of this rule: kept, it drew `L`'s
+    written form, `10 kN (6 m)^2/(8 m)`. Since his decision of 2026-09-27 a value written
+    out stands beside a name that stands, `M` reads `q L^2/8`, and with every name it reads
+    holding a number it stays a name. See `test_a_value_written_out_stands_beside_a_name`."""
     page, _console = run("q := 10*kN/m\nL = 6*m\nM = q*L^2/8\ny = 2*M\n")
-    assert r"M & = & \displaystyle \frac{9\,\mathrm{m}^{2}\,q}{2}" in page, page
-    assert r"y & = & \displaystyle 2 M" not in page, page
+    assert r"M & = & \displaystyle \frac{q L^{2}}{8}" in page, page
+    assert r"y & = & \displaystyle 2 M" in page, page
 
 
 def test_a_formula_over_names_without_a_value_still_expands(run):

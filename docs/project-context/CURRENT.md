@@ -14,8 +14,8 @@ _2026-09-27._
 |---|---|
 | released | **0.42.3** - #367, `7377aa0`, closed, carrying #365 (`708b3ce`) and #366 (`496eb54`); see the end of 0.41.0's closure |
 | before that | **0.42.2** - #363, `0134b9e`, closed |
-| open PRs | `feat/numeric-call-writes-its-argument`; the mixed fold stacked on it |
-| default suite | **3294 passing** (SymPy 1.14 and 1.13.3) on the numeric-call branch, about a minute with `-n auto` |
+| open PRs | none yet: `feat/numeric-call-writes-its-argument`, and the fold branch stacked on it |
+| default suite | **3311 passing** (SymPy 1.14 and 1.13.3) on the fold branch, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1606,8 +1606,34 @@ the survivor (a call at its own variable writing `x` for `x`) measured equivalen
 whole suite, pages and exercises, and its condition removed; an unreachable default
 branch left as it was. Suite 3294 on SymPy 1.14 and on 1.13.3.
 
-**Exact next step:** the mixed `=` fold on its own branch stacked on this one; rows shown
-to him in his Colab (screenshots) before merging; then 0.43.0.
+### A value of `=` stands beside a name that stands (his decision, 2026-09-27)
+
+Branch `feat/a-value-written-out-stands-beside-a-name`, stacked on the numeric-call one.
+`engine.values_of_equals`: names a plain `=` line gave a number in its units, read from
+the value (`L = 6*m`, and `R_A = q*L/2` over such values - on a rule asking the line to
+read no name, `V(x) = R_A - q*x` read `30 kN - q x`). A line lets the ones it reads stand
+(`_standing_now`, set once its value is known) when its value has another name standing:
+no value, `:=`, kept, a parameter. `L = 3*m; M = q*L^2/2` reads `q L²/2` (was `9 m² q/2`);
+`L := 3[m]; q_1 = 10*kN/m; M_1 = q_1*L^2/2` reads `q_1 L²/2` (was `5 kN L²/m`); a line of
+values alone still ends on its number (`45 kN·m`); `V(x) = R_A - q x`; `K = [E A/L, ...]`
+beside `k = E A/L`. Rule 2 counts a standing value as holding a number, so `q := ...; L
+= 6*m; M = q*L^2/8` is kept and `y = 2*M` reads `2 M` (0.42.0's exclusion was for `L`
+folded inside `M`). Verification expansions include the values of `=`; numeric rows get
+their numbers as overrides (`_numbers_of_equals`; `numeric._resolve_symbolic_names` no
+longer replaces a name given its number, or `q_1` read `q_1 (3.00 m)²/2`), on the name,
+the call and the matrix paths. A form that let values stand records what they held
+(`written_with_values`) and is not read once one changed (`L = 3*m; M = ...; L = 4*m`
+keeps `y = 9 m² q`, and `numeric` answers with the old number). Prototyped first by a
+workflow explorer (options A/C/D, `scratchpad/explore-fold`; C was ~300 lines of a
+parallel `standing` machinery and read a matrix of `k` as `E A/(3 m)`); this reuses the
+kept-name machinery instead. Moves no page and no exercise. 17 contracts (7 RED first);
+one older contract rewritten (`test_a_valued_formula_stays_a_name`, with its note);
+mutation 22: 20 killed, 2 measured equivalent on the whole suite, pages and exercises
+and kept as documented containment (`_still_holds` in `_shows_its_written_form`, the
+per-line reset). Suite 3311 on SymPy 1.14 and 1.13.3; smoke 38/38 on the tree.
+
+**Exact next step:** an independent audit of both branches; rows shown to him in his
+Colab (screenshots) before merging; then 0.43.0.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
