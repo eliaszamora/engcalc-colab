@@ -12,9 +12,9 @@ _2026-09-27._
 
 | | |
 |---|---|
-| released | **0.42.2** - the release PR, carrying #361 (`151e841`) and #362 (`3f48329`); see the end of 0.41.0's closure |
+| released | **0.42.2** - #363, `0134b9e`, closed, carrying #361 (`151e841`) and #362 (`3f48329`); see the end of 0.41.0's closure |
 | before that | **0.42.1** - #360, `59cc98c`, closed |
-| open PRs | the 0.42.2 release PR |
+| open PRs | this closure; then `fix/a-kept-name-in-a-matrix-function` |
 | default suite | **3258 passing** (SymPy 1.14), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -1493,9 +1493,26 @@ equation and a call, `R_A - q x = 0`, `(30.00 kN)`); the suite against the wheel
 the second source run shared the machine and passed alone twice (6.8 s, 6.5 s); the 24
 pages identical from the wheel and from the tree.
 
-**Exact next step:** the release PR on green CI, merged; CI and the deep gate, `git+https`
-with the smoke, his Colab; then propose the call convention, matrix-valued functions, the
-`:=`/`=` fold.
+**0.42.2 is closed** (#363, `0134b9e`, its tree identical to the release tree). After its
+merge: CI (six jobs), Quality Gate Deep (push) and Deep in qualification mode by dispatch
+green on `0134b9e`; his Colab path, `git+https` with `--upgrade`, in the venv that held
+0.42.1 changed only `engcalc-colab` (`59cc98c` -> `0134b9e`), 33 files identical to `src`,
+smoke 37/37. **In his Colab** ("Untitled9", 2026-09-27, 14:10): the runtime still held
+0.42.1 in memory (`already loaded`), so the session was restarted from the menu; his cell
+0, then my cell 3 printed `engcalc 0.42.2`, `R_t - q_t x = 0`, `x_t = L_t/2`, `M_t(L_t/2)
+= R_t x - q_t x²/2 = (30.00 kN)(3.00 m) - (10.00 kN/m)(3.00 m)²/2 = 45.00 kN·m`.
+
+Found after it, both older than this release:
+- a matrix-valued function reads its kept names expanded (above) - being fixed on
+  `fix/a-kept-name-in-a-matrix-function`;
+- a regression of 0.42.1 (#359): on a line that reaches a kept name, a derivative inside
+  a product is walked by the written reader and its number is not multiplied in -
+  `Z = 2*diff(R_A*x^2, x)` reads `= 2 · 2 R_A x` (0.42.0: `2 q L x`, the kept name
+  expanded but folded). #359's own note said this was avoided; it was, only on lines with
+  no kept name. To fix next.
+
+**Exact next step:** this closure merged; the matrix-function fix; the derivative's
+number; then propose the call convention and the `:=`/`=` fold.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
