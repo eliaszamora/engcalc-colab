@@ -12,10 +12,10 @@ _2026-09-26._
 
 | | |
 |---|---|
-| released | **0.41.2** - #353, `915936b`, carrying #351 (`d5fcd2f`) and #352 (`9996f29`); closed, see the end of 0.41.0's closure |
-| before that | **0.41.1** - #348, `05c5bf5`, closed |
-| open PRs | none |
-| default suite | **3228 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `915936b` |
+| released | **0.42.0** - the release PR, carrying #355 (`5de01de`) and #356 (`a80d89d`); see the end of 0.41.0's closure |
+| before that | **0.41.2** - #353, `915936b`, closed |
+| open PRs | the 0.42.0 release PR |
+| default suite | **3239 passing** (SymPy 1.14), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1372,8 +1372,18 @@ Asking also that the factor before it end in a digit changed nothing anywhere (s
 24 pages, 18 exercises) and was dropped. 2 contracts, both RED before; suite 3239; no page
 or exercise moves.
 
-**Exact next step:** #355 on green CI, then this branch rebased onto `main`; release 0.42.0
-(a change of what an unmarked sheet shows) with both, checked in his Colab.
+#355 merged as `5de01de` and #356, rebased onto it (diff and tree identical), as `a80d89d`,
+each on green CI at its exact head.
+
+**0.42.0 before its merge**, on the release tree: version assertions RED (7) then GREEN;
+source suite 3239 twice (SymPy 1.14); wheel from `git archive`, 33 files identical to `src`;
+a clean Colab-like venv gains only Pint and the four small deps; smoke 35/35 (three checks
+added: a valued formula stays a name, a value written out still folds, two numbers set
+apart); the suite against the wheel on SymPy 1.13.3: 3238 + the by-path surface test on the
+wheel's `magic.py`; the 24 pages identical from the wheel and from the tree.
+
+**Exact next step:** after the merge, CI and the deep gate, `git+https` with the smoke, his
+Colab (a sheet with `:=` values and plain formulas reads in its names).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

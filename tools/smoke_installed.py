@@ -77,6 +77,17 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.42.0: a formula whose names have values reads in its names; two numbers set apart
+check("a valued formula stays a name",
+      "phi := 0.9\nAs := 1500[mm^2]\nfy := 420[MPa]\nh := 500[mm]\ncover := 40[mm]\n"
+      "b := 300[mm]\nfc := 28[MPa]\nd = h - cover\na = As*fy/(0.85*fc*b)\n"
+      "phiMn = phi*As*fy*(d - a/2)\nnumeric(phiMn)",
+      r"\left(d - \frac{a}{2}\right)", r"235.81\,\mathrm{kN} \cdot \mathrm{m}", absent=("0.59",))
+check("a value written out still folds", "L = 6*m\nq = 10*kN/m\nM = q*L^2/8",
+      r"45\,\mathrm{kN} \cdot \mathrm{m}")
+check("two numbers set apart",
+      "fc := 30[MPa]\nfy := 420[MPa]\nb := 300[mm]\nAs := 1935[mm^2]\nd := 446[mm]\n"
+      "phiMn = fy*As*(d - fy*As/(0.85*fc*b)/2)", r"2 \cdot 0.85", absent=("2 0.85",))
 # 0.41.2: a paragraph fills the width; extrema of an angle
 check("a paragraph breaks where the page ends", '"""Una viga de $L = 6$ m de luz."""',
       r"\small \text{Una }\allowbreak", r"{L = 6}\text{ }\allowbreak", absent=(r"\footnotesize",))
