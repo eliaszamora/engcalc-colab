@@ -77,6 +77,12 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.42.2: a kept name reaches an equation and numeric of a call
+check("a kept name in an equation and a call",
+      "L := 6[m]\nq := 10[kN/m]\nR_A = q*L/2\nV(x) = R_A - q*x\nx_0 = solve(eq(V(x), 0), x)\n"
+      "M(x) = R_A*x - q*x^2/2\nnumeric(M(L/2))",
+      r"R_{A} - q x = 0", r"\left(30.00\,\mathrm{kN}\right)", r"45.00\,\mathrm{kN} \cdot \mathrm{m}",
+      absent=(r"\frac{q L}{2} - q x = 0",))
 # 0.42.1: a kept name reaches an integral and a function of a function
 check("a kept name inside an integral",
       "L := 6[m]\nq := 10[kN/m]\nR_A = q*L/2\nV(x) = R_A - q*x\nM(x) = integrate(V(x), x, 0, x)\n"

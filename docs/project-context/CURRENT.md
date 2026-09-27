@@ -8,14 +8,14 @@
 
 ## Where things stand today
 
-_2026-09-26._
+_2026-09-27._
 
 | | |
 |---|---|
-| released | **0.42.1** - the release PR, carrying #359 (`8ddde86`); see the end of 0.41.0's closure |
-| before that | **0.42.0** - #357, `1ddcdd3`, closed |
-| open PRs | the 0.42.1 release PR |
-| default suite | **3248 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `9b17573` (#359's head) |
+| released | **0.42.2** - the release PR, carrying #361 (`151e841`) and #362 (`3f48329`); see the end of 0.41.0's closure |
+| before that | **0.42.1** - #360, `59cc98c`, closed |
+| open PRs | the 0.42.2 release PR |
+| default suite | **3258 passing** (SymPy 1.14), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1481,8 +1481,23 @@ Found, not fixed: a kept name inside a function whose value is a matrix is expan
 its own row - `k = E*A/L` (kept), `K(x) = [k*x, 0; 0, k]` reads `[E A x/L, 0; 0, E A/L]`
 (`written_functions` never holds a matrix).
 
-**Exact next step:** #361 on green CI, then this branch rebased and merged; release 0.42.2;
-his Colab; then propose the call convention, matrix-valued functions, the `:=`/`=` fold.
+#361 merged as `151e841`, #362 as `3f48329`, each on green CI (#362 at `8cdf539`).
+
+**0.42.2 before its merge**, on the release tree (rebased onto `3f48329`, its tree identical
+to the one tested): version assertions RED (7) then GREEN; source suite 3258 twice (SymPy
+1.14); wheel from `git archive`, 33 files identical to `src`; a clean Colab-like venv gains
+only Pint and the four small deps; smoke 37/37 (one check added: a kept name in an
+equation and a call, `R_A - q x = 0`, `(30.00 kN)`); the suite against the wheel on SymPy
+1.13.3: 3256 + the by-path surface test on the wheel's `magic.py` + one timing test
+(`test_the_portal_frame_solves_in_numbers_and_quickly`, `< 20 s`) that failed only while
+the second source run shared the machine and passed alone twice (6.8 s, 6.5 s); the 24
+pages identical from the wheel and from the tree.
+
+**Exact next step:** the release PR on green CI, merged; CI and the deep gate, `git+https`
+with the smoke, his Colab; then propose the call convention, matrix-valued functions, the
+`:=`/`=` fold.
+
+**`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

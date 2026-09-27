@@ -13,7 +13,20 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.42.1**.
+Current version: **0.42.2**.
+
+
+## v0.42.2 a kept name reaches an equation and a call
+
+**The equation `solve` solves, a line written with `eq`, and `numeric` of a call read in
+the kept names.** Under `V(x) = R_A - q x`, `x_0 = solve(eq(V(x), 0), x)` showed the
+equation as `qL/2 - q x = 0`; it reads `R_A - q x = 0`. A boundary condition `bc2 =
+eq(subs(v(x), x, L), 0)` reads in `R_A` as the elastic curve above it does. And
+`numeric(M(L/2))` under `M(x) = R_A x - q x²/2` opened with `q L x/2 - q x²/2`; it opens
+with `R_A x - q x²/2` and puts in `R_A` as its own number, `(30.00 kN)(3.00 m) - ...`. Each
+form is checked against the one computed, and what `solve` answers is as it was. No
+reference page moves; three gap-map exercises read their equations in their names: E4's
+boundary condition, E9's compatibility `D_B0 + V_B f_11 = 0 m`, E13's `5qL⁴/(384EI) = d_adm`.
 
 
 ## v0.42.1 a kept name reaches an integral
@@ -3772,6 +3785,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.42.2** — a kept name reaches the equation `solve` shows, an `eq` line and `numeric` of a call (`R_A - q x = 0`, `D_B0 + V_B f_11 = 0`).
 - **0.42.1** — a kept name reaches an integral, a derivative and a function built on another (`∫_0^x (R_A - q x) dx`, `2 (R_A - q x)`).
 - **0.42.0** — a formula whose names all have a value stays a name in the formulas after it, as `keep` makes one (`φ As fy (d − a/2)`); two numbers in one product are set apart (`2 · 0.85`).
 - **0.41.2** — a paragraph fills the width the page has, in `\small`, the browser breaking its lines; `extrema` of an angle, a degree in a block written `45.00°`.
@@ -3892,4 +3906,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.42.1`.
+Version: `0.42.2`.
