@@ -1463,8 +1463,26 @@ qL⁴/(24 E I) + R_A L³/(6 E I) = 0`, E9's compatibility `D_B0 + V_B f_11 = 0 m
 L/300`). 7 contracts (2 RED); mutation 6/8, the two containment checks equivalent (no
 page or exercise moves without them) and kept; suite 3253 + 2.
 
-**Exact next step:** this PR on green CI (his "aborda el punto 1" and "lo dejo a tu
-criterio"); then `numeric(M(L/2))`, and the other points in the order given to him.
+### `numeric` of a call works on the written body (stacked on the equation branch)
+
+Branch `fix/numeric-of-a-call-keeps-the-name`: `numeric(M(L/2))` under `M(x) = R_A*x -
+q*x^2/2` (kept `R_A`) opened with `q L x/2 - q x^2/2`; the call now uses
+`written_functions[M]` as `numeric(name)` uses the written form, and the kept name is put in
+as its own number: `M(L/2) = R_A x - q x²/2 = (30.00 kN)(3.00 m) - (10.00 kN/m)(3.00 m)²/2 =
+45.00 kN·m`. 3 contracts (2 RED); mutation: the written body removed is caught; a
+restriction to non-matrix bodies was unreachable (no matrix body is ever written) and was
+removed; suite 3258; no page or exercise moves against the equation branch.
+
+Left as it is, a convention: the call's first row is the law in `x` (`M(L/2) = R_A x - ...`)
+and the substitution puts `x = 3.00 m` - the same on every sheet, with or without `keep`;
+writing `R_A (L/2) - q (L/2)²/2` instead would move rows, so it is his call.
+
+Found, not fixed: a kept name inside a function whose value is a matrix is expanded in
+its own row - `k = E*A/L` (kept), `K(x) = [k*x, 0; 0, k]` reads `[E A x/L, 0; 0, E A/L]`
+(`written_functions` never holds a matrix).
+
+**Exact next step:** #361 on green CI, then this branch rebased and merged; release 0.42.2;
+his Colab; then propose the call convention, matrix-valued functions, the `:=`/`=` fold.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
