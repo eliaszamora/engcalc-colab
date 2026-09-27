@@ -12,9 +12,9 @@ _2026-09-27._
 
 | | |
 |---|---|
-| released | **0.42.3** - the release PR, carrying #365 (`708b3ce`) and #366 (`496eb54`); see the end of 0.41.0's closure |
+| released | **0.42.3** - #367, `7377aa0`, closed, carrying #365 (`708b3ce`) and #366 (`496eb54`); see the end of 0.41.0's closure |
 | before that | **0.42.2** - #363, `0134b9e`, closed |
-| open PRs | the 0.42.3 release PR |
+| open PRs | this closure |
 | default suite | **3275 passing** (SymPy 1.14), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -1563,8 +1563,24 @@ wheel on SymPy 1.13.3: 3274 + the by-path surface test on the wheel's `magic.py`
 needs PyYAML for the two workflow tests); the 24 pages identical from the wheel and from
 the tree.
 
-**Exact next step:** this release PR on green CI, merged; CI and the deep gate, `git+https` with the smoke, his Colab; then propose the call convention and
-the `:=`/`=` fold.
+**0.42.3 is closed** (#367, `7377aa0`, its tree identical to the release tree). After its
+merge: CI (six jobs), Quality Gate Deep (push) and Deep in qualification mode by dispatch
+green on `7377aa0`; his Colab path, `git+https` with `--upgrade`, in the venv that held
+0.42.2 changed only `engcalc-colab` (`0134b9e` -> `7377aa0`), 33 files identical to `src`,
+smoke 38/38. **In his Colab** ("Untitled9"): NOT YET - his screen was locked when the release closed (Chrome frozen, the renderer did not answer). My cell 3 holds the 0.42.3 check, ready: restart the session from the menu, run cell 0, then cell 3; it should print `engcalc 0.42.3`, `K_t(x) = [k_t x, 0; 0, k_t]`, `Z_t = ... = 4 R_t x`, `W_t = ... = R_t x`.
+
+Open, his decisions (rows shown to him):
+- `numeric` of a call opens with the law in `x`: `M(L/2) = R_A x - q x²/2`, then `x = 3.00
+  m`; the alternative writes the argument in: `M(L/2) = R_A (L/2) - q (L/2)²/2`. Moves
+  every `numeric(f(a))` row.
+- A value written out with `=` folds into a formula that also reads a name standing:
+  `L = 3*m; M = q*L^2/2` (no value for `q`) reads `9 m² q/2`; `L := 3[m]; q_1 = 10*kN/m;
+  M_1 = q_1*L^2/2` reads `5 kN L²/m`. The alternative keeps the names (`q L²/2`,
+  `q_1 L²/2`); a line whose every name folds still ends on its number (`45 kN·m`).
+Cosmetic, found: a function's written body called inside an indefinite integral on a
+plain line reads `x R_A` where its own row reads `R_A x` (`Z = integrate(M(x), x)`).
+
+**Exact next step:** his answer on the two decisions; CURRENT.md condensation (docs only).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
