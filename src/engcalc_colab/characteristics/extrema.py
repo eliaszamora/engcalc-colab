@@ -388,7 +388,9 @@ def _extrema_canonical_unit(points: list[CharacteristicPoint]):
 
 
 def _extrema_magnitude_in_unit(quantity, canonical_unit, context) -> float:
-    if quantity.dimensionless and canonical_unit != context.ureg.dimensionless:
+    # Whether the unit has a dimension, not whether it is `dimensionless`: a radian has
+    # none, and `atan(x/L)` from 0 rad to 0.785 rad stopped here as incompatible.
+    if quantity.dimensionless and not canonical_unit.dimensionless:
         if float(quantity.magnitude) != 0.0:
             raise EngEvaluationError("extrema response values have incompatible dimensions")
         return 0.0

@@ -4673,6 +4673,9 @@ def _characteristic_quantity_math(
     magnitude = _magnitude_text(
         quantity.magnitude, settings, scientific=_scientific_latex
     )
+    # The degree sign against the number, as `_quantity_latex` writes it in a row: `45.00°`.
+    if str(quantity.units) == "degree":
+        return rf"{magnitude}^{{\circ}}"
     unit_latex = _latex_unit_text(quantity.units)
     if not unit_latex:
         return magnitude

@@ -56,7 +56,9 @@ def _fallback_response_quantity(
 def _fallback_magnitude_in_unit(quantity, canonical_unit, context):
     if quantity is None:
         return None
-    if quantity.dimensionless and canonical_unit != context.ureg.dimensionless:
+    # A radian has no dimension: asked whether it *was* `dimensionless`, every sample of an
+    # angle but a zero was dropped. See `extrema._extrema_magnitude_in_unit`.
+    if quantity.dimensionless and not canonical_unit.dimensionless:
         try:
             magnitude = float(quantity.magnitude)
         except (TypeError, ValueError, OverflowError):

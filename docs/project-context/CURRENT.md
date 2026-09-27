@@ -1286,7 +1286,18 @@ paragraphs only, same words in the same order (checked by script). **In his Cola
 paragraphs reach the output's edge; "Compatibilidad" reads in two lines, both formulas
 whole, the text aligned with the heading.
 
-**Exact next step:** merge this PR on green CI; then `extrema` over an angle; then the
+**`extrema` over an angle** (`fix/extrema-of-an-angle`, stacked on the text branch).
+`extrema(atan(x/L), x, 0*m, L)` stopped with "incompatible dimensions": the values were
+`0 rad` and `0.785 rad`, and the guard that refuses a plain number beside a unit asked
+whether the unit *was* `dimensionless`. Pint counts a radian without dimension, so it now
+asks `canonical_unit.dimensionless`, in `extrema._extrema_magnitude_in_unit` and in
+`fallback._fallback_magnitude_in_unit` (which dropped every non-zero angle sample in
+silence). The block reads `π/4 (45.00°)`, `asin`: `−π/6 (−30.00°)`; a characteristic value
+in degrees is written `45.00^{\circ}`, as a row writes it, not `45.00\,{}^{\circ}`
+(`_characteristic_quantity_latex`; no block could show one before). 8 contracts (4 RED,
+then 2 more for the sign); mutation 7/7; suite 3228; no reference page moves.
+
+**Exact next step:** merge #351 on green CI, then this branch rebased onto `main`; then the
 plain definitions that expand (to analyse with him).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
