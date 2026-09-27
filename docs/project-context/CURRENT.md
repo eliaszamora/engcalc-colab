@@ -12,10 +12,10 @@ _2026-09-27._
 
 | | |
 |---|---|
-| released | **0.42.2** - #363, `0134b9e`, closed, carrying #361 (`151e841`) and #362 (`3f48329`); see the end of 0.41.0's closure |
-| before that | **0.42.1** - #360, `59cc98c`, closed |
-| open PRs | the matrix-function fix, then the derivative's number stacked on it |
-| default suite | **3275 passing** (SymPy 1.14) on the derivative branch, about two minutes with `-n auto` |
+| released | **0.42.3** - the release PR, carrying #365 (`708b3ce`) and #366 (`496eb54`); see the end of 0.41.0's closure |
+| before that | **0.42.2** - #363, `0134b9e`, closed |
+| open PRs | the 0.42.3 release PR |
+| default suite | **3275 passing** (SymPy 1.14), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1550,9 +1550,21 @@ operation with a worked call in an operand (`_holds_a_worked_call`), except when
 given `2*(diff(...) + R_A*x) = 6 R_A x`); suite 3275; of the 24 pages and 18 exercises
 none moves (none multiplies a worked call on a kept line).
 
-**Exact next step:** the matrix-function PR on green CI, merged; this branch rebased
-onto it and merged; release 0.42.3; then propose the call convention and the `:=`/`=`
-fold.
+#365 merged as `708b3ce` on green CI at `8abbf34`; #366 rebased onto it, its tree identical
+to the one tested, merged as `496eb54` on green CI at `2e6b519`.
+
+**0.42.3 before its merge**, on the release tree (stacked on #366, its tree identical
+after each rebase): version assertions RED (7) then GREEN; source suite 3275 twice (SymPy
+1.14); wheel from `git archive`, 33 files identical to `src`; a clean Colab-like venv
+gains only Pint and the four small deps; smoke 38/38 (one check added: `K(x) = [k x, 0; 0,
+k]` and `Z = 2 ∂/∂x R_A x² = 4 R_A x` - its first draft looked for the matrix without the
+`\displaystyle` each cell carries, and failed on a correct page); the suite against the
+wheel on SymPy 1.13.3: 3274 + the by-path surface test on the wheel's `magic.py` (the venv
+needs PyYAML for the two workflow tests); the 24 pages identical from the wheel and from
+the tree.
+
+**Exact next step:** this release PR on green CI, merged; CI and the deep gate, `git+https` with the smoke, his Colab; then propose the call convention and
+the `:=`/`=` fold.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

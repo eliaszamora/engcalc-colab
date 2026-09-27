@@ -13,7 +13,19 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.42.2**.
+Current version: **0.42.3**.
+
+
+## v0.42.3 a kept name in a matrix function; a derivative worked out
+
+**A function whose value is a matrix reads its kept names, and what a derivative or an
+integral is combined with is worked out with it.** Over `k = E*A/L`, `K(x) = [k*x, 0; 0,
+k]` showed `[E A x/L, 0; 0, E A/L]`; it reads `[k x, 0; 0, k]`, and `numeric(K(2))` puts
+in `k` as its own number. And since 0.42.1, on a line that reaches a kept name, the
+result after the `=` left a typed factor beside the derivative unevaluated: `Z =
+2*diff(R_A*x^2, x)` read `= 2 · 2 R_A x`, `diff(...)/2` read `2 R_A x/2`; they read `4
+R_A x` and `R_A x`. The formula before the `=` is still the one typed, and every number
+is as it was. No reference page or gap-map exercise moves.
 
 
 ## v0.42.2 a kept name reaches an equation and a call
@@ -3785,6 +3797,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.42.3** — a kept name reaches a function whose value is a matrix (`[k x, 0; 0, k]`); after the `=`, a derivative is worked out with what it is combined with (`4 R_A x`, not `2 · 2 R_A x`).
 - **0.42.2** — a kept name reaches the equation `solve` shows, an `eq` line and `numeric` of a call (`R_A - q x = 0`, `D_B0 + V_B f_11 = 0`).
 - **0.42.1** — a kept name reaches an integral, a derivative and a function built on another (`∫_0^x (R_A - q x) dx`, `2 (R_A - q x)`).
 - **0.42.0** — a formula whose names all have a value stays a name in the formulas after it, as `keep` makes one (`φ As fy (d − a/2)`); two numbers in one product are set apart (`2 · 0.85`).
@@ -3906,4 +3919,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.42.2`.
+Version: `0.42.3`.
