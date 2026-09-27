@@ -12,10 +12,10 @@ _2026-09-26._
 
 | | |
 |---|---|
-| released | **0.42.0** - the release PR, carrying #355 (`5de01de`) and #356 (`a80d89d`); see the end of 0.41.0's closure |
+| released | **0.42.0** - #357, `1ddcdd3`, carrying #355 (`5de01de`) and #356 (`a80d89d`); closed, see the end of 0.41.0's closure |
 | before that | **0.41.2** - #353, `915936b`, closed |
-| open PRs | the 0.42.0 release PR |
-| default suite | **3239 passing** (SymPy 1.14), about two minutes with `-n auto` |
+| open PRs | none |
+| default suite | **3239 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `1ddcdd3` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1382,8 +1382,29 @@ added: a valued formula stays a name, a value written out still folds, two numbe
 apart); the suite against the wheel on SymPy 1.13.3: 3238 + the by-path surface test on the
 wheel's `magic.py`; the 24 pages identical from the wheel and from the tree.
 
-**Exact next step:** after the merge, CI and the deep gate, `git+https` with the smoke, his
-Colab (a sheet with `:=` values and plain formulas reads in its names).
+**0.42.0 is closed** (#357, `1ddcdd3`). After its merge: CI (six jobs), Quality Gate Deep
+(push) and Deep in qualification mode by dispatch green on `1ddcdd3`; his Colab path,
+`pip install --upgrade --no-cache-dir git+https://...@main`, in the Colab-like venv that
+held 0.41.2 changed only `engcalc-colab` (`915936b` -> `1ddcdd3`), 33 files identical to
+`src`, smoke 35/35 from outside the repository. **In his Colab** ("Untitled9", 2026-09-27,
+0:47): the runtime had closed, so his cell 0 installed 0.42.0 on a fresh one (27.6 s); my
+cell 3 printed `engcalc 0.42.0`, `phiMn_t = φ As fy (d - a/2)`, then `(0.90)(0.0015 m²)
+(420.00 MPa)((0.46 m) - (0.0882 m)/2) = 235.81 kN·m` on his kN palette, and `M_t = As fy
+(d - As fy/(2 · 0.85 fc b))`. His Chrome windows were minimized (the tab reported 0x0): the
+Windows tool restored Chrome and a click on the tab brought it forward.
+
+**A kept name does not reach an integral or a function built on a function** - measured
+after the closure, on 0.42.0, the same with `keep`: over `R_A = q*L/2` (kept) and `V(x) =
+R_A - q*x`, `M(x) = integrate(V(x), x, 0, x)` shows `∫_0^x (qL/2 - qx) dx = qLx/2 - qx²/2`
+(E4), so does `integrate(R_A - q*x, ...)` written out, and `W(x) = 2*V(x)` reads
+`q L - 2 q x`. Tried in a scratch copy, not committed: `integrate` and `diff` in
+`_WRITTEN_FORM_SAFE_CALLS` gave a mixed row, `∫(qL/2 - qx) dx = R_A x - qx²/2` - the
+integral's shown input (`_shown_input`) and a call of a function with a written body
+(`_reaches_a_kept_name` does not look through `written_functions`) are two more places.
+A design of its own that moves derivation rows: to measure on the pages and show him.
+
+**Exact next step:** ask him whether to take "a kept name through integrals and
+functions"; otherwise what to take next.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
