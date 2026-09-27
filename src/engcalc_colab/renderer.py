@@ -582,7 +582,13 @@ class _EngineeringLatexPrinter(LatexPrinter):
                 both_units = self._is_unit_literal(term) and self._is_unit_literal(
                     previous
                 )
-                if term.is_Number or both_units:
+                # And a factor that *begins* with a number, a product of its own:
+                # `sp.fraction` gathers two denominators, `2` and `0.85 b fc`, into
+                # `Mul(2, Mul(0.85, b, fc))`, and `fy*As/(0.85*fc*b)/2` read `2 0.85 fc b`,
+                # twenty point eight five. Read off the printed form, so a fraction or a
+                # bracket keeps its space.
+                begins_with_a_number = term_latex[:1].isdigit()
+                if term.is_Number or both_units or begins_with_a_number:
                     rendered.append(r" \cdot ")
                 else:
                     # One upright token meeting something else: a space, and only a
