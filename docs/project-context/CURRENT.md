@@ -1403,8 +1403,29 @@ integral's shown input (`_shown_input`) and a call of a function with a written 
 (`_reaches_a_kept_name` does not look through `written_functions`) are two more places.
 A design of its own that moves derivation rows: to measure on the pages and show him.
 
-**Exact next step:** ask him whether to take "a kept name through integrals and
-functions"; otherwise what to take next.
+He asked for it (*"Sí, aborda el nombre guardado en integrales y funciones"*), with the
+rows shown before anything is merged. Branch `feat/a-kept-name-reaches-integrals-and-functions`:
+1. `_reaches_a_kept_name` counts a call of a function in `written_functions`: `W(x) =
+   2*V(x)` reads `2 (R_A - q x)`.
+2. `_a_written_form_may_call`: `integrate` and `diff` (`_CALLS_A_KEPT_NAME_MAY_WALK`) may
+   be walked by a written form only on a line that reaches a kept name - on every line,
+   `y = 2*diff(x^2, x)` read `2 · 2 x` (5 contracts caught it).
+3. `_shown_in_kept_names`: the integral or derivative a row shows is read by the written
+   evaluator in showing mode and kept only if, worked out (`doit`), it agrees with the
+   value; `subs(V(x), L, 2*L)` - where `R_A` standing would be the wrong beam - falls back.
+   The same restriction on calls as the written form: read through `solve`, the equation
+   row was lost; through `sum`, it was written twice.
+E4 reads `M(x) = ∫_0^x (R_A - q x) dx = R_A x - q x²/2`, `θ(x) = C_1 + ∫ (x R_A - q x²/2)/(E I)
+dx = C_1 + R_A x²/(2 E I) - q x³/(6 E I)`, `v(x)` likewise; the deflection is -10.55 mm as
+before. 9 contracts (4 RED); mutation 8/10 killed plus the solve/sum contract for one
+survivor; the reach check survives by equivalence (no page or exercise moves without it,
+3.73 s against 3.67 s for the exercises) and is kept as containment; suite 3248, the
+changed files on SymPy 1.13.3 too; none of the 24 pages moves; of the 18 exercises only
+E4, in the three rows above. Seen, not changed: inside an integral a product reads `x R_A`
+where the result reads `R_A x` (the order inside integrals was already its own on 0.42.0:
+`q x L/2`).
+
+**Exact next step:** show him E4's rows; merge with his yes and release 0.42.1.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
