@@ -106,14 +106,14 @@ def test_a_plain_formula_after_keep_drops_the_kept_number(magics, monkeypatch):
 
 
 def test_a_plain_formula_after_keep_is_no_longer_kept(magics, monkeypatch):
-    """Left marked, `y = 2*d` stayed `2 d` with no number for `d`, and `numeric(y)`
-    stopped asking for one."""
+    """Left marked, `y = 2*d` stayed `2 d` with no number for `d`. `p` has no value: a
+    formula whose names all have one stays a name unmarked since 2026-09-26
+    (test_a_valued_formula_stays_a_name), and this is about the mark `keep` gave."""
     page, console = run(
-        magics, "h := 60*cm\nkeep d = h - 4*cm\nd = 3*h\ny = 2*d\nnumeric(y)\n", monkeypatch
+        magics, "h := 60*cm\nkeep d = h - 4*cm\nd = 3*p\ny = 2*d\n", monkeypatch
     )
     assert not console, console
-    assert _row("y", "6 h") in page, page
-    assert page.rstrip().endswith(r"360.00\,\mathrm{cm} \end{array}"), page[-200:]
+    assert _row("y", "6 p") in page, page
 
 
 def test_keep_still_gives_its_name_a_number(magics, monkeypatch):

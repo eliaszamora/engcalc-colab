@@ -146,7 +146,9 @@ def test_a_formula_coefficient_is_still_as_long_as_the_precision(cell):
     `0.59` has lost nothing. Letting the floor stretch it to `0.588` would overturn a
     decision this page already made and shift where long expressions wrap."""
     latex = cell(
-        "fc := 30*MPa\nfy := 420*MPa\nb := 300*mm\nAs := 1935*mm**2\nd := 446*mm\n"
+        # The names without values: with them `a` stays a name since 2026-09-26 and
+        # `(d - a/2)` holds no coefficient (test_a_valued_formula_stays_a_name); the algebra
+        # folds 1/(2*0.85) where the names are symbols, as a derivation writes them.
         "a = fy*As/(0.85*fc*b)\nphiMn = fy*As*(d - a/2)\n"
     )
     assert "0.59" in latex, latex

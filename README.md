@@ -16,6 +16,19 @@ reinstalls every dependency, Colab's own IPython among them, and forces a restar
 Current version: **0.41.2**.
 
 
+## A formula whose names have values reads in its names
+
+**A definition that is a formula of the sheet's names, all of them with a value, stays a
+name in the formulas after it**, as `keep` made one: `d = h - cover` and `a =
+As*fy/(0.85*fc*b)` over `:=` values, then `phiMn = phi*As*fy*(d - a/2)`, read `φ As fy (d
+- a/2)` and put in `(460.00 mm) - (88.24 mm)/2`, where they read `φ As fy (h - 0.59 As
+fy/(fc b) - cover)`. A formula whose names have no value - a derivation - still expands,
+and so does one that reads a value written with `=` (`L = 6*m`). `keep` still marks a
+definition that has no number yet. None of the reference pages moves; of the eighteen
+gap-map exercises, three read in their names now (a centroid `y_bar = (A_1 y_1 + A_2 y_2)/(A_1
++ A_2)`, Mohr's `s_1 = s_prom + R`, a shear `V(x) = R_A - q x`).
+
+
 ## v0.41.2 the text fills the width, extrema of an angle
 
 **A paragraph between `"""` fills the width the page has.** It was cut here every 76

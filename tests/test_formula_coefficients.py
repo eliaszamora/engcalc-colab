@@ -46,10 +46,13 @@ def test_a_derived_coefficient_is_not_fifteen_digits_long():
 def test_the_memoria_does_not_carry_the_long_decimal(cell):
     """End to end, the way it was seen: the whole block, formula and substitution."""
     latex = cell(
-        "fc := 29.9922*MPa\nfy := 413.6854*MPa\nb := 304.8*mm\n"
-        "As := 1935.48*mm**2\nd := 446.05*mm\nphi := 0.9\n"
+        # The formulas before the values: written after them, `a` has a number and stays a
+        # name since 2026-09-26 (test_a_valued_formula_stays_a_name), and no coefficient is
+        # left for the algebra to make.
         "a = As*fy/(0.85*fc*b)\n"
         "phiMn = phi*As*fy*(d - a/2)\n"
+        "fc := 29.9922*MPa\nfy := 413.6854*MPa\nb := 304.8*mm\n"
+        "As := 1935.48*mm**2\nd := 446.05*mm\nphi := 0.9\n"
         "numeric(phiMn)\n"
     )
     assert "0.588235294117647" not in latex, latex

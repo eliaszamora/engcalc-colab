@@ -131,10 +131,13 @@ def test_a_fraction_of_a_bracket_is_still_a_fraction(sheet):
     assert r"\frac{1}{" not in page, page
 
 
+# The bracket written out: over plain `d` and `a` it reads `(d - a/2)` since 2026-09-26, a
+# formula whose names all have a value staying a name (test_a_valued_formula_stays_a_name),
+# and is no longer wider than a row. Written out it is the same bracket the page had.
 PHI_MN = (
     "h := 500*mm\ncover := 40*mm\ndb_st := 10*mm\ndb := 20*mm\nAs := 1935*mm^2\nfy := 420*MPa\n"
-    "fc := 28*MPa\nb := 300*mm\nphi := 0.9\nd = h - cover - db_st - db/2\n"
-    "a = As*fy/(0.85*fc*b)\nphiMn = phi*As*fy*(d - a/2)\nnumeric(phiMn)\n"
+    "fc := 28*MPa\nb := 300*mm\nphi := 0.9\n"
+    "phiMn = phi*As*fy*(h - cover - db_st - db/2 - As*fy/(0.85*fc*b)/2)\nnumeric(phiMn)\n"
 )
 
 

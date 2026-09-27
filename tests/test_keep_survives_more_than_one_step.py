@@ -72,8 +72,9 @@ GEOMETRY = "a := 3*m\nb := 4*m\nkeep L = sqrt(a^2 + b^2)\n"
 
 
 def test_a_kept_name_survives_a_second_scalar_formula(cell):
-    """`x = 2*L` keeps `L` today; `y = x` is the step that loses it."""
-    final = _last(cell(GEOMETRY + "x = 2*L\ny = x\n"))
+    """`x = 2*L` keeps `L` today; `y = x` is the step that loses it. `t` has no value, so
+    `x` is not a name of its own (test_a_valued_formula_stays_a_name) and `y` shows it."""
+    final = _last(cell(GEOMETRY + "x = 2*L*t\ny = x\n"))
     assert "L" in final, final
     assert "sqrt" not in final, final
 
@@ -133,8 +134,9 @@ def test_the_same_matrix_under_two_names_reads_the_same_way(cell):
 def test_a_sheet_with_no_kept_name_is_unchanged(cell):
     """The guard exists because substituting an ordinary definition widens the formula,
     and that measurement still stands. A statement that reaches no kept name keeps
-    today's behaviour exactly: the evaluated expression, not a written one."""
-    final = _last(cell("a := 3*m\nb := 4*m\nd = a + b\ne = 2*d\n"))
+    today's behaviour exactly: the evaluated expression, not a written one. `a` and `b`
+    have no value: with values `d` stays a name since 2026-09-26."""
+    final = _last(cell("d = a + b\ne = 2*d\n"))
     assert "d" not in final.replace(r"\displaystyle", ""), final
 
 
