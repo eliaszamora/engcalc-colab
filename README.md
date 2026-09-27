@@ -13,7 +13,21 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.42.0**.
+Current version: **0.42.1**.
+
+
+## v0.42.1 a kept name reaches an integral
+
+**A name that stays a name reaches an integral, a derivative and a function built on
+another.** Over `R_A = q*L/2` and `V(x) = R_A - q*x`, `M(x) = integrate(V(x), x, 0, x)` read
+`∫_0^x (qL/2 - qx) dx = qLx/2 - qx²/2` one row under `V(x) = R_A - q x`: the reaction was
+gone the moment it was integrated, and did not come back in the slope or the deflection.
+It reads `∫_0^x (R_A - q x) dx = R_A x - q x²/2` now, and so do `θ(x)` and `v(x)` after it;
+`W(x) = 2*V(x)` reads `2 (R_A - q x)`. What is shown is worked out and checked against the
+value beside it, and falls back to the expanded form where the name would not be true
+(`subs(V(x), L, 2*L)`). 0.42.0 had made the mixture visible: before it, nothing stayed a
+name without `keep`. No reference page moves; gap-map E4 moves in those three rows, its
+deflection -10.55 mm as before.
 
 
 ## v0.42.0 a formula whose names have values reads in its names
@@ -3758,6 +3772,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.42.1** — a kept name reaches an integral, a derivative and a function built on another (`∫_0^x (R_A - q x) dx`, `2 (R_A - q x)`).
 - **0.42.0** — a formula whose names all have a value stays a name in the formulas after it, as `keep` makes one (`φ As fy (d − a/2)`); two numbers in one product are set apart (`2 · 0.85`).
 - **0.41.2** — a paragraph fills the width the page has, in `\small`, the browser breaking its lines; `extrema` of an angle, a degree in a block written `45.00°`.
 - **0.41.1** — a `=` line drops the value a `:=` line gave the same name, and the number a `keep` gave it; `%eng_units none` clears the palette.
@@ -3877,4 +3892,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.42.0`.
+Version: `0.42.1`.

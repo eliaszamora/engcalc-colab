@@ -77,6 +77,12 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.42.1: a kept name reaches an integral and a function of a function
+check("a kept name inside an integral",
+      "L := 6[m]\nq := 10[kN/m]\nR_A = q*L/2\nV(x) = R_A - q*x\nM(x) = integrate(V(x), x, 0, x)\n"
+      "W(x) = 2*V(x)\nnumeric(M(L/2))",
+      r"\int\limits_{0}^{x} \left(R_{A} - q x\right)\, dx", r"2 \left(R_{A} - q x\right)",
+      r"45.00\,\mathrm{kN} \cdot \mathrm{m}", absent=(r"\frac{q L}{2} - q x",))
 # 0.42.0: a formula whose names have values reads in its names; two numbers set apart
 check("a valued formula stays a name",
       "phi := 0.9\nAs := 1500[mm^2]\nfy := 420[MPa]\nh := 500[mm]\ncover := 40[mm]\n"

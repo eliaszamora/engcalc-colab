@@ -12,10 +12,10 @@ _2026-09-26._
 
 | | |
 |---|---|
-| released | **0.42.0** - #357, `1ddcdd3`, carrying #355 (`5de01de`) and #356 (`a80d89d`); closed, see the end of 0.41.0's closure |
-| before that | **0.41.2** - #353, `915936b`, closed |
-| open PRs | none |
-| default suite | **3239 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `1ddcdd3` |
+| released | **0.42.1** - the release PR, carrying #359 (`8ddde86`); see the end of 0.41.0's closure |
+| before that | **0.42.0** - #357, `1ddcdd3`, closed |
+| open PRs | the 0.42.1 release PR |
+| default suite | **3248 passing** (SymPy 1.14), about two minutes with `-n auto`; CI six jobs green on `9b17573` (#359's head) |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1425,7 +1425,20 @@ E4, in the three rows above. Seen, not changed: inside an integral a product rea
 where the result reads `R_A x` (the order inside integrals was already its own on 0.42.0:
 `q x L/2`).
 
-**Exact next step:** show him E4's rows; merge with his yes and release 0.42.1.
+Shown the rows he asked what had been wrong and why it was not seen; told plainly that
+0.42.0 had made the mixture visible in E4 (before it nothing stayed a name without `keep`,
+and no reference sheet used `keep` before an integral). His yes: *"Fusiona #359 y publica
+la 0.42.1"*. Merged as `8ddde86` on green CI at `9b17573`.
+
+**0.42.1 before its merge**, on the release tree: version assertions RED (7) then GREEN;
+source suite 3248 twice (SymPy 1.14); wheel from `git archive`, 33 files identical to
+`src`; a clean Colab-like venv gains only Pint and the four small deps; smoke 36/36 (one
+check added: a kept name inside an integral and a function of a function, `M(L/2)` 45 kN·m);
+the suite against the wheel on SymPy 1.13.3: 3247 + the by-path surface test on the wheel's
+`magic.py`; the 24 pages identical from the wheel and from the tree.
+
+**Exact next step:** after the merge, CI and the deep gate, `git+https` with the smoke, his
+Colab (E4's rows read `R_A`).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
