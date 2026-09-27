@@ -14,8 +14,8 @@ _2026-09-27._
 |---|---|
 | released | **0.42.2** - #363, `0134b9e`, closed, carrying #361 (`151e841`) and #362 (`3f48329`); see the end of 0.41.0's closure |
 | before that | **0.42.1** - #360, `59cc98c`, closed |
-| open PRs | this closure; then `fix/a-kept-name-in-a-matrix-function` |
-| default suite | **3258 passing** (SymPy 1.14), about two minutes with `-n auto` |
+| open PRs | the matrix-function fix, then the derivative's number stacked on it |
+| default suite | **3262 passing** (SymPy 1.14) on the matrix-function branch, about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1511,8 +1511,23 @@ Found after it, both older than this release:
   expanded but folded). #359's own note said this was avoided; it was, only on lines with
   no kept name. To fix next.
 
-**Exact next step:** this closure merged; the matrix-function fix; the derivative's
-number; then propose the call convention and the `:=`/`=` fold.
+#364 (this closure) merged as `bbedc1d`.
+
+### A kept name reaches a function whose value is a matrix
+
+Branch `fix/a-kept-name-in-a-matrix-function`: a function keeps its written body only
+when the line reaches a kept name (`_reaches_a_kept_name`), and a matrix written on the
+line reaches the evaluator as one placeholder, so the names in its cells were never
+looked at. `_a_line_reaches_a_kept_name(statement)` walks the cells too, at the one place
+a function decides. Over `k = E*A/L` (kept by rule 2): `K(x) = [k x, 0; 0, k]` (it read
+`[E A x/L, 0; 0, E A/L]`); `numeric(K(2))` opens with it and puts in `(66666.67 kN/m)`;
+`D = K(2)` reads `[2 k, 0; 0, k]`; the numbers are the same. 4 contracts (3 RED);
+mutation 4/4 (the check reverted, the cells never looked at, only the cells: caught by
+the focused tests; every function given a written body: caught by the suite, 3 failures);
+suite 3262; of the 24 pages and 18 exercises none moves.
+
+**Exact next step:** this PR on green CI, then the derivative's number stacked on it;
+release 0.42.3; then propose the call convention and the `:=`/`=` fold.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
