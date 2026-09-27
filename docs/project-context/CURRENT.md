@@ -1362,8 +1362,18 @@ Found with it, not caused by it, not fixed:
 - E4's `M(x) = integrate(V(x), x, 0, x)` shows the integrand as `q L/2 - q x` under
   `V(x) = R_A - q x` (a kept name inside an integral's shown input; the same with `keep`).
 
-**Exact next step:** this PR on green CI; then the two numbers side by side; release 0.42.0
-(a change of what an unmarked sheet shows) when both are in.
+**Two numbers side by side** (`fix/two-numbers-side-by-side`, stacked on #355). `sp.fraction`
+gathers two denominators into `Mul(2, Mul(0.85, b, fc))`, and `_print_engineering_product`
+set a dot only before a factor that *is* a number, so the nested one printed `2 0.85 fc b`.
+A factor whose printed form begins with a digit now takes the dot too:
+`{2 \cdot 0.85\,fc\,b}`. Reading the nested product as its factors was tried first and
+took `interp`'s substitution fraction apart (`((0.70) - (0.50)) \frac{1}{...}`); reverted.
+Asking also that the factor before it end in a digit changed nothing anywhere (suite,
+24 pages, 18 exercises) and was dropped. 2 contracts, both RED before; suite 3239; no page
+or exercise moves.
+
+**Exact next step:** #355 on green CI, then this branch rebased onto `main`; release 0.42.0
+(a change of what an unmarked sheet shows) with both, checked in his Colab.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
