@@ -1505,6 +1505,22 @@ class EngineeringEngine:
                 return True
         return False
 
+    def _a_line_reaches_a_kept_name(self, statement) -> bool:
+        """`_reaches_a_kept_name` over the line, the cells of a matrix written on it too.
+
+        A matrix on the line reaches the evaluator as one placeholder name, so over a kept
+        `k` the cells of `K(x) = [k*x, 0; 0, k]` were never looked at and the function
+        read `E A x/L` (2026-09-27, `test_a_kept_name_reaches_a_matrix_function`).
+        """
+        if self._reaches_a_kept_name(statement.expression):
+            return True
+        return any(
+            self._reaches_a_kept_name(cell)
+            for binding in getattr(statement, "matrix_literals", ())
+            for row in binding.literal.rows
+            for cell in row
+        )
+
     def _shown_input(self, statement, evaluator, value=None):
         """The formula a row shows beside its value: the whole statement, never a part.
 
@@ -2622,7 +2638,7 @@ class EngineeringEngine:
                 written = self._written_form(statement, evaluator, value)
             elif statement.parameters is None:
                 written = self.written_namespace.get(statement.target)
-            elif self._reaches_a_kept_name(statement.expression):
+            elif self._a_line_reaches_a_kept_name(statement):
                 # A function that reads a kept name is written as typed, or `f_cw` in
                 # `As_req(Mu)` is expanded and 2/0.85 folded into 2.35. Any other function
                 # prints as it always has. See `test_a_kept_name_survives_a_sheet_function`.
