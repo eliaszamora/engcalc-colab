@@ -15,7 +15,7 @@ _2026-09-27._
 | released | **0.42.2** - #363, `0134b9e`, closed, carrying #361 (`151e841`) and #362 (`3f48329`); see the end of 0.41.0's closure |
 | before that | **0.42.1** - #360, `59cc98c`, closed |
 | open PRs | the matrix-function fix, then the derivative's number stacked on it |
-| default suite | **3262 passing** (SymPy 1.14) on the matrix-function branch, about two minutes with `-n auto` |
+| default suite | **3275 passing** (SymPy 1.14) on the derivative branch, about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1526,8 +1526,33 @@ mutation 4/4 (the check reverted, the cells never looked at, only the cells: cau
 the focused tests; every function given a written body: caught by the suite, 3 failures);
 suite 3262; of the 24 pages and 18 exercises none moves.
 
-**Exact next step:** this PR on green CI, then the derivative's number stacked on it;
-release 0.42.3; then propose the call convention and the `:=`/`=` fold.
+### After the `=`, a derivative is worked out with what it is combined with
+
+Branch `fix/a-derivative-in-a-product-is-its-value`, stacked on the matrix-function
+branch. A regression of 0.42.1 (#359): on a line that reaches a kept name the written
+reader works out `diff` and `integrate`, and `_combine` set the typed factor beside the
+result unevaluated. `_WrittenFormEvaluator.visit_BinOp` now combines by evaluation any
+operation with a worked call in an operand (`_holds_a_worked_call`), except when
+`showing`, where the calls stand and the typed formula keeps its numbers.
+
+| line (kept `R_A`) | 0.42.2 | this branch |
+|---|---|---|
+| `2*diff(R_A*x^2, x)` | `2 · 2 R_A x` | `4 R_A x` |
+| `diff(R_A*x^2, x)/2` | `2 R_A x/2` | `R_A x` |
+| `0.85*diff(...)` | `0.85 · 2 R_A x` | `1.7 R_A x` |
+| `3*x*diff(...)` | `2 · 3 R_A x x` | `6 R_A x²` |
+| `diff(...)^2` | `(2 R_A x)²` | `4 R_A² x²` |
+| `diff(...) + R_A*x` | `2 R_A x + R_A x` | `3 R_A x` |
+| `2*integrate(V(x), x, 0, x)` | `2 (R_A x - q x²/2)` | `2 R_A x - q x²` |
+| `[2*diff(...), 0]` | `[2 · 2 R_A x, 0]` | `[4 R_A x, 0]` |
+
+13 contracts (12 RED); mutation 11/11 (one survivor, nesting only through products, was
+given `2*(diff(...) + R_A*x) = 6 R_A x`); suite 3275; of the 24 pages and 18 exercises
+none moves (none multiplies a worked call on a kept line).
+
+**Exact next step:** the matrix-function PR on green CI, merged; this branch rebased
+onto it and merged; release 0.42.3; then propose the call convention and the `:=`/`=`
+fold.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
