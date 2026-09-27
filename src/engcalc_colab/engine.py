@@ -3163,6 +3163,13 @@ class _Evaluator(ast.NodeVisitor):
                     for argument_node in argument.args
                 )
                 symbolic_expression = function.expression
+                # A function whose written body keeps a name is worked out on that body,
+                # as `numeric(name)` is on its written form below: `numeric(M(L/2))` under
+                # `M(x) = R_A x - q x^2/2` opened with `q L x/2 - q x^2/2` (2026-09-27).
+                # The kept name is put in as its own number; the answer is the same.
+                written = self.engine.written_functions.get(function_name)
+                if isinstance(written, sp.Expr):
+                    symbolic_expression = written
                 display_name = function_name
                 display_arguments = argument_expressions
 
