@@ -1271,8 +1271,23 @@ stops with "extrema response values have incompatible dimensions"; `phiMn` over 
 and `a` still expands them (`h - 0.59 As fy/(fc b) - cover`, the 0.85 and the 1/2 folded),
 now in two rows, and `keep` still avoids it.
 
-**Exact next step:** his choice of size (and yes to the browser breaking the lines), then
-build it on this branch (`fix/text-fills-the-width`) with TDD and check it in his Colab.
+He chose the recommendation (*"Me gusta tu recomendación. aborda lo pendiente también"*):
+the browser breaks the lines, `\small`. Built on `fix/text-fills-the-width`:
+`narrative_latex` typesets a paragraph at the top level, a word at a time (`\text{word }`,
+`\allowbreak` between, a formula as a `{...}` group, `\text{ }` after a formula),
+paragraphs `\\[8pt]` apart; `_FRAME` and `NARRATIVE_LINE` are gone. `render.cjs` reports
+KaTeX's `bases`; `conftest.in_one_run` reads a paragraph one run per style for the 22
+contracts about what it says; `test_no_formula_is_printed_twice` takes a fraction's depth
+out of each output (read over the joined page, a top-level paragraph break made the
+working's `\\[17pt]` count as inner rows). 11 contracts (10 RED); mutation 8/8, two
+unreachable branches removed; suite 3220; the 5 reference pages move in their 48
+paragraphs only, same words in the same order (checked by script). **In his Colab**
+(cell 4, the branch run in a subprocess so his install is untouched): exercise 2.1's
+paragraphs reach the output's edge; "Compatibilidad" reads in two lines, both formulas
+whole, the text aligned with the heading.
+
+**Exact next step:** merge this PR on green CI; then `extrema` over an angle; then the
+plain definitions that expand (to analyse with him).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;
