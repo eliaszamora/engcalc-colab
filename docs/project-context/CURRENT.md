@@ -1437,8 +1437,34 @@ check added: a kept name inside an integral and a function of a function, `M(L/2
 the suite against the wheel on SymPy 1.13.3: 3247 + the by-path surface test on the wheel's
 `magic.py`; the 24 pages identical from the wheel and from the tree.
 
-**Exact next step:** after the merge, CI and the deep gate, `git+https` with the smoke, his
-Colab (E4's rows read `R_A`).
+**0.42.1 is closed** (#360, `59cc98c`). After its merge: CI (six jobs), Quality Gate Deep
+(push) and Deep in qualification mode by dispatch green on `59cc98c`; his Colab path,
+`git+https` with `--upgrade`, in the venv that held 0.42.0 changed only `engcalc-colab`
+(`1ddcdd3` -> `59cc98c`), 33 files identical to `src`, smoke 36/36. **In his Colab**
+("Untitled9", 2026-09-27, 13:00): his cell 0 on a fresh runtime, my cell 3 printed
+`engcalc 0.42.1`, `M_t(x) = ∫_0^x (R_t - q_t x) dx = R_t x - q_t x²/2`, `θ_t` in `R_t`,
+`W_t(x) = 2 (R_t - q_t x)`, `M_t(L_t/2) = 45.00 kN·m`.
+
+Seen in that check, older than 0.42 (the same on 0.41.2, with `keep`): `numeric(M(L/2))`
+opens with the body in `x`, `M(L/2) = q L x/2 - q x²/2`, then substitutes `x = 3.00 m`, and
+a kept name inside is expanded. It would read `R_A (L/2) - q (L/2)²/2`. To propose.
+
+### A kept name reaches an equation (his "aborda el punto 1", 2026-09-27)
+
+Branch `feat/a-kept-name-reaches-an-equation`, the step after #359:
+- `_equation_in_kept_names`: the equation a single `solve` shows is read with the kept
+  names standing (`R_A - q x = 0`, not `qL/2 - q x = 0`), an expression made `= 0`, and
+  kept only if its difference agrees with the one solved; the answer is left as computed.
+- `_written_form` takes an equation (`bc2 = eq(subs(v(x), x, L), 0)`), its two sides
+  checked as one difference; `eq` joins `_CALLS_A_KEPT_NAME_MAY_WALK`.
+Moves, of the 24 pages none; of the 18 exercises three: E4's `bc_2 = L C_1 + C_2 -
+qL⁴/(24 E I) + R_A L³/(6 E I) = 0`, E9's compatibility `D_B0 + V_B f_11 = 0 m` (written
+`0*m`; it read `L³V_B/(3EI) - qL⁴/(8EI) = 0`), E13's `5qL⁴/(384EI) = d_adm` (it read `=
+L/300`). 7 contracts (2 RED); mutation 6/8, the two containment checks equivalent (no
+page or exercise moves without them) and kept; suite 3253 + 2.
+
+**Exact next step:** this PR on green CI (his "aborda el punto 1" and "lo dejo a tu
+criterio"); then `numeric(M(L/2))`, and the other points in the order given to him.
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
 `matrix_numeric.NumberMatrix`: base-unit magnitudes, one unit per entry, `None` for the
 written `0`; mpmath, not numpy). Symbolic matrices are evaluated as `numeric(K)` does;

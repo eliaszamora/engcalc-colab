@@ -761,8 +761,9 @@ def written_term_key(term):
 # of them shows that form; a statement holding one inside something larger is read again.
 _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
 # Walked by a written form only on a line that reaches a kept name. See
-# `EngineeringEngine._a_written_form_may_call`.
-_CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff"})
+# `EngineeringEngine._a_written_form_may_call`. `eq` builds an equation and nothing else
+# (2026-09-27): `bc2 = eq(subs(v(x), x, L), 0)` then reads in the names `v(x)` reads in.
+_CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff", "eq"})
 
 
 class EngineeringEngine:
@@ -1524,6 +1525,8 @@ class EngineeringEngine:
         if shown is None:
             return None
         kept = self._shown_in_kept_names(statement, value)
+        if kept is None:
+            kept = self._equation_in_kept_names(statement, shown)
         if kept is not None:
             return kept
         if isinstance(body, ast.Call) and getattr(body.func, "id", None) in _CALLS_THAT_SHOW:
@@ -1696,7 +1699,10 @@ class EngineeringEngine:
         # line was widened to `(sp.Expr, sp.MatrixBase)` first, with a comment claiming
         # it was what had kept the written form out of matrices; mutation showed the
         # widening changed nothing, and it is not here.
-        if not isinstance(value, sp.Expr):
+        # An equation too, `bc2 = eq(subs(v(x), x, L), 0)`: its two sides are checked as one
+        # difference below (2026-09-27, `test_a_kept_name_reaches_an_equation`).
+        equation = isinstance(value, sp.Equality)
+        if not isinstance(value, sp.Expr) and not equation:
             return None
         carries_kept = self._reaches_a_kept_name(statement.expression)
         for node in ast.walk(statement.expression):
@@ -1748,14 +1754,63 @@ class EngineeringEngine:
                 written = writer.visit(statement.expression.body)
         except Exception:
             return None
-        if not isinstance(written, sp.Expr):
-            return None
         expansions = {
             self.resolve_symbol(name): self.namespace[name]
             for name in self.kept_names
             if name in self.namespace
         }
+        if equation:
+            if not isinstance(written, sp.Equality) or not _agrees_with(
+                written.lhs - written.rhs, value.lhs - value.rhs, expansions
+            ):
+                return None
+            return written
+        if not isinstance(written, sp.Expr):
+            return None
         if not _agrees_with(written, value, expansions):
+            return None
+        return written
+
+    def _equation_in_kept_names(self, statement, equation):
+        """The equation `solve` shows above its answer, read with its kept names standing.
+
+        `x_0 = solve(eq(V(x), 0), x)` under `V(x) = R_A - q x` showed `qL/2 - q x = 0`
+        (0.42.1). Only the one equation of a single `solve`, only when it reaches a kept
+        name and calls nothing a second walk would repeat, and only once it agrees with the
+        equation solved. The answer is left as computed.
+        """
+        body = statement.expression.body
+        if not (
+            isinstance(equation, sp.Equality)
+            and isinstance(body, ast.Call)
+            and getattr(body.func, "id", None) == "solve"
+            and body.args
+        ):
+            return None
+        first = body.args[0]
+        # The containment `_shown_in_kept_names` keeps, for the same reason: measured
+        # without either check, no page and no exercise moves.
+        if not self._reaches_a_kept_name(first):
+            return None
+        for node in ast.walk(first):
+            if isinstance(node, ast.Call):
+                if not self._a_written_form_may_call(getattr(node.func, "id", None), True):
+                    return None
+        reader = _WrittenFormEvaluator(self, getattr(statement, "matrix_literals", ()))
+        reader.showing = True
+        try:
+            written = reader.visit(first)
+        except Exception:  # noqa: BLE001 - it shows what it showed before
+            return None
+        if not isinstance(written, sp.Equality):
+            # `solve(x + 2, x)` is `x + 2 = 0`, as the evaluator reads it.
+            written = sp.Eq(written, 0, evaluate=False)
+        expansions = {
+            self.resolve_symbol(name): self.namespace[name]
+            for name in self.kept_names
+            if name in self.namespace
+        }
+        if not _agrees_with(written.lhs - written.rhs, equation.lhs - equation.rhs, expansions):
             return None
         return written
 
