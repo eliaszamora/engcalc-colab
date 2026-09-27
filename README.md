@@ -13,10 +13,10 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.41.2**.
+Current version: **0.42.0**.
 
 
-## A formula whose names have values reads in its names
+## v0.42.0 a formula whose names have values reads in its names
 
 **A definition that is a formula of the sheet's names, all of them with a value, stays a
 name in the formulas after it**, as `keep` made one: `d = h - cover` and `a =
@@ -27,6 +27,10 @@ and so does one that reads a value written with `=` (`L = 6*m`). `keep` still ma
 definition that has no number yet. None of the reference pages moves; of the eighteen
 gap-map exercises, three read in their names now (a centroid `y_bar = (A_1 y_1 + A_2 y_2)/(A_1
 + A_2)`, Mohr's `s_1 = s_prom + R`, a shear `V(x) = R_A - q x`).
+
+**Two numbers in one product are set apart.** `fy*As/(0.85*fc*b)/2` read `2 0.85 fc b` in
+its denominator - twenty point eight five - where the two denominators met; it reads
+`2 · 0.85 fc b`.
 
 
 ## v0.41.2 the text fills the width, extrema of an angle
@@ -3754,6 +3758,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.42.0** — a formula whose names all have a value stays a name in the formulas after it, as `keep` makes one (`φ As fy (d − a/2)`); two numbers in one product are set apart (`2 · 0.85`).
 - **0.41.2** — a paragraph fills the width the page has, in `\small`, the browser breaking its lines; `extrema` of an angle, a degree in a block written `45.00°`.
 - **0.41.1** — a `=` line drops the value a `:=` line gave the same name, and the number a `keep` gave it; `%eng_units none` clears the palette.
 - **0.41.0** — a unit in brackets after its number, `6[m]`, so `m`, `s` and `N` can be names of a sheet; a name spelled like a unit beside another unit stops the line; a computed angle reads in degrees, written `°`; `numeric` of a value is one row.
@@ -3872,4 +3877,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.41.2`.
+Version: `0.42.0`.
