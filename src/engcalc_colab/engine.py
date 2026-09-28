@@ -2561,11 +2561,22 @@ class EngineeringEngine:
                 if statement.target is not None and statement.parameters is None and isinstance(
                     symbolic_expression, sp.Expr
                 ):
-                    self.namespace[statement.target] = symbolic_expression
+                    # A call is its body with the arguments put in: stored as the body,
+                    # `w = numeric(F(3, 4))` held `x + 2 y` in F's own parameters, and a
+                    # parameter kept apart reached a later row by name (the audit, 2026-09-28).
+                    written = evaluator.written_arguments or {}
+                    defined = symbolic_expression.xreplace(
+                        {
+                            symbol: written[symbol.name]
+                            for symbol in symbolic_expression.free_symbols
+                            if symbol.name in written
+                        }
+                    )
+                    self.namespace[statement.target] = defined
                     self.numeric_context.matrices.pop(statement.target, None)
                     self.written_namespace.pop(statement.target, None)
                     if declaration == "keep":
-                        self._store_kept_value(statement.target, symbolic_expression)
+                        self._store_kept_value(statement.target, defined)
                     else:
                         self._drop_the_number(statement.target)
                 return NumericEvaluationResult(

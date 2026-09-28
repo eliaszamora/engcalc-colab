@@ -57,6 +57,30 @@ def test_numeric_agrees_with_the_call_on_an_equals_line(monkeypatch):
     assert r"9.00" not in page, page
 
 
+def test_a_named_numeric_of_a_call_holds_its_value(monkeypatch):
+    # The audit (2026-09-28): `w = numeric(F(3, 4))` stored F's body, `x + 2 y`, so `u = 2*w`
+    # read `2 x + 4 y`; wrong on 0.43.0 too. A call is stored with its arguments put in.
+    page = _page("F(x, y) = x + 2*y\nw = numeric(F(3, 4))\nu = 2*w\n", monkeypatch)
+    row = _rows(page, "u")
+    assert "22" in row, row
+    assert "x" not in row.split("& = &", 1)[1], row
+
+
+def test_the_name_kept_apart_never_reaches_the_page(monkeypatch):
+    page = _page("F(x, y) = 2*x\nw = numeric(F(3, x))\nu = 2*w\n", monkeypatch)
+    assert "argument" not in page, page
+    assert "12" in _rows(page, "u"), page
+
+
+def test_a_named_numeric_at_a_formula_argument_holds_the_formula_there(monkeypatch):
+    page = _page(
+        "L := 6[m]\nq := 10[kN/m]\nM(x) = q*x*(L - x)/2\nw = numeric(M(L/2))\nu = 2*w\nnumeric(u)\n",
+        monkeypatch,
+    )
+    assert r"x" not in _rows(page, "u").split(r"\\[", 1)[0].split("& = &", 1)[1], page
+    assert page.rstrip().endswith(r"90.00\,\mathrm{kN} \cdot \mathrm{m} \end{array}"), page
+
+
 def test_a_call_with_no_name_in_common_is_as_it_was(monkeypatch):
     rows = _rows(
         _page("L := 6[m]\nq := 10[kN/m]\nM(x) = q*x*(L - x)/2\nnumeric(M(L/2))\n", monkeypatch),
