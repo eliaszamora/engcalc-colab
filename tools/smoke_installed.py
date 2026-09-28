@@ -77,6 +77,12 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.43.0: numeric of a call writes its argument on its first row
+check("numeric of a call writes its argument",
+      "L := 6[m]\nq := 10[kN/m]\na := 2[m]\nR_A = q*L/2\nM(x) = R_A*x - q*x^2/2\n"
+      "numeric(M(L/2))\nM_D(x) = q*x*(L - x)/2\nnumeric(M_D(L - a))",
+      r"R_{A}\,\left(\frac{L}{2}\right)", r"L - \left(L - a\right)",
+      r"45.00\,\mathrm{kN} \cdot \mathrm{m}", absent=("L - L - a",))
 # 0.42.3: a kept name in a matrix function; a derivative worked out with its factor
 check("a kept name in a matrix function and a derivative's number",
       "E := 200[GPa]\nA := 10[cm^2]\nL := 3[m]\nk = E*A/L\nK(x) = [k*x, 0; 0, k]\n"

@@ -12,10 +12,10 @@ _2026-09-27._
 
 | | |
 |---|---|
-| released | **0.42.3** - #367, `7377aa0`, closed, carrying #365 (`708b3ce`) and #366 (`496eb54`); see the end of 0.41.0's closure |
-| before that | **0.42.2** - #363, `0134b9e`, closed |
-| open PRs | `feat/numeric-call-writes-its-argument` (awaits his yes on the rows); the fold branch held |
-| default suite | **3298 passing** (SymPy 1.14 and 1.13.3) on the numeric-call branch, about a minute with `-n auto` |
+| released | **0.43.0** - the release PR, carrying #369 (`abca016`); see the end of 0.41.0's closure |
+| before that | **0.42.3** - #367, `7377aa0`, closed |
+| open PRs | the 0.43.0 release PR; the fold branch held (not a PR) |
+| default suite | **3298 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1642,9 +1642,21 @@ and derivatives (the general-n case, `numeric` of it raises); rows of one block 
 and `6 m` (piecewise, `solve`, `% if` fold as before); an `=` value is substituted in the
 palette's unit (`86675.88 kgf` under `P_u = 850 kN`). Not shipped: told him, with options.
 
-**Exact next step:** his review of the screenshots of the numeric-call rows; on his
-"Fusiona", merge and release 0.43.0; his choice for the fold (write values with `:=`,
-a notice pointing there, or a narrower rule).
+He reviewed the screenshots (Untitled9 cell 4, before/after) and wrote *"fusiona #369 y
+publica la 0.43.0. Para el =, haz el aviso que sugiere :=, y corrige el error del argumento
+que se llama como otro parámetro"*. #369 merged as `abca016` on green CI at `dc3e20d`.
+
+**0.43.0 before its merge**, on the release tree: version assertions RED (7) then GREEN;
+source suite 3298 twice (SymPy 1.14); wheel from `git archive`, 33 files identical to
+`src`; a clean Colab-like venv gains only Pint and the four small deps (`platformdirs`
+now 4.12.1); smoke 39/39 (one check added: `numeric(M(L/2))` writes `R_A (L/2)`,
+`M_D(L - a)` writes `L - (L - a)`); the suite against the wheel on SymPy 1.13.3: 3297 +
+the by-path surface test on the wheel's `magic.py`; the 24 pages identical from the wheel
+and from the tree.
+
+**Exact next step:** this release PR on green CI, merged; CI and the deep gate, `git+https`
+with the smoke, his Colab (screenshots); then the notice that suggests `:=` and the
+captured-argument fix, each on its own branch.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
