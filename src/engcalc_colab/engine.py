@@ -2561,11 +2561,22 @@ class EngineeringEngine:
                 if statement.target is not None and statement.parameters is None and isinstance(
                     symbolic_expression, sp.Expr
                 ):
-                    self.namespace[statement.target] = symbolic_expression
+                    # A call is its body with the arguments put in: stored as the body,
+                    # `w = numeric(F(3, 4))` held `x + 2 y` in F's own parameters, and a
+                    # parameter kept apart reached a later row by name (the audit, 2026-09-28).
+                    written = evaluator.written_arguments or {}
+                    defined = symbolic_expression.xreplace(
+                        {
+                            symbol: written[symbol.name]
+                            for symbol in symbolic_expression.free_symbols
+                            if symbol.name in written
+                        }
+                    )
+                    self.namespace[statement.target] = defined
                     self.numeric_context.matrices.pop(statement.target, None)
                     self.written_namespace.pop(statement.target, None)
                     if declaration == "keep":
-                        self._store_kept_value(statement.target, symbolic_expression)
+                        self._store_kept_value(statement.target, defined)
                     else:
                         self._drop_the_number(statement.target)
                 return NumericEvaluationResult(
@@ -3220,15 +3231,30 @@ class _Evaluator(ast.NodeVisitor):
                     else:
                         overrides[parameter] = argument_value
 
+                # A free argument that names a parameter given a value - `F(3, x)` of
+                # `F(x, y) = x + 2*y` - would be handed that value too: the free `x` put in
+                # for `y` became the parameter `x`, and `F(3, x)` answered 9 (the audit,
+                # 2026-09-27). Such a parameter stands apart under a name no argument has,
+                # as a call on a `=` line already put every argument in at once.
+                read_freely = {
+                    symbol.name for value in bindings.values() for symbol in value.free_symbols
+                }
+                apart = {}
+                for parameter in read_freely & set(overrides):
+                    standing = sp.Symbol(f"{parameter}__argument")
+                    bindings[self.engine.resolve_symbol(parameter)] = standing
+                    overrides[standing.name] = overrides.pop(parameter)
+                    apart[parameter] = standing.name
+
                 # A parameter bound to a value is written on the first row as the argument
                 # the call gave it, `R_A (L/2)` for `R_A x` (2026-09-27); one bound to a free
                 # expression was substituted into the body above already.
                 written_arguments = {
-                    parameter: sp.sympify(argument_expression)
+                    apart.get(parameter, parameter): sp.sympify(argument_expression)
                     for parameter, argument_expression in zip(
                         function.parameters, argument_expressions
                     )
-                    if parameter in overrides
+                    if apart.get(parameter, parameter) in overrides
                 }
                 self.written_arguments = written_arguments or None
 
