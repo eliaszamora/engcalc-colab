@@ -5753,10 +5753,6 @@ def _refuse_numeric_inside_a_formula(statement) -> None:
     ]
     if not inside:
         return
-    if any(node.func.id == "report" for node in inside):
-        raise EngEvaluationError(
-            "report must be a standalone statement; its value is shown where it is written"
-        )
     if isinstance(statement, ParsedNumericAssignment):
         right = _split_top_level_numeric_assignment(statement.source)[1]
         written, taken = _written_without_numeric(right, False)

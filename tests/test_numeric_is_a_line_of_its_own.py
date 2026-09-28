@@ -96,11 +96,16 @@ def test_result_inside_a_formula_is_told_by_its_own_name(monkeypatch):
     assert "Write M_5 := q_2*L_2^2/2." in console, console
 
 
-def test_report_inside_a_formula_says_what_it_said(monkeypatch):
+def test_report_inside_a_formula_is_told_by_its_own_name(monkeypatch):
     _page, console = _run(BASE + "z = 2*report(M_2)\n", monkeypatch)
     assert "report must be a standalone statement" in console, console
+    assert "Write z = 2*M_2, then report(z)." in console, console
     _page, console = _run(BASE + "numeric(2*report(M_2))\n", monkeypatch)
     assert "report must be a standalone statement" in console, console
+    assert "Write numeric(2*M_2)." in console, console
+    # Named, it says what it said before.
+    _page, console = _run(BASE + "z = report(M_2)\n", monkeypatch)
+    assert "report must be a standalone statement; its value is shown where it is written" in console
 
 
 @pytest.mark.parametrize(
@@ -127,3 +132,6 @@ def test_a_word_that_ends_in_numeric_is_not_numeric(monkeypatch):
     page, console = _run(BASE + "nonnumeric(x) = 2*x\nnumeric(nonnumeric(L_2))\n", monkeypatch)
     assert not console, console
     assert page.rstrip().endswith(r"6.00\,\mathrm{m} \end{array}"), page
+    # And the line written back does not take it for one.
+    _page, console = _run(BASE + "nonnumeric(x) = 2*x\nu = 2*numeric(nonnumeric(L_2))\n", monkeypatch)
+    assert "Write u = 2*nonnumeric(L_2), then numeric(u)." in console, console
