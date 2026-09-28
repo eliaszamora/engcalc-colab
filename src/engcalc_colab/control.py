@@ -344,9 +344,45 @@ def _parse_stretch(stretch: _Stretch, insert=None):
 
 def _condition_tree(text: str, line_no: int) -> ast.AST:
     try:
-        return ast.parse(normalize_expression(text), mode="eval").body
+        tree = ast.parse(normalize_expression(text), mode="eval").body
     except SyntaxError as exc:
         raise EngSyntaxError(f"line {line_no}: the condition of this % line is not one: {text}") from exc
+    return _read_in_numbers(tree, text, line_no)
+
+
+class _ItsValue(ast.NodeTransformer):
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id == "numeric"
+            and len(node.args) in (1, 2)
+            and not node.keywords
+        ):
+            return node.args[0]
+        return node
+
+
+def _read_in_numbers(tree: ast.AST, text: str, line_no: int) -> ast.AST:
+    """`numeric(M_2) > 40*kN*m` is `M_2 > 40*kN*m`: a condition is worked out in numbers.
+
+    Each side is evaluated as `numeric(<side>)`, and `numeric` inside a formula is refused
+    since 0.43.2 - a `numeric` written in a condition, which read as its value before, was
+    refused with it (the audit, 2026-09-28). It reads as its value, `result` too (the
+    parser hands it on as `numeric`). A `report` records a value of the sheet, and a
+    condition is no place to record one.
+    """
+    if any(
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "report"
+        for node in ast.walk(tree)
+    ):
+        from .engine import _written_without_numeric  # noqa: PLC0415 - engine imports this module's users
+
+        raise EngEvaluationError(
+            f"line {line_no}: report must be a standalone statement; a condition reads the "
+            f"value itself: {_written_without_numeric(text, False)[0]}"
+        )
+    return _ItsValue().visit(tree)
 
 
 def run(cell: str, engine, settings) -> Iterator:

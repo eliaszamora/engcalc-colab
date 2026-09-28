@@ -5731,7 +5731,8 @@ def _refuse_numeric_inside_a_formula(statement) -> None:
     first and `numeric` asks for its number. Inside a formula it took the line over
     (2026-09-28): `M = q*numeric(L^2)/2` defined `M` as `9 m^2`, `q/2` gone, and on a
     `:=` line it stopped at `unsupported numeric function`. The line stops and is written
-    back without it.
+    back without it. A `case` or a `combo` is a load along the member, not a named
+    `numeric`: whole, `case D = numeric(M(L/2))` defined `D(x) = M(x)`, `L/2` gone.
     """
     expression = getattr(statement, "expression", None)
     if expression is None:
@@ -5742,7 +5743,12 @@ def _refuse_numeric_inside_a_formula(statement) -> None:
         for row in binding.literal.rows:
             for entry in row:
                 nodes.extend(ast.walk(entry))
-    shown_alone = isinstance(statement, ParsedStatement) and statement.parameters is None
+    declaration = getattr(statement, "declaration", None)
+    shown_alone = (
+        isinstance(statement, ParsedStatement)
+        and statement.parameters is None
+        and declaration in (None, "keep")
+    )
     inside = [
         node
         for node in nodes
@@ -5753,8 +5759,17 @@ def _refuse_numeric_inside_a_formula(statement) -> None:
     ]
     if not inside:
         return
+    # Written wrong, it is told what it is told as a line of its own; no line is written.
+    for node in inside:
+        if node.func.id == "report" and (len(node.args) != 1 or not isinstance(node.args[0], ast.Name)):
+            raise EngEvaluationError("report expects one defined name, as in report(M_max)")
+        if len(node.args) not in (1, 2):
+            raise EngEvaluationError("numeric expects 1 or 2 arguments: expression[, target_unit]")
+    # The line as it reads: a comment is no part of it, and a matrix of several lines is
+    # written on one.
+    source = re.sub(r"\s*\n\s*", " ", _without_a_comment(statement.source))
     if isinstance(statement, ParsedNumericAssignment):
-        right = _split_top_level_numeric_assignment(statement.source)[1]
+        right = _split_top_level_numeric_assignment(source)[1]
         written, taken = _written_without_numeric(right, False)
         name = taken[0] if taken else "numeric"
         raise EngEvaluationError(
@@ -5762,17 +5777,26 @@ def _refuse_numeric_inside_a_formula(statement) -> None:
             "formula worked out to its value on a line of its own. Write "
             f"{statement.target} := {written}."
         )
-    left, right = _split_top_level_assignment(statement.source)
+    left, right = _split_top_level_assignment(source)
     written, taken = _written_without_numeric(right, shown_alone)
     name = taken[0] if taken else "numeric"
-    if left is None:
-        # `plot(M(x), ...)` is a line of its own; `M_2 + 1*kN*m` asks for its number.
-        called = body.func.id if isinstance(body, ast.Call) and isinstance(body.func, ast.Name) else None
-        advice = written if called is not None else f"{name}({written})"
-    elif _A_SHOWING_CALL.match(written):
+    called = body.func.id if isinstance(body, ast.Call) and isinstance(body.func, ast.Name) else None
+    if called in _LINES_OF_THEIR_OWN:
+        # `plot(M(x), ...)` and `roots(...)` are lines of their own, and take no name.
+        advice = written
+    elif left is None:
+        # `solve` and `eq` show what they find; `sqrt(a*b)` or `M(a)` would show no number.
+        shows = called in ("solve", "eq") or _A_SHOWING_CALL.match(written)
+        advice = written if shows else f"{name}({written})"
+    elif (
+        _A_SHOWING_CALL.match(written)
+        or statement.parameters is not None
+        or declaration in ("case", "combo")
+        or called == "eq"
+    ):
+        # A function is asked for its number at an argument, a load is used by a
+        # combination and an equation has none: only the line is written.
         advice = f"{left} = {written}"
-    elif statement.parameters is not None:
-        advice = f"{left} = {written}, then {name}({statement.target}(...))"
     else:
         advice = f"{left} = {written}, then {name}({statement.target})"
     raise EngEvaluationError(
@@ -5792,6 +5816,9 @@ def _written_without_numeric(text: str, keep_the_line: bool) -> tuple[str, list[
         match = _A_SHOWING_CALL.search(text, start)
         if match is None:
             return text, taken
+        if _inside_a_string(text, match.start()):
+            start = match.end()
+            continue
         opening = match.end() - 1
         closing = _closing_bracket(text, opening)
         if closing is None:
@@ -5811,6 +5838,33 @@ def _written_without_numeric(text: str, keep_the_line: bool) -> tuple[str, list[
             argument = f"({argument})"
         text = before + argument + after
         start = len(before)
+
+
+# The calls that are a line of their own and take no name; `numeric` inside one is refused
+# and the line is written back as it is, with no `numeric` around it.
+_LINES_OF_THEIR_OWN = frozenset(
+    {
+        "plot", "envelope", "table", "roots", "extrema", "intersections", "governing",
+        "summary", "assume", "image", "member", "frame_plot",
+    }
+)
+
+
+def _inside_a_string(text: str, index: int) -> bool:
+    quote = None
+    for char in text[:index]:
+        if quote is None and char in "\"'":
+            quote = char
+        elif char == quote:
+            quote = None
+    return quote is not None
+
+
+def _without_a_comment(text: str) -> str:
+    for index, char in enumerate(text):
+        if char == "#" and not _inside_a_string(text, index):
+            return text[:index].rstrip()
+    return text
 
 
 def _closing_bracket(text: str, opening: int) -> int | None:
