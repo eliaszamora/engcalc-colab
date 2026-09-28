@@ -824,6 +824,11 @@ class EngineeringEngine:
         # A function's body as it was written, for a function that reads a kept name: a
         # call of it is written from this. See `test_a_kept_name_survives_a_sheet_function`.
         self.written_functions: dict[str, object] = {}
+        # The line that defined each name with a plain `=`, and for each name a notice has
+        # said `:=` would keep standing, the line that said it. See
+        # `_notice_a_value_of_equals_written_in`.
+        self.equals_sources: dict[str, ParsedStatement] = {}
+        self.equals_told: dict[str, str] = {}
         self.frame_members: dict[str, FrameMember] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
@@ -1956,6 +1961,8 @@ class EngineeringEngine:
         self.figure_numbers.clear()
         self.frame_members.clear()
         self.written_functions.clear()
+        self.equals_sources.clear()
+        self.equals_told.clear()
         self.numeric_context.reset()
 
     def resolve_symbol(self, name: str) -> sp.Symbol:
@@ -2091,7 +2098,118 @@ class EngineeringEngine:
             said = self._notice_a_letter_read_as_a_unit(name, statement)
             if said is not None:
                 self.notices.append(said)
+        said = self._notice_a_value_of_equals_written_in(statement, result)
+        if said is not None:
+            self.notices.append(said)
         return result
+
+    def _notice_a_value_of_equals_written_in(self, statement, result) -> str | None:
+        """What to say when a formula writes a value of `=` in beside a name that stands.
+
+        `L = 3*m` then `M = q*L^2/2`, `q` with no value, reads `9 m^2 q/2`: `L` goes in as
+        its value while `q` stays a name, a formula that is neither the one typed nor a
+        number. Making such a value stand was built and audited (2026-09-27) and reached
+        far past this row, so it was held; his decision (2026-09-28) is to say, once per
+        name, that `:=` keeps it a name there. The page does not change.
+
+        Once per name, and again only by the line that said it: a `% while` shows its last
+        turn, and a notice said on the first and counted as said was never seen (the audit,
+        2026-09-28); a cell run again says it again. A name read as a matrix index or a
+        derivative's order is not written in, and `:=` would make it a decimal there.
+        """
+        if not isinstance(result, EvaluationResult) or not isinstance(statement, ParsedStatement):
+            return None
+        value = result.value
+        try:
+            standing = [
+                symbol
+                for symbol in value.free_symbols
+                if symbol.name not in self.numeric_context.unit_literal_names(value)
+            ]
+        except Exception:  # noqa: BLE001 - not an expression: nothing is written in
+            return None
+        if not standing:
+            return None
+        trees = [statement.expression] + [
+            cell
+            for binding in getattr(statement, "matrix_literals", ())
+            for row in binding.literal.rows
+            for cell in row
+        ]
+        counted = set()
+        for tree in trees:
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Subscript):
+                    counted.update(id(inner) for inner in ast.walk(node.slice))
+                elif (
+                    isinstance(node, ast.Call)
+                    and getattr(node.func, "id", None) == "diff"
+                    and len(node.args) > 2
+                ):
+                    counted.update(id(inner) for arg in node.args[2:] for inner in ast.walk(arg))
+        # In the order the line was written, not the order `ast.walk` visits.
+        read = [
+            node.id
+            for _index, _column, node in sorted(
+                (
+                    (index, getattr(node, "col_offset", 0), node)
+                    for index, tree in enumerate(trees)
+                    for node in ast.walk(tree)
+                    if isinstance(node, ast.Name) and id(node) not in counted
+                ),
+                key=lambda item: item[:2],
+            )
+        ]
+        folded = []
+        for name in read:
+            if (
+                name not in folded
+                # In `f(a) = ...` the body's `a` is the parameter, not the sheet's `a`.
+                and name not in (statement.parameters or ())
+                # A `keep` line is not recorded there: a kept name stands already.
+                and name in self.equals_sources
+                and self.equals_told.get(name, statement.source) == statement.source
+                and name in self.namespace
+                and self._comes_to_a_number(self.namespace[name])
+            ):
+                folded.append(name)
+        if not folded:
+            return None
+        self.equals_told.update((name, statement.source) for name in folded)
+        quoted = [f"'{name}'" for name in folded]
+        one = len(folded) == 1
+        names = quoted[0] if one else ", ".join(quoted[:-1]) + " and " + quoted[-1]
+        written = ", ".join(self._as_colon_equals(name) for name in folded)
+        return (
+            f"line {statement.line_no}: {names} {'was' if one else 'were'} defined with '=', "
+            f"so this formula writes {'its value' if one else 'their values'} in beside names "
+            f"that stay names; define {'it' if one else 'them'} with ':=' ({written}) to keep "
+            f"{'it a name' if one else 'them names'} here."
+        )
+
+    def _as_colon_equals(self, name: str) -> str:
+        """`L := 3*m`, the line as written; `x1 := 3[m]`, its number, when `:=` would refuse
+        the line - `solve`, `integrate` and the like are not worked out on a `:=` line."""
+        defined = self.equals_sources[name]
+        calls = {
+            getattr(node.func, "id", None)
+            for node in ast.walk(defined.expression)
+            if isinstance(node, ast.Call)
+        }
+        if calls <= _WRITTEN_FORM_SAFE_CALLS:
+            return f"{name} := {defined.source.partition('=')[2].strip()}"
+        quantity = self.numeric_context.evaluate_symbolic(self.namespace[name])[1]
+        magnitude = f"{float(quantity.magnitude):g}"
+        if quantity.dimensionless:
+            return f"{name} := {magnitude}"
+        return f"{name} := {magnitude}[{quantity.units:~C}]"
+
+    def _comes_to_a_number(self, value) -> bool:
+        """A number in its units: what `L = 6*m`, or `R_A = q*L/2` over such values, holds."""
+        if not isinstance(value, sp.Expr) or is_matrix(value):
+            return False
+        units = self.numeric_context.unit_literal_names(value)
+        return all(symbol.name in units for symbol in value.free_symbols)
 
     def _notice_a_letter_read_as_a_unit(self, name: str, statement) -> str | None:
         """What to say when a line reads `N`, `m` or `s` as a unit nobody wrote as one.
@@ -2628,6 +2746,10 @@ class EngineeringEngine:
                     )
                 else:
                     self.namespace[statement.target] = value
+                    if declaration == "keep":
+                        self.equals_sources.pop(statement.target, None)
+                    else:
+                        self.equals_sources[statement.target] = statement
                     self.numeric_context.matrices.pop(statement.target, None)
                     zero = self._unit_of_a_zero(statement, value)
                     if zero is None:
