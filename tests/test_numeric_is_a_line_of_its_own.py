@@ -82,6 +82,7 @@ def test_a_colon_equals_of_numeric_alone_is_told_too(monkeypatch):
         # An equation is not a value, and has none to ask for.
         ("e = eq(numeric(L_2), x)", "Write e = eq(L_2, x)."),
         ("x_0 = solve(eq(2*x, numeric(L_2)), x)", "Write x_0 = solve(eq(2*x, L_2), x), then numeric(x_0)."),
+        ("solve(eq(2*x, numeric(L_2)), x)", "Write solve(eq(2*x, L_2), x)."),
         # A comment is not written back; nor is a matrix of several lines.
         ("y = 2*numeric(L_2 + L_2)  # numeric(L_2)", "Write y = 2*(L_2 + L_2), then numeric(y)."),
         ("K = [numeric(L_2), 0*m;\n     0*m, L_2]", "Write K = [L_2, 0*m; 0*m, L_2], then numeric(K)."),
@@ -202,6 +203,7 @@ def _page_of(source: str, monkeypatch) -> tuple[str, str]:
         ("% if numeric(M_2, kN*m) > 40*kN*m:", "% if M_2 > 40*kN*m:"),
         ("% if 2*numeric(M_2) > 40*kN*m:", "% if 2*M_2 > 40*kN*m:"),
         ("% if numeric(M_2) < numeric(M_u):", "% if M_2 < M_u:"),
+        ("% if 4*M(numeric(L_2)) > 40*kN*m:", "% if 4*M(L_2) > 40*kN*m:"),
         (
             "% if L_2 > 5*m:\nnumeric(L_2)\n% elif numeric(M_2) > 40*kN*m:",
             "% if L_2 > 5*m:\nnumeric(L_2)\n% elif M_2 > 40*kN*m:",
