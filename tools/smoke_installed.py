@@ -77,6 +77,14 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.43.2: numeric inside a formula stops the line and writes it back without it
+check("numeric inside a formula is a line of its own",
+      "L = 3*m\nM = q*numeric(L^2)/2",
+      "numeric must be a standalone statement", "Write M = q*L^2/2, then numeric(M)",
+      absent=(r"9\,\mathrm{m}^{2} \end{array}",))
+check("numeric on a := line says := works out a number",
+      "L_2 := 3[m]\nq_2 := 10[kN/m]\nM_3 := q_2*numeric(L_2^2)/2",
+      "Write M_3 := q_2*L_2^2/2", absent=("unsupported numeric function",))
 # 0.43.1: a free argument named like a parameter; a named numeric of a call; the := notice
 check("a free argument kept apart, a named numeric, the := notice",
       "F(x, y) = x + 2*y\nnumeric(F(3, x))\nw = numeric(F(3, 4))\nu = 2*w\nL = 3*m\n"

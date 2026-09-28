@@ -120,6 +120,7 @@ from .numeric import BRACKETED_UNIT_PREFIX, _UNIT_ALIASES, NumericContext, _Nume
 _PLAIN_UNIT_NAMES = frozenset(
     name for name in _UNIT_ALIASES if not name.startswith(BRACKETED_UNIT_PREFIX)
 )
+from .parser import _split_top_level_assignment, _split_top_level_numeric_assignment
 from .piecewise import (
     build_piecewise,
     build_relation,
@@ -2273,6 +2274,7 @@ class EngineeringEngine:
     ):
         evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))
         try:
+            _refuse_numeric_inside_a_formula(statement)
             self._refuse_a_name_beside_a_unit(statement)
             declaration = getattr(statement, "declaration", None)
             if declaration is not None and declaration != "keep":
@@ -5715,6 +5717,136 @@ def _standalone_call(statement, name: str, message: str):
     ):
         raise EngEvaluationError(message)
     return body
+
+
+_A_SHOWING_CALL = re.compile(r"(?<![\w.])(numeric|report)\s*\(")
+
+
+def _refuse_numeric_inside_a_formula(statement) -> None:
+    """Stop a line that writes `numeric(...)` or `report(...)` inside a formula.
+
+    `numeric` shows a formula worked out to its value, on a line of its own or named,
+    `d = numeric(...)`; the approved 0.9.0 design keeps it there - a formula is written
+    first and `numeric` asks for its number. Inside a formula it took the line over
+    (2026-09-28): `M = q*numeric(L^2)/2` defined `M` as `9 m^2`, `q/2` gone, and on a
+    `:=` line it stopped at `unsupported numeric function`. The line stops and is written
+    back without it.
+    """
+    expression = getattr(statement, "expression", None)
+    if expression is None:
+        return
+    body = expression.body
+    nodes = list(ast.walk(body))
+    for binding in getattr(statement, "matrix_literals", ()):
+        for row in binding.literal.rows:
+            for entry in row:
+                nodes.extend(ast.walk(entry))
+    shown_alone = isinstance(statement, ParsedStatement) and statement.parameters is None
+    inside = [
+        node
+        for node in nodes
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in ("numeric", "report")
+        and not (node is body and shown_alone)
+    ]
+    if not inside:
+        return
+    if any(node.func.id == "report" for node in inside):
+        raise EngEvaluationError(
+            "report must be a standalone statement; its value is shown where it is written"
+        )
+    if isinstance(statement, ParsedNumericAssignment):
+        right = _split_top_level_numeric_assignment(statement.source)[1]
+        raise EngEvaluationError(
+            "':=' works its right side out to a number already, and numeric shows a "
+            "formula worked out to its value on a line of its own. Write "
+            f"{statement.target} := {_written_without_numeric(right, False)}."
+        )
+    left, right = _split_top_level_assignment(statement.source)
+    written = _written_without_numeric(right, shown_alone)
+    if left is None:
+        # `plot(M(x), ...)` is a line of its own; `M_2 + 1*kN*m` asks for its number.
+        called = body.func.id if isinstance(body, ast.Call) and isinstance(body.func, ast.Name) else None
+        advice = written if called is not None else f"numeric({written})"
+    elif _A_SHOWING_CALL.match(written):
+        advice = f"{left} = {written}"
+    elif statement.parameters is not None:
+        advice = f"{left} = {written}, then numeric({statement.target}(...))"
+    else:
+        advice = f"{left} = {written}, then numeric({statement.target})"
+    raise EngEvaluationError(
+        "numeric must be a standalone statement: it shows a formula worked out to its "
+        f"value, and is not a number inside another formula. Write {advice}."
+    )
+
+
+def _written_without_numeric(text: str, keep_the_line: bool) -> str:
+    """`q*numeric(L^2)/2` as `q*L^2/2`: each call taken out, its first argument left.
+
+    A call that is the whole of `text` stays when `keep_the_line` says it may.
+    """
+    start = 0
+    while True:
+        match = _A_SHOWING_CALL.search(text, start)
+        if match is None:
+            return text
+        opening = match.end() - 1
+        closing = _closing_bracket(text, opening)
+        if closing is None:
+            return text
+        before, after = text[: match.start()], text[closing + 1 :]
+        if keep_the_line and not before.strip() and not after.strip():
+            start = opening + 1
+            continue
+        argument = _top_level_split(text[opening + 1 : closing])[0].strip()
+        bounded = before.rstrip()[-1:] in ("", "(", ",", "[", ";") and after.lstrip()[
+            :1
+        ] in ("", ")", ",", "]", ";")
+        operators = _top_level_operators(argument)
+        beside_a_power = before.rstrip().endswith("^") or after.lstrip().startswith("^")
+        if not bounded and operators and (operators != {"^"} or beside_a_power):
+            argument = f"({argument})"
+        text = before + argument + after
+        start = len(before)
+
+
+def _closing_bracket(text: str, opening: int) -> int | None:
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] in "([{":
+            depth += 1
+        elif text[index] in ")]}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def _top_level_split(text: str) -> list[str]:
+    parts, depth, begun = [], 0, 0
+    for index, char in enumerate(text):
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        elif char == "," and depth == 0:
+            parts.append(text[begun:index])
+            begun = index + 1
+    parts.append(text[begun:])
+    return parts
+
+
+def _top_level_operators(text: str) -> set[str]:
+    found, depth = set(), 0
+    for char in text:
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        elif depth == 0 and char in "+-*/^<>=!":
+            found.add(char)
+    return found
 
 
 _IMAGE_TYPES = {
