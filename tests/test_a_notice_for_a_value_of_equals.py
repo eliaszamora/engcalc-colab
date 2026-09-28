@@ -78,6 +78,43 @@ def test_a_matrix_written_on_the_line_is_told_about(monkeypatch):
     assert "'L' was defined with '='" in console, console
 
 
+def test_a_while_block_keeps_the_notice_of_its_last_turn(monkeypatch):
+    # The audit (2026-09-28): a `% while` shows its last turn only, and the notice said on
+    # the first was dropped but counted as said - the name was never flagged again.
+    _page, console = _run("L = 3*m\n% n = 0\n% while n < 2:\nM = q*L\n% n += 1\n% end\n", monkeypatch)
+    assert "'L' was defined with '='" in console, console
+
+
+def test_a_cell_run_again_says_it_again(monkeypatch):
+    captured = []
+    monkeypatch.setattr(magic, "display", captured.append)
+    engine = magic.EngMagics()
+    first, second = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(first):
+        engine.eng("", "L = 3*m\nM = q*L^2/2\n")
+    with contextlib.redirect_stdout(second):
+        engine.eng("", "L = 3*m\nM = q*L^2/2\n")
+    assert "'L' was defined" in first.getvalue() and "'L' was defined" in second.getvalue(), (
+        first.getvalue(), second.getvalue())
+
+
+def test_a_value_worked_out_by_a_call_is_suggested_as_its_value(monkeypatch):
+    # `x1 := solve(...)` is refused by `:=`; its number is not.
+    _page, console = _run("x1 = solve(eq(2*x, 6*m), x)\nM = q*x1\n", monkeypatch)
+    assert "x1 := 3[m]" in console, console
+    assert "x1 := solve" not in console, console
+
+
+def test_a_pure_number_worked_out_by_a_call_is_suggested_bare(monkeypatch):
+    _page, console = _run("n_1 = solve(eq(2*y, 6), y)\nP = w*n_1\n", monkeypatch)
+    assert "n_1 := 3)" in console, console
+
+
+def test_an_index_or_a_derivative_order_says_nothing(monkeypatch):
+    _page, console = _run("K = [a, b; c, d]\ni = 1\nx1 = K[i, i]\nn = 2\ny = diff(w*x^4, x, n)\n", monkeypatch)
+    assert not console, console
+
+
 def test_a_formula_that_is_not_a_number_is_not_told_about(monkeypatch):
     # `a` is a formula (`b L`), not a value: only `L`, written into `a`, is told about.
     _page, console = _run("L = 3*m\na = b*L\nM = q*a\n", monkeypatch)

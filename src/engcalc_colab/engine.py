@@ -824,10 +824,11 @@ class EngineeringEngine:
         # A function's body as it was written, for a function that reads a kept name: a
         # call of it is written from this. See `test_a_kept_name_survives_a_sheet_function`.
         self.written_functions: dict[str, object] = {}
-        # The line that defined each name with a plain `=`, and the names a notice has
-        # already said `:=` would keep standing. See `_notice_a_value_of_equals_written_in`.
-        self.equals_sources: dict[str, str] = {}
-        self.equals_told: set[str] = set()
+        # The line that defined each name with a plain `=`, and for each name a notice has
+        # said `:=` would keep standing, the line that said it. See
+        # `_notice_a_value_of_equals_written_in`.
+        self.equals_sources: dict[str, ParsedStatement] = {}
+        self.equals_told: dict[str, str] = {}
         self.frame_members: dict[str, FrameMember] = {}
         # What the last statement has to say that is not an error. The magic prints it.
         self.notices: list[str] = []
@@ -2110,6 +2111,11 @@ class EngineeringEngine:
         number. Making such a value stand was built and audited (2026-09-27) and reached
         far past this row, so it was held; his decision (2026-09-28) is to say, once per
         name, that `:=` keeps it a name there. The page does not change.
+
+        Once per name, and again only by the line that said it: a `% while` shows its last
+        turn, and a notice said on the first and counted as said was never seen (the audit,
+        2026-09-28); a cell run again says it again. A name read as a matrix index or a
+        derivative's order is not written in, and `:=` would make it a decimal there.
         """
         if not isinstance(result, EvaluationResult) or not isinstance(statement, ParsedStatement):
             return None
@@ -2130,6 +2136,17 @@ class EngineeringEngine:
             for row in binding.literal.rows
             for cell in row
         ]
+        counted = set()
+        for tree in trees:
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Subscript):
+                    counted.update(id(inner) for inner in ast.walk(node.slice))
+                elif (
+                    isinstance(node, ast.Call)
+                    and getattr(node.func, "id", None) == "diff"
+                    and len(node.args) > 2
+                ):
+                    counted.update(id(inner) for arg in node.args[2:] for inner in ast.walk(arg))
         # In the order the line was written, not the order `ast.walk` visits.
         read = [
             node.id
@@ -2138,7 +2155,7 @@ class EngineeringEngine:
                     (index, getattr(node, "col_offset", 0), node)
                     for index, tree in enumerate(trees)
                     for node in ast.walk(tree)
-                    if isinstance(node, ast.Name)
+                    if isinstance(node, ast.Name) and id(node) not in counted
                 ),
                 key=lambda item: item[:2],
             )
@@ -2151,26 +2168,41 @@ class EngineeringEngine:
                 and name not in (statement.parameters or ())
                 # A `keep` line is not recorded there: a kept name stands already.
                 and name in self.equals_sources
-                and name not in self.equals_told
+                and self.equals_told.get(name, statement.source) == statement.source
                 and name in self.namespace
                 and self._comes_to_a_number(self.namespace[name])
             ):
                 folded.append(name)
         if not folded:
             return None
-        self.equals_told.update(folded)
+        self.equals_told.update((name, statement.source) for name in folded)
         quoted = [f"'{name}'" for name in folded]
         one = len(folded) == 1
         names = quoted[0] if one else ", ".join(quoted[:-1]) + " and " + quoted[-1]
-        written = ", ".join(
-            f"{name} := {self.equals_sources[name].partition('=')[2].strip()}" for name in folded
-        )
+        written = ", ".join(self._as_colon_equals(name) for name in folded)
         return (
             f"line {statement.line_no}: {names} {'was' if one else 'were'} defined with '=', "
             f"so this formula writes {'its value' if one else 'their values'} in beside names "
             f"that stay names; define {'it' if one else 'them'} with ':=' ({written}) to keep "
             f"{'it a name' if one else 'them names'} here."
         )
+
+    def _as_colon_equals(self, name: str) -> str:
+        """`L := 3*m`, the line as written; `x1 := 3[m]`, its number, when `:=` would refuse
+        the line - `solve`, `integrate` and the like are not worked out on a `:=` line."""
+        defined = self.equals_sources[name]
+        calls = {
+            getattr(node.func, "id", None)
+            for node in ast.walk(defined.expression)
+            if isinstance(node, ast.Call)
+        }
+        if calls <= _WRITTEN_FORM_SAFE_CALLS:
+            return f"{name} := {defined.source.partition('=')[2].strip()}"
+        quantity = self.numeric_context.evaluate_symbolic(self.namespace[name])[1]
+        magnitude = f"{float(quantity.magnitude):g}"
+        if quantity.dimensionless:
+            return f"{name} := {magnitude}"
+        return f"{name} := {magnitude}[{quantity.units:~C}]"
 
     def _comes_to_a_number(self, value) -> bool:
         """A number in its units: what `L = 6*m`, or `R_A = q*L/2` over such values, holds."""
@@ -2706,7 +2738,7 @@ class EngineeringEngine:
                     if declaration == "keep":
                         self.equals_sources.pop(statement.target, None)
                     else:
-                        self.equals_sources[statement.target] = statement.source
+                        self.equals_sources[statement.target] = statement
                     self.numeric_context.matrices.pop(statement.target, None)
                     zero = self._unit_of_a_zero(statement, value)
                     if zero is None:
