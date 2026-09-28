@@ -728,11 +728,16 @@ class NumericContext:
         self-referential definition - `a = b` then `b = a`, where the second captures the
         symbol `b` - substitutes to itself and falls through to the ordinary
         missing-value message, which is the right thing to say about it.
+
+        One that grows does not substitute to itself: `v := 2` then `v = v*2` keeps `v` in
+        `2 v`, which went `4 v`, `8 v`, ... until the kernel hung (the second audit of
+        0.43.2, 2026-09-28). A chain resolves in as many passes as there are names, so one
+        still changing past them goes round, and says which name.
         """
         namespace = getattr(self, "symbolic_namespace", None)
         if not namespace:
             return expr
-        while True:
+        for _pass in range(len(namespace) + 1):
             kept = getattr(self, "kept_names", None) or frozenset()
             replacements = {
                 symbol: namespace[symbol.name]
@@ -745,6 +750,12 @@ class NumericContext:
             if substituted == expr:
                 return expr
             expr = substituted
+        around = sorted(symbol.name for symbol in expr.free_symbols if symbol.name in namespace)
+        raise EngEvaluationError(
+            f"{' and '.join(around)} {'is' if len(around) == 1 else 'are'} defined from itself, "
+            "so there is no value to put in; give the new value a name of its own, as "
+            f"{around[0]}_2 = ..."
+        )
 
     def evaluate_symbolic(
         self,

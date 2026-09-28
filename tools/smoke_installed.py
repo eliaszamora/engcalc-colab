@@ -79,7 +79,7 @@ print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed
 
 # 0.43.2: numeric inside a formula stops the line and writes it back without it
 check("numeric inside a formula is a line of its own",
-      "L = 3*m\nM = q*numeric(L^2)/2",
+      "L = 3*m\nq := 10[kN/m]\nM = q*numeric(L^2)/2",
       "numeric must be a standalone statement", "Write M = q*L^2/2, then numeric(M)",
       absent=(r"9\,\mathrm{m}^{2} \end{array}",))
 check("numeric on a := line says := works out a number",

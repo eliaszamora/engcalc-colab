@@ -76,6 +76,8 @@ class ParsedStatement:
     """`"case"` or `"combo"` when the line declared one; `None` for every other line."""
     target_index: ast.AST | None = None
     """`K[[1, 2], [1, 2]] = ...`: the index of the part assigned, and `target` is `K`."""
+    written_as: str | None = None
+    """`M_{i} = ...` inside a `% for`, where `source` is the line one pass reads."""
 
     @property
     def parameter(self) -> str | None:
@@ -99,6 +101,8 @@ class ParsedNumericAssignment:
     blank_before: bool = False
     matrix_literals: tuple[MatrixLiteralBinding, ...] = ()
     """`D := [0; d[1,1]]`: the matrices written on the line, as a `=` line keeps them."""
+    written_as: str | None = None
+    """`M_{i} := ...` inside a `% for`, where `source` is the line one pass reads."""
 
 
 @dataclass(frozen=True)

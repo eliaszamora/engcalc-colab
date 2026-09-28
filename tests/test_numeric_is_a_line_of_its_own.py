@@ -9,8 +9,10 @@ On a `:=` line it stopped at `unsupported numeric function 'numeric'`, and a plo
 `numeric(M(x))` drew the moment upward under a Python title. The line now stops and writes
 itself without it: `M = q*L^2/2`, then `numeric(M)`.
 
-A condition of `% if` or `% while` is worked out in numbers already, and there `numeric(X)`
-reads as `X`: it did before, and its audit (2026-09-28) found it refused.
+A condition of `% if` or `% while` is worked out in numbers already, and its audit
+(2026-09-28) found a `numeric` there refused, which read before. A whole side that is a
+`numeric` is worked out as it was, its unit checked and written; one inside a side reads as
+its value. What the second audit found is in `test_numeric_advice_runs`.
 """
 
 import contextlib
@@ -37,7 +39,8 @@ def _run(source: str, monkeypatch) -> tuple[str, str]:
 def test_a_product_with_numeric_in_it_stops_and_writes_the_formula(monkeypatch):
     page, console = _run("L = 3*m\nM = q*numeric(L^2)/2\nN = 2*M\n", monkeypatch)
     assert "engcalc: line 2: numeric must be a standalone statement" in console, console
-    assert "M = q*L^2/2, then numeric(M)" in console, console
+    # `q` has no value, so `numeric(M)` would have no number to show: only the line.
+    assert "Write M = q*L^2/2." in console, console
     # Nothing was defined: the line that read `M` was never reached.
     assert "M & = &" not in page and "N & = &" not in page, page
 
@@ -148,7 +151,8 @@ def test_report_inside_a_formula_is_told_by_its_own_name(monkeypatch):
     assert "Write z = 2*M_2, then report(z)." in console, console
     _page, console = _run(BASE + "numeric(2*report(M_2))\n", monkeypatch)
     assert "report must be a standalone statement" in console, console
-    assert "Write numeric(2*M_2)." in console, console
+    # `numeric(2*M_2)` would drop the record the line asked for.
+    assert "write 2*M_2 under a name, and report that name" in console, console
     # Named, it says what it said before.
     _page, console = _run(BASE + "z = report(M_2)\n", monkeypatch)
     assert "report must be a standalone statement; its value is shown where it is written" in console
@@ -195,19 +199,37 @@ def _page_of(source: str, monkeypatch) -> tuple[str, str]:
     return " ".join(str(getattr(item, "data", "")) for item in captured), console.getvalue()
 
 
+WORKED = r"\frac{q_{2} L_{2}^{2}}{2} = 45.00\,\mathrm{kN} \cdot \mathrm{m}"
+
+
+@pytest.mark.parametrize(
+    ("condition", "said"),
+    [
+        # A whole side that is a `numeric` is worked out as a `numeric` line is, as before.
+        ("% if numeric(M_2) > 40*kN*m:", WORKED + r" > 40.00\,\mathrm{kN} \cdot \mathrm{m}"),
+        ("% if result(M_2) > 40*kN*m:", WORKED + r" > 40.00\,\mathrm{kN} \cdot \mathrm{m}"),
+        ("% if numeric(M_2, kN*m) > 40*kN*m:", WORKED + r" > 40.00\,\mathrm{kN} \cdot \mathrm{m}"),
+        ("% if numeric(M_2) < numeric(M_u):", WORKED + r" < M_{u} = 50.00\,\mathrm{kN} \cdot \mathrm{m}"),
+        (
+            "% if L_2 > 5*m:\nnumeric(L_2)\n% elif numeric(M_2) > 40*kN*m:",
+            r"\leq 5.00\,\mathrm{m}\;\text{y}\;" + WORKED,
+        ),
+    ],
+)
+def test_a_whole_side_is_worked_out_as_numeric(condition, said, monkeypatch):
+    ending = "\nnumeric(M_2)\n% else:\nnumeric(L_2)\n% end\n"
+    page, console = _page_of(CONDITION_BASE + condition + ending, monkeypatch)
+    assert not console, console
+    assert said in page, page
+
+
 @pytest.mark.parametrize(
     ("condition", "as_written"),
     [
-        ("% if numeric(M_2) > 40*kN*m:", "% if M_2 > 40*kN*m:"),
-        ("% if result(M_2) > 40*kN*m:", "% if M_2 > 40*kN*m:"),
-        ("% if numeric(M_2, kN*m) > 40*kN*m:", "% if M_2 > 40*kN*m:"),
         ("% if 2*numeric(M_2) > 40*kN*m:", "% if 2*M_2 > 40*kN*m:"),
-        ("% if numeric(M_2) < numeric(M_u):", "% if M_2 < M_u:"),
+        ("% if 2*numeric(M_2, kN*m) > 40*kN*m:", "% if 2*M_2 > 40*kN*m:"),
         ("% if 4*M(numeric(L_2)) > 40*kN*m:", "% if 4*M(L_2) > 40*kN*m:"),
-        (
-            "% if L_2 > 5*m:\nnumeric(L_2)\n% elif numeric(M_2) > 40*kN*m:",
-            "% if L_2 > 5*m:\nnumeric(L_2)\n% elif M_2 > 40*kN*m:",
-        ),
+        ("% if numeric(2*numeric(M_2)) > 40*kN*m:", "% if numeric(2*M_2) > 40*kN*m:"),
     ],
 )
 def test_a_condition_reads_numeric_as_its_value(condition, as_written, monkeypatch):
