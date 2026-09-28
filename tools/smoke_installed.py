@@ -77,6 +77,12 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.43.1: a free argument named like a parameter; a named numeric of a call; the := notice
+check("a free argument kept apart, a named numeric, the := notice",
+      "F(x, y) = x + 2*y\nnumeric(F(3, x))\nw = numeric(F(3, 4))\nu = 2*w\nL = 3*m\n"
+      "M = q*L^2/2",
+      "2 x + 3", r"u & = & \displaystyle 22", "'L' was defined with '='", "L := 3*m",
+      absent=("argument", "2 x + 4 y"))
 # 0.43.0: numeric of a call writes its argument on its first row
 check("numeric of a call writes its argument",
       "L := 6[m]\nq := 10[kN/m]\na := 2[m]\nR_A = q*L/2\nM(x) = R_A*x - q*x^2/2\n"

@@ -12,10 +12,10 @@ _2026-09-27._
 
 | | |
 |---|---|
-| released | **0.43.0** - the release PR, carrying #369 (`abca016`); see the end of 0.41.0's closure |
-| before that | **0.42.3** - #367, `7377aa0`, closed |
-| open PRs | the 0.43.0 release PR; the fold branch held (not a PR) |
-| default suite | **3298 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| released | **0.43.1** - the release PR, carrying #371 (`3bf56aa`) and #372 (`9c8dee9`); see the end of 0.41.0's closure |
+| before that | **0.43.0** - #370, `81bacef`, closed |
+| open PRs | the 0.43.1 release PR; the fold branch held (not a PR) |
+| default suite | **3321 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1654,9 +1654,51 @@ now 4.12.1); smoke 39/39 (one check added: `numeric(M(L/2))` writes `R_A (L/2)`,
 the by-path surface test on the wheel's `magic.py`; the 24 pages identical from the wheel
 and from the tree.
 
+**0.43.0 is closed** (#370, `81bacef`, its tree identical to the release tree): CI, Quality
+Gate Deep (push) and Deep in qualification mode by dispatch green on `81bacef`; `git+https`
+with `--upgrade` changed only `engcalc-colab` (`7377aa0` -> `81bacef`), 33 files identical,
+smoke 39/39; in his Colab (Untitled9 cell 3, runtime fresh), `engcalc 0.43.0`, `M_t(L_t/2) =
+R_t (L_t/2) - q_t (L_t/2)²/2 = 45.00 kN·m`, `M_u(L_t - a_t) = q_t (L_t - a_t)(L_t - (L_t -
+a_t))/2 = 40.00 kN·m`; screenshots sent to him.
+
+### A free argument named like a parameter (#371) and the `:=` notice (#372)
+
+#371 (`3bf56aa`): `numeric(F(3, x))` of `F(x, y) = x + 2*y` answered 9.00 (0.42.3 and
+0.43.0 too): the free `x` put in for `y` took the value given to the parameter `x`. A
+valued parameter a free argument names now stands apart (`x__argument`) before the
+arguments go in, as a call on a `=` line puts them in at once. Its audit found the
+internal name reaching a later row through `w = numeric(...)`, and under it an older
+defect: a named `numeric` of a call stored the function's body (`w = numeric(F(3, 4))`
+gave `u = 2*w = 2 x + 4 y`; `w = numeric(M(L/2))` gave `u = q x (L - x)`). The value
+stored is now the body with the arguments put in (`22`, `q L²/4`). 8 contracts;
+mutation 4/5 plus the storage (the survivor, the name's `real=True`, removed).
+
+#372 (`9c8dee9`): the notice his decision chose over changing `=`: once per name, when a
+formula writes a value of `=` in beside a name that stays a name, `'L' was defined with
+'=', ... define it with ':=' (L := 3*m) to keep it a name here`. Its audit found it lost in
+a `% while` (said on a dropped turn, counted as said), suggesting `x1 := solve(...)` (which
+`:=` refuses), and firing on a matrix index or a derivative's order; fixed - told again
+only by the line that told it, the number suggested where `:=` would refuse the line
+(`x1 := 3[m]`), indices and orders not counted. 15 contracts; mutation 17/17. No reference
+sheet or exercise prints it.
+
+Found by the audits, not fixed: unknown units (`km`, `lbf`, `percent`) are free letters,
+so a line of values in them draws the notice about a correct value (the unknown unit is
+the older problem); a `% for` defining `=` values tells each iteration's name; `numeric`
+inside a product drops the rest of the formula (`M = q*numeric(L^2)/2` stores `9 m²`,
+on 0.43.0 too - a wrong number, to fix next); a partial call past a derivative breakpoint
+gives the older piecewise-condition message.
+
+**0.43.1 before its merge**, on the release tree: version assertions RED (7) then GREEN;
+source suite 3321 twice (SymPy 1.14); wheel from `git archive`, 33 files identical to
+`src`; a clean Colab-like venv gains only Pint and the four small deps; smoke 40/40 (one
+check added: `F(3, x)` reads `2 x + 3`, `u = 2*w` reads `22`, the notice suggests `L :=
+3*m`); the suite against the wheel on SymPy 1.13.3: 3320 + the by-path surface test on the
+wheel's `magic.py`; the 24 pages identical from the wheel and from the tree, and none
+moves from 0.43.0.
+
 **Exact next step:** this release PR on green CI, merged; CI and the deep gate, `git+https`
-with the smoke, his Colab (screenshots); then the notice that suggests `:=` and the
-captured-argument fix, each on its own branch.
+with the smoke, his Colab (screenshots); then `numeric` inside a product.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

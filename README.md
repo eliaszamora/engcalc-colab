@@ -13,7 +13,21 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.43.0**.
+Current version: **0.43.1**.
+
+
+## v0.43.1 a free argument kept apart; a notice for `=` values
+
+**`numeric` of a call keeps a free argument apart from a parameter of its name, a named
+`numeric` of a call holds the call, and a notice says when `:=` would keep a value a
+name.** Over `F(x, y) = x + 2*y`, `numeric(F(3, x))` answered `9.00`: the free `x` put in
+for `y` took the value given to the parameter `x`. It reads `2 x + 3`. `w = numeric(F(3,
+4))` stored the body of `F`, so `u = 2*w` read `2 x + 4 y`; it reads `22`, and `w =
+numeric(M(L/2))` holds `M` at `L/2`. And `L = 3*m` then `M = q*L^2/2`, `q` with no value,
+reads `9 m² q/2`, `L` written in as its value: the console now says so once - `'L' was
+defined with '=' ... define it with ':=' (L := 3*m) to keep it a name here` - and
+suggests the number where `:=` would refuse the line (`x1 := 3[m]` for a `solve`). No
+reference page or gap-map exercise moves or prints the notice.
 
 
 ## v0.43.0 numeric of a call writes its argument
@@ -3809,6 +3823,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.43.1** — `numeric(F(3, x))` keeps the free `x` apart from the parameter `x`; `w = numeric(F(...))` holds the call; a notice suggests `:=` for a value of `=` written in beside a name.
 - **0.43.0** — `numeric` of a call writes its argument on its first row (`M(L/2) = R_A (L/2) - q (L/2)²/2`).
 - **0.42.3** — a kept name reaches a function whose value is a matrix (`[k x, 0; 0, k]`); after the `=`, a derivative is worked out with what it is combined with (`4 R_A x`, not `2 · 2 R_A x`).
 - **0.42.2** — a kept name reaches the equation `solve` shows, an `eq` line and `numeric` of a call (`R_A - q x = 0`, `D_B0 + V_B f_11 = 0`).
@@ -3932,4 +3947,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.43.0`.
+Version: `0.43.1`.
