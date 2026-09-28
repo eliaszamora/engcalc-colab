@@ -13,7 +13,19 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.42.3**.
+Current version: **0.43.0**.
+
+
+## v0.43.0 numeric of a call writes its argument
+
+**The first row of `numeric` of a call writes the argument where the parameter was.**
+Over `R_A = q*L/2` and `M(x) = R_A*x - q*x^2/2`, `numeric(M(L/2))` opened with `M(L/2) =
+R_A x - q x²/2`, the left saying `L/2` and the right `x`; it reads `M(L/2) = R_A (L/2) -
+q (L/2)²/2`, and the substitution and the answer below it are as they were. A name or a
+plain number goes in bare; a sum or a negative argument goes in brackets wherever a sign
+or a factor would change what it says (`L - (L - a)`), and a number beside another number
+is set apart with a dot. Of the reference pages one row moves on each `formas` page, the
+conditions of `q_v(9 m)`; no gap-map exercise moves.
 
 
 ## v0.42.3 a kept name in a matrix function; a derivative worked out
@@ -3797,6 +3809,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.43.0** — `numeric` of a call writes its argument on its first row (`M(L/2) = R_A (L/2) - q (L/2)²/2`).
 - **0.42.3** — a kept name reaches a function whose value is a matrix (`[k x, 0; 0, k]`); after the `=`, a derivative is worked out with what it is combined with (`4 R_A x`, not `2 · 2 R_A x`).
 - **0.42.2** — a kept name reaches the equation `solve` shows, an `eq` line and `numeric` of a call (`R_A - q x = 0`, `D_B0 + V_B f_11 = 0`).
 - **0.42.1** — a kept name reaches an integral, a derivative and a function built on another (`∫_0^x (R_A - q x) dx`, `2 (R_A - q x)`).
@@ -3919,4 +3932,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.42.3`.
+Version: `0.43.0`.
