@@ -373,8 +373,8 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 86 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
-\displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: 9\,\mathrm{m} < a_{q} \\[4pt]
+\displaystyle q_{2} & \text{for}\: 9\,\mathrm{m} \leq L \\[4pt]
 \displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
 & = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) < \left(3.00\,\mathrm{m}\right) \\[4pt]
 \displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) \leq \left(6.00\,\mathrm{m}\right) \\[4pt]

@@ -14,8 +14,8 @@ _2026-09-27._
 |---|---|
 | released | **0.42.3** - #367, `7377aa0`, closed, carrying #365 (`708b3ce`) and #366 (`496eb54`); see the end of 0.41.0's closure |
 | before that | **0.42.2** - #363, `0134b9e`, closed |
-| open PRs | this closure |
-| default suite | **3275 passing** (SymPy 1.14), about two minutes with `-n auto` |
+| open PRs | `feat/numeric-call-writes-its-argument` (awaits his yes on the rows); the fold branch held |
+| default suite | **3298 passing** (SymPy 1.14 and 1.13.3) on the numeric-call branch, about a minute with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1580,7 +1580,71 @@ Open, his decisions (rows shown to him):
 Cosmetic, found: a function's written body called inside an indefinite integral on a
 plain line reads `x R_A` where its own row reads `R_A x` (`Z = integrate(M(x), x)`).
 
-**Exact next step:** his answer on the two decisions; CURRENT.md condensation (docs only).
+His answer (2026-09-27): *"Procede según tus recomendaciones"* - both alternatives, and he
+asked that the Colab checks be mine, with screenshots sent to him. 0.42.3 was checked in
+his Colab that way (Untitled9 cell 3; screenshots via a localhost receiver page that
+the extension's `upload_image` fills, `scratchpad/shot_receiver.py`).
+
+### `numeric` of a call writes its argument (his decision, 2026-09-27)
+
+Branch `feat/numeric-call-writes-its-argument`. The evaluator records the arguments of the
+parameters bound to a value (`written_arguments` on the four numeric result types); the
+renderer prints the first row with the substitution printer, each parameter standing as
+`renderer._WrittenArgument`: `M(L/2) = R_A (L/2) - q (L/2)²/2`, then the substitution and
+the answer as before. A name or a plain non-negative number goes in bare (`f(2) = 2 q L`,
+`K(2) = [k · 2, 0; 0, k]`); otherwise brackets unless nothing binds tighter: alone or as a
+term of a sum only when negative (the additive rows print terms alone - `L + - a` in the
+first prototype), none in a comparison (`q_v(9 m)`: `9 m < a_q`), inside a function
+(`e^{1/2}`, `sin(...)`), under a radical or in an exponent; brackets as a factor or a
+power's base. A lone numerator/denominator keeps them (`q/(L/2)`), like the substitution
+row. Found by prototyping first (a workflow explorer, `scratchpad/explore-arg`): the
+spacing metadata counts rows a second time, and without the argument a wrapped first row
+raised "spacing metadata does not match". Moves: the three `formas` pages, one row each
+(`q_v(9 m)`'s conditions); no exercise. 19 contracts (the first 7 RED); 5 older contracts
+rewritten (2 snapshots, 3 assertions, each with a note); mutation 25 mutants: 24 killed,
+the survivor (a call at its own variable writing `x` for `x`) measured equivalent on the
+whole suite, pages and exercises, and its condition removed; an unreachable default
+branch left as it was. Suite 3294 on SymPy 1.14 and on 1.13.3.
+
+An independent audit (four workflow auditors, two per change, on a frozen copy) found in
+this change three defects, fixed with a contract each: `L - x` at `L - a` read `L - L -
+a` (SymPy prints the term `-x` as ` - ` then `x`, parent the sum), a wrapped product ended
+`c q a + b` (factors printed alone), and a partial call with a unit argument raised
+"spacing metadata does not match" (the partial count lacked `unit_literals`; 56 of 120
+generated sheets). A term of a sum or anything printed alone now brackets an argument
+that is a sum or negative. A second audit (two agents; both stopped at the session limit,
+their measurements recovered from their transcripts) left an oracle,
+`scratchpad/latex_oracle.py`, that reads a first row back with ordinary precedence, and a
+sweep, `scratchpad/lens_sweep.py` (bodies x arguments, variants plain / `long` / `long
+pa`): 14 false rows of 5372, a number argument after a numeric coefficient in a wrapped
+product - KaTeX draws `2 2.5` as `22.5` (spaces do not count in math). The wrapped join
+now sets a factor that begins with a digit apart with `\cdot`, as the unwrapped printer
+does (#356): 5372/5372 in every variant, on SymPy 1.14 and 1.13.3, and no existing row
+moves. 23 contracts; mutation 25/25 plus the join; suite 3298 on both SymPy.
+Found, pre-existing, not fixed: a free argument named like another parameter is
+captured (`F(x, y) = x + 2*y`, `numeric(F(3, x))` answers 9.00 on main too); a kept name
+passed as an argument is expanded in the call's head (`M(d)` reads `M(L - a)` on main).
+Left as house style: a lone fraction numerator/denominator or matrix entry keeps its
+brackets (`q/(L/2)`), as the substitution row writes values.
+
+### The value-of-`=` fold: held after its audit (2026-09-27)
+
+Branch `feat/a-value-written-out-stands-beside-a-name` (`6e0d0f0`, not a PR): a name an
+`=` line gave a number stands beside a name that stands (`q L²/2`, `q_1 L²/2`), on the
+kept-name machinery, with rule 2 counting it. Its own contracts, mutation and the pages
+were clean; the audit showed it reaches far past the two rows he approved: a zero written
+with `=` (`e = 0*m`) crashes every numeric row reading it (the SymPy 0 lost its metre); a
+mixed `:=`/`=` sheet now gets rule-2 kept names, so a later `q = 20*kN/m` leaves `y = 2 M`
+on the stale 45 kN·m while `M` reads 90 (the stale-kept-number gap of an all-`:=` sheet);
+once anything is kept, every later line of values stops ending on its number (`A = 30 ·
+60 cm · cm`), the kept-sheet mode; `n = 2` as an exponent stays a symbol inside integrals
+and derivatives (the general-n case, `numeric` of it raises); rows of one block mix `L`
+and `6 m` (piecewise, `solve`, `% if` fold as before); an `=` value is substituted in the
+palette's unit (`86675.88 kgf` under `P_u = 850 kN`). Not shipped: told him, with options.
+
+**Exact next step:** his review of the screenshots of the numeric-call rows; on his
+"Fusiona", merge and release 0.43.0; his choice for the fold (write values with `:=`,
+a notice pointing there, or a narrower rule).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
