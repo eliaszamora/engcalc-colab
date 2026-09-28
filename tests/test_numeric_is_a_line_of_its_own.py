@@ -85,6 +85,17 @@ def test_a_matrix_written_with_numeric_in_a_cell_stops(monkeypatch):
     assert page.count(r"L_{2} & = &") == 1, page
 
 
+def test_result_inside_a_formula_is_told_by_its_own_name(monkeypatch):
+    # `result` is `numeric` without the substitution row: the parser hands it on as
+    # `numeric`, and the line written back must not keep it.
+    _page, console = _run(BASE + "M_4 = q_2*result(L_2^2)/2\n", monkeypatch)
+    assert "engcalc: line 5: result must be a standalone statement" in console, console
+    assert "Write M_4 = q_2*L_2^2/2, then result(M_4)." in console, console
+    _page, console = _run(BASE + "M_5 := q_2*result(L_2^2)/2\n", monkeypatch)
+    assert "and result shows" in console, console
+    assert "Write M_5 := q_2*L_2^2/2." in console, console
+
+
 def test_report_inside_a_formula_says_what_it_said(monkeypatch):
     _page, console = _run(BASE + "z = 2*report(M_2)\n", monkeypatch)
     assert "report must be a standalone statement" in console, console
@@ -100,6 +111,8 @@ def test_report_inside_a_formula_says_what_it_said(monkeypatch):
         ("w = numeric(M_2)", r"45.00\,\mathrm{kN} \cdot \mathrm{m}"),
         ("keep w = numeric(M_2)", r"45.00\,\mathrm{kN} \cdot \mathrm{m}"),
         ("report(M_2)", r"45.00\,\mathrm{kN} \cdot \mathrm{m}"),
+        ("result(M_2)", r"45.00\,\mathrm{kN} \cdot \mathrm{m}"),
+        ("w = result(M_2)", r"45.00\,\mathrm{kN} \cdot \mathrm{m}"),
         ("numeric(M(L_2/2))", r"11.25\,\mathrm{kN} \cdot \mathrm{m}"),
         ("numeric(2*M(L_2))", r"90.00\,\mathrm{kN} \cdot \mathrm{m}"),
     ],

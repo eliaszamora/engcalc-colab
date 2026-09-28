@@ -5719,7 +5719,8 @@ def _standalone_call(statement, name: str, message: str):
     return body
 
 
-_A_SHOWING_CALL = re.compile(r"(?<![\w.])(numeric|report)\s*\(")
+# `result` too: the parser hands it on as `numeric`, and the line is written as it was.
+_A_SHOWING_CALL = re.compile(r"(?<![\w.])(numeric|result|report)\s*\(")
 
 
 def _refuse_numeric_inside_a_formula(statement) -> None:
@@ -5758,47 +5759,52 @@ def _refuse_numeric_inside_a_formula(statement) -> None:
         )
     if isinstance(statement, ParsedNumericAssignment):
         right = _split_top_level_numeric_assignment(statement.source)[1]
+        written, taken = _written_without_numeric(right, False)
+        name = taken[0] if taken else "numeric"
         raise EngEvaluationError(
-            "':=' works its right side out to a number already, and numeric shows a "
+            f"':=' works its right side out to a number already, and {name} shows a "
             "formula worked out to its value on a line of its own. Write "
-            f"{statement.target} := {_written_without_numeric(right, False)}."
+            f"{statement.target} := {written}."
         )
     left, right = _split_top_level_assignment(statement.source)
-    written = _written_without_numeric(right, shown_alone)
+    written, taken = _written_without_numeric(right, shown_alone)
+    name = taken[0] if taken else "numeric"
     if left is None:
         # `plot(M(x), ...)` is a line of its own; `M_2 + 1*kN*m` asks for its number.
         called = body.func.id if isinstance(body, ast.Call) and isinstance(body.func, ast.Name) else None
-        advice = written if called is not None else f"numeric({written})"
+        advice = written if called is not None else f"{name}({written})"
     elif _A_SHOWING_CALL.match(written):
         advice = f"{left} = {written}"
     elif statement.parameters is not None:
-        advice = f"{left} = {written}, then numeric({statement.target}(...))"
+        advice = f"{left} = {written}, then {name}({statement.target}(...))"
     else:
-        advice = f"{left} = {written}, then numeric({statement.target})"
+        advice = f"{left} = {written}, then {name}({statement.target})"
     raise EngEvaluationError(
-        "numeric must be a standalone statement: it shows a formula worked out to its "
+        f"{name} must be a standalone statement: it shows a formula worked out to its "
         f"value, and is not a number inside another formula. Write {advice}."
     )
 
 
-def _written_without_numeric(text: str, keep_the_line: bool) -> str:
+def _written_without_numeric(text: str, keep_the_line: bool) -> tuple[str, list[str]]:
     """`q*numeric(L^2)/2` as `q*L^2/2`: each call taken out, its first argument left.
 
-    A call that is the whole of `text` stays when `keep_the_line` says it may.
+    A call that is the whole of `text` stays when `keep_the_line` says it may. The names
+    taken out come back with it, in the order they were written.
     """
-    start = 0
+    start, taken = 0, []
     while True:
         match = _A_SHOWING_CALL.search(text, start)
         if match is None:
-            return text
+            return text, taken
         opening = match.end() - 1
         closing = _closing_bracket(text, opening)
         if closing is None:
-            return text
+            return text, taken
         before, after = text[: match.start()], text[closing + 1 :]
         if keep_the_line and not before.strip() and not after.strip():
             start = opening + 1
             continue
+        taken.append(match.group(1))
         argument = _top_level_split(text[opening + 1 : closing])[0].strip()
         bounded = before.rstrip()[-1:] in ("", "(", ",", "[", ";") and after.lstrip()[
             :1
