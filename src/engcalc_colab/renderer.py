@@ -2957,7 +2957,10 @@ def _bounded_product_rows(
     rows: list[str] = []
     current = ""
     for factor_latex in rendered_factors:
-        separator = "" if not current else " "
+        # A factor that begins with a digit is set apart, as `_print_engineering_product`
+        # sets it apart: KaTeX draws `2 2.5` as `22.5`. A call's argument written in its
+        # parameter's place put one there (the audit, 2026-09-27).
+        separator = "" if not current else (r" \cdot " if factor_latex[:1].isdigit() else " ")
         candidate = f"{current}{separator}{factor_latex}"
         if current and _latex_visual_width(candidate) > _NUMERIC_ROW_VISUAL_BUDGET:
             rows.append(current)

@@ -134,6 +134,18 @@ def test_a_factor_of_a_wrapped_product_keeps_its_brackets(monkeypatch):
     assert "q a + b" not in first, first
 
 
+def test_a_number_argument_in_a_wrapped_product_is_set_apart(monkeypatch):
+    # KaTeX draws `2 2.5` as `22.5`: the second audit's oracle read that row back as 22.5
+    # times the rest. A wrapped row joins its factors itself, and now sets a number apart.
+    names = ["bbbbbbbb", "cccccccc", "hhhhhhhh", "qqqqqqqq", "PPPPPPPP", "EEEEEEEE", "IIIIIIII"]
+    head = "".join(f"{n} := {i}.5\n" for i, n in enumerate(names, 2))
+    page = _page(head + "W(aa) = 2*aa*" + "*".join(names) + "\nnumeric(W(2.5))\n", monkeypatch)
+    first = page[page.index(r"W\left(2.5\right) & = &"):]
+    first = first[: first.index(r"& = &", len(r"W\left(2.5\right) & = &"))]
+    assert r"2 \cdot 2.5" in first, first
+    assert "2 2.5" not in first, first
+
+
 def test_a_partial_call_with_a_unit_argument_renders(monkeypatch):
     # Counted without the row's units the argument printed wider, and the spacing count
     # disagreed with the rows drawn: the whole cell raised.
