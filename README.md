@@ -13,7 +13,32 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.43.3**.
+Current version: **0.43.4**.
+
+
+## v0.43.4 a plot that finishes, in units a page reads
+
+**What chapter 3 of his book found: a plot that hung, and values in units nobody reads.**
+Every number of chapter 3's trusses agreed with an independent oracle; these did not
+read right, or never finished:
+
+- `plot` marks a curve's largest and smallest values, and it worked them out exactly with
+  no bound: `max(abs(...))` of a 2x2 solve took 25 s, problem 3.2 more than 400. A curve
+  of more than 24 operations is marked from the points it is drawn with (every plot on
+  the reference sheets has at most 14).
+- A curve in a unit the algebra invented is drawn in the unit the page would write its
+  largest value in, one unit for every curve on the axis: `v(P) = P*L/(E*A)` was drawn in
+  `m·kN/(mm²·MPa)` with end labels `(150, 0)` and reads mm, `12.50`. The frame of
+  `portico_matricial` drew its diagrams in `m²·kg/s²` and reads kN·m, as the frame's own
+  diagrams do.
+- A `:=` value written with a unit in brackets reads in the unit the page writes:
+  `S := F[1] + 1[kN]` read `301000.00 m·kg/s²` and `N := k*0.5[mm]` read
+  `2.00 × 10^7 MPa·mm³/m`; they read `301.00 kN` and `20.00 kN`. A unit typed on its own,
+  `q := 2.8[tonf/m]`, keeps its tonf.
+- `numeric` of a matrix written with `5[m]`, or of a matrix function called with it, no
+  longer prints the alias `__u_m`.
+
+Of the reference pages only the `portico_matricial` figures move, as above.
 
 
 ## v0.43.3 what chapter 2 of his book found
@@ -3888,6 +3913,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.43.4** — a plot too large to work out exactly is marked from its points instead of hanging; a plot in the algebra's unit reads in the page's (one unit per axis); a `:=` value written with a bracket unit reads in the page's unit (`301.00 kN`, not `301000.00 m·kg/s²`); no `__u_m` on the page.
 - **0.43.3** — a computed coefficient keeps its figures (`-0.007`, not `-0.01`); a denominator holding a fraction is written as one (`P/((5 k)/4)`, not `P/(5 1/4 k)`); `x := solve(...)` is worked out; a bare `solve` says how to keep its answer.
 - **0.43.2** — `numeric`, `result` or `report` inside a formula stops the line and writes it back without it, in a line that runs; a condition's `numeric` reads as before; a name defined from itself stops instead of hanging; `keep w = result(...)` leaves the substitution out.
 - **0.43.1** — `numeric(F(3, x))` keeps the free `x` apart from the parameter `x`; `w = numeric(F(...))` holds the call; a notice suggests `:=` for a value of `=` written in beside a name.
@@ -4014,4 +4040,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.43.3`.
+Version: `0.43.4`.

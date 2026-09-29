@@ -12,10 +12,10 @@ _2026-09-28._
 
 | | |
 |---|---|
-| released | **0.43.3** - #377, `e8f05d3`, closed; see the end of 0.41.0's closure |
-| before that | **0.43.2** - #375, `3a1c492`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3433 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| releasing | **0.43.4** - branch `fix/chapter-3-plot-and-units` |
+| before that | **0.43.3** - #377, `e8f05d3`, closed |
+| open PRs | the 0.43.4 PR; the fold branch held (not a PR) |
+| default suite | **3443 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1841,9 +1841,28 @@ no answers. Findings, deduplicated (sheets and repros in scratchpad `book/ch03/s
 - **Practicality:** loops with `{i}` made a 6-bar truss about 60 lines and correct; the page
   is what fails. Wanted: a numeric assembly statement, and a way to show only the final K.
 
-**Exact next step:** solver C's report (3.6, 3.15 - the large trusses), then his choice from
-chapter 3's list (the hang and the SI-units readings recommended first; numeric assembly is
-a design question for him), then chapter 4.
+Solver C (3.6, 3.15 a-e, the large trusses): 116 bar forces, 110 displacements, 22
+reactions, 0 mismatches; 3.6's page is 54 377 px, 63% the assembly (33 reprints of a
+36x36 K, 13 page widths), 2.5% the results. A `% while` over the bars shows the final K
+once (21 628 px) - a hack. Wanted, by page saved: the assembly shown once (rule + final K
+or a summary), a loop of `:=` scalars as one table, DOF bookkeeping (named lists, d back
+into D, a node table), a truss figure.
+
+### Chapter 3's plot hang and raw units, fixed (0.43.4, his "corrige el cuelgue de plot y las unidades crudas")
+
+Branch `fix/chapter-3-plot-and-units`: a plot of more than 24 operations is marked from its
+samples (`engine._marks_from_samples`; the reference plots have at most 14); a curve in a
+unit the algebra invented is drawn in the page's unit, one unit per axis
+(`renderer._plotted_in_units_a_page_writes`; `portico_matricial`'s figures move from
+`m²·kg/s²` to kN·m); `unit_was_written` reads a bracket alias `__u_kN` as its unit
+(`S := F[1] + 1[kN]` = 301.00 kN, was `301000.00 m·kg/s²`); no `__u_m` in matrix rows.
+Seen, not changed (approved rule, his call): a lone zero reads in its family's first
+member (`0.00 N` on a kN sheet, `test_a_zero_standing_alone_reads_in_its_family`); a small
+force in N is the band rule. Contracts `test_chapter_3_plot_and_units` (10); audit
+(subagent) found the per-curve unit and a matrix-call alias, both fixed.
+
+**Exact next step:** close 0.43.4; then his decision on the numeric-assembly proposal
+(sent with 0.43.4); then chapter 4.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

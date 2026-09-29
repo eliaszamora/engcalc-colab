@@ -77,6 +77,11 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.43.4: what chapter 3 of his book found
+check("a bracket unit is read as its unit; no alias on the page",
+      "k := 100[kN/mm]\nD := [3[mm]; 1[mm]]\nF := k*D\nS := F[1] + 1[kN]\n"
+      "E := 200000[MPa]\nA := 1000[mm^2]\nK = A*E/(5[m])*[1, -1; -1, 1]\nnumeric(K)",
+      r"301.00\,\mathrm{kN}", absent=("kg", "__u"))
 # 0.43.3: what chapter 2 of his book found
 check("a coefficient keeps its figures, a denominator its fraction, := solve",
       "k = 2.8*E*A/L\nu = 0.0025*L\nR = -k*u\nkeep c = A*E/L\nw = P/(5*c/4)\n"
