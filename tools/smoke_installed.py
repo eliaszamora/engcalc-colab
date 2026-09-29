@@ -77,7 +77,7 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
-# 0.43.2: numeric inside a formula stops the line and writes it back without it
+# 0.43.2: numeric inside a formula stops the line and writes it back without it; a condition reads it
 check("numeric inside a formula is a line of its own",
       "L = 3*m\nq := 10[kN/m]\nM = q*numeric(L^2)/2",
       "numeric must be a standalone statement", "Write M = q*L^2/2, then numeric(M)",
