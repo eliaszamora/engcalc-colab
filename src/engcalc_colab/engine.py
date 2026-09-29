@@ -822,6 +822,10 @@ class EngineeringEngine:
         # line has already been told are read as units. See `_notice_a_letter_read_as_a_unit`.
         self.letters_written_as_units: set[str] = set()
         self.letters_said_to_be_units: set[str] = set()
+        # `solve(eq(2*T, q*L), T)` on a line of its own: the answer shown, `T` left a
+        # variable (`solve(eq(V(x), 0), x)` must not make `M(x)` a constant). The line
+        # it was solved on, for a later line that asks for its value.
+        self.solved_alone: dict[str, int] = {}
         self.units_read_by_line: dict[str, frozenset[str]] = {}
         # The number each figure of `image(...)` was given, by file and caption, so a
         # cell run again keeps its numbers. See `_image_asked_for`.
@@ -1057,10 +1061,17 @@ class EngineeringEngine:
     def _calls_a_function_of_the_sheet(self, expression: ast.AST) -> bool:
         # `solve(eq(...), c, lower, upper)` too: its root is found by the symbolic layer,
         # as a sheet function's value is, and a `:=` line takes it the same way.
+        # Any `solve`: `x_2 := solve(eq(b*x, a*b - x*b), x)` stopped at `unsupported numeric
+        # function` (his book, chapter 2, 2026-09-28); one answer is its value, and several
+        # say there is no single one.
         return any(
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
-            and (node.func.id in self.functions or _solves_in_a_range(node, self.namespace))
+            and (
+                node.func.id in self.functions
+                or node.func.id == "solve"
+                or _solves_in_a_range(node, self.namespace)
+            )
             for node in ast.walk(expression)
         )
 
@@ -1963,6 +1974,7 @@ class EngineeringEngine:
         self.written_sums.clear()
         self.letters_written_as_units.clear()
         self.letters_said_to_be_units.clear()
+        self.solved_alone.clear()
         self.units_read_by_line.clear()
         self.figure_numbers.clear()
         self.frame_members.clear()
@@ -1985,6 +1997,40 @@ class EngineeringEngine:
         if name in self.namespace:
             return self.namespace[name]
         return self.resolve_symbol(name)
+
+    def _told_where_it_was_solved(self, message: str) -> str:
+        """`requires values for: T`, and where `T` was solved on a line of its own.
+
+        A bare `solve(eq(2*T, q*L), T)` writes `T = q L/2` and defines nothing - the
+        unknown is often the variable of the sheet's functions, and `solve(eq(V(x), 0), x)`
+        defining `x` made `M(x)` a constant (the audit of 0.43.3, 2026-09-28). A later line
+        that asks for its number is told how to keep the answer (his book, chapter 2), a
+        `:=` line too (`unknown numeric name 'T'`). Only a solve of the cell being run is
+        told: a line number of an earlier run may hold something else now.
+        """
+        if "solve(...)" in message:
+            return message
+        listed = re.search(r"requires values for: ([^.]+)\.", message)
+        unknown = re.search(r"unknown numeric name '(\w+)'", message)
+        if listed:
+            names = [name.strip() for name in listed.group(1).split(",")]
+        elif unknown:
+            names = [unknown.group(1)]
+        else:
+            return message
+        solved = [name for name in names if name in self.solved_alone]
+        if not solved:
+            return message
+        where = ", ".join(f"{name} on line {self.solved_alone[name]}" for name in solved)
+        verb = "was" if len(solved) == 1 else "were"
+        return (
+            f"{message} {where} {verb} solved on a line of its own, which shows the answer "
+            f"and defines nothing; write {solved[0]} = solve(...) to use it."
+        )
+
+    def begin_cell(self) -> None:
+        """What one run of a cell keeps to itself."""
+        self.solved_alone.clear()
 
     def _reads_only_values(self, text: str) -> bool:
         """Every name `text` reads has a value, so `numeric` of it has a number to show.
@@ -2796,6 +2842,14 @@ class EngineeringEngine:
             # The formula is read before the name is stored: read after, `v = v + 2*diff(t^2, t)`
             # showed the new `v` inside the formula that defines it.
             shown = self._shown_input(statement, evaluator, value)
+            body = statement.expression.body
+            if (
+                statement.target is None
+                and evaluator.solved_for is not None
+                and isinstance(body, ast.Call)
+                and getattr(body.func, "id", None) == "solve"
+            ):
+                self.solved_alone[evaluator.solved_for] = statement.line_no
             if statement.target is not None:
                 if statement.parameters is not None:
                     for parameter in statement.parameters:
@@ -2865,9 +2919,9 @@ class EngineeringEngine:
                 solved_for=evaluator.solved_for,
             )
         except EngCalcError as exc:
-            message = str(exc)
+            message = self._told_where_it_was_solved(str(exc))
             if message.startswith("line "):
-                raise
+                raise type(exc)(message) from None
             raise type(exc)(f"line {statement.line_no}: {message}") from None
         except Exception as exc:
             raise EngEvaluationError(
@@ -3587,6 +3641,15 @@ class _Evaluator(ast.NodeVisitor):
                     ) from exc
             else:
                 symbolic_expression = self.visit(argument)
+                system = self.system_evaluation
+                if symbolic_expression is None and system is not None and system.kind == "multi":
+                    # `x_3 := solve(x^2 - 4, x)` is worked out as `numeric(solve(...))`,
+                    # and two answers are no number: said as `x_3 = solve(...)` says it.
+                    raise EngEvaluationError(
+                        f"solve returned {len(system.solutions)} solutions, so there is no "
+                        "single value to assign. Read them, or use roots(expression, "
+                        "variable, lower, upper) to take the one inside a physical domain"
+                    )
                 # `numeric(phiMn)` opens with the formula its definition showed, not a
                 # second and different one. Both stages or neither: a definition reading
                 # `phi As fy (d - a/2)` above an evaluation reading `cover` and `h`
@@ -5696,6 +5759,7 @@ def _flattened(kind, *args):
         else:
             flat.append(arg)
     return kind(*flat, evaluate=False)
+
 
 
 def _in_mode_order(entries) -> tuple:

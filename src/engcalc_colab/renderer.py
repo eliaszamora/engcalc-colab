@@ -419,7 +419,16 @@ class _EngineeringLatexPrinter(LatexPrinter):
         typed = repr(float(expr))
         if "e" not in typed and _significant_digits(typed) <= _TYPED_FIGURES:
             return typed
-        return _magnitude_text(float(expr), replace(self.render_settings, figures=0))
+        shown = _magnitude_text(float(expr), replace(self.render_settings, figures=0))
+        # No fewer figures than the page has decimals: rounded to two decimals, the
+        # `-0.006999999999999999` of `-2.8*0.0025` read `-0.01`, a different number, and
+        # his book's problem 2.3 showed `R_d = -0.01 E A` for `-0.007 E A` (2026-09-28).
+        # `0.588...` keeps two figures at two decimals and reads `0.59` still; a power of
+        # ten is written with its own figures.
+        precision = self.render_settings.precision
+        if r"\times" not in shown and 0 < _significant_digits(shown) < precision:
+            shown = _magnitude_text(float(expr), replace(self.render_settings, figures=precision))
+        return shown
 
     def _print_Symbol(self, expr, style=None):
         r"""Print a name so it reads as what the engineer wrote.
@@ -538,7 +547,14 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if denom is sp.S.One:
             return prefix + snumer
 
-        sdenom = self._print_engineering_product(denom)
+        # A denominator that holds a fraction of its own - the `5*k/4` of `P/(5*k/4)` - is
+        # written as one: printed factor by factor it read `5 \frac{1}{4} k`, the mixed
+        # number 5 1/4, where the value is 1.25 k (his book's problem 2.1, 2026-09-28).
+        # The numbers stay the ones typed.
+        if denom.is_Mul and sp.fraction(denom, exact=True)[1] is not sp.S.One:
+            sdenom = self._print_Mul(denom)
+        else:
+            sdenom = self._print_engineering_product(denom)
         return rf"{prefix}\frac{{{snumer}}}{{{sdenom}}}"
 
     def _print_engineering_product(self, expr):

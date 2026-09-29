@@ -77,6 +77,15 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.43.3: what chapter 2 of his book found
+check("a coefficient keeps its figures, a denominator its fraction, := solve",
+      "k = 2.8*E*A/L\nu = 0.0025*L\nR = -k*u\nkeep c = A*E/L\nw = P/(5*c/4)\n"
+      "a := 2[m]\nb := 3[kN/m]\nx_2 := solve(eq(b*x, a*b - x*b), x)",
+      r"- 0.007 E A", r"\frac{P}{\frac{5 c}{4}}", r"1.00\,\mathrm{m}",
+      absent=("0.01 E A", r"5 \frac{1}{4}", "unsupported numeric function"))
+check("a bare solve says how to keep its answer",
+      "q := 10[kN/m]\nL := 6[m]\nsolve(eq(2*T, q*L), T)\nZ = 2*T\nnumeric(Z)",
+      "T on line 3 was solved on a line of its own", "write T = solve(...) to use it")
 # 0.43.2: numeric inside a formula stops the line and writes it back without it; a condition reads it
 check("numeric inside a formula is a line of its own",
       "L = 3*m\nq := 10[kN/m]\nM = q*numeric(L^2)/2",
