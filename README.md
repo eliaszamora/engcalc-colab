@@ -13,7 +13,30 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.43.2**.
+Current version: **0.43.3**.
+
+
+## v0.43.3 what chapter 2 of his book found
+
+**Two numbers the page wrote wrong, and `solve` on a `:=` line.** He is solving every
+exercise of *Matrix Structural Analysis* (McGuire, Gallagher, Ziemian) in EngCalc; chapter
+2's numbers all agreed with an independent oracle, and these did not read right:
+
+- A coefficient the algebra computes keeps as many significant figures as the page has
+  decimals: `-2.8*0.0025` is `-0.006999999999999999`, and rounded to two decimals it read
+  `-0.01`, so problem 2.3's reaction was `R_d = -0.01 E A` for `-0.007 E A`. `0.588...`
+  still reads `0.59`, and a power of ten keeps its notation.
+- A denominator that holds a fraction is written as one: over a kept `k`, `u = P/(5*k/4)`
+  read `P/(5 1/4 k)` - the mixed number 5.25 k, where the value is 1.25 k. It reads
+  `P/((5 k)/4)`, with the numbers as typed.
+- `x := solve(eq(...), x)` is worked out; it stopped at `unsupported numeric function`.
+  Several answers say there is no single value, as `x = solve(...)` does.
+- A bare `solve(eq(2*T, q*L), T)` shows the answer and defines nothing - the README said
+  otherwise, and defining it was built and refused by its audit: `solve(eq(V(x), 0), x)`
+  pinned `x` and made `M(x)` a constant. A later line that asks for `T` in the same cell
+  is told to write `T = solve(...)`.
+
+No reference page or gap-map exercise moves.
 
 
 ## v0.43.2 numeric is a line of its own
@@ -3865,6 +3888,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.43.3** — a computed coefficient keeps its figures (`-0.007`, not `-0.01`); a denominator holding a fraction is written as one (`P/((5 k)/4)`, not `P/(5 1/4 k)`); `x := solve(...)` is worked out; a bare `solve` says how to keep its answer.
 - **0.43.2** — `numeric`, `result` or `report` inside a formula stops the line and writes it back without it, in a line that runs; a condition's `numeric` reads as before; a name defined from itself stops instead of hanging; `keep w = result(...)` leaves the substitution out.
 - **0.43.1** — `numeric(F(3, x))` keeps the free `x` apart from the parameter `x`; `w = numeric(F(...))` holds the call; a notice suggests `:=` for a value of `=` written in beside a name.
 - **0.43.0** — `numeric` of a call writes its argument on its first row (`M(L/2) = R_A (L/2) - q (L/2)²/2`).
@@ -3990,4 +4014,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.43.2`.
+Version: `0.43.3`.

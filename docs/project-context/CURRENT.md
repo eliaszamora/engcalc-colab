@@ -12,10 +12,10 @@ _2026-09-28._
 
 | | |
 |---|---|
-| released | **0.43.2** - #375, `3a1c492`, closed; see the end of 0.41.0's closure |
-| before that | **0.43.1** - #373, `739e81a`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3417 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| releasing | **0.43.3** - branch `fix/chapter-2-numbers-and-solve` |
+| before that | **0.43.2** - #375, `3a1c492`, closed |
+| open PRs | the 0.43.3 PR; the fold branch held (not a PR) |
+| default suite | **3433 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1784,9 +1784,28 @@ give the oracle's numbers; 2.9-2.11 are conceptual. Findings, deduplicated:
   `\allowbreak` - every paragraph reads as red source there since 0.41.2 (KaTeX, Colab's,
   renders it); the harness no longer measures Colab for text.
 
-**Exact next step:** his decision on chapter 2's list (the two wrong-on-the-page items and
-the solve bugs recommended first), then chapter 3; the renderer crash of a bare
-`numeric(M(x))`; CURRENT.md condensation.
+### Chapter 2's four, fixed (0.43.3, his "corrige primero los dos números ... y los errores de solve")
+
+Branch `fix/chapter-2-numbers-and-solve`: a computed coefficient keeps as many
+significant figures as the page has decimals (`R_d = -0.007 E A`, was `-0.01`;
+`renderer._print_Float`); a denominator holding a fraction is printed as one
+(`renderer._print_Mul`: `P/((5 k)/4)`, was `P/(5 1/4 k)`, numbers as typed); `x :=
+solve(...)` goes through `_assign_through_the_sheet` (several answers: "solve returned N
+solutions"). **Differs from what he approved:** a bare `solve(eq(...), T)` was made to
+define `T`; its audit found that `solve(eq(V(x), 0), x)` then pins `x` and `M(x)` becomes
+a constant (plot flat at 45 kN·m, `M(L/4)` 11.25 for 33.75, later solves broken), so it
+was reverted: the bare form defines nothing, the README (which said otherwise) is
+corrected, and a later line of the same cell asking for `T` - `:=` lines too - is told
+`T on line 3 was solved on a line of its own ... write T = solve(...) to use it`
+(`engine._told_where_it_was_solved`, cleared per cell by `begin_cell`). Contracts
+`test_chapter_2_numbers_and_solve` (16); audit twice (subagent), every finding fixed.
+
+**Exact next step:** close 0.43.3; then chapter 3 (solver-A's 3.1 is done: numbers right;
+found a `:=` matrix entry plus a value read in SI base units, `301000.00 m·kg/s²`; no numeric
+assembly - `K[[..],[..]] := ...` refused, a `:=` element matrix refused in an `=` part
+assignment; the symbolic K printed after every bar, wider than the page; `:=` parts take
+only a literal list; a 1x1 `k*transpose(g)*D` not addable to a scalar; a zero in N beside
+kN); solvers B (3.2-3.5), C (3.6, 3.15), D (3.7-3.14) to run; then CURRENT.md condensation.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
