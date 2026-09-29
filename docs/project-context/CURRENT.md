@@ -8,13 +8,14 @@
 
 ## Where things stand today
 
-_2026-09-28._
+_2026-09-29._
 
 | | |
 |---|---|
-| releasing | **0.43.4** - branch `fix/chapter-3-plot-and-units` |
+| released | **0.43.4** - #379, `382f339`, closed |
 | before that | **0.43.3** - #377, `e8f05d3`, closed |
-| open PRs | the 0.43.4 PR; the fold branch held (not a PR) |
+| in progress | the loop page (branch `feat/a-loop-shows-its-assembly-once`, 0.44.0 when released) |
+| open PRs | this closure; the fold branch held (not a PR) |
 | default suite | **3443 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -1861,8 +1862,19 @@ member (`0.00 N` on a kN sheet, `test_a_zero_standing_alone_reads_in_its_family`
 force in N is the band rule. Contracts `test_chapter_3_plot_and_units` (10); audit
 (subagent) found the per-curve unit and a matrix-call alias, both fixed.
 
-**Exact next step:** close 0.43.4; then his decision on the numeric-assembly proposal
-(sent with 0.43.4); then chapter 4.
+**0.43.4 is closed** (#379, `382f339`): CI, Quality Gate Deep (push) and Deep
+qualification green on `382f339`; a `git+https` install reports 0.43.4 and its 33 files are
+identical to `382f339`'s `src`. In his Colab (Untitled9 cell 3, his cell 0 first, 2026-09-29):
+`engcalc 0.43.4`, `F = k D` in kN, `S = F_1 + 1 kN = 301.00 kN`, `plot(v(P), P, -30[kN],
+150[kN])` drawn at once with P in kN and v in mm; two screenshots sent.
+
+**His decision on the assembly** (2026-09-29, "haz primero 1 + 3 con el resumen cuando la
+matriz no quepa"): a `% for` that assembles shows it once (rule + final K, or a size summary
+when K is wider than the page), and a loop of 2+ `:=` values is one table. Being built on
+`feat/a-loop-shows-its-assembly-once`; its state is recorded there.
+
+**Exact next step:** finish, audit and release the loop page (0.44.0); then chapter 4's
+findings.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
