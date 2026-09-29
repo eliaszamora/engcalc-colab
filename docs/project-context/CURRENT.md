@@ -12,9 +12,9 @@ _2026-09-28._
 
 | | |
 |---|---|
-| releasing | **0.43.3** - branch `fix/chapter-2-numbers-and-solve` |
+| released | **0.43.3** - #377, `e8f05d3`, closed; see the end of 0.41.0's closure |
 | before that | **0.43.2** - #375, `3a1c492`, closed |
-| open PRs | the 0.43.3 PR; the fold branch held (not a PR) |
+| open PRs | this closure; the fold branch held (not a PR) |
 | default suite | **3433 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -1800,12 +1800,50 @@ corrected, and a later line of the same cell asking for `T` - `:=` lines too - i
 (`engine._told_where_it_was_solved`, cleared per cell by `begin_cell`). Contracts
 `test_chapter_2_numbers_and_solve` (16); audit twice (subagent), every finding fixed.
 
-**Exact next step:** close 0.43.3; then chapter 3 (solver-A's 3.1 is done: numbers right;
-found a `:=` matrix entry plus a value read in SI base units, `301000.00 m·kg/s²`; no numeric
-assembly - `K[[..],[..]] := ...` refused, a `:=` element matrix refused in an `=` part
-assignment; the symbolic K printed after every bar, wider than the page; `:=` parts take
-only a literal list; a 1x1 `k*transpose(g)*D` not addable to a scalar; a zero in N beside
-kN); solvers B (3.2-3.5), C (3.6, 3.15), D (3.7-3.14) to run; then CURRENT.md condensation.
+**0.43.3 is closed** (#377, `e8f05d3`, its tree identical to the release tree `a42f569`):
+CI, Quality Gate Deep (push) and Deep qualification green on `e8f05d3`; `git+https` changed
+only `engcalc-colab`, 33 files identical, smoke 45/45. In his Colab (Untitled9 cell 3, a
+fresh runtime, his cell 0 first): `engcalc 0.43.3`, `R_d = -0.007 E A`, `u = P/((5k)/4)`,
+`x_2 = 1.00 m`, the bare-solve hint on `numeric(Z)`; two screenshots sent. Seen in Colab:
+the fraction inside a denominator is set small by KaTeX and sits close to the next row -
+readable; `\frac{P}{5 k/4}` with a slash is the alternative, his call.
+
+### His book, chapter 3 (direct stiffness; solvers A 3.1, B 3.2-3.5, D 3.7-3.14; C 3.6, 3.15 running)
+
+Every number agrees with a numpy oracle (and with Example 3.4's K for 3.9). The book gives
+no answers. Findings, deduplicated (sheets and repros in scratchpad `book/ch03/solver-*`):
+- **Hang:** `plot` works out a curve's extrema exactly with no guard - `plot` of
+  `max(abs(...))` of a 2x2 solve took 19 s, the real 3.2 sheet was killed after 400 s.
+- **Wrong or misleading on the page:** a `:=` matrix entry plus a value reads in SI base units
+  (`F[1] + 1[kN]` = `301000.00 m·kg/s²`); `N := k*0.5[mm]` reads `2.00e7 MPa·mm³/m`; a small
+  force switches to N among kN (`N_hb = -190.63 N`), a zero too; `plot` of a quantity in
+  `m·kN/(mm²·MPa)` with end labels rounded to 0; `solve(K, -K*u)` printed `K^{-1} -K u`;
+  the internal `__u_m` on the page (`numeric(S)` of a symbolic matrix); the 3.2 ratio's unit
+  off by 1000 in `table`.
+- **Refused though valid:** no numeric assembly (`K[[..],[..]] := ...`, a `:=` element
+  matrix in an `=` part assignment); `det`/`rank` on `:=` lines (wrong hint); `:=` index
+  lists only literal (`K[1:2, 1:2]`, a named list refused), `libres := [1, 3]` and an inline
+  row literal on `:=` ("unsupported numeric syntax 'List'"); `^-1` on `:=` lines; a 1x1
+  `k*transpose(g)*D` not addable to a scalar; `abs()` of an expression with bracket units
+  ("bad operand type for abs(): 'Unit'"); `extrema` of `max(...)` (internal jargon);
+  `table` with columns of different units; a `% for` over lists of DOF numbers.
+- **Missing:** a symbolic answer with decimal coefficients (`0.4829 P m/(A E)`); a loop value
+  in narrative (`{th}` printed literally); `$...$` in headings.
+- **Presentation:** the symbolic K reprinted after every bar (3.5: 30 prints, 20x20, 41 300 px,
+  3 of 20 columns fit) - the assembly section is unreadable and the assembly line itself is
+  never shown; kept names lost in part assignment (`c² E A/L`, not `k c²`); a function body
+  expands kept names inside `piecewise`; `solve` of a named equation inlines the answer;
+  `numeric` of a piecewise substitutes every branch; table headers drop fixed arguments;
+  the plot's extrema panel in English with the wrong variable name; mixed number formats in
+  one matrix (`2.69 × 10^6` beside `-332106.78`; `10^3` factored in one, not the next);
+  `\frac{1 kN}{1 m}` for a bracket unit in a matrix; a scalar `:=` line never shows its
+  formula (`L = sqrt(Δx² + Δy²)`); a parameter `s` read as seconds.
+- **Practicality:** loops with `{i}` made a 6-bar truss about 60 lines and correct; the page
+  is what fails. Wanted: a numeric assembly statement, and a way to show only the final K.
+
+**Exact next step:** solver C's report (3.6, 3.15 - the large trusses), then his choice from
+chapter 3's list (the hang and the SI-units readings recommended first; numeric assembly is
+a design question for him), then chapter 4.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
