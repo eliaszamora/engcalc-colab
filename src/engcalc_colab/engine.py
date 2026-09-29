@@ -2005,29 +2005,39 @@ class EngineeringEngine:
                     nodes.extend(ast.walk(entry))
         called = {id(node.func) for node in nodes if isinstance(node, ast.Call)}
         placeholders = {binding.name for binding in literals}
-        # The unknown of `solve` and the variable of a definite `integrate` or a `sum` are
-        # the call's own: `x_0 = solve(eq(2*x, L), x)` has a number.
+        # The unknown of `solve`, the variable `subs` puts a value in for and the variable
+        # of a definite `integrate` or a `sum` are the call's own: `x_0 = solve(eq(2*x, L),
+        # x)` has a number.
         bound = {
             node.args[1].id
             for node in nodes
             if isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
             and (
-                (node.func.id == "solve" and len(node.args) >= 2)
+                (node.func.id in ("solve", "subs") and len(node.args) >= 2)
                 or (node.func.id in ("integrate", "sum") and len(node.args) == 4)
             )
             and isinstance(node.args[1], ast.Name)
         }
         context = self.numeric_context
+
+        def has_a_value(name: str, seen: frozenset) -> bool:
+            if name == "pi" or name in _UNIT_ALIASES or name in context.matrices:
+                return True
+            if context.get(name) is not None:
+                return True
+            if name not in self.namespace or name in seen:
+                return False
+            # A formula of `=` has a number when its names have: `W = q*x^2/2` has none
+            # (the third audit, 2026-09-28).
+            symbols = getattr(self.namespace[name], "free_symbols", set())
+            return all(has_a_value(symbol.name, seen | {name}) for symbol in symbols)
+
         return all(
             id(node) in called
             or node.id in placeholders
             or node.id in bound
-            or node.id == "pi"
-            or node.id in _UNIT_ALIASES
-            or node.id in self.namespace
-            or node.id in context.matrices
-            or context.get(node.id) is not None
+            or has_a_value(node.id, frozenset())
             for node in nodes
             if isinstance(node, ast.Name)
         )
@@ -5815,6 +5825,10 @@ def _refuse_numeric_inside_a_formula(statement, engine) -> None:
     ]
     if not inside:
         return
+    if getattr(statement, "target_index", None) is not None and statement.target not in engine.namespace:
+        # `K := [...]` then `K[1,1] = ...`: that there is no matrix to assign into is
+        # said first, as it was (the third audit, 2026-09-28).
+        return
     called = body.func.id if isinstance(body, ast.Call) and isinstance(body.func, ast.Name) else None
     # Written wrong, it is told what it is told as a line of its own, the call that stays
     # first; no line is written.
@@ -5829,13 +5843,13 @@ def _refuse_numeric_inside_a_formula(statement, engine) -> None:
     written_as = getattr(statement, "written_as", None) or statement.source
     source = re.sub(r"\s*\n\s*", " ", _without_a_comment(written_as))
     if isinstance(statement, ParsedNumericAssignment):
-        right = _split_top_level_numeric_assignment(source)[1]
+        target, right = _split_top_level_numeric_assignment(source)
         written, taken = _written_without_numeric(right, False)
         name = taken[0] if taken else "numeric"
         raise EngEvaluationError(
             f"':=' works its right side out to a number already, and {name} shows a "
             "formula worked out to its value on a line of its own. Write "
-            f"{statement.target} := {written}."
+            f"{target} := {written}."
         )
     left, right = _split_top_level_assignment(source)
     written, taken = _written_without_numeric(right, shown_alone)
@@ -5875,7 +5889,7 @@ def _refuse_numeric_inside_a_formula(statement, engine) -> None:
         # the line is written.
         advice = f"{left} = {written}"
     else:
-        named = re.match(r"(?:(?:keep|case|combo)\s+)?([A-Za-z_][\w{}]*)", left).group(1)
+        named = _the_name_in(left)
         advice = f"{left} = {written}, then {name}({named})"
     raise EngEvaluationError(
         f"{name} must be a standalone statement: it shows a formula worked out to its "
@@ -5950,6 +5964,20 @@ def _without_a_comment(text: str) -> str:
         if char == "#" and not _inside_a_string(text, index):
             return text[:index].rstrip()
     return text
+
+
+def _the_name_in(left: str) -> str:
+    """`M_{i+1}` of `M_{i+1}`, `K` of `K[1, 1]`, `f` of `f(x)`, `w` of `keep w`."""
+    left = re.sub(r"^(?:keep|case|combo)\s+", "", left.strip())
+    depth = 0
+    for index, char in enumerate(left):
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        elif depth == 0 and (char in "[(" or char.isspace()):
+            return left[:index]
+    return left
 
 
 def _closing_bracket(text: str, opening: int) -> int | None:

@@ -730,7 +730,11 @@ def _value(operand: ast.AST, line_no: int, engine):
     try:
         from .engine import _WrittenFormEvaluator  # noqa: PLC0415 - engine imports this module's users
 
-        written = _WrittenFormEvaluator(engine, ()).visit(side)
+        # A whole side `numeric(M(L_2))` is written as the call worked out, `q L_2^2/2`:
+        # the call's own written form is the function's body, still in `x` (the third
+        # audit, 2026-09-28). `numeric(M_2)` writes the formula of `M_2`, as it did.
+        shown = side.args[0] if whole is not None and isinstance(side.args[0], ast.Call) else side
+        written = _WrittenFormEvaluator(engine, ()).visit(shown)
     except Exception:  # noqa: BLE001 - the page then writes the number alone
         written = None
     return result, written, getattr(result, "unit_literals", frozenset())

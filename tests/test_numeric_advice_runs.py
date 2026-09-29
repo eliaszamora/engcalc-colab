@@ -141,3 +141,49 @@ def test_keep_of_a_result_leaves_the_substitution_out(monkeypatch):
     assert not console, console
     assert r"\left(10.00" not in page, page
     assert page.count(r"\\[") == plain.count(r"\\["), (page, plain)
+
+
+# The third audit (2026-09-28), of the round above.
+
+
+def test_a_whole_side_of_a_call_writes_the_call_worked_out(monkeypatch):
+    source = BASE + "% if numeric(M(L_2)) > 40*kN*m:\nnumeric(M_2)\n% else:\nnumeric(L_2)\n% end\n"
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\frac{q_{2} x^{2}}{2} = 45.00" not in page, page
+    assert r"\frac{q_{2} L_{2}^{2}}{2} = 45.00" in page, page
+
+
+@pytest.mark.parametrize(
+    ("line", "written"),
+    [
+        ("M_{i+1} = q_2*numeric(L_2^2)/(2*{i+1})", "Write M_{i+1} = q_2*L_2^2/(2*{i+1}), then numeric(M_{i+1})."),
+        ("M_{2*i} = q_2*numeric(L_2^2)/(2*{i})", "Write M_{2*i} = q_2*L_2^2/(2*{i}), then numeric(M_{2*i})."),
+        ("M_{i} := q_2*numeric(L_2^2)/(2*{i})", "Write M_{i} := q_2*L_2^2/(2*{i})."),
+    ],
+)
+def test_a_for_line_is_written_back_with_its_whole_name(line, written, monkeypatch):
+    source = BASE + "% for i in [1, 2]:\n" + line + "\n% end\n"
+    _page, console = _run(source, monkeypatch)
+    assert written in console, console
+
+
+@pytest.mark.parametrize(
+    ("line", "written"),
+    [
+        # `W` is a formula in `x`: it has no number, and neither has a line of it.
+        ("V_1 = numeric(W)*2", "Write V_1 = W*2."),
+        # The variable `subs` puts a value in for is its own: this line has a number.
+        ("V_2 = numeric(subs(M(x), x, L_2))*2", "Write V_2 = subs(M(x), x, L_2)*2, then numeric(V_2)."),
+    ],
+)
+def test_a_name_whose_formula_has_no_number_has_none(line, written, monkeypatch):
+    _page, console = _run(BASE + "W = q_2*x^2/2\n" + line + "\n", monkeypatch)
+    assert written in console, console
+
+
+def test_a_part_of_a_matrix_of_numbers_is_told_what_it_was_told(monkeypatch):
+    source = BASE + "K := [1, 2; 3, 4]\nK[1,1] = numeric(M(L_2))\n"
+    _page, console = _run(source, monkeypatch)
+    assert "K has no matrix to assign into" in console, console
+    assert "Write" not in console, console
