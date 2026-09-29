@@ -24,7 +24,7 @@ import ast
 import copy
 import itertools
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Iterator
 
 import sympy as sp
@@ -332,21 +332,80 @@ def _check_lines(nodes: list) -> None:
 
 def _parse_stretch(stretch: _Stretch, insert=None):
     lines = list(stretch.lines)
+    written = {}
     if insert is not None:
         for index, line in enumerate(lines):
             if index not in stretch.text and "{" in line:
                 line_no = stretch.first_line + index
                 lines[index] = _INSERTED.sub(lambda m, n=line_no: insert(m.group(1), n), line)
+                if lines[index] != line:
+                    written[line_no] = line.strip()
     # Empty lines in front number the stretch as the cell does; a leading blank line
     # changes nothing on the page.
-    return parse_cell("\n" * (stretch.first_line - 1) + "\n".join(lines))
+    parsed = parse_cell("\n" * (stretch.first_line - 1) + "\n".join(lines))
+    # A line that is told how to be written is told as the sheet writes it, `M_{i} = ...`,
+    # not as one pass reads it.
+    return [
+        replace(item, written_as=written[item.line_no])
+        if item.line_no in written and hasattr(item, "written_as") and "\n" not in item.source
+        else item
+        for item in parsed
+    ]
 
 
 def _condition_tree(text: str, line_no: int) -> ast.AST:
     try:
-        return ast.parse(normalize_expression(text), mode="eval").body
+        tree = ast.parse(normalize_expression(text), mode="eval").body
     except SyntaxError as exc:
         raise EngSyntaxError(f"line {line_no}: the condition of this % line is not one: {text}") from exc
+    return _read_in_numbers(tree, text, line_no)
+
+
+def _read_in_numbers(tree: ast.AST, text: str, line_no: int) -> ast.AST:
+    """A condition is worked out in numbers, and has no place to record one.
+
+    A `report` records a value of the sheet for its summary; written in a condition it
+    was a record taken while deciding. What `numeric` reads in a condition is `_value`'s.
+    """
+    if any(
+        isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "report"
+        for node in ast.walk(tree)
+    ):
+        from .engine import _written_without_numeric  # noqa: PLC0415 - engine imports this module's users
+
+        raise EngEvaluationError(
+            f"line {line_no}: report must be a standalone statement; a condition reads the "
+            f"value itself: {_written_without_numeric(text, False)[0]}"
+        )
+    return tree
+
+
+def _a_numeric(node: ast.AST) -> bool:
+    return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "numeric"
+
+
+class _ItsValue(ast.NodeTransformer):
+    """`2*numeric(M_2)` in a condition is `2*M_2`; the side that is a `numeric` stays one.
+
+    Each side is evaluated as `numeric(<side>)`, and since 0.43.2 `numeric` inside a
+    formula is refused - a `numeric` written in a condition, which read before, was refused
+    with it (the audit, 2026-09-28). One inside a side reads as its value, a unit it asks
+    for checked by `check` as the side it would be; a side that is a `numeric`, `result`
+    too, is worked out as it was, in the unit it asks for (the second audit: dropped, `%
+    if numeric(r, percent) > 50` ran, and `numeric(d, mm)` was said in metres).
+    """
+
+    def __init__(self, whole, check) -> None:
+        self.whole = whole
+        self.check = check
+
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if node is self.whole or not _a_numeric(node) or len(node.args) not in (1, 2) or node.keywords:
+            return node
+        if len(node.args) == 2:
+            self.check(node)
+        return node.args[0]
 
 
 def run(cell: str, engine, settings) -> Iterator:
@@ -653,12 +712,17 @@ def _value(operand: ast.AST, line_no: int, engine):
     """One side of a comparison, in numbers: the quantity and what the page writes it as."""
     from .models import NumericEvaluationResult  # noqa: PLC0415 - models import nothing back
 
-    text = ast.unparse(operand)
+    side = copy.deepcopy(operand)
+    whole = side if _a_numeric(side) else None
+    side = _ItsValue(whole, lambda call: _value(call, line_no, engine)).visit(side)
+    text = ast.unparse(side)
     try:
-        (statement,) = parse_cell(f"numeric({text})")
+        (statement,) = parse_cell(text if whole is not None else f"numeric({text})")
         result = engine.evaluate(statement)
     except EngCalcError as exc:
-        raise EngEvaluationError(f"line {line_no}: the condition needs a value for {text}: {exc}") from exc
+        # The line is the condition's own, one line long, and not a line of the sheet.
+        told = re.sub(r"^line \d+: ", "", str(exc))
+        raise EngEvaluationError(f"line {line_no}: the condition needs a value for {text}: {told}") from exc
     if not isinstance(result, NumericEvaluationResult):
         raise EngEvaluationError(f"line {line_no}: the condition needs one value for {text}")
     quantity = result.quantity
@@ -666,7 +730,11 @@ def _value(operand: ast.AST, line_no: int, engine):
     try:
         from .engine import _WrittenFormEvaluator  # noqa: PLC0415 - engine imports this module's users
 
-        written = _WrittenFormEvaluator(engine, ()).visit(operand)
+        # A whole side `numeric(M(L_2))` is written as the call worked out, `q L_2^2/2`:
+        # the call's own written form is the function's body, still in `x` (the third
+        # audit, 2026-09-28). `numeric(M_2)` writes the formula of `M_2`, as it did.
+        shown = side.args[0] if whole is not None and isinstance(side.args[0], ast.Call) else side
+        written = _WrittenFormEvaluator(engine, ()).visit(shown)
     except Exception:  # noqa: BLE001 - the page then writes the number alone
         written = None
     return result, written, getattr(result, "unit_literals", frozenset())

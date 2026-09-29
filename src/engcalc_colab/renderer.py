@@ -2651,7 +2651,10 @@ def _shows_substitution(
     name allowed in front: `d = result(...)` does not start with `result(`, and showed the
     substitution it was written to leave out.
     """
-    return re.match(r"^(?:[A-Za-z_]\w*\s*=\s*)?result\s*\(", result.statement.source.strip()) is None
+    # `keep w = result(...)` too (the second audit of 0.43.2, 2026-09-28).
+    return re.match(
+        r"^(?:keep\s+)?(?:[A-Za-z_]\w*\s*=\s*)?result\s*\(", result.statement.source.strip()
+    ) is None
 
 
 _NUMERIC_ROW_VISUAL_BUDGET = 64.0

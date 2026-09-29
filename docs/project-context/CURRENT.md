@@ -8,14 +8,14 @@
 
 ## Where things stand today
 
-_2026-09-27._
+_2026-09-28._
 
 | | |
 |---|---|
-| released | **0.43.1** - #373, `739e81a`, closed, carrying #371 (`3bf56aa`) and #372 (`9c8dee9`); see the end of 0.41.0's closure |
-| before that | **0.43.0** - #370, `81bacef`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3321 passing** (SymPy 1.14 and 1.13.3), about a minute with `-n auto` |
+| releasing | **0.43.2** - branch `fix/numeric-is-a-line-of-its-own`, release commit `295e7a4`; see the end of 0.41.0's closure |
+| before that | **0.43.1** - #373, `739e81a`, closed |
+| open PRs | the 0.43.2 PR; the fold branch held (not a PR) |
+| default suite | **3417 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1705,8 +1705,56 @@ smoke 40/40. In his Colab (Untitled9 cell 3; a Reconectar reattached the 0.43.0 
 x) = 2x + 3 = ... = 3.00 + 2.00 x`, `F_t(3, 4) = 11.00`, `u_t = 22`, the notice on line 6
 for `L_b`, `M_b = 9 m² q_b/2` unchanged; a screenshot sent to him.
 
-**Exact next step:** `numeric` inside a product (`M = q*numeric(L^2)/2` stores `9 m²`, the
-rest of the formula dropped - a wrong number on 0.43.1 too); then CURRENT.md condensation.
+### `numeric` is a line of its own (0.43.2, his "corrige numeric dentro de un producto")
+
+Branch `fix/numeric-is-a-line-of-its-own`. `numeric(...)` written inside a formula took the
+line over: `M = q*numeric(L^2)/2` defined `M` as `9 m²`, `y = sqrt(numeric(L_2^2))` showed
+`9.00 m²`, a matrix cell showed the cell, a `:=` line stopped at `unsupported numeric
+function`. The approved 0.9.0 design (`numeric(A) * numeric(B)` "is not part of the public
+contract") decided it: the line stops and is written back without it (`engine.
+_refuse_numeric_inside_a_formula`): `Write M = q*L^2/2, then numeric(M).`; on `:=`, that
+`:=` works out a number already. `result` and `report` are told by their own names.
+
+Three independent audits (a subagent; a workflow of three lenses with a skeptic per
+finding, 17 confirmed; a subagent on the delta, 5 confirmed), all fixed with contracts:
+- a `% if`/`% while` condition evaluates each side as `numeric(<side>)`, so a `numeric`
+  there was refused: a whole side is worked out as on main (unit checked and written -
+  `numeric(d, mm)` in mm; `numeric(M(L_2))` as the call worked out); one inside a side
+  reads as its value, its unit checked; `report` in a condition refused; "line 1" gone;
+- the written-back line runs: `then numeric(y)` only where every name has a value
+  (`_reads_only_values`, recursive through `=` formulas; `solve`/`subs` unknowns and
+  definite `integrate`/`sum` variables bound), brackets before a power or an index,
+  report advice (`report(M_2)`; "write 2*M_2 under a name"), the kept call checked
+  first, a `% for` line written as the template (`ParsedStatement.written_as`, set by
+  `control._parse_stretch`, whole name `M_{i+1}`), comments and strings respected;
+- older, found on the way: `case D = numeric(M(L/2))` defined `D(x) = M(x)`; `K[1, 1] =
+  numeric(M(L_2))` stored `M` at the sheet's `x` (both refused now); `keep w = result(...)`
+  showed the substitution; `v := 2` then `v = v*2` hung the kernel (since 0.41.2 at
+  least) - `_resolve_symbolic_names` stops after `len(namespace)+1` passes: `v is defined
+  from itself`.
+Seen, differs from main, his call: a whole side `numeric(M, tonf*m)` in a condition is now
+written in the unit asked (main wrote the default unit, inconsistently). Lines that gave a
+right number on main by accident and now stop: `roots(numeric(M(x)), ...)`,
+`numeric(numeric(M_2))`, `numeric([numeric(a), 0; 0, b])`, `K[1,1] = 2*numeric(a)`.
+Not fixed: a bare `numeric(M(x))` over a function with a free `x` crashes in the renderer
+(`semantic spacing metadata does not match rendered row count`, on main too); `case D =
+M(L/2)` advice fails when pasted (a case needs a variable); a two-name cycle names one.
+
+Contracts: `test_numeric_is_a_line_of_its_own` (57), `test_numeric_advice_runs` (35),
+`test_a_name_defined_from_itself` (4); mutation 52/52.
+
+**0.43.2 before its merge**, on the release tree (`295e7a4`): version assertions RED (7)
+then GREEN; source suite 3417 twice (SymPy 1.14) and once on 1.13.3; wheel from `git
+archive`, 33 files identical to `src`; a clean Colab-like venv gains only Pint and the four
+small deps; smoke 43/43 from `C:\`; the suite against the wheel: 3416 + the by-path surface
+test on the wheel's `magic.py`; the 24 pages identical from the wheel and from the tree,
+and identical to 0.43.1's; the 18 exercises identical.
+
+**Exact next step:** close 0.43.2 (merge, CI, Deep qualification, `git+https`, his Colab
+with screenshots); then his book, *Matrix Structural Analysis* (McGuire, Gallagher,
+Ziemian, 2nd ed.), chapter by chapter from chapter 2 - sheets outside the public repo
+(copyright), findings reported per chapter; the renderer crash above; CURRENT.md
+condensation.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

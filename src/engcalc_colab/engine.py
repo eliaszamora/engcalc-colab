@@ -120,6 +120,12 @@ from .numeric import BRACKETED_UNIT_PREFIX, _UNIT_ALIASES, NumericContext, _Nume
 _PLAIN_UNIT_NAMES = frozenset(
     name for name in _UNIT_ALIASES if not name.startswith(BRACKETED_UNIT_PREFIX)
 )
+from .matrix_syntax import rewrite_matrix_literals
+from .parser import (
+    _split_top_level_assignment,
+    _split_top_level_numeric_assignment,
+    normalize_expression,
+)
 from .piecewise import (
     build_piecewise,
     build_relation,
@@ -1980,6 +1986,62 @@ class EngineeringEngine:
             return self.namespace[name]
         return self.resolve_symbol(name)
 
+    def _reads_only_values(self, text: str) -> bool:
+        """Every name `text` reads has a value, so `numeric` of it has a number to show.
+
+        `M(x)*2` reads `x`, which has none, and `numeric(y)` of it stops at `requires
+        values for: x`. A name that is called, a unit and `pi` are not asked. Unsure - a
+        line that does not parse - is no.
+        """
+        try:
+            rewritten, literals = rewrite_matrix_literals(normalize_expression(text), None)
+            tree = ast.parse(rewritten, mode="eval")
+        except Exception:  # noqa: BLE001 - advice only; the line itself is read elsewhere
+            return False
+        nodes = list(ast.walk(tree))
+        for binding in literals:
+            for row in binding.literal.rows:
+                for entry in row:
+                    nodes.extend(ast.walk(entry))
+        called = {id(node.func) for node in nodes if isinstance(node, ast.Call)}
+        placeholders = {binding.name for binding in literals}
+        # The unknown of `solve`, the variable `subs` puts a value in for and the variable
+        # of a definite `integrate` or a `sum` are the call's own: `x_0 = solve(eq(2*x, L),
+        # x)` has a number.
+        bound = {
+            node.args[1].id
+            for node in nodes
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and (
+                (node.func.id in ("solve", "subs") and len(node.args) >= 2)
+                or (node.func.id in ("integrate", "sum") and len(node.args) == 4)
+            )
+            and isinstance(node.args[1], ast.Name)
+        }
+        context = self.numeric_context
+
+        def has_a_value(name: str, seen: frozenset) -> bool:
+            if name == "pi" or name in _UNIT_ALIASES or name in context.matrices:
+                return True
+            if context.get(name) is not None:
+                return True
+            if name not in self.namespace or name in seen:
+                return False
+            # A formula of `=` has a number when its names have: `W = q*x^2/2` has none
+            # (the third audit, 2026-09-28).
+            symbols = getattr(self.namespace[name], "free_symbols", set())
+            return all(has_a_value(symbol.name, seen | {name}) for symbol in symbols)
+
+        return all(
+            id(node) in called
+            or node.id in placeholders
+            or node.id in bound
+            or has_a_value(node.id, frozenset())
+            for node in nodes
+            if isinstance(node, ast.Name)
+        )
+
     def _refuse_a_name_beside_a_unit(self, statement) -> None:
         """Stop a line where a name of the sheet spelled like a unit stands beside a unit.
 
@@ -2273,6 +2335,7 @@ class EngineeringEngine:
     ):
         evaluator = _Evaluator(self, getattr(statement, "matrix_literals", ()))
         try:
+            _refuse_numeric_inside_a_formula(statement, self)
             self._refuse_a_name_beside_a_unit(statement)
             declaration = getattr(statement, "declaration", None)
             if declaration is not None and declaration != "keep":
@@ -5715,6 +5778,244 @@ def _standalone_call(statement, name: str, message: str):
     ):
         raise EngEvaluationError(message)
     return body
+
+
+# `result` too: the parser hands it on as `numeric`, and the line is written as it was.
+_A_SHOWING_CALL = re.compile(r"(?<![\w.])(numeric|result|report)\s*\(")
+
+
+def _refuse_numeric_inside_a_formula(statement, engine) -> None:
+    """Stop a line that writes `numeric(...)` or `report(...)` inside a formula.
+
+    `numeric` shows a formula worked out to its value, on a line of its own or named,
+    `d = numeric(...)`; the approved 0.9.0 design keeps it there - a formula is written
+    first and `numeric` asks for its number. Inside a formula it took the line over
+    (2026-09-28): `M = q*numeric(L^2)/2` defined `M` as `9 m^2`, `q/2` gone, and on a
+    `:=` line it stopped at `unsupported numeric function`. The line stops and is written
+    back without it. A `case` or a `combo` is a load along the member and a part of a
+    matrix a part, not a named `numeric`: whole, `case D = numeric(M(L/2))` defined `D(x)
+    = M(x)`, `L/2` gone, and `K[1, 1] = numeric(M(L_2))` stored `M` at the sheet's `x`.
+
+    What is written back is advice, and pasted back it must run (the second audit,
+    2026-09-28): `then numeric(y)` is added only where every name of the line has a value.
+    """
+    expression = getattr(statement, "expression", None)
+    if expression is None:
+        return
+    body = expression.body
+    nodes = list(ast.walk(body))
+    for binding in getattr(statement, "matrix_literals", ()):
+        for row in binding.literal.rows:
+            for entry in row:
+                nodes.extend(ast.walk(entry))
+    declaration = getattr(statement, "declaration", None)
+    shown_alone = (
+        isinstance(statement, ParsedStatement)
+        and statement.parameters is None
+        and statement.target_index is None
+        and declaration in (None, "keep")
+    )
+    inside = [
+        node
+        for node in nodes
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in ("numeric", "report")
+        and not (node is body and shown_alone)
+    ]
+    if not inside:
+        return
+    if getattr(statement, "target_index", None) is not None and statement.target not in engine.namespace:
+        # `K := [...]` then `K[1,1] = ...`: that there is no matrix to assign into is
+        # said first, as it was (the third audit, 2026-09-28).
+        return
+    called = body.func.id if isinstance(body, ast.Call) and isinstance(body.func, ast.Name) else None
+    # Written wrong, it is told what it is told as a line of its own, the call that stays
+    # first; no line is written.
+    kept = [body] if shown_alone and called in ("numeric", "report") else []
+    for node in kept + inside:
+        if node.func.id == "report" and (len(node.args) != 1 or not isinstance(node.args[0], ast.Name)):
+            raise EngEvaluationError("report expects one defined name, as in report(M_max)")
+        if len(node.args) not in (1, 2):
+            raise EngEvaluationError("numeric expects 1 or 2 arguments: expression[, target_unit]")
+    # The line as the sheet writes it - a `% for` puts its values in each pass - and as it
+    # reads: a comment is no part of it, and a matrix of several lines is written on one.
+    written_as = getattr(statement, "written_as", None) or statement.source
+    source = re.sub(r"\s*\n\s*", " ", _without_a_comment(written_as))
+    if isinstance(statement, ParsedNumericAssignment):
+        target, right = _split_top_level_numeric_assignment(source)
+        written, taken = _written_without_numeric(right, False)
+        name = taken[0] if taken else "numeric"
+        raise EngEvaluationError(
+            f"':=' works its right side out to a number already, and {name} shows a "
+            "formula worked out to its value on a line of its own. Write "
+            f"{target} := {written}."
+        )
+    left, right = _split_top_level_assignment(source)
+    written, taken = _written_without_numeric(right, shown_alone)
+    name = taken[0] if taken else "numeric"
+    # Whether it has a number is read on the line one pass reads, `{i}` put in.
+    this_pass = _split_top_level_assignment(re.sub(r"\s*\n\s*", " ", _without_a_comment(statement.source)))[1]
+    has_a_number = engine._reads_only_values(_written_without_numeric(this_pass, shown_alone)[0])
+    reported = [node for node in inside if node.func.id == "report"]
+    if reported and called in ("numeric", "report") and body.args and body.args[0] is reported[0]:
+        # `numeric(report(M_2))`: the record is what the line asked for, and `report` shows
+        # what `numeric` shows.
+        advice = f"report({reported[0].args[0].id})"
+    elif reported and left is None:
+        raise EngEvaluationError(
+            "report must be a standalone statement: it shows a formula worked out to its "
+            "value, and is not a number inside another formula. report takes a name the "
+            f"sheet defines: write {_written_without_numeric(right, False)[0]} under a name, "
+            "and report that name."
+        )
+    elif called in _LINES_OF_THEIR_OWN:
+        # `plot(M(x), ...)` and `roots(...)` are lines of their own, and take no name.
+        advice = written
+    elif left is None:
+        # `solve` and `eq` show what they find, and a formula still in `x` has no number
+        # to show; `sqrt(a*b)` or `M(a)` alone would show no number.
+        shows = called in ("solve", "eq") or _A_SHOWING_CALL.match(written) or not has_a_number
+        advice = written if shows else f"{name}({written})"
+    elif (
+        _A_SHOWING_CALL.match(written)
+        or statement.parameters is not None
+        or declaration in ("case", "combo")
+        or called == "eq"
+        or not has_a_number
+    ):
+        # A function is asked for its number at an argument, a load is used by a
+        # combination, an equation has none and neither has a formula still in `x`: only
+        # the line is written.
+        advice = f"{left} = {written}"
+    else:
+        named = _the_name_in(left)
+        advice = f"{left} = {written}, then {name}({named})"
+    raise EngEvaluationError(
+        f"{name} must be a standalone statement: it shows a formula worked out to its "
+        f"value, and is not a number inside another formula. Write {advice}."
+    )
+
+
+def _written_without_numeric(text: str, keep_the_line: bool) -> tuple[str, list[str]]:
+    """`q*numeric(L^2)/2` as `q*L^2/2`: each call taken out, its first argument left.
+
+    A call that is the whole of `text` stays when `keep_the_line` says it may. The names
+    taken out come back with it, in the order they were written.
+    """
+    start, taken = 0, []
+    while True:
+        match = _A_SHOWING_CALL.search(text, start)
+        if match is None:
+            return text, taken
+        if _inside_a_string(text, match.start()):
+            start = match.end()
+            continue
+        opening = match.end() - 1
+        closing = _closing_bracket(text, opening)
+        if closing is None:
+            return text, taken
+        before, after = text[: match.start()], text[closing + 1 :]
+        if keep_the_line and not before.strip() and not after.strip():
+            start = opening + 1
+            continue
+        taken.append(match.group(1))
+        argument = _top_level_split(text[opening + 1 : closing])[0].strip()
+        bounded = before.rstrip()[-1:] in ("", "(", ",", "[", ";") and after.lstrip()[
+            :1
+        ] in ("", ")", ",", "]", ";")
+        operators = _top_level_operators(argument)
+        # A power after it, `^` or `**`, and an index bind tighter than any operator of the
+        # argument: `(L^3)**(1/3)`, `(K^2)[1,1]`. One before it does not: a power is read
+        # from the right, and `c^a^b` is `c^(a^b)`.
+        beside_a_power = after.lstrip().startswith(("^", "**", "["))
+        if not bounded and operators and (operators != {"^"} or beside_a_power):
+            argument = f"({argument})"
+        text = before + argument + after
+        start = len(before)
+
+
+# The calls that are a line of their own and take no name; `numeric` inside one is refused
+# and the line is written back as it is, with no `numeric` around it.
+_LINES_OF_THEIR_OWN = frozenset(
+    {
+        "plot", "envelope", "table", "roots", "extrema", "intersections", "governing",
+        "summary", "assume", "image", "member", "frame_plot",
+    }
+)
+
+
+def _inside_a_string(text: str, index: int) -> bool:
+    quote, escaped = None, False
+    for char in text[:index]:
+        if escaped:
+            escaped = False
+        elif quote is not None and char == "\\":
+            escaped = True
+        elif quote is None and char in "\"'":
+            quote = char
+        elif char == quote:
+            quote = None
+    return quote is not None
+
+
+def _without_a_comment(text: str) -> str:
+    for index, char in enumerate(text):
+        if char == "#" and not _inside_a_string(text, index):
+            return text[:index].rstrip()
+    return text
+
+
+def _the_name_in(left: str) -> str:
+    """`M_{i+1}` of `M_{i+1}`, `K` of `K[1, 1]`, `f` of `f(x)`, `w` of `keep w`."""
+    left = re.sub(r"^(?:keep|case|combo)\s+", "", left.strip())
+    depth = 0
+    for index, char in enumerate(left):
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        elif depth == 0 and (char in "[(" or char.isspace()):
+            return left[:index]
+    return left
+
+
+def _closing_bracket(text: str, opening: int) -> int | None:
+    depth = 0
+    for index in range(opening, len(text)):
+        if text[index] in "([{":
+            depth += 1
+        elif text[index] in ")]}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def _top_level_split(text: str) -> list[str]:
+    parts, depth, begun = [], 0, 0
+    for index, char in enumerate(text):
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        elif char == "," and depth == 0:
+            parts.append(text[begun:index])
+            begun = index + 1
+    parts.append(text[begun:])
+    return parts
+
+
+def _top_level_operators(text: str) -> set[str]:
+    found, depth = set(), 0
+    for char in text:
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        elif depth == 0 and char in "+-*/^<>=!":
+            found.add(char)
+    return found
 
 
 _IMAGE_TYPES = {

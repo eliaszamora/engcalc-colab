@@ -13,7 +13,33 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.43.1**.
+Current version: **0.43.2**.
+
+
+## v0.43.2 numeric is a line of its own
+
+**`numeric(...)` written inside a formula stops the line and says how to write it.**
+`numeric` shows a formula worked out to its value, on a line of its own or named, `d =
+numeric(...)`; the 0.9.0 design keeps it there. Written inside a formula it took the line
+over in silence: `L = 3*m` then `M = q*numeric(L^2)/2` defined `M` as `9 m²`, `q/2` gone;
+`y = sqrt(numeric(L_2^2))` showed `y = 9.00 m²`; a matrix cell showed the cell, and on a
+`:=` line it stopped at `unsupported numeric function`. The line now stops and is written
+back without it - `Write M = q*L^2/2, then numeric(M).` - and a `:=` line is told that
+`:=` works its right side out to a number already (`Write M_3 := q_2*L_2^2/2.`). The line
+written back runs: `then numeric(M)` is said only where every name of the line has a value,
+brackets stay where a power or an index needs them, and a `% for` line is written as the
+`% for` writes it (`M_{i} = ...`). `result(...)` and `report(...)` are told by their own
+names. A `case`, a `combo` and a part of a matrix are not named numerics: whole, `case D =
+numeric(M(L/2))` defined `D(x) = M(x)`, and `K[1, 1] = numeric(M(L_2))` stored `M` at the
+sheet's `x`; both are told now. In a `% if` or `% while` condition a whole side `numeric(M_2,
+kN*m)` is worked out as before, its unit checked, and one inside a side reads as its value.
+
+**A name defined from itself stops instead of hanging the notebook.** `v := 2` then `v =
+v*2` keeps `v` in its own formula, `v = 2 v`, and asking for its number put `2 v` in for `v`
+without end until the kernel hung. It says `v is defined from itself` now.
+
+**`keep w = result(...)` leaves the substitution out**, as `w = result(...)` does. No
+reference page or gap-map exercise moves.
 
 
 ## v0.43.1 a free argument kept apart; a notice for `=` values
@@ -3258,6 +3284,18 @@ result(M_A, kN*m)
 result(M(x))
 ```
 
+`numeric(...)`, `result(...)` and `report(...)` are lines of their own - or the whole right
+side of a named line, `d = numeric(...)` - and not numbers inside another formula. Written
+inside one, the line stops and is written back without it:
+
+```text
+M = q*numeric(L^2)/2     ->  numeric must be a standalone statement: ... Write M = q*L^2/2, then numeric(M).
+M_3 := q*numeric(L^2)/2  ->  ':=' works its right side out to a number already ... Write M_3 := q*L^2/2.
+```
+
+A `% if` or `% while` condition is worked out in numbers already; a `numeric` there reads
+as its value.
+
 ## Numerical context and units
 
 Numeric assignments use:
@@ -3823,6 +3861,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.43.2** — `numeric`, `result` or `report` inside a formula stops the line and writes it back without it, in a line that runs; a condition's `numeric` reads as before; a name defined from itself stops instead of hanging; `keep w = result(...)` leaves the substitution out.
 - **0.43.1** — `numeric(F(3, x))` keeps the free `x` apart from the parameter `x`; `w = numeric(F(...))` holds the call; a notice suggests `:=` for a value of `=` written in beside a name.
 - **0.43.0** — `numeric` of a call writes its argument on its first row (`M(L/2) = R_A (L/2) - q (L/2)²/2`).
 - **0.42.3** — a kept name reaches a function whose value is a matrix (`[k x, 0; 0, k]`); after the `=`, a derivative is worked out with what it is combined with (`4 R_A x`, not `2 · 2 R_A x`).
@@ -3947,4 +3986,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.43.1`.
+Version: `0.43.2`.
