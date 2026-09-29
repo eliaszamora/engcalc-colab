@@ -1390,8 +1390,7 @@ def _plotted_in_units_a_page_writes(result: PlotResult, settings: RenderSettings
         except Exception:  # noqa: BLE001 - drawn as it was rather than not at all
             return None
 
-    def converted(values):
-        unit = target(values)
+    def converted(values, unit):
         if unit is None:
             return tuple(values)
         try:
@@ -1399,12 +1398,18 @@ def _plotted_in_units_a_page_writes(result: PlotResult, settings: RenderSettings
         except (DimensionalityError, AttributeError):
             return tuple(values)
 
+    # One unit for every curve on the axis: the curves share one label, and a unit chosen
+    # per curve drew a 10 kN bar in kN under an axis in N, ten times below a 100 N one
+    # (the audit, 2026-09-29).
+    every_y = [value for series in (*result.series, *result.source_series) for value in series.y_values]
+    y_unit = target(every_y)
+
     def series_in(series: PlotSeries) -> PlotSeries:
-        return replace(series, y_values=converted(series.y_values))
+        return replace(series, y_values=converted(series.y_values, y_unit))
 
     return replace(
         result,
-        x_values=converted(result.x_values),
+        x_values=converted(result.x_values, target(result.x_values)),
         series=tuple(series_in(series) for series in result.series),
         source_series=tuple(series_in(series) for series in result.source_series),
     )
@@ -2253,8 +2258,14 @@ def _matrix_substitution_latex(
     substitutions: dict[str, object],
     settings: RenderSettings,
 ) -> str:
+    literals = _bracketed_units_in(sp.ImmutableMatrix(matrix)).union(
+        *(
+            _bracketed_units_in(getattr(value, "expression", value))
+            for value in substitutions.values()
+        )
+    )
     return _NumericSubstitutionLatexPrinter(
-        substitutions, settings, unit_literals=_bracketed_units_in(sp.ImmutableMatrix(matrix))
+        substitutions, settings, unit_literals=literals
     ).doprint(
         sp.ImmutableMatrix(matrix)
     )
@@ -2717,10 +2728,17 @@ def _display_lhs(
     # it a unit of one letter in the argument - `f(9*m)` - cannot be told from a
     # variable, and the printer's multi-letter rule sets it in italic beside an upright
     # `cm`. A matrix result carries no such set and keeps what it drew before.
+    # A matrix result carries no set, and the argument `5[m]` of `numeric(k(5[m]))` read
+    # `5 __u_m`: its bracket units are read off the arguments themselves.
+    literals = getattr(result, "unit_literals", None)
+    if literals is None:
+        literals = frozenset().union(
+            *(_bracketed_units_in(sp.sympify(argument)) for argument in result.display_arguments)
+        )
     return _render_function_call_lhs(
         result.display_name,
         result.display_arguments,
-        getattr(result, "unit_literals", frozenset()),
+        literals,
     )
 
 

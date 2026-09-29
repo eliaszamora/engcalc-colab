@@ -112,3 +112,28 @@ def test_a_matrix_written_with_a_bracket_unit_prints_no_alias(monkeypatch):
     assert "__u" not in page, page
     assert r"40.00" in page, page
 
+
+
+def test_curves_on_one_axis_share_one_unit(monkeypatch):
+    # The audit: a unit per curve drew a 10 kN bar ten times below a 100 N one, under
+    # one axis label in N.
+    source = (
+        "E := 200000[MPa]\nL := 2[m]\nN(d, A) = E*A*d/L\n"
+        "plot(N(d, A), d, 0, 1[mm], A=[1[mm^2], 100[mm^2]])\n"
+    )
+    _page, console, figures = _run(source, monkeypatch)
+    (figure,) = figures
+    axis = figure.axes[0]
+    ends = sorted(round(float(line.get_ydata()[-1]), 6) for line in axis.lines if len(line.get_ydata()) > 2)
+    assert "kN" in axis.get_ylabel(), axis.get_ylabel()
+    # 0.1 kN and 10 kN, in one unit: the larger curve is a hundred times the smaller.
+    assert ends[-1] == pytest.approx(100 * ends[0]), ends
+
+
+def test_a_matrix_function_called_with_a_bracket_unit_prints_no_alias(monkeypatch):
+    # The audit: `numeric(k(5[m]))` read `k(5 __u_m) = [E A/(5 __u_m) ...]`.
+    source = "E := 200000[MPa]\nA := 1000[mm^2]\nk(L) = E*A/L*[1, -1; -1, 1]\nnumeric(k(5[m]))\n"
+    page, console, _figures = _run(source, monkeypatch)
+    assert not console, console
+    assert "__u" not in page, page
+    assert r"k\left(5\,\mathrm{m}\right)" in page, page
