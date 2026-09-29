@@ -5534,3 +5534,188 @@ def render_call_index(entries) -> str:
         + rows("call")
         + "</div>"
     )
+
+
+# ---------------------------------------------------------------------------------------
+# A `% for` that assembles a matrix, and one whose `:=` values are a table (his book,
+# chapter 3, 2026-09-29). See `control._repeat` and `test_a_for_loop_shows_its_assembly_once`.
+
+
+def loop_table_latex(variable: str, row_labels, columns, settings: RenderSettings) -> str:
+    """A `% for`'s `:=` values: a row per pass, a column per line, one unit per column.
+
+    `columns` is `(name, values)` for each line, the values a pass did not reach `None`.
+    """
+    units = [
+        _aggregate_unit(
+            [value for value in values if value is not None],
+            settings,
+            next((value.units for value in values if hasattr(value, "units")), None),
+        )
+        for _name, values in columns
+    ]
+    exponents = [
+        _column_wants_exponent([value for value in values if value is not None], settings, unit)
+        for (_name, values), unit in zip(columns, units)
+    ]
+    def header(name, unit):
+        unit_latex = _latex_unit_text(unit) if unit is not None else ""
+        return _name_latex(name) + (rf"\,[{unit_latex}]" if unit_latex else "")
+
+    headers = [", ".join(_name_latex(name) for name in variable)] + [
+        header(name, unit) for (name, _values), unit in zip(columns, units)
+    ]
+    rows = []
+    for index, label in enumerate(row_labels):
+        cells = [_loop_value_latex(label)]
+        for (_name, values), unit, exponent in zip(columns, units, exponents):
+            value = values[index]
+            if value is None:
+                cells.append(r"\text{---}")
+            elif hasattr(value, "units"):
+                cells.append(_table_magnitude(_in_unit(value, unit, settings), settings, exponent=exponent))
+            else:
+                cells.append(_table_magnitude(value, settings, exponent=exponent))
+        rows.append(" & ".join(cells))
+    rows[0] = r"\rule{0pt}{1.4em}" + rows[0]
+    columns_spec = "l" + "|r" * len(columns)
+    body = r" \\[3pt] ".join(rows)
+    return _computed_block(
+        [rf"\begin{{array}}{{{columns_spec}}} {' & '.join(headers)} \\ \hline {body} \end{{array}}"]
+    )
+
+
+def _name_latex(name: str) -> str:
+    """`L_{i}` of a loop's line, or `n` of its header, as the page writes a name."""
+    return _latex(sp.Symbol(name.replace("{", "").replace("}", "")))
+
+
+def _loop_value_latex(value) -> str:
+    """A pass's value in the table's first column: `3`, `A_w`, `1, (1.4, 0)`.
+
+    In math, not in `\\text`: a name of the sheet has an underscore, and KaTeX refuses one
+    inside `\\text`, so the whole table read as red source.
+    """
+    if isinstance(value, tuple):
+        return ", ".join(_loop_value_latex(item) for item in value)
+    if isinstance(value, bool):
+        return rf"\text{{{value}}}"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return f"{value:g}"
+    name = getattr(value, "name", None)
+    if isinstance(name, str):
+        return _name_latex(name)
+    if isinstance(value, str) and "_" in value and re.fullmatch(r"[A-Za-z]\w*", value):
+        # `"A_c"` written as text in the `%` list is the name `A_c`, as the page writes it.
+        return _name_latex(value)
+    text = re.sub(r"[\\{}]", "", str(value)).replace("_", r"\_")
+    return rf"\text{{{text}}}"
+
+
+def assembly_note_latex(passes: int, template: str) -> str:
+    r"""`Ensamble en 33 pasos: K_{e, e} \leftarrow K_{e, e} + k g g^{T}`: the rule once.
+
+    Written from the line as the sheet writes it, its `{...}` names standing, and printed
+    without working anything out: it is the rule, not a pass.
+    """
+    word = "paso" if passes == 1 else "pasos"
+    return rf"\textbf{{Ensamble en {passes} {word}:}}\;\; {_rule_latex(template)}"
+
+
+def _rule_latex(template: str) -> str:
+    text = re.sub(r"\{([^{}]+)\}", lambda match: match.group(1).strip(), template)
+    left, _, right = text.partition("=")
+    try:
+        from .matrix_syntax import rewrite_matrix_literals  # noqa: PLC0415
+        from .parser import normalize_expression  # noqa: PLC0415
+
+        printed = []
+        for side in (left, right):
+            rewritten, literals = rewrite_matrix_literals(normalize_expression(side.strip()), None)
+            tree = ast.parse(rewritten, mode="eval").body
+            printed.append(_as_written(tree, {binding.name: binding.literal for binding in literals}))
+    except Exception:  # noqa: BLE001 - the line as typed rather than no rule at all
+        return rf"\texttt{{{template}}}"
+    return rf"{printed[0]} \;\leftarrow\; {printed[1]}"
+
+
+def _as_written(node, literals) -> str:
+    """A tree as written - names standing, nothing worked out - for a rule on the page."""
+
+    def grouped(child, binds):
+        text = _as_written(child, literals)
+        if isinstance(child, ast.BinOp) and _PRECEDENCE[type(child.op)] < binds:
+            return rf"\left({text}\right)"
+        return text
+
+    if isinstance(node, ast.Name):
+        if node.id in literals:
+            rows = [
+                " & ".join(_as_written(entry, literals) for entry in row)
+                for row in literals[node.id].rows
+            ]
+            return r"\left[\begin{matrix}" + r"\\".join(rows) + r"\end{matrix}\right]"
+        return _latex(sp.Symbol(node.id))
+    if isinstance(node, ast.Constant):
+        return str(node.value)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        return "-" + grouped(node.operand, _PRECEDENCE[ast.Mult])
+    if isinstance(node, ast.BinOp):
+        binds = _PRECEDENCE[type(node.op)]
+        if isinstance(node.op, ast.Div):
+            return rf"\frac{{{_as_written(node.left, literals)}}}{{{_as_written(node.right, literals)}}}"
+        if isinstance(node.op, ast.Pow):
+            return rf"{{{grouped(node.left, binds + 1)}}}^{{{_as_written(node.right, literals)}}}"
+        symbol = {ast.Add: " + ", ast.Sub: " - ", ast.Mult: r"\,"}[type(node.op)]
+        return grouped(node.left, binds) + symbol + grouped(node.right, binds + (not isinstance(node.op, ast.Mult)))
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+        if node.func.id == "transpose" and len(node.args) == 1:
+            return rf"{{{grouped(node.args[0], 99)}}}^{{T}}"
+        arguments = ", ".join(_as_written(argument, literals) for argument in node.args)
+        return rf"\operatorname{{{node.func.id}}}\left({arguments}\right)"
+    if isinstance(node, ast.Subscript):
+        index = node.slice
+        parts = index.elts if isinstance(index, ast.Tuple) else [index]
+        written = r";\, ".join(
+            ", ".join(_as_written(item, literals) for item in part.elts)
+            if isinstance(part, ast.List)
+            else _as_written(part, literals)
+            for part in parts
+        )
+        return rf"{_as_written(node.value, literals)}_{{{written}}}"
+    if isinstance(node, ast.List):
+        return r"\left[" + ", ".join(_as_written(item, literals) for item in node.elts) + r"\right]"
+    return ast.unparse(node)
+
+
+_PRECEDENCE = {ast.Add: 1, ast.Sub: 1, ast.Mult: 2, ast.Div: 2, ast.Pow: 3}
+
+# How wide a matrix may be, in the units `_latex_visual_width` counts, and still be drawn:
+# the width a complete row has. A column also takes the room between it and the next.
+_MATRIX_COLUMN_GAP = 2.0
+
+
+def matrix_fits_the_page(matrix, settings: RenderSettings) -> bool:
+    """Whether a matrix drawn in full is no wider than a row of the page."""
+    try:
+        widths = [
+            max(_latex_visual_width(_latex(matrix[row, column], settings=settings)) for row in range(matrix.rows))
+            for column in range(matrix.cols)
+        ]
+    except Exception:  # noqa: BLE001 - drawn, as before, when it cannot be measured
+        return True
+    return sum(width + _MATRIX_COLUMN_GAP for width in widths) <= _COMPLETE_ROW_VISUAL_BUDGET
+
+
+def matrix_summary_latex(name: str, matrix) -> str:
+    r"""`K \;:\; 36 \times 36,\ \text{simétrica},\ 180\ \text{términos no nulos}`."""
+    nonzero = sum(1 for entry in matrix if entry != 0)
+    square = matrix.rows == matrix.cols
+    symmetric = square and matrix == matrix.T
+    parts = [rf"{matrix.rows} \times {matrix.cols}"]
+    if symmetric:
+        parts.append(r"\text{simétrica}")
+    parts.append(rf"{nonzero}\ \text{{términos no nulos}}")
+    return rf"{_latex(sp.Symbol(name))} \;:\; " + r",\ ".join(parts)

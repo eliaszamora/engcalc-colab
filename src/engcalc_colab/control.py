@@ -481,6 +481,15 @@ def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
         "<% for>",
         "exec",
     )
+    # Two or more `:=` values in the body are one table, a row per pass; one keeps its rows,
+    # as written by hand. A line that adds into a part of a matrix is worked out every
+    # pass and shown once, when the loop ends (his decision, 2026-09-29).
+    tabled = _values_in(node.body)
+    if len(tabled) < 2:
+        tabled = []
+    rows: list = []
+    table: dict = {template: [] for template in tabled}
+    assembled: dict = {}
     for value in values:
         try:
             exec(assign, {"__builtins__": _BUILTINS, "__value__": value}, scope)  # noqa: S102 - the sheet's own % layer
@@ -489,7 +498,41 @@ def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
                 f"line {line_no}: % for cannot give {ast.unparse(node.header.target)} the value "
                 f"{value!r}: {exc}"
             ) from exc
-        yield from _walk(node.body, engine, settings, scope)
+        rows.append(value)
+        for item in _walk(node.body, engine, settings, scope):
+            template = getattr(item, "written_as", None) or getattr(item, "source", None)
+            if template in table or _adds_into_a_part(item):
+                result = engine.evaluate(item)
+                if template in table and _a_value(result):
+                    table[template].append((len(rows) - 1, result.quantity))
+                    continue
+                if _adds_into_a_part(item):
+                    passes, _last, notices = assembled.get(item.target, (0, None, ()))
+                    assembled[item.target] = (passes + 1, (item, result), notices + tuple(engine.notices))
+                    continue
+                yield Evaluated(result, tuple(engine.notices))
+                continue
+            yield item
+    if any(table.values()):
+        from .renderer import loop_table_latex  # noqa: PLC0415 - renderer imports models only
+
+        columns = []
+        for template, entries in table.items():
+            cells = [None] * len(rows)
+            for index, quantity in entries:
+                cells[index] = quantity
+            columns.append((_written_target(template), cells))
+        variable = [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+        yield ConditionNote(latex=loop_table_latex(variable, rows, columns, _current(settings)))
+    for name, (passes, (item, result), notices) in assembled.items():
+        from .renderer import assembly_note_latex, matrix_fits_the_page, matrix_summary_latex  # noqa: PLC0415
+
+        template = getattr(item, "written_as", None) or item.source
+        yield ConditionNote(latex=assembly_note_latex(passes, template))
+        if matrix_fits_the_page(result.value, _current(settings)):
+            yield Evaluated(result, notices)
+        else:
+            yield ConditionNote(latex=matrix_summary_latex(name, result.value))
 
 
 def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:
@@ -802,3 +845,50 @@ def _said(operand: ast.AST, value, quantity, settings) -> str:
     if written is None or not names or all(node.id in units for node in names):
         return number
     return f"{_latex(sp.sympify(written), units, current)} = {number}"
+
+
+def _current(settings):
+    return settings() if callable(settings) else settings
+
+
+def _values_in(body: list) -> list[str]:
+    """The `:=` lines of a loop's own stretches, as the sheet writes them: its table's columns."""
+    from .models import ParsedNumericAssignment  # noqa: PLC0415 - models import nothing back
+
+    lines = []
+    for node in body:
+        if isinstance(node, _Stretch):
+            for item in _parse_stretch(node, lambda _text, _line_no: "1"):
+                if isinstance(item, ParsedNumericAssignment):
+                    index = item.line_no - node.first_line
+                    lines.append(node.lines[index].strip())
+    return lines
+
+
+def _a_value(result) -> bool:
+    """A scalar `:=` value with nothing else to show: a cell of the loop's table."""
+    from .models import NumericAssignmentResult  # noqa: PLC0415 - models import nothing back
+
+    return (
+        isinstance(result, NumericAssignmentResult)
+        and getattr(result, "equation", None) is None
+        and not getattr(result, "shown_as_written", False)
+    )
+
+
+def _adds_into_a_part(item) -> bool:
+    """`K[[p, q], [p, q]] = K[[p, q], [p, q]] + ...`: a line that assembles into a matrix."""
+    target_index = getattr(item, "target_index", None)
+    if target_index is None:
+        return False
+    return any(
+        isinstance(node, ast.Name) and node.id == item.target
+        for node in ast.walk(item.expression.body)
+    )
+
+
+def _written_target(template: str) -> str:
+    """`L_{i}` of `L_{i} := ...`, the loop's name standing where a pass puts its value."""
+    target = template.split(":=", 1)[0].strip()
+    return re.sub(r"\{([^{}]+)\}", lambda match: "{" + match.group(1).strip() + "}", target)
+
