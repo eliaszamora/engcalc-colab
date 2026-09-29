@@ -12,9 +12,9 @@ _2026-09-28._
 
 | | |
 |---|---|
-| releasing | **0.43.2** - branch `fix/numeric-is-a-line-of-its-own`, release commit `295e7a4`; see the end of 0.41.0's closure |
+| released | **0.43.2** - #375, `3a1c492`, closed; see the end of 0.41.0's closure |
 | before that | **0.43.1** - #373, `739e81a`, closed |
-| open PRs | the 0.43.2 PR; the fold branch held (not a PR) |
+| open PRs | this closure; the fold branch held (not a PR) |
 | default suite | **3417 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -1750,11 +1750,43 @@ small deps; smoke 43/43 from `C:\`; the suite against the wheel: 3416 + the by-p
 test on the wheel's `magic.py`; the 24 pages identical from the wheel and from the tree,
 and identical to 0.43.1's; the 18 exercises identical.
 
-**Exact next step:** close 0.43.2 (merge, CI, Deep qualification, `git+https`, his Colab
-with screenshots); then his book, *Matrix Structural Analysis* (McGuire, Gallagher,
-Ziemian, 2nd ed.), chapter by chapter from chapter 2 - sheets outside the public repo
-(copyright), findings reported per chapter; the renderer crash above; CURRENT.md
-condensation.
+**0.43.2 is closed** (#375, `3a1c492`, its tree identical to the release tree `013e6b7`):
+CI, Quality Gate Deep (push) and Deep in qualification mode by dispatch green on
+`3a1c492`; `git+https` with `--upgrade` changed only `engcalc-colab` (`739e81a` ->
+`3a1c492`), 33 files identical, smoke 43/43. In his Colab (Untitled9 cell 3, reconnected
+to a fresh runtime, his cell 0 run first): `engcalc 0.43.2`, `M_d = 45.00 kN·m`, the
+refusal on line 5, `Como q_d L_d²/2 = 45.00 kN·m > 40.00 kN·m`, the `:=` message on line 4,
+`v_t is defined from itself` with no hang; two screenshots sent to him.
+
+### His book, chapter 2 (*Matrix Structural Analysis*, McGuire, Gallagher, Ziemian)
+
+He asked (2026-09-28) to test EngCalc on every exercise of the book, chapter by chapter.
+The sheets live outside the repo (copyright): scratchpad `book/ch02/solver-{A,B,C}`.
+Three solvers, each with an independent Python oracle: 2.1 (a-f), 2.2-2.8, 2.12-2.15 all
+give the oracle's numbers; 2.9-2.11 are conceptual. Findings, deduplicated:
+- **Wrong on the page:** a computed coefficient 0.007 printed `0.01` (2.3's `R_d = -0.01
+  EA`; 0.447 as 0.45); with `keep k`, `u = P/(5*k/4)` reads `P/(5 ¼ k)` - a mixed number.
+- **Bugs:** a bare `solve(eq(...), x)` shows `x = ...` but does not define `x` (README says
+  it does); `x := solve(eq(...), x)` stops at `unsupported numeric function`; a
+  matrix-valued function call is refused on a `:=` line ("needs a single numeric value").
+- **Missing:** temperature units (`degC`, `K`, `delta_degC`); `numeric` of a formula still
+  in a free symbol (a function call of it works), and a target unit on a partial result;
+  rationalising a radical denominator.
+- **Presentation:** kept names lost in `K[...] = K[...] + k*[...]` and `zeros(n,n) + M`;
+  `solve` answers expand kept names (0.42.2's choice, it hurts here: `dP_b = A_b T/(A_b +
+  A_c)`, not `k_b T/(k_b + k_c)`); a kept flexibility substituted as `7.50e-9 m/(mm²·MPa)`;
+  substitution rows that fold or reorder the formula row; a wrapped formula printed twice
+  before `numeric`; `(−1) f R`; `((8000 mm²))²`; `−0.00 EA`; a parameter `s` read as
+  seconds; `cos(60 deg)` on a `=` line; a bare solve of a named equation with nothing on
+  the left; piecewise "for ... otherwise" in English; plot legend `F_b(T)` raw, title
+  `F(T)` for two series, the kink unlabelled.
+- **Tooling:** `tools/render_memoria.py` typesets with MathJax, which does not know
+  `\allowbreak` - every paragraph reads as red source there since 0.41.2 (KaTeX, Colab's,
+  renders it); the harness no longer measures Colab for text.
+
+**Exact next step:** his decision on chapter 2's list (the two wrong-on-the-page items and
+the solve bugs recommended first), then chapter 3; the renderer crash of a bare
+`numeric(M(x))`; CURRENT.md condensation.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
