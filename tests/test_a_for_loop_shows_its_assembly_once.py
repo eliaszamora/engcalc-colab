@@ -46,7 +46,7 @@ SPRINGS = (
 def test_an_assembly_is_shown_once(monkeypatch):
     page, console = _run(SPRINGS, monkeypatch)
     assert not console, console
-    assert r"\textbf{Ensamble en 2 pasos:}" in page, page
+    assert r"\textbf{Ensamble en 2 pasos}" in page, page
     # The rule as the sheet writes it, the loop's names standing.
     assert r"K_{p q, p q} \;\leftarrow\; K_{p q, p q} + k" in page or r"\leftarrow" in page, page
     # The matrix it built, once: `zeros` and the one assembled K, not one per pass.
@@ -72,7 +72,7 @@ WIDE = (
 def test_a_matrix_wider_than_the_page_is_said_by_what_it_is(monkeypatch):
     page, console = _run(WIDE, monkeypatch)
     assert not console, console
-    assert r"\textbf{Ensamble en 29 pasos:}" in page, page
+    assert r"\textbf{Ensamble en 29 pasos}" in page, page
     assert r"30 \times 30" in page and "simétrica" in page, page
     # 30 diagonal entries and 29 above it and below it.
     assert r"88\ \text{términos no nulos}" in page, page
