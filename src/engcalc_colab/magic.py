@@ -312,6 +312,7 @@ class EngMagics(Magics):
 
     def _eng_cell(self, cell: str):
         pending_results: list[CalculationResult] = []
+        self.engine.begin_cell()
         page = _Page()
         try:
             # A cell with `%` lines decides as it goes which of its lines run; one without

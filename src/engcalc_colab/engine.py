@@ -2004,21 +2004,33 @@ class EngineeringEngine:
         A bare `solve(eq(2*T, q*L), T)` writes `T = q L/2` and defines nothing - the
         unknown is often the variable of the sheet's functions, and `solve(eq(V(x), 0), x)`
         defining `x` made `M(x)` a constant (the audit of 0.43.3, 2026-09-28). A later line
-        that asks for its number is told how to keep the answer (his book, chapter 2).
+        that asks for its number is told how to keep the answer (his book, chapter 2), a
+        `:=` line too (`unknown numeric name 'T'`). Only a solve of the cell being run is
+        told: a line number of an earlier run may hold something else now.
         """
-        match = re.search(r"requires values for: ([^.]+)\.", message)
-        if not match or "solve(...)" in message:
+        if "solve(...)" in message:
             return message
-        names = [name.strip() for name in match.group(1).split(",")]
+        listed = re.search(r"requires values for: ([^.]+)\.", message)
+        unknown = re.search(r"unknown numeric name '(\w+)'", message)
+        if listed:
+            names = [name.strip() for name in listed.group(1).split(",")]
+        elif unknown:
+            names = [unknown.group(1)]
+        else:
+            return message
         solved = [name for name in names if name in self.solved_alone]
         if not solved:
             return message
-        name = solved[0]
+        where = ", ".join(f"{name} on line {self.solved_alone[name]}" for name in solved)
+        verb = "was" if len(solved) == 1 else "were"
         return (
-            f"{message} {name} was solved on line {self.solved_alone[name]} on a line of "
-            f"its own, which shows the answer and defines nothing; write {name} = "
-            f"solve(...) to use it."
+            f"{message} {where} {verb} solved on a line of its own, which shows the answer "
+            f"and defines nothing; write {solved[0]} = solve(...) to use it."
         )
+
+    def begin_cell(self) -> None:
+        """What one run of a cell keeps to itself."""
+        self.solved_alone.clear()
 
     def _reads_only_values(self, text: str) -> bool:
         """Every name `text` reads has a value, so `numeric` of it has a number to show.

@@ -96,8 +96,34 @@ def test_a_bare_solve_says_how_to_keep_its_answer(monkeypatch):
     source = "q := 10[kN/m]\nL := 6[m]\nsolve(eq(2*T, q*L), T)\nZ = 2*T\nnumeric(Z)\n"
     _page, console = _run(source, monkeypatch)
     assert "engcalc: line 5: numeric evaluation requires values for: T" in console, console
-    assert "T was solved on line 3 on a line of its own" in console, console
+    assert "T on line 3 was solved on a line of its own" in console, console
     assert "write T = solve(...) to use it" in console, console
+
+
+def test_a_colon_equals_line_is_told_too(monkeypatch):
+    source = "q := 10[kN/m]\nL := 6[m]\nsolve(eq(2*T, q*L), T)\nW := 2*T\n"
+    _page, console = _run(source, monkeypatch)
+    assert "T on line 3 was solved on a line of its own" in console, console
+
+
+def test_two_unknowns_solved_alone_are_both_told(monkeypatch):
+    source = "q := 10[kN/m]\nsolve(eq(2*T, q), T)\nsolve(eq(3*U, q), U)\nZ = T + U\nnumeric(Z)\n"
+    _page, console = _run(source, monkeypatch)
+    assert "T on line 2, U on line 3 were solved on a line of its own" in console, console
+
+
+def test_a_solve_of_an_earlier_run_is_not_told(monkeypatch):
+    # The audit: a line number of an earlier run may hold something else by now.
+    captured = []
+    monkeypatch.setattr(magic, "display", captured.append)
+    engine = magic.EngMagics()
+    with contextlib.redirect_stdout(io.StringIO()):
+        engine.eng("", "q := 10[kN/m]\nL := 6[m]\nsolve(eq(2*T, q*L), T)\n")
+    console = io.StringIO()
+    with contextlib.redirect_stdout(console):
+        engine.eng("", "q := 10[kN/m]\nL := 6[m]\nP := 3[kN]\nZ = 2*T\nnumeric(Z)\n")
+    assert "requires values for: T" in console.getvalue(), console.getvalue()
+    assert "solved on a line of its own" not in console.getvalue(), console.getvalue()
 
 
 def test_a_named_solve_is_used(monkeypatch):
