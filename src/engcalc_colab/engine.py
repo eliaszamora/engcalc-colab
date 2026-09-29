@@ -1057,10 +1057,17 @@ class EngineeringEngine:
     def _calls_a_function_of_the_sheet(self, expression: ast.AST) -> bool:
         # `solve(eq(...), c, lower, upper)` too: its root is found by the symbolic layer,
         # as a sheet function's value is, and a `:=` line takes it the same way.
+        # Any `solve`: `x_2 := solve(eq(b*x, a*b - x*b), x)` stopped at `unsupported numeric
+        # function` (his book, chapter 2, 2026-09-28); one answer is its value, and several
+        # say there is no single one.
         return any(
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
-            and (node.func.id in self.functions or _solves_in_a_range(node, self.namespace))
+            and (
+                node.func.id in self.functions
+                or node.func.id == "solve"
+                or _solves_in_a_range(node, self.namespace)
+            )
             for node in ast.walk(expression)
         )
 
@@ -1986,6 +1993,19 @@ class EngineeringEngine:
             return self.namespace[name]
         return self.resolve_symbol(name)
 
+    def _define_what_was_solved(self, statement, name: str, value) -> None:
+        """The unknown of a bare `solve`, stored as `name = solve(...)` stores its name."""
+        kept = self._a_formula_with_a_number(statement, value)
+        self.namespace[name] = value
+        self.numeric_context.matrices.pop(name, None)
+        self.written_namespace.pop(name, None)
+        self.zero_quantities.pop(name, None)
+        if kept:
+            self.kept_names.add(name)
+            self._store_kept_value(name, value)
+        else:
+            self._drop_the_number(name)
+
     def _reads_only_values(self, text: str) -> bool:
         """Every name `text` reads has a value, so `numeric` of it has a number to show.
 
@@ -2796,6 +2816,21 @@ class EngineeringEngine:
             # The formula is read before the name is stored: read after, `v = v + 2*diff(t^2, t)`
             # showed the new `v` inside the formula that defines it.
             shown = self._shown_input(statement, evaluator, value)
+            # `solve(eq(2*T, q*L), T)` on a line of its own wrote `T = q L/2` and defined
+            # nothing, though the one-unknown form is the n = 1 case of a system, which
+            # defines its unknowns (README; his book's problem 2.2, 2026-09-28). One answer
+            # defines it as `T = solve(...)` would; several define nothing, as before.
+            body = statement.expression.body
+            if (
+                statement.target is None
+                and evaluator.solved_for is not None
+                and isinstance(value, sp.Expr)
+                and not is_matrix(value)
+                and isinstance(body, ast.Call)
+                and getattr(body.func, "id", None) == "solve"
+                and evaluator.solved_for not in self.functions
+            ):
+                self._define_what_was_solved(statement, evaluator.solved_for, value)
             if statement.target is not None:
                 if statement.parameters is not None:
                     for parameter in statement.parameters:
@@ -3587,6 +3622,15 @@ class _Evaluator(ast.NodeVisitor):
                     ) from exc
             else:
                 symbolic_expression = self.visit(argument)
+                system = self.system_evaluation
+                if symbolic_expression is None and system is not None and system.kind == "multi":
+                    # `x_3 := solve(x^2 - 4, x)` is worked out as `numeric(solve(...))`,
+                    # and two answers are no number: said as `x_3 = solve(...)` says it.
+                    raise EngEvaluationError(
+                        f"solve returned {len(system.solutions)} solutions, so there is no "
+                        "single value to assign. Read them, or use roots(expression, "
+                        "variable, lower, upper) to take the one inside a physical domain"
+                    )
                 # `numeric(phiMn)` opens with the formula its definition showed, not a
                 # second and different one. Both stages or neither: a definition reading
                 # `phi As fy (d - a/2)` above an evaluation reading `cover` and `h`
@@ -5698,6 +5742,29 @@ def _flattened(kind, *args):
     return kind(*flat, evaluate=False)
 
 
+def _one_fraction(factors: list) -> list:
+    """`5` beside `1/4` is `5/4`: printed apart they read as the mixed number 5 1/4.
+
+    `P/(5*k/4)` over a kept `k` read `P/(5 1/4 k)` - 5.25 k where the value is 1.25 k (his
+    book's problem 2.1, 2026-09-28). An integer and the reciprocal of one are folded into
+    one fraction; a number typed with a point stays as typed, the `2 · 0.85` of 0.42.0.
+    """
+    whole = [f for f in factors if isinstance(f, sp.Integer)]
+    reciprocal = [
+        f for f in factors
+        if isinstance(f, sp.Pow) and isinstance(f.base, sp.Integer) and f.exp == -1
+    ]
+    if not whole or not reciprocal:
+        return factors
+    value = sp.Integer(1)
+    for factor in whole:
+        value *= factor
+    for factor in reciprocal:
+        value /= factor.base
+    rest = [f for f in factors if f not in whole and f not in reciprocal]
+    return [value, *rest] if value != 1 else rest or [sp.Integer(1)]
+
+
 def _in_mode_order(entries) -> tuple:
     """A closed form's eigenvalues once they are numbers, ascending - the order `lam[i]`
     counts in. A two-by-two written in names lists its roots in SymPy's order, which the
@@ -6273,6 +6340,10 @@ class _WrittenFormEvaluator(_Evaluator):
         if isinstance(op, ast.Mult):
             return _flattened(sp.Mul, left, right)
         if isinstance(op, ast.Div):
+            # A product that is the divisor folds its numbers into one fraction: `5*k/4`
+            # under `P/` read `5 1/4 k`. Anywhere else the numbers are the ones typed.
+            if isinstance(right, sp.Mul):
+                right = sp.Mul(*_one_fraction(list(right.args)), evaluate=False)
             return _flattened(
                 sp.Mul, left, sp.Pow(right, sp.Integer(-1), evaluate=False)
             )

@@ -419,7 +419,16 @@ class _EngineeringLatexPrinter(LatexPrinter):
         typed = repr(float(expr))
         if "e" not in typed and _significant_digits(typed) <= _TYPED_FIGURES:
             return typed
-        return _magnitude_text(float(expr), replace(self.render_settings, figures=0))
+        shown = _magnitude_text(float(expr), replace(self.render_settings, figures=0))
+        # No fewer figures than the page has decimals: rounded to two decimals, the
+        # `-0.006999999999999999` of `-2.8*0.0025` read `-0.01`, a different number, and
+        # his book's problem 2.3 showed `R_d = -0.01 E A` for `-0.007 E A` (2026-09-28).
+        # `0.588...` keeps two figures at two decimals and reads `0.59` still; a power of
+        # ten is written with its own figures.
+        precision = self.render_settings.precision
+        if r"\times" not in shown and 0 < _significant_digits(shown) < precision:
+            shown = _magnitude_text(float(expr), replace(self.render_settings, figures=precision))
+        return shown
 
     def _print_Symbol(self, expr, style=None):
         r"""Print a name so it reads as what the engineer wrote.
