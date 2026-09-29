@@ -99,11 +99,16 @@ def unit_was_written(quantity, written_units) -> bool:
     """
     if not written_units:
         return False
+    # A unit in brackets reaches here as its alias, `__u_kN`, which Pint cannot read, and
+    # "cannot read it" answered True: `S := F[1] + 1[kN]` kept the `m·kg/s²` of a matrix
+    # entry, `301000.00 m·kg/s²`, as if written (his book, chapter 3, 2026-09-29).
+    from .numeric import _UNIT_ALIASES  # noqa: PLC0415 - numeric imports this module
+
     try:
         registry = quantity._REGISTRY
         parts = set()
         for alias in written_units:
-            parts |= set(registry.parse_units(alias)._units)
+            parts |= set(registry.parse_units(_UNIT_ALIASES.get(alias, alias))._units)
         return set(quantity.units._units) <= parts
     except Exception:  # noqa: BLE001 - a unit that cannot be read keeps the old answer
         return True
