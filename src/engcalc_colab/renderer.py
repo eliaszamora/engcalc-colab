@@ -734,7 +734,25 @@ def _first_matrix_stage(result, settings):
     written = _written_arguments(result)
     if written:
         return _matrix_substitution_latex(result.symbolic_matrix, written, settings)
-    return _matrix_latex(result.symbolic_matrix, settings=settings)
+    return _matrix_latex(
+        result.symbolic_matrix,
+        unit_literals=_bracketed_units_in(result.symbolic_matrix),
+        settings=settings,
+    )
+
+
+def _bracketed_units_in(matrix) -> frozenset[str]:
+    """The units a matrix was written with in brackets, `5[m]`, which it holds as `__u_m`.
+
+    A matrix result carries no list of them, and without one the printer set the alias
+    itself on the page: `numeric(S)` of `A*E/(5[m])*[1, -1; -1, 1]` read `5 __u_m` (his
+    book, chapter 3, 2026-09-29).
+    """
+    return frozenset(
+        symbol.name
+        for symbol in getattr(matrix, "free_symbols", ())
+        if symbol.name.startswith(BRACKETED_UNIT_PREFIX)
+    )
 
 
 class _NumericSubstitutionLatexPrinter(_EngineeringLatexPrinter):
@@ -1342,6 +1360,61 @@ def _relabelled(series: PlotSeries, settings: RenderSettings) -> PlotSeries:
     return replace(series, display_label=f"{series.sweep_parameter} = {written}")
 
 
+def _plotted_in_units_a_page_writes(result: PlotResult, settings: RenderSettings) -> PlotResult:
+    """A curve in a unit the algebra invented is drawn in the unit the page would use.
+
+    `v(P) = P*L/(E*A)` was plotted in `m·kN/(mm²·MPa)`, the unit its product left behind,
+    and its end labels read `(150, 0)`: the values were 10^-5 of that unit (his book,
+    problem 3.8, 2026-09-29). A series is converted to the unit the page writes its
+    largest value in; one already in its family's unit or in the engineer's own - `kN·m`,
+    `tonf/m` - is drawn as it was.
+    """
+    plain = replace(settings, palette="")
+
+    def target(values):
+        values = [value for value in values if value is not None and hasattr(value, "units")]
+        if not values:
+            return None
+        largest = max(values, key=lambda value: abs(float(value.magnitude)))
+        family = _unit_family(largest)
+        if not family or _unit_is_the_engineers(largest, plain):
+            return None
+        for name in family:
+            try:
+                if largest.to(name).units == largest.units:
+                    return None
+            except DimensionalityError:
+                continue
+        try:
+            return _display_quantity(largest, plain, declared=False).units
+        except Exception:  # noqa: BLE001 - drawn as it was rather than not at all
+            return None
+
+    def converted(values, unit):
+        if unit is None:
+            return tuple(values)
+        try:
+            return tuple(value.to(unit) for value in values)
+        except (DimensionalityError, AttributeError):
+            return tuple(values)
+
+    # One unit for every curve on the axis: the curves share one label, and a unit chosen
+    # per curve drew a 10 kN bar in kN under an axis in N, ten times below a 100 N one
+    # (the audit, 2026-09-29).
+    every_y = [value for series in (*result.series, *result.source_series) for value in series.y_values]
+    y_unit = target(every_y)
+
+    def series_in(series: PlotSeries) -> PlotSeries:
+        return replace(series, y_values=converted(series.y_values, y_unit))
+
+    return replace(
+        result,
+        x_values=converted(result.x_values, target(result.x_values)),
+        series=tuple(series_in(series) for series in result.series),
+        source_series=tuple(series_in(series) for series in result.source_series),
+    )
+
+
 def plot_in_palette(result: PlotResult, settings: RenderSettings) -> PlotResult:
     """The same plot, with every quantity in the unit the sheet declared.
 
@@ -1376,6 +1449,7 @@ def plot_in_palette(result: PlotResult, settings: RenderSettings) -> PlotResult:
     page's precision is not converting a unit, and the early return still spares the
     conversions themselves, which cost 22 ms on a two-curve sweep.
     """
+    result = _plotted_in_units_a_page_writes(result, settings)
     if not settings.palette:
         return replace(
             result,
@@ -2184,7 +2258,15 @@ def _matrix_substitution_latex(
     substitutions: dict[str, object],
     settings: RenderSettings,
 ) -> str:
-    return _NumericSubstitutionLatexPrinter(substitutions, settings).doprint(
+    literals = _bracketed_units_in(sp.ImmutableMatrix(matrix)).union(
+        *(
+            _bracketed_units_in(getattr(value, "expression", value))
+            for value in substitutions.values()
+        )
+    )
+    return _NumericSubstitutionLatexPrinter(
+        substitutions, settings, unit_literals=literals
+    ).doprint(
         sp.ImmutableMatrix(matrix)
     )
 
@@ -2646,10 +2728,17 @@ def _display_lhs(
     # it a unit of one letter in the argument - `f(9*m)` - cannot be told from a
     # variable, and the printer's multi-letter rule sets it in italic beside an upright
     # `cm`. A matrix result carries no such set and keeps what it drew before.
+    # A matrix result carries no set, and the argument `5[m]` of `numeric(k(5[m]))` read
+    # `5 __u_m`: its bracket units are read off the arguments themselves.
+    literals = getattr(result, "unit_literals", None)
+    if literals is None:
+        literals = frozenset().union(
+            *(_bracketed_units_in(sp.sympify(argument)) for argument in result.display_arguments)
+        )
     return _render_function_call_lhs(
         result.display_name,
         result.display_arguments,
-        getattr(result, "unit_literals", frozenset()),
+        literals,
     )
 
 

@@ -4638,7 +4638,14 @@ class _Evaluator(ast.NodeVisitor):
         *,
         source_label: str,
         overrides=None,
+        samples=None,
     ) -> tuple[CharacteristicPoint, ...]:
+        # The marks on a plot are worked out exactly, and that had no bound: `max(abs(...))`
+        # of a 2x2 solve took 25 s and his book's problem 3.2 more than 400 (2026-09-29).
+        # A curve too large to work out exactly is marked from the points it is drawn
+        # with; every plot on the reference sheets is a few operations long.
+        if samples is not None and sp.count_ops(expression) > _EXACT_PLOT_MARKS_OPS:
+            return _marks_from_samples(*samples, source_label=source_label)
         try:
             points, _intervals, _up, _down, unresolved = solve_extrema_exact(
                 expression,
@@ -5201,6 +5208,7 @@ class _Evaluator(ast.NodeVisitor):
                         variable,
                         analysis_domain,
                         source_label=expression.display_label,
+                        samples=(x_values, y_values),
                     )
                 raw_series.append(
                     PlotSeries(
@@ -5358,6 +5366,7 @@ class _Evaluator(ast.NodeVisitor):
                     analysis_domain,
                     source_label=case_label,
                     overrides=overrides,
+                    samples=(x_values, comparison_y_values),
                 )
             comparison_series.append(
                 PlotSeries(
@@ -5824,6 +5833,38 @@ def _real_roots_between(polynomial, lower_quantity, upper_quantity):
         if low < value.real < high:
             roots.append(base._REGISTRY.Quantity(value.real, base.units).to(unit))
     return roots
+
+
+# The operations a plotted expression may have and still be marked exactly. The plots of
+# the reference sheets have at most seven; the one that hung had forty-four.
+_EXACT_PLOT_MARKS_OPS = 24
+
+
+def _marks_from_samples(x_values, y_values, *, source_label):
+    """The largest and the smallest of the points drawn, as a plot marks its extremes."""
+    try:
+        unit = y_values[0].units
+        magnitudes = [float(value.to(unit).magnitude) for value in y_values]
+    except Exception:  # noqa: BLE001 - no marks rather than no plot
+        return ()
+    if not magnitudes:
+        return ()
+    largest = max(range(len(magnitudes)), key=magnitudes.__getitem__)
+    smallest = min(range(len(magnitudes)), key=magnitudes.__getitem__)
+    roles = {largest: ["global_max"]}
+    roles.setdefault(smallest, []).append("global_min")
+    return tuple(
+        CharacteristicPoint(
+            x_symbolic=None,
+            x_quantity=x_values[index],
+            value_symbolic=None,
+            value_quantity=y_values[index],
+            provenance="numeric",
+            roles=tuple(names),
+            source_label=source_label,
+        )
+        for index, names in roles.items()
+    )
 
 
 def _standalone_call(statement, name: str, message: str):
