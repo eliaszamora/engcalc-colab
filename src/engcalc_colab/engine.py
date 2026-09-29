@@ -822,6 +822,10 @@ class EngineeringEngine:
         # line has already been told are read as units. See `_notice_a_letter_read_as_a_unit`.
         self.letters_written_as_units: set[str] = set()
         self.letters_said_to_be_units: set[str] = set()
+        # `solve(eq(2*T, q*L), T)` on a line of its own: the answer shown, `T` left a
+        # variable (`solve(eq(V(x), 0), x)` must not make `M(x)` a constant). The line
+        # it was solved on, for a later line that asks for its value.
+        self.solved_alone: dict[str, int] = {}
         self.units_read_by_line: dict[str, frozenset[str]] = {}
         # The number each figure of `image(...)` was given, by file and caption, so a
         # cell run again keeps its numbers. See `_image_asked_for`.
@@ -1970,6 +1974,7 @@ class EngineeringEngine:
         self.written_sums.clear()
         self.letters_written_as_units.clear()
         self.letters_said_to_be_units.clear()
+        self.solved_alone.clear()
         self.units_read_by_line.clear()
         self.figure_numbers.clear()
         self.frame_members.clear()
@@ -1993,18 +1998,27 @@ class EngineeringEngine:
             return self.namespace[name]
         return self.resolve_symbol(name)
 
-    def _define_what_was_solved(self, statement, name: str, value) -> None:
-        """The unknown of a bare `solve`, stored as `name = solve(...)` stores its name."""
-        kept = self._a_formula_with_a_number(statement, value)
-        self.namespace[name] = value
-        self.numeric_context.matrices.pop(name, None)
-        self.written_namespace.pop(name, None)
-        self.zero_quantities.pop(name, None)
-        if kept:
-            self.kept_names.add(name)
-            self._store_kept_value(name, value)
-        else:
-            self._drop_the_number(name)
+    def _told_where_it_was_solved(self, message: str) -> str:
+        """`requires values for: T`, and where `T` was solved on a line of its own.
+
+        A bare `solve(eq(2*T, q*L), T)` writes `T = q L/2` and defines nothing - the
+        unknown is often the variable of the sheet's functions, and `solve(eq(V(x), 0), x)`
+        defining `x` made `M(x)` a constant (the audit of 0.43.3, 2026-09-28). A later line
+        that asks for its number is told how to keep the answer (his book, chapter 2).
+        """
+        match = re.search(r"requires values for: ([^.]+)\.", message)
+        if not match or "solve(...)" in message:
+            return message
+        names = [name.strip() for name in match.group(1).split(",")]
+        solved = [name for name in names if name in self.solved_alone]
+        if not solved:
+            return message
+        name = solved[0]
+        return (
+            f"{message} {name} was solved on line {self.solved_alone[name]} on a line of "
+            f"its own, which shows the answer and defines nothing; write {name} = "
+            f"solve(...) to use it."
+        )
 
     def _reads_only_values(self, text: str) -> bool:
         """Every name `text` reads has a value, so `numeric` of it has a number to show.
@@ -2816,21 +2830,14 @@ class EngineeringEngine:
             # The formula is read before the name is stored: read after, `v = v + 2*diff(t^2, t)`
             # showed the new `v` inside the formula that defines it.
             shown = self._shown_input(statement, evaluator, value)
-            # `solve(eq(2*T, q*L), T)` on a line of its own wrote `T = q L/2` and defined
-            # nothing, though the one-unknown form is the n = 1 case of a system, which
-            # defines its unknowns (README; his book's problem 2.2, 2026-09-28). One answer
-            # defines it as `T = solve(...)` would; several define nothing, as before.
             body = statement.expression.body
             if (
                 statement.target is None
                 and evaluator.solved_for is not None
-                and isinstance(value, sp.Expr)
-                and not is_matrix(value)
                 and isinstance(body, ast.Call)
                 and getattr(body.func, "id", None) == "solve"
-                and evaluator.solved_for not in self.functions
             ):
-                self._define_what_was_solved(statement, evaluator.solved_for, value)
+                self.solved_alone[evaluator.solved_for] = statement.line_no
             if statement.target is not None:
                 if statement.parameters is not None:
                     for parameter in statement.parameters:
@@ -2900,9 +2907,9 @@ class EngineeringEngine:
                 solved_for=evaluator.solved_for,
             )
         except EngCalcError as exc:
-            message = str(exc)
+            message = self._told_where_it_was_solved(str(exc))
             if message.startswith("line "):
-                raise
+                raise type(exc)(message) from None
             raise type(exc)(f"line {statement.line_no}: {message}") from None
         except Exception as exc:
             raise EngEvaluationError(
@@ -5742,28 +5749,6 @@ def _flattened(kind, *args):
     return kind(*flat, evaluate=False)
 
 
-def _one_fraction(factors: list) -> list:
-    """`5` beside `1/4` is `5/4`: printed apart they read as the mixed number 5 1/4.
-
-    `P/(5*k/4)` over a kept `k` read `P/(5 1/4 k)` - 5.25 k where the value is 1.25 k (his
-    book's problem 2.1, 2026-09-28). An integer and the reciprocal of one are folded into
-    one fraction; a number typed with a point stays as typed, the `2 · 0.85` of 0.42.0.
-    """
-    whole = [f for f in factors if isinstance(f, sp.Integer)]
-    reciprocal = [
-        f for f in factors
-        if isinstance(f, sp.Pow) and isinstance(f.base, sp.Integer) and f.exp == -1
-    ]
-    if not whole or not reciprocal:
-        return factors
-    value = sp.Integer(1)
-    for factor in whole:
-        value *= factor
-    for factor in reciprocal:
-        value /= factor.base
-    rest = [f for f in factors if f not in whole and f not in reciprocal]
-    return [value, *rest] if value != 1 else rest or [sp.Integer(1)]
-
 
 def _in_mode_order(entries) -> tuple:
     """A closed form's eigenvalues once they are numbers, ascending - the order `lam[i]`
@@ -6340,10 +6325,6 @@ class _WrittenFormEvaluator(_Evaluator):
         if isinstance(op, ast.Mult):
             return _flattened(sp.Mul, left, right)
         if isinstance(op, ast.Div):
-            # A product that is the divisor folds its numbers into one fraction: `5*k/4`
-            # under `P/` read `5 1/4 k`. Anywhere else the numbers are the ones typed.
-            if isinstance(right, sp.Mul):
-                right = sp.Mul(*_one_fraction(list(right.args)), evaluate=False)
             return _flattened(
                 sp.Mul, left, sp.Pow(right, sp.Integer(-1), evaluate=False)
             )

@@ -3797,9 +3797,13 @@ The result and plot calls reuse the same symbolic functions and numerical data; 
   solution they are all shown, and the statement defines nothing: there is no single value
   to assign. Use `roots(...)` to take the one inside a physical domain.
 - `solve(eq_1, ..., eq_n, x_1, ..., x_n)` — solve a scalar system: **n equations
-  followed by n unknowns**, so the argument count is always even. The two-argument form
-  above is the n = 1 case of the same rule. A system is a standalone statement: the
-  unknowns are the result, and solving defines them.
+  followed by n unknowns**, so the argument count is always even. A system is a standalone
+  statement: the unknowns are the result, and solving defines them.
+- The two-argument form on a line of its own, `solve(eq(2*T, q*L), T)`, shows the answer
+  and defines nothing: the unknown is often the variable of the sheet's functions, and
+  `solve(eq(V(x), 0), x)` must leave `M(x)` a function of `x`. To use the answer, name it:
+  `T = solve(eq(2*T, q*L), T)`, or `x_0 = solve(eq(V(x), 0), x)`. A later line that asks
+  for the number of an unknown solved this way says so.
 - `sum(expr, index, lower, upper)` — unevaluated indexed symbolic sum.
 - `simplify(expr)` — simplify.
 - `expand(expr)` — expand.

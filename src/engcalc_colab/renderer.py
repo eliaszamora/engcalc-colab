@@ -547,7 +547,14 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if denom is sp.S.One:
             return prefix + snumer
 
-        sdenom = self._print_engineering_product(denom)
+        # A denominator that holds a fraction of its own - the `5*k/4` of `P/(5*k/4)` - is
+        # written as one: printed factor by factor it read `5 \frac{1}{4} k`, the mixed
+        # number 5 1/4, where the value is 1.25 k (his book's problem 2.1, 2026-09-28).
+        # The numbers stay the ones typed.
+        if denom.is_Mul and sp.fraction(denom, exact=True)[1] is not sp.S.One:
+            sdenom = self._print_Mul(denom)
+        else:
+            sdenom = self._print_engineering_product(denom)
         return rf"{prefix}\frac{{{snumer}}}{{{sdenom}}}"
 
     def _print_engineering_product(self, expr):
