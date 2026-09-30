@@ -12,11 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.44.0** - the loop page, branch `feat/a-loop-shows-its-assembly-once` |
-| released | **0.43.4** - #379, `382f339`, closed |
-| before that | **0.43.3** - #377, `e8f05d3`, closed |
-| open PRs | the 0.44.0 PR; the fold branch held (not a PR) |
-| default suite | **3497 passing** on the loop branch (3443 on main) (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| released | **0.44.0** - #381, `624eb87`, closed |
+| before that | **0.43.4** - #379, `382f339`, closed |
+| open PRs | this closure; the fold branch held (not a PR) |
+| default suite | **3497 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1938,9 +1937,34 @@ Every number agrees with a sympy/numpy oracle and with Example 4.14. Findings no
   `7.49 x 10^-7 m`; compound units in typed literals read `kN m`; the `% while` note
   without the counter's name; solved constants still shown in later formulas.
 
-**Exact next step:** merge the 0.44.0 PR on green CI, Deep qualification, `git+https`
-check, his Colab (screenshots), docs closure; then solver D (4.13-4.16), chapter 4's
-examples (section 4.7), re-upload the notebooks to his Drive, and chapter 4's report.
+**0.44.0 is closed** (#381, `624eb87`): CI, Quality Gate Deep (push) and Deep qualification
+green on `624eb87`; a `git+https` install changed only `engcalc-colab`, 33 files identical to
+the release tree, smoke 47/47. In his Colab (Untitled9 cell 3, his cell 0 first, 2026-09-30):
+`engcalc 0.44.0`, a 3-bar truss's formulas once, its table, `g_ij` as one rule, `K = 0_{6x6}`,
+the assembly note (para / con / rule), `K : 6 x 6, simétrica, 36 términos no nulos`,
+`Z = 0_{36x36}`, no KaTeX error; two screenshots sent. Seen there: the note's rule rows set
+fractions in text style (small) - `\displaystyle` in each rule row is the fix, not done.
+
+### His book, chapter 4 complete (solver D: 4.13-4.16 and Examples 4.5-4.15)
+
+Every number agrees with the oracle and the book (4.12's table misprints .423 for .413).
+The notebooks in his Drive now hold chapters 2-4 with their worked examples (6, 6, 11) and
+problems (13, 24, 17). Solver D's findings, not fixed:
+- **Wrong number:** `diff` treats a name set by a system `solve` as a constant
+  (`t = subs(diff(y(x), x), x, 0)` then `diff(t, p)` gives 0 for -1); linked to the
+  system-solve-defines-its-unknowns finding.
+- **Presentation:** a sheet function's call inlines the `=` names of its argument; a
+  kip/inch sheet's matrices read in SI; a loop's `:=` lines that read matrix entries
+  (`N_{m} := f_{m}[1]`, shown as written) are never tabled; `frame_plot` draws no moment
+  applied at a supported joint, and its value box covers a drawn one's label; trig of
+  degree values never reduces symbolically; values between 0.1 and 1 get two decimals
+  (0.24 in for 0.237); units chosen per entry in one displacement vector; a long literal
+  index list runs off the page; `factor` of a matrix works per entry.
+- **Missing:** `sinh`, `cosh`, `tanh`; a scalar minus a 1x1 matrix.
+
+**Exact next step:** his pick among the findings of chapters 2-4 (list above and the
+examples' list); the display-style fix for the loop note's rule rows is the natural 0.44.1.
+Chapter 5 next when he says.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
