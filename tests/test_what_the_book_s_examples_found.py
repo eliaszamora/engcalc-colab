@@ -75,6 +75,68 @@ def test_a_constant_the_sheet_redefines_is_read_as_redefined(monkeypatch):
     assert r"g & = & \frac{d}{d p} C_{1} = 0" in page or r"g & = & 0" in page, page
 
 
+def _cells(cells: list[str], monkeypatch) -> tuple[list[str], str]:
+    captured = []
+    monkeypatch.setattr(magic, "display", captured.append)
+    console = io.StringIO()
+    engine = magic.EngMagics()
+    pages = []
+    with contextlib.redirect_stdout(console):
+        for cell in cells:
+            captured.clear()
+            engine.eng("", cell)
+            pages.append(" ".join(item.data for item in captured if isinstance(item, Math)).replace(r"\displaystyle ", ""))
+    return pages, console.getvalue()
+
+
+SOLVE = (
+    "solve(eq(subs(y(x), x, 0), 0), eq(subs(y(x), x, 1), 0), C_1, C_2)\n"
+    "t = subs(diff(y(x), x), x, 0)\n"
+)
+
+
+def test_a_solve_run_again_solves_again(monkeypatch):
+    pages, console = _cells(["p := 2\ny(x) = C_1*x + C_2 + p*x^2\n", SOLVE, SOLVE], monkeypatch)
+    assert not console, console
+    assert r"C_{1} & = & - p" in pages[2] and r"t & = &" in pages[2], pages[2]
+
+
+def test_a_second_solve_under_other_conditions(monkeypatch):
+    source = (
+        "y(x) = C_1*x + C_2 + p*x^2\nsolve(eq(y(0), 0), eq(y(1), 0), C_1, C_2)\na = y(1/2)\n"
+        "solve(eq(y(0), 0), eq(diff(y(x), x), 0), C_1, C_2)\nb = y(1/2)\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert "no solution" not in console, console
+    assert r"a & = &" in page and r"b & = &" in page, page
+
+
+def test_an_equation_stays_an_equation_after_its_solve(monkeypatch):
+    pages, console = _cells(
+        ["e1 = eq(P, k*x)\ne2 = eq(P, c*(y - x))\n", "solve(e1, e2, x, P)\ne3 = e1\n", "solve(e1, e2, x, P)\n"],
+        monkeypatch,
+    )
+    assert not console, console
+    assert "True" not in pages[1], pages[1]
+    assert r"x & = &" in pages[2], pages[2]
+
+
+def test_the_free_variable_a_system_solve_answers_is_not_fixed(monkeypatch):
+    source = (
+        "M_x = R*x - w*x^2/2\nsolve(eq(diff(M_x, x), 0), eq(R, w*L/2), x, R)\n"
+        "p = subs(M_x, x, L/4)\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert r"p & = & \frac{3 w L^{2}}{32}" in page, page
+
+
+def test_subs_of_a_solved_constant_replaces_the_constant(monkeypatch):
+    source = "y(x) = C_1*x + C_2\nsolve(eq(y(0), 1), eq(y(1), 0), C_1, C_2)\nF = subs(y(x), C_1, 0)\nG = subs(C_1*x, C_1, 0)\n"
+    page, console = _run(source, monkeypatch)
+    assert r"F & = & 1" in page or r"= 1 \\" in page.split("F & = &")[1][:80], page
+    assert r"G & = & 0" in page or r"= 0 \end" in page, page
+
+
 def test_a_kept_name_in_a_function_stays_a_name(monkeypatch):
     page, console = _run("keep k = E*A/L\nf(x) = k*x\nz = f(2)\n", monkeypatch)
     assert not console, console
