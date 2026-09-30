@@ -5696,7 +5696,9 @@ def assembly_note_latex(passes: int, template: str, variable=(), labels=None, he
     """
     word = "paso" if passes == 1 else "pasos"
     rows = _loop_note_rows(rf"\textbf{{Ensamble en {passes} {word}}}", variable, labels, helpers, constants)
-    rows.append(rf"\quad {_rule_latex(template)}")
+    # At the page's size: in the note's array a fraction was set in text style, smaller
+    # than every other row (0.44.0, seen in his Colab).
+    rows.append(rf"\quad \displaystyle {_rule_latex(template)}")
     return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
 
 
@@ -5712,7 +5714,7 @@ def formula_rules_latex(passes: int, templates, variable=(), labels=None, helper
     """
     opening = rf"\textbf{{En cada uno de los {passes} pasos}}" if passes != 1 else r"\textbf{En el paso}"
     rows = _loop_note_rows(opening, variable, labels, helpers, constants)
-    rows.extend(rf"\quad {_formula_rule_latex(template)}" for template in templates)
+    rows.extend(rf"\quad \displaystyle {_formula_rule_latex(template)}" for template in templates)
     return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
 
 

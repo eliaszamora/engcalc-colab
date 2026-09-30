@@ -787,6 +787,15 @@ class EngineeringEngine:
         # what it stands for; `namespace` still holds the expanded expression and
         # everything computes with that, so the barrier is presentation only.
         self.kept_names: set[str] = set()
+        # What a `solve` of a system fixed, the constants of an elastic curve among them:
+        # a formula written before it reads them by their values (see `with_solved`).
+        self.solved_values: dict[str, object] = {}
+        # Unknowns read as themselves for the moment: those of a `solve` being worked out,
+        # and a solved constant `subs` replaces.
+        self.held: set[str] = set()
+        # Every answer of a `solve` of a system, constants and variables alike, while the
+        # name still holds it: `subs` replaces such a name as a name.
+        self.solve_answers: dict[str, object] = {}
         # The kept names whose number in `numeric_context.values` was computed from their
         # expression, and so follows it. See `_refresh_kept_values`.
         self.kept_values: set[str] = set()
@@ -1995,8 +2004,45 @@ class EngineeringEngine:
 
     def resolve_name(self, name: str):
         if name in self.namespace:
-            return self.namespace[name]
+            if name in self.held and self.namespace[name] is self.solve_answers.get(name):
+                return self.resolve_symbol(name)
+            return self.with_solved(self.namespace[name])
         return self.resolve_symbol(name)
+
+    def _variables_of_the_sheet(self, call) -> set[str]:
+        """The names a `solve` call treats as variables rather than constants: every
+        parameter of the sheet's functions, and what it differentiates or integrates by."""
+        variables = {parameter for function in self.functions.values() for parameter in function.parameters}
+        for node in ast.walk(call):
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("diff", "integrate"):
+                variables.update(argument.id for argument in node.args[1:] if isinstance(argument, ast.Name))
+        return variables
+
+    def with_solved(self, value):
+        """`value` with the unknowns a `solve` of a system fixed read by what it fixed them to.
+
+        `y(x) = C_1*x + C_2 + p*x^2`, then `solve(..., C_1, C_2)` gives `C_1 = -p`: a name
+        written on a line read `-p`, but the curve kept `C_1` - `t = subs(diff(y(x), x), x, 0)`
+        read `C_1` and `diff(t, p)` gave 0 for -1 (his book, Example 4.5). Only what a solve
+        fixed, while it still holds that value: a later `C_1 = ...` of the sheet's own is
+        read where it is written, and a kept name stays a name.
+        """
+        if not self.solved_values or isinstance(value, sp.Rel):
+            # An equation stays the equation it was written as: with its unknowns read by
+            # the answer, `eq(P, k*x)` read `True`, and a second solve of it failed.
+            return value
+        free = getattr(value, "free_symbols", None)
+        if not free:
+            return value
+        fixed = {
+            symbol: self.solved_values[symbol.name]
+            for symbol in free
+            if symbol.name in self.solved_values
+            and symbol.name not in self.kept_names
+            and symbol.name not in self.held
+            and self.namespace.get(symbol.name) is self.solved_values[symbol.name]
+        }
+        return substitute_symbolic_value(value, fixed) if fixed else value
 
     def _told_where_it_was_solved(self, message: str) -> str:
         """`requires values for: T`, and where `T` was solved on a line of its own.
@@ -2595,8 +2641,18 @@ class EngineeringEngine:
                         "are the result and are defined by it"
                     )
                 if system.kind == "system":
+                    variables = self._variables_of_the_sheet(statement.expression.body)
                     for name, value in system.solutions:
                         self.namespace[name] = value
+                        self.solve_answers[name] = value
+                        # The free variable of the sheet's formulas - the x of `diff(M, x)`,
+                        # a function's parameter - is solved for a point, not fixed: read
+                        # everywhere by its answer, `M_x` became the constant M_max, and
+                        # `subs(M_x, x, L/4)` a wrong number (the audit of 0.44.1).
+                        if name in variables:
+                            self.solved_values.pop(name, None)
+                        else:
+                            self.solved_values[name] = value
                 return SystemSolveResult(
                     statement=statement,
                     equations=system.equations,
@@ -3278,8 +3334,9 @@ class _Evaluator(ast.NodeVisitor):
         return build_piecewise(branches, default)
 
     def _called(self, name, function, bindings):
-        """A call of a function of the sheet: its body, with the arguments put in."""
-        return substitute_symbolic_value(function.expression, bindings)
+        """A call of a function of the sheet: its body, with the arguments put in, and the
+        unknowns a later `solve` fixed read by their values (`EngineeringEngine.with_solved`)."""
+        return self.engine.with_solved(substitute_symbolic_value(function.expression, bindings))
 
     def visit_Call(self, node: ast.Call):
         """A call, with a `solve` answered once for both readings of its statement.
@@ -3722,6 +3779,19 @@ class _Evaluator(ast.NodeVisitor):
             )
             return symbolic_expression
 
+        if name == "solve" and not getattr(self, "_holding_the_unknowns", False):
+            # Its unknowns read as themselves while it is worked out: an equation that
+            # reached a constant a solve fixed before read its answer, and solving it again -
+            # the cell run twice, or other conditions - found no solution (audit of 0.44.1).
+            before = set(self.engine.held)
+            self.engine.held |= {argument.id for argument in node.args if isinstance(argument, ast.Name)}
+            self._holding_the_unknowns = True
+            try:
+                return self._read_call(node)
+            finally:
+                self._holding_the_unknowns = False
+                self.engine.held = before
+
         if name == "solve":
             if node.args and isinstance(node.args[0], ast.Compare):
                 return self._evaluate_inequality(node)
@@ -3792,7 +3862,51 @@ class _Evaluator(ast.NodeVisitor):
                 return None
             return solutions[0]
 
-        args = [self.visit(arg) for arg in node.args]
+        solved_variables = (
+            {
+                argument.id
+                for position, argument in enumerate(node.args)
+                if position % 2 == 1
+                and isinstance(argument, ast.Name)
+                and argument.id in self.engine.solve_answers
+                and self.engine.namespace.get(argument.id) is self.engine.solve_answers[argument.id]
+            }
+            if name == "subs"
+            else set()
+        )
+        if solved_variables:
+            # `subs(y(x), C_1, 0)` of a constant a solve fixed: the expression is read with
+            # C_1 standing and the name replaced. Read by its answer, C_1 was the number -1,
+            # and every -1 of the expression became 0 (the audit of 0.44.1).
+            before = set(self.engine.held)
+            self.engine.held |= solved_variables
+            try:
+                args = [
+                    self.engine.resolve_symbol(argument.id)
+                    if position % 2 == 1 and isinstance(argument, ast.Name) and argument.id in solved_variables
+                    else self.visit(argument)
+                    for position, argument in enumerate(node.args)
+                ]
+            finally:
+                self.engine.held = before
+            # Written after the solve, the expression holds the answer, not the name
+            # (`F = P*x + Q` is `6 x + 4`): the answer is replaced where it stands, as a
+            # variable's definition always has been.
+            free = set()
+            for entry in (args[0] if is_matrix(args[0]) else [args[0]]):
+                free |= getattr(sp.sympify(entry), "free_symbols", set())
+            answer_pairs = [
+                (self.engine.namespace[argument.id], args[position + 1])
+                for position, argument in enumerate(node.args)
+                if position % 2 == 1
+                and position + 1 < len(args)
+                and isinstance(argument, ast.Name)
+                and argument.id in solved_variables
+                and args[position] not in free
+            ]
+        else:
+            args = [self.visit(arg) for arg in node.args]
+            answer_pairs = []
 
         if name == "identity":
             self._require_arity(name, args, 1, "dimension")
@@ -4028,7 +4142,17 @@ class _Evaluator(ast.NodeVisitor):
                     "subs expects an expression followed by variable/value pairs, so an "
                     f"odd number of arguments; got {len(args)}"
                 )
-            replacements = list(zip(args[1::2], args[2::2]))
+            replacements = list(zip(args[1::2], args[2::2])) + answer_pairs
+            # A variable with a definition is read as its definition, and that is replaced
+            # where it stands - `y = P/k` written into `F` before it. A formula written
+            # before `y` holds the name itself: `F = k*(y - x)`, `y = P/k`, and
+            # `subs(F, y, 0)` replaced nothing (his book, Example 2.6). Both are replaced.
+            for position in range(1, len(node.args), 2):
+                variable = node.args[position]
+                if isinstance(variable, ast.Name) and variable.id in self.engine.namespace:
+                    symbol = self.engine.resolve_symbol(variable.id)
+                    if all(symbol != old for old, _new in replacements):
+                        replacements.append((symbol, args[position + 1]))
             # ``simultaneous`` because writing several replacements on one line means
             # they happen together: subs(x + y, x, y, y, 2) is y + 2, not 4.
             if is_matrix(args[0]):

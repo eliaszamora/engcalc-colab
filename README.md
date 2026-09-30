@@ -13,8 +13,26 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.44.0**.
+Current version: **0.44.1**.
 
+
+## v0.44.1 what the book's worked examples found
+
+**His book's worked examples, chapters 2-4, agreed with the book's answers - two of them
+only after a workaround.** Corrected:
+
+- What a `solve` of a system fixed is read by its value in a formula or a function written
+  before it, as a name written on the line always was: `y(x) = C_1*x + C_2 + p*x^2`, then
+  `solve(..., C_1, C_2)` gives `C_1 = -p`, and `t = subs(diff(y(x), x), x, 0)` read `C_1`:
+  `diff(t, p)` gave `0` for `-1` (Example 4.5). A kept name stays a name; the variable a
+  solve answers for a point - a function's parameter, what it differentiates by - is not
+  fixed elsewhere; a solve reads its own unknowns as unknowns, so it can be run again.
+- `subs` replaces the name, whichever came first: `F = k*(y - x)`, then `y = P/k`, then
+  `subs(F, y, 0)` gave `F` unchanged, silently, and gives `-k x`; `subs(y(x), C_1, 0)` of a
+  solved constant replaces the constant, not every number equal to it.
+- A `=` line of a loop that works something out every pass (`subs`, `diff`, a `solve`)
+  keeps its rows instead of being said as one rule.
+- The formulas in a loop's note are set at the page's size; their fractions were small.
 
 ## v0.44.0 a loop that assembles shows it once
 
@@ -3945,6 +3963,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.44.1** — what a `solve` of a system fixed is read in formulas and functions written before it (`diff` of one was 0 for -1); `subs` replaces a name whichever came first; a solve can be run again; a loop note's formulas at the page's size.
 - **0.44.0** — a `% for` that assembles a matrix shows the assembly once (the rule, the values its names took, the matrix or its size when it does not fit); two or more `:=` values in a loop are one table under their formulas; a formula every pass wrote with other subscripts is written once; a large zero matrix is written `0_{r×c}`.
 - **0.43.4** — a plot too large to work out exactly is marked from its points instead of hanging; a plot in the algebra's unit reads in the page's (one unit per axis); a `:=` value written with a bracket unit reads in the page's unit (`301.00 kN`, not `301000.00 m·kg/s²`); no `__u_m` on the page.
 - **0.43.3** — a computed coefficient keeps its figures (`-0.007`, not `-0.01`); a denominator holding a fraction is written as one (`P/((5 k)/4)`, not `P/(5 1/4 k)`); `x := solve(...)` is worked out; a bare `solve` says how to keep its answer.
@@ -4073,4 +4092,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.44.0`.
+Version: `0.44.1`.

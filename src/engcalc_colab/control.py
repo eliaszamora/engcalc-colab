@@ -813,6 +813,14 @@ def _a_formula(item, result) -> bool:
         return False
     if any(isinstance(node, ast.Name) and node.id == item.target for node in ast.walk(item.expression.body)):
         return False
+    # A rule is the same formula with other subscripts: its right side reads the loop's
+    # values. One that reads none, or works something out - `t_{i} = subs(diff(y(x), x),
+    # x, 0)` after a solve each pass - has a result of its own every pass (the audit of
+    # 0.44.1: two different results were said by one rule, `subs` and all).
+    template = getattr(item, "written_as", None) or item.source
+    right = template.split("=", 1)[1] if "=" in template else ""
+    if "{" not in right or re.search(r"\b(?:subs|diff|integrate|solve|numeric|simplify|expand|factor|limit)\s*\(", right):
+        return False
     units = set(getattr(result, "unit_literals", ()) or ())
     symbols = getattr(result.value, "free_symbols", set())
     return any(
