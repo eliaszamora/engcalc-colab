@@ -3278,8 +3278,52 @@ class _Evaluator(ast.NodeVisitor):
         return build_piecewise(branches, default)
 
     def _called(self, name, function, bindings):
-        """A call of a function of the sheet: its body, with the arguments put in."""
-        return substitute_symbolic_value(function.expression, bindings)
+        """A call of a function of the sheet: its body, with the arguments put in.
+
+        A name of the body defined after the function was - the constants a `solve`
+        fixed, `C_1 = -p` - is read as it is read written on the line: by its definition.
+        The body kept it as an unknown, and `diff(subs(diff(y(x), x), x, 0), p)` gave 0
+        for -1 (his book, Example 4.5). A kept name stays a name, as everywhere.
+        """
+        return substitute_symbolic_value(self._with_later_names(function), bindings)
+
+    def _say_what_subs_cannot_replace(self, node: ast.Call, args) -> None:
+        """`subs(F, y, 0)` where F was written after `y = P/k`: F holds `P/k`, not `y`, and
+        there is nothing to replace. Said, instead of a result that silently equals F."""
+        if len(args) < 3 or len(args) % 2 == 0:
+            return
+        expression = args[0]
+        free = set()
+        for entry in (expression if is_matrix(expression) else [expression]):
+            free |= getattr(sp.sympify(entry), "free_symbols", set())
+        for position in range(1, len(node.args), 2):
+            variable = node.args[position]
+            if not isinstance(variable, ast.Name) or variable.id not in self.engine.namespace:
+                continue
+            if args[position] in free:
+                continue
+            said = (
+                f"subs({ast.unparse(node.args[0])}, {variable.id}, ...) replaces nothing: "
+                f"{variable.id} was defined with '=' before {ast.unparse(node.args[0])} was "
+                f"written, so it reads the value of {variable.id}, not the name. Write "
+                f"{ast.unparse(node.args[0])} before {variable.id}, or give the value of "
+                f"{variable.id} another name, such as {variable.id}_1."
+            )
+            if said not in self.engine.notices:
+                self.engine.notices.append(said)
+
+    def _with_later_names(self, function):
+        body = function.expression
+        free = getattr(body, "free_symbols", set())
+        later = {
+            symbol: self.engine.namespace[symbol.name]
+            for symbol in free
+            if symbol.name in self.engine.namespace
+            and symbol.name not in function.parameters
+            and symbol.name not in self.engine.kept_names
+            and self.engine.namespace[symbol.name] != symbol
+        }
+        return substitute_symbolic_value(body, later) if later else body
 
     def visit_Call(self, node: ast.Call):
         """A call, with a `solve` answered once for both readings of its statement.
@@ -3792,7 +3836,19 @@ class _Evaluator(ast.NodeVisitor):
                 return None
             return solutions[0]
 
-        args = [self.visit(arg) for arg in node.args]
+        if name == "subs":
+            # The variable of `subs(F, y, 0)` is the name `y`, not its definition: read as
+            # `P/k` it replaced nothing in `k (y - x)`, and said nothing (his book,
+            # Example 2.6).
+            args = [
+                self.engine.resolve_symbol(arg.id)
+                if position % 2 == 1 and isinstance(arg, ast.Name)
+                else self.visit(arg)
+                for position, arg in enumerate(node.args)
+            ]
+            self._say_what_subs_cannot_replace(node, args)
+        else:
+            args = [self.visit(arg) for arg in node.args]
 
         if name == "identity":
             self._require_arity(name, args, 1, "dimension")
