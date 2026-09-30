@@ -77,6 +77,11 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.44.1: what the book's worked examples found
+check("a function reads what a later solve fixed; subs of a defined name",
+      "y(x) = C_1*x + C_2 + p*x^2\nsolve(eq(subs(y(x), x, 0), 0), eq(subs(y(x), x, 1), 0), C_1, C_2)\n"
+      "t = subs(diff(y(x), x), x, 0)\ng = diff(t, p)\nF = k*(u - x)\nu = P/k\nG = subs(F, u, 0)",
+      r"g & = & \displaystyle \frac{d}{d p} \left(- p\right) = -1", r"G & = & \displaystyle - k x")
 # 0.44.0: a loop that assembles shows it once; its := values are one table
 check("an assembly is shown once, a table of the loop's values",
       "k := 100[kN/mm]\nK = zeros(3, 3)\n% for p, q in [(1, 2), (2, 3)]:\n"

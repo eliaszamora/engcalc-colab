@@ -787,6 +787,9 @@ class EngineeringEngine:
         # what it stands for; `namespace` still holds the expanded expression and
         # everything computes with that, so the barrier is presentation only.
         self.kept_names: set[str] = set()
+        # What a `solve` of a system fixed, the constants of an elastic curve among them:
+        # a formula written before it reads them by their values (see `with_solved`).
+        self.solved_values: dict[str, object] = {}
         # The kept names whose number in `numeric_context.values` was computed from their
         # expression, and so follows it. See `_refresh_kept_values`.
         self.kept_values: set[str] = set()
@@ -1995,8 +1998,31 @@ class EngineeringEngine:
 
     def resolve_name(self, name: str):
         if name in self.namespace:
-            return self.namespace[name]
+            return self.with_solved(self.namespace[name])
         return self.resolve_symbol(name)
+
+    def with_solved(self, value):
+        """`value` with the unknowns a `solve` of a system fixed read by what it fixed them to.
+
+        `y(x) = C_1*x + C_2 + p*x^2`, then `solve(..., C_1, C_2)` gives `C_1 = -p`: a name
+        written on a line read `-p`, but the curve kept `C_1` - `t = subs(diff(y(x), x), x, 0)`
+        read `C_1` and `diff(t, p)` gave 0 for -1 (his book, Example 4.5). Only what a solve
+        fixed, while it still holds that value: a later `C_1 = ...` of the sheet's own is
+        read where it is written, and a kept name stays a name.
+        """
+        if not self.solved_values:
+            return value
+        free = getattr(value, "free_symbols", None)
+        if not free:
+            return value
+        fixed = {
+            symbol: self.solved_values[symbol.name]
+            for symbol in free
+            if symbol.name in self.solved_values
+            and symbol.name not in self.kept_names
+            and self.namespace.get(symbol.name) is self.solved_values[symbol.name]
+        }
+        return substitute_symbolic_value(value, fixed) if fixed else value
 
     def _told_where_it_was_solved(self, message: str) -> str:
         """`requires values for: T`, and where `T` was solved on a line of its own.
@@ -2597,6 +2623,7 @@ class EngineeringEngine:
                 if system.kind == "system":
                     for name, value in system.solutions:
                         self.namespace[name] = value
+                        self.solved_values[name] = value
                 return SystemSolveResult(
                     statement=statement,
                     equations=system.equations,
@@ -3278,52 +3305,9 @@ class _Evaluator(ast.NodeVisitor):
         return build_piecewise(branches, default)
 
     def _called(self, name, function, bindings):
-        """A call of a function of the sheet: its body, with the arguments put in.
-
-        A name of the body defined after the function was - the constants a `solve`
-        fixed, `C_1 = -p` - is read as it is read written on the line: by its definition.
-        The body kept it as an unknown, and `diff(subs(diff(y(x), x), x, 0), p)` gave 0
-        for -1 (his book, Example 4.5). A kept name stays a name, as everywhere.
-        """
-        return substitute_symbolic_value(self._with_later_names(function), bindings)
-
-    def _say_what_subs_cannot_replace(self, node: ast.Call, args) -> None:
-        """`subs(F, y, 0)` where F was written after `y = P/k`: F holds `P/k`, not `y`, and
-        there is nothing to replace. Said, instead of a result that silently equals F."""
-        if len(args) < 3 or len(args) % 2 == 0:
-            return
-        expression = args[0]
-        free = set()
-        for entry in (expression if is_matrix(expression) else [expression]):
-            free |= getattr(sp.sympify(entry), "free_symbols", set())
-        for position in range(1, len(node.args), 2):
-            variable = node.args[position]
-            if not isinstance(variable, ast.Name) or variable.id not in self.engine.namespace:
-                continue
-            if args[position] in free:
-                continue
-            said = (
-                f"subs({ast.unparse(node.args[0])}, {variable.id}, ...) replaces nothing: "
-                f"{variable.id} was defined with '=' before {ast.unparse(node.args[0])} was "
-                f"written, so it reads the value of {variable.id}, not the name. Write "
-                f"{ast.unparse(node.args[0])} before {variable.id}, or give the value of "
-                f"{variable.id} another name, such as {variable.id}_1."
-            )
-            if said not in self.engine.notices:
-                self.engine.notices.append(said)
-
-    def _with_later_names(self, function):
-        body = function.expression
-        free = getattr(body, "free_symbols", set())
-        later = {
-            symbol: self.engine.namespace[symbol.name]
-            for symbol in free
-            if symbol.name in self.engine.namespace
-            and symbol.name not in function.parameters
-            and symbol.name not in self.engine.kept_names
-            and self.engine.namespace[symbol.name] != symbol
-        }
-        return substitute_symbolic_value(body, later) if later else body
+        """A call of a function of the sheet: its body, with the arguments put in, and the
+        unknowns a later `solve` fixed read by their values (`EngineeringEngine.with_solved`)."""
+        return self.engine.with_solved(substitute_symbolic_value(function.expression, bindings))
 
     def visit_Call(self, node: ast.Call):
         """A call, with a `solve` answered once for both readings of its statement.
@@ -3836,19 +3820,7 @@ class _Evaluator(ast.NodeVisitor):
                 return None
             return solutions[0]
 
-        if name == "subs":
-            # The variable of `subs(F, y, 0)` is the name `y`, not its definition: read as
-            # `P/k` it replaced nothing in `k (y - x)`, and said nothing (his book,
-            # Example 2.6).
-            args = [
-                self.engine.resolve_symbol(arg.id)
-                if position % 2 == 1 and isinstance(arg, ast.Name)
-                else self.visit(arg)
-                for position, arg in enumerate(node.args)
-            ]
-            self._say_what_subs_cannot_replace(node, args)
-        else:
-            args = [self.visit(arg) for arg in node.args]
+        args = [self.visit(arg) for arg in node.args]
 
         if name == "identity":
             self._require_arity(name, args, 1, "dimension")
@@ -4085,6 +4057,16 @@ class _Evaluator(ast.NodeVisitor):
                     f"odd number of arguments; got {len(args)}"
                 )
             replacements = list(zip(args[1::2], args[2::2]))
+            # A variable with a definition is read as its definition, and that is replaced
+            # where it stands - `y = P/k` written into `F` before it. A formula written
+            # before `y` holds the name itself: `F = k*(y - x)`, `y = P/k`, and
+            # `subs(F, y, 0)` replaced nothing (his book, Example 2.6). Both are replaced.
+            for position in range(1, len(node.args), 2):
+                variable = node.args[position]
+                if isinstance(variable, ast.Name) and variable.id in self.engine.namespace:
+                    symbol = self.engine.resolve_symbol(variable.id)
+                    if all(symbol != old for old, _new in replacements):
+                        replacements.append((symbol, args[position + 1]))
             # ``simultaneous`` because writing several replacements on one line means
             # they happen together: subs(x + y, x, y, y, 2) is y + 2, not 4.
             if is_matrix(args[0]):

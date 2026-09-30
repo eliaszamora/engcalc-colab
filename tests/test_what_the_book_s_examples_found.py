@@ -5,7 +5,11 @@ note seen in his Colab with 0.44.0.
   them as unknowns - `t = subs(diff(y(x), x), x, 0)` stayed `C_1` although `C_1 = -p`
   stood two rows above it, and `diff(t, p)` gave 0 for -1. A wrong number.
 - Example 2.6: `subs(F, y, 0)` of a name `y` with a definition read `y` as its definition
-  and replaced nothing, silently.
+  and replaced nothing, silently, where `F` was written before `y` and holds the name.
+
+Reading every name a function's body holds by its latest definition was tried first and
+audited: it broke `keep`, captured arguments, and moved pages that read a formula on
+purpose. Only what a `solve` of a system fixed is read later, and only while it holds.
 - 0.44.0 in Colab: the rule rows of a loop's note set their fractions in text style,
   smaller than every other row of the page.
 """
@@ -43,9 +47,32 @@ def test_a_function_reads_the_constants_a_later_solve_fixed(monkeypatch):
     assert r"= 0 \end{array}" not in page, page
 
 
-def test_a_function_reads_a_name_defined_after_it(monkeypatch):
-    page, console = _run("f(x) = a*x\na = 3\nz = f(2)\n", monkeypatch)
-    assert r"z & = & f\left(2\right) \\[8pt]  & = & 6" in page, page
+def test_a_formula_written_before_the_solve_reads_its_constants_too(monkeypatch):
+    # The same curve as a name, not a function: both read what the solve fixed.
+    source = (
+        "y_0 = C_1*x + C_2 + p*x^2\n"
+        "solve(eq(subs(y_0, x, 0), 0), eq(subs(y_0, x, 1), 0), C_1, C_2)\n"
+        "t = subs(diff(y_0, x), x, 0)\n"
+        "g = diff(t, p)\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"= -1 \end{array}" in page, page
+
+
+def test_only_what_a_solve_fixed_is_read_later(monkeypatch):
+    # A name the sheet defines after a function is read where it is written, as before:
+    # the call still reads `2 a`, and a later `a = x + 1` captures no argument.
+    page, console = _run("f(x) = a*x\na = x + 1\nr = f(2)\n", monkeypatch)
+    assert r"r & = & f\left(2\right) \\[8pt]  & = & 2 a" in page, page
+    page, console = _run("keep k = E*A/L\nL = 4\nf(x) = k*x\nz = f(2)\nw = 2*k\n", monkeypatch)
+    assert r"z & = & f\left(2\right) \\[8pt]  & = & 2 k" in page, page
+
+
+def test_a_constant_the_sheet_redefines_is_read_as_redefined(monkeypatch):
+    source = CONSTANTS.replace("t = subs", "C_1 = 7\nt = subs")
+    page, console = _run(source, monkeypatch)
+    assert r"g & = & \frac{d}{d p} C_{1} = 0" in page or r"g & = & 0" in page, page
 
 
 def test_a_kept_name_in_a_function_stays_a_name(monkeypatch):
@@ -55,14 +82,18 @@ def test_a_kept_name_in_a_function_stays_a_name(monkeypatch):
 
 
 def test_subs_replaces_a_name_that_has_a_definition(monkeypatch):
+    # Written before the definition, the formula holds the name.
     page, console = _run("F = k*(y - x)\ny = P/k\nG = subs(F, y, 0)\n", monkeypatch)
     assert r"G & = & - k x" in page, page
+    # Written after it, the formula holds its value, and the value is replaced, as before.
+    page, console = _run("y = P/k\nF = k*(y - x) + z\nG = subs(F, x, 1, y, 2)\n", monkeypatch)
+    assert r"G & = & k + z" in page, page
 
 
-def test_subs_says_when_there_is_nothing_to_replace(monkeypatch):
-    page, console = _run("y = P/k\nF = k*(y - x)\nG = subs(F, y, 0)\n", monkeypatch)
-    assert "subs(F, y, ...) replaces nothing" in console, console
-    assert console.count("replaces nothing") == 1, console
+def test_subs_of_a_kept_name_replaces_it(monkeypatch):
+    page, console = _run("keep k = E*A/L\nF = k*x\nG = subs(F, k, 5)\n", monkeypatch)
+    assert not console, console
+    assert r"G & = & 5 x" in page, page
 
 
 def test_the_rule_of_a_loop_s_note_is_set_at_the_page_s_size(monkeypatch):
