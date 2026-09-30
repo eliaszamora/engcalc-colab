@@ -5641,7 +5641,12 @@ def _expression_label_latex(value: str) -> str | None:
     """`"-cos(60[deg])"` or `"L_v/L_t"`, a loop value the `{...}` puts into a formula, as
     the page writes a formula - it was `\text{-cos(60[deg])}`, the source typed. A word, a
     name or anything that is not an expression of the sheet keeps its text."""
-    if not re.search(r"[-+*/^()\[\]]", value) or not re.fullmatch(r"[\w\s.+\-*/^()\[\],]+", value):
+    # A hyphen alone is a name's dash, not a minus: a bar "1-2", a direction "N-S", a span
+    # "Viga (A-B)" are labels. An expression shows itself by a product, a quotient, a power,
+    # a unit or a function of the page's.
+    if not re.fullmatch(r"[\w\s.+\-*/^()\[\],]+", value):
+        return None
+    if not (re.search(r"[*/^\[]", value) or re.search(r"\b(?:%s)\s*\(" % "|".join(_LABEL_FUNCTIONS), value)):
         return None
     try:
         from .parser import normalize_expression  # noqa: PLC0415 - the parser imports the renderer's models
@@ -5654,7 +5659,10 @@ def _expression_label_latex(value: str) -> str | None:
         node.id for node in ast.walk(tree) if isinstance(node, ast.Name) and node.id.startswith(BRACKETED_UNIT_PREFIX)
     )
     written = rule.latex(tree)
-    return None if r"	exttt" in written else written
+    return None if r"\texttt" in written else written
+
+
+_LABEL_FUNCTIONS = ("sin", "cos", "tan", "sqrt", "exp", "log", "ln", "abs", "asin", "acos", "atan")
 
 
 def _numbers_only(value) -> bool:
@@ -5671,7 +5679,7 @@ def _literal_latex(value) -> str:
     return str(value) if isinstance(value, int) else f"{value:g}"
 
 
-def assembly_note_latex(passes: int, template: str, variable=(), labels=None, helpers=()) -> str:
+def assembly_note_latex(passes: int, template: str, variable=(), labels=None, helpers=(), constants=()) -> str:
     r"""The rule of a loop's assembly, once, in rows:
 
         Ensamble en 33 pasos, para (i, j, m, n) = (A, B, 1, 3), (B, C, 3, 5), …, (h, I, 16, 17),
@@ -5687,12 +5695,12 @@ def assembly_note_latex(passes: int, template: str, variable=(), labels=None, he
     was the part cut off.
     """
     word = "paso" if passes == 1 else "pasos"
-    rows = _loop_note_rows(rf"\textbf{{Ensamble en {passes} {word}}}", variable, labels, helpers)
+    rows = _loop_note_rows(rf"\textbf{{Ensamble en {passes} {word}}}", variable, labels, helpers, constants)
     rows.append(rf"\quad {_rule_latex(template)}")
     return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
 
 
-def formula_rules_latex(passes: int, templates, variable=(), labels=None, helpers=()) -> str:
+def formula_rules_latex(passes: int, templates, variable=(), labels=None, helpers=(), constants=()) -> str:
     r"""The `=` lines a loop ran every pass, once, as the sheet writes them:
 
         En cada uno de los 33 pasos, para (i, j, m, n) = (A, B, 1, 3), …:
@@ -5703,14 +5711,15 @@ def formula_rules_latex(passes: int, templates, variable=(), labels=None, helper
     the developer's judgement by him).
     """
     opening = rf"\textbf{{En cada uno de los {passes} pasos}}" if passes != 1 else r"\textbf{En el paso}"
-    rows = _loop_note_rows(opening, variable, labels, helpers)
+    rows = _loop_note_rows(opening, variable, labels, helpers, constants)
     rows.extend(rf"\quad {_formula_rule_latex(template)}" for template in templates)
     return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
 
 
-def _loop_note_rows(opening: str, variable, labels, helpers) -> list[str]:
-    """The rows a loop's note opens with: what it did, the values its names took, and what
-    its `%` helpers made from them."""
+def _loop_note_rows(opening: str, variable, labels, helpers, constants=()) -> list[str]:
+    """The rows a loop's note opens with: what it did, the values the names its rule stands
+    on took, what its `%` helpers made from them, and the `%` names that were the same in
+    every pass (`s = 2`)."""
     if variable and labels:
         names = ", ".join(_name_latex(name) for name in variable)
         if len(variable) > 1:
@@ -5720,22 +5729,29 @@ def _loop_note_rows(opening: str, variable, labels, helpers) -> list[str]:
             shown = shown[:3] + [r"\ldots"] + shown[-1:]
         # A frame's degrees of freedom are six to a value, and four values ran past the page
         # (chapter 4: 1060 to 1317 px); the values go on as many rows as the page needs.
-        rows = []
-        current = rf"{opening},\ \text{{para}}\ {names} = {shown[0]}"
-        for label in shown[1:]:
-            if (_katex_em(current) + _katex_em(label) + 1.0) * _EM_PX > _NOTE_ROW_PX:
-                rows.append(current + ",")
-                current = rf"\qquad {label}"
-            else:
-                current += rf",\ {label}"
-        rows.append(current)
+        rows = _wrapped(rf"{opening},\ \text{{para}}\ {names} = ", shown)
     else:
         rows = [opening]
     made = [_helper_latex(code) for code in helpers]
     made = [text for text in made if text]
+    made += [f"{_name_latex(name)} = {_loop_label_latex(value)}" for name, value in constants]
     if made:
-        rows.append(r"\text{con}\ " + r",\ ".join(made))
+        rows.extend(_wrapped(r"\text{con}\ ", made))
     rows[-1] += r"\textbf{:}"
+    return rows
+
+
+def _wrapped(opening: str, items: list[str]) -> list[str]:
+    """`opening` and the items, `, ` between them, on as many rows as the page needs."""
+    rows = []
+    current = opening + items[0]
+    for item in items[1:]:
+        if (_katex_em(current) + _katex_em(item) + 1.0) * _EM_PX > _NOTE_ROW_PX:
+            rows.append(current + ",")
+            current = rf"\qquad {item}"
+        else:
+            current += rf",\ {item}"
+    rows.append(current)
     return rows
 
 
@@ -5759,7 +5775,18 @@ def _template_text(template: str) -> str:
         return f"{value}*({factor.group(1)})"
 
     text = re.sub(r"\{([^{}]+)\}\[([^\[\]]+)\]", with_unit, template)
-    return re.sub(r"\{([^{}]+)\}", lambda match: match.group(1).strip(), text)
+    written, last = [], 0
+    for match in re.finditer(r"\{([^{}]+)\}", text):
+        written.append(text[last:match.start()])
+        before = re.search(r"[A-Za-z0-9_]+$", "".join(written))
+        # `k{p}` is the name `k1`, `k2` a pass reads: the page writes `k_1`, and the rule
+        # `k_p` - `kp` was a name that exists nowhere. `L_{i}{j}` is already subscripted.
+        if before is not None and "_" not in before.group(0) and before.group(0)[0].isalpha():
+            written.append("_")
+        written.append(match.group(1).strip())
+        last = match.end()
+    written.append(text[last:])
+    return "".join(written)
 
 
 def _formula_rule_latex(template: str) -> str:
@@ -5789,7 +5816,7 @@ def _helper_latex(code: str) -> str:
 # it is there to say, and a 33-bar truss would put 33 of them in front of it.
 _MOST_LABELS_SAID = 6
 # How wide a row of a loop's note may run, in px of Colab's 900.
-_NOTE_ROW_PX = 820.0
+_NOTE_ROW_PX = 800.0
 
 
 def _loop_label_latex(value) -> str:
@@ -5869,9 +5896,24 @@ class _RuleLine(_WrittenLine):
             return text
         if isinstance(node, ast.Tuple):
             return r"\left(" + ", ".join(self.latex(each) for each in node.elts) + r"\right)"
+        if isinstance(node, ast.IfExp):
+            return (
+                rf"{self.latex(node.body)}\ \text{{si}}\ {self.latex(node.test)},\ "
+                rf"\text{{si no}}\ {self.latex(node.orelse)}"
+            )
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+            # `5[1/m]` is `5*1/m` to the parser; the page writes `5/m`, not `5 · 1`.
+            if isinstance(node.right, ast.Constant) and node.right.value == 1:
+                return self.latex(node.left)
         if isinstance(node, (ast.Name, ast.Constant, ast.UnaryOp, ast.BinOp, ast.Call, ast.List)):
             return super().latex(node)
         return rf"\texttt{{{_escaped_text(ast.unparse(node))}}}"
+
+    def _name(self, name: str) -> str:
+        written = super()._name(name)
+        # A unit standing alone is written `1 m` - right for a value, not for the unit of a
+        # quotient: `10[kN/m]` read `10 kN / 1 m`.
+        return written.removeprefix("1" + r"\,") if name in self.unit_names else written
 
     def _function_name(self, name: str) -> str:
         if name in _NAMED_FUNCTIONS:
@@ -5935,13 +5977,26 @@ def _katex_em(latex: str) -> float:
                 numerator, after = _group_at(text, after)
                 denominator, after = _group_at(text, after)
                 total += max(_katex_em(numerator), _katex_em(denominator)) + 0.24
-            elif name in ("mathrm", "text", "mathit", "operatorname", "mathbf"):
+            elif name in ("mathrm", "text", "mathit", "operatorname", "mathbf", "textbf"):
                 inner, after = _group_at(text, after)
-                total += len(re.sub(r"\\[A-Za-z]+|[{}]", "", inner)) * _GLYPH_EM["upright"]
+                letters = re.sub(r"\\[A-Za-z]+|[{}]", "", inner)
+                # Words, measured in KaTeX: a bold letter 0.6 em, an upright one 0.5, a space 0.33.
+                glyph = 0.6 if name in ("textbf", "mathbf") else _GLYPH_EM["upright"]
+                total += sum(0.33 if letter == " " else glyph for letter in letters)
             elif name == "cdot":
                 total += _BINARY_EM
-            elif name in (",", ";", " "):
+            elif name == " ":
+                total += 0.33
+            elif name == ";":
+                total += 0.28
+            elif name == ",":
                 total += _THIN_SPACE_EM
+            elif name in ("quad", "qquad"):
+                total += 1.0 if name == "quad" else 2.0
+            elif name == "ldots":
+                total += 1.2
+            elif name == "leftarrow":
+                total += 1.56
             else:
                 total += _GLYPH_EM["letter"]
             index, leading = after, False
@@ -5962,6 +6017,8 @@ def _katex_em(latex: str) -> float:
             total += _GLYPH_EM["point"]
         elif char in "()[]|":
             total += _GLYPH_EM["bracket"]
+        elif char in "=<>":
+            total += 1.33  # a relation and the room either side of it
         if char not in " {}+-":
             leading = False
         index += 1

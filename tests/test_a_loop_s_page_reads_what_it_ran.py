@@ -291,7 +291,8 @@ def test_degrees_of_freedom_written_as_text_read_as_numbers(monkeypatch):
     )
     page, console = _run(source, monkeypatch)
     assert not console, console
-    assert r"\left(1, \left[1, 2\right]\right),\ \left(2, \left[2, 3\right]\right)" in page, page
+    # Only the names the rule stands on: m is the loop's, and the rule never reads it.
+    assert r"\text{para}\ n = \left[1, 2\right],\ \left[2, 3\right]\textbf{:}" in page, page
 
 
 def test_the_values_of_a_frame_s_loop_wrap_onto_rows_of_the_page(monkeypatch):
@@ -366,6 +367,105 @@ def test_a_small_matrix_of_zeros_is_drawn(monkeypatch):
     page, console = _run("K = zeros(3, 3)\n", monkeypatch)
     assert not console, console
     assert r"0 & 0 & 0" in page, page
+
+
+# -- the second audit (of c7a16f1) ------------------------------------------------------
+
+
+def test_a_line_that_adds_into_its_own_name_keeps_its_rows(monkeypatch):
+    source = (
+        "W = 0\n% for i in [1, 2, 3]:\nL_{i} := {i}[m]\nw_{i} := 2[kN/m]*L_{i}\nW = W + w_{i}\n% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"W & = & w_{1} + w_{2} + w_{3}" in page, page
+    assert r"\quad W = W" not in page, page
+
+
+def test_a_loop_that_writes_its_own_headings_keeps_each_pass_under_its_heading(monkeypatch):
+    source = "% for i in [1, 2]:\n### Barra {i}\na_{i} := {i}[m]\nb_{i} := 2*a_{i}\n% end\n"
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\hline" not in page, page
+    assert r"a_{2} & = & 2.00\,\mathrm{m}" in page, page
+
+
+def test_a_percent_if_that_assembles_keeps_its_rows_under_its_condition(monkeypatch):
+    source = (
+        "K = zeros(3, 3)\n% for p in [1, 2]:\n% if p == 1:\nK[{p}, {p}] = K[{p}, {p}] + 1\n"
+        "% else:\nK[{p}, {p}] = K[{p}, {p}] + 2\n% end\n% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert "Ensamble" not in page, page
+    assert page.count(r"K & = &") == 3, page
+
+
+def test_what_every_pass_of_a_rule_said_reaches_the_console(monkeypatch):
+    source = (
+        "w = 5\nz = 6\n"
+        '% for i, n in [(1, "w"), (2, "z")]:\n'
+        "L_{i} := {i}[m]\nd_{i} := 2*L_{i}\nM_{i} = {n}*L_{i}\nnumeric(L_{i})\n% end\n"
+    )
+    _page, console = _run(source, monkeypatch)
+    assert "'w'" in console and "'z'" in console, console
+
+
+def test_a_helper_the_formulas_of_a_table_read_is_said(monkeypatch):
+    source = "% for i in [1, 2]:\n% t = 30*i\nc_{i} := cos({t}[deg])\ns_{i} := sin({t}[deg])\n% end\n"
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\text{con}\ t = 30 i\textbf{:}" in page, page
+
+
+def test_a_percent_name_the_same_in_every_pass_is_said_once(monkeypatch):
+    source = (
+        "K = zeros(4, 4)\n% s = 2\n% for m in [1, 2]:\n% p = s*m - 1\n"
+        "K[{p}, {p}] = K[{p}, {p}] + a\n% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\text{para}\ m = 1,\ 2" in page, page
+    assert r"p = s m - 1,\ s = 2\textbf{:}" in page, page
+
+
+def test_a_name_joined_to_a_loop_value_is_subscripted(monkeypatch):
+    source = "k1 = 2\nk2 = 3\nK = zeros(2, 2)\n% for p in [1, 2]:\nK[{p}, {p}] = K[{p}, {p}] + k{p}\n% end\n"
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"K_{p,p} + k_{p}" in page, page
+
+
+def test_a_loop_inside_a_loop_that_does_not_gather_keeps_its_rows(monkeypatch):
+    source = (
+        "% for i in [1, 2]:\na_{i} := {i}[m]\n% for j in [1, 2]:\n"
+        "c_{i}{j} := a_{i}*{j}\nd_{i}{j} := 2*c_{i}{j}\n% end\n% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\hline" not in page, page
+    assert r"d_{22} & = &" in page, page
+
+
+def test_the_values_of_an_inner_loop_are_said_by_its_names(monkeypatch):
+    source = (
+        "K = zeros(4, 4)\n% for e in [1, 2]:\n% for a in [0, 1]:\n"
+        "K[{e}+{a}, {e}+{a}] = K[{e}+{a}, {e}+{a}] + b\n% end\n% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\text{para}\ \left(e, a\right) = \left(1, 0\right),\ \left(1, 1\right),\ \left(2, 0\right),\ \left(2, 1\right)" in page, page
+
+
+def test_a_label_with_a_hyphen_is_a_name_not_a_subtraction():
+    assert renderer._loop_value_latex("1-2") == r"\text{1-2}"
+    assert renderer._loop_value_latex("Viga (A-B)") == r"\text{Viga (A-B)}"
+
+
+def test_a_unit_in_a_rule_reads_as_the_page_writes_one():
+    assert renderer._rule_latex("F[{p}] = F[{p}] + 10[kN/m]*L").endswith(r"F_{p} + \frac{10\,\mathrm{kN}}{\mathrm{m}} L")
+    assert renderer._rule_latex("F[{p}] = F[{p}] + 5[1/m]").endswith(r"F_{p} + \frac{5}{\mathrm{m}}")
+    assert r"\texttt" not in renderer._helper_latex("s = -1 if p == 1 else 1")
 
 
 SOURCES = [
