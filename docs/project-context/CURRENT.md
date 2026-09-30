@@ -12,9 +12,9 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.44.1** - branch `fix/loop-note-fractions-and-solve` |
-| released | **0.44.0** - #381, `624eb87`, closed |
-| open PRs | the 0.44.1 PR; the fold branch held (not a PR) |
+| released | **0.44.1** - #383, `4d16a38`, closed |
+| before that | **0.44.0** - #381, `624eb87`, closed |
+| open PRs | this closure; the fold branch held (not a PR) |
 | default suite | **3513 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -1991,8 +1991,17 @@ Pint; smoke 48/48 outside the repository; suite against the installed wheel 3512
 sheets differ from 0.44.0 only where a solve fixed constants (p4_2, r_diff2, r_diffsolved)
 or in the audits' own cases, consoles identical.
 
-**Exact next step:** merge the 0.44.1 PR on green CI, Deep qualification, `git+https`, his
-Colab, docs closure; then his pick among the findings of chapters 2-4; chapter 5.
+**0.44.1 is closed** (#383, `4d16a38`): CI, Quality Gate Deep (push) and Deep qualification
+green on `4d16a38`; a `git+https` install changed only `engcalc-colab`, 33 files identical,
+smoke 48/48. In his Colab (Untitled9: session restarted from the menu, his cell 0, then
+cell 3, 2026-09-30): `engcalc 0.44.1`, after the solve `t = -p` and `g = diff(t, p) = -1`,
+`G = subs(F, u, 0) = -k x`, the loop note's `c_i = 2 m / L_i` at the page's size; two
+screenshots sent.
+
+**Exact next step:** his pick among the remaining findings of chapters 2-4 (the examples'
+and solver D's lists above: no temperature unit, sinh/cosh/tanh, a one-row literal on `:=`,
+`inv` in s²/kg, kip/in matrices in SI, two decimals between 0.1 and 1, frame_plot's joint
+moments); chapter 5 of the book.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
