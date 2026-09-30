@@ -5774,28 +5774,82 @@ def _template_text(template: str) -> str:
         value = inserted if re.fullmatch(r"\w+", inserted) else f"({inserted})"
         return f"{value}*({factor.group(1)})"
 
+    return _template_and_groups(template)[0]
+
+
+# A `{i-1}` glued to a name stands in the rule as this, and is written back as its group.
+_GROUP = "zQz"
+
+
+def _template_and_groups(template: str) -> tuple[str, dict]:
+    """`_template_text`, and the `{...}` expressions it had to hold apart: `x_{i-1}` is the
+    name `x` with the subscript `i - 1`, and stripped to `x_i-1` it parsed as a subtraction -
+    the rule read `L_i = x_i - x_i - 1` for `x_{i} - x_{i-1}`. Such a group is kept as a
+    placeholder in the name and written back by `_with_groups`. After `^` it is a power's
+    exponent, `a^(i-1)`; standing alone it is its own parenthesis."""
+
+    def with_unit(match) -> str:
+        inserted, unit = match.group(1).strip(), match.group(2)
+        try:
+            from .parser import normalize_expression  # noqa: PLC0415
+
+            written = normalize_expression(f"1[{unit}]")
+        except Exception:  # noqa: BLE001 - left as written
+            return match.group(0)
+        factor = re.fullmatch(r"\(1\*(.+)\)", written)
+        if factor is None:
+            return match.group(0)
+        value = inserted if re.fullmatch(r"\w+", inserted) else f"({inserted})"
+        return f"{value}*({factor.group(1)})"
+
     text = re.sub(r"\{([^{}]+)\}\[([^\[\]]+)\]", with_unit, template)
-    written, last = [], 0
+    written, last, groups = [], 0, {}
     for match in re.finditer(r"\{([^{}]+)\}", text):
         written.append(text[last:match.start()])
-        before = re.search(r"[A-Za-z0-9_]+$", "".join(written))
-        # `k{p}` is the name `k1`, `k2` a pass reads: the page writes `k_1`, and the rule
-        # `k_p` - `kp` was a name that exists nowhere. `L_{i}{j}` is already subscripted.
-        if before is not None and "_" not in before.group(0) and before.group(0)[0].isalpha():
+        inside = match.group(1).strip()
+        so_far = "".join(written)
+        before = re.search(r"[A-Za-z0-9_]+$", so_far)
+        glued = before is not None and before.group(0)[0].isalpha()
+        if glued and "_" not in before.group(0):
+            # `k{p}` is the name `k1`, `k2` a pass reads: the page writes `k_1`, and the rule
+            # `k_p` - `kp` was a name that exists nowhere. `L_{i}{j}` is already subscripted.
             written.append("_")
-        written.append(match.group(1).strip())
+        if re.fullmatch(r"\w+", inside):
+            written.append(inside)
+        elif glued:
+            token = f"{_GROUP}{len(groups)}"
+            groups[token] = inside
+            written.append(token)
+        else:
+            written.append(f"({inside})")
         last = match.end()
     written.append(text[last:])
-    return "".join(written)
+    return "".join(written), groups
+
+
+def _with_groups(latex: str, groups: dict) -> str:
+    """The rule with each held-apart `{...}` written back as the expression it is."""
+    for token, inside in groups.items():
+        try:
+            from .parser import normalize_expression  # noqa: PLC0415
+
+            shown = _RuleLine().latex(ast.parse(normalize_expression(inside), mode="eval").body)
+        except Exception:  # noqa: BLE001 - as typed
+            shown = _escaped_text(inside)
+        latex = re.sub(r"\\mathit\{" + token + r"\}|" + token, lambda _match, shown=shown: shown, latex)
+    return latex
 
 
 def _formula_rule_latex(template: str) -> str:
-    text = _template_text(template)
+    text, groups = _template_and_groups(template)
     try:
         from .parser import parse_cell  # noqa: PLC0415 - the parser imports the renderer's models
 
         statement = parse_cell(text)[0]
-        return rf"{_render_lhs(statement.target, None)} = {_RuleLine(statement).latex(statement.expression.body)}"
+        return _with_groups(
+            rf"{_render_lhs(statement.target, None)} = {_RuleLine(statement).latex(statement.expression.body)}",
+            groups,
+        )
     except Exception:  # noqa: BLE001 - the line as typed rather than no rule at all
         return rf"\texttt{{{_escaped_text(template)}}}"
 
@@ -5826,14 +5880,16 @@ def _loop_label_latex(value) -> str:
 
 
 def _rule_latex(template: str) -> str:
-    text = _template_text(template)
+    text, groups = _template_and_groups(template)
     try:
         from .parser import parse_cell  # noqa: PLC0415 - the parser imports the renderer's models
 
         statement = parse_cell(text)[0]
         rule = _RuleLine(statement)
         target = ast.Subscript(value=ast.Name(statement.target, ast.Load()), slice=statement.target_index, ctx=ast.Load())
-        return rf"{rule.latex(target)} \;\leftarrow\; {rule.latex(statement.expression.body)}"
+        return _with_groups(
+            rf"{rule.latex(target)} \;\leftarrow\; {rule.latex(statement.expression.body)}", groups
+        )
     except Exception:  # noqa: BLE001 - the line as typed rather than no rule at all
         return rf"\texttt{{{_escaped_text(template)}}}"
 

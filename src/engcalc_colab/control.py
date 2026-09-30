@@ -549,6 +549,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
 
     helpers = _helpers_of(node)
     stands_on: dict = {}
+    defined: dict = {}  # the names each line of the loop has defined so far
     kept: list[_Kept] = []
     try:
         for index, value in enumerate(values):
@@ -578,8 +579,10 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
                         occurrence = occurrences.get(template, 0)
                         occurrences[template] = occurrence + 1
                         entry.kind, entry.key = "cell", (template, occurrence)
-                    elif direct and _a_formula(item, result):
+                    elif direct and _a_formula(item, result) and not _reads_its_earlier_passes(item, defined.get(template, ())):
                         entry.kind, entry.key = "formula", template
+                    if getattr(item, "target", None):
+                        defined.setdefault(template, set()).add(item.target)
                     kept.append(entry)
     except EngCalcError:
         for entry in kept:
@@ -611,20 +614,46 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
             yield ConditionNote(latex=formula_rules_latex(len(values), formulas, (), None, made, constants))
         yield ConditionNote(latex=table, notices=tuple(said))
     yield from _in_the_order_they_ran(node, values, kept, columns, helpers)
-    yield from _assemblies(kept, helpers, settings)
+    yield from _assemblies(kept, helpers, settings, _header_names(node))
+
+
+def _header_names(node: _ForBlock) -> list[str]:
+    return [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+
+
+def _reads_its_earlier_passes(item, earlier) -> bool:
+    """`M_{i} = M_{i-1} + V_{i}`: a line that reads what it defined in an earlier pass is a
+    recurrence, and each pass is a new value a reader needs - the rule alone never said
+    what M_3 came to."""
+    return bool(earlier) and any(
+        isinstance(node, ast.Name) and node.id in earlier for node in ast.walk(item.expression.body)
+    )
 
 
 def _names_it_stands_on(template: str, helpers: list) -> list[str]:
     """The `%` names a loop's line reads: those in its `{...}`, and those the helpers it
-    reads were made from - `K[[{p}, {q}], ...]` with `% p, q = 2*m - 1, 2*m` stands on p, q
-    and m. In the order they are written."""
+    reads were made from, followed back through helpers made from helpers - `K[[{p}, {q}],
+    ...]` with `% p, q = 2*m - 1, 2*m` stands on p, q and m. In the order they are written."""
+    return _chain([template], helpers)[0]
+
+
+def _chain(templates: list, helpers: list) -> tuple[list[str], list[str]]:
+    """The `%` names the lines stand on, and the helpers that made any of them, in the order
+    the loop writes those helpers."""
     names: list[str] = []
-    for inside in re.findall(r"\{([^{}]+)\}", template):
-        names.extend(name for name in re.findall(r"[A-Za-z_]\w*", inside) if name not in names)
-    for code, made in helpers:
-        if made & set(names):
-            names.extend(name for name in _names_read(code) if name not in names)
-    return names
+    for template in templates:
+        for inside in re.findall(r"\{([^{}]+)\}", template):
+            names.extend(name for name in re.findall(r"[A-Za-z_]\w*", inside) if name not in names)
+    used: set = set()
+    changed = True
+    while changed:
+        changed = False
+        for position, (code, made) in enumerate(helpers):
+            if position not in used and made & set(names):
+                used.add(position)
+                names.extend(name for name in _names_read(code) if name not in names)
+                changed = True
+    return names, [code for position, (code, _made) in enumerate(helpers) if position in used]
 
 
 def _names_read(code: str) -> list[str]:
@@ -641,7 +670,7 @@ def _names_read(code: str) -> list[str]:
     return read
 
 
-def _what_it_stands_on(templates: list, entries: list, helpers: list, variable=None):
+def _what_it_stands_on(templates: list, entries: list, helpers: list, variable=None, order=()):
     """For a note: the names whose values changed from pass to pass and those values, the
     helpers that made names the lines read, and the `%` names that were the same every pass.
 
@@ -651,12 +680,11 @@ def _what_it_stands_on(templates: list, entries: list, helpers: list, variable=N
     names: list[str] = []
     for entry in entries:
         names.extend(name for name in entry.said if name not in names)
-    inserted = set()
-    for template in templates:
-        for inside in re.findall(r"\{([^{}]+)\}", template):
-            inserted.update(re.findall(r"[A-Za-z_]\w*", inside))
-    made = [code for code, making in helpers if making & inserted]
+    _reached, made = _chain(templates, helpers)
     names = [name for name in names if name not in made_by_helpers]
+    # The loop's own names first, as its header writes them: `(m, p)`, not `(p, m)`.
+    if order:
+        names = [name for name in order if name in names] + [name for name in names if name not in order]
     if len(templates) == 1:
         # Each time the line ran - a loop inside this one runs it several times a pass.
         ordered = [entry.said for entry in entries]
@@ -709,7 +737,7 @@ def _in_the_order_they_ran(node: _ForBlock, values: list, kept: list, columns: l
 
     def rules():
         entries = [entry for template in pending for entry in runs[template]]
-        names, labels, made, constants = _what_it_stands_on(pending, entries, helpers)
+        names, labels, made, constants = _what_it_stands_on(pending, entries, helpers, order=_header_names(node))
         # What every pass of these lines said, once - not only the first pass's.
         said: list = []
         for entry in entries:
@@ -792,7 +820,7 @@ def _a_formula(item, result) -> bool:
     )
 
 
-def _assemblies(kept: list, helpers: list, settings) -> Iterator:
+def _assemblies(kept: list, helpers: list, settings, order=()) -> Iterator:
     """Each matrix a loop assembled: the rule of every line that added into it, once, and
     the matrix - or, wider than the page, what it is."""
     from .renderer import assembly_note_latex, fits_the_page, matrix_summary_latex  # noqa: PLC0415
@@ -813,7 +841,7 @@ def _assemblies(kept: list, helpers: list, settings) -> Iterator:
                 continue
             # A line of a loop inside this one: its helpers are that loop's, not these.
             own = helpers if all(entry.direct for entry in entries) else []
-            names, labels, made, constants = _what_it_stands_on([template], entries, own)
+            names, labels, made, constants = _what_it_stands_on([template], entries, own, order=order)
             yield ConditionNote(
                 latex=assembly_note_latex(len(entries), template, names, labels, made, constants)
             )

@@ -468,6 +468,44 @@ def test_a_unit_in_a_rule_reads_as_the_page_writes_one():
     assert r"\texttt" not in renderer._helper_latex("s = -1 if p == 1 else 1")
 
 
+# -- the third audit (of 6623195) --------------------------------------------------------
+
+
+def test_an_expression_in_a_subscript_keeps_its_group(monkeypatch):
+    source = "x_0 := 0[m]\n% for i in [1, 2, 3]:\nx_{i} := 2*{i}[m]\nL_{i} := x_{i} - x_{i-1}\n% end\n"
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\quad L_{i} = x_{i} - x_{i - 1}" in page, page
+    assert renderer._rule_latex("K[{i}, {i}] = K[{i}, {i}] + k_{i+1}").endswith(r"K_{i,i} + k_{i + 1}")
+    assert renderer._formula_rule_latex("y_{i} = a^{i-1}*b") == r"y_{i} = a^{i - 1} b"
+
+
+def test_a_recurrence_through_subscripts_keeps_its_rows(monkeypatch):
+    source = "M_0 = 0\n% for i in [1, 2, 3]:\nx_{i} := {i}[m]\nV_{i} := 2[kN]*x_{i}\nM_{i} = M_{i-1} + V_{i}\n% end\n"
+    page, _console = _run(source, monkeypatch)  # main's notice on M_0 = 0, as before
+    assert r"M_{3} & = & V_{1} + V_{2} + V_{3}" in page, page
+    assert r"\quad M_{i} = " not in page, page
+
+
+def test_helpers_made_from_helpers_are_followed_back_to_the_loop(monkeypatch):
+    source = "K = zeros(4, 4)\n% for m in [1, 2]:\n% q = 2*m\n% p = q - 1\nK[{p}, {p}] = K[{p}, {p}] + 1\n% end\n"
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\text{para}\ m = 1,\ 2" in page, page
+    assert r"\text{con}\ q = 2 m,\ p = q - 1\textbf{:}" in page, page
+
+
+def test_the_names_of_a_note_follow_the_header(monkeypatch):
+    source = (
+        "k_a = 1\nk_b = 2\nK = zeros(3, 3)\n"
+        '% for m, p in [("a", "[1, 2]"), ("b", "[2, 3]")]:\n'
+        "K[{p}, {p}] = K[{p}, {p}] + k_{m}*[1, -1; -1, 1]\n% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\text{para}\ \left(m, p\right) = " in page, page
+
+
 SOURCES = [
     LOADS,
     "% for i, n in [(1, \"A&B\"), (2, \"50%\"), (3, \"x#y\")]:\na_{i} := {i}[m]\nb_{i} := 2*a_{i}\n% end\n",
