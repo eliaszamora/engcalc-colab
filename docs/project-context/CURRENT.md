@@ -8,15 +8,15 @@
 
 ## Where things stand today
 
-_2026-09-29._
+_2026-09-30._
 
 | | |
 |---|---|
+| releasing | **0.44.0** - the loop page, branch `feat/a-loop-shows-its-assembly-once` |
 | released | **0.43.4** - #379, `382f339`, closed |
 | before that | **0.43.3** - #377, `e8f05d3`, closed |
-| in progress | the loop page (branch `feat/a-loop-shows-its-assembly-once`, 0.44.0 when released) |
-| open PRs | none; the fold branch held (not a PR) |
-| default suite | **3481 passing** on the loop branch (3443 on main) (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | the 0.44.0 PR; the fold branch held (not a PR) |
+| default suite | **3497 passing** on the loop branch (3443 on main) (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1876,7 +1876,14 @@ when K is wider than the page), and a loop of 2+ `:=` values is one table. Being
 ### The loop page (branch `feat/a-loop-shows-its-assembly-once`, 0.44.0 when released)
 
 `abeb95c` was the first version; its audit (subagent) found 15 defects, fixed in `7c400e4`;
-chapter 4's solvers found more, fixed in `c7a16f1`. What a `% for` that gathers (2+ `:=`
+chapter 4's solvers found more, fixed in `c7a16f1`; three more audits of the same
+auditor found 13, 5 and 3, fixed in `6623195`, `829b3f6`, `e0b7db1` (a line that reads its
+own name or its earlier passes keeps its rows; a loop with its own headings, an assembly
+under `% if` or inside a loop that does not gather streams as before; notes name only the
+`%` names the rule stands on, in header order, helpers followed back, constants said once;
+`{i-1}` glued to a name keeps its group). Left, low: the draw/summary edge (±3% of 900
+px), page order when a line reads K mid-assembly, `str(...)` helpers in a con row, a rule
+row is not wrapped, `- {-i}` loses its parentheses. What a `% for` that gathers (2+ `:=`
 lines of its own, or a line anywhere inside adding into a part of a matrix) puts on the
 page, after every pass is worked out in `control._gathered`:
 1. the formulas of its tabled `:=` lines once ("En cada uno de los N pasos:"), then one
@@ -1891,8 +1898,29 @@ page, after every pass is worked out in `control._gathered`:
    `renderer._katex_em`, fitted to KaTeX 0.16.28 widths (within 10%);
 4. a failing pass leaves the rows before it on the page. A nested loop streams into the
    gathering one. An all-zero matrix larger than 4 is written `\mathbf{0}_{r \times c}`.
-Problem 3.6's page: 54 377 px -> 10 936 px, 0 KaTeX errors. Contracts:
-`test_a_for_loop_shows_its_assembly_once` (7), `test_a_loop_s_page_reads_what_it_ran` (31).
+Problem 3.6's page: 54 377 px -> 10 936 px, 0 KaTeX errors; the book's 118 loop notes
+measure at most 801 px in KaTeX. Contracts: `test_a_for_loop_shows_its_assembly_once` (7),
+`test_a_loop_s_page_reads_what_it_ran` (47). Visible on a reference sheet: `portico_diseno`'s
+`Z_6 = zeros(6, 1)` reads `Z_6 = 0_{6x1}` (the zeros rule, >4 in either dimension).
+
+**0.44.0 release evidence (tree `e0b7db1`):** suite 3497 (SymPy 1.14) and 3496 + the
+frozen-SymPy run (1.13.3, Colab's), twice; wheel 33 files identical to `src`; clean Python
+3.12 venv with Colab's pins adds only Pint and its dependencies; smoke 47/47 outside the
+repository; suite against the installed wheel 3496 + the surface test 5; the 24 reference
+pages identical wheel vs tree, and vs main except `portico_diseno`.
+
+### His book: worked examples, and where the notebooks are
+
+He mistook Example 2.1 (section 2.6, u_a = 2.41 mm) for Problem 2.1 (section 2.7, the rigid
+beam on links) - only the end-of-chapter problems had been solved. The notebooks now open
+with the text's worked examples, then the problems. Examples 2.1-2.6 and 3.1-3.6 agree with
+the book (to its 3-digit rounding). They live in his Google Drive, folder "EngCalc - Matrix
+Structural Analysis", and in Documents (outside the repo). Examples' findings, not fixed:
+a system `solve` defines its unknowns while a one-unknown one does not; `subs` of a name
+with a `=` definition does nothing, silently; a one-row literal refused on `:=`; `inv` of a
+stiffness matrix in `s²/kg`; the summary counts `s k` with `s := 0` as non-zero; `solve` of
+a named equation drops the unknown's name; no temperature unit; `45 deg` in formulas;
+kN/mm stiffnesses read in kN/m.
 
 ### His book, chapter 4 (solvers A 4.1-4.3, B 4.4-4.7, C 4.8-4.12; D 4.13-4.16 pending)
 
@@ -1910,8 +1938,9 @@ Every number agrees with a sympy/numpy oracle and with Example 4.14. Findings no
   `7.49 x 10^-7 m`; compound units in typed literals read `kN m`; the `% while` note
   without the counter's name; solved constants still shown in later formulas.
 
-**Exact next step:** the audit of `c7a16f1` (running), fix what it finds, release 0.44.0;
-then solver D (4.13-4.16) and chapter 4's report to him.
+**Exact next step:** merge the 0.44.0 PR on green CI, Deep qualification, `git+https`
+check, his Colab (screenshots), docs closure; then solver D (4.13-4.16), chapter 4's
+examples (section 4.7), re-upload the notebooks to his Drive, and chapter 4's report.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
