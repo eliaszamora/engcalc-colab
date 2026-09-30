@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
+| releasing | **0.44.1** - branch `fix/loop-note-fractions-and-solve` |
 | released | **0.44.0** - #381, `624eb87`, closed |
-| before that | **0.43.4** - #379, `382f339`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3497 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | the 0.44.1 PR; the fold branch held (not a PR) |
+| default suite | **3513 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1962,9 +1962,37 @@ problems (13, 24, 17). Solver D's findings, not fixed:
   index list runs off the page; `factor` of a matrix works per entry.
 - **Missing:** `sinh`, `cosh`, `tanh`; a scalar minus a 1x1 matrix.
 
-**Exact next step:** his pick among the findings of chapters 2-4 (list above and the
-examples' list); the display-style fix for the loop note's rule rows is the natural 0.44.1.
-Chapter 5 next when he says.
+### 0.44.1: what the book's worked examples found (his "procede... delego las decisiones")
+
+Branch `fix/loop-note-fractions-and-solve`. The first design - every name a function's body
+holds read by its latest definition - was audited (subagent) and dropped: it broke `keep`,
+captured arguments and moved pages that read a formula on purpose. What shipped, audited
+three more times:
+- `engine.with_solved`: what a solve of a SYSTEM fixed (`solved_values`, while the name
+  still holds that answer; never kept names; never a variable of the sheet - a function's
+  parameter, a diff/integrate variable of the solve) is read by its value in `resolve_name`
+  and after a call binds its arguments. `eq(...)` values are left alone. A solve holds its
+  own unknowns (`engine.held`) while it is worked out, so it can run again.
+- `subs`: a variable with a definition is replaced where its definition stands (as in
+  0.44.0) and as the bare name; a name a system solve answered is taken as its symbol with
+  the expression read with it held, and its value replaced when the expression no longer
+  holds the name.
+- A `=` line of a loop is said as one rule only if its right side reads a `{...}` value
+  and calls no subs/diff/integrate/solve/numeric/simplify/expand/factor/limit.
+- A loop note's rule rows in `\displaystyle`.
+Contracts `test_what_the_book_s_examples_found` (16). Known, not changed: re-running a
+whole problem cell without `%eng_reset` after its solve fails as in 0.44.0 (p4_2 twice);
+`subs(g(x), C_2, 5)` of a function defined after the solve stays wrong as in 0.44.0.
+
+**0.44.1 release evidence (tree `8585c17` + README):** suite 3513 (SymPy 1.14) and 3513
+(SymPy 1.13.3); wheel 33 files identical; clean Python 3.12 venv with Colab's pins adds only
+Pint; smoke 48/48 outside the repository; suite against the installed wheel 3512 + surface
+5; the 24 reference pages identical to 0.44.0 and wheel = tree; the 193 book and audit
+sheets differ from 0.44.0 only where a solve fixed constants (p4_2, r_diff2, r_diffsolved)
+or in the audits' own cases, consoles identical.
+
+**Exact next step:** merge the 0.44.1 PR on green CI, Deep qualification, `git+https`, his
+Colab, docs closure; then his pick among the findings of chapters 2-4; chapter 5.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
