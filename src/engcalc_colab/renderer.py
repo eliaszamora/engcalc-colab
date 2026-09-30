@@ -2170,7 +2170,7 @@ def _quantity_latex(
     if unit_name == "degree":
         return rf"{magnitude_latex}^{{\circ}}"
 
-    unit_latex = format(quantity.units, "~L")
+    unit_latex = _temperature_latex(format(quantity.units, "~L"))
     return rf"{magnitude_latex}\,{unit_latex}"
 
 
@@ -4608,7 +4608,14 @@ def _latex_unit_text(unit) -> str:
         return ""
     if str(unit) == "degree":
         return r"{}^{\circ}"
-    return format(unit, "~L")
+    return _temperature_latex(format(unit, "~L"))
+
+
+def _temperature_latex(latex: str) -> str:
+    r"""`\mathrm{Δ°C}` as the page writes a difference of degrees: `{}^\circ\mathrm{C}`."""
+    for letter in ("C", "F"):
+        latex = latex.replace(r"\mathrm{Δ°" + letter + "}", r"{}^{\circ}\mathrm{" + letter + "}")
+    return latex
 
 
 def _table_unit_text(unit) -> str:
@@ -5662,7 +5669,7 @@ def _expression_label_latex(value: str) -> str | None:
     return None if r"\texttt" in written else written
 
 
-_LABEL_FUNCTIONS = ("sin", "cos", "tan", "sqrt", "exp", "log", "ln", "abs", "asin", "acos", "atan")
+_LABEL_FUNCTIONS = ("sin", "cos", "tan", "sqrt", "exp", "log", "ln", "abs", "asin", "acos", "atan", "sinh", "cosh", "tanh")
 
 
 def _numbers_only(value) -> bool:

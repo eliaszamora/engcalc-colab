@@ -41,7 +41,7 @@ _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
 _DISPLAY_TEXT_OPTIONS = {"title", "xlabel", "ylabel"}
 _CHARACTERISTIC_CALLS = {"roots", "extrema", "intersections", "governing"}
 _SCALAR_CALLS = {
-    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"
+    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh"
 }
 _RETIRED_CALLS = {
     # ``integral`` was the original name and ``integrate`` replaced it in 0.11.0, on the
@@ -119,7 +119,11 @@ def _rewrite_bracketed_units(text: str, line_no: int | None) -> str:
 
         def unit(word: re.Match) -> str:
             name = word.group(0)
-            if name not in _UNIT_ALIASES or name.startswith(BRACKETED_UNIT_PREFIX):
+            # A unit that exists only in brackets - the kelvin, `K` being every sheet's
+            # stiffness matrix - is in the table under its prefixed name alone.
+            if (
+                name not in _UNIT_ALIASES and BRACKETED_UNIT_PREFIX + name not in _UNIT_ALIASES
+            ) or name.startswith(BRACKETED_UNIT_PREFIX):
                 raise EngSyntaxError(
                     f"{where}'{name}' in {number}[{inside}] is not a unit; the brackets after a "
                     "number hold its unit, as in 6[m], 10[kN/m] or 6000[mm^2]"

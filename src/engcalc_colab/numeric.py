@@ -76,6 +76,12 @@ _UNIT_ALIASES = {
     "psi": "psi",
     "inch": "inch",
     "ft": "foot",
+    # A temperature in a structural sheet is a change of temperature - the ΔT a bar is
+    # heated by, the α of 1/°C it expands by - so `degC` is Pint's difference of degrees,
+    # and `alpha*dT` is a strain. An absolute degree Celsius has an offset, and Pint refuses
+    # to multiply it (his book, Example 2.4 and Problem 2.12, 2026-09-30).
+    "degC": "delta_degC",
+    "degF": "delta_degF",
 }
 
 # `6[m]`, `10[kN/m]`: a unit written in brackets after its number. The parser renames each
@@ -86,6 +92,9 @@ BRACKETED_UNIT_PREFIX = "__u_"
 _UNIT_ALIASES.update(
     {BRACKETED_UNIT_PREFIX + name: unit for name, unit in list(_UNIT_ALIASES.items())}
 )
+# The kelvin only in brackets, `30[K]`: unbracketed, `K` is the stiffness matrix of every
+# sheet, and a name spelled like a unit is read as the unit until the sheet defines it.
+_UNIT_ALIASES[BRACKETED_UNIT_PREFIX + "K"] = "kelvin"
 
 
 _ENGINEERING_REGISTRY: UnitRegistry | None = None
@@ -359,6 +368,9 @@ class NumericContext:
         scalar_dimensionless = {
             "exp": math.exp,
             "log": math.log,
+            "sinh": math.sinh,
+            "cosh": math.cosh,
+            "tanh": math.tanh,
         }
         if name in scalar_dimensionless:
             if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:
@@ -1554,6 +1566,9 @@ class NumericContext:
             sp.atan: "atan",
             sp.exp: "exp",
             sp.log: "log",
+            sp.sinh: "sinh",
+            sp.cosh: "cosh",
+            sp.tanh: "tanh",
         }
         if expr.func in scalar_sympy and len(expr.args) == 1:
             value = self._evaluate_sympy(expr.args[0], substitutions)
@@ -1638,7 +1653,7 @@ class _NumericAstEvaluator(ast.NodeVisitor):
         value = self.visit(node.args[0])
         if name == "abs":
             return abs(value)
-        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log"}:
+        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh"}:
             return self.context.evaluate_scalar_function(name, value)
         # Named: the message used to be the same for every function, and the engineer
         # could not tell which one it meant.
