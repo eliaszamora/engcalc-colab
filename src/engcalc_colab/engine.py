@@ -2004,7 +2004,7 @@ class EngineeringEngine:
 
     def resolve_name(self, name: str):
         if name in self.namespace:
-            if name in self.held and self.namespace[name] is self.solved_values.get(name):
+            if name in self.held and self.namespace[name] is self.solve_answers.get(name):
                 return self.resolve_symbol(name)
             return self.with_solved(self.namespace[name])
         return self.resolve_symbol(name)
@@ -3889,8 +3889,24 @@ class _Evaluator(ast.NodeVisitor):
                 ]
             finally:
                 self.engine.held = before
+            # Written after the solve, the expression holds the answer, not the name
+            # (`F = P*x + Q` is `6 x + 4`): the answer is replaced where it stands, as a
+            # variable's definition always has been.
+            free = set()
+            for entry in (args[0] if is_matrix(args[0]) else [args[0]]):
+                free |= getattr(sp.sympify(entry), "free_symbols", set())
+            answer_pairs = [
+                (self.engine.namespace[argument.id], args[position + 1])
+                for position, argument in enumerate(node.args)
+                if position % 2 == 1
+                and position + 1 < len(args)
+                and isinstance(argument, ast.Name)
+                and argument.id in solved_variables
+                and args[position] not in free
+            ]
         else:
             args = [self.visit(arg) for arg in node.args]
+            answer_pairs = []
 
         if name == "identity":
             self._require_arity(name, args, 1, "dimension")
@@ -4126,7 +4142,7 @@ class _Evaluator(ast.NodeVisitor):
                     "subs expects an expression followed by variable/value pairs, so an "
                     f"odd number of arguments; got {len(args)}"
                 )
-            replacements = list(zip(args[1::2], args[2::2]))
+            replacements = list(zip(args[1::2], args[2::2])) + answer_pairs
             # A variable with a definition is read as its definition, and that is replaced
             # where it stands - `y = P/k` written into `F` before it. A formula written
             # before `y` holds the name itself: `F = k*(y - x)`, `y = P/k`, and

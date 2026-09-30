@@ -137,6 +137,38 @@ def test_subs_of_a_solved_constant_replaces_the_constant(monkeypatch):
     assert r"G & = & 0" in page or r"= 0 \end" in page, page
 
 
+def test_subs_of_an_answer_named_like_a_parameter(monkeypatch):
+    source = (
+        "f(P) = 2*P\nsolve(eq(P + Q, 10), eq(P - Q, 2), P, Q)\n"
+        "F = P*x + Q\nG = subs(F, P, 0)\nH = subs(P*x + Q, P, 1)\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert r"G & = & 4" in page, page
+    assert r"H & = & x + 4" in page, page
+
+
+def test_subs_of_an_answer_in_a_formula_written_after_the_solve(monkeypatch):
+    source = "solve(eq(P + Q, 10), eq(P - Q, 2), P, Q)\nF = P*x + Q\nG = subs(F, P, 0)\nH = subs(P*x + Q, P, 1)\n"
+    page, console = _run(source, monkeypatch)
+    assert r"G & = & 4" in page, page
+    assert r"H & = & x + 4" in page, page
+
+
+def test_a_loop_line_that_works_something_out_keeps_its_rows(monkeypatch):
+    source = (
+        "y(x) = C_1*x + C_2 + p*x^2\n"
+        "% for i in [1, 2]:\n"
+        "a_{i} := {i}[m]\n"
+        "b_{i} := 2*a_{i}\n"
+        "solve(eq(subs(y(x), x, 0), 0), eq(subs(y(x), x, {i}), 0), C_1, C_2)\n"
+        "t_{i} = subs(diff(y(x), x), x, 0)\n"
+        "% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert r"t_{1} & = &" in page and r"t_{2} & = &" in page, page
+    assert r"\quad t_{i} = " not in page, page
+
+
 def test_a_kept_name_in_a_function_stays_a_name(monkeypatch):
     page, console = _run("keep k = E*A/L\nf(x) = k*x\nz = f(2)\n", monkeypatch)
     assert not console, console
