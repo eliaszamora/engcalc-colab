@@ -5630,8 +5630,31 @@ def _loop_value_latex(value) -> str:
             literal = None
         if _numbers_only(literal):
             return _literal_latex(literal)
+        written = _expression_label_latex(value)
+        if written is not None:
+            return written
     # `"A&B"` or `"50%"` in `\text` unescaped ended the cell, or the rest of the table.
     return rf"\text{{{_escaped_text(str(value))}}}"
+
+
+def _expression_label_latex(value: str) -> str | None:
+    """`"-cos(60[deg])"` or `"L_v/L_t"`, a loop value the `{...}` puts into a formula, as
+    the page writes a formula - it was `\text{-cos(60[deg])}`, the source typed. A word, a
+    name or anything that is not an expression of the sheet keeps its text."""
+    if not re.search(r"[-+*/^()\[\]]", value) or not re.fullmatch(r"[\w\s.+\-*/^()\[\],]+", value):
+        return None
+    try:
+        from .parser import normalize_expression  # noqa: PLC0415 - the parser imports the renderer's models
+
+        tree = ast.parse(normalize_expression(value), mode="eval").body
+    except Exception:  # noqa: BLE001 - not an expression: its text
+        return None
+    rule = _RuleLine()
+    rule.unit_names = frozenset(
+        node.id for node in ast.walk(tree) if isinstance(node, ast.Name) and node.id.startswith(BRACKETED_UNIT_PREFIX)
+    )
+    written = rule.latex(tree)
+    return None if r"	exttt" in written else written
 
 
 def _numbers_only(value) -> bool:
@@ -5664,7 +5687,30 @@ def assembly_note_latex(passes: int, template: str, variable=(), labels=None, he
     was the part cut off.
     """
     word = "paso" if passes == 1 else "pasos"
-    opening = rf"\textbf{{Ensamble en {passes} {word}}}"
+    rows = _loop_note_rows(rf"\textbf{{Ensamble en {passes} {word}}}", variable, labels, helpers)
+    rows.append(rf"\quad {_rule_latex(template)}")
+    return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
+
+
+def formula_rules_latex(passes: int, templates, variable=(), labels=None, helpers=()) -> str:
+    r"""The `=` lines a loop ran every pass, once, as the sheet writes them:
+
+        En cada uno de los 33 pasos, para (i, j, m, n) = (A, B, 1, 3), …:
+            g_{ij} = [-c_{ij}; -s_{ij}; c_{ij}; s_{ij}]
+
+    Each pass wrote the same formula with other subscripts - problem 3.6 drew 33 of these
+    vectors, 4111 px of the page, and the one rule says all of them (2026-09-29, left to
+    the developer's judgement by him).
+    """
+    opening = rf"\textbf{{En cada uno de los {passes} pasos}}" if passes != 1 else r"\textbf{En el paso}"
+    rows = _loop_note_rows(opening, variable, labels, helpers)
+    rows.extend(rf"\quad {_formula_rule_latex(template)}" for template in templates)
+    return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
+
+
+def _loop_note_rows(opening: str, variable, labels, helpers) -> list[str]:
+    """The rows a loop's note opens with: what it did, the values its names took, and what
+    its `%` helpers made from them."""
     if variable and labels:
         names = ", ".join(_name_latex(name) for name in variable)
         if len(variable) > 1:
@@ -5672,15 +5718,59 @@ def assembly_note_latex(passes: int, template: str, variable=(), labels=None, he
         shown = [_loop_label_latex(label) for label in labels]
         if len(shown) > _MOST_LABELS_SAID:
             shown = shown[:3] + [r"\ldots"] + shown[-1:]
-        opening += rf",\ \text{{para}}\ {names} = {r',\ '.join(shown)}"
-    rows = [opening]
+        # A frame's degrees of freedom are six to a value, and four values ran past the page
+        # (chapter 4: 1060 to 1317 px); the values go on as many rows as the page needs.
+        rows = []
+        current = rf"{opening},\ \text{{para}}\ {names} = {shown[0]}"
+        for label in shown[1:]:
+            if (_katex_em(current) + _katex_em(label) + 1.0) * _EM_PX > _NOTE_ROW_PX:
+                rows.append(current + ",")
+                current = rf"\qquad {label}"
+            else:
+                current += rf",\ {label}"
+        rows.append(current)
+    else:
+        rows = [opening]
     made = [_helper_latex(code) for code in helpers]
     made = [text for text in made if text]
     if made:
         rows.append(r"\text{con}\ " + r",\ ".join(made))
     rows[-1] += r"\textbf{:}"
-    rows.append(rf"\quad {_rule_latex(template)}")
-    return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
+    return rows
+
+
+def _template_text(template: str) -> str:
+    """A loop's line with its `{...}` names standing: `{p}` is `p`, and `{dx}[m]` - the
+    loop's value with its unit - is `dx` times a metre. Left as `dx[m]` it read as an index,
+    and the rule wrote `dx_m`."""
+
+    def with_unit(match) -> str:
+        inserted, unit = match.group(1).strip(), match.group(2)
+        try:
+            from .parser import normalize_expression  # noqa: PLC0415
+
+            written = normalize_expression(f"1[{unit}]")
+        except Exception:  # noqa: BLE001 - left as written
+            return match.group(0)
+        factor = re.fullmatch(r"\(1\*(.+)\)", written)
+        if factor is None:
+            return match.group(0)
+        value = inserted if re.fullmatch(r"\w+", inserted) else f"({inserted})"
+        return f"{value}*({factor.group(1)})"
+
+    text = re.sub(r"\{([^{}]+)\}\[([^\[\]]+)\]", with_unit, template)
+    return re.sub(r"\{([^{}]+)\}", lambda match: match.group(1).strip(), text)
+
+
+def _formula_rule_latex(template: str) -> str:
+    text = _template_text(template)
+    try:
+        from .parser import parse_cell  # noqa: PLC0415 - the parser imports the renderer's models
+
+        statement = parse_cell(text)[0]
+        return rf"{_render_lhs(statement.target, None)} = {_RuleLine(statement).latex(statement.expression.body)}"
+    except Exception:  # noqa: BLE001 - the line as typed rather than no rule at all
+        return rf"\texttt{{{_escaped_text(template)}}}"
 
 
 def _helper_latex(code: str) -> str:
@@ -5698,6 +5788,8 @@ def _helper_latex(code: str) -> str:
 # More values than this and the note says the first three and the last: the rule is what
 # it is there to say, and a 33-bar truss would put 33 of them in front of it.
 _MOST_LABELS_SAID = 6
+# How wide a row of a loop's note may run, in px of Colab's 900.
+_NOTE_ROW_PX = 820.0
 
 
 def _loop_label_latex(value) -> str:
@@ -5707,7 +5799,7 @@ def _loop_label_latex(value) -> str:
 
 
 def _rule_latex(template: str) -> str:
-    text = re.sub(r"\{([^{}]+)\}", lambda match: match.group(1).strip(), template)
+    text = _template_text(template)
     try:
         from .parser import parse_cell  # noqa: PLC0415 - the parser imports the renderer's models
 

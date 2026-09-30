@@ -147,8 +147,45 @@ def test_a_table_comes_before_the_rows_built_from_it(monkeypatch):
     page, console = _run(source, monkeypatch)
     assert not console, console
     assert page.count(r"\hline") == 1, page
-    assert page.index(r"\hline") < page.index(r"g_{1}"), page
-    assert r"g_{2}" in page, page
+    # The formula every pass wrote with other subscripts, once, after the table it reads.
+    assert page.index(r"\hline") < page.index(r"\quad g_{i} = "), page
+    # The table's own formulas, above it: `{dx}[m]` is the loop's value times a metre.
+    assert r"\quad L_{i} = \sqrt{\left(\mathit{dx}\,\mathrm{m}\right)^{2}" in page, page
+    assert r"\quad g_{i} = c_{i}" in page, page
+    assert r"g_{1}" not in page and r"g_{2}" not in page, page
+
+
+def test_a_formula_that_works_out_to_a_number_keeps_its_rows(monkeypatch):
+    source = (
+        "% for i in [1, 2]:\n"
+        "L_{i} := {i}[m]\n"
+        "c_{i} := 2*L_{i}\n"
+        "n_{i} = 3*{i}\n"
+        "% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\quad n_{" not in page, page
+    assert r"n_{1} & = &" in page and r"n_{2} & = &" in page, page
+
+
+def test_the_formulas_of_problem_3_6_are_said_once(monkeypatch):
+    source = (
+        "x_A := 0[m]\nx_B := 3[m]\nx_C := 3[m]\ny_A := 0[m]\ny_B := 4[m]\ny_C := 0[m]\n"
+        '% for i, j in [("A", "B"), ("B", "C"), ("A", "C")]:\n'
+        "L_{i}{j} := sqrt((x_{j} - x_{i})^2 + (y_{j} - y_{i})^2)\n"
+        "c_{i}{j} := (x_{j} - x_{i})/L_{i}{j}\n"
+        "s_{i}{j} := (y_{j} - y_{i})/L_{i}{j}\n"
+        "g_{i}{j} = [-c_{i}{j}; -s_{i}{j}; c_{i}{j}; s_{i}{j}]\n"
+        "% end\n"
+        "numeric(g_BC)\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert page.count(r"\quad g_{ij} = ") == 1, page
+    assert r"\quad g_{ij} = \left[\begin{matrix}-c_{ij}" in page, page
+    # What each pass defined is still there to read.
+    assert r"0.00\\[3pt]1.00\\[3pt]0.00\\[3pt]-1.00" in page, page
 
 
 def test_a_matrix_value_is_not_an_empty_column(monkeypatch):
@@ -255,6 +292,43 @@ def test_degrees_of_freedom_written_as_text_read_as_numbers(monkeypatch):
     page, console = _run(source, monkeypatch)
     assert not console, console
     assert r"\left(1, \left[1, 2\right]\right),\ \left(2, \left[2, 3\right]\right)" in page, page
+
+
+def test_the_values_of_a_frame_s_loop_wrap_onto_rows_of_the_page(monkeypatch):
+    # Chapter 4: six degrees of freedom to a value, and the row ran to 1083 px.
+    values = ", ".join(f'("e", "[{", ".join(str(n + k) for k in range(6))}]")' for n in range(1, 6))
+    source = (
+        "k_e = identity(6)\nK = zeros(10, 10)\n"
+        f"% for m, p in [{values}]:\n"
+        "K[{p}, {p}] = K[{p}, {p}] + k_{m}\n"
+        "% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    note = page[page.index(r"\textbf{Ensamble"):]
+    note = note[: note.index(r"\end{array}")]
+    rows = note.split(r" \\[4pt] ")
+    assert len(rows) >= 3, rows
+    assert all(renderer._katex_em(row) * renderer._EM_PX <= 860 for row in rows), rows
+
+
+def test_a_loop_value_written_as_an_expression_reads_as_one(monkeypatch):
+    source = (
+        "L_1 := 3[m]\nL_2 := 5[m]\n"
+        '% for m, c in [("a", "L_1/L_2"), ("b", "-cos(60[deg])")]:\n'
+        "r_{m} := {c}\n"
+        "t_{m} := 2*r_{m}*L_1\n"
+        "% end\n"
+    )
+    page, console = _run(source, monkeypatch)
+    assert not console, console
+    assert r"\text{-cos" not in page and r"\text{L" not in page, page
+    assert r"\frac{L_{1}}{L_{2}}" in page and r"\cos\left(60\,\mathrm{deg}\right)" in page, page
+    # The formula of the column the table works out, once, above the table.
+    assert r"\quad t_{m} = 2 r_{m} L_{1}" in page, page
+    assert page.index(r"\quad t_{m} = ") < page.index(r"\hline"), page
+    # A column that only writes the loop's value has no formula to say.
+    assert r"\quad r_{m} = " not in page, page
 
 
 def test_the_rule_says_what_the_percent_helpers_made(monkeypatch):

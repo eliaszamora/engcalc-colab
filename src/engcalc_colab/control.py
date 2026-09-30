@@ -548,6 +548,8 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
                         occurrence = occurrences.get(template, 0)
                         occurrences[template] = occurrence + 1
                         kept.append(("cell", (template, occurrence), index, result, notices))
+                    elif direct and _a_formula(item, result):
+                        kept.append(("formula", template, index, result, notices))
                     else:
                         kept.append(("shown", Evaluated(result, notices)))
     except EngCalcError:
@@ -570,21 +572,70 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
         table = loop_table_latex(
             variable, values, [(_written_target(key[0]), cells[key]) for key in columns], _current(settings)
         )
+        formulas = [key[0] for key in columns if _worked_out(key[0], variable)]
+        if formulas:
+            # The table gives the numbers; what each column is worked out from is written
+            # once, above it - a memoria that shows `0.87` and never `sin 60°` shows nothing
+            # to check (chapter 4 of his book).
+            from .renderer import formula_rules_latex  # noqa: PLC0415
+
+            yield ConditionNote(latex=formula_rules_latex(len(values), formulas))
         yield ConditionNote(latex=table, notices=tuple(said))
-    for entry in kept:
-        if entry[0] == "part" or (entry[0] == "cell" and entry[1] in columns):
-            continue
-        yield _as_it_ran(entry)
+    yield from _in_the_order_they_ran(node, values, kept, columns)
     yield from _assemblies(node, values, kept, settings)
 
 
-def _assemblies(node: _ForBlock, values: list, kept: list, settings) -> Iterator:
-    """Each matrix a loop assembled: the rule of every line that added into it, once, and
-    the matrix - or, wider than the page, what it is."""
-    from .renderer import assembly_note_latex, fits_the_page, matrix_summary_latex  # noqa: PLC0415
+def _in_the_order_they_ran(node: _ForBlock, values: list, kept: list, columns: list) -> Iterator:
+    """What the passes showed, in order, but what the table holds, the assemblies, and each
+    formula every pass wrote with only its subscripts changed - said once, as a rule, where
+    its first pass stood."""
+    from .renderer import formula_rules_latex  # noqa: PLC0415 - renderer imports models only
 
+    runs: dict = {}
+    for entry in kept:
+        if entry[0] == "formula":
+            runs.setdefault(entry[1], []).append(entry[2])
+    once = {template for template, passes in runs.items() if passes == list(range(len(values)))}
     variable = [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
-    # The `%` helpers of the loop's own body and the names each makes: `% p, q = 2*m - 1, 2*m`.
+    helpers = _helpers_of(node)
+    pending: list = []
+    said: list = []
+
+    def rules():
+        names = set().union(*(set(re.findall(r"[A-Za-z_]\w*", template)) for template in pending))
+        made = [code for code, making in helpers if making & names]
+        return ConditionNote(
+            latex=formula_rules_latex(len(values), list(pending), variable, values, made), notices=tuple(said)
+        )
+
+    for entry in kept:
+        if entry[0] == "part" or (entry[0] == "cell" and entry[1] in columns):
+            continue
+        if entry[0] == "formula" and entry[1] in once:
+            if entry[2] == 0:
+                pending.append(entry[1])
+            said.extend(notice for notice in entry[-1] if notice not in said)
+            continue
+        if pending:
+            yield rules()
+            pending, said = [], []
+        yield _as_it_ran(entry)
+    if pending:
+        yield rules()
+
+
+def _worked_out(template: str, variable: list) -> bool:
+    """Whether a `:=` line works its value out of the sheet's names - `t_{m} := 2*r_{m}*L_1` -
+    rather than writes the loop's own value, `x_{n} := {x}[m]`, which the table already says."""
+    right = template.split(":=", 1)[1] if ":=" in template else ""
+    right = re.sub(r"\{([^{}]+)\}", lambda match: " " + match.group(1).strip() + " ", right)
+    right = re.sub(r"\[[^\[\]]*\]", "", right)  # a unit in brackets
+    names = set(re.findall(r"[A-Za-z_]\w*", right))
+    return bool(names - set(variable))
+
+
+def _helpers_of(node: _ForBlock) -> list:
+    """The `%` helpers of a loop's own body and the names each makes: `% p, q = 2*m - 1, 2*m`."""
     made_by_helpers = []
     for child in node.body:
         if isinstance(child, _Helper):
@@ -601,6 +652,38 @@ def _assemblies(node: _ForBlock, values: list, kept: list, settings) -> Iterator
                 if isinstance(element, ast.Name)
             }
             made_by_helpers.append((child.code, made))
+    return made_by_helpers
+
+
+def _a_formula(item, result) -> bool:
+    """`g_{ij} = [-c_{ij}; ...]`: a line of the loop's own that defines a name by a formula of
+    names - what a pass shows is the rule with other subscripts. One that works out to a
+    number keeps its rows: the number is what a reader would otherwise have to work out."""
+    from .models import EvaluationResult, ParsedStatement  # noqa: PLC0415 - models import nothing back
+
+    if not (
+        isinstance(item, ParsedStatement)
+        and type(result) is EvaluationResult
+        and item.target
+        and item.parameters is None
+        and item.target_index is None
+        and item.declaration is None
+    ):
+        return False
+    units = set(getattr(result, "unit_literals", ()) or ())
+    symbols = getattr(result.value, "free_symbols", set())
+    return any(
+        symbol.name not in units and not symbol.name.startswith("__") for symbol in symbols
+    )
+
+
+def _assemblies(node: _ForBlock, values: list, kept: list, settings) -> Iterator:
+    """Each matrix a loop assembled: the rule of every line that added into it, once, and
+    the matrix - or, wider than the page, what it is."""
+    from .renderer import assembly_note_latex, fits_the_page, matrix_summary_latex  # noqa: PLC0415
+
+    variable = [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+    made_by_helpers = _helpers_of(node)
     lines: dict = {}
     built: dict = {}
     for entry in kept:
