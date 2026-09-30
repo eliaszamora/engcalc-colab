@@ -464,6 +464,9 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if expr.name in self.unit_literals:
             # `6[m]` reaches the printer as `__u_m`; the page writes the unit.
             written = expr.name.removeprefix(BRACKETED_UNIT_PREFIX)
+            # A difference of degrees, as the value rows write it: `20 °C`, not `20 degC`.
+            if written in _DEGREE_LATEX:
+                return _DEGREE_LATEX[written]
             unit = sp.Symbol(rf"\mathrm{{{written}}}")
             return super()._print_Symbol(unit, style) if style else super()._print_Symbol(unit)
 
@@ -1912,6 +1915,20 @@ def _is_a_dimensionless_ratio(quantity) -> bool:
     return str(quantity.units) not in _ANGLE_UNIT_NAMES
 
 
+def _a_temperature_in_degrees(quantity, declared: bool):
+    """A change of temperature the arithmetic left in kelvin, read in degrees Celsius -
+    the same size of degree, and the scale a structural sheet writes. `T := [20[degC],
+    30[degC]]` is kept in base units, and read `[20.00 30.00] K` though it was typed in
+    degrees (the audit of 0.45.0). A kelvin the sheet wrote stays a kelvin."""
+    units = getattr(quantity, "units", None)
+    if declared or units is None or str(units) != "kelvin":
+        return quantity
+    try:
+        return quantity.to("delta_degC")
+    except Exception:  # noqa: BLE001 - left as it is
+        return quantity
+
+
 def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     """Choose the unit the reader sees.
 
@@ -1940,6 +1957,7 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
         magnitude = float(quantity.magnitude)
     except (TypeError, ValueError):
         return quantity
+    quantity = _a_temperature_in_degrees(quantity, declared)
     # A ratio that is physically a number reads as a number. `Mu/phiMn` with a capacity
     # computed from a stress and a volume carries `kN*m/(MPa*mm^3)`, which is
     # dimensionless with a scale factor of 1e6, so the page said 9.63e-7 for a
@@ -2379,6 +2397,9 @@ def _quantity_matrix_latex(
     common_unit, homogeneous = _quantity_matrix_common_unit(quantity_matrix)
     if homogeneous and not declared:
         common_unit = _aggregate_unit(list(quantity_matrix), settings, common_unit)
+        # Temperatures held in base units read in degrees, as a scalar does.
+        if common_unit is not None and str(common_unit) == "kelvin":
+            common_unit = quantity_matrix.entries[0]._REGISTRY.delta_degC
 
     # The unit each cell will be shown in has to be settled before the scale can be,
     # because the magnitudes it is computed from are the ones the reader will see.
@@ -2444,7 +2465,7 @@ def _quantity_matrix_latex(
                     rendered_row.append(magnitude)
                 else:
                     rendered_row.append(
-                        rf"{magnitude}\,{format(quantity.units, '~L')}"
+                        rf"{magnitude}\,{_temperature_latex(format(quantity.units, '~L'))}"
                     )
         rows.append(rendered_row)
 
@@ -2453,7 +2474,7 @@ def _quantity_matrix_latex(
         # Before the brackets, the way it is written by hand: `K = 10^3 [ ... ] kN`.
         matrix_latex = rf"10^{{{exponent}}}\," + matrix_latex
     if homogeneous and common_unit is not None:
-        return rf"{matrix_latex}\,{format(common_unit, '~L')}"
+        return rf"{matrix_latex}\,{_temperature_latex(format(common_unit, '~L'))}"
     return matrix_latex
 
 
@@ -4609,6 +4630,9 @@ def _latex_unit_text(unit) -> str:
     if str(unit) == "degree":
         return r"{}^{\circ}"
     return _temperature_latex(format(unit, "~L"))
+
+
+_DEGREE_LATEX = {"degC": r"{}^{\circ}\mathrm{C}", "degF": r"{}^{\circ}\mathrm{F}"}
 
 
 def _temperature_latex(latex: str) -> str:

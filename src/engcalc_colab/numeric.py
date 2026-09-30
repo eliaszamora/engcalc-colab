@@ -110,6 +110,26 @@ def _keep_written_unit_order(items, _registry):
     return list(items)
 
 
+def _refuse_another_temperature_scale(quantity, target_unit) -> None:
+    """A temperature of this sheet is a change of temperature, and a change converts to
+    another scale by its size alone: 20 °C of change is 36 °F of change. Printed as
+    `T = 36.00 °F` it read as the thermometer's 20 °C = 36 °F, which is false (68 °F), and
+    `300 K` as `300 °C` (the audit of 0.45.0). Only the scale it was written in is said."""
+    units = getattr(quantity, "units", None)
+    if units is None or not hasattr(target_unit, "dimensionality"):
+        return
+    temperature = {"[temperature]": 1}
+    if dict(quantity.dimensionality) != temperature or dict(target_unit.dimensionality) != temperature:
+        return
+    if quantity.units == target_unit:
+        return
+    raise EngEvaluationError(
+        "a temperature on this sheet is a change of temperature, and a change in one scale "
+        "is not the reading in another (20 °C is 68 °F on a thermometer, and a change of "
+        "36 °F); write it in the scale you want, such as 68[degF]"
+    )
+
+
 def _value_text(value) -> str:
     """A value as a message quotes it: four figures, and its unit when it has one."""
     text = f"{float(getattr(value, 'magnitude', value)):.4g}"
@@ -388,6 +408,9 @@ class NumericContext:
     def resolve_target_unit_name(self, name: str):
         if name in _UNIT_ALIASES:
             return self.ureg.Unit(_UNIT_ALIASES[name])
+        # `numeric(T, K)`: the kelvin is a unit in brackets only, and a target is one too.
+        if BRACKETED_UNIT_PREFIX + name in _UNIT_ALIASES:
+            return self.ureg.Unit(_UNIT_ALIASES[BRACKETED_UNIT_PREFIX + name])
         raise EngEvaluationError(f"unknown target unit '{name}'")
 
     def unit_literal_overrides(
@@ -445,6 +468,7 @@ class NumericContext:
         return unit
 
     def convert_quantity(self, quantity, target_unit):
+        _refuse_another_temperature_scale(quantity, target_unit)
         try:
             return quantity.to(target_unit)
         except DimensionalityError as exc:
@@ -938,6 +962,7 @@ class NumericContext:
                     ):
                         converted.append(self.ureg.Quantity(0, target_unit))
                         continue
+                    _refuse_another_temperature_scale(quantity, target_unit)
                     try:
                         converted.append(quantity.to(target_unit))
                     except DimensionalityError as exc:

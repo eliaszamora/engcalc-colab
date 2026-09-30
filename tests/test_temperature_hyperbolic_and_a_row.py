@@ -99,3 +99,25 @@ def test_what_these_lines_put_on_the_page_is_typeset_by_colab_s_katex(monkeypatc
         results = _typeset(formulas)["results"]
         failed = [formula["tex"][:200] for formula, result in zip(formulas, results) if result["error"]]
         assert not failed, failed
+
+
+def test_a_temperature_is_not_converted_to_another_scale(monkeypatch):
+    # A change of 20 °C is a change of 36 °F, and `T_1 = 36.00 °F` read as the thermometer's
+    # 20 °C = 36 °F - false (the audit of 0.45.0).
+    page, console = _run("T_1 := 20[degC]\nnumeric(T_1, degF)\n", monkeypatch)
+    assert "a change in one scale is not the reading in another" in console, console
+    assert "36.00" not in page, page
+    page, console = _run("T_3 := 300[K]\nnumeric(T_3, K)\n", monkeypatch)
+    assert not console, console
+
+
+def test_temperatures_held_in_numbers_read_in_degrees(monkeypatch):
+    page, console = _run("T := [20[degC], 30[degC]]\ndT := T*[1; -1]\n", monkeypatch)
+    assert not console, console
+    assert r"\mathrm{K}" not in page and "Δ" not in page, page
+    assert r"-10.00\,{}^{\circ}\mathrm{C}" in page, page
+
+
+def test_a_formula_writes_its_degrees(monkeypatch):
+    page, console = _run("e = 1.2e-5[1/degC]*(T_b - T_a)\n", monkeypatch)
+    assert r"\mathrm{degC}" not in page and r"{}^{\circ}\mathrm{C}" in page, page
