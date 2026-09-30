@@ -5814,11 +5814,16 @@ def _template_and_groups(template: str) -> tuple[str, dict]:
             # `k{p}` is the name `k1`, `k2` a pass reads: the page writes `k_1`, and the rule
             # `k_p` - `kp` was a name that exists nowhere. `L_{i}{j}` is already subscripted.
             written.append("_")
-        if re.fullmatch(r"\w+", inside):
+        # A second index beside an expression, `L_{i}{i+1}` or `L_{m+1}{m}`, is set apart by
+        # a comma: run together they read `L_{ii + 1}`.
+        subscripted = glued and re.search(r"_[A-Za-z0-9]", before.group(0)) is not None
+        after_a_group = glued and re.search(_GROUP + r"\d+Q$", before.group(0)) is not None
+        if re.fullmatch(r"\w+", inside) and not after_a_group:
             written.append(inside)
         elif glued:
-            token = f"{_GROUP}{len(groups)}"
-            groups[token] = inside
+            # A closing `Q`: `zQz1Q` is not the start of `zQz10Q`.
+            token = f"{_GROUP}{len(groups)}Q"
+            groups[token] = (inside, subscripted)
             written.append(token)
         else:
             written.append(f"({inside})")
@@ -5829,13 +5834,15 @@ def _template_and_groups(template: str) -> tuple[str, dict]:
 
 def _with_groups(latex: str, groups: dict) -> str:
     """The rule with each held-apart `{...}` written back as the expression it is."""
-    for token, inside in groups.items():
+    for token, (inside, apart) in groups.items():
         try:
             from .parser import normalize_expression  # noqa: PLC0415
 
             shown = _RuleLine().latex(ast.parse(normalize_expression(inside), mode="eval").body)
         except Exception:  # noqa: BLE001 - as typed
             shown = _escaped_text(inside)
+        if apart:
+            shown = ",\\," + shown
         latex = re.sub(r"\\mathit\{" + token + r"\}|" + token, lambda _match, shown=shown: shown, latex)
     return latex
 

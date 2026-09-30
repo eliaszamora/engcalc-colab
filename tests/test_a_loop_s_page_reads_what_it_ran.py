@@ -480,6 +480,13 @@ def test_an_expression_in_a_subscript_keeps_its_group(monkeypatch):
     assert renderer._formula_rule_latex("y_{i} = a^{i-1}*b") == r"y_{i} = a^{i - 1} b"
 
 
+def test_many_groups_and_a_second_index_read_as_written():
+    many = renderer._formula_rule_latex("b_{i} = " + " + ".join(f"x_{{i+{k}}}" for k in range(1, 12)))
+    assert many.endswith(r"x_{i + 10} + x_{i + 11}"), many
+    assert renderer._formula_rule_latex("N_{i} = L_{i}{i+1}*2") == r"N_{i} = L_{i,\,i + 1} \cdot 2"
+    assert renderer._formula_rule_latex("N_{m} = L_{m+1}{m}*2") == r"N_{m} = L_{m + 1,\,m} \cdot 2"
+
+
 def test_a_recurrence_through_subscripts_keeps_its_rows(monkeypatch):
     source = "M_0 = 0\n% for i in [1, 2, 3]:\nx_{i} := {i}[m]\nV_{i} := 2[kN]*x_{i}\nM_{i} = M_{i-1} + V_{i}\n% end\n"
     page, _console = _run(source, monkeypatch)  # main's notice on M_0 = 0, as before
