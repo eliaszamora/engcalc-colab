@@ -2190,6 +2190,14 @@ def _matrix_from_cells_latex(rows: list[list[str]]) -> str:
     # answer is worse than one that brackets both.
     if len(rows) == 1 and len(rows[0]) == 1:
         return rows[0][0]
+    # A large matrix of zeros is the zero matrix, and written as one: `zeros(36, 36)` drew
+    # 1296 zeros, 36 rows tall and wider than the page, to say nothing a reader needs
+    # (chapters 3 and 4 of his book, 2026-09-29). A small one is drawn - it is where a
+    # reader sees the size of what the next lines fill.
+    if (len(rows) > _ZEROS_DRAWN or len(rows[0]) > _ZEROS_DRAWN) and all(
+        _ZERO_CELL.fullmatch(cell.strip()) for row in rows for cell in row
+    ):
+        return rf"\mathbf{{0}}_{{{len(rows)} \times {len(rows[0])}}}"
 
     # Every cell in display style, because a `matrix` environment typesets in *text*
     # style and a `\frac` shrinks there while the plain `0` beside it does not - so the
@@ -2235,6 +2243,10 @@ _MATRIX_PLAIN_ROW_SEPARATOR = r"\\[3pt]"
 # What makes a cell tall: a fraction, a big operator, a nested array. A power or a root is
 # not - `c_θ²` sits in a plain row's height.
 _TALL_CELL = re.compile(r"\\(?:[dt]?frac|i{0,3}nt|oint|sum|prod|binom|lim)(?![A-Za-z])|\\begin\{")
+
+
+_ZEROS_DRAWN = 4
+_ZERO_CELL = re.compile(r"-?0(?:\.0*)?")
 
 
 def _is_tall(cell: str) -> bool:
@@ -5534,3 +5546,631 @@ def render_call_index(entries) -> str:
         + rows("call")
         + "</div>"
     )
+
+
+# ---------------------------------------------------------------------------------------
+# A `% for` that assembles a matrix, and one whose `:=` values are a table (his book,
+# chapter 3, 2026-09-29). See `control._repeat` and `test_a_for_loop_shows_its_assembly_once`.
+
+
+def loop_table_latex(variable: str, row_labels, columns, settings: RenderSettings) -> str:
+    """A `% for`'s `:=` values: a row per pass, a column per line, one unit per column.
+
+    `columns` is `(name, values)` for each line, the values a pass did not reach `None`.
+    """
+    units = [
+        _aggregate_unit(
+            [value for value in values if value is not None],
+            settings,
+            next((value.units for value in values if hasattr(value, "units")), None),
+        )
+        for _name, values in columns
+    ]
+    exponents = [
+        _column_wants_exponent([value for value in values if value is not None], settings, unit)
+        for (_name, values), unit in zip(columns, units)
+    ]
+    def header(name, unit):
+        unit_latex = _latex_unit_text(unit) if unit is not None else ""
+        return _name_latex(name) + (rf"\,[{unit_latex}]" if unit_latex else "")
+
+    headers = [", ".join(_name_latex(name) for name in variable)] + [
+        header(name, unit) for (name, _values), unit in zip(columns, units)
+    ]
+    rows = []
+    for index, label in enumerate(row_labels):
+        cells = [_loop_value_latex(label)]
+        for (_name, values), unit, exponent in zip(columns, units, exponents):
+            value = values[index]
+            if value is None:
+                cells.append(r"\text{---}")
+            elif hasattr(value, "units"):
+                cells.append(_table_magnitude(_in_unit(value, unit, settings), settings, exponent=exponent))
+            else:
+                cells.append(_table_magnitude(value, settings, exponent=exponent))
+        rows.append(" & ".join(cells))
+    rows[0] = r"\rule{0pt}{1.4em}" + rows[0]
+    columns_spec = "l" + "|r" * len(columns)
+    body = r" \\[3pt] ".join(rows)
+    return _computed_block(
+        [rf"\begin{{array}}{{{columns_spec}}} {' & '.join(headers)} \\ \hline {body} \end{{array}}"]
+    )
+
+
+def _name_latex(name: str) -> str:
+    """`L_{i}` of a loop's line, or `n` of its header, as the page writes a name."""
+    return _latex(sp.Symbol(name.replace("{", "").replace("}", "")))
+
+
+def _loop_value_latex(value) -> str:
+    """A pass's value in the table's first column: `3`, `A_w`, `1, (1.4, 0)`.
+
+    In math, not in `\\text`: a name of the sheet has an underscore, and KaTeX refuses one
+    inside `\\text`, so the whole table read as red source.
+    """
+    if isinstance(value, tuple):
+        return ", ".join(_loop_value_latex(item) for item in value)
+    if isinstance(value, bool):
+        return rf"\text{{{value}}}"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, float):
+        return f"{value:g}"
+    name = getattr(value, "name", None)
+    if isinstance(name, str):
+        return _name_latex(name)
+    if isinstance(value, str) and "_" in value and re.fullmatch(r"[A-Za-z]\w*", value):
+        # `"A_c"` written as text in the `%` list is the name `A_c`, as the page writes it.
+        return _name_latex(value)
+    if isinstance(value, str):
+        # `"[1, 2, 3, 4]"`, the degrees of freedom a `{n}` puts in an index, is numbers.
+        try:
+            literal = ast.literal_eval(value)
+        except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
+            literal = None
+        if _numbers_only(literal):
+            return _literal_latex(literal)
+        written = _expression_label_latex(value)
+        if written is not None:
+            return written
+    # `"A&B"` or `"50%"` in `\text` unescaped ended the cell, or the rest of the table.
+    return rf"\text{{{_escaped_text(str(value))}}}"
+
+
+def _expression_label_latex(value: str) -> str | None:
+    """`"-cos(60[deg])"` or `"L_v/L_t"`, a loop value the `{...}` puts into a formula, as
+    the page writes a formula - it was `\text{-cos(60[deg])}`, the source typed. A word, a
+    name or anything that is not an expression of the sheet keeps its text."""
+    # A hyphen alone is a name's dash, not a minus: a bar "1-2", a direction "N-S", a span
+    # "Viga (A-B)" are labels. An expression shows itself by a product, a quotient, a power,
+    # a unit or a function of the page's.
+    if not re.fullmatch(r"[\w\s.+\-*/^()\[\],]+", value):
+        return None
+    if not (re.search(r"[*/^\[]", value) or re.search(r"\b(?:%s)\s*\(" % "|".join(_LABEL_FUNCTIONS), value)):
+        return None
+    try:
+        from .parser import normalize_expression  # noqa: PLC0415 - the parser imports the renderer's models
+
+        tree = ast.parse(normalize_expression(value), mode="eval").body
+    except Exception:  # noqa: BLE001 - not an expression: its text
+        return None
+    rule = _RuleLine()
+    rule.unit_names = frozenset(
+        node.id for node in ast.walk(tree) if isinstance(node, ast.Name) and node.id.startswith(BRACKETED_UNIT_PREFIX)
+    )
+    written = rule.latex(tree)
+    return None if r"\texttt" in written else written
+
+
+_LABEL_FUNCTIONS = ("sin", "cos", "tan", "sqrt", "exp", "log", "ln", "abs", "asin", "acos", "atan")
+
+
+def _numbers_only(value) -> bool:
+    if isinstance(value, (list, tuple)):
+        return bool(value) and all(_numbers_only(item) for item in value)
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _literal_latex(value) -> str:
+    if isinstance(value, list):
+        return r"\left[" + ", ".join(_literal_latex(item) for item in value) + r"\right]"
+    if isinstance(value, tuple):
+        return r"\left(" + ", ".join(_literal_latex(item) for item in value) + r"\right)"
+    return str(value) if isinstance(value, int) else f"{value:g}"
+
+
+def assembly_note_latex(passes: int, template: str, variable=(), labels=None, helpers=(), constants=()) -> str:
+    r"""The rule of a loop's assembly, once, in rows:
+
+        Ensamble en 33 pasos, para (i, j, m, n) = (A, B, 1, 3), (B, C, 3, 5), …, (h, I, 16, 17),
+        con (p, q, r, t) = (2m − 1, 2m, 2n − 1, 2n):
+            K_{[p,q,r,t],[p,q,r,t]} ← K_{[p,q,r,t],[p,q,r,t]} + k_{ij} g_{ij} g_{ij}^T
+
+    Written from the line as the sheet writes it, its `{...}` names standing, and printed
+    without working anything out: it is the rule, not a pass. The `%` lines are not on the
+    page, so the names the rule stands on are said - the values the loop gave them, and
+    the `%` helpers that made the rest (chapter 4 of his book: `K_{n;n} ← K_{n;n} + k_m`,
+    and nowhere what n or m were). A line of a loop inside the loop says no values: its
+    passes are two loops'. In rows because in one the rule ran past the page and its arrow
+    was the part cut off.
+    """
+    word = "paso" if passes == 1 else "pasos"
+    rows = _loop_note_rows(rf"\textbf{{Ensamble en {passes} {word}}}", variable, labels, helpers, constants)
+    rows.append(rf"\quad {_rule_latex(template)}")
+    return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
+
+
+def formula_rules_latex(passes: int, templates, variable=(), labels=None, helpers=(), constants=()) -> str:
+    r"""The `=` lines a loop ran every pass, once, as the sheet writes them:
+
+        En cada uno de los 33 pasos, para (i, j, m, n) = (A, B, 1, 3), …:
+            g_{ij} = [-c_{ij}; -s_{ij}; c_{ij}; s_{ij}]
+
+    Each pass wrote the same formula with other subscripts - problem 3.6 drew 33 of these
+    vectors, 4111 px of the page, and the one rule says all of them (2026-09-29, left to
+    the developer's judgement by him).
+    """
+    opening = rf"\textbf{{En cada uno de los {passes} pasos}}" if passes != 1 else r"\textbf{En el paso}"
+    rows = _loop_note_rows(opening, variable, labels, helpers, constants)
+    rows.extend(rf"\quad {_formula_rule_latex(template)}" for template in templates)
+    return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
+
+
+def _loop_note_rows(opening: str, variable, labels, helpers, constants=()) -> list[str]:
+    """The rows a loop's note opens with: what it did, the values the names its rule stands
+    on took, what its `%` helpers made from them, and the `%` names that were the same in
+    every pass (`s = 2`)."""
+    if variable and labels:
+        names = ", ".join(_name_latex(name) for name in variable)
+        if len(variable) > 1:
+            names = rf"\left({names}\right)"
+        shown = [_loop_label_latex(label) for label in labels]
+        if len(shown) > _MOST_LABELS_SAID:
+            shown = shown[:3] + [r"\ldots"] + shown[-1:]
+        # A frame's degrees of freedom are six to a value, and four values ran past the page
+        # (chapter 4: 1060 to 1317 px); the values go on as many rows as the page needs.
+        rows = _wrapped(rf"{opening},\ \text{{para}}\ {names} = ", shown)
+    else:
+        rows = [opening]
+    made = [_helper_latex(code) for code in helpers]
+    made = [text for text in made if text]
+    made += [f"{_name_latex(name)} = {_loop_label_latex(value)}" for name, value in constants]
+    if made:
+        rows.extend(_wrapped(r"\text{con}\ ", made))
+    rows[-1] += r"\textbf{:}"
+    return rows
+
+
+def _wrapped(opening: str, items: list[str]) -> list[str]:
+    """`opening` and the items, `, ` between them, on as many rows as the page needs."""
+    rows = []
+    current = opening + items[0]
+    for item in items[1:]:
+        if (_katex_em(current) + _katex_em(item) + 1.0) * _EM_PX > _NOTE_ROW_PX:
+            rows.append(current + ",")
+            current = rf"\qquad {item}"
+        else:
+            current += rf",\ {item}"
+    rows.append(current)
+    return rows
+
+
+def _template_text(template: str) -> str:
+    """A loop's line with its `{...}` names standing: `{p}` is `p`, and `{dx}[m]` - the
+    loop's value with its unit - is `dx` times a metre. Left as `dx[m]` it read as an index,
+    and the rule wrote `dx_m`."""
+
+    def with_unit(match) -> str:
+        inserted, unit = match.group(1).strip(), match.group(2)
+        try:
+            from .parser import normalize_expression  # noqa: PLC0415
+
+            written = normalize_expression(f"1[{unit}]")
+        except Exception:  # noqa: BLE001 - left as written
+            return match.group(0)
+        factor = re.fullmatch(r"\(1\*(.+)\)", written)
+        if factor is None:
+            return match.group(0)
+        value = inserted if re.fullmatch(r"\w+", inserted) else f"({inserted})"
+        return f"{value}*({factor.group(1)})"
+
+    return _template_and_groups(template)[0]
+
+
+# A `{i-1}` glued to a name stands in the rule as this, and is written back as its group.
+_GROUP = "zQz"
+
+
+def _template_and_groups(template: str) -> tuple[str, dict]:
+    """`_template_text`, and the `{...}` expressions it had to hold apart: `x_{i-1}` is the
+    name `x` with the subscript `i - 1`, and stripped to `x_i-1` it parsed as a subtraction -
+    the rule read `L_i = x_i - x_i - 1` for `x_{i} - x_{i-1}`. Such a group is kept as a
+    placeholder in the name and written back by `_with_groups`. After `^` it is a power's
+    exponent, `a^(i-1)`; standing alone it is its own parenthesis."""
+
+    def with_unit(match) -> str:
+        inserted, unit = match.group(1).strip(), match.group(2)
+        try:
+            from .parser import normalize_expression  # noqa: PLC0415
+
+            written = normalize_expression(f"1[{unit}]")
+        except Exception:  # noqa: BLE001 - left as written
+            return match.group(0)
+        factor = re.fullmatch(r"\(1\*(.+)\)", written)
+        if factor is None:
+            return match.group(0)
+        value = inserted if re.fullmatch(r"\w+", inserted) else f"({inserted})"
+        return f"{value}*({factor.group(1)})"
+
+    text = re.sub(r"\{([^{}]+)\}\[([^\[\]]+)\]", with_unit, template)
+    written, last, groups = [], 0, {}
+    for match in re.finditer(r"\{([^{}]+)\}", text):
+        written.append(text[last:match.start()])
+        inside = match.group(1).strip()
+        so_far = "".join(written)
+        before = re.search(r"[A-Za-z0-9_]+$", so_far)
+        glued = before is not None and before.group(0)[0].isalpha()
+        if glued and "_" not in before.group(0):
+            # `k{p}` is the name `k1`, `k2` a pass reads: the page writes `k_1`, and the rule
+            # `k_p` - `kp` was a name that exists nowhere. `L_{i}{j}` is already subscripted.
+            written.append("_")
+        # A second index beside an expression, `L_{i}{i+1}` or `L_{m+1}{m}`, is set apart by
+        # a comma: run together they read `L_{ii + 1}`.
+        subscripted = glued and re.search(r"_[A-Za-z0-9]", before.group(0)) is not None
+        after_a_group = glued and re.search(_GROUP + r"\d+Q$", before.group(0)) is not None
+        if re.fullmatch(r"\w+", inside) and not after_a_group:
+            written.append(inside)
+        elif glued:
+            # A closing `Q`: `zQz1Q` is not the start of `zQz10Q`.
+            token = f"{_GROUP}{len(groups)}Q"
+            groups[token] = (inside, subscripted)
+            written.append(token)
+        else:
+            written.append(f"({inside})")
+        last = match.end()
+    written.append(text[last:])
+    return "".join(written), groups
+
+
+def _with_groups(latex: str, groups: dict) -> str:
+    """The rule with each held-apart `{...}` written back as the expression it is."""
+    for token, (inside, apart) in groups.items():
+        try:
+            from .parser import normalize_expression  # noqa: PLC0415
+
+            shown = _RuleLine().latex(ast.parse(normalize_expression(inside), mode="eval").body)
+        except Exception:  # noqa: BLE001 - as typed
+            shown = _escaped_text(inside)
+        if apart:
+            shown = ",\\," + shown
+        latex = re.sub(r"\\mathit\{" + token + r"\}|" + token, lambda _match, shown=shown: shown, latex)
+    return latex
+
+
+def _formula_rule_latex(template: str) -> str:
+    text, groups = _template_and_groups(template)
+    try:
+        from .parser import parse_cell  # noqa: PLC0415 - the parser imports the renderer's models
+
+        statement = parse_cell(text)[0]
+        return _with_groups(
+            rf"{_render_lhs(statement.target, None)} = {_RuleLine(statement).latex(statement.expression.body)}",
+            groups,
+        )
+    except Exception:  # noqa: BLE001 - the line as typed rather than no rule at all
+        return rf"\texttt{{{_escaped_text(template)}}}"
+
+
+def _helper_latex(code: str) -> str:
+    """`% p, q = 2*m - 1, 2*m` as the page writes it: `(p, q) = (2m - 1, 2m)`."""
+    try:
+        statement = ast.parse(code).body[0]
+    except (SyntaxError, IndexError):
+        return ""
+    if not isinstance(statement, ast.Assign) or len(statement.targets) != 1:
+        return ""
+    rule = _RuleLine()
+    return f"{rule.latex(statement.targets[0])} = {rule.latex(statement.value)}"
+
+
+# More values than this and the note says the first three and the last: the rule is what
+# it is there to say, and a 33-bar truss would put 33 of them in front of it.
+_MOST_LABELS_SAID = 6
+# How wide a row of a loop's note may run, in px of Colab's 900.
+_NOTE_ROW_PX = 800.0
+
+
+def _loop_label_latex(value) -> str:
+    if isinstance(value, tuple):
+        return r"\left(" + ", ".join(_loop_label_latex(item) for item in value) + r"\right)"
+    return _loop_value_latex(value)
+
+
+def _rule_latex(template: str) -> str:
+    text, groups = _template_and_groups(template)
+    try:
+        from .parser import parse_cell  # noqa: PLC0415 - the parser imports the renderer's models
+
+        statement = parse_cell(text)[0]
+        rule = _RuleLine(statement)
+        target = ast.Subscript(value=ast.Name(statement.target, ast.Load()), slice=statement.target_index, ctx=ast.Load())
+        return _with_groups(
+            rf"{rule.latex(target)} \;\leftarrow\; {rule.latex(statement.expression.body)}", groups
+        )
+    except Exception:  # noqa: BLE001 - the line as typed rather than no rule at all
+        return rf"\texttt{{{_escaped_text(template)}}}"
+
+
+# How the rule writes a call of a function it knows by its mathematical name; any other is
+# the sheet's own, and is written as the page writes it, in italic: `k_v(m)`, not upright.
+_NAMED_FUNCTIONS = frozenset({
+    "sin", "cos", "tan", "cot", "sec", "csc", "sinh", "cosh", "tanh", "exp", "log", "ln",
+    "max", "min", "det",
+})
+_OPERATOR_NAMES = frozenset({"asin", "acos", "atan", "rank", "simplify", "expand", "numeric", "zeros", "eye", "diag"})
+_COMPARISONS = {
+    ast.Eq: "=", ast.NotEq: r"\neq", ast.Lt: "<", ast.LtE: r"\leq", ast.Gt: ">", ast.GtE: r"\geq",
+}
+
+
+class _RuleLine(_WrittenLine):
+    """A line as written, for the rule a loop's note says once: `_WrittenLine`, which a `:=`
+    line is written with, and what a rule holds that such a line does not - the loop's
+    names in an index, the sheet's own functions, a comparison."""
+
+    def __init__(self, statement=None) -> None:
+        self.literals = {binding.name: binding.literal for binding in getattr(statement, "matrix_literals", ())}
+        self.unit_names = frozenset(
+            node.id
+            for node in (ast.walk(statement.expression.body) if statement is not None else ())
+            if isinstance(node, ast.Name) and node.id.startswith(BRACKETED_UNIT_PREFIX)
+        )
+        self.matrix_names = frozenset({statement.target}) if statement is not None else frozenset()
+        self.settings = _DEFAULT_RENDER_SETTINGS
+
+    def latex(self, node) -> str:
+        if isinstance(node, ast.Subscript):
+            base = self.latex(node.value)
+            index = node.slice
+            parts = index.elts if isinstance(index, ast.Tuple) else [index]
+            shown = ",".join(
+                r"\left[" + ", ".join(self.latex(each) for each in part.elts) + r"\right]"
+                if isinstance(part, ast.List)
+                else self.latex(part)
+                for part in parts
+            )
+            if "_" in base or not isinstance(node.value, ast.Name):
+                base = rf"\left({base}\right)"
+            return f"{base}_{{{shown}}}"
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.keywords:
+            arguments = [self.latex(argument) for argument in node.args] + [
+                f"{_render_lhs(keyword.arg, None)} = {self.latex(keyword.value)}"
+                for keyword in node.keywords
+                if keyword.arg is not None
+            ]
+            return rf"{self._function_name(node.func.id)}\left({', '.join(arguments)}\right)"
+        if isinstance(node, ast.Compare):
+            text = self.latex(node.left)
+            for operator, right in zip(node.ops, node.comparators):
+                symbol = _COMPARISONS.get(type(operator))
+                if symbol is None:
+                    return rf"\texttt{{{_escaped_text(ast.unparse(node))}}}"
+                text += rf" {symbol} {self.latex(right)}"
+            return text
+        if isinstance(node, ast.Tuple):
+            return r"\left(" + ", ".join(self.latex(each) for each in node.elts) + r"\right)"
+        if isinstance(node, ast.IfExp):
+            return (
+                rf"{self.latex(node.body)}\ \text{{si}}\ {self.latex(node.test)},\ "
+                rf"\text{{si no}}\ {self.latex(node.orelse)}"
+            )
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult):
+            # `5[1/m]` is `5*1/m` to the parser; the page writes `5/m`, not `5 · 1`.
+            if isinstance(node.right, ast.Constant) and node.right.value == 1:
+                return self.latex(node.left)
+        if isinstance(node, (ast.Name, ast.Constant, ast.UnaryOp, ast.BinOp, ast.Call, ast.List)):
+            return super().latex(node)
+        return rf"\texttt{{{_escaped_text(ast.unparse(node))}}}"
+
+    def _name(self, name: str) -> str:
+        written = super()._name(name)
+        # A unit standing alone is written `1 m` - right for a value, not for the unit of a
+        # quotient: `10[kN/m]` read `10 kN / 1 m`.
+        return written.removeprefix("1" + r"\,") if name in self.unit_names else written
+
+    def _function_name(self, name: str) -> str:
+        if name in _NAMED_FUNCTIONS:
+            return "\\" + name
+        if name in _OPERATOR_NAMES:
+            return rf"\operatorname{{{name}}}"
+        return _render_lhs(name, None)
+
+    def _call(self, name: str, arguments) -> str:
+        if name in ("solve", "inv", "transpose", "sqrt", "abs") or not arguments:
+            return super()._call(name, arguments)
+        inner = ", ".join(self.latex(argument) for argument in arguments)
+        return rf"{self._function_name(name)}\left({inner}\right)"
+
+
+# -- whether a matrix fits the page ------------------------------------------------------
+#
+# Measured, not counted: KaTeX 0.16.28 - Colab's - typeset band matrices of every kind of
+# entry the book's trusses and beams hold (`k`, `k_1 + k_2`, `AE/L`, `12EI/L^3`, integers,
+# floats), 4 x 4 to 16 x 16, and their widths are what this estimate was fitted to: within
+# 10% of each, and never short of an overflowing one by more than 1%. The count of
+# `_latex_visual_width` it replaces is a MathJax row's, and put a 6 x 6 of `k` that is
+# 243 px wide in a summary while it drew a 14 x 14 of integers 973 px wide.
+_EM_PX = 19.36  # KaTeX sets math at 1.21 em of a 16 px page
+_GLYPH_EM = {"digit": 0.5, "letter": 0.52, "capital": 0.72, "upright": 0.5, "point": 0.28, "bracket": 0.39}
+_BINARY_EM = 1.22  # `+`, `-`, `\cdot` between two terms, with their room
+_UNARY_EM = 0.5
+_SCRIPT_SCALE = 0.7
+_THIN_SPACE_EM = 0.17
+# The page is Colab's output, 900 px; the name, the `=` and a unit take the rest.
+_PAGE_PX = 900.0
+_ROOM_BESIDE_A_MATRIX_PX = 100.0
+
+
+def _group_at(text: str, start: int) -> tuple[str, int]:
+    """The `{...}` at `start`, or the one character there, and where it ends."""
+    if start >= len(text) or text[start] != "{":
+        return text[start:start + 1], start + 1
+    depth = 0
+    for index in range(start, len(text)):
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start + 1:index], index + 1
+    return text[start + 1:], len(text)
+
+
+def _katex_em(latex: str) -> float:
+    """How wide KaTeX draws a cell of a matrix, in em."""
+    text = re.sub(r"\\(?:displaystyle|left|right)(?![A-Za-z])", "", latex).strip()
+    total, index, leading = 0.0, 0, True
+    while index < len(text):
+        char = text[index]
+        command = re.match(r"\\([A-Za-z]+|.)", text[index:])
+        if command is not None:
+            name = command.group(1)
+            after = index + len(command.group(0))
+            if name in ("frac", "dfrac", "tfrac"):
+                numerator, after = _group_at(text, after)
+                denominator, after = _group_at(text, after)
+                total += max(_katex_em(numerator), _katex_em(denominator)) + 0.24
+            elif name in ("mathrm", "text", "mathit", "operatorname", "mathbf", "textbf"):
+                inner, after = _group_at(text, after)
+                letters = re.sub(r"\\[A-Za-z]+|[{}]", "", inner)
+                # Words, measured in KaTeX: a bold letter 0.6 em, an upright one 0.5, a space 0.33.
+                glyph = 0.6 if name in ("textbf", "mathbf") else _GLYPH_EM["upright"]
+                total += sum(0.33 if letter == " " else glyph for letter in letters)
+            elif name == "cdot":
+                total += _BINARY_EM
+            elif name == " ":
+                total += 0.33
+            elif name == ";":
+                total += 0.28
+            elif name == ",":
+                total += _THIN_SPACE_EM
+            elif name in ("quad", "qquad"):
+                total += 1.0 if name == "quad" else 2.0
+            elif name == "ldots":
+                total += 1.2
+            elif name == "leftarrow":
+                total += 1.56
+            else:
+                total += _GLYPH_EM["letter"]
+            index, leading = after, False
+            continue
+        if char in "_^":
+            inner, index = _group_at(text, index + 1)
+            total += _katex_em(inner) * _SCRIPT_SCALE
+            continue
+        if char in "+-":
+            total += _UNARY_EM if leading else _BINARY_EM
+        elif char.isdigit():
+            total += _GLYPH_EM["digit"]
+        elif char.isupper():
+            total += _GLYPH_EM["capital"]
+        elif char.isalpha():
+            total += _GLYPH_EM["letter"]
+        elif char in ".,":
+            total += _GLYPH_EM["point"]
+        elif char in "()[]|":
+            total += _GLYPH_EM["bracket"]
+        elif char in "=<>":
+            total += 1.33  # a relation and the room either side of it
+        if char not in " {}+-":
+            leading = False
+        index += 1
+    return total
+
+
+def _matrices_in(latex: str) -> list[list[list[str]]]:
+    """The cells of each outermost `matrix` environment of a block of LaTeX."""
+    opening, closing = r"\begin{matrix}", r"\end{matrix}"
+    found, index = [], 0
+    while (start := latex.find(opening, index)) != -1:
+        depth, cursor = 1, start + len(opening)
+        while depth and cursor < len(latex):
+            next_open, next_close = latex.find(opening, cursor), latex.find(closing, cursor)
+            if next_close == -1:
+                return found
+            if next_open != -1 and next_open < next_close:
+                depth, cursor = depth + 1, next_open + len(opening)
+            else:
+                depth, cursor = depth - 1, next_close + len(closing)
+        body = latex[start + len(opening):cursor - len(closing)]
+        found.append([_split_level(row, "&") for row in _split_level(body, r"\\")])
+        index = cursor
+    return found
+
+
+def _split_level(text: str, separator: str) -> list[str]:
+    """`text` split at `separator` where it stands outside every group and inner matrix."""
+    parts, depth, start, index = [], 0, 0, 0
+    while index < len(text):
+        if text.startswith(r"\begin{", index):
+            depth += 1
+        elif text.startswith(r"\end{", index):
+            depth -= 1
+        elif text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+        elif depth == 0 and text.startswith(separator, index):
+            parts.append(text[start:index])
+            index += len(separator)
+            if separator == r"\\" and text.startswith("[", index):
+                index = text.find("]", index) + 1
+            start = index
+            continue
+        index += 1
+    parts.append(text[start:])
+    return parts
+
+
+def _matrix_px(cells: list[list[str]]) -> float:
+    columns = max(len(row) for row in cells)
+    widths = [
+        max((_katex_em(row[column]) for row in cells if column < len(row)), default=0.0)
+        for column in range(columns)
+    ]
+    # Each column has 1 em of room between it and the next, and the brackets take 0.8 em.
+    return (sum(widths) + columns + 0.8) * _EM_PX
+
+
+def fits_the_page(result, settings: RenderSettings) -> bool:
+    """Whether a result's row, drawn in full, is no wider than Colab's page."""
+    try:
+        matrices = _matrices_in(render_aligned_results([result], settings=settings))
+    except Exception:  # noqa: BLE001 - drawn, as before, when it cannot be measured
+        return True
+    widest = max((_matrix_px(cells) for cells in matrices), default=0.0)
+    return widest + _ROOM_BESIDE_A_MATRIX_PX <= _PAGE_PX
+
+
+def matrix_summary_latex(name: str, matrix) -> str:
+    r"""`K \;:\; 36 \times 36,\ \text{simétrica},\ 180\ \text{términos no nulos}`."""
+
+    def is_zero(entry) -> bool:
+        # `(a + b)^2 - a^2 - 2ab - b^2` is zero although SymPy leaves it written.
+        try:
+            return sp.expand(entry) == 0
+        except Exception:  # noqa: BLE001 - a quantity, or anything SymPy cannot expand
+            return entry == 0
+
+    nonzero = sum(1 for entry in matrix if not is_zero(entry))
+    square = matrix.rows == matrix.cols
+    symmetric = square and all(
+        is_zero(matrix[row, column] - matrix[column, row])
+        for row in range(matrix.rows)
+        for column in range(row + 1, matrix.cols)
+    )
+    parts = [rf"{matrix.rows} \times {matrix.cols}"]
+    if symmetric:
+        parts.append(r"\text{simétrica}")
+    parts.append(rf"{nonzero}\ \text{{términos no nulos}}")
+    return rf"{_latex(sp.Symbol(name))} \;:\; " + r",\ ".join(parts)

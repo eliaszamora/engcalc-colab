@@ -330,6 +330,8 @@ class EngMagics(Magics):
                         page,
                     )
                     pending_results.clear()
+                    for notice in item.notices:
+                        print(f"engcalc: {notice}")
                     page.show(Math(item.latex))
                     continue
 

@@ -13,8 +13,40 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.43.4**.
+Current version: **0.44.0**.
 
+
+## v0.44.0 a loop that assembles shows it once
+
+**His book, chapter 3: problem 3.6's memoria was 54 000 px, 63% of it the stiffness
+matrix printed after every one of 33 bars.** A `% for` now says what it did once (his
+decision, 2026-09-29, "haz primero 1 + 3 con el resumen cuando la matriz no quepa"):
+
+- A loop whose line adds into a part of a matrix, `K[[...], [...]] = K[[...], [...]] + ...`,
+  works every pass out and shows the assembly once: how many passes, the names the rule
+  stands on with the values they took, the `%` helpers that made the rest, the rule as the
+  sheet writes it, and the matrix it built - or, when that is wider than the page, what it
+  is: `K : 36 × 36, simétrica, 336 términos no nulos`.
+
+  ```text
+  Ensamble en 33 pasos, para (i, j, m, n) = (A, B, 1, 3), (B, C, 3, 5), …, (h, I, 16, 17)
+  con (p, q, r, t) = (2m − 1, 2m, 2n − 1, 2n):
+      K[p,q,r,t],[p,q,r,t] ← K[p,q,r,t],[p,q,r,t] + k_ij g_ij g_ijᵀ
+  ```
+
+- A loop with two or more `:=` values of its own shows them as one table, a row per pass,
+  with the formulas its columns are worked out from written once above it. A loop of one
+  `:=` line keeps its rows, as written by hand.
+- A `=` line every pass wrote with only its subscripts changed - the bars' `g` vectors -
+  is written once, as the rule. One that works out to a number, or that adds into its own
+  name (`W = W + w_{i}`), keeps its rows.
+- A large matrix of zeros is written as one: `K = 0₃₆ₓ₃₆`.
+- Whether a matrix fits the page is measured against Colab's KaTeX, not counted.
+
+The numbers are the ones every pass worked out: every name the loop defines reads as
+before. A loop that writes its own headings or paragraphs, assembles under a `% if`, or
+runs inside another loop that does not gather shows its rows as it always has. A pass that
+fails leaves the passes before it on the page. Problem 3.6's page is 10 900 px.
 
 ## v0.43.4 a plot that finishes, in units a page reads
 
@@ -3913,6 +3945,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.44.0** — a `% for` that assembles a matrix shows the assembly once (the rule, the values its names took, the matrix or its size when it does not fit); two or more `:=` values in a loop are one table under their formulas; a formula every pass wrote with other subscripts is written once; a large zero matrix is written `0_{r×c}`.
 - **0.43.4** — a plot too large to work out exactly is marked from its points instead of hanging; a plot in the algebra's unit reads in the page's (one unit per axis); a `:=` value written with a bracket unit reads in the page's unit (`301.00 kN`, not `301000.00 m·kg/s²`); no `__u_m` on the page.
 - **0.43.3** — a computed coefficient keeps its figures (`-0.007`, not `-0.01`); a denominator holding a fraction is written as one (`P/((5 k)/4)`, not `P/(5 1/4 k)`); `x := solve(...)` is worked out; a bare `solve` says how to keep its answer.
 - **0.43.2** — `numeric`, `result` or `report` inside a formula stops the line and writes it back without it, in a line that runs; a condition's `numeric` reads as before; a name defined from itself stops instead of hanging; `keep w = result(...)` leaves the substitution out.
@@ -4040,4 +4073,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.43.4`.
+Version: `0.44.0`.

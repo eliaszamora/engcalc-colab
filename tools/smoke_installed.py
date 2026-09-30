@@ -77,6 +77,13 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.44.0: a loop that assembles shows it once; its := values are one table
+check("an assembly is shown once, a table of the loop's values",
+      "k := 100[kN/mm]\nK = zeros(3, 3)\n% for p, q in [(1, 2), (2, 3)]:\n"
+      "K[[{p}, {q}], [{p}, {q}]] = K[[{p}, {q}], [{p}, {q}]] + k*[1, -1; -1, 1]\n% end\n"
+      "% for i in [1, 2]:\nL_{i} := {i}[m]\nc_{i} := 2*L_{i}\n% end\nZ = zeros(36, 36)",
+      r"\textbf{Ensamble en 2 pasos}", r"\hline", r"\mathbf{0}_{36 \times 36}",
+      absent=("__u", r"L_{1} & = &"))
 # 0.43.4: what chapter 3 of his book found
 check("a bracket unit is read as its unit; no alias on the page",
       "k := 100[kN/mm]\nD := [3[mm]; 1[mm]]\nF := k*D\nS := F[1] + 1[kN]\n"

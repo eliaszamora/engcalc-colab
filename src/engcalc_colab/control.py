@@ -61,9 +61,13 @@ class ConditionNote:
     page: smaller than the rows and in another letter. He chose (2026-09-25, option 1b) the
     whole sentence typeset as the rows are, "Como" in bold. Its room above and below is the
     room every block has (`renderer.page_block`), no longer a strut of its own.
+
+    `notices` are what the lines it stands for said, for the console: a loop's table is
+    one note for many `:=` lines, and what they say is said once.
     """
 
     latex: str
+    notices: tuple = ()
 
 
 @dataclass
@@ -151,6 +155,11 @@ class _Scope(dict):
     def __init__(self, engine) -> None:
         super().__init__()
         self.engine = engine
+        # Whether a `% for` around this point gathers its passes; one inside it streams
+        # its own into the gathering one, which shows its assembly once for both.
+        self.gathering = False
+        # How many `% for` this point is inside: only the outermost one gathers.
+        self.depth = 0
 
     def __missing__(self, name):
         value = self.engine.numeric_context.values.get(name)
@@ -481,7 +490,8 @@ def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
         "<% for>",
         "exec",
     )
-    for value in values:
+
+    def take(value) -> None:
         try:
             exec(assign, {"__builtins__": _BUILTINS, "__value__": value}, scope)  # noqa: S102 - the sheet's own % layer
         except (TypeError, ValueError) as exc:
@@ -489,7 +499,356 @@ def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
                 f"line {line_no}: % for cannot give {ast.unparse(node.header.target)} the value "
                 f"{value!r}: {exc}"
             ) from exc
-        yield from _walk(node.body, engine, settings, scope)
+
+    # A loop inside another streams its lines into it: one that gathers shows its assembly
+    # once for both, and one that does not shows its rows as they come - an inner table per
+    # outer pass had no outer index to say which it was. A loop with nothing to gather shows
+    # its rows as they come, as written by hand (approved 2026-09-25).
+    if scope.gathering or scope.depth or not _gathers(node.body):
+        scope.depth += 1
+        try:
+            for value in values:
+                take(value)
+                yield from _walk(node.body, engine, settings, scope)
+        finally:
+            scope.depth -= 1
+        return
+    scope.gathering = True
+    scope.depth += 1
+    try:
+        yield from _gathered(node, values, take, engine, settings, scope)
+    finally:
+        scope.gathering = False
+        scope.depth -= 1
+
+
+@dataclass
+class _Kept:
+    """A line a gathering loop worked out, and what the page needs of it."""
+
+    kind: str  # "shown", "cell", "formula" or "part"
+    item: object = None  # what is shown as it came, for "shown"
+    key: object = None
+    index: int = 0  # the pass
+    direct: bool = True  # a line of the loop's own, not of a loop or `% if` inside it
+    result: object = None
+    notices: tuple = ()
+    said: dict = field(default_factory=dict)  # the `%` values of the names its rule stands on
+
+
+def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Scope) -> Iterator:
+    """A `% for` whose `:=` values are a table, or that assembles a matrix: every pass is
+    worked out here and kept, and the page gets them once the loop is over (his decision,
+    2026-09-29) - the table, then what the passes showed in the order they showed it, then
+    each assembly's rule and the matrix it built.
+
+    A pass that fails puts every row kept so far on the page, in the order it ran, and then
+    the error: what the page shows of a failing loop is what it showed by hand.
+    """
+    from .models import ParsedNumericAssignment  # noqa: PLC0415 - models import nothing back
+
+    helpers = _helpers_of(node)
+    stands_on: dict = {}
+    defined: dict = {}  # the names each line of the loop has defined so far
+    kept: list[_Kept] = []
+    try:
+        for index, value in enumerate(values):
+            take(value)
+            occurrences: dict = {}
+            for child in node.body:
+                direct = isinstance(child, _Stretch)
+                items = (
+                    _parse_stretch(child, lambda text, line_no: _inserted(text, line_no, scope))
+                    if direct
+                    else _walk([child], engine, settings, scope)
+                )
+                for item in items:
+                    if _shown_as_it_comes(item):
+                        kept.append(_Kept("shown", item=item))
+                        continue
+                    result = engine.evaluate(item)
+                    notices = tuple(engine.notices)
+                    template = getattr(item, "written_as", None) or item.source
+                    if template not in stands_on:
+                        stands_on[template] = _names_it_stands_on(template, helpers)
+                    said = {name: dict.get(scope, name) for name in stands_on[template] if dict.__contains__(scope, name)}
+                    entry = _Kept("shown", index=index, direct=direct, result=result, notices=notices, said=said)
+                    if _adds_into_a_part(item):
+                        entry.kind, entry.key = "part", (item.target, template)
+                    elif direct and isinstance(item, ParsedNumericAssignment):
+                        occurrence = occurrences.get(template, 0)
+                        occurrences[template] = occurrence + 1
+                        entry.kind, entry.key = "cell", (template, occurrence)
+                    elif direct and _a_formula(item, result) and not _reads_its_earlier_passes(item, defined.get(template, ())):
+                        entry.kind, entry.key = "formula", template
+                    if getattr(item, "target", None):
+                        defined.setdefault(template, set()).add(item.target)
+                    kept.append(entry)
+    except EngCalcError:
+        for entry in kept:
+            yield _as_it_ran(entry)
+        raise
+
+    columns = _table_columns(kept)
+    if columns:
+        from .renderer import formula_rules_latex, loop_table_latex  # noqa: PLC0415 - renderer imports models only
+
+        cells = {key: [None] * len(values) for key in columns}
+        said: list = []
+        for entry in kept:
+            if entry.kind == "cell" and entry.key in cells:
+                cells[entry.key][entry.index] = entry.result.quantity
+                said.extend(notice for notice in entry.notices if notice not in said)
+        variable = [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+        table = loop_table_latex(
+            variable, values, [(_written_target(key[0]), cells[key]) for key in columns], _current(settings)
+        )
+        formulas = [key[0] for key in columns if _worked_out(key[0], variable)]
+        if formulas:
+            # The table gives the numbers; what each column is worked out from is written
+            # once, above it - a memoria that shows `0.87` and never `sin 60°` shows nothing
+            # to check (chapter 4 of his book). The table's first column gives the loop's
+            # values; the helpers and the `%` names the formulas stand on are said here.
+            entries = [entry for entry in kept if entry.kind == "cell" and entry.key[0] in formulas]
+            _names, _labels, made, constants = _what_it_stands_on(formulas, entries, helpers, variable)
+            yield ConditionNote(latex=formula_rules_latex(len(values), formulas, (), None, made, constants))
+        yield ConditionNote(latex=table, notices=tuple(said))
+    yield from _in_the_order_they_ran(node, values, kept, columns, helpers)
+    yield from _assemblies(kept, helpers, settings, _header_names(node))
+
+
+def _header_names(node: _ForBlock) -> list[str]:
+    return [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+
+
+def _reads_its_earlier_passes(item, earlier) -> bool:
+    """`M_{i} = M_{i-1} + V_{i}`: a line that reads what it defined in an earlier pass is a
+    recurrence, and each pass is a new value a reader needs - the rule alone never said
+    what M_3 came to."""
+    return bool(earlier) and any(
+        isinstance(node, ast.Name) and node.id in earlier for node in ast.walk(item.expression.body)
+    )
+
+
+def _names_it_stands_on(template: str, helpers: list) -> list[str]:
+    """The `%` names a loop's line reads: those in its `{...}`, and those the helpers it
+    reads were made from, followed back through helpers made from helpers - `K[[{p}, {q}],
+    ...]` with `% p, q = 2*m - 1, 2*m` stands on p, q and m. In the order they are written."""
+    return _chain([template], helpers)[0]
+
+
+def _chain(templates: list, helpers: list) -> tuple[list[str], list[str]]:
+    """The `%` names the lines stand on, and the helpers that made any of them, in the order
+    the loop writes those helpers."""
+    names: list[str] = []
+    for template in templates:
+        for inside in re.findall(r"\{([^{}]+)\}", template):
+            names.extend(name for name in re.findall(r"[A-Za-z_]\w*", inside) if name not in names)
+    used: set = set()
+    changed = True
+    while changed:
+        changed = False
+        for position, (code, made) in enumerate(helpers):
+            if position not in used and made & set(names):
+                used.add(position)
+                names.extend(name for name in _names_read(code) if name not in names)
+                changed = True
+    return names, [code for position, (code, _made) in enumerate(helpers) if position in used]
+
+
+def _names_read(code: str) -> list[str]:
+    try:
+        tree = ast.parse(code)
+    except SyntaxError:
+        return []
+    read: list[str] = []
+    for statement in tree.body:
+        value = getattr(statement, "value", None)
+        for element in ast.walk(value) if value is not None else ():
+            if isinstance(element, ast.Name) and element.id not in read and element.id not in _BUILTINS:
+                read.append(element.id)
+    return read
+
+
+def _what_it_stands_on(templates: list, entries: list, helpers: list, variable=None, order=()):
+    """For a note: the names whose values changed from pass to pass and those values, the
+    helpers that made names the lines read, and the `%` names that were the same every pass.
+
+    `variable`, given, leaves the loop's own names out of the values - its table says them.
+    """
+    made_by_helpers = set().union(*(made for _code, made in helpers)) if helpers else set()
+    names: list[str] = []
+    for entry in entries:
+        names.extend(name for name in entry.said if name not in names)
+    _reached, made = _chain(templates, helpers)
+    names = [name for name in names if name not in made_by_helpers]
+    # The loop's own names first, as its header writes them: `(m, p)`, not `(p, m)`.
+    if order:
+        names = [name for name in order if name in names] + [name for name in names if name not in order]
+    if len(templates) == 1:
+        # Each time the line ran - a loop inside this one runs it several times a pass.
+        ordered = [entry.said for entry in entries]
+    else:
+        passes: dict = {}
+        for entry in entries:
+            passes.setdefault(entry.index, {}).update(entry.said)
+        ordered = [passes[index] for index in sorted(passes)]
+    varying, constants = [], []
+    for name in names:
+        seen = [said.get(name) for said in ordered]
+        if variable is not None and name in variable:
+            continue
+        if len(ordered) > 1 and any(value != seen[0] for value in seen):
+            varying.append(name)
+        elif _said_in_a_word(seen[0]):
+            constants.append((name, seen[0]))
+    labels = [
+        tuple(said.get(name) for name in varying) if len(varying) > 1 else said.get(varying[0])
+        for said in ordered
+    ] if varying else None
+    return varying, labels, made, constants
+
+
+def _said_in_a_word(value) -> bool:
+    """A `%` value a note can say: a number, a word, a name, a short list of them. A table
+    of the `%` layer (`num = {c: k + 1 ...}`) is bookkeeping, and ran a row to 1165 px."""
+    if isinstance(value, (list, tuple)):
+        return len(value) <= 6 and all(_said_in_a_word(item) for item in value)
+    if isinstance(value, str):
+        return len(value) <= 24
+    return isinstance(value, (int, float, _SheetName))
+
+
+def _in_the_order_they_ran(node: _ForBlock, values: list, kept: list, columns: list, helpers: list) -> Iterator:
+    """What the passes showed, in order, but what the table holds, the assemblies, and each
+    formula every pass wrote with only its subscripts changed - said once, as a rule, where
+    its first pass stood."""
+    from .renderer import formula_rules_latex  # noqa: PLC0415 - renderer imports models only
+
+    runs: dict = {}
+    for entry in kept:
+        if entry.kind == "formula":
+            runs.setdefault(entry.key, []).append(entry)
+    once = {
+        template for template, entries in runs.items()
+        if [entry.index for entry in entries] == list(range(len(values)))
+    }
+    pending: list = []
+
+    def rules():
+        entries = [entry for template in pending for entry in runs[template]]
+        names, labels, made, constants = _what_it_stands_on(pending, entries, helpers, order=_header_names(node))
+        # What every pass of these lines said, once - not only the first pass's.
+        said: list = []
+        for entry in entries:
+            said.extend(notice for notice in entry.notices if notice not in said)
+        return ConditionNote(
+            latex=formula_rules_latex(len(values), list(pending), names, labels, made, constants),
+            notices=tuple(said),
+        )
+
+    for entry in kept:
+        if entry.kind == "part" or (entry.kind == "cell" and entry.key in columns):
+            continue
+        if entry.kind == "formula" and entry.key in once:
+            if entry.index == 0:
+                pending.append(entry.key)
+            continue
+        if pending:
+            yield rules()
+            pending = []
+        yield _as_it_ran(entry)
+    if pending:
+        yield rules()
+
+
+def _worked_out(template: str, variable: list) -> bool:
+    """Whether a `:=` line works its value out of the sheet's names - `t_{m} := 2*r_{m}*L_1` -
+    rather than writes the loop's own value, `x_{n} := {x}[m]`, which the table already says."""
+    right = template.split(":=", 1)[1] if ":=" in template else ""
+    right = right.split("#", 1)[0]  # a comment is words, not names
+    right = re.sub(r"\{([^{}]+)\}", lambda match: " " + match.group(1).strip() + " ", right)
+    right = re.sub(r"\[[^\[\]]*\]", "", right)  # a unit in brackets
+    names = set(re.findall(r"[A-Za-z_]\w*", right))
+    return bool(names - set(variable))
+
+
+def _helpers_of(node: _ForBlock) -> list:
+    """The `%` helpers of a loop's own body and the names each makes: `% p, q = 2*m - 1, 2*m`."""
+    made_by_helpers = []
+    for child in node.body:
+        if isinstance(child, _Helper):
+            try:
+                tree = ast.parse(child.code)
+            except SyntaxError:
+                continue
+            made = {
+                element.id
+                for statement in tree.body
+                if isinstance(statement, (ast.Assign, ast.AugAssign))
+                for target in (statement.targets if isinstance(statement, ast.Assign) else [statement.target])
+                for element in ast.walk(target)
+                if isinstance(element, ast.Name)
+            }
+            made_by_helpers.append((child.code, made))
+    return made_by_helpers
+
+
+def _a_formula(item, result) -> bool:
+    """`g_{ij} = [-c_{ij}; ...]`: a line of the loop's own that defines a name by a formula of
+    names - what a pass shows is the rule with other subscripts. One that works out to a
+    number keeps its rows: the number is what a reader would otherwise have to work out.
+    So does one that reads its own name, `W = W + w_{i}`: each pass is a new value of it,
+    and the rule alone never said what W came to."""
+    from .models import EvaluationResult, ParsedStatement  # noqa: PLC0415 - models import nothing back
+
+    if not (
+        isinstance(item, ParsedStatement)
+        and type(result) is EvaluationResult
+        and item.target
+        and item.parameters is None
+        and item.target_index is None
+        and item.declaration is None
+    ):
+        return False
+    if any(isinstance(node, ast.Name) and node.id == item.target for node in ast.walk(item.expression.body)):
+        return False
+    units = set(getattr(result, "unit_literals", ()) or ())
+    symbols = getattr(result.value, "free_symbols", set())
+    return any(
+        symbol.name not in units and not symbol.name.startswith("__") for symbol in symbols
+    )
+
+
+def _assemblies(kept: list, helpers: list, settings, order=()) -> Iterator:
+    """Each matrix a loop assembled: the rule of every line that added into it, once, and
+    the matrix - or, wider than the page, what it is."""
+    from .renderer import assembly_note_latex, fits_the_page, matrix_summary_latex  # noqa: PLC0415
+
+    lines: dict = {}
+    built: dict = {}
+    for entry in kept:
+        if entry.kind != "part":
+            continue
+        lines.setdefault(entry.key, []).append(entry)
+        target = entry.key[0]
+        _last, said = built.get(target, (None, []))
+        said.extend(notice for notice in entry.notices if notice not in said)
+        built[target] = (entry.result, said)
+    for target, (result, said) in built.items():
+        for (line_target, template), entries in lines.items():
+            if line_target != target:
+                continue
+            # A line of a loop inside this one: its helpers are that loop's, not these.
+            own = helpers if all(entry.direct for entry in entries) else []
+            names, labels, made, constants = _what_it_stands_on([template], entries, own, order=order)
+            yield ConditionNote(
+                latex=assembly_note_latex(len(entries), template, names, labels, made, constants)
+            )
+        if fits_the_page(result, _current(settings)):
+            yield Evaluated(result, tuple(said))
+        else:
+            yield ConditionNote(latex=matrix_summary_latex(target, result.value), notices=tuple(said))
 
 
 def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:
@@ -802,3 +1161,166 @@ def _said(operand: ast.AST, value, quantity, settings) -> str:
     if written is None or not names or all(node.id in units for node in names):
         return number
     return f"{_latex(sp.sympify(written), units, current)} = {number}"
+
+
+def _current(settings):
+    return settings() if callable(settings) else settings
+
+
+def _gathers(body: list) -> bool:
+    """Whether a `% for` has anything to show once: two `:=` lines of its own, or a line,
+    its own or a loop's inside it, that adds into a part of a matrix.
+
+    Not when it writes a heading or a paragraph of its own: those open each pass's rows,
+    and gathered the rows would leave them standing over nothing ("Barra 2" with no bar
+    under it). Not when a `% if` inside it assembles: its "Como ..." would be left without
+    the row it decided.
+    """
+    if _writes_text(body) or _assembles_under_if(body):
+        return False
+    return len(_values_in(body)) >= 2 or _assembles(body)
+
+
+def _writes_text(body: list) -> bool:
+    for node in body:
+        if isinstance(node, _Stretch):
+            try:
+                items = _parse_stretch(node, lambda _text, _line_no: "1")
+            except EngCalcError:
+                continue
+            if any(type(item).__name__ in ("ParsedHeading", "ParsedNarrative") for item in items):
+                return True
+        elif isinstance(node, (_ForBlock, _WhileBlock)) and _writes_text(node.body):
+            return True
+        elif isinstance(node, _IfBlock) and any(_writes_text(branch.body) for branch in node.branches):
+            return True
+    return False
+
+
+def _assembles_under_if(body: list) -> bool:
+    for node in body:
+        if isinstance(node, _IfBlock) and any(
+            _assembles(branch.body) or _assembles_under_if(branch.body) for branch in node.branches
+        ):
+            return True
+        if isinstance(node, _ForBlock) and _assembles_under_if(node.body):
+            return True
+    return False
+
+
+def _assembles(body: list) -> bool:
+    for node in body:
+        if isinstance(node, _Stretch):
+            try:
+                items = _parse_stretch(node, lambda _text, _line_no: "1")
+            except EngCalcError:
+                continue  # said when the line runs
+            if any(_adds_into_a_part(item) for item in items):
+                return True
+        elif isinstance(node, _ForBlock) and _assembles(node.body):
+            return True
+    return False
+
+
+def _shown_as_it_comes(item) -> bool:
+    """What a gathering loop passes on as it is: what `control` has already worked out, a
+    heading, a paragraph."""
+    return (
+        isinstance(item, (ConditionNote, Evaluated))
+        or not hasattr(item, "line_no")
+        or type(item).__name__ in ("ParsedHeading", "ParsedNarrative")
+    )
+
+
+def _as_it_ran(entry: "_Kept"):
+    if entry.item is not None:
+        return entry.item
+    return Evaluated(entry.result, entry.notices)
+
+
+def _table_columns(kept: list) -> list:
+    """The `:=` lines a loop's table holds: those whose every pass is a value of one kind
+    of quantity. Two or more, or none - one line keeps its rows, as written by hand.
+
+    A line whose passes are not all one quantity keeps its rows: a column has one unit,
+    and 4 s under `a [m]` read as 4 m. A line written twice in the loop keeps its rows too:
+    two columns of one name would say which is which by nothing but their order.
+    """
+    results: dict = {}
+    for entry in kept:
+        if entry.kind == "cell":
+            results.setdefault(entry.key, []).append(entry.result)
+    written_twice = {template for template, occurrence in results if occurrence}
+    columns = []
+    for key, passes in results.items():
+        if key[0] in written_twice or not all(_a_value(result) for result in passes):
+            continue
+        kinds = {str(getattr(result.quantity, "dimensionality", "")) for result in passes}
+        if len(kinds) == 1:
+            columns.append(key)
+    return columns if len(columns) >= 2 else []
+
+
+def _values_in(body: list) -> list[str]:
+    """The `:=` lines of a loop's own stretches, as the sheet writes them."""
+    from .models import ParsedNumericAssignment  # noqa: PLC0415 - models import nothing back
+
+    lines = []
+    for node in body:
+        if isinstance(node, _Stretch):
+            try:
+                items = _parse_stretch(node, lambda _text, _line_no: "1")
+            except EngCalcError:
+                continue  # said when the line runs
+            for item in items:
+                if isinstance(item, ParsedNumericAssignment):
+                    index = item.line_no - node.first_line
+                    lines.append(node.lines[index].strip())
+    return lines
+
+
+def _a_value(result) -> bool:
+    """A scalar `:=` value with nothing else to show: a cell of the loop's table."""
+    from .models import NumericAssignmentResult  # noqa: PLC0415 - models import nothing back
+
+    return (
+        isinstance(result, NumericAssignmentResult)
+        and getattr(result, "equation", None) is None
+        and not getattr(result, "shown_as_written", False)
+    )
+
+
+def _adds_into_a_part(item) -> bool:
+    """`K[[p, q], [p, q]] = K[[p, q], [p, q]] + ...`: a line that assembles into a matrix.
+
+    It adds into the part it assigns - the same part, read as a term of the sum. A line
+    that reads another part, `v[p] = 2*v[p - 1]`, is a recurrence, and each pass is a row.
+    """
+    target_index = getattr(item, "target_index", None)
+    if target_index is None:
+        return False
+    wanted = ast.dump(target_index)
+
+    def added(node):
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            return added(node.left) + added(node.right)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Sub):
+            return added(node.left)
+        return [node]
+
+    body = item.expression.body
+    if not (isinstance(body, ast.BinOp) and isinstance(body.op, (ast.Add, ast.Sub))):
+        return False
+    return any(
+        isinstance(term, ast.Subscript)
+        and isinstance(term.value, ast.Name)
+        and term.value.id == item.target
+        and ast.dump(term.slice) == wanted
+        for term in added(body)
+    )
+
+
+def _written_target(template: str) -> str:
+    """`L_{i}` of `L_{i} := ...`, the loop's name standing where a pass puts its value."""
+    target = template.split(":=", 1)[0].strip()
+    return re.sub(r"\{([^{}]+)\}", lambda match: "{" + match.group(1).strip() + "}", target)
