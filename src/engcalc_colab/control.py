@@ -326,7 +326,7 @@ def _check_lines(nodes: list) -> None:
     """
     for node in nodes:
         if isinstance(node, _Stretch):
-            _parse_stretch(node, lambda _text, _line_no: "1")
+            _parse_stretch(node, _PROBE)
         elif isinstance(node, _ForBlock):
             _check_lines(node.body)
         elif isinstance(node, _WhileBlock):
@@ -339,6 +339,22 @@ def _check_lines(nodes: list) -> None:
                 _check_lines(branch.body)
 
 
+def _PROBE(_text, _line_no):
+    """What a line's structure is read with before any pass runs: a stand-in value."""
+    return _PROBE
+
+
+def _put(insert, match, line_no, line):
+    written = insert(match.group(1), line_no)
+    if written is not _PROBE:
+        return written
+    # `{r}_a`, `k{p}`: a stand-in glued to a name is a name, or the line read `1_a` and was
+    # refused before any pass ran (his book, problem 5.9); anywhere else it is a number.
+    before = line[match.start() - 1] if match.start() else " "
+    after = line[match.end()] if match.end() < len(line) else " "
+    return "n1" if (after.isalnum() or after == "_" or before.isalnum() or before == "_") else "1"
+
+
 def _parse_stretch(stretch: _Stretch, insert=None):
     lines = list(stretch.lines)
     written = {}
@@ -346,7 +362,7 @@ def _parse_stretch(stretch: _Stretch, insert=None):
         for index, line in enumerate(lines):
             if index not in stretch.text and "{" in line:
                 line_no = stretch.first_line + index
-                lines[index] = _INSERTED.sub(lambda m, n=line_no: insert(m.group(1), n), line)
+                lines[index] = _INSERTED.sub(lambda m, n=line_no, s=line: _put(insert, m, n, s), line)
                 if lines[index] != line:
                     written[line_no] = line.strip()
     # Empty lines in front number the stretch as the cell does; a leading blank line
@@ -1193,7 +1209,7 @@ def _writes_text(body: list) -> bool:
     for node in body:
         if isinstance(node, _Stretch):
             try:
-                items = _parse_stretch(node, lambda _text, _line_no: "1")
+                items = _parse_stretch(node, _PROBE)
             except EngCalcError:
                 continue
             if any(type(item).__name__ in ("ParsedHeading", "ParsedNarrative") for item in items):
@@ -1220,7 +1236,7 @@ def _assembles(body: list) -> bool:
     for node in body:
         if isinstance(node, _Stretch):
             try:
-                items = _parse_stretch(node, lambda _text, _line_no: "1")
+                items = _parse_stretch(node, _PROBE)
             except EngCalcError:
                 continue  # said when the line runs
             if any(_adds_into_a_part(item) for item in items):
@@ -1277,7 +1293,7 @@ def _values_in(body: list) -> list[str]:
     for node in body:
         if isinstance(node, _Stretch):
             try:
-                items = _parse_stretch(node, lambda _text, _line_no: "1")
+                items = _parse_stretch(node, _PROBE)
             except EngCalcError:
                 continue  # said when the line runs
             for item in items:

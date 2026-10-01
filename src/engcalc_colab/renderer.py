@@ -4363,6 +4363,20 @@ _FRACTION_DEPTH_PT = 9
 _MATRIX_OPENING = r"\begin{matrix}"
 
 
+# KaTeX expands at most 1000 macros in one formula, and `\,` is a macro of three: a 12 x 12
+# stiffness matrix whose entries carry typed units held 432 of them and Colab drew the block
+# as red source, "Too many expansions" (his book, problem 5.10d). `\mkern3mu` is the same
+# thin space as a primitive, which is not counted.
+_MOST_THIN_SPACES = 200
+_THIN_SPACE = re.compile(r"(?<!\\)\\,")
+
+
+def _within_katex_s_expansions(latex: str) -> str:
+    if latex.count(r"\,") <= _MOST_THIN_SPACES:
+        return latex
+    return _THIN_SPACE.sub(lambda _match: r"\mkern3mu ", latex)
+
+
 def render_aligned_results(results: list[CalculationResult], *, settings: RenderSettings | None = None) -> str:
     """Render all calculation groups with one consistent MathJax array layout."""
     if not results:
@@ -4414,7 +4428,7 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
         previous_rows = result_rows
 
     body = " ".join(rows)
-    return rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}"
+    return _within_katex_s_expansions(rf"\hspace{{0.2em}}\begin{{array}}{{lcl}} {body} \end{{array}}")
 
 
 # --- computed blocks -------------------------------------------------------------------
@@ -4632,7 +4646,7 @@ def _latex_unit_text(unit) -> str:
     return _temperature_latex(format(unit, "~L"))
 
 
-_DEGREE_LATEX = {"degC": r"{}^{\circ}\mathrm{C}", "degF": r"{}^{\circ}\mathrm{F}"}
+_DEGREE_LATEX = {"degC": r"{}^{\circ}\mathrm{C}", "degF": r"{}^{\circ}\mathrm{F}", "inch": r"\mathrm{in}"}
 
 
 def _temperature_latex(latex: str) -> str:

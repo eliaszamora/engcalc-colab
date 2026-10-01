@@ -95,6 +95,9 @@ _UNIT_ALIASES.update(
 # The kelvin only in brackets, `30[K]`: unbracketed, `K` is the stiffness matrix of every
 # sheet, and a name spelled like a unit is read as the unit until the sheet defines it.
 _UNIT_ALIASES[BRACKETED_UNIT_PREFIX + "K"] = "kelvin"
+# The inch as a US sheet writes it, `10.6[in^2]`: in brackets only, because `in` is a word of
+# Python and can never be a name (his book, problem 5.10).
+_UNIT_ALIASES[BRACKETED_UNIT_PREFIX + "in"] = "inch"
 
 
 _ENGINEERING_REGISTRY: UnitRegistry | None = None
@@ -813,6 +816,14 @@ class NumericContext:
             for name in names
             if name not in resolved_units and name not in self.values
         ]
+        if missing and not isinstance(expr, sp.Rel):
+            # Names with no value that cancel - `(E*I/L_1^2 + ...)*P*L_1^2/(E*I)` - leave a
+            # number to work out (his book, problem 5.5).
+            cancelled = sp.cancel(sp.together(expr))
+            if not {symbol.name for symbol in cancelled.free_symbols} & set(missing):
+                expr = cancelled
+                names = sorted(symbol.name for symbol in expr.free_symbols)
+                missing = []
         if missing:
             hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
             raise EngEvaluationError(
@@ -882,6 +893,20 @@ class NumericContext:
             for name in names
             if name not in substitutions and name not in resolved_units
         )
+
+        if unresolved:
+            # `E*I/L^2 * P L^2/(E*I)`: the names with no value cancel, and the matrix has a
+            # number. Asked as written it stopped after its substitution row, silently - the
+            # reactions of his book's problem 5.5. Cancelled once, and only when that takes
+            # every such name away.
+            cancelled = matrix.applyfunc(lambda entry: sp.cancel(sp.together(entry)))
+            remaining = {
+                symbol.name for entry in cancelled for symbol in sp.sympify(entry).free_symbols
+            }
+            if not remaining & set(unresolved) and cancelled != matrix:
+                return self.evaluate_matrix(
+                    cancelled, overrides, target_unit, allowed_unresolved=allowed_unresolved
+                )
 
         if allowed_unresolved is not None:
             unexpected = tuple(
