@@ -235,6 +235,24 @@ def _letters_of(latex: str) -> str:
 _CASES_ROW_SEPARATOR = r" \\[4pt] "
 
 
+def _flattened_piecewise(expr):
+    """`expr` with every piecewise standing as a branch's value merged into it: the
+    branch `(Piecewise((a, c2), (b, True)), c1)` is `(a, c1 & c2), (b, c1)`. `expr` itself
+    when nothing is nested."""
+    pieces = []
+    nested = False
+    for value, condition in expr.args:
+        if isinstance(value, sp.Piecewise):
+            nested = True
+            for inner_value, inner_condition in _flattened_piecewise(value).args:
+                pieces.append((inner_value, sp.And(condition, inner_condition)))
+        else:
+            pieces.append((value, condition))
+    if not nested:
+        return expr
+    return sp.Piecewise(*pieces, evaluate=False)
+
+
 # A number of this many significant figures or fewer is one somebody typed. Measured on
 # the two kinds a formula holds: typed coefficients have one to three (0.005, 0.0018,
 # 0.125, 0.00207), the leftovers of the algebra sixteen or seventeen (1/0.85, 1/3). Six
@@ -521,6 +539,12 @@ class _EngineeringLatexPrinter(LatexPrinter):
         `\dfrac` as well, for the reason recorded there: `\displaystyle` sizes only the
         outermost fraction, and a branch can hold one inside another.
         """
+        # A piecewise inside a branch - `piecewise(1, x < 1, piecewise(2, x < 2, 3))`, the
+        # only way to write three pieces - is one list of cases: printed inside its parent,
+        # its rows were split again and `[4pt]` stood on the page (his book, chapter 6).
+        flat = _flattened_piecewise(expr)
+        if flat is not expr:
+            return self._print_Piecewise(flat)
         written = super()._print_Piecewise(expr)
         start = written.index(r"\begin{cases}") + len(r"\begin{cases}")
         end = written.index(r"\end{cases}")
@@ -4090,8 +4114,16 @@ def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[s
     if isinstance(result, EvaluationResult):
         return _symbolic_evaluation_rows(result, settings)
     if isinstance(result, NumericAssignmentResult) and result.equation is not None:
+        # The equation `x := solve(...)` solved holds the bracket units of the formulas it
+        # read, `50[kN]` as `__u_kN`: given only the line's own units it printed the alias,
+        # and KaTeX drew the block red (his book, problem 6.1b).
+        bracketed = frozenset(
+            symbol.name
+            for symbol in getattr(result.equation, "free_symbols", ())
+            if symbol.name.startswith(BRACKETED_UNIT_PREFIX)
+        )
         return _equality_stage_rows(
-            result.equation, settings, frozenset(result.written_units)
+            result.equation, settings, frozenset(result.written_units) | bracketed
         ) + [_standard_result_row(result, settings)]
     return [_standard_result_row(result, settings)]
 
@@ -4266,17 +4298,21 @@ def _value_row_spacings(
         lhs = _solved_lhs(result)
         value = sp.sympify(_shown_expression(result))
         display_input = result.display_input
+        # Measured with the units `_evaluation_rows` draws: without them a bracket unit
+        # printed as `__u_kN` was wider, the integral of 6.15 counted two rows for its one
+        # and the cell stopped (his book, chapter 6).
+        units = result.unit_literals
 
         if display_input is None or sp.sstr(display_input) == sp.sstr(value):
             stage_lengths = [len(result_rows)]
         elif isinstance(display_input, sp.Equality):
-            value_rows = _bounded_expression_rows(value, settings=settings)
+            value_rows = _bounded_expression_rows(value, settings=settings, unit_literals=units)
             stage_lengths = [
-                len(_equality_stage_rows(display_input, settings)),
+                len(_equality_stage_rows(display_input, settings, units)),
                 _assignment_stage_row_count(lhs, value_rows),
             ]
         else:
-            input_latex = _latex(display_input)
+            input_latex = _latex(display_input, units)
             input_candidate = (
                 rf"\displaystyle {lhs} & = & \displaystyle {input_latex}"
                 if lhs is not None
@@ -4285,7 +4321,7 @@ def _value_row_spacings(
             input_stage_length = 1
             if _latex_visual_width(input_candidate) > _COMPLETE_ROW_VISUAL_BUDGET:
                 input_stage_length += 1 if lhs is not None else 0
-            value_rows = _bounded_expression_rows(value, settings=settings)
+            value_rows = _bounded_expression_rows(value, settings=settings, unit_literals=units)
             stage_lengths = [input_stage_length, len(value_rows)]
 
     else:

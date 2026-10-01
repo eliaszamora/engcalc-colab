@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
+| releasing | **0.45.2** - branch `fix/chapter-6-page-breakers` |
 | released | **0.45.1** - #388, `ea59ea1`, closed |
-| before that | **0.45.0** - #385, `0a7ddab`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3538 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | the 0.45.2 PR; the fold branch held (not a PR) |
+| default suite | **3547 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2083,17 +2083,8 @@ smoke 50/50. In his Colab (Untitled9: session restarted from the menu, his cell 
 ### His book, chapter 6 complete (virtual work; problems 6.1-6.18, examples 6.1-6.8)
 
 Every number agrees with an oracle, and the examples with the book. `Capitulo_06.ipynb` is
-in his Drive. Findings, not fixed:
-- **Crash (the cell stops):** "renderer semantic spacing metadata does not match rendered
-  row count" for a definite integral whose integrand mixes bracket units with a length
-  (`integrate((270[kN*m] - 30[kN]*x)*(L - x), x, 6[m], L)`, 6.15).
-- **Wrong page:** a nested `piecewise` prints a literal `[4pt]` before its last case, and
-  nests `cases` blocks; `for`/`otherwise` in English.
-- **Wrong page (Colab red):** `solve(eq(dW, 0), N_b)` whose formula holds a bracket unit
-  prints its equation row with `\mathit{__u}_{kN}` (6.1b).
-- **Unknown left in:** a one-unknown solve (standalone or `k = solve(...)`) does not reach a
-  function written before it, where a system solve does (`g(x) = q*x`, `solve(eq(2*q, P),
-  q)`, `g(2)` = `2q`).
+in his Drive. Fixed in 0.45.2 (his pick, 2026-10-01): the integral crash, the `__u_kN` equation
+row, the nested piecewise, `q = solve(..., q)`. Findings still open: `for`/`otherwise` in English;
 - **Missing:** a virtual increment δθ, δv_A as a name (`dtheta` is an italic word,
   `delta_theta` subscripts θ).
 - **Presentation:** a solve's equation row repeats the whole expression; a sum expanded
@@ -2109,7 +2100,29 @@ in his Drive. Findings, not fixed:
 - **Missing:** a symbolic result with decimal coefficients (`0.0116 P_2 + 0.0134 P_3`);
   `heaviside`.
 
-**Exact next step:** his pick among the findings of chapters 5-6; chapter 7 of the book.
+### 0.45.2: what chapter 6 found breaking the page (his pick, 2026-10-01)
+
+Branch `fix/chapter-6-page-breakers`: `_value_row_spacings` measures an evaluation's input with
+its units (the integral of 6.15 counted two rows for one and the cell stopped); the equation row
+of a `:=` solve passes the bracket units of its equation; `_flattened_piecewise` merges a
+piecewise standing as a branch value into its parent (`And` of the conditions); engine
+`_fixed_by_its_own_solve`: `q = solve(eq(...), q)` records `q` in `solved_values`/`solve_answers`
+(not a bare solve, not `k = solve(..., q)`, not a variable of the sheet). Audit (subagent): no
+defect; 15 of 605 sheets differ from 0.45.1, all chapter 6 and all as intended (three crashes
+gone, KaTeX errors gone, `M_4 = subs(M_x, x, L/4)` after `x = solve(...)` now right). Left, low:
+an impossible combined condition (`x > 2 ∧ x < 1`) is printed; `g(2[m])` with `q = P/2` shows
+`m P`. Contracts `test_what_chapter_6_found` (9).
+
+**0.45.2 release evidence (tree `f17948b`):** suite 3547 (SymPy 1.14 and 1.13.3); wheel 33 files
+identical; clean Python 3.12 venv with Colab's pins adds only Pint and its dependencies; smoke
+51/51; suite against the installed wheel 3546 + surface 5; 24 reference pages identical to
+0.45.1 and wheel = tree.
+
+Chapter 7 (PDF 195-236, problems 7.1-7.29 on 230-235): brief in scratchpad `book/ch07/BRIEF.md`,
+four solvers running on the 0.45.2 snapshot.
+
+**Exact next step:** merge the 0.45.2 PR on green CI, Deep, `git+https`, his Colab, docs
+closure; then chapter 7's findings and `Capitulo_07` to his Drive.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

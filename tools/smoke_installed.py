@@ -77,6 +77,13 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.45.2: what chapter 6 found breaking the page
+check("an integral with bracket units, a nested piecewise, q = solve(..., q)",
+      "L := 9[m]\nW = integrate((270[kN*m] - 30[kN]*x)*(L - x), x, 6[m], L)\n"
+      "f(x) = piecewise(1, x < 1, piecewise(2, x < 2, 3))\n"
+      "g(x) = q*x\nq = solve(eq(2*q, P), q)\nz = g(2)",
+      r"- 5\,\mathrm{kN}\,L^{3}", r"3 & \text{otherwise} \end{cases}", r"& = & \displaystyle P",
+      absent=("__u", "[4pt] [4pt]", "spacing metadata"))
 # 0.45.1: what chapter 5 found
 check("unknowns that cancel, the inch in brackets, a parameter s",
       "L_1 := 2[m]\nP := 10[kN]\ntheta = P*L_1^2/(E*I)\nr = E*I/L_1^2*theta\nnumeric(r)\n"

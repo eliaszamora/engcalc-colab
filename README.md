@@ -13,7 +13,21 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.45.1**.
+Current version: **0.45.2**.
+
+
+## v0.45.2 what chapter 6 found breaking the page
+
+- **An integral of a formula with bracket units** is drawn: `W = integrate((270[kN*m] -
+  30[kN]*x)*(L - x), x, 6[m], L)` stopped the cell with "renderer semantic spacing metadata
+  does not match rendered row count".
+- **A solve's equation row shows its units**: `N_b := solve(eq(dW, 0), N_b)` with `50[kN]` in
+  `dW` printed `__u_kN`, red in Colab.
+- **A piecewise inside a piecewise is one list of cases** - the way to write three pieces;
+  it printed a literal `[4pt]` and one `cases` block inside another.
+- **`q = solve(eq(2*q, P), q)` fixes `q`** in a function written before it, as a solve of a
+  system fixes its unknowns: `g(x) = q*x` then `g(2)` reads `P`. A bare `solve(...)` and
+  `k = solve(..., q)` still define nothing about `q`.
 
 
 ## v0.45.1 what chapter 5 found refused, silent or wrong on the page
@@ -3995,6 +4009,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.45.2** — an integral with bracket units no longer stops the cell; a solve's equation row shows its units; a nested piecewise is one list of cases; `q = solve(..., q)` reaches functions written before it.
 - **0.45.1** — a number whose unknowns cancel is worked out; a system solve on `:=` says what to write; `{r}_a` in a loop; `psi` read as a unit is said; `[in]`; function parameters never units; large matrices with units typeset in Colab.
 - **0.45.0** — `[degC]`, `[degF]` (a change of temperature, written °C) and `[K]`; `sinh`, `cosh`, `tanh`; a row `[c, s]` on a `:=` line.
 - **0.44.1** — what a `solve` of a system fixed is read in formulas and functions written before it (`diff` of one was 0 for -1); `subs` replaces a name whichever came first; a solve can be run again; a loop note's formulas at the page's size.
@@ -4126,4 +4141,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.45.1`.
+Version: `0.45.2`.
