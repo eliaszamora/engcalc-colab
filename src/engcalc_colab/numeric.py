@@ -334,7 +334,9 @@ class NumericContext:
         formula = self._scalar_formula(name)
         if formula is not None:
             return self._number_of_the_formula(name, formula)
-        if name in _UNIT_ALIASES:
+        # A name `assume` declared is a variable: `r := 3*psi` after `assume(psi > 0)`
+        # was three pounds per square inch, in silence.
+        if name in _UNIT_ALIASES and name not in self.variables:
             return self.ureg.Unit(_UNIT_ALIASES[name])
         hint = diagnostic_hint("unknown_numeric_name", name=name)
         raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")
@@ -1540,20 +1542,31 @@ class NumericContext:
                 [self._evaluate_sympy(arg, substitutions) for arg in expr.args],
             )
 
-        if expr.is_Add and expr.has(sp.log):
-            # `log(5*L/2) - log(3*L/2)` is the log of a number, `5/3`: each log of a length
-            # was refused, "log requires a dimensionless argument", and the cell stopped
-            # (his book, problem 7.10). The logs taken apart, the lengths' logs cancel;
-            # when they do not, the sum is refused as before.
-            parted = sp.expand_log(expr, force=True)
-            if parted != expr and not any(
-                symbol.name in substitutions
-                and hasattr(self._as_quantity(substitutions[symbol.name]), "dimensionality")
-                and not self._as_quantity(substitutions[symbol.name]).dimensionless
-                for log in parted.atoms(sp.log)
-                for symbol in log.free_symbols
-            ):
-                return self._evaluate_sympy(parted, substitutions)
+        if expr.is_Add and expr.has(sp.log) and not getattr(self, "_reading_logs", False):
+            # `log(5*L/2) - log(3*L/2)` is the log of a number, `5/3`, and `log(L_1) -
+            # log(L_2)` the log of a ratio: each log of a length was refused, "log requires
+            # a dimensionless argument", and the cell stopped (his book, problem 7.10).
+            # Asked as written first; refused so, the logs taken apart and then put
+            # together are asked, and the sum is refused as before when neither reads.
+            self._reading_logs = True
+            try:
+                return self._evaluate_sympy(expr, substitutions)
+            except EngEvaluationError as exc:
+                if "requires a dimensionless argument" not in str(exc):
+                    raise
+                for form in (
+                    sp.expand_log(expr, force=True),
+                    sp.logcombine(sp.expand_log(expr, force=True), force=True),
+                ):
+                    if form == expr:
+                        continue
+                    try:
+                        return self._evaluate_sympy(form, substitutions)
+                    except EngEvaluationError:
+                        continue
+                raise
+            finally:
+                self._reading_logs = False
 
         if expr.is_Add:
             # A term that is a unit on its own - `1*kN` folds to `kN` - is one of it. Pint

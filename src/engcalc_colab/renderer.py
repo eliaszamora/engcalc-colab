@@ -1403,8 +1403,19 @@ def _plotted_in_units_a_page_writes(result: PlotResult, settings: RenderSettings
         if not values:
             return None
         largest = max(values, key=lambda value: abs(float(value.magnitude)))
+        # As a table column writes them (the audit of 0.45.3): a ratio carrying a scale is
+        # a number, and a unit no family names is a force and a length.
+        if (
+            getattr(largest, "dimensionless", False)
+            and str(largest.units) not in _ANGLE_UNIT_NAMES
+            and str(largest.units) != "dimensionless"
+        ):
+            return largest._REGISTRY.dimensionless
         family = _unit_family(largest)
-        if not family or _unit_is_the_engineers(largest, plain):
+        if not family:
+            written = _in_force_and_length(largest, settings)
+            return None if written is None else written.units
+        if _unit_is_the_engineers(largest, plain):
             return None
         for name in family:
             try:
@@ -3824,6 +3835,15 @@ def _written_precedence(node) -> int:
 _WRITTEN_FUNCTIONS = frozenset({"sin", "cos", "tan", "sinh", "cosh", "tanh", "log"})
 
 
+def _index_text(node, latex) -> str:
+    """An index of a part as its number: `{e}+1` in a `% for` reads `2 + 1`, written `3`."""
+    if all(isinstance(each, (ast.Constant, ast.BinOp, ast.Add, ast.Sub, ast.Mult)) for each in ast.walk(node)) and all(
+        isinstance(each.value, int) for each in ast.walk(node) if isinstance(each, ast.Constant)
+    ):
+        return str(eval(compile(ast.Expression(body=node), "<index>", "eval"), {"__builtins__": {}}))
+    return latex(node)
+
+
 class _WrittenLine:
     def __init__(self, result, settings: RenderSettings):
         self.literals = {
@@ -3878,7 +3898,7 @@ class _WrittenLine:
             index = node.slice
             parts = index.elts if isinstance(index, ast.Tuple) else [index]
             shown = ",".join(
-                r"\left[" + ",".join(str(each.value) for each in part.elts) + r"\right]"
+                r"\left[" + ",".join(_index_text(each, self.latex) for each in part.elts) + r"\right]"
                 if isinstance(part, ast.List)
                 else self.latex(part)
                 for part in parts
@@ -4955,8 +4975,13 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
         if quantity is not None and not getattr(quantity, "dimensionless", False)
     ]
     if not physical and fallback is not None and quantities and all(
-        quantity is None or getattr(quantity, "dimensionless", False) for quantity in quantities
-    ):
+        quantity is None
+        or (
+            getattr(quantity, "dimensionless", False)
+            and str(quantity.units) not in _ANGLE_UNIT_NAMES
+        )
+        for quantity in quantities
+    ) and str(fallback) not in _ANGLE_UNIT_NAMES:
         # A ratio is a number in a column as on its own line: `x/a` with `a` in feet and
         # `x` in inches headed its column `[in/ft]` and read 6.00 for 0.5 (his book,
         # Example 7.4).

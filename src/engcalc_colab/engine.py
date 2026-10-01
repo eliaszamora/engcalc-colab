@@ -173,18 +173,26 @@ def _substitute_preserving_inverse_trig(expr, bindings):
     return expr.func(*rebuilt_args)
 
 
-def _logs_real_at_the_origin(antiderivative, variable):
+def _logs_real_at(antiderivative, variable, start=0, *, numbers_only=True):
     """`antiderivative` with every `log(a)` whose argument is negative where the variable
-    is 0 written `log(-a)`. The two differ by the constant `i*pi`, so either is an
+    is `start` written `log(-a)`. The two differ by the constant `i*pi`, so either is an
     antiderivative; SymPy writes `integrate(1/(3 - x), x)` as `-log(x - 3)`, complex on an
     element that starts at 0, and `solve` of its constants found "no solution" (his book,
-    problem 7.10). Only an argument whose sign at the origin is known."""
+    problem 7.10).
+
+    An indefinite integral has no domain to read, so only a number there decides:
+    `integrate(1/(t - a), t)` with `a > 0` stays `log(t - a)`, real where `t > a` (the
+    audit of 0.45.3). A definite one starts at its lower bound, and there a symbol decides
+    too."""
     flipped = {}
     for log in antiderivative.atoms(sp.log):
         argument = log.args[0]
         if variable not in argument.free_symbols:
             continue
-        if argument.subs(variable, 0).is_negative is True:
+        there = argument.subs(variable, start)
+        if numbers_only and there.free_symbols:
+            continue
+        if there.is_negative is True:
             flipped[log] = sp.log(sp.expand(-argument))
     return antiderivative.xreplace(flipped) if flipped else antiderivative
 
@@ -195,19 +203,26 @@ def _real_integral(expression, bounds):
     + i*pi - log(x - 3)` for `integrate(1/(3 - t), t, 0, x)` - is that antiderivative
     between its bounds."""
     if not isinstance(bounds, tuple):
-        return _logs_real_at_the_origin(sp.integrate(expression, bounds), bounds)
+        return _logs_real_at(sp.integrate(expression, bounds), bounds)
     value = sp.integrate(expression, bounds)
     variable, lower, upper = bounds
     # Only a rational integrand, whose logs are where the `i*pi` comes from: the
     # antiderivative of `x*(x/L)^k*(1 - (x/L)^n)` does not return, and the definite
     # integral did.
+    # Complex, or holding the log of a negative argument: `log(-3 L)` with `L > 0` has no
+    # `i` written in it and is no more real.
+    complex_ = value.has(sp.I) or any(
+        log.args[0].is_negative is True for log in value.atoms(sp.log)
+    )
     if (
-        not value.has(sp.I)
+        not complex_
         or expression.has(sp.I)
         or not sp.sympify(expression).is_rational_function(variable)
     ):
         return value
-    antiderivative = _logs_real_at_the_origin(sp.integrate(expression, variable), variable)
+    antiderivative = _logs_real_at(
+        sp.integrate(expression, variable), variable, lower, numbers_only=False
+    )
     if antiderivative.has(sp.Integral):
         return value
     between = antiderivative.subs(variable, upper) - antiderivative.subs(variable, lower)
@@ -675,6 +690,7 @@ class _MatrixNumbers:
             )
         numbers = self._named(name)
         parts = list(index.elts) if isinstance(index, ast.Tuple) else [index]
+        where = ", ".join(ast.unparse(part) for part in parts)
         selections = [self._positions(part) for part in parts]
         if len(selections) == 1 and 1 in (numbers.rows, numbers.cols):
             selections.append(([1], False))
@@ -682,14 +698,14 @@ class _MatrixNumbers:
                 selections.reverse()
         if len(selections) != 2:
             raise EngEvaluationError(
-                f"'{name}[{ast.unparse(index)}]': a part of a matrix is K[rows, columns]"
+                f"'{name}[{where}]': a part of a matrix is K[rows, columns]"
             )
         rows, cols = selections[0][0], selections[1][0]
         if not isinstance(value, NumberMatrix):
             value = scalar_numbers(self.context._as_quantity(value))
         if (value.rows, value.cols) != (len(rows), len(cols)):
             raise EngEvaluationError(
-                f"'{name}[{ast.unparse(index)}]' is {len(rows)}x{len(cols)} and the right "
+                f"'{name}[{where}]' is {len(rows)}x{len(cols)} and the right "
                 f"side is {value.shape}"
             )
         magnitudes = list(numbers.magnitudes)
@@ -698,7 +714,7 @@ class _MatrixNumbers:
             for j, col in enumerate(cols):
                 if not (1 <= row <= numbers.rows and 1 <= col <= numbers.cols):
                     raise EngEvaluationError(
-                        f"'{name}[{ast.unparse(index)}]' is outside the "
+                        f"'{name}[{where}]' is outside the "
                         f"{numbers.rows}x{numbers.cols} matrix"
                     )
                 position = (row - 1) * numbers.cols + (col - 1)
@@ -706,14 +722,33 @@ class _MatrixNumbers:
         return NumberMatrix(numbers.rows, numbers.cols, tuple(magnitudes), tuple(units))
 
     @staticmethod
-    def _positions(part: ast.AST) -> tuple[list[int], bool]:
-        if isinstance(part, ast.Constant) and isinstance(part.value, int):
-            return [part.value], False
-        if isinstance(part, ast.List) and all(
-            isinstance(each, ast.Constant) and isinstance(each.value, int)
-            for each in part.elts
+    def _whole(node: ast.AST) -> int | None:
+        """A whole number written as one, or as sums and products of them: `1 + 1` is what
+        `[{e}, {e}+1]` reads in a `% for` (the audit of 0.45.3)."""
+        if isinstance(node, ast.Constant) and isinstance(node.value, int) and not isinstance(
+            node.value, bool
         ):
-            return [each.value for each in part.elts], True
+            return node.value
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub, ast.Mult)):
+            left, right = _MatrixNumbers._whole(node.left), _MatrixNumbers._whole(node.right)
+            if left is None or right is None:
+                return None
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            return left * right
+        return None
+
+    @staticmethod
+    def _positions(part: ast.AST) -> tuple[list[int], bool]:
+        whole = _MatrixNumbers._whole(part)
+        if whole is not None:
+            return [whole], False
+        if isinstance(part, ast.List):
+            wholes = [_MatrixNumbers._whole(each) for each in part.elts]
+            if all(each is not None for each in wholes):
+                return wholes, True
         raise EngEvaluationError(
             f"'{ast.unparse(part)}': an index on a := line is a whole number or a list "
             "of them, such as d[4,1] or K[[1, 2], [1, 2]]"

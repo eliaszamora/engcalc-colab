@@ -191,3 +191,57 @@ def test_a_bracket_unit_in_a_matrix_is_a_measurement(monkeypatch):
     assert r"\frac{0.002}{\mathrm{in}}" in page, page
     assert r"3\,\mathrm{kip} \cdot \mathrm{in} & 2\,\mathrm{kip} \cdot \mathrm{in}^{2}" in page, page
     assert r"1\,\mathrm{in}" not in page and r"\cdot 1}" not in page, page
+
+
+# What the audit of 0.45.3 found in the first draft of these fixes.
+
+
+def test_a_column_of_angles_keeps_its_degrees(monkeypatch):
+    page, console = _run(
+        "f(t) = 2*t\ntable(f(t), t, 0[deg], 90[deg], 3)\n"
+        "% for i, a in [(1, 30), (2, 45)]:\nt_{i} := {a}[deg]\nc_{i} := cos(t_{i})\n% end\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"t\,[{}^{\circ}] & f\left(t\right)\,[{}^{\circ}]" in page, page
+    assert r"t_{i}\,[{}^{\circ}]" in page, page
+
+
+def test_an_assumed_psi_has_no_value_on_a_numeric_line(monkeypatch):
+    page, console = _run("assume(psi > 0)\nr := 3*psi\n", monkeypatch)
+    assert "unknown numeric name 'psi'" in console, console
+
+
+def test_a_log_of_a_product_of_negative_numbers(monkeypatch):
+    page, console = _run("a := -2\nb := -3\nw = log(a*b) + 1\nnumeric(w)\n", monkeypatch)
+    assert not console, console
+    assert r"= & 2.79" in page, page
+
+
+def test_a_log_of_a_ratio_of_two_lengths(monkeypatch):
+    page, console = _run("L_1 := 3[m]\nL_2 := 6[m]\ny := log(L_1) - log(L_2)\n", monkeypatch)
+    assert not console, console
+    assert r"y & = & -0.69" in page, page
+
+
+def test_an_indefinite_integral_keeps_a_symbol_s_sign(monkeypatch):
+    page, console = _run(
+        "assume(a > 0)\nF = integrate(1/(t - a), t)\nG = subs(F, t, 2*a)\n"
+        "assume(L > 0)\nw(x) = integrate(1/(3*L - 2*t), t, 0, x)\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"\log{\left(t - a \right)}" in page and r"G & = & \log{\left(a \right)}" in page, page
+    assert r"\frac{\log{\left(3 L \right)}}{2} - \frac{\log{\left(3 L - 2 x \right)}}{2}" in page, page
+
+
+def test_a_part_index_counted_in_a_loop(monkeypatch):
+    page, console = _run(
+        "k := 2[kN/m]\nK := zeros(3, 3)\n% for e in [1, 2]:\n"
+        "K[[{e}, {e}+1], [{e}, {e}+1]] := K[[{e}, {e}+1], [{e}, {e}+1]] + k*[1, -1; -1, 1]\n% end\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"-2.00 & 4.00 & -2.00" in page, page
+    page, console = _run("J := zeros(2, 2)\nJ[[1, 3], [1, 3]] := zeros(2, 2)\n", monkeypatch)
+    assert "'J[[1, 3], [1, 3]]' is outside the 2x2 matrix" in console, console
