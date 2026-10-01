@@ -77,6 +77,15 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.45.3: what chapter 7 found read wrong or refused
+check("a flexibility in kN and m, a stiffness assembled on := lines, an assumed psi",
+      "E := 200000[MPa]\nI := 150e6[mm^4]\nL := 12[m]\nf := L/(E*I)\n"
+      "k := 2[kN/m]\nK := zeros(3, 3)\n% for e in [1, 2]:\n"
+      "K[[{e}, {e}+1], [{e}, {e}+1]] := K[[{e}, {e}+1], [{e}, {e}+1]] + k*[1, -1; -1, 1]\n% end\n"
+      "assume(psi > 0)\nd = integrate(sin(phi), phi, 0, psi)",
+      r"0.0004\,\frac{1}{\left(\mathrm{kN} \cdot \mathrm{m}\right)}", r"-2.00 & 4.00 & -2.00",
+      r"\int\limits_{0}^{\psi}",
+      absent=("MPa} \\cdot", "psi (pound", "invalid numeric assignment"))
 # 0.45.2: what chapter 6 found breaking the page
 check("an integral with bracket units, a nested piecewise, q = solve(..., q)",
       "L := 9[m]\nW = integrate((270[kN*m] - 30[kN]*x)*(L - x), x, 6[m], L)\n"
