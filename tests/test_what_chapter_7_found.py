@@ -243,5 +243,8 @@ def test_a_part_index_counted_in_a_loop(monkeypatch):
     )
     assert not console, console
     assert r"-2.00 & 4.00 & -2.00" in page, page
+    assert r"\textbf{Ensamble en 2 pasos}" in page, page
+    # The matrix it built, not the last pass's row read as the only one added.
+    assert r"K_{\left[2,3\right],\left[2,3\right]} & = &" not in page, page
     page, console = _run("J := zeros(2, 2)\nJ[[1, 3], [1, 3]] := zeros(2, 2)\n", monkeypatch)
     assert "'J[[1, 3], [1, 3]]' is outside the 2x2 matrix" in console, console
