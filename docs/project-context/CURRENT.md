@@ -2080,9 +2080,15 @@ smoke 50/50. In his Colab (Untitled9: session restarted from the menu, his cell 
 2026-10-01): `engcalc 0.45.1`, `numeric(R)` with E·I cancelling = [12.50; 2.50] kN,
 `A = 10.60 in²`, `f(c, s) = c + 2s` italic, `{r}_a` in a loop gives `x_a`; screenshots sent.
 
-### His book, chapter 6 (virtual work; solver A 6.1-6.7 done)
+### His book, chapter 6 complete (virtual work; problems 6.1-6.18, examples 6.1-6.8)
 
-Every number agrees with an oracle (the book prints none). Findings, not fixed:
+Every number agrees with an oracle, and the examples with the book. `Capitulo_06.ipynb` is
+in his Drive. Findings, not fixed:
+- **Crash (the cell stops):** "renderer semantic spacing metadata does not match rendered
+  row count" for a definite integral whose integrand mixes bracket units with a length
+  (`integrate((270[kN*m] - 30[kN]*x)*(L - x), x, 6[m], L)`, 6.15).
+- **Wrong page:** a nested `piecewise` prints a literal `[4pt]` before its last case, and
+  nests `cases` blocks; `for`/`otherwise` in English.
 - **Wrong page (Colab red):** `solve(eq(dW, 0), N_b)` whose formula holds a bracket unit
   prints its equation row with `\mathit{__u}_{kN}` (6.1b).
 - **Unknown left in:** a one-unknown solve (standalone or `k = solve(...)`) does not reach a
@@ -2092,9 +2098,18 @@ Every number agrees with an oracle (the book prints none). Findings, not fixed:
   `delta_theta` subscripts θ).
 - **Presentation:** a solve's equation row repeats the whole expression; a sum expanded
   into 12 fractions in 6.3; ∂²/∂x² left unevaluated inside an integrand; d/dx and ∂/∂x mixed;
-  ratios 0.597/0.605 both shown 0.60.
+  ratios 0.597/0.605 both shown 0.60; the integral of a piecewise with a symbolic limit opens
+  a "for L < 0" case without `assume(L > 0)`, and a product of piecewise functions lists
+  impossible branches; `log(-2L) - log(-L)` not simplified to `ln 2`; radicals not
+  rationalized (25-digit integers, 6.8's page 8195 px); a substitution row leaving a `:=`
+  name as a letter; a bracket literal folded into a rounded float coefficient (`0.032 P/(mm
+  k)`); `K = K + ...` in a loop prints every pass (only part assignments are summarised);
+  `numeric(name)` repeats a long result; a system with `:=` coefficients shown as huge
+  fractions; a sum of integrals reordered.
+- **Missing:** a symbolic result with decimal coefficients (`0.0116 P_2 + 0.0134 P_3`);
+  `heaviside`.
 
-**Exact next step:** chapter 6 problems 6.8-end and examples; then his pick.
+**Exact next step:** his pick among the findings of chapters 5-6; chapter 7 of the book.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
