@@ -8,7 +8,7 @@ of `CURRENT.md` was written at 0.13.0 and says so._
 
 | | |
 |---|---|
-| `main` | 0.44.1 released by #383 (`4d16a38`), closed; 0.45.0 on its PR |
+| `main` | 0.45.0 released by #385 (`0a7ddab`), closed and checked in his Colab |
 | declared version | **0.45.0** — a temperature, sinh/cosh/tanh, a row on a `:=` line |
 | default suite (`pytest -q`) | **3530 passing**, about 2 minutes with `-n auto` — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |

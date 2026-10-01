@@ -12,9 +12,9 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.45.0** - branch `feat/temperature-hyperbolic-row-literal` |
-| released | **0.44.1** - #383, `4d16a38`, closed |
-| open PRs | the 0.45.0 PR; the fold branch held (not a PR) |
+| released | **0.45.0** - #385, `0a7ddab`, closed |
+| before that | **0.44.1** - #383, `4d16a38`, closed |
+| open PRs | this closure; the fold branch held (not a PR) |
 | default suite | **3530 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -2023,9 +2023,25 @@ wheel 33 files identical; clean Python 3.12 venv with Colab's pins adds only Pin
 0.44.1 and wheel = tree; the book corpus differs from 0.44.1 only in Example 2.4 (now with
 units) and a chapter 5 sheet that uses them.
 
-**Exact next step:** merge the 0.45.0 PR on green CI, Deep, `git+https`, his Colab, docs
-closure; chapter 5 of the book (brief in scratchpad `book/ch05/BRIEF.md`; solver A for
-5.1-5.8 was cut by the usage limit - resume it).
+**0.45.0 is closed** (#385, `0a7ddab`): PR CI green; Quality Gate Deep (push) and Deep
+qualification green on `0a7ddab`; a `git+https` install changed only `engcalc-colab`, 33
+files identical, smoke 49/49. In his Colab (Untitled9, fresh runtime, his cell 0, cell 3,
+2026-09-30): `engcalc 0.45.0`, `alpha = 1.17e-5 1/°C`, `dT = 40.00 °C`, `u = 1.40 mm`,
+`sinh + cosh = 1.65`, `F = k [c s] d = 5.20 kN`, `numeric(dT, degF)` refused with its reason;
+two screenshots sent.
+
+### His book, chapter 5 (solver A 5.1-5.8 done; B 5.9-5.17 running; examples 5.1-5.11 next)
+
+Every number of 5.1-5.8 agrees with an oracle (the book prints none). Findings, not fixed:
+- **Silent stop:** `numeric` of a matrix whose `E*I` cancels prints the substitution row and
+  no value (`simplify` works around); the scalar form says "requires values for: E, I".
+- **Presentation:** a function parameter named `s` read as the second (every `(c, s)`
+  rotation matrix); `EI_theta_b` not Greek; a 4x1 substitution row wider than the page.
+- **Missing:** `:` in an index on a `:=` line; `member()` with a load over part of a span
+  (5.8c's diagram wrong, numbers right); a 6x6 `[gamma, zeros(3,3); ...]` on `:=`.
+
+**Exact next step:** chapter 5's solver B and the examples; then his pick among the
+findings; re-upload the notebooks with chapter 5.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
