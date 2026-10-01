@@ -77,6 +77,12 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.45.1: what chapter 5 found
+check("unknowns that cancel, the inch in brackets, a parameter s",
+      "L_1 := 2[m]\nP := 10[kN]\ntheta = P*L_1^2/(E*I)\nr = E*I/L_1^2*theta\nnumeric(r)\n"
+      "A := 10.6[in^2]\nf(c, s) = c + 2*s",
+      r"10.00\,\mathrm{kN}", r"10.60\,\mathrm{in}^{2}", r"c + 2 s",
+      absent=("requires values", "not a unit", r"\mathrm{s}"))
 # 0.45.0: a temperature, the hyperbolic functions, a row on a := line
 check("a temperature, sinh, a row on a := line",
       "alpha := 1.17e-5[1/degC]\ndT := 40[degC]\nL := 3[m]\nu := alpha*L*dT\n"

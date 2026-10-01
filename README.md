@@ -13,8 +13,24 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.45.0**.
+Current version: **0.45.1**.
 
+
+## v0.45.1 what chapter 5 found refused, silent or wrong on the page
+
+- **A number whose unknowns cancel.** `numeric(R)` of `[E*I/L_1^2 + E*I/L_2^2; ...]*P*L_1^2/(E*I)`
+  stopped after its substitution row with no word, and the scalar asked for `E` and `I`; the
+  names cancel, and it reads `[12.50; 2.50] kN`.
+- **A system `solve` on a `:=` line** says to write it on a line of its own, instead of
+  `'NoneType' object has no attribute 'free_symbols'`.
+- **`{r}_a = {r} + 1` in a `% for`** runs; it was refused before any pass.
+- **`psi` read as pounds per square inch is said** - it is also the angle ψ; `60[psi]` stays
+  quiet.
+- **`10.6[in^2]`** is the inch, in brackets.
+- **A function's parameters are its variables**, never a unit: `f(c, s) = c + 2*s` set an
+  upright second.
+- **A 12 x 12 matrix with typed units** is typeset by Colab; it ran past KaTeX's limit and
+  showed as red source.
 
 ## v0.45.0 a temperature, the hyperbolic functions, a row on a `:=` line
 
@@ -3979,6 +3995,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.45.1** — a number whose unknowns cancel is worked out; a system solve on `:=` says what to write; `{r}_a` in a loop; `psi` read as a unit is said; `[in]`; function parameters never units; large matrices with units typeset in Colab.
 - **0.45.0** — `[degC]`, `[degF]` (a change of temperature, written °C) and `[K]`; `sinh`, `cosh`, `tanh`; a row `[c, s]` on a `:=` line.
 - **0.44.1** — what a `solve` of a system fixed is read in formulas and functions written before it (`diff` of one was 0 for -1); `subs` replaces a name whichever came first; a solve can be run again; a loop note's formulas at the page's size.
 - **0.44.0** — a `% for` that assembles a matrix shows the assembly once (the rule, the values its names took, the matrix or its size when it does not fit); two or more `:=` values in a loop are one table under their formulas; a formula every pass wrote with other subscripts is written once; a large zero matrix is written `0_{r×c}`.
@@ -4109,4 +4126,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.45.0`.
+Version: `0.45.1`.
