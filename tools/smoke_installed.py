@@ -77,6 +77,12 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.45.0: a temperature, the hyperbolic functions, a row on a := line
+check("a temperature, sinh, a row on a := line",
+      "alpha := 1.17e-5[1/degC]\ndT := 40[degC]\nL := 3[m]\nu := alpha*L*dT\n"
+      "y := sinh(0.5)\nc := 0.6\ns := 0.8\nk := 2[kN/mm]\nd := [3[mm]; 1[mm]]\nF := k*[c, s]*d",
+      r"40.00\,{}^{\circ}\mathrm{C}", r"1.40\,\mathrm{mm}", "0.52", r"5.20\,\mathrm{kN}",
+      absent=("not a unit", "unsupported"))
 # 0.44.1: what the book's worked examples found
 check("a function reads what a later solve fixed; subs of a defined name",
       "y(x) = C_1*x + C_2 + p*x^2\nsolve(eq(subs(y(x), x, 0), 0), eq(subs(y(x), x, 1), 0), C_1, C_2)\n"

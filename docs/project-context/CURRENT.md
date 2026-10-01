@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
+| releasing | **0.45.0** - branch `feat/temperature-hyperbolic-row-literal` |
 | released | **0.44.1** - #383, `4d16a38`, closed |
-| before that | **0.44.0** - #381, `624eb87`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3513 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | the 0.45.0 PR; the fold branch held (not a PR) |
+| default suite | **3530 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -1998,10 +1998,34 @@ cell 3, 2026-09-30): `engcalc 0.44.1`, after the solve `t = -p` and `g = diff(t,
 `G = subs(F, u, 0) = -k x`, the loop note's `c_i = 2 m / L_i` at the page's size; two
 screenshots sent.
 
-**Exact next step:** his pick among the remaining findings of chapters 2-4 (the examples'
-and solver D's lists above: no temperature unit, sinh/cosh/tanh, a one-row literal on `:=`,
-`inv` in s²/kg, kip/in matrices in SI, two decimals between 0.1 and 1, frame_plot's joint
-moments); chapter 5 of the book.
+### 0.45.0: a temperature, sinh/cosh/tanh, a row on a `:=` line (his pick, 2026-09-30)
+
+Branch `feat/temperature-hyperbolic-row-literal`:
+- `[degC]`, `[degF]` are Pint's `delta_degC`/`delta_degF` - a temperature on a structural
+  sheet is a change (alpha*dT a strain); written `°C`/`°F` in text (`unit_text`) and LaTeX
+  (`renderer._temperature_latex`, `_DEGREE_LATEX` for bracket names in formulas); `[K]` the
+  kelvin in brackets only (`__u_K`; a bare `K` stays the stiffness matrix); a temperature
+  in kelvin from base-unit numbers (matrices) reads in °C. A conversion between scales is
+  refused (`numeric._refuse_another_temperature_scale`): `20 °C` as `36 °F` read as a false
+  thermometer equality (audit).
+- `sinh`, `cosh`, `tanh` in every function table (engine, numeric, parser, reference).
+- `_MatrixNumbers._writes_a_row`: a list that is not a part's index nor a non-matrix call's
+  argument (interp tables) is a row on a `:=` line.
+Example 2.4 is now written with `[1/degC]` and `[degC]`. Audit (subagent) found the scale
+conversion, kelvin matrices and `\mathrm{degC}` in formulas - fixed. Left: bare `degC` is a
+unit like `kN`; `cosh(30[deg])` refused; a mixed-unit row accepted; `libres := [1, 3]` then
+`K[libres, libres]` on `:=` says index lists must be literal.
+Contracts `test_temperature_hyperbolic_and_a_row` (11).
+
+**0.45.0 release evidence (tree `d7acbdd` + docs):** suite 3530 (SymPy 1.14 and 1.13.3);
+wheel 33 files identical; clean Python 3.12 venv with Colab's pins adds only Pint; smoke
+49/49; suite against the installed wheel 3529 + surface 5; 24 reference pages identical to
+0.44.1 and wheel = tree; the book corpus differs from 0.44.1 only in Example 2.4 (now with
+units) and a chapter 5 sheet that uses them.
+
+**Exact next step:** merge the 0.45.0 PR on green CI, Deep, `git+https`, his Colab, docs
+closure; chapter 5 of the book (brief in scratchpad `book/ch05/BRIEF.md`; solver A for
+5.1-5.8 was cut by the usage limit - resume it).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

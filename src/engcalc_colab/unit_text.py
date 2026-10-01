@@ -50,6 +50,11 @@ def unit_text(unit) -> str:
     return normalise(format(unit, "~P"))
 
 
+# A difference of degrees is written as the degree it counts, `40 °C` - Pint spells it
+# `Δ°C`, and a temperature on this page is always a change (see `_UNIT_ALIASES`).
+_TEMPERATURE_TEXT = {"Δ°C": "°C", "Δ°F": "°F"}
+
+
 def normalise(text: str) -> str:
     """The spelling decision, applied to text a formatter already produced.
 
@@ -59,6 +64,8 @@ def normalise(text: str) -> str:
     """
     for dot in _FORMATTER_PRODUCT_DOTS:
         text = text.replace(dot, PRODUCT_DOT)
+    for pint_spelling, page_spelling in _TEMPERATURE_TEXT.items():
+        text = text.replace(pint_spelling, page_spelling)
     return text
 
 

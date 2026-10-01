@@ -146,6 +146,10 @@ _SCALAR_SYMBOLIC_FUNCTIONS = {
     "atan": sp.atan,
     "exp": sp.exp,
     "log": sp.log,
+    # A beam on an elastic foundation (his book, Example 4.15) is written with them.
+    "sinh": sp.sinh,
+    "cosh": sp.cosh,
+    "tanh": sp.tanh,
 }
 
 _INVERSE_TRIG_SYMBOLIC_FUNCTIONS = {sp.asin, sp.acos, sp.atan}
@@ -357,14 +361,38 @@ class _MatrixNumbers:
         return any(
             isinstance(each, ast.Name) and self.names_a_matrix(each.id)
             for each in ast.walk(node)
-        )
+        ) or self._writes_a_row(node)
+
+    @staticmethod
+    def _writes_a_row(node: ast.AST) -> bool:
+        """`[c, s]` written in the line, and not as the index of a part (`K[[1, 2], ...]`):
+        a row, as a `=` line reads it. On a `:=` line it was "unsupported numeric syntax
+        'List'" (his book, Example 3.5: a bar's force is `[cos φ, sin φ]` times the rest)."""
+        indices = {
+            id(each)
+            for subscript in ast.walk(node)
+            if isinstance(subscript, ast.Subscript)
+            for each in ast.walk(subscript.slice)
+        }
+        # Nor the table a call reads, `interp(x, [0.5, 1.0], [0.8, 1.0])`: only the calls
+        # that take matrices take a row.
+        indices |= {
+            id(each)
+            for call in ast.walk(node)
+            if isinstance(call, ast.Call)
+            and not (isinstance(call.func, ast.Name) and call.func.id in MATRIX_CALLS)
+            for argument in call.args
+            for each in ast.walk(argument)
+            if isinstance(argument, ast.List)
+        }
+        return any(isinstance(each, ast.List) and id(each) not in indices for each in ast.walk(node))
 
     def value(self, node: ast.AST):
         """A `NumberMatrix`, or a scalar quantity when the line takes one entry."""
-        if not self.reads_a_matrix(node):
-            return self._scalar(node)
         if isinstance(node, ast.List):
             return self._row(node)
+        if not self.reads_a_matrix(node):
+            return self._scalar(node)
         if isinstance(node, ast.Name):
             return self._named(node.id)
         if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
@@ -5768,6 +5796,7 @@ class _Evaluator(ast.NodeVisitor):
 # summarises would do that work twice and record its effects twice.
 _WRITTEN_FORM_SAFE_CALLS = frozenset(
     {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "abs",
+     "sinh", "cosh", "tanh",
      # `transpose`, because `K_e = transpose(A_e)*k_e*A_e` is how a stiffness matrix is
      # assembled and the call was the only thing keeping a written form off it. Without
      # it the frame benchmark printed every entry in nodal coordinates,

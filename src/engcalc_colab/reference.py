@@ -594,6 +594,9 @@ _ENTRIES: tuple[CallHelp, ...] = (
     _scalar("atan", "El ángulo cuya tangente es esta.", "1"),
     _scalar("exp", "La exponencial.", "1"),
     _scalar("log", "El logaritmo natural.", "1"),
+    _scalar("sinh", "El seno hiperbólico.", "0.5"),
+    _scalar("cosh", "El coseno hiperbólico.", "0.5"),
+    _scalar("tanh", "La tangente hiperbólica.", "0.5"),
     CallHelp(
         name="identity",
         summary="La matriz identidad.",
