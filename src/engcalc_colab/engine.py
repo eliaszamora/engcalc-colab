@@ -597,6 +597,10 @@ class _MatrixNumbers:
         )
 
 
+# Units spelled as a Greek letter is: read as the unit, they are said to be one.
+_UNITS_SPELLED_LIKE_GREEK = frozenset({"psi"})
+
+
 def measured_units_in(tree) -> frozenset[str]:
     """The unit aliases a statement writes as a measurement.
 
@@ -1121,6 +1125,21 @@ class EngineeringEngine:
         the evaluation that substitutes quantities into one, guards and piecewise branches
         included, so it answers and the value is stored as any `:=` value is.
         """
+        for node in ast.walk(statement.expression.body):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "solve"
+                and len(node.args) > 2
+                and not _solves_in_a_range(node, self.namespace)
+            ):
+                # A system has several unknowns and no single value for one name. Said as
+                # a `=` line says it; on a `:=` line it was "'NoneType' object has no
+                # attribute 'free_symbols'" (his book, example 5.12).
+                raise EngEvaluationError(
+                    "solve of a system must be a standalone statement; the unknowns are the "
+                    "result and are defined by it - write solve(...) on a line of its own"
+                )
         probe = self._as_numeric(statement)
         if probe.numeric_evaluation is None:
             unresolved = (
@@ -2401,14 +2420,24 @@ class EngineeringEngine:
         and only where the sheet has not written the letter as a unit anywhere - next to a
         number or another unit, `30*N`, `2*m`, `4*kN*x/m` - which is where it plainly is one.
         """
+        # `psi` is also the Greek ψ, an angle of every rotation: `cos(psi)` and `2*psi` read
+        # as pounds per square inch without a word (his book, problem 5.17). Said even when
+        # the sheet writes it beside a number - only `[psi]` says plainly it is the unit.
+        greek = name in _UNITS_SPELLED_LIKE_GREEK
         if (
-            len(name) != 1
+            (len(name) != 1 and not greek)
             or name not in _UNIT_ALIASES
-            or name in self.letters_written_as_units
+            or (name in self.letters_written_as_units and not greek)
             or name in self.letters_said_to_be_units
         ):
             return None
         self.letters_said_to_be_units.add(name)
+        if greek:
+            return (
+                f"line {statement.line_no}: '{name}' is read as the unit {_UNIT_ALIASES[name]} "
+                f"(pound per square inch). If it is the angle {name}, give it a value first "
+                f"({name} := ...); if it is the unit, write it in brackets, as 60[{name}]."
+            )
         return (
             f"line {statement.line_no}: '{name}' is read as a unit ({_UNIT_ALIASES[name]}), "
             f"and nothing on the sheet writes it as one. If it is a quantity, give it a "
@@ -2999,7 +3028,10 @@ class EngineeringEngine:
                 written=written,
                 # Every form the row can print. `n = 6*m/(2*m)` is worth 3 and is shown
                 # as written, so asked of the value alone its metres were set as variables.
-                unit_literals=self._unit_literals_of(value, shown, written),
+                # A parameter of a function is its variable, never a unit: `f(c, s) = c + 2*s`
+                # set an upright second (his book, every `(c, s)` rotation of chapter 5).
+                unit_literals=self._unit_literals_of(value, shown, written)
+                - frozenset(statement.parameters or ()),
                 solved_for=evaluator.solved_for,
             )
         except EngCalcError as exc:
