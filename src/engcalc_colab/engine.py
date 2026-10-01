@@ -2091,6 +2091,24 @@ class EngineeringEngine:
         }
         return substitute_symbolic_value(value, fixed) if fixed else value
 
+    def _fixed_by_its_own_solve(self, statement, evaluator, value) -> None:
+        """`q = solve(eq(2*q, P), q)` fixes `q` as a solve of a system fixes its unknowns:
+        `g(x) = q*x` written before it reads `q` by the answer. It read `2 q` where
+        `solve(..., q_1, q_2)` gave the number (his book, chapter 6). Only a name solved for
+        itself - `k = solve(..., q)` defines `k`, not `q` - and never the variable of the
+        sheet's functions, which a solve finds a point of (the audit of 0.44.1)."""
+        body = statement.expression.body
+        name = statement.target
+        if not (
+            evaluator.solved_for == name
+            and isinstance(body, ast.Call)
+            and getattr(body.func, "id", None) == "solve"
+            and name not in self._variables_of_the_sheet(body)
+        ):
+            return
+        self.solve_answers[name] = value
+        self.solved_values[name] = value
+
     def _told_where_it_was_solved(self, message: str) -> str:
         """`requires values for: T`, and where `T` was solved on a line of its own.
 
@@ -2976,6 +2994,7 @@ class EngineeringEngine:
                     )
                 else:
                     self.namespace[statement.target] = value
+                    self._fixed_by_its_own_solve(statement, evaluator, value)
                     if declaration == "keep":
                         self.equals_sources.pop(statement.target, None)
                     else:
