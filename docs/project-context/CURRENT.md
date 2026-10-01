@@ -14,7 +14,7 @@ _2026-09-30._
 |---|---|
 | released | **0.45.0** - #385, `0a7ddab`, closed |
 | before that | **0.44.1** - #383, `4d16a38`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
+| open PRs | chapter 5's report; the fold branch held (not a PR) |
 | default suite | **3530 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -2030,18 +2030,34 @@ files identical, smoke 49/49. In his Colab (Untitled9, fresh runtime, his cell 0
 `sinh + cosh = 1.65`, `F = k [c s] d = 5.20 kN`, `numeric(dT, degF)` refused with its reason;
 two screenshots sent.
 
-### His book, chapter 5 (solver A 5.1-5.8 done; B 5.9-5.17 running; examples 5.1-5.11 next)
+### His book, chapter 5 complete (problems 5.1-5.17, worked examples 5.1-5.13)
 
-Every number of 5.1-5.8 agrees with an oracle (the book prints none). Findings, not fixed:
+Every number agrees with an oracle, and the examples with the book (to its rounding; 5.7
+prints u_b = 0.09982 for 0.9982 mm). The thermal problems (5.11-5.13, 5.16) and examples
+(5.12, 5.13) used `[degC]`/`[1/degC]` without trouble. The notebook `Capitulo_05.ipynb` is
+in his Drive. Findings, not fixed:
 - **Silent stop:** `numeric` of a matrix whose `E*I` cancels prints the substitution row and
   no value (`simplify` works around); the scalar form says "requires values for: E, I".
 - **Presentation:** a function parameter named `s` read as the second (every `(c, s)`
   rotation matrix); `EI_theta_b` not Greek; a 4x1 substitution row wider than the page.
 - **Missing:** `:` in an index on a `:=` line; `member()` with a load over part of a span
-  (5.8c's diagram wrong, numbers right); a 6x6 `[gamma, zeros(3,3); ...]` on `:=`.
+  (5.8c's diagram wrong, numbers right); a 6x6 `[gamma, zeros(3,3); ...]` on `:=`; a part
+  assigned on a `:=` line (`K[[1,2],[1,2]] := ...`, refused naming `K[1, 1]`).
+- **Wrong page (Colab red):** a 12x12 matrix with typed units fails KaTeX with "Too many
+  expansions" (5.10d).
+- **Refused or silent:** a system `solve` on a `:=` line ("'NoneType' object has no
+  attribute 'free_symbols'"); a loop line whose target starts with a placeholder
+  (`{r}_a = ...` -> "invalid assignment target '1_a'"); an undefined `psi` read as the unit
+  psi silently (no warning, as `m` and `s` get); `[in]` in brackets refused without the
+  "use inch" hint.
+- **Presentation:** the loop rule writes `{A}e3[mm^2]` as `(Ae_3)_{mm^2}` and `{phi}*deg`
+  with an italic deg; one loop assembling K and P_F says its "para" list twice; stacked
+  fractions of loop rules touch; the summary counts `lambda*mu` with lambda := 0 as non-zero
+  (117 for 93); symbolic `=` matrices wider than the page cut off; `alpha` 1.2e-5 as
+  0.000012; numbers typed into function arguments folded and rounded (0.86 inch^2 E/ft);
+  the fixed-end vector assembled by parts never shown in numbers.
 
-**Exact next step:** chapter 5's solver B and the examples; then his pick among the
-findings; re-upload the notebooks with chapter 5.
+**Exact next step:** his pick among the findings of chapters 2-5; chapter 6 of the book.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
