@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
+| releasing | **0.45.1** - branch `fix/chapter-5-refusals` |
 | released | **0.45.0** - #385, `0a7ddab`, closed |
-| before that | **0.44.1** - #383, `4d16a38`, closed |
-| open PRs | chapter 5's report; the fold branch held (not a PR) |
-| default suite | **3530 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | the 0.45.1 PR; the fold branch held (not a PR) |
+| default suite | **3538 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2057,7 +2057,25 @@ in his Drive. Findings, not fixed:
   0.000012; numbers typed into function arguments folded and rounded (0.86 inch^2 E/ft);
   the fixed-end vector assembled by parts never shown in numbers.
 
-**Exact next step:** his pick among the findings of chapters 2-5; chapter 6 of the book.
+### 0.45.1: what chapter 5 found refused, silent or wrong (his pick, 2026-09-30)
+
+Branch `fix/chapter-5-refusals`: unknowns that cancel are cancelled (`numeric.evaluate_matrix`
+and `evaluate_symbolic`, only when every missing name goes); a system `solve` on a `:=` line
+gets the standalone-statement message; the structure probe stands `n1` for a `{...}` glued to
+a name (`{r}_a`); `psi` read as a unit is said (`_UNITS_SPELLED_LIKE_GREEK`); `[in]` is the
+inch in brackets, `[inch]` in a formula reads `in`; function parameters are never units; a
+block with more than 200 `\,` writes `\mkern3mu` (KaTeX's 1000 expansions). Audit (subagent):
+no new defect, 26 of 540 sheets differ from 0.45.0 and all as intended. Left, low: a matrix
+where only some entries cancel still stops silently; the psi notice also fires for US sheets
+that mean the unit unbracketed. Contracts `test_what_chapter_5_found` (8).
+
+**0.45.1 release evidence (tree `01ae474` + docs):** suite 3538 (SymPy 1.14 and 1.13.3);
+wheel 33 files identical; clean Python 3.12 venv with Colab's pins adds only Pint; smoke
+50/50; suite against the installed wheel 3537 + surface 5; 24 reference pages identical to
+0.45.0 and wheel = tree.
+
+**Exact next step:** merge the 0.45.1 PR on green CI, Deep, `git+https`, his Colab, docs
+closure; then chapter 6 (brief ready in scratchpad `book/ch06/BRIEF.md`, pages rendered).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
