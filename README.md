@@ -13,7 +13,34 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.45.2**.
+Current version: **0.45.3**.
+
+
+## v0.45.3 what chapter 7 found read wrong or refused
+
+Numbers that read wrong:
+- **A unit nobody wrote and no family names is a force and a length.** `L/(E*I)` with
+  `MPa` and `mm^4` printed `0.00 m/(MPa·mm⁴)` for `0.0004 1/(kN·m)`; `inv(K)` read `s²/kg`.
+  The sheet's palette chooses the force and the length; `kip`/`in` and `kgf`/`cm` on those
+  sheets. A unit already spelled in a force and a length (`mm/kN`) is kept. `E*I` from
+  `GPa` and `mm^4` now reads `kN·m²`.
+- **A column or an axis of ratios is a number**: `x/a` with `x` in inches and `a` in feet
+  was headed `[in/ft]` and read 6.00 for 0.5. A column of angles keeps its degrees.
+- **The written `0` of a vector takes its unit**: `[0; 2[1/m]]` then `GJ*D[1]/T` read
+  `0.00 m`.
+
+Refused or silent:
+- **Logs.** An antiderivative's log is real where the element starts (`integrate(1/(3 -
+  x), x)` is `-log(3 - x)`), so `solve` of its constants has an answer; `log(5*L/2) -
+  log(3*L/2)` and `log(L_1) - log(L_2)` have a number.
+- **Matrices built on a `:=` line**: `integrate` of a matrix, `zeros`, `diag`, `identity`,
+  a definite scalar `integrate`, and the part assignment `K[[1, 2], [1, 2]] := ...` - a
+  stiffness assembled in numbers, in a `% for` too.
+- **`psi` after `assume(psi > 0)`** is the angle ψ.
+- **`subs(f, [a, b], [1, 2])`** pairs the lists; it replaced nothing in silence.
+- **`atanh`.**
+- On `:=` lines `sin`, `cos` and `integrate` are written as on `=` lines, and a bracket
+  unit in a matrix as a measurement: `0 kip·in²`, not `0 kip · 1 in²`.
 
 
 ## v0.45.2 what chapter 6 found breaking the page
@@ -4009,6 +4036,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.45.3** — a unit no family names reads in a force and a length (no more `0.00 m/(MPa·mm⁴)`); ratio columns are numbers; a vector's zero has its unit; real logs in integrals and log ratios; `:=` matrices built with integrate/zeros/diag and assembled by parts; assumed `psi`; `subs` with lists; `atanh`.
 - **0.45.2** — an integral with bracket units no longer stops the cell; a solve's equation row shows its units; a nested piecewise is one list of cases; `q = solve(..., q)` reaches functions written before it.
 - **0.45.1** — a number whose unknowns cancel is worked out; a system solve on `:=` says what to write; `{r}_a` in a loop; `psi` read as a unit is said; `[in]`; function parameters never units; large matrices with units typeset in Colab.
 - **0.45.0** — `[degC]`, `[degF]` (a change of temperature, written °C) and `[K]`; `sinh`, `cosh`, `tanh`; a row `[c, s]` on a `:=` line.
@@ -4141,4 +4169,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.45.2`.
+Version: `0.45.3`.

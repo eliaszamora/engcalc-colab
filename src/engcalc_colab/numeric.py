@@ -12,6 +12,7 @@ from pint import UnitRegistry
 from pint.errors import DimensionalityError, PintError
 
 from .unit_text import normalise
+from sympy.parsing.sympy_parser import parse_expr
 from sympy.polys.polyerrors import PolynomialError
 
 from .errors import EngEvaluationError, NoRealValueError, diagnostic_hint
@@ -235,10 +236,15 @@ class NumericContext:
         # `d := solve(K, F)`: matrices of numbers, apart from the scalars. See
         # `engine._MatrixNumbers`.
         self.matrices: dict[str, Any] = {}
+        # Names `assume` declared: variables of the sheet, never a unit. `assume(psi > 0)`
+        # then `integrate(sin(phi), phi, 0, psi)` read ψ as pounds per square inch (his
+        # book, problem 7.23).
+        self.variables: set[str] = set()
 
     def reset(self) -> None:
         self.values.clear()
         self.matrices.clear()
+        self.variables.clear()
 
     def get(self, name: str):
         return self.values.get(name)
@@ -257,7 +263,27 @@ class NumericContext:
             raise EngEvaluationError(f"numeric evaluation failed: {exc}") from exc
 
     def assign(self, name: str, expression: ast.Expression):
-        quantity = self.evaluate_expression(expression)
+        try:
+            quantity = self.evaluate_expression(expression)
+        except EngEvaluationError as exc:
+            # `h := log(L) - log(2*L)`: read as a formula, the logs of lengths cancel (see
+            # the sum of logs in `_evaluate_sympy`); refused as before when they do not.
+            if "requires a dimensionless argument" not in str(exc) or not any(
+                isinstance(node, ast.Call) and getattr(node.func, "id", None) == "log"
+                for node in ast.walk(expression)
+            ):
+                raise
+            called = {id(node.func) for node in ast.walk(expression) if isinstance(node, ast.Call)}
+            names = {
+                node.id: sp.Symbol(node.id, real=True)
+                for node in ast.walk(expression)
+                if isinstance(node, ast.Name) and id(node) not in called
+            }
+            try:
+                formula = parse_expr(ast.unparse(expression.body), local_dict=names)
+                _, quantity = self.evaluate_symbolic(formula)
+            except Exception:
+                raise exc from None
         self.values[name] = quantity
         self.matrices.pop(name, None)
         return quantity
@@ -308,7 +334,9 @@ class NumericContext:
         formula = self._scalar_formula(name)
         if formula is not None:
             return self._number_of_the_formula(name, formula)
-        if name in _UNIT_ALIASES:
+        # A name `assume` declared is a variable: `r := 3*psi` after `assume(psi > 0)`
+        # was three pounds per square inch, in silence.
+        if name in _UNIT_ALIASES and name not in self.variables:
             return self.ureg.Unit(_UNIT_ALIASES[name])
         hint = diagnostic_hint("unknown_numeric_name", name=name)
         raise EngEvaluationError(f"unknown numeric name '{name}'. {hint}")
@@ -394,6 +422,7 @@ class NumericContext:
             "sinh": math.sinh,
             "cosh": math.cosh,
             "tanh": math.tanh,
+            "atanh": math.atanh,
         }
         if name in scalar_dimensionless:
             if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:
@@ -429,7 +458,7 @@ class NumericContext:
         fixed = dict(overrides or {})
         for symbol in sp.sympify(expression).free_symbols:
             name = symbol.name
-            if name in fixed or name in self.values:
+            if name in fixed or name in self.values or name in self.variables:
                 continue
             if name in _UNIT_ALIASES:
                 fixed[name] = self.resolve_target_unit_name(name)
@@ -1513,6 +1542,32 @@ class NumericContext:
                 [self._evaluate_sympy(arg, substitutions) for arg in expr.args],
             )
 
+        if expr.is_Add and expr.has(sp.log) and not getattr(self, "_reading_logs", False):
+            # `log(5*L/2) - log(3*L/2)` is the log of a number, `5/3`, and `log(L_1) -
+            # log(L_2)` the log of a ratio: each log of a length was refused, "log requires
+            # a dimensionless argument", and the cell stopped (his book, problem 7.10).
+            # Asked as written first; refused so, the logs taken apart and then put
+            # together are asked, and the sum is refused as before when neither reads.
+            self._reading_logs = True
+            try:
+                return self._evaluate_sympy(expr, substitutions)
+            except EngEvaluationError as exc:
+                if "requires a dimensionless argument" not in str(exc):
+                    raise
+                for form in (
+                    sp.expand_log(expr, force=True),
+                    sp.logcombine(sp.expand_log(expr, force=True), force=True),
+                ):
+                    if form == expr:
+                        continue
+                    try:
+                        return self._evaluate_sympy(form, substitutions)
+                    except EngEvaluationError:
+                        continue
+                raise
+            finally:
+                self._reading_logs = False
+
         if expr.is_Add:
             # A term that is a unit on its own - `1*kN` folds to `kN` - is one of it. Pint
             # multiplies a unit by a quantity and refuses to add one to it, so
@@ -1619,6 +1674,7 @@ class NumericContext:
             sp.sinh: "sinh",
             sp.cosh: "cosh",
             sp.tanh: "tanh",
+            sp.atanh: "atanh",
         }
         if expr.func in scalar_sympy and len(expr.args) == 1:
             value = self._evaluate_sympy(expr.args[0], substitutions)
@@ -1703,7 +1759,7 @@ class _NumericAstEvaluator(ast.NodeVisitor):
         value = self.visit(node.args[0])
         if name == "abs":
             return abs(value)
-        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh"}:
+        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh", "atanh"}:
             return self.context.evaluate_scalar_function(name, value)
         # Named: the message used to be the same for every function, and the engineer
         # could not tell which one it meant.

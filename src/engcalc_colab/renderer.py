@@ -1403,8 +1403,19 @@ def _plotted_in_units_a_page_writes(result: PlotResult, settings: RenderSettings
         if not values:
             return None
         largest = max(values, key=lambda value: abs(float(value.magnitude)))
+        # As a table column writes them (the audit of 0.45.3): a ratio carrying a scale is
+        # a number, and a unit no family names is a force and a length.
+        if (
+            getattr(largest, "dimensionless", False)
+            and str(largest.units) not in _ANGLE_UNIT_NAMES
+            and str(largest.units) != "dimensionless"
+        ):
+            return largest._REGISTRY.dimensionless
         family = _unit_family(largest)
-        if not family or _unit_is_the_engineers(largest, plain):
+        if not family:
+            written = _in_force_and_length(largest, settings)
+            return None if written is None else written.units
+        if _unit_is_the_engineers(largest, plain):
             return None
         for name in family:
             try:
@@ -1923,6 +1934,76 @@ def _best_in_family(quantity, family, settings: RenderSettings, *, start=None):
 _ANGLE_UNIT_NAMES = frozenset({"degree", "radian"})
 
 
+# The force and the length a value with no family of its own is written in, per system.
+_FORCE_AND_LENGTH = {"si": ("kN", "m"), "us": ("kip", "inch"), "technical": ("kgf", "cm")}
+
+
+def _spelled_in_forces_and_lengths(quantity) -> bool:
+    """True when every factor of the unit is a force, a length or a time, one unit each.
+
+    `mm/kN` and `kN·m²` are; `m/(MPa·mm⁴)` holds a stress and two lengths, `s²/kg` a
+    mass - what the algebra leaves, not what anybody writes."""
+    try:
+        registry = quantity._REGISTRY
+        shapes = [
+            tuple(sorted(registry.Unit(name).dimensionality.items()))
+            for name in quantity.units._units
+        ]
+    except Exception:
+        return False
+    allowed = {
+        (("[length]", 1), ("[mass]", 1), ("[time]", -2)),
+        (("[length]", 1),),
+        (("[time]", 1),),
+    }
+    return all(shape in allowed for shape in shapes) and len(shapes) == len(set(shapes))
+
+
+def _in_force_and_length(quantity, settings: RenderSettings):
+    """The unit of `quantity` spelled in the sheet's force and length, or None.
+
+    A dimension no family names - a flexibility `L/(E*I)`, `1/(kN·m)` - kept whatever the
+    algebra left: `m/(MPa·mm⁴)`, where 4.00e-4 1/(kN·m) is 4.0e-13 and the zero tolerance
+    printed `0.00` (his book, problem 7.22); a matrix of them read `s²/(m²·kg)`. Written
+    in a force and a length - the palette's when there is one, else kN and m, kip and
+    inch, kgf and cm by the system of the value - it reads as a memoria writes it. Only
+    a dimension that holds a force: one that does not is a power of a length, which the
+    families and `_palette_power` already answer.
+    """
+    try:
+        dimensions = dict(quantity.dimensionality.items())
+    except Exception:
+        return None
+    if set(dimensions) - {"[mass]", "[length]", "[time]"}:
+        return None
+    force_power = dimensions.get("[mass]", 0)
+    if not force_power or any(power != int(power) for power in dimensions.values()):
+        return None
+    if _spelled_in_forces_and_lengths(quantity):
+        # `0.50 mm/kN` is already a force and a length, and the sheet's own.
+        return None
+    palette = _PALETTES.get(settings.palette)
+    if palette:
+        force = palette[(("[length]", 1), ("[mass]", 1), ("[time]", -2))]
+        length = palette[(("[length]", 1),)]
+    elif _is_us_customary(quantity):
+        force, length = _FORCE_AND_LENGTH["us"]
+    elif _is_technical(quantity):
+        force, length = _FORCE_AND_LENGTH["technical"]
+    else:
+        force, length = _FORCE_AND_LENGTH["si"]
+    powers = (
+        (force, int(force_power)),
+        (length, int(dimensions.get("[length]", 0) - force_power)),
+        ("s", int(dimensions.get("[time]", 0) + 2 * force_power)),
+    )
+    unit = " * ".join(f"({name}) ** {power}" for name, power in powers if power)
+    try:
+        return quantity.to(unit)
+    except DimensionalityError:
+        return None
+
+
 def _is_a_dimensionless_ratio(quantity) -> bool:
     """True when the units are left over from arithmetic on a value that is a number.
 
@@ -2061,6 +2142,11 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
             if converted.units == quantity.units:
                 return converted
         return None
+
+    if not family and not declared:
+        written = _in_force_and_length(quantity, settings)
+        if written is not None:
+            return written
 
     canonical = _as_family_member(quantity)
     own_is_family_member = canonical is not None
@@ -3745,6 +3831,19 @@ def _written_precedence(node) -> int:
     return _WRITTEN_ATOM
 
 
+# The functions LaTeX names itself, written on a `:=` line as on a `=` line.
+_WRITTEN_FUNCTIONS = frozenset({"sin", "cos", "tan", "sinh", "cosh", "tanh", "log"})
+
+
+def _index_text(node, latex) -> str:
+    """An index of a part as its number: `{e}+1` in a `% for` reads `2 + 1`, written `3`."""
+    if all(isinstance(each, (ast.Constant, ast.BinOp, ast.Add, ast.Sub, ast.Mult)) for each in ast.walk(node)) and all(
+        isinstance(each.value, int) for each in ast.walk(node) if isinstance(each, ast.Constant)
+    ):
+        return str(eval(compile(ast.Expression(body=node), "<index>", "eval"), {"__builtins__": {}}))
+    return latex(node)
+
+
 class _WrittenLine:
     def __init__(self, result, settings: RenderSettings):
         self.literals = {
@@ -3783,6 +3882,11 @@ class _WrittenLine:
             sign = "-" if isinstance(node.op, ast.USub) else "+"
             return sign + self.grouped(node.operand, 2)
         if isinstance(node, ast.BinOp):
+            measurement = self._measurement(node)
+            if measurement is not None:
+                # `0[kN*m^2]` and `2[1/m]` as measurements: drawn factor by factor they
+                # read `0 kN · 1 m²` and `2 · 1/(1 m)` (his book, chapter 7).
+                return measurement
             return self._binary(node)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
             return self._call(node.func.id, node.args)
@@ -3794,7 +3898,7 @@ class _WrittenLine:
             index = node.slice
             parts = index.elts if isinstance(index, ast.Tuple) else [index]
             shown = ",".join(
-                r"\left[" + ",".join(str(each.value) for each in part.elts) + r"\right]"
+                r"\left[" + ",".join(_index_text(each, self.latex) for each in part.elts) + r"\right]"
                 if isinstance(part, ast.List)
                 else self.latex(part)
                 for part in parts
@@ -3803,6 +3907,58 @@ class _WrittenLine:
                 base = rf"\left({base}\right)"
             return f"{base}_{{{shown}}}"
         return ast.unparse(node)
+
+    def _measurement(self, node) -> str | None:
+        """`node` written as a measurement - a number and its units, in the order they
+        were typed - when it is only that, else None. Only units written in brackets:
+        `20*kN`, written so, keeps the form it always had."""
+        names = {each.id for each in ast.walk(node) if isinstance(each, ast.Name)}
+        if not names or not all(name.startswith(BRACKETED_UNIT_PREFIX) for name in names):
+            return None
+        numbers: list[str] = []
+        units: dict[str, int] = {}
+
+        def walk(each, power: int) -> bool:
+            if isinstance(each, ast.Constant) and isinstance(each.value, (int, float)):
+                if power < 0 and each.value != 1:
+                    return False
+                if each.value != 1 or power > 0:
+                    numbers.append(getattr(each, "typed", str(each.value)))
+                return True
+            if isinstance(each, ast.Name):
+                units[each.id] = units.get(each.id, 0) + power
+                return True
+            if isinstance(each, ast.BinOp) and isinstance(each.op, ast.Mult):
+                return walk(each.left, power) and walk(each.right, power)
+            if isinstance(each, ast.BinOp) and isinstance(each.op, ast.Div):
+                return walk(each.left, power) and walk(each.right, -power)
+            if (
+                isinstance(each, ast.BinOp)
+                and isinstance(each.op, ast.Pow)
+                and isinstance(each.left, ast.Name)
+                and isinstance(each.right, ast.Constant)
+                and isinstance(each.right.value, int)
+            ):
+                units[each.left.id] = units.get(each.left.id, 0) + power * each.right.value
+                return True
+            return False
+
+        walk_ok = walk(node, 1)
+        if len(numbers) > 1:
+            # The `1` of `[1/m]` is the unit's, not a second number: `2[1/m]` is two.
+            numbers = [number for number in numbers if number != "1"]
+        if not walk_ok or len(numbers) > 1 or not units:
+            return None
+
+        def unit(name: str, power: int) -> str:
+            written = _latex(sp.Symbol(name), frozenset({name}), self.settings).removeprefix("1" + r"\,")
+            return written if power == 1 else f"{written}^{{{power}}}"
+
+        above = r" \cdot ".join(unit(name, power) for name, power in units.items() if power > 0)
+        below = r" \cdot ".join(unit(name, -power) for name, power in units.items() if power < 0)
+        number = numbers[0] if numbers else ""
+        top = r"\,".join(part for part in (number, above) if part) or "1"
+        return rf"\frac{{{top}}}{{{below}}}" if below else top
 
     def _name(self, name: str) -> str:
         if name in self.literals:
@@ -3848,6 +4004,13 @@ class _WrittenLine:
             return rf"\sqrt{{{inner}}}"
         if name == "abs" and len(arguments) == 1:
             return rf"\left|{inner}\right|"
+        # Written as a `=` line writes them: `-\operatorname{sin}(θ) F` and
+        # `\operatorname{integrate}(...)` stood on `:=` matrix lines (his book, chapter 7).
+        if name == "integrate" and len(arguments) == 4:
+            _, variable, lower, upper = (self.latex(argument) for argument in arguments)
+            return rf"\int\limits_{{{lower}}}^{{{upper}}} {self.grouped(arguments[0], 2)}\, d{variable}"
+        if name in _WRITTEN_FUNCTIONS and len(arguments) == 1:
+            return rf"\{name}{{\left({inner}\right)}}"
         return rf"\operatorname{{{name}}}\left({inner}\right)"
 
 
@@ -4093,10 +4256,19 @@ def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> 
 
 def _display_rows(result: CalculationResult, settings: RenderSettings) -> list[str]:
     if isinstance(result, NumericMatrixAssignmentResult):
-        return _matrix_stage_rows(
-            _render_lhs(result.statement.target, None),
-            _numeric_matrix_assignment_stages(result, settings),
-        )
+        stages = _numeric_matrix_assignment_stages(result, settings)
+        index = getattr(result.statement, "target_index", None)
+        if index is not None and len(stages) > 1:
+            # `K[[1, 2], [1, 2]] := ...`: the part is what the line equals, and the matrix
+            # it lands in is shown after it, as `K = ...`.
+            part = _WrittenLine(result, settings).latex(
+                ast.Subscript(value=ast.Name(id=result.statement.target), slice=index)
+            )
+            rows = _matrix_stage_rows(part, stages[:-1])
+            return rows + _matrix_stage_rows(
+                _render_lhs(result.statement.target, None), stages[-1:]
+            )
+        return _matrix_stage_rows(_render_lhs(result.statement.target, None), stages)
     if isinstance(result, NumericMatrixEvaluationResult):
         return _numeric_matrix_evaluation_rows(result, settings)
     if isinstance(result, PartialMatrixNumericEvaluationResult):
@@ -4727,6 +4899,10 @@ def _in_unit(quantity, unit, settings: RenderSettings):
     if getattr(quantity, "dimensionless", False) and not (
         str(quantity.units) in _ANGLE_UNIT_NAMES and str(unit) in _ANGLE_UNIT_NAMES
     ):
+        # A ratio carrying a scale - `in/ft` - is the number it stands for: its column
+        # is headed as a number (see `_aggregate_unit`) and 6.00 there was 0.5.
+        if str(unit) == "dimensionless" and str(quantity.units) not in _ANGLE_UNIT_NAMES:
+            return quantity.to(unit)
         return quantity
     if _is_genuine_zero(quantity, settings):
         quantity = quantity * 0.0
@@ -4798,6 +4974,18 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
         for quantity in quantities
         if quantity is not None and not getattr(quantity, "dimensionless", False)
     ]
+    if not physical and fallback is not None and quantities and all(
+        quantity is None
+        or (
+            getattr(quantity, "dimensionless", False)
+            and str(quantity.units) not in _ANGLE_UNIT_NAMES
+        )
+        for quantity in quantities
+    ) and str(fallback) not in _ANGLE_UNIT_NAMES:
+        # A ratio is a number in a column as on its own line: `x/a` with `a` in feet and
+        # `x` in inches headed its column `[in/ft]` and read 6.00 for 0.5 (his book,
+        # Example 7.4).
+        return fallback._REGISTRY.dimensionless
     if not physical or fallback is None:
         return fallback
 
@@ -4815,7 +5003,8 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
 
     family = _unit_family(physical[0])
     if not family:
-        return fallback
+        written = _in_force_and_length(physical[0], settings)
+        return fallback if written is None else written.units
     if _unit_is_the_engineers(physical[0], settings) and all(
         _is_genuine_zero(quantity, settings)
         or _significant_figures(quantity.to(fallback).magnitude, settings.precision) > 0
@@ -5743,7 +5932,7 @@ def _expression_label_latex(value: str) -> str | None:
     return None if r"\texttt" in written else written
 
 
-_LABEL_FUNCTIONS = ("sin", "cos", "tan", "sqrt", "exp", "log", "ln", "abs", "asin", "acos", "atan", "sinh", "cosh", "tanh")
+_LABEL_FUNCTIONS = ("sin", "cos", "tan", "sqrt", "exp", "log", "ln", "abs", "asin", "acos", "atan", "sinh", "cosh", "tanh", "atanh")
 
 
 def _numbers_only(value) -> bool:

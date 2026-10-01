@@ -41,7 +41,7 @@ _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
 _DISPLAY_TEXT_OPTIONS = {"title", "xlabel", "ylabel"}
 _CHARACTERISTIC_CALLS = {"roots", "extrema", "intersections", "governing"}
 _SCALAR_CALLS = {
-    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh"
+    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh", "atanh"
 }
 _RETIRED_CALLS = {
     # ``integral`` was the original name and ``integrate`` replaced it in 0.11.0, on the
@@ -278,6 +278,18 @@ def parse_cell(
             if numeric_assignment is not None:
                 numeric_lhs, numeric_rhs = numeric_assignment
                 target = numeric_lhs.strip()
+                numeric_index = None
+                # `K[[1, 2], [1, 2]] := K[[1, 2], [1, 2]] + k_1`: a part of a matrix of
+                # numbers, assembled in numbers (his book, problem 7.29).
+                numeric_part = _PART_TARGET.fullmatch(target)
+                if numeric_part is not None and not _IDENTIFIER.fullmatch(target):
+                    try:
+                        subscript = ast.parse(target, mode="eval").body
+                    except SyntaxError as exc:
+                        raise _invalid_syntax(line_no, target) from exc
+                    _validate_normal_node(subscript, line_no)
+                    numeric_index = subscript.slice
+                    target = numeric_part.group(1)
                 if not _IDENTIFIER.fullmatch(target):
                     raise EngSyntaxError(
                         f"line {line_no}: invalid numeric assignment target '{target}'"
@@ -306,6 +318,7 @@ def parse_cell(
                     expression=expression,
                     blank_before=pending_blank,
                     matrix_literals=matrix_literals,
+                    target_index=numeric_index,
                 ))
                 pending_blank = False
                 index = next_index

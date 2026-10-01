@@ -96,7 +96,9 @@ def test_a_factor_with_a_larger_exponent_does_not_jump_the_queue(cell):
     both factors were present in either order, and presence was all it asked.
     """
     final = _final(cell("E := 200*GPa\nI := 80e6*mm**4\nk = E*I\nnumeric(k)\n"))
-    assert r"\mathrm{GPa} \cdot \mathrm{mm}^{4}" in final, final
+    # Since 0.45.3 a unit nobody wrote and no family names is spelled in the sheet's force
+    # and length (`_in_force_and_length`): `E*I` is a stiffness in kN·m², force first.
+    assert r"16000.00\,\mathrm{kN} \cdot \mathrm{m}^{2}" in final, final
 
 
 def test_a_declared_unit_is_still_the_engineers(cell):

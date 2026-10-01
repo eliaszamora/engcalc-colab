@@ -869,6 +869,17 @@ def _assemblies(kept: list, helpers: list, settings, order=()) -> Iterator:
             yield ConditionNote(
                 latex=assembly_note_latex(len(entries), template, names, labels, made, constants)
             )
+        if getattr(getattr(result, "statement", None), "target_index", None) is not None:
+            # A part assembled with `:=` is the matrix it landed in: its last pass's row,
+            # `K_{[2,3],[2,3]} = ...`, read as if only that pass was added (the audit of
+            # 0.45.3).
+            statement = replace(
+                result.statement,
+                target_index=None,
+                expression=ast.Expression(body=ast.Name(id=target, ctx=ast.Load())),
+                matrix_literals=(),
+            )
+            result = replace(result, statement=statement)
         if fits_the_page(result, _current(settings)):
             yield Evaluated(result, tuple(said))
         else:
