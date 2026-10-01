@@ -12,9 +12,9 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.45.2** - branch `fix/chapter-6-page-breakers` |
-| released | **0.45.1** - #388, `ea59ea1`, closed |
-| open PRs | the 0.45.2 PR; the fold branch held (not a PR) |
+| released | **0.45.2** - #390, `e090c89`, closed |
+| before that | **0.45.1** - #388, `ea59ea1`, closed |
+| open PRs | this closure; the fold branch held (not a PR) |
 | default suite | **3547 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -2121,8 +2121,13 @@ identical; clean Python 3.12 venv with Colab's pins adds only Pint and its depen
 Chapter 7 (PDF 195-236, problems 7.1-7.29 on 230-235): brief in scratchpad `book/ch07/BRIEF.md`,
 four solvers running on the 0.45.2 snapshot.
 
-**Exact next step:** merge the 0.45.2 PR on green CI, Deep, `git+https`, his Colab, docs
-closure; then chapter 7's findings and `Capitulo_07` to his Drive.
+**0.45.2 is closed** (#390, `e090c89`): PR CI green; Quality Gate Deep (push) and Deep
+qualification green on `e090c89`; a `git+https` install changed only `engcalc-colab`, 33 files
+identical, smoke 51/51. In his Colab (Untitled9: fresh session, his cell 0, cell 3, 2026-10-01):
+`engcalc 0.45.2`, the integral of 6.15 drawn, `50 kN` in the solve's equation row, one list of
+three cases, `z = g(2) = P`; screenshots sent.
+
+**Exact next step:** chapter 7's findings and `Capitulo_07` to his Drive; then his pick.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
