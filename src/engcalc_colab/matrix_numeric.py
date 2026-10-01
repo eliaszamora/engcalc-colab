@@ -164,6 +164,12 @@ def entry_quantity(numbers: NumberMatrix, row: int, col: int, ureg):
     `0`, which Pint adds to any quantity, as the written `0` it stands for would be."""
     magnitude, unit = numbers.at(row, col)
     if unit is None:
+        # The unit of every other entry, when they share one: in `D := [0; 2[1/m]]` the
+        # written 0 is a curvature, and `GJ*D[1]/T` read `0.00 m` (his book, Example 7.4).
+        # A matrix of several dimensions - a stiffness - leaves its zero a plain 0.
+        others = [other for other in numbers.units if other is not None]
+        if others and all(_same_dimension(others[0], other) for other in others):
+            return ureg.Quantity(0.0, others[0])
         return 0
     return ureg.Quantity(magnitude, unit)
 

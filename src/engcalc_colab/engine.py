@@ -150,6 +150,8 @@ _SCALAR_SYMBOLIC_FUNCTIONS = {
     "sinh": sp.sinh,
     "cosh": sp.cosh,
     "tanh": sp.tanh,
+    # The closed form of an integral of 1/(1 - x^2) (his book, problem 7.10).
+    "atanh": sp.atanh,
 }
 
 _INVERSE_TRIG_SYMBOLIC_FUNCTIONS = {sp.asin, sp.acos, sp.atan}
@@ -169,6 +171,47 @@ def _substitute_preserving_inverse_trig(expr, bindings):
     if expr.func in _INVERSE_TRIG_SYMBOLIC_FUNCTIONS:
         return expr.func(*rebuilt_args, evaluate=False)
     return expr.func(*rebuilt_args)
+
+
+def _logs_real_at_the_origin(antiderivative, variable):
+    """`antiderivative` with every `log(a)` whose argument is negative where the variable
+    is 0 written `log(-a)`. The two differ by the constant `i*pi`, so either is an
+    antiderivative; SymPy writes `integrate(1/(3 - x), x)` as `-log(x - 3)`, complex on an
+    element that starts at 0, and `solve` of its constants found "no solution" (his book,
+    problem 7.10). Only an argument whose sign at the origin is known."""
+    flipped = {}
+    for log in antiderivative.atoms(sp.log):
+        argument = log.args[0]
+        if variable not in argument.free_symbols:
+            continue
+        if argument.subs(variable, 0).is_negative is True:
+            flipped[log] = sp.log(sp.expand(-argument))
+    return antiderivative.xreplace(flipped) if flipped else antiderivative
+
+
+def _real_integral(expression, bounds):
+    """`sp.integrate`, with an antiderivative real at the origin: an indefinite integral
+    is written so, and a definite one of a real integrand that came out complex - `log(3)
+    + i*pi - log(x - 3)` for `integrate(1/(3 - t), t, 0, x)` - is that antiderivative
+    between its bounds."""
+    if not isinstance(bounds, tuple):
+        return _logs_real_at_the_origin(sp.integrate(expression, bounds), bounds)
+    value = sp.integrate(expression, bounds)
+    variable, lower, upper = bounds
+    # Only a rational integrand, whose logs are where the `i*pi` comes from: the
+    # antiderivative of `x*(x/L)^k*(1 - (x/L)^n)` does not return, and the definite
+    # integral did.
+    if (
+        not value.has(sp.I)
+        or expression.has(sp.I)
+        or not sp.sympify(expression).is_rational_function(variable)
+    ):
+        return value
+    antiderivative = _logs_real_at_the_origin(sp.integrate(expression, variable), variable)
+    if antiderivative.has(sp.Integral):
+        return value
+    between = antiderivative.subs(variable, upper) - antiderivative.subs(variable, lower)
+    return value if between.has(sp.I) else between
 
 
 def substitute_symbolic_value(value, bindings):
@@ -338,9 +381,16 @@ class _MatrixNumbers:
 
     _MATRIX_CALLS = MATRIX_CALLS
 
+    # Calls that build a matrix from formulas: worked out as the `=` line works them out,
+    # then in numbers. `K := zeros(12, 12)` was "unsupported numeric function" and
+    # `d := integrate([R*cos(phi); 1]*[R*cos(phi), 1], phi, 0, pi/2)` "unknown numeric name
+    # 'phi'" (his book, problems 7.23 and 7.29).
+    _BUILDING_CALLS = frozenset({"zeros", "identity", "diag", "integrate"})
+
     def __init__(self, engine: "EngineeringEngine", statement) -> None:
         self.engine = engine
         self.context = engine.numeric_context
+        self.statement = statement
         self.literals = {
             binding.name: binding.literal
             for binding in getattr(statement, "matrix_literals", ())
@@ -358,10 +408,42 @@ class _MatrixNumbers:
         return is_matrix(self.engine.namespace.get(name))
 
     def reads_a_matrix(self, node: ast.AST) -> bool:
-        return any(
-            isinstance(each, ast.Name) and self.names_a_matrix(each.id)
-            for each in ast.walk(node)
-        ) or self._writes_a_row(node)
+        return (
+            any(
+                isinstance(each, ast.Name) and self.names_a_matrix(each.id)
+                for each in ast.walk(node)
+            )
+            or self._writes_a_row(node)
+            or any(self._builds_a_matrix(each) for each in ast.walk(node))
+        )
+
+    def _builds_a_matrix(self, node: ast.AST) -> bool:
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in self._BUILDING_CALLS
+            and node.func.id not in self.engine.functions
+        ):
+            return False
+        # A definite integral of a scalar too: `t := integrate(R*cos(phi), phi, 0, pi/2)`
+        # was "unsupported numeric function", its variable having no number.
+        return node.func.id != "integrate" or len(node.args) == 4
+
+    def _built(self, node: ast.Call):
+        """What a building call makes, as `=` makes it, in numbers: a `NumberMatrix`, or
+        the quantity of a scalar integral."""
+        reader = _Evaluator(self.engine, getattr(self.statement, "matrix_literals", ()))
+        built = reader.visit(node)
+        if not is_matrix(built):
+            _substitutions, quantity = self.context.evaluate_symbolic(sp.sympify(built))
+            return quantity
+        _substitutions, unresolved, quantity_matrix = self.context.evaluate_matrix(built)
+        if unresolved:
+            hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(unresolved))
+            raise EngEvaluationError(
+                f"'{ast.unparse(node)}' needs values for: " + ", ".join(unresolved) + f". {hint}"
+            )
+        return numbers_of(quantity_matrix)
 
     @staticmethod
     def _writes_a_row(node: ast.AST) -> bool:
@@ -505,6 +587,8 @@ class _MatrixNumbers:
 
     def _call(self, node: ast.Call):
         name = node.func.id
+        if self._builds_a_matrix(node):
+            return self._built(node)
         if name not in self._MATRIX_CALLS:
             return self._number_call(node)
         arguments = [self.value(argument) for argument in node.args]
@@ -581,6 +665,45 @@ class _MatrixNumbers:
         if not rows_listed and not cols_listed:
             return entry_quantity(numbers, rows[0], cols[0], self.context.ureg)
         return take_numbers(numbers, rows, cols)
+
+    def with_a_part(self, name: str, index: ast.AST, value) -> NumberMatrix:
+        """The matrix of numbers `name` with the part `index` names replaced by `value`."""
+        if not (name in self.literals or name in self.context.matrices):
+            raise EngEvaluationError(
+                f"{name} has no matrix of numbers to assign into; start it as one, for "
+                f"example {name} := zeros(3, 3)"
+            )
+        numbers = self._named(name)
+        parts = list(index.elts) if isinstance(index, ast.Tuple) else [index]
+        selections = [self._positions(part) for part in parts]
+        if len(selections) == 1 and 1 in (numbers.rows, numbers.cols):
+            selections.append(([1], False))
+            if numbers.cols != 1:
+                selections.reverse()
+        if len(selections) != 2:
+            raise EngEvaluationError(
+                f"'{name}[{ast.unparse(index)}]': a part of a matrix is K[rows, columns]"
+            )
+        rows, cols = selections[0][0], selections[1][0]
+        if not isinstance(value, NumberMatrix):
+            value = scalar_numbers(self.context._as_quantity(value))
+        if (value.rows, value.cols) != (len(rows), len(cols)):
+            raise EngEvaluationError(
+                f"'{name}[{ast.unparse(index)}]' is {len(rows)}x{len(cols)} and the right "
+                f"side is {value.shape}"
+            )
+        magnitudes = list(numbers.magnitudes)
+        units = list(numbers.units)
+        for i, row in enumerate(rows):
+            for j, col in enumerate(cols):
+                if not (1 <= row <= numbers.rows and 1 <= col <= numbers.cols):
+                    raise EngEvaluationError(
+                        f"'{name}[{ast.unparse(index)}]' is outside the "
+                        f"{numbers.rows}x{numbers.cols} matrix"
+                    )
+                position = (row - 1) * numbers.cols + (col - 1)
+                magnitudes[position], units[position] = value.at(i, j)
+        return NumberMatrix(numbers.rows, numbers.cols, tuple(magnitudes), tuple(units))
 
     @staticmethod
     def _positions(part: ast.AST) -> tuple[list[int], bool]:
@@ -1492,6 +1615,8 @@ class EngineeringEngine:
         context = self.numeric_context
         try:
             value = numbers.value(statement.expression.body)
+            if getattr(statement, "target_index", None) is not None:
+                value = numbers.with_a_part(statement.target, statement.target_index, value)
         except DimensionalityError as exc:
             raise EngEvaluationError("incompatible units") from exc
         for binding in statement.matrix_literals:
@@ -2444,6 +2569,7 @@ class EngineeringEngine:
         greek = name in _UNITS_SPELLED_LIKE_GREEK
         if (
             (len(name) != 1 and not greek)
+            or name in self.numeric_context.variables
             or name not in _UNIT_ALIASES
             or (name in self.letters_written_as_units and not greek)
             or name in self.letters_said_to_be_units
@@ -2541,9 +2667,9 @@ class EngineeringEngine:
                 if notice:
                     self.notices.append(notice)
                 numbers = _MatrixNumbers(self, statement)
-                if numbers.reads_a_matrix(statement.expression.body) or isinstance(
-                    statement.expression.body, ast.List
-                ):
+                if getattr(statement, "target_index", None) is not None or numbers.reads_a_matrix(
+                    statement.expression.body
+                ) or isinstance(statement.expression.body, ast.List):
                     return self._assign_numbers(statement, numbers, written_units)
                 equation = None
                 if self._calls_a_function_of_the_sheet(statement.expression):
@@ -3499,6 +3625,7 @@ class _Evaluator(ast.NodeVisitor):
                     )
                 keyword = keywords[type(argument.ops[0])]
                 self.engine.assumptions.setdefault(subject_name, {})[keyword] = True
+                self.engine.numeric_context.variables.add(subject_name)
                 declared.append((subject_name, keyword))
             self.assume_evaluation = tuple(declared)
             return None
@@ -4123,12 +4250,12 @@ class _Evaluator(ast.NodeVisitor):
                     return self.display_input
                 return map_matrix_entries(
                     expr,
-                    lambda entry: sp.integrate(entry, bounds),
+                    lambda entry: _real_integral(entry, bounds),
                 )
             self.display_input = sp.Integral(expr, bounds)
             if self.showing:
                 return self.display_input
-            return sp.integrate(expr, bounds)
+            return _real_integral(expr, bounds)
 
         if name == "macaulay":
             # Written `<variable - offset>^n`; the parser rewrites the bracket notation
@@ -4221,6 +4348,26 @@ class _Evaluator(ast.NodeVisitor):
                     "subs expects an expression followed by variable/value pairs, so an "
                     f"odd number of arguments; got {len(args)}"
                 )
+            if len(args) == 3 and isinstance(node.args[1], ast.List):
+                # `subs(f, [a, b], [1, 2])`, the pairs as two lists: it replaced nothing
+                # and said nothing (his book, problem 7.17). Read as `subs(f, a, 1, b, 2)`.
+                variables = list(args[1]) if is_matrix(args[1]) else [args[1]]
+                values = list(args[2]) if is_matrix(args[2]) else [args[2]]
+                if len(variables) != len(values):
+                    raise EngEvaluationError(
+                        f"subs has {len(variables)} variables and {len(values)} values; "
+                        "the two lists pair them one by one"
+                    )
+                written_values = (
+                    node.args[2].elts if isinstance(node.args[2], ast.List) else [node.args[2]]
+                )
+                node = ast.Call(
+                    func=node.func,
+                    args=[node.args[0]]
+                    + [part for pair in zip(node.args[1].elts, written_values) for part in pair],
+                    keywords=[],
+                )
+                args = [args[0]] + [part for pair in zip(variables, values) for part in pair]
             replacements = list(zip(args[1::2], args[2::2])) + answer_pairs
             # A variable with a definition is read as its definition, and that is replaced
             # where it stands - `y = P/k` written into `F` before it. A formula written
@@ -5847,7 +5994,7 @@ class _Evaluator(ast.NodeVisitor):
 # summarises would do that work twice and record its effects twice.
 _WRITTEN_FORM_SAFE_CALLS = frozenset(
     {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "abs",
-     "sinh", "cosh", "tanh",
+     "sinh", "cosh", "tanh", "atanh",
      # `transpose`, because `K_e = transpose(A_e)*k_e*A_e` is how a stiffness matrix is
      # assembled and the call was the only thing keeping a written form off it. Without
      # it the frame benchmark printed every entry in nodal coordinates,
