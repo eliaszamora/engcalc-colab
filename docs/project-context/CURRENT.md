@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
+| releasing | **0.45.3** - branch `fix/chapter-7-misread-numbers` |
 | released | **0.45.2** - #390, `e090c89`, closed |
-| before that | **0.45.1** - #388, `ea59ea1`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3547 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | the 0.45.3 PR (carries 0.45.2's closure); the fold branch held (not a PR) |
+| default suite | **3572 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2127,7 +2127,50 @@ identical, smoke 51/51. In his Colab (Untitled9: fresh session, his cell 0, cell
 `engcalc 0.45.2`, the integral of 6.15 drawn, `50 kN` in the solve's equation row, one list of
 three cases, `z = g(2) = P`; screenshots sent.
 
-**Exact next step:** chapter 7's findings and `Capitulo_07` to his Drive; then his pick.
+### His book, chapter 7 complete (virtual work in frameworks; problems 7.1-7.29, examples 7.1-7.12)
+
+Every number agrees with an oracle and, where printed, with the book (book misprints: Ex. 7.9's
+off-diagonal sign and d22 = 3/8; 7.12's k36 = -0.489, not -0.429; Ex. 7.6's twist figure is 4x).
+`Capitulo_07.ipynb` is in his Drive and Documents (runs end to end on 0.45.2; only the psi
+notice). Fixed in 0.45.3, below. Findings still open:
+- **Slow:** a symbolic 3x3 `inv` of trig entries takes ~70 s (7.29); an integral with symbolic
+  exponents does not return (7.17; `expand` first works).
+- **Missing:** an integer assumption (sin(nπ) stays); general `b(y)` inside `integrate`;
+  `assume(beta < pi/2)` refused and stops the cell; `$$` display math in a text block breaks.
+- **Presentation:** 7.4/7.6 unreadable (simplify puts dofs into exponents, `log(2^{...})`);
+  a function definition shown expanded; product-rule derivatives uncollected; a matrix
+  integral drawn entry by entry and off the page; definite integrals not collected
+  (`6a/L + (3c - 9a)/L + ...`); a matrix times a scalar not simplified; `log` never `ln`;
+  zeros unsimplified (`((2-π)L - (2+3π)L + 4πL)/(4π)`); the `extrema` block in English;
+  `:=` lines with `integrate` show the value only (the integral is now written on matrix
+  lines); math in a `###` heading literal; a loop of `:=` lines reading a matrix entry
+  not gathered into a table.
+
+### 0.45.3: what chapter 7 found read wrong or refused (his pick, 2026-10-01)
+
+Branch `fix/chapter-7-misread-numbers`: renderer `_in_force_and_length` (a unit not declared,
+with no family, holding a stress, a mass or one dimension twice, is written in the sheet's
+force and length - palette's, else kN/m, kip/in, kgf/cm; `E*I` now reads kN·m²) used for
+scalars, matrices, columns and plots; ratio columns and axes are numbers (angles keep °);
+`entry_quantity` gives a written 0 its vector's unit; engine `_real_integral`/`_logs_real_at`
+(indefinite: flip a log whose argument at 0 is a negative number; definite rational: F(b) -
+F(a) flipped at the lower bound); numeric log sums tried as written, then split, then
+combined; `:=` builders `zeros`/`identity`/`diag`/`integrate` and part assignment
+`K[[..],[..]] :=` (parser `target_index`, `with_a_part`, whole-number index arithmetic) with
+the assembly note then the matrix in loops; `NumericContext.variables` from `assume`; `subs`
+with two lists; `atanh`; `:=` written forms (`\cos`, `\int`, measurements in typed order).
+Audit (subagent): first pass found D1-D6 (angle column, psi on `:=`, log of a product of
+negatives, indefinite flip with a symbol, plots, loop index), all fixed and re-audited: no
+regression; 107 of 706 sheets differ from 0.45.2, every stored value identical or
+numerically equivalent. Contracts `test_what_chapter_7_found` (23).
+
+**0.45.3 release evidence (tree `68ba114` + docs):** suite 3572 (SymPy 1.14 and 1.13.3);
+wheel 33 files identical; clean Python 3.12 venv with Colab's pins adds only Pint and its
+dependencies; smoke 52/52; suite against the installed wheel 3571 + surface 5; 24 reference
+pages identical to 0.45.2 and wheel = tree.
+
+**Exact next step:** merge the 0.45.3 PR on green CI, Deep, `git+https`, his Colab, docs
+closure; then chapter 8 of the book (PDF 237-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
