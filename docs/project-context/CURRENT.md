@@ -15,7 +15,7 @@ _2026-09-30._
 | working | branch `feat/chapter-7-pending` (unreleased) |
 | released | **0.45.3** - #391, `22716e5`, closed |
 | open PRs | the fold branch held (not a PR) |
-| default suite | **3583 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| default suite | **3587 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2187,8 +2187,32 @@ two or more sum-over-denominator terms; the printer's `ln_notation` and `ln(x)` 
 Not done, by his earlier decision (2026-09-25: keep `Where`/`Domain` in English): the
 `extrema` block's words. Contracts `test_what_chapter_7_left` (9); suite 3583.
 
-**Exact next step:** corpus compare and audit of `feat/chapter-7-pending`, release 0.45.4 on
-his yes; chapter 8 solvers (brief `book/ch08/BRIEF.md`) running.
+### His book, chapter 8 complete (nonlinear analysis, an introduction; problems 8.1-8.10, examples 8.1-8.9)
+
+Every number agrees with an oracle and, where printed, with the book (book slips: 8.6's limit
+deflection 1.204 in is 1.243; 8.7's limit point 192 kip at 28.1 in belongs to beta = 3e4, not
+the stated 1e5 - 267.7 kip at 66.8 in; 8.8's Eq. (e) drops cos alpha; 8.4's figure repeats 8.3's
+initial slope; M_p 1225.3 is 1225.1). `Capitulo_08.ipynb` in his Drive and Documents (runs
+end to end on 0.45.3; only the `=`-constant notices). Findings, not fixed:
+- **Wrong value:** `solve(eq(...), t, 0[deg], 15[deg])` returns a number in degrees read as
+  radians (`numeric(t_1, deg)` = 361.32°); a ratio of `acos(..)/kL` shown as degrees
+  (32.32° for 0.56); `atan(1)^2` in a ratio left as `rad²`.
+- **Refused:** `subs` on a `:=` line ("unsupported numeric function"); `sum` on a `:=` line;
+  `numeric` of `elliptic_k` and of an integral SymPy returns as a complex piecewise (no
+  numerical quadrature fallback; a `:=` integrate with no closed form); `plot` of an `interp`
+  refused at the table's own last point after unit round-trips (message prints `ksi·in³·s²/m/kg`).
+- **Slow:** `plot` of `sqrt(t)/sin(t)`-type curves 40-80 s.
+- **Design question:** a function's body never takes `=` constants defined after it
+  (`w(x) = A_1 sin x + A_2`, then `A_1 = ...`): the book's pattern; only a solve fixes them.
+- **Presentation:** the loop rule drops the parentheses of `(a/L)^(1/3)` (reads a^(1/3)/L);
+  `x/0.85` in a function shown as `1.18 x`; `% while` never shows its update formula; a loop's
+  `solve` lines printed after its table; plot maxima are sampled points, not the solved ones;
+  `0.3` turning into `3.0`/`10.0` in a system solve; unit order `in·kip`; substitution rows in
+  another unit than the value; `(15.00°) - (5.00°)` double parentheses; `N := 40` shown 40.00.
+- **Missing:** `dsolve`; `cot`/`sec`; relational assumptions (`L < 3 L_e/2`).
+
+**Exact next step:** re-audit of `feat/chapter-7-pending` (c3abb18), then release 0.45.4 on
+his yes; his pick among chapter 8's findings; chapter 9 (PDF 263-289).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
