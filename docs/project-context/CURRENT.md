@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.45.3** - branch `fix/chapter-7-misread-numbers` |
-| released | **0.45.2** - #390, `e090c89`, closed |
-| open PRs | the 0.45.3 PR (carries 0.45.2's closure); the fold branch held (not a PR) |
-| default suite | **3572 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| working | branch `feat/chapter-7-pending` (unreleased) |
+| released | **0.45.3** - #391, `22716e5`, closed |
+| open PRs | the fold branch held (not a PR) |
+| default suite | **3583 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2169,8 +2169,26 @@ wheel 33 files identical; clean Python 3.12 venv with Colab's pins adds only Pin
 dependencies; smoke 52/52; suite against the installed wheel 3571 + surface 5; 24 reference
 pages identical to 0.45.2 and wheel = tree.
 
-**Exact next step:** merge the 0.45.3 PR on green CI, Deep, `git+https`, his Colab, docs
-closure; then chapter 8 of the book (PDF 237-).
+**0.45.3 is closed** (#391, `22716e5`, merged with his yes): CI, Quality Gate Deep (push) and
+Deep qualification green on `22716e5`; a `git+https` install changed only `engcalc-colab`, 33
+files identical, smoke 52/52. In his Colab (Untitled9, fresh session, his cell 0, cell 3,
+2026-10-01): `engcalc 0.45.3`, `f = 0.0004 1/(kN·m)`, K assembled by `:=` parts in a `% for`,
+C1 and C2 solved with `ln(3 - x)`, the `x/a` column a number; screenshots sent.
+
+### Chapter 7's leftovers (his "aborda lo pendiente", 2026-10-01)
+
+Branch `feat/chapter-7-pending`: `matrix_inv` of a matrix holding functions by adjugate over a
+Berkowitz determinant (100 s -> 0.01 s; rational matrices keep `inv()`); `_real_integral`
+expands an integrand with a symbolic power of the variable (7.17 hung > 20 min, now 3 s);
+`assume(n > 0, integer(n))` (parser + engine, page `n \in \mathbb{Z}`); engine `_simplified`
+and `_readable_logs` on simplify, diff and solve answers (`log(2^(a))` -> `a log 2`, a log of
+a pure power by its primes, `2^(-a) 2^a` combined); `_collected` on definite integrals with
+two or more sum-over-denominator terms; the printer's `ln_notation` and `ln(x)` accepted.
+Not done, by his earlier decision (2026-09-25: keep `Where`/`Domain` in English): the
+`extrema` block's words. Contracts `test_what_chapter_7_left` (9); suite 3583.
+
+**Exact next step:** corpus compare and audit of `feat/chapter-7-pending`, release 0.45.4 on
+his yes; chapter 8 solvers (brief `book/ch08/BRIEF.md`) running.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
