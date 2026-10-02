@@ -12,9 +12,9 @@ _2026-09-30._
 
 | | |
 |---|---|
-| working | branch `feat/chapter-7-pending` (unreleased) |
+| releasing | **0.45.4** - branch `feat/chapter-7-pending` |
 | released | **0.45.3** - #391, `22716e5`, closed |
-| open PRs | the fold branch held (not a PR) |
+| open PRs | the 0.45.4 PR; the fold branch held (not a PR) |
 | default suite | **3587 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -2211,8 +2211,17 @@ end to end on 0.45.3; only the `=`-constant notices). Findings, not fixed:
   another unit than the value; `(15.00°) - (5.00°)` double parentheses; `N := 40` shown 40.00.
 - **Missing:** `dsolve`; `cot`/`sec`; relational assumptions (`L < 3 L_e/2`).
 
-**Exact next step:** re-audit of `feat/chapter-7-pending` (c3abb18), then release 0.45.4 on
-his yes; his pick among chapter 8's findings; chapter 9 (PDF 263-289).
+**0.45.4 audit and release evidence:** audit of be3a759 found B1 (a mechanism of sines and
+cosines got an "inverse": the determinant was tested unsimplified), B2 (trig inverses much
+longer), B3 (loop labels `\log`), B4 (`L^(-n) L^(n+1)`); all fixed in c3abb18 and re-audited:
+no defect, 22 of 794 sheets differ beyond log -> ln, every value numerically equal; a 6 x 6
+frame with a symbolic angle inverts in 113 s (0.45.3 did not finish). Tree `8d70e68`: suite
+3587 (SymPy 1.14 and 1.13.3); wheel 33 identical; clean 3.12 venv with Colab's pins adds only
+Pint and its dependencies; smoke 53/53; suite against the installed wheel 3586 + surface 5;
+24 reference pages identical to 0.45.3, wheel = tree.
+
+**Exact next step:** merge the 0.45.4 PR on his yes, then Deep, `git+https`, his Colab, docs
+closure; his pick among chapter 8's findings; chapter 9 (PDF 263-289).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
