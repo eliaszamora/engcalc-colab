@@ -41,7 +41,7 @@ _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
 _DISPLAY_TEXT_OPTIONS = {"title", "xlabel", "ylabel"}
 _CHARACTERISTIC_CALLS = {"roots", "extrema", "intersections", "governing"}
 _SCALAR_CALLS = {
-    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh", "atanh"
+    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh", "atanh", "ln"
 }
 _RETIRED_CALLS = {
     # ``integral`` was the original name and ``integrate`` replaced it in 0.11.0, on the
@@ -856,9 +856,20 @@ def _validate_assume_call(node: ast.Call, line_no: int) -> None:
             f"line {line_no}: assume expects at least one comparison, like assume(L > 0)"
         )
     for arg in node.args:
+        # `integer(n)`: n is a whole number, so sin(n*pi) is 0 (his book, problem 7.17).
+        if (
+            isinstance(arg, ast.Call)
+            and isinstance(arg.func, ast.Name)
+            and arg.func.id == "integer"
+            and len(arg.args) == 1
+            and isinstance(arg.args[0], ast.Name)
+            and not arg.keywords
+        ):
+            continue
         if not isinstance(arg, ast.Compare):
             raise EngSyntaxError(
-                f"line {line_no}: assume takes comparisons, like assume(L > 0)"
+                f"line {line_no}: assume takes comparisons, like assume(L > 0), or "
+                "integer(n) for a whole number"
             )
         if len(arg.ops) != 1 or not isinstance(arg.ops[0], _PIECEWISE_COMPARATORS):
             raise EngSyntaxError(

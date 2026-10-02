@@ -598,6 +598,7 @@ _ENTRIES: tuple[CallHelp, ...] = (
     _scalar("cosh", "El coseno hiperbólico.", "0.5"),
     _scalar("tanh", "La tangente hiperbólica.", "0.5"),
     _scalar("atanh", "La tangente hiperbólica inversa.", "0.5"),
+    _scalar("ln", "El logaritmo natural (igual que log).", "2"),
     CallHelp(
         name="identity",
         summary="La matriz identidad.",

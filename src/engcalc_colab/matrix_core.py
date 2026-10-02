@@ -371,6 +371,15 @@ def matrix_det(value):
 def matrix_inv(value):
     matrix = _require_square(value, "inv")
     try:
+        if any(entry.atoms(sp.Function) for entry in matrix):
+            # Entries of sines and cosines: Gauss-Jordan simplifies every pivot and took
+            # 100 s on the 3 x 3 flexibility of an arch (his book, problem 7.29). The
+            # adjugate over a Berkowitz determinant is the same inverse in a hundredth of
+            # a second. Matrices of rational entries keep the form they always had.
+            determinant = matrix.det(method="berkowitz")
+            if determinant == 0:
+                raise EngEvaluationError("inv requires a nonsingular matrix")
+            return _immutable(matrix.adjugate(method="berkowitz") / determinant)
         return _immutable(matrix.inv())
     except Exception as exc:
         message = str(exc).lower()
