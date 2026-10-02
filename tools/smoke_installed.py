@@ -77,6 +77,13 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.45.4: what chapter 7 left
+check("a rotation's inverse, a whole number, ln, a collected integral",
+      "Q = inv([cos(t), sin(t); -sin(t), cos(t)])\nassume(L > 0)\nassume(n > 0, integer(n))\n"
+      "s = sin(n*pi)\nh = ln(x)\nf(x) = (6/L^2 - 12*x/L^3)*((1 - x/L)*a + x/L*c)\n"
+      "S = integrate(f(x), x, 0, L)",
+      r"n \in \mathbb{Z}", r"\ln{\left(x \right)}", r"\frac{a - c}{L}",
+      absent=(r"\log", "unsupported"))
 # 0.45.3: what chapter 7 found read wrong or refused
 check("a flexibility in kN and m, a stiffness assembled on := lines, an assumed psi",
       "E := 200000[MPa]\nI := 150e6[mm^4]\nL := 12[m]\nf := L/(E*I)\n"

@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.45.3** - branch `fix/chapter-7-misread-numbers` |
-| released | **0.45.2** - #390, `e090c89`, closed |
-| open PRs | the 0.45.3 PR (carries 0.45.2's closure); the fold branch held (not a PR) |
-| default suite | **3572 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| releasing | **0.45.4** - branch `feat/chapter-7-pending` |
+| released | **0.45.3** - #391, `22716e5`, closed |
+| open PRs | the 0.45.4 PR; the fold branch held (not a PR) |
+| default suite | **3587 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2169,8 +2169,59 @@ wheel 33 files identical; clean Python 3.12 venv with Colab's pins adds only Pin
 dependencies; smoke 52/52; suite against the installed wheel 3571 + surface 5; 24 reference
 pages identical to 0.45.2 and wheel = tree.
 
-**Exact next step:** merge the 0.45.3 PR on green CI, Deep, `git+https`, his Colab, docs
-closure; then chapter 8 of the book (PDF 237-).
+**0.45.3 is closed** (#391, `22716e5`, merged with his yes): CI, Quality Gate Deep (push) and
+Deep qualification green on `22716e5`; a `git+https` install changed only `engcalc-colab`, 33
+files identical, smoke 52/52. In his Colab (Untitled9, fresh session, his cell 0, cell 3,
+2026-10-01): `engcalc 0.45.3`, `f = 0.0004 1/(kN·m)`, K assembled by `:=` parts in a `% for`,
+C1 and C2 solved with `ln(3 - x)`, the `x/a` column a number; screenshots sent.
+
+### Chapter 7's leftovers (his "aborda lo pendiente", 2026-10-01)
+
+Branch `feat/chapter-7-pending`: `matrix_inv` of a matrix holding functions by adjugate over a
+Berkowitz determinant (100 s -> 0.01 s; rational matrices keep `inv()`); `_real_integral`
+expands an integrand with a symbolic power of the variable (7.17 hung > 20 min, now 3 s);
+`assume(n > 0, integer(n))` (parser + engine, page `n \in \mathbb{Z}`); engine `_simplified`
+and `_readable_logs` on simplify, diff and solve answers (`log(2^(a))` -> `a log 2`, a log of
+a pure power by its primes, `2^(-a) 2^a` combined); `_collected` on definite integrals with
+two or more sum-over-denominator terms; the printer's `ln_notation` and `ln(x)` accepted.
+Not done, by his earlier decision (2026-09-25: keep `Where`/`Domain` in English): the
+`extrema` block's words. Contracts `test_what_chapter_7_left` (9); suite 3583.
+
+### His book, chapter 8 complete (nonlinear analysis, an introduction; problems 8.1-8.10, examples 8.1-8.9)
+
+Every number agrees with an oracle and, where printed, with the book (book slips: 8.6's limit
+deflection 1.204 in is 1.243; 8.7's limit point 192 kip at 28.1 in belongs to beta = 3e4, not
+the stated 1e5 - 267.7 kip at 66.8 in; 8.8's Eq. (e) drops cos alpha; 8.4's figure repeats 8.3's
+initial slope; M_p 1225.3 is 1225.1). `Capitulo_08.ipynb` in his Drive and Documents (runs
+end to end on 0.45.3; only the `=`-constant notices). Findings, not fixed:
+- **Wrong value:** `solve(eq(...), t, 0[deg], 15[deg])` returns a number in degrees read as
+  radians (`numeric(t_1, deg)` = 361.32°); a ratio of `acos(..)/kL` shown as degrees
+  (32.32° for 0.56); `atan(1)^2` in a ratio left as `rad²`.
+- **Refused:** `subs` on a `:=` line ("unsupported numeric function"); `sum` on a `:=` line;
+  `numeric` of `elliptic_k` and of an integral SymPy returns as a complex piecewise (no
+  numerical quadrature fallback; a `:=` integrate with no closed form); `plot` of an `interp`
+  refused at the table's own last point after unit round-trips (message prints `ksi·in³·s²/m/kg`).
+- **Slow:** `plot` of `sqrt(t)/sin(t)`-type curves 40-80 s.
+- **Design question:** a function's body never takes `=` constants defined after it
+  (`w(x) = A_1 sin x + A_2`, then `A_1 = ...`): the book's pattern; only a solve fixes them.
+- **Presentation:** the loop rule drops the parentheses of `(a/L)^(1/3)` (reads a^(1/3)/L);
+  `x/0.85` in a function shown as `1.18 x`; `% while` never shows its update formula; a loop's
+  `solve` lines printed after its table; plot maxima are sampled points, not the solved ones;
+  `0.3` turning into `3.0`/`10.0` in a system solve; unit order `in·kip`; substitution rows in
+  another unit than the value; `(15.00°) - (5.00°)` double parentheses; `N := 40` shown 40.00.
+- **Missing:** `dsolve`; `cot`/`sec`; relational assumptions (`L < 3 L_e/2`).
+
+**0.45.4 audit and release evidence:** audit of be3a759 found B1 (a mechanism of sines and
+cosines got an "inverse": the determinant was tested unsimplified), B2 (trig inverses much
+longer), B3 (loop labels `\log`), B4 (`L^(-n) L^(n+1)`); all fixed in c3abb18 and re-audited:
+no defect, 22 of 794 sheets differ beyond log -> ln, every value numerically equal; a 6 x 6
+frame with a symbolic angle inverts in 113 s (0.45.3 did not finish). Tree `8d70e68`: suite
+3587 (SymPy 1.14 and 1.13.3); wheel 33 identical; clean 3.12 venv with Colab's pins adds only
+Pint and its dependencies; smoke 53/53; suite against the installed wheel 3586 + surface 5;
+24 reference pages identical to 0.45.3, wheel = tree.
+
+**Exact next step:** merge the 0.45.4 PR on his yes, then Deep, `git+https`, his Colab, docs
+closure; his pick among chapter 8's findings; chapter 9 (PDF 263-289).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

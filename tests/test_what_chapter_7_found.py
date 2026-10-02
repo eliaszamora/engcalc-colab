@@ -87,7 +87,7 @@ def test_the_constants_of_a_log_are_solved(monkeypatch):
         monkeypatch,
     )
     assert not console, console
-    assert r"\log{\left(3 - x \right)}" in page, page
+    assert r"\ln{\left(3 - x \right)}" in page, page
     assert "i" not in page.split("w\\left(x\\right)")[1].replace("\\int", "").replace(
         "\\limits", ""
     ).replace("\\right", "").replace("\\left", "").replace("\\displaystyle", ""), page
@@ -231,8 +231,8 @@ def test_an_indefinite_integral_keeps_a_symbol_s_sign(monkeypatch):
         monkeypatch,
     )
     assert not console, console
-    assert r"\log{\left(t - a \right)}" in page and r"G & = & \log{\left(a \right)}" in page, page
-    assert r"\frac{\log{\left(3 L \right)}}{2} - \frac{\log{\left(3 L - 2 x \right)}}{2}" in page, page
+    assert r"\ln{\left(t - a \right)}" in page and r"G & = & \ln{\left(a \right)}" in page, page
+    assert r"\frac{\ln{\left(3 L \right)}}{2} - \frac{\ln{\left(3 L - 2 x \right)}}{2}" in page, page
 
 
 def test_a_part_index_counted_in_a_loop(monkeypatch):

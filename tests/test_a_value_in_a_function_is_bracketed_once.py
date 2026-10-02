@@ -37,7 +37,7 @@ def printed(expr) -> str:
     "expr, shown",
     [
         (sp.sin(a), rf"\sin{{\left({A} \right)}}"),
-        (sp.log(a), rf"\log{{\left({A} \right)}}"),
+        (sp.log(a), rf"\ln{{\left({A} \right)}}"),
         (sp.atan(a), rf"\operatorname{{atan}}{{\left({A} \right)}}"),
         (sp.sin(a) ** 2, rf"\sin^{{2}}{{\left({A} \right)}}"),
         (sp.Function("f")(a), rf"f\left({A}\right)"),

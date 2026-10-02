@@ -368,9 +368,43 @@ def matrix_det(value):
     return matrix.det()
 
 
+def _without_round_off(entry):
+    """An entry with the round-off of decimal arithmetic taken out: a coefficient below
+    1e-12 of the entry's largest is a cancellation that floats did not quite make, and it
+    printed `0.00 π R^7` among the real terms; `1.0` is written 1."""
+    floats = [atom for atom in entry.atoms(sp.Float)]
+    if not floats:
+        return entry
+    largest = max(abs(float(atom)) for atom in floats)
+    replaced = {
+        atom: sp.Integer(0) if abs(float(atom)) < 1e-12 * largest else sp.Integer(round(float(atom)))
+        for atom in floats
+        if abs(float(atom)) < 1e-12 * largest or abs(float(atom)) == 1.0
+    }
+    return entry.xreplace(replaced) if replaced else entry
+
+
 def matrix_inv(value):
     matrix = _require_square(value, "inv")
     try:
+        if any(entry.atoms(sp.Function) for entry in matrix):
+            # Entries of sines and cosines: Gauss-Jordan simplifies every pivot and took
+            # 100 s on the 3 x 3 flexibility of an arch (his book, problem 7.29). The
+            # adjugate over a Berkowitz determinant is the same inverse in a hundredth of
+            # a second. Matrices of rational entries keep the form they always had.
+            #
+            # The determinant is simplified before it is trusted: one that is zero only
+            # through sin² + cos² = 1 - a mechanism, the check an engineer relies on -
+            # passed a structural test and got an "inverse" (the audit of 0.45.4). Each
+            # entry is simplified too, and reads shorter than Gauss-Jordan's.
+            determinant = sp.simplify(matrix.det(method="berkowitz"))
+            if determinant == 0:
+                raise EngEvaluationError("inv requires a nonsingular matrix")
+            return _immutable(
+                (matrix.adjugate(method="berkowitz") / determinant).applyfunc(
+                    lambda entry: _without_round_off(sp.simplify(entry))
+                )
+            )
         return _immutable(matrix.inv())
     except Exception as exc:
         message = str(exc).lower()

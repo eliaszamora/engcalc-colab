@@ -274,6 +274,9 @@ class _EngineeringLatexPrinter(LatexPrinter):
         render_settings: "RenderSettings | None" = None,
     ):
         super().__init__(settings)
+        # The natural log as an engineer writes it, `\ln`; SymPy's `\log` reads as a
+        # base-10 log on a memoria (his book, chapter 7).
+        self._settings["ln_notation"] = True
         # Keyword-only: SymPy constructs printers positionally with a settings dict.
         self.unit_literals = frozenset(unit_literals)
         self.render_settings = render_settings or _DEFAULT_RENDER_SETTINGS
@@ -3832,7 +3835,7 @@ def _written_precedence(node) -> int:
 
 
 # The functions LaTeX names itself, written on a `:=` line as on a `=` line.
-_WRITTEN_FUNCTIONS = frozenset({"sin", "cos", "tan", "sinh", "cosh", "tanh", "log"})
+_WRITTEN_FUNCTIONS = frozenset({"sin", "cos", "tan", "sinh", "cosh", "tanh", "log", "ln"})
 
 
 def _index_text(node, latex) -> str:
@@ -4010,7 +4013,8 @@ class _WrittenLine:
             _, variable, lower, upper = (self.latex(argument) for argument in arguments)
             return rf"\int\limits_{{{lower}}}^{{{upper}}} {self.grouped(arguments[0], 2)}\, d{variable}"
         if name in _WRITTEN_FUNCTIONS and len(arguments) == 1:
-            return rf"\{name}{{\left({inner}\right)}}"
+            written = "ln" if name == "log" else name
+            return rf"\{written}{{\left({inner}\right)}}"
         return rf"\operatorname{{{name}}}\left({inner}\right)"
 
 
@@ -5498,7 +5502,9 @@ def _discard_note_rows(
 def render_assumption_result(result: AssumptionResult) -> str:
     """As given data, which is what it is: `L > 0,\\; E > 0`."""
     parts = [
-        rf"{_render_lhs(name, None)} {_ASSUMPTION_RELATIONS[keyword]} 0"
+        rf"{_render_lhs(name, None)} \in \mathbb{{Z}}"
+        if keyword == "integer"
+        else rf"{_render_lhs(name, None)} {_ASSUMPTION_RELATIONS[keyword]} 0"
         for name, keyword in result.assumptions
     ]
     return r",\; ".join(parts)
@@ -6252,7 +6258,8 @@ class _RuleLine(_WrittenLine):
 
     def _function_name(self, name: str) -> str:
         if name in _NAMED_FUNCTIONS:
-            return "\\" + name
+            # The natural log as the rest of the page writes it.
+            return "\\ln" if name == "log" else "\\" + name
         if name in _OPERATOR_NAMES:
             return rf"\operatorname{{{name}}}"
         return _render_lhs(name, None)

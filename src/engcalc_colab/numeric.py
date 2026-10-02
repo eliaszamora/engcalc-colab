@@ -269,7 +269,7 @@ class NumericContext:
             # `h := log(L) - log(2*L)`: read as a formula, the logs of lengths cancel (see
             # the sum of logs in `_evaluate_sympy`); refused as before when they do not.
             if "requires a dimensionless argument" not in str(exc) or not any(
-                isinstance(node, ast.Call) and getattr(node.func, "id", None) == "log"
+                isinstance(node, ast.Call) and getattr(node.func, "id", None) in ("log", "ln")
                 for node in ast.walk(expression)
             ):
                 raise
@@ -423,6 +423,7 @@ class NumericContext:
             "cosh": math.cosh,
             "tanh": math.tanh,
             "atanh": math.atanh,
+            "ln": math.log,
         }
         if name in scalar_dimensionless:
             if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:
@@ -1759,7 +1760,7 @@ class _NumericAstEvaluator(ast.NodeVisitor):
         value = self.visit(node.args[0])
         if name == "abs":
             return abs(value)
-        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh", "atanh"}:
+        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "ln", "sinh", "cosh", "tanh", "atanh"}:
             return self.context.evaluate_scalar_function(name, value)
         # Named: the message used to be the same for every function, and the engineer
         # could not tell which one it meant.

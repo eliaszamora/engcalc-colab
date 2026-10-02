@@ -152,6 +152,8 @@ _SCALAR_SYMBOLIC_FUNCTIONS = {
     "tanh": sp.tanh,
     # The closed form of an integral of 1/(1 - x^2) (his book, problem 7.10).
     "atanh": sp.atanh,
+    # The natural log as it is written on a memoria; `log` is the same function.
+    "ln": sp.log,
 }
 
 _INVERSE_TRIG_SYMBOLIC_FUNCTIONS = {sp.asin, sp.acos, sp.atan}
@@ -197,14 +199,53 @@ def _logs_real_at(antiderivative, variable, start=0, *, numbers_only=True):
     return antiderivative.xreplace(flipped) if flipped else antiderivative
 
 
+def _collected(value):
+    """A definite integral's value with its fractions over one denominator put together,
+    when it came as several of them: `6a/L + (3c - 9a)/L + (4a - 4c)/L` is `(a - c)/L`
+    (his book, Example 7.8). Only a sum holding two or more fractions with a sum on top,
+    which is what `F(b) - F(a)` leaves; a beam's polynomial keeps its terms."""
+    if not isinstance(value, sp.Add):
+        return value
+    fractions = [
+        term
+        for term in value.args
+        if any(isinstance(factor, sp.Add) for factor in sp.Mul.make_args(term))
+        and any(
+            isinstance(factor, sp.Pow) and factor.exp.is_negative
+            for factor in sp.Mul.make_args(term)
+        )
+    ]
+    if len(fractions) < 2:
+        return value
+    together = sp.cancel(sp.together(value))
+    return together if sp.count_ops(together) < sp.count_ops(value) else value
+
+
 def _real_integral(expression, bounds):
     """`sp.integrate`, with an antiderivative real at the origin: an indefinite integral
     is written so, and a definite one of a real integrand that came out complex - `log(3)
     + i*pi - log(x - 3)` for `integrate(1/(3 - t), t, 0, x)` - is that antiderivative
     between its bounds."""
+    variable = bounds if not isinstance(bounds, tuple) else bounds[0]
+    if any(
+        isinstance(power, sp.Pow)
+        and not power.exp.is_number
+        and variable in power.base.free_symbols
+        for power in sp.preorder_traversal(sp.sympify(expression))
+    ):
+        # A power of the variable with a symbolic exponent, `(x/L)^k`: as written, SymPy's
+        # integral of `x (1 - x/L)^2 (1 - (x/L)^n) (x/L)^k` never returned and the cell
+        # hung; expanded, it is a sum of powers and takes a second (his book, problem 7.17).
+        # Expanded, the powers come back apart, `L^(-n) L^(n + 1)`: put back together.
+        return _readable_logs(_integral_of(sp.expand(expression), bounds))
+    return _integral_of(expression, bounds)
+
+
+def _integral_of(expression, bounds):
+    """`_real_integral`'s work once the integrand is in the form it is integrated in."""
     if not isinstance(bounds, tuple):
         return _logs_real_at(sp.integrate(expression, bounds), bounds)
-    value = sp.integrate(expression, bounds)
+    value = _collected(sp.integrate(expression, bounds))
     variable, lower, upper = bounds
     # Only a rational integrand, whose logs are where the `i*pi` comes from: the
     # antiderivative of `x*(x/L)^k*(1 - (x/L)^n)` does not return, and the definite
@@ -227,6 +268,71 @@ def _real_integral(expression, bounds):
         return value
     between = antiderivative.subs(variable, upper) - antiderivative.subs(variable, lower)
     return value if between.has(sp.I) else between
+
+
+def _log_of_a_power(argument):
+    """`log(argument)` taken apart where that reads better: a number raised to a symbol,
+    `log(2^(16 v_A + 48 v_B))`, is `(16 v_A + 48 v_B) log(2)`; a number every prime of
+    which is raised to a power, `log(65536)` or `log(2^36/3^18)`, is the sum of their logs.
+    Anything else - `log(10)`, `log(12)` - stays."""
+    if isinstance(argument, sp.Mul) and any(
+        isinstance(factor, sp.Pow) and not factor.exp.is_number for factor in argument.args
+    ) and all(
+        (factor.base if isinstance(factor, sp.Pow) else factor).is_positive
+        for factor in argument.args
+    ):
+        # `log(L^(θ L + 3 v_1) 2^(4 θ L))`, a product of such powers (problem 7.4).
+        return sp.Add(*(_log_of_a_power(factor) for factor in argument.args))
+    if isinstance(argument, sp.Pow) and argument.base.is_positive:
+        if not argument.exp.is_number and argument.exp.is_real:
+            return argument.exp * _log_of_a_power(argument.base)
+    if argument.is_Rational and argument.is_positive and argument != 1:
+        factors = {**sp.factorint(argument.p)}
+        for prime, power in sp.factorint(argument.q).items():
+            factors[prime] = factors.get(prime, 0) - power
+        if factors and all(abs(power) >= 2 for power in factors.values()):
+            return sp.Add(*(power * sp.log(prime) for prime, power in sorted(factors.items())))
+    return sp.log(argument)
+
+
+def _simplified(expression):
+    """`sp.simplify`, without what it does to logs that reads worse on a page: SymPy folds
+    `16 log(2) v_A + 48 log(2) v_B` into `log(2^(16 v_A + 48 v_B))`, puts the joint
+    displacements in an exponent, and a derivative then carries `2^(-16 v_A) 2^(16 v_A)`
+    (his book, problems 7.4 and 7.20)."""
+    return _readable_logs(sp.simplify(expression, measure=_without_symbolic_exponents))
+
+
+def _without_symbolic_exponents(candidate) -> int:
+    """SymPy's count of operations, with a power raised to a symbol made expensive: among
+    forms of one expression `simplify` then picks one that keeps the joint displacements
+    out of exponents, `L^(θ L + 3 v_1) 2^(4 θ L)`, which it chose for 7.4's shape
+    functions."""
+    exponents = [
+        power
+        for power in candidate.atoms(sp.Pow)
+        if not power.exp.is_number and power.exp.free_symbols
+    ]
+    return sp.count_ops(candidate) + 50 * len(exponents)
+
+
+def _readable_logs(result):
+    """`result` with its logs taken apart where `_log_of_a_power` says so, and a number
+    raised to a symbol over and again combined - `2^(-a) 2^a` is 1."""
+    if not isinstance(result, sp.Basic):
+        return result
+    logs = {log: _log_of_a_power(log.args[0]) for log in result.atoms(sp.log)}
+    logs = {log: parted for log, parted in logs.items() if parted != log}
+    if logs:
+        result = result.xreplace(logs)
+    powers = [
+        power
+        for power in result.atoms(sp.Pow)
+        if power.base.is_positive and not power.exp.is_number
+    ]
+    if len(powers) > 1:
+        result = sp.powsimp(result)
+    return result
 
 
 def substitute_symbolic_value(value, bindings):
@@ -3638,6 +3744,19 @@ class _Evaluator(ast.NodeVisitor):
             }
             declared: list[tuple[str, str]] = []
             for argument in node.args:
+                if isinstance(argument, ast.Call):
+                    # `integer(n)`, which the parser let through only in this shape.
+                    subject_name = argument.args[0].id
+                    if subject_name in self.engine.symbols:
+                        raise EngEvaluationError(
+                            f"'{subject_name}' has already been used, so an assumption "
+                            "about it would apply to a different symbol and change "
+                            "nothing at all; state assumptions before the symbol appears"
+                        )
+                    self.engine.assumptions.setdefault(subject_name, {})["integer"] = True
+                    self.engine.numeric_context.variables.add(subject_name)
+                    declared.append((subject_name, "integer"))
+                    continue
                 subject = argument.left
                 comparator = argument.comparators[0]
                 if not isinstance(subject, ast.Name):
@@ -4101,7 +4220,7 @@ class _Evaluator(ast.NodeVisitor):
                     discarded=self.discarded_solutions,
                 )
                 return None
-            return solutions[0]
+            return _readable_logs(solutions[0])
 
         solved_variables = (
             {
@@ -4347,7 +4466,7 @@ class _Evaluator(ast.NodeVisitor):
                         self.derivative_breakpoints = tuple(breakpoints)
                 return map_matrix_entries(
                     expr,
-                    lambda entry: sp.diff(entry, var, order),
+                    lambda entry: _readable_logs(sp.diff(entry, var, order)),
                 )
 
             self.display_input = sp.Derivative(expr, (var, order))
@@ -4358,7 +4477,7 @@ class _Evaluator(ast.NodeVisitor):
                 if breakpoints:
                     self.derivative_variable = var.name
                     self.derivative_breakpoints = breakpoints
-            return sp.diff(expr, var, order)
+            return _readable_logs(sp.diff(expr, var, order))
 
         if name == "eq":
             self._require_arity(name, args, 2, "left, right")
@@ -4367,7 +4486,7 @@ class _Evaluator(ast.NodeVisitor):
         if name in {"simplify", "expand", "factor"}:
             self._require_arity(name, args, 1, "expression")
             operation = {
-                "simplify": sp.simplify,
+                "simplify": _simplified,
                 "expand": sp.expand,
                 "factor": sp.factor,
             }[name]
@@ -6013,7 +6132,7 @@ class _Evaluator(ast.NodeVisitor):
         self.system_evaluation = _SystemSolveEvaluation(
             equations=tuple(unnamed),
             solutions=tuple(
-                (name, mapping[symbol]) for name, symbol in zip(names, symbols)
+                (name, _readable_logs(mapping[symbol])) for name, symbol in zip(names, symbols)
             ),
         )
 
@@ -6029,7 +6148,7 @@ class _Evaluator(ast.NodeVisitor):
 # summarises would do that work twice and record its effects twice.
 _WRITTEN_FORM_SAFE_CALLS = frozenset(
     {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "abs",
-     "sinh", "cosh", "tanh", "atanh",
+     "sinh", "cosh", "tanh", "atanh", "ln",
      # `transpose`, because `K_e = transpose(A_e)*k_e*A_e` is how a stiffness matrix is
      # assembled and the call was the only thing keeping a written form off it. Without
      # it the frame benchmark printed every entry in nodal coordinates,
