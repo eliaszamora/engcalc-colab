@@ -117,3 +117,44 @@ def test_the_pages_are_typeset_by_colab_s_katex(monkeypatch):
     results = _typeset(formulas)["results"]
     failed = [result["error"] for result in results if result["error"]]
     assert not failed, failed
+
+
+# What the audit of these fixes found in their first draft.
+
+
+def test_a_mechanism_of_sines_and_cosines_is_still_singular(monkeypatch):
+    page, console = _run(
+        "T = [cos(t), sin(t), 0, 0; -sin(t), cos(t), 0, 0; 0, 0, cos(t), sin(t); 0, 0, -sin(t), cos(t)]\n"
+        "k_l = k*[1, 0, -1, 0; 0, 0, 0, 0; -1, 0, 1, 0; 0, 0, 0, 0]\n"
+        "K = transpose(T)*k_l*T + [1, 0, 0, 0; 0, 1, 0, 0; 0, 0, 0, 0; 0, 0, 0, 0]\nf = inv(K)\n",
+        monkeypatch,
+    )
+    assert "inv requires a nonsingular matrix" in console, console
+    page, console = _run("M = [sin(t)^2 + cos(t)^2, 1; 1, 1]\nN = inv(M)\n", monkeypatch)
+    assert "inv requires a nonsingular matrix" in console, console
+
+
+def test_the_inverse_of_a_rotation_reads_as_one(monkeypatch):
+    page, console = _run("Q = inv([cos(t), sin(t); -sin(t), cos(t)])\n", monkeypatch)
+    assert not console, console
+    assert (
+        r"\cos{\left(t \right)} & - \sin{\left(t \right)}\\[3pt]\sin{\left(t \right)} & \cos{\left(t \right)}"
+        in page
+    ), page
+
+
+def test_a_loop_s_labels_write_ln(monkeypatch):
+    page, console = _run(
+        'x := 2\n% for i, c in [(1, "ln(2)"), (2, "log(3)")]:\ny_{i} := x*{c}\nz_{i} := 2*y_{i}\n% end\n',
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"\log" not in page, page
+
+
+def test_the_powers_of_an_expanded_integral_are_combined(monkeypatch):
+    page, console = _run(
+        "assume(L > 0)\nassume(n > 0)\nF = integrate((x/L)^n*(1 - x/L), x, 0, L)\n", monkeypatch
+    )
+    assert not console, console
+    assert r"\frac{L}{n + 1} - \frac{L}{n + 2}" in page, page

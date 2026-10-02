@@ -6258,7 +6258,8 @@ class _RuleLine(_WrittenLine):
 
     def _function_name(self, name: str) -> str:
         if name in _NAMED_FUNCTIONS:
-            return "\\" + name
+            # The natural log as the rest of the page writes it.
+            return "\\ln" if name == "log" else "\\" + name
         if name in _OPERATOR_NAMES:
             return rf"\operatorname{{{name}}}"
         return _render_lhs(name, None)

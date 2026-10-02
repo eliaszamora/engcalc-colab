@@ -236,7 +236,13 @@ def _real_integral(expression, bounds):
         # A power of the variable with a symbolic exponent, `(x/L)^k`: as written, SymPy's
         # integral of `x (1 - x/L)^2 (1 - (x/L)^n) (x/L)^k` never returned and the cell
         # hung; expanded, it is a sum of powers and takes a second (his book, problem 7.17).
-        expression = sp.expand(expression)
+        # Expanded, the powers come back apart, `L^(-n) L^(n + 1)`: put back together.
+        return _readable_logs(_integral_of(sp.expand(expression), bounds))
+    return _integral_of(expression, bounds)
+
+
+def _integral_of(expression, bounds):
+    """`_real_integral`'s work once the integrand is in the form it is integrated in."""
     if not isinstance(bounds, tuple):
         return _logs_real_at(sp.integrate(expression, bounds), bounds)
     value = _collected(sp.integrate(expression, bounds))
@@ -269,7 +275,15 @@ def _log_of_a_power(argument):
     `log(2^(16 v_A + 48 v_B))`, is `(16 v_A + 48 v_B) log(2)`; a number every prime of
     which is raised to a power, `log(65536)` or `log(2^36/3^18)`, is the sum of their logs.
     Anything else - `log(10)`, `log(12)` - stays."""
-    if isinstance(argument, sp.Pow) and argument.base.is_number and argument.base.is_positive:
+    if isinstance(argument, sp.Mul) and any(
+        isinstance(factor, sp.Pow) and not factor.exp.is_number for factor in argument.args
+    ) and all(
+        (factor.base if isinstance(factor, sp.Pow) else factor).is_positive
+        for factor in argument.args
+    ):
+        # `log(L^(θ L + 3 v_1) 2^(4 θ L))`, a product of such powers (problem 7.4).
+        return sp.Add(*(_log_of_a_power(factor) for factor in argument.args))
+    if isinstance(argument, sp.Pow) and argument.base.is_positive:
         if not argument.exp.is_number and argument.exp.is_real:
             return argument.exp * _log_of_a_power(argument.base)
     if argument.is_Rational and argument.is_positive and argument != 1:
@@ -286,7 +300,20 @@ def _simplified(expression):
     `16 log(2) v_A + 48 log(2) v_B` into `log(2^(16 v_A + 48 v_B))`, puts the joint
     displacements in an exponent, and a derivative then carries `2^(-16 v_A) 2^(16 v_A)`
     (his book, problems 7.4 and 7.20)."""
-    return _readable_logs(sp.simplify(expression))
+    return _readable_logs(sp.simplify(expression, measure=_without_symbolic_exponents))
+
+
+def _without_symbolic_exponents(candidate) -> int:
+    """SymPy's count of operations, with a power raised to a symbol made expensive: among
+    forms of one expression `simplify` then picks one that keeps the joint displacements
+    out of exponents, `L^(θ L + 3 v_1) 2^(4 θ L)`, which it chose for 7.4's shape
+    functions."""
+    exponents = [
+        power
+        for power in candidate.atoms(sp.Pow)
+        if not power.exp.is_number and power.exp.free_symbols
+    ]
+    return sp.count_ops(candidate) + 50 * len(exponents)
 
 
 def _readable_logs(result):
@@ -301,7 +328,7 @@ def _readable_logs(result):
     powers = [
         power
         for power in result.atoms(sp.Pow)
-        if power.base.is_number and not power.exp.is_number
+        if power.base.is_positive and not power.exp.is_number
     ]
     if len(powers) > 1:
         result = sp.powsimp(result)
