@@ -13,7 +13,26 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.45.4**.
+Current version: **0.45.5**.
+
+
+## v0.45.5 what chapter 8 found read wrong or refused
+
+- **A root solved between angles is an angle**: `solve(eq(...), t, 0[deg], 15[deg])` came back
+  as 6.31 read as radians, and `sin(t_1)` gave 0.0231 for 0.1098. A root between `mm/m`
+  bounds is its number, 0.003.
+- **A power of an angle is a number**: `atan(1)^2` in a ratio read `0.62 rad²`.
+- **`subs` and `sum` on a `:=` line**, written as the expression at the value and as Σ; they
+  were "unsupported numeric function". A function of the sheet on a `:=` line is written in
+  italic, as everywhere else.
+- **An integral with no closed form has a number**, by quadrature - on `=` and `:=` lines -
+  and so do `elliptic_k` and the other special functions of numbers SymPy answers with. An
+  integral SymPy writes with `i` and `Min(...)` stays the integral, with its number; a
+  divergent one is said to diverge.
+- **`plot` of an `interp`** reaches its table's last point; outside the table the message
+  reads `3 m lies outside its table, 0 m to 2 m`.
+- **A `% for` that assembles a `:=` matrix wider than the page** is summarised; it stopped the
+  cell with an `AttributeError` (his book, chapter 9).
 
 
 ## v0.45.4 what chapter 7 left: quick, whole numbers, readable logs, ln
@@ -4051,6 +4070,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.45.5** — angle roots are angles; rad² is a number; `subs`/`sum` on `:=` lines; quadrature for integrals with no closed form; `interp` plots to the table's end.
 - **0.45.4** — quick `inv` of trigonometric matrices; integrals with symbolic powers return; `assume(integer(n))`; readable logs; collected definite integrals; `ln`.
 - **0.45.3** — a unit no family names reads in a force and a length (no more `0.00 m/(MPa·mm⁴)`); ratio columns are numbers; a vector's zero has its unit; real logs in integrals and log ratios; `:=` matrices built with integrate/zeros/diag and assembled by parts; assumed `psi`; `subs` with lists; `atanh`.
 - **0.45.2** — an integral with bracket units no longer stops the cell; a solve's equation row shows its units; a nested piecewise is one list of cases; `q = solve(..., q)` reaches functions written before it.
@@ -4185,4 +4205,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.45.4`.
+Version: `0.45.5`.

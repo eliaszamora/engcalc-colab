@@ -77,6 +77,13 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.45.5: what chapter 8 found
+check("an angle root, subs on :=, an integral by quadrature",
+      "a := 15[deg]\nt_1 := solve(eq(cos(a - t)^3, cos(a)), t, 0[deg], 15[deg])\ny := sin(t_1)\n"
+      "f = 2*sin(t)\nt_0 := 30[deg]\nx_1 := subs(f, t, t_0)\n"
+      "b := 1[m]\nc := 1.5[m]\nH := integrate(x^2/(1 - x/(2*b))^(3/2), x, b, c)",
+      r"6.31^{\circ}", r"y & = & \displaystyle 0.11", r"3.96\,\mathrm{m}^{3}",
+      absent=("unsupported", "does not support"))
 # 0.45.4: what chapter 7 left
 check("a rotation's inverse, a whole number, ln, a collected integral",
       "Q = inv([cos(t), sin(t); -sin(t), cos(t)])\nassume(L > 0)\nassume(n > 0, integer(n))\n"

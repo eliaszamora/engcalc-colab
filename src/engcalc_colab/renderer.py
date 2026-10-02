@@ -2066,6 +2066,14 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     except (TypeError, ValueError):
         return quantity
     quantity = _a_temperature_in_degrees(quantity, declared)
+    # A power of an angle other than the angle itself is a number: `P = 10 kN * atan(1)^2`
+    # over 10 kN read `0.62 rad²` (his book, Example 8.7).
+    try:
+        angle_power = dict(quantity.units._units).get("radian")
+        if angle_power not in (None, 1) and quantity.dimensionless and len(quantity.units._units) == 1:
+            quantity = quantity.to("dimensionless")
+    except (AttributeError, DimensionalityError):
+        pass
     # A ratio that is physically a number reads as a number. `Mu/phiMn` with a capacity
     # computed from a stress and a volume carries `kN*m/(MPa*mm^3)`, which is
     # dimensionless with a scale factor of 1e6, so the page said 9.63e-7 for a
@@ -3847,6 +3855,13 @@ def _index_text(node, latex) -> str:
     return latex(node)
 
 
+# Calls a `:=` line writes as named operators; any other name is a function of the sheet.
+_WRITTEN_OPERATORS = frozenset({
+    "zeros", "identity", "diag", "min", "max", "interp", "det", "trace", "rank", "asin",
+    "acos", "atan", "exp", "atanh", "numeric", "simplify", "expand", "factor", "eye", "ones",
+})
+
+
 class _WrittenLine:
     def __init__(self, result, settings: RenderSettings):
         self.literals = {
@@ -4015,6 +4030,23 @@ class _WrittenLine:
         if name in _WRITTEN_FUNCTIONS and len(arguments) == 1:
             written = "ln" if name == "log" else name
             return rf"\{written}{{\left({inner}\right)}}"
+        # `subs` and `sum` as a page writes them, now that a `:=` line takes them (his book,
+        # chapter 8): the expression at the value, and the sigma.
+        if name == "sum" and len(arguments) == 4:
+            body, index, lower, upper = arguments
+            return (
+                rf"\sum_{{{self.latex(index)}={self.latex(lower)}}}^{{{self.latex(upper)}}}"
+                rf" {self.grouped(body, 2)}"
+            )
+        if name == "subs" and len(arguments) >= 3 and len(arguments) % 2 == 1:
+            pairs = list(zip(arguments[1::2], arguments[2::2]))
+            if len(pairs) == 1 and isinstance(pairs[0][0], ast.List):
+                pairs = list(zip(pairs[0][0].elts, getattr(pairs[0][1], "elts", [pairs[0][1]])))
+            at = ",\\; ".join(f"{self.latex(old)}={self.latex(new)}" for old, new in pairs)
+            return rf"\left. {self.latex(arguments[0])} \right|_{{{at}}}"
+        if name not in _WRITTEN_OPERATORS:
+            # A function of the sheet, written as the page writes its name: `M(x)`, italic.
+            return rf"{_render_lhs(name, None)}\left({inner}\right)"
         return rf"\operatorname{{{name}}}\left({inner}\right)"
 
 

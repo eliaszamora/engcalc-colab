@@ -7,6 +7,7 @@ from functools import reduce
 from operator import mul
 from typing import Any
 
+import mpmath
 import sympy as sp
 from pint import UnitRegistry
 from pint.errors import DimensionalityError, PintError
@@ -884,6 +885,14 @@ class NumericContext:
             raise EngEvaluationError(f"numeric unit evaluation failed: {exc}") from exc
         except Exception as exc:
             raise EngEvaluationError(f"numeric evaluation failed: {exc}") from exc
+        try:
+            finite = math.isfinite(float(quantity.magnitude))
+        except (TypeError, ValueError):
+            finite = True
+        if not finite:
+            # A divergent integral came out of quadrature as infinity and stopped the cell in
+            # the printer (the audit of 0.45.5). Said here, as an endless value is.
+            raise EngEvaluationError("the value is not finite: the expression diverges")
         return substitutions, quantity
 
     def evaluate_matrix(
@@ -1446,10 +1455,22 @@ class NumericContext:
         if any(after <= before for before, after in zip(at, at[1:])):
             raise EngEvaluationError("interp needs its points in increasing order")
         here = float(self._as_quantity(x).magnitude)
+        # The ends of the table within round-off: a plot to the table's own last point came
+        # there through a unit's conversions as 0.000214 a hair beyond 0.000214, and was
+        # refused (his book, problem 8.8).
+        slack = 1e-9 * max(abs(at[-1] - at[0]), abs(at[0]), abs(at[-1]))
+        if at[0] - slack <= here < at[0]:
+            here = at[0]
+        if at[-1] < here <= at[-1] + slack:
+            here = at[-1]
         if not at[0] <= here <= at[-1]:
+            def said(value):
+                quantity = self._as_quantity(value)
+                return _value_text(quantity.to_reduced_units() if hasattr(quantity, "to_reduced_units") else quantity)
+
             raise EngEvaluationError(
-                f"interp does not extrapolate: {_value_text(x)} lies outside its table, "
-                f"{_value_text(xs[0])} to {_value_text(xs[-1])}"
+                f"interp does not extrapolate: {said(x)} lies outside its table, "
+                f"{said(xs[0])} to {said(xs[-1])}"
             )
         index = min(max(i for i, value in enumerate(at) if value <= here), len(at) - 2)
         return x, xs[index], xs[index + 1], ys[index], ys[index + 1]
@@ -1681,9 +1702,53 @@ class NumericContext:
             value = self._evaluate_sympy(expr.args[0], substitutions)
             return self.evaluate_scalar_function(scalar_sympy[expr.func], value)
 
+        if isinstance(expr, sp.Integral):
+            return self._integral_in_numbers(expr, substitutions)
+
+        if isinstance(expr, sp.Function) and expr.args:
+            # A function of mathematics SymPy answered with and EngCalc does not name -
+            # `elliptic_k` for the integral of the elastica (his book, problem 8.3): worked
+            # out from its arguments when they are numbers.
+            arguments = [self._as_quantity(self._evaluate_sympy(arg, substitutions)) for arg in expr.args]
+            if all(argument.dimensionless for argument in arguments):
+                value = sp.N(expr.func(*(float(a.to("").magnitude) for a in arguments)), 15)
+                if value.is_real and value.is_finite:
+                    return float(value)
+
         raise EngEvaluationError(
             f"numeric evaluation does not support symbolic type '{type(expr).__name__}'"
         )
+
+    def _integral_in_numbers(self, expr: sp.Integral, substitutions: dict[str, Any]):
+        """A definite integral SymPy left as one, worked out by quadrature: the integrand at
+        the variable's points, in the variable's unit, by `mpmath.quad` (his book, Example
+        8.5: `x^2/(1 - x/(2a))^(3/2)` has a closed form SymPy cannot reach)."""
+        if len(expr.limits) != 1 or len(expr.limits[0]) != 3:
+            raise EngEvaluationError("an integral in numbers needs its two bounds")
+        variable, lower, upper = expr.limits[0]
+        a = self._as_quantity(self._evaluate_sympy(lower, substitutions))
+        b = self._as_quantity(self._evaluate_sympy(upper, substitutions))
+        unit = b.units if a.dimensionless and a.magnitude == 0 else a.units
+        a_magnitude = float(a.to(unit).magnitude) if not (a.dimensionless and a.magnitude == 0) else 0.0
+        b_magnitude = float(b.to(unit).magnitude) if not (b.dimensionless and b.magnitude == 0) else 0.0
+
+        def integrand(t):
+            point = {**substitutions, variable.name: self.ureg.Quantity(float(t), unit)}
+            return self._as_quantity(self._evaluate_sympy(expr.function, point))
+
+        probe = integrand((a_magnitude + b_magnitude) / 2)
+        unit_of_the_integrand = probe.units
+
+        def magnitude(t):
+            return float(integrand(t).to(unit_of_the_integrand).magnitude)
+
+        try:
+            value = float(mpmath.quad(magnitude, [a_magnitude, b_magnitude]))
+        except (EngEvaluationError, ValueError, ZeroDivisionError) as exc:
+            raise EngEvaluationError(f"the integral could not be worked out in numbers: {exc}") from exc
+        if not math.isfinite(value):
+            raise EngEvaluationError("the integral has no finite value between its bounds")
+        return self.ureg.Quantity(value, unit_of_the_integrand * unit)
 
     def _mode_substitutions(self, expr, substitutions: dict[str, Any]) -> dict[str, Any]:
         """Each mode the expression takes, by `mode_key`, as the quantity it evaluates to."""

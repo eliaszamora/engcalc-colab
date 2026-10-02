@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.45.4** - branch `feat/chapter-7-pending` |
-| released | **0.45.3** - #391, `22716e5`, closed |
-| open PRs | the 0.45.4 PR; the fold branch held (not a PR) |
-| default suite | **3587 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| releasing | **0.45.5** - branch `fix/chapter-8-wrong-values` |
+| released | **0.45.4** - #392, `dddd38b`, closed |
+| open PRs | the 0.45.5 PR; the fold branch held (not a PR) |
+| default suite | **3598 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2220,8 +2220,63 @@ frame with a symbolic angle inverts in 113 s (0.45.3 did not finish). Tree `8d70
 Pint and its dependencies; smoke 53/53; suite against the installed wheel 3586 + surface 5;
 24 reference pages identical to 0.45.3, wheel = tree.
 
-**Exact next step:** merge the 0.45.4 PR on his yes, then Deep, `git+https`, his Colab, docs
-closure; his pick among chapter 8's findings; chapter 9 (PDF 263-289).
+**0.45.4 is closed** (#392, `dddd38b`, merged with his yes): PR CI green; Quality Gate Deep
+(push) and Deep qualification green on `dddd38b`; a `git+https` install changed only
+`engcalc-colab`, 33 identical, smoke 53/53. In his Colab (Untitled9, fresh session, cell 0, cell
+3, 2026-10-02, SymPy 1.13.3): `engcalc 0.45.4`, the rotation's inverse, `n ∈ ℤ` with
+`sin(nπ) = 0`, `ln`, `(a - c)/L`; screenshot sent.
+
+### Chapter 8's wrong values and refusals (his pick, 2026-10-02)
+
+Branch `fix/chapter-8-wrong-values`: engine `_as_written_quantity` returns an angle root in
+radians times `rad` (was a bare number in degrees); renderer shows `rad^n`, n ≠ 1, as a number;
+`_MatrixNumbers._BUILDING_CALLS` adds `subs`, `sum` (written `f|_{t=t_0}` and Σ; unknown
+calls italic as sheet functions, `_WRITTEN_OPERATORS` keeps `\operatorname`); numeric
+`_integral_in_numbers` (mpmath quadrature) for `sp.Integral` and special functions of numbers
+(`elliptic_k`); engine `_integral_of` leaves a real integrand's complex closed form as the
+integral; `interpolation_segment` clamps within 1e-9 of the ends, message in reduced units.
+Left by my judgement: `acos(0.5)/kL` with a plain kL stays an angle (θ/2 is an angle; write kL
+in rad or divide by 1[rad] for a ratio). Not done (not asked): slow plots. Contracts
+`test_what_chapter_8_found` (8); suite 3595.
+
+**0.45.5 audit and release evidence:** audit of 9bf49c8 found E1 (a `mm/m` root printed as
+an angle, 0.17°) and E2 (a divergent integral killed the cell with an OverflowError in the
+printer); fixed in 026ec92 (only angle units give an angle; `evaluate_symbolic` refuses a
+non-finite value) and re-audited clean; 21 of 806 sheets differ from 0.45.4, all intended, no
+value changed. Chapter 9's solver then found a crash present since 0.45.3 - a `% for`
+assembling a `:=` matrix wider than the page (`_assemblies` read `result.value`) - fixed in
+5ec7651 (summary from the quantity matrix, exact zeros) and checked by the auditor. Tree
+`5ec7651`: suite 3598 (SymPy 1.14 and 1.13.3); wheel 33 identical; clean 3.12 venv with Colab's
+pins adds only Pint and its dependencies; smoke 54/54; suite against the installed wheel 3597
++ surface 5; 24 reference pages identical to 0.45.4, wheel = tree. His yes: "Cuando la
+auditoría esté limpia, publica la 0.45.5".
+
+### His book, chapter 9 complete (geometric nonlinear and critical loads; problems 9.1-9.16, examples 9.1-9.13)
+
+Every number agrees with an oracle and, where printed, with the book (book slips: Ex. 9.3
+states alpha 1.25e-4 and solves with 1.125e-4; Prob. 9.9's Iz = 210 in^4 looks like 2100).
+Findings, not fixed:
+- **No route to a critical load from an assembled numeric matrix:** `eigenvals`/`det` refused
+  on `:=` lines and `=` lines refuse a `:=` matrix; `eigenvals` of a mixed-unit pencil
+  refused; `eigenvals(...)*3` crashes; `solve(eq(det(K - G_x), 0), x, a, b)` demands `x` as
+  data. Every frame example used inverse iteration in `% while`. Wanted: `eigenvals` of
+  numbers and a generalized `eig(K, -K_g)`.
+- **Wrong value on the page:** a computed exact 0 in a `solve` result takes the vector's
+  length unit (`theta = 0.00 m`), and the next line fails "incompatible units"; a `% for`
+  holding a `% while` tabulates the values from before the while.
+- **Refused / hangs:** `{a}` placeholder in a `% while` condition not substituted; a placeholder
+  holding an operator after `)` / space is "invalid syntax"; `extrema` of a trigonometric ratio
+  hangs (> 120 s); a range `solve` says "no root" when the equation adds incompatible units.
+- **Missing:** pound-force (`lb`, `lbf` refused though pages print lbf); a kip palette; a list
+  in a loop placeholder.
+- **Presentation:** `solve(K, -2*F)` written `K^{-1} -2 F`; nested `% for` assembly summary
+  merged and printed after; `identity(2)` written as a word; `1e8[mm^4]` argument written
+  100000000.0; pass 1's rows before the loop rule; nested loops dump every pass's matrices
+  (pages 2.7-4.3 MB); loop tables print the raw tuple; `det(B - λI)` with I the inertia;
+  `tan(π/4)` in a table reads `10.00 × 10⁻¹`.
+
+**Exact next step:** merge the 0.45.5 PR on green CI (his yes), Deep, `git+https`, his Colab,
+`Capitulo_09` to his Drive; then his pick among chapter 9's findings; chapter 10 (PDF 290-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
