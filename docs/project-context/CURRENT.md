@@ -12,9 +12,9 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.45.5** - branch `fix/chapter-8-wrong-values` |
-| released | **0.45.4** - #392, `dddd38b`, closed |
-| open PRs | the 0.45.5 PR; the fold branch held (not a PR) |
+| released | **0.45.5** - #393, `83ae814`, closed |
+| before that | **0.45.4** - #392, `dddd38b`, closed |
+| open PRs | this closure; the fold branch held (not a PR) |
 | default suite | **3598 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
@@ -2275,8 +2275,16 @@ Findings, not fixed:
   (pages 2.7-4.3 MB); loop tables print the raw tuple; `det(B - λI)` with I the inertia;
   `tan(π/4)` in a table reads `10.00 × 10⁻¹`.
 
-**Exact next step:** merge the 0.45.5 PR on green CI (his yes), Deep, `git+https`, his Colab,
-`Capitulo_09` to his Drive; then his pick among chapter 9's findings; chapter 10 (PDF 290-).
+**0.45.5 is closed** (#393, `83ae814`, merged with his yes): PR CI green; Quality Gate Deep
+(push) and Deep qualification green on `83ae814`; a `git+https` install changed only
+`engcalc-colab`, 33 identical, smoke 54/54. In his Colab (Untitled9, fresh session, cell 0,
+cell 3, 2026-10-02): `engcalc 0.45.5`, `t_1 = 6.31°` and `sin = 0.11`, `f|_{t=t_0} = 1.00`, the
+quadrature integral 3.96 m³, a 12 x 12 `:=` assembly in a `% for`; screenshots sent.
+`Capitulo_09.ipynb` in his Drive and Documents (every cell runs on 0.45.5).
+
+**Exact next step:** his pick among chapter 9's findings (top: eigenvals/det of numeric
+matrices for critical loads; the exact-zero unit in a solve; while-in-for tables); chapter 10
+(PDF 290-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
