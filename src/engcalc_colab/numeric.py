@@ -1447,10 +1447,22 @@ class NumericContext:
         if any(after <= before for before, after in zip(at, at[1:])):
             raise EngEvaluationError("interp needs its points in increasing order")
         here = float(self._as_quantity(x).magnitude)
+        # The ends of the table within round-off: a plot to the table's own last point came
+        # there through a unit's conversions as 0.000214 a hair beyond 0.000214, and was
+        # refused (his book, problem 8.8).
+        slack = 1e-9 * max(abs(at[-1] - at[0]), abs(at[0]), abs(at[-1]))
+        if at[0] - slack <= here < at[0]:
+            here = at[0]
+        if at[-1] < here <= at[-1] + slack:
+            here = at[-1]
         if not at[0] <= here <= at[-1]:
+            def said(value):
+                quantity = self._as_quantity(value)
+                return _value_text(quantity.to_reduced_units() if hasattr(quantity, "to_reduced_units") else quantity)
+
             raise EngEvaluationError(
-                f"interp does not extrapolate: {_value_text(x)} lies outside its table, "
-                f"{_value_text(xs[0])} to {_value_text(xs[-1])}"
+                f"interp does not extrapolate: {said(x)} lies outside its table, "
+                f"{said(xs[0])} to {said(xs[-1])}"
             )
         index = min(max(i for i, value in enumerate(at) if value <= here), len(at) - 2)
         return x, xs[index], xs[index + 1], ys[index], ys[index + 1]
