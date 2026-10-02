@@ -102,3 +102,20 @@ def test_interp_still_refuses_to_extrapolate(monkeypatch):
         "P(x) = interp(x, [0[m], 2[m]], [0[kN], 10[kN]])\ny := P(3[m])\n", monkeypatch
     )
     assert "interp does not extrapolate: 3 m lies outside its table, 0 m to 2 m" in console, console
+
+
+# What the audit of these fixes found in their first draft.
+
+
+def test_a_ratio_root_is_a_number_not_an_angle(monkeypatch):
+    page, console = _run(
+        "x := solve(eq(x, 3[mm/m]), x, 0[mm/m], 10[mm/m])\nz := x*1000\n", monkeypatch
+    )
+    assert not console, console
+    assert r"x & = & 0.003" in page and r"z & = & 3.00" in page, page
+    assert r"^{\circ}" not in page, page
+
+
+def test_a_divergent_integral_is_said(monkeypatch):
+    page, console = _run("K = integrate(sqrt(x)/(x - 1)^2, x, 0, 2)\nnumeric(K)\n", monkeypatch)
+    assert "the value is not finite" in console, console

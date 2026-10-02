@@ -6935,9 +6935,17 @@ _ROOT_SAMPLES = 256
 _ROOT_HALVINGS = 60
 
 
+# The angle units a root can come back in, as Pint names them.
+_ANGLE_UNITS = frozenset({"degree", "radian", "arcminute", "arcsecond", "gradian", "turn"})
+
+
 def _as_written_quantity(quantity, evaluator):
     """A root in numbers, back in the symbolic layer as a number times its unit: `10.55 cm`."""
     text = f"{quantity.units:~}".replace(" ", "")
+    if quantity.dimensionless and text and not set(quantity.units._units) & _ANGLE_UNITS:
+        # A ratio with a scale, a strain in `mm/m`: its number, 0.003 - not an angle (the
+        # audit of 0.45.5: `solve(eq(x, 3[mm/m]), x, 0[mm/m], 10[mm/m])` read 0.17°).
+        return sp.Float(float(quantity.to("dimensionless").magnitude), 15)
     if quantity.dimensionless and text:
         # An angle is dimensionless to Pint and is not a plain number: a root found between
         # `0[deg]` and `15[deg]` came back as `6.31`, read as radians - `sin(t_1)` gave

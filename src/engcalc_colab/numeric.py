@@ -885,6 +885,14 @@ class NumericContext:
             raise EngEvaluationError(f"numeric unit evaluation failed: {exc}") from exc
         except Exception as exc:
             raise EngEvaluationError(f"numeric evaluation failed: {exc}") from exc
+        try:
+            finite = math.isfinite(float(quantity.magnitude))
+        except (TypeError, ValueError):
+            finite = True
+        if not finite:
+            # A divergent integral came out of quadrature as infinity and stopped the cell in
+            # the printer (the audit of 0.45.5). Said here, as an endless value is.
+            raise EngEvaluationError("the value is not finite: the expression diverges")
         return substitutions, quantity
 
     def evaluate_matrix(
