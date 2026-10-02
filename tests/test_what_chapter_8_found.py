@@ -119,3 +119,15 @@ def test_a_ratio_root_is_a_number_not_an_angle(monkeypatch):
 def test_a_divergent_integral_is_said(monkeypatch):
     page, console = _run("K = integrate(sqrt(x)/(x - 1)^2, x, 0, 2)\nnumeric(K)\n", monkeypatch)
     assert "the value is not finite" in console, console
+
+
+def test_a_wide_assembly_on_numeric_lines_is_summarised(monkeypatch):
+    # His book, chapter 9: a `% for` assembling a `:=` matrix wider than the page stopped
+    # the cell with "'NumericMatrixAssignmentResult' object has no attribute 'value'".
+    page, console = _run(
+        "k := 123456.7[kN/m]\nK := zeros(12, 12)\n% for i in range(1, 12):\n"
+        "K[[{i}, {i}+1], [{i}, {i}+1]] := K[[{i}, {i}+1], [{i}, {i}+1]] + [k, -k; -k, k]\n% end\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"K \;:\; 12 \times 12,\ \text{simétrica},\ 34\ \text{términos no nulos}" in page, page

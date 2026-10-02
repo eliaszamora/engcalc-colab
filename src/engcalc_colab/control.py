@@ -883,7 +883,25 @@ def _assemblies(kept: list, helpers: list, settings, order=()) -> Iterator:
         if fits_the_page(result, _current(settings)):
             yield Evaluated(result, tuple(said))
         else:
-            yield ConditionNote(latex=matrix_summary_latex(target, result.value), notices=tuple(said))
+            # A matrix of numbers assembled with `:=` holds quantities, not a SymPy matrix:
+            # its summary reads their numbers (a 12 x 12 assembly stopped the cell with an
+            # AttributeError, his book, chapter 9).
+            matrix = getattr(result, "value", None)
+            if matrix is None:
+                numbers = result.quantity_matrix
+                matrix = sp.Matrix(
+                    numbers.rows,
+                    numbers.cols,
+                    [
+                        # An exact 0: SymPy's `Float(0.0) == 0` is False, and every zero
+                        # counted as a term.
+                        sp.Float(magnitude) if magnitude else sp.Integer(0)
+                        for magnitude in (
+                            float(entry.to_base_units().magnitude) for entry in numbers
+                        )
+                    ],
+                )
+            yield ConditionNote(latex=matrix_summary_latex(target, matrix), notices=tuple(said))
 
 
 def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:

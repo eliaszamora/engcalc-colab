@@ -31,6 +31,8 @@ Current version: **0.45.5**.
   divergent one is said to diverge.
 - **`plot` of an `interp`** reaches its table's last point; outside the table the message
   reads `3 m lies outside its table, 0 m to 2 m`.
+- **A `% for` that assembles a `:=` matrix wider than the page** is summarised; it stopped the
+  cell with an `AttributeError` (his book, chapter 9).
 
 
 ## v0.45.4 what chapter 7 left: quick, whole numbers, readable logs, ln
