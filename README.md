@@ -13,7 +13,22 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.45.3**.
+Current version: **0.45.4**.
+
+
+## v0.45.4 what chapter 7 left: quick, whole numbers, readable logs, ln
+
+- **`inv` of a matrix of sines and cosines is quick**: the 3 x 3 flexibility of an arch took
+  100 s, a 6 x 6 frame with a symbolic angle did not finish; by the adjugate over a simplified
+  determinant they take seconds, a mechanism is still refused, and a rotation's inverse
+  reads as one. Matrices of rational entries are inverted as before.
+- **An integral with a symbolic power of its variable returns**: `(x/L)^k (1 - (x/L)^n)`
+  hung the cell; expanded, it takes a second.
+- **Whole numbers**: `assume(n > 0, integer(n))`, written `n ∈ ℤ`; `sin(n*pi)` is 0.
+- **Logs that read**: `simplify` keeps joint displacements out of exponents (7.4's shape
+  functions read `log(2^(16 v_A + 48 v_B))`); `log(65536)` is `16 ln 2`; a definite
+  integral's fractions over one denominator are put together (`(a - c)/L`).
+- **The natural log is `ln`**, on every row, and `ln(x)` can be written.
 
 
 ## v0.45.3 what chapter 7 found read wrong or refused
@@ -4036,6 +4051,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.45.4** — quick `inv` of trigonometric matrices; integrals with symbolic powers return; `assume(integer(n))`; readable logs; collected definite integrals; `ln`.
 - **0.45.3** — a unit no family names reads in a force and a length (no more `0.00 m/(MPa·mm⁴)`); ratio columns are numbers; a vector's zero has its unit; real logs in integrals and log ratios; `:=` matrices built with integrate/zeros/diag and assembled by parts; assumed `psi`; `subs` with lists; `atanh`.
 - **0.45.2** — an integral with bracket units no longer stops the cell; a solve's equation row shows its units; a nested piecewise is one list of cases; `q = solve(..., q)` reaches functions written before it.
 - **0.45.1** — a number whose unknowns cancel is worked out; a system solve on `:=` says what to write; `{r}_a` in a loop; `psi` read as a unit is said; `[in]`; function parameters never units; large matrices with units typeset in Colab.
@@ -4169,4 +4185,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.45.3`.
+Version: `0.45.4`.
