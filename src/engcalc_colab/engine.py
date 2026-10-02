@@ -255,19 +255,20 @@ def _integral_of(expression, bounds):
     complex_ = value.has(sp.I) or any(
         log.args[0].is_negative is True for log in value.atoms(sp.log)
     )
-    if (
-        not complex_
-        or expression.has(sp.I)
-        or not sp.sympify(expression).is_rational_function(variable)
-    ):
+    if not complex_ or expression.has(sp.I):
         return value
+    if not sp.sympify(expression).is_rational_function(variable):
+        # A real integrand whose integral SymPy writes with `i` and `Min(L, 3a/2)` - his
+        # book's Example 8.5 - stays the integral it is: its number is worked out by
+        # quadrature, where the closed form stopped the cell.
+        return sp.Integral(expression, bounds)
     antiderivative = _logs_real_at(
         sp.integrate(expression, variable), variable, lower, numbers_only=False
     )
     if antiderivative.has(sp.Integral):
         return value
     between = antiderivative.subs(variable, upper) - antiderivative.subs(variable, lower)
-    return value if between.has(sp.I) else between
+    return sp.Integral(expression, bounds) if between.has(sp.I) else between
 
 
 def _log_of_a_power(argument):
@@ -506,7 +507,9 @@ class _MatrixNumbers:
     # then in numbers. `K := zeros(12, 12)` was "unsupported numeric function" and
     # `d := integrate([R*cos(phi); 1]*[R*cos(phi), 1], phi, 0, pi/2)` "unknown numeric name
     # 'phi'" (his book, problems 7.23 and 7.29).
-    _BUILDING_CALLS = frozenset({"zeros", "identity", "diag", "integrate"})
+    # `subs` and `sum` too: `x_1 := subs(f, t, t_0)` and `K := pi/(2*N)*sum(...)` were
+    # "unsupported numeric function" though every name had a value (his book, chapter 8).
+    _BUILDING_CALLS = frozenset({"zeros", "identity", "diag", "integrate", "subs", "sum"})
 
     def __init__(self, engine: "EngineeringEngine", statement) -> None:
         self.engine = engine
@@ -6934,9 +6937,17 @@ _ROOT_HALVINGS = 60
 
 def _as_written_quantity(quantity, evaluator):
     """A root in numbers, back in the symbolic layer as a number times its unit: `10.55 cm`."""
-    magnitude = sp.Float(float(quantity.magnitude), 15)
     text = f"{quantity.units:~}".replace(" ", "")
-    if not text or quantity.dimensionless:
+    if quantity.dimensionless and text:
+        # An angle is dimensionless to Pint and is not a plain number: a root found between
+        # `0[deg]` and `15[deg]` came back as `6.31`, read as radians - `sin(t_1)` gave
+        # 0.0231 for 0.1098 (his book, Example 8.2). In radians, which a bare number means.
+        quantity = quantity.to("radian")
+        return sp.Float(float(quantity.magnitude), 15) * evaluator.visit(
+            ast.parse("rad", mode="eval").body
+        )
+    magnitude = sp.Float(float(quantity.magnitude), 15)
+    if not text:
         return magnitude
     return magnitude * evaluator.visit(ast.parse(text, mode="eval").body)
 
