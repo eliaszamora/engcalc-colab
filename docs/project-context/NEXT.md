@@ -8,9 +8,9 @@ of `CURRENT.md` was written at 0.13.0 and says so._
 
 | | |
 |---|---|
-| `main` | 0.45.3 released by #391 (`22716e5`), closed and checked in his Colab |
+| `main` | 0.45.4 released by #392 (`dddd38b`), closed and checked in his Colab |
 | declared version | **0.45.4** — what chapter 7 left |
-| default suite (`pytest -q`) | **3587 passing**, about 2 minutes with `-n auto` — `tests` plus `quality_tests/fast` |
+| default suite (`pytest -q`) | **3595 passing**, about 2 minutes with `-n auto` — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0`; on every PR, every push to `main`, every Monday, and by hand |
 

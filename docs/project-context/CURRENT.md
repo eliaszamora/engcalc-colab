@@ -12,10 +12,10 @@ _2026-09-30._
 
 | | |
 |---|---|
-| releasing | **0.45.4** - branch `feat/chapter-7-pending` |
-| released | **0.45.3** - #391, `22716e5`, closed |
-| open PRs | the 0.45.4 PR; the fold branch held (not a PR) |
-| default suite | **3587 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| working | branch `fix/chapter-8-wrong-values` (unreleased) |
+| released | **0.45.4** - #392, `dddd38b`, closed |
+| open PRs | the fold branch held (not a PR) |
+| default suite | **3595 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2220,8 +2220,27 @@ frame with a symbolic angle inverts in 113 s (0.45.3 did not finish). Tree `8d70
 Pint and its dependencies; smoke 53/53; suite against the installed wheel 3586 + surface 5;
 24 reference pages identical to 0.45.3, wheel = tree.
 
-**Exact next step:** merge the 0.45.4 PR on his yes, then Deep, `git+https`, his Colab, docs
-closure; his pick among chapter 8's findings; chapter 9 (PDF 263-289).
+**0.45.4 is closed** (#392, `dddd38b`, merged with his yes): PR CI green; Quality Gate Deep
+(push) and Deep qualification green on `dddd38b`; a `git+https` install changed only
+`engcalc-colab`, 33 identical, smoke 53/53. In his Colab (Untitled9, fresh session, cell 0, cell
+3, 2026-10-02, SymPy 1.13.3): `engcalc 0.45.4`, the rotation's inverse, `n ∈ ℤ` with
+`sin(nπ) = 0`, `ln`, `(a - c)/L`; screenshot sent.
+
+### Chapter 8's wrong values and refusals (his pick, 2026-10-02)
+
+Branch `fix/chapter-8-wrong-values`: engine `_as_written_quantity` returns an angle root in
+radians times `rad` (was a bare number in degrees); renderer shows `rad^n`, n ≠ 1, as a number;
+`_MatrixNumbers._BUILDING_CALLS` adds `subs`, `sum` (written `f|_{t=t_0}` and Σ; unknown
+calls italic as sheet functions, `_WRITTEN_OPERATORS` keeps `\operatorname`); numeric
+`_integral_in_numbers` (mpmath quadrature) for `sp.Integral` and special functions of numbers
+(`elliptic_k`); engine `_integral_of` leaves a real integrand's complex closed form as the
+integral; `interpolation_segment` clamps within 1e-9 of the ends, message in reduced units.
+Left by my judgement: `acos(0.5)/kL` with a plain kL stays an angle (θ/2 is an angle; write kL
+in rad or divide by 1[rad] for a ratio). Not done (not asked): slow plots. Contracts
+`test_what_chapter_8_found` (8); suite 3595.
+
+**Exact next step:** corpus compare and audit of `fix/chapter-8-wrong-values`, release 0.45.5
+on his yes; chapter 9 solvers running (brief `book/ch09/BRIEF.md`).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
