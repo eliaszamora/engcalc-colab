@@ -102,6 +102,10 @@ class NumberMatrix:
     cols: int
     magnitudes: tuple[float, ...]
     units: tuple[Any, ...]
+    # Zeros written in the matrix's literal, `[0; 2[1/m]]`, apart from a zero worked out
+    # as a dimensionless number - a rotation a solve found to be 0. Only a written one
+    # takes the unit of the entries beside it (see `entry_quantity`).
+    written_zeros: frozenset = frozenset()
 
     def at(self, row: int, col: int) -> tuple[float, Any]:
         index = row * self.cols + col
@@ -135,7 +139,11 @@ def numbers_of(quantity_matrix: QuantityMatrix) -> NumberMatrix:
         magnitudes.append(float(base.magnitude))
         units.append(base.units)
     return NumberMatrix(
-        quantity_matrix.rows, quantity_matrix.cols, tuple(magnitudes), tuple(units)
+        quantity_matrix.rows,
+        quantity_matrix.cols,
+        tuple(magnitudes),
+        tuple(units),
+        frozenset(quantity_matrix.adaptable_zeros),
     )
 
 
@@ -168,7 +176,14 @@ def entry_quantity(numbers: NumberMatrix, row: int, col: int, ureg):
         # written 0 is a curvature, and `GJ*D[1]/T` read `0.00 m` (his book, Example 7.4).
         # A matrix of several dimensions - a stiffness - leaves its zero a plain 0.
         others = [other for other in numbers.units if other is not None]
-        if others and all(_same_dimension(others[0], other) for other in others):
+        # Only a zero written in the literal: a rotation a solve found to be exactly 0 is
+        # a number, and lent the vector's metre it read `0.00 m` and stopped the next
+        # line (his book, chapter 9).
+        if (
+            (row, col) in numbers.written_zeros
+            and others
+            and all(_same_dimension(others[0], other) for other in others)
+        ):
             return ureg.Quantity(0.0, others[0])
         return 0
     return ureg.Quantity(magnitude, unit)
@@ -365,6 +380,93 @@ def inverse_numbers(numbers: NumberMatrix) -> NumberMatrix:
         for j in range(size)
     )
     return NumberMatrix(size, size, magnitudes, tuple(units))
+
+
+def _a_full_permutation(numbers: NumberMatrix) -> list[int] | None:
+    """Columns `p[i]` with every entry [i, p[i]] nonzero, or None when there is none - a
+    term of the determinant that is not zero, whose units are the determinant's."""
+    size = numbers.rows
+    match_of_col = [-1] * size
+
+    def assign(row: int, seen: list[bool]) -> bool:
+        for col in range(size):
+            if numbers.units[row * size + col] is None or seen[col]:
+                continue
+            seen[col] = True
+            if match_of_col[col] == -1 or assign(match_of_col[col], seen):
+                match_of_col[col] = row
+                return True
+        return False
+
+    for row in range(size):
+        if not assign(row, [False] * size):
+            return None
+    permutation = [0] * size
+    for col, row in enumerate(match_of_col):
+        permutation[row] = col
+    return permutation
+
+
+def det_numbers(numbers: NumberMatrix):
+    """`det(K)` of a matrix of numbers: its magnitude in base units and its unit, the
+    product of the units of a nonzero term (all terms share it when the units fit). A
+    matrix with no nonzero term is 0 with no unit."""
+    import mpmath
+
+    _square(numbers, "det")
+    _inverse_units(numbers, "det")
+    permutation = _a_full_permutation(numbers)
+    if permutation is None:
+        return 0.0, None
+    unit = None
+    for row, col in enumerate(permutation):
+        entry = numbers.units[row * numbers.cols + col]
+        unit = entry if unit is None else unit * entry
+    return float(mpmath.det(_mp_matrix(numbers))), unit
+
+
+def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = None) -> NumberMatrix:
+    """The eigenvalues of a matrix of numbers, or of the pencil `K x = λ G x` - the
+    critical load factors of a frame, `eigenvals(K, G)` - as a column, smallest first.
+
+    Worked out on `G⁻¹ K` in base units: a stiffness's rows and columns carry forces and
+    moments, displacements and rotations, and that product is the same matrix in another
+    basis, whose diagonal carries the eigenvalues' unit. Refused when they are not all real:
+    a stiffness pencil's are (his book, chapter 9, where every critical load had been found
+    by an inverse iteration written by hand)."""
+    import numpy
+
+    operation = "eigenvals"
+    _square(matrix, operation)
+    if metric is not None:
+        _square(metric, operation)
+        if metric.rows != matrix.rows:
+            raise EngEvaluationError(
+                f"eigenvals of a {matrix.shape} matrix needs a second matrix of the same size, "
+                f"not {metric.shape}"
+            )
+        matrix = multiply_numbers(inverse_numbers(metric), matrix)
+    _inverse_units(matrix, operation)
+    size = matrix.rows
+    diagonal = [matrix.units[i * size + i] for i in range(size) if matrix.units[i * size + i] is not None]
+    unit = diagonal[0] if diagonal else None
+    for other in diagonal[1:]:
+        if not _same_dimension(other, unit):
+            raise EngEvaluationError(
+                "eigenvals needs the entries of its diagonal in one kind of unit: "
+                f"{_unit_text(unit)} and {_unit_text(other)}"
+            )
+    values = numpy.linalg.eigvals(
+        numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
+    )
+    scale = max((abs(value) for value in values), default=0.0) or 1.0
+    if any(abs(value.imag) > 1e-9 * scale for value in values):
+        raise EngEvaluationError(
+            "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
+            "stiffness have real ones - check that both matrices are symmetric"
+        )
+    ordered = sorted(float(value.real) for value in values)
+    return NumberMatrix(size, 1, tuple(ordered), tuple(unit for _ in ordered))
 
 
 def solve_numbers(matrix: NumberMatrix, right: NumberMatrix) -> NumberMatrix:

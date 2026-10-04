@@ -2282,8 +2282,25 @@ cell 3, 2026-10-02): `engcalc 0.45.5`, `t_1 = 6.31°` and `sin = 0.11`, `f|_{t=t
 quadrature integral 3.96 m³, a 12 x 12 `:=` assembly in a `% for`; screenshots sent.
 `Capitulo_09.ipynb` in his Drive and Documents (every cell runs on 0.45.5).
 
-**Exact next step:** his pick among chapter 9's findings (top: eigenvals/det of numeric
-matrices for critical loads; the exact-zero unit in a solve; while-in-for tables); chapter 10
+**Chapter 9 fixes in progress — branch `feat/numeric-eigenvalues` (WIP, pushed 2026-10-04,
+no PR).** A session ran out of credits mid-work; its uncommitted changes were saved as one
+WIP commit. **No contracts were written yet (not TDD'd)**. In it: `det`/`eigenvals(K, G)` on
+`:=` numeric matrices (`matrix_numeric.det_numbers`, `eigenvalues_of_numbers`; reported
+2485.96 kN matching NumPy, not re-checked); `NumberMatrix.written_zeros` so only a written 0
+takes the vector's unit (solve's exact 0 no longer reads `0.00 m`); `{a}` substituted in a
+`% while` condition; a placeholder after `)`/an operand becomes ` + 1` when parsed; a `% for`
+table drops a column a nested `% while` reassigns; `eigenvals`/`eigenvects`/`transpose`/`inv`
+written as operators; `extrema` hang (skip `solveset` on long transcendental expressions,
+and fallback returns no root when one sign spans the domain). **Suite on that tree: 3588
+pass, 10 fail** — all 10 come from the two `characteristics/` files (with them at `main`
+the 68 affected tests pass): `_TRANSCENDENTAL` includes `sp.Pow`, so float polynomials skip
+`solveset` (near-double-root guards), and the one-sign rule returns `[]` where
+`test_unresolved_region_without_validated_root_raises_instead_of_guessing` expects a raise.
+Not started: a range `solve` saying "incompatible units" instead of "no root".
+
+**Exact next step:** on `feat/numeric-eigenvalues`: narrow the extrema fix until the 10 pass,
+write RED contracts for each fix above, then the range-solve units message; then his pick
+among the rest of chapter 9's findings; chapter 10
 (PDF 290-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).

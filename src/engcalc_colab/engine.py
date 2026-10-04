@@ -99,6 +99,8 @@ from .matrix_numeric import (
     QuantityMatrix,
     add_numbers,
     blocks_of_numbers,
+    det_numbers,
+    eigenvalues_of_numbers,
     ensure_common_scale,
     entry_quantity,
     inverse_numbers,
@@ -713,6 +715,26 @@ class _MatrixNumbers:
         name = node.func.id
         if self._builds_a_matrix(node):
             return self._built(node)
+        if name in ("det", "eigenvals") and name not in self.engine.functions:
+            # The determinant and the eigenvalues of a matrix of numbers - a frame's critical
+            # load, `lambda_c := eigenvals(K_ff, -K_G)` - which `=` lines refuse for a `:=`
+            # matrix and a `:=` line took for one number (his book, chapter 9).
+            arguments = [self.value(argument) for argument in node.args]
+            if node.keywords or not arguments or not all(
+                isinstance(each, NumberMatrix) for each in arguments
+            ):
+                raise EngEvaluationError(f"{name} on a := line takes matrices")
+            if name == "det":
+                if len(arguments) != 1:
+                    raise EngEvaluationError("det takes one matrix")
+                magnitude, unit = det_numbers(arguments[0])
+                quantity = self.context.ureg.Quantity
+                return quantity(magnitude, unit) if unit is not None else quantity(magnitude)
+            if len(arguments) > 2:
+                raise EngEvaluationError(
+                    "eigenvals takes one matrix, or two for K x = λ G x: eigenvals(K, G)"
+                )
+            return eigenvalues_of_numbers(*arguments)
         if name not in self._MATRIX_CALLS:
             return self._number_call(node)
         arguments = [self.value(argument) for argument in node.args]

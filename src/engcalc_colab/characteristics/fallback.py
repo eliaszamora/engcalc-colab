@@ -318,6 +318,17 @@ def _fallback_roots(
             validated.append(point)
 
     ordered = _deduplicate_root_points(validated, domain)
+    finite = [value for value in values if value is not None]
+    if not ordered and finite and len(finite) == len(values):
+        smallest = min(abs(value) for value in finite)
+        largest = max(abs(value) for value in finite) or 1.0
+        if (all(value > 0 for value in finite) or all(value < 0 for value in finite)) and (
+            smallest > 1e-6 * largest
+        ):
+            # One sign across the domain, nowhere near zero: there is no root - the slope
+            # of a function that only rises (his book, Example 9.1) - and that is the answer,
+            # not a solution set that could not be validated.
+            return []
     if not ordered:
         raise EngEvaluationError(
             "characteristic numerical fallback could not validate a solution set"

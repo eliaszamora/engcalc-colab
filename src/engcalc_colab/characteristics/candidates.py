@@ -90,6 +90,10 @@ def closed_form_factors(expression, variable: sp.Symbol):
     return (tuple(solvable), missing) if missing else (None, None)
 
 
+# Functions whose zero sets `solveset` can spend minutes on.
+_TRANSCENDENTAL = (sp.sin, sp.cos, sp.tan, sp.exp, sp.log, sp.Pow)
+
+
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
     # Common factors out first. `1.2 qD (L/2 - x) + 1.6 qL (L/2 - x)` solved as written is
     # floating point, `0.5 L`, a block away from an extrema that writes the same midspan
@@ -105,6 +109,16 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         for factor in solvable:
             candidates.extend(_exact_real_solution_set(factor, variable).candidates)
         return _ExactDiscovery(tuple(candidates), complete=False)
+    if (
+        expression.free_symbols == {variable}
+        and expression.has(*_TRANSCENDENTAL)
+        and (expression.has(sp.Float) or sp.count_ops(expression) > 40)
+    ):
+        # Numbers and the variable only, through sines and roots: `solveset` of the slope of
+        # `(sin x + cos x)/(sin x + 0.05 cos x) (1 - 1/sqrt(3 + 2 sin x - 2 cos x))` never
+        # returned (his book, Example 9.1), and every point it could give is a number the
+        # numeric search finds.
+        return _ExactDiscovery((), complete=False)
     equation = sp.Eq(expression, 0)
     try:
         solution_set = sp.solveset(equation, variable, domain=sp.S.Reals)
