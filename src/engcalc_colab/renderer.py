@@ -3859,7 +3859,7 @@ def _index_text(node, latex) -> str:
 _WRITTEN_OPERATORS = frozenset({
     "zeros", "identity", "diag", "min", "max", "interp", "det", "trace", "rank", "asin",
     "acos", "atan", "exp", "atanh", "numeric", "simplify", "expand", "factor", "eye", "ones",
-    "eigenvals", "eigenvects", "transpose", "inv",
+    "eigenvals", "eigenvects",
 })
 
 

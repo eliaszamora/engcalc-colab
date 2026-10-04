@@ -90,17 +90,25 @@ def closed_form_factors(expression, variable: sp.Symbol):
     return (tuple(solvable), missing) if missing else (None, None)
 
 
+# The size past which a sine under a root is not handed to `solveset`. Measured on 0.45.5
+# (SymPy 1.14): slopes of 9 to 18 operations - `sqrt(1 + sin x) - 1`, the slope of
+# `1/sqrt(3 + 2 sin x - 2 cos x)` - came back exact in under two seconds (`x = π`,
+# `asin(1/4)`, `-π/4`); one of 22 took 67 s, and 24, 44 and Example 9.1's 100 did not
+# return. (The audit of 0.45.6 found every one of them sent to the numeric search.)
+_TRIGONOMETRIC_RADICAL_OPERATIONS = 20
+
+
 def _a_trigonometric_radical(expression: sp.Expr, variable: sp.Symbol) -> bool:
-    """A sine or a cosine of the variable under a root - `sqrt(3 + 2 sin x - 2 cos x)`, the
-    length of a bar that turns. `solveset` rewrites the trigonometry as exponentials,
-    squares the radical away and hands a polynomial of high degree to the quartic formulas,
-    and does not come back."""
+    """A long expression with a sine or a cosine of the variable under a root -
+    `sqrt(3 + 2 sin x - 2 cos x)`, the length of a bar that turns. `solveset` rewrites the
+    trigonometry as exponentials, squares the radical away and hands a polynomial of high
+    degree to the quartic formulas, and does not come back."""
     trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
     return any(
         not power.exp.is_integer
         and any(variable in node.free_symbols for node in power.base.atoms(trigonometric))
         for power in expression.atoms(sp.Pow)
-    )
+    ) and sp.count_ops(expression) > _TRIGONOMETRIC_RADICAL_OPERATIONS
 
 
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):

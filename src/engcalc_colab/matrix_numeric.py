@@ -16,6 +16,11 @@ class QuantityMatrix:
     cols: int
     entries: tuple[Any, ...]
     adaptable_zeros: frozenset[tuple[int, int]] = frozenset()
+    # Zeros a `:=` line worked out - a rotation a solve found to be 0 - and not written.
+    # They print and convert as any zero does; taken out one at a time they stay plain
+    # numbers, where a written zero takes the unit of the entries beside it (see
+    # `entry_quantity`).
+    fixed_zeros: frozenset[tuple[int, int]] = frozenset()
 
     def __post_init__(self) -> None:
         if self.rows <= 0 or self.cols <= 0:
@@ -24,11 +29,13 @@ class QuantityMatrix:
         if len(normalized_entries) != self.rows * self.cols:
             raise ValueError("QuantityMatrix entry count does not match shape")
         normalized_zeros = frozenset(self.adaptable_zeros)
-        for row, col in normalized_zeros:
+        normalized_fixed = frozenset(self.fixed_zeros)
+        for row, col in normalized_zeros | normalized_fixed:
             if not (0 <= row < self.rows and 0 <= col < self.cols):
                 raise ValueError("QuantityMatrix adaptable zero is outside matrix shape")
         object.__setattr__(self, "entries", normalized_entries)
         object.__setattr__(self, "adaptable_zeros", normalized_zeros)
+        object.__setattr__(self, "fixed_zeros", normalized_fixed)
 
     def entry(self, row: int, col: int):
         if not (0 <= row < self.rows and 0 <= col < self.cols):
@@ -102,10 +109,11 @@ class NumberMatrix:
     cols: int
     magnitudes: tuple[float, ...]
     units: tuple[Any, ...]
-    # Zeros written in the matrix's literal, `[0; 2[1/m]]`, apart from a zero worked out
-    # as a dimensionless number - a rotation a solve found to be 0. Only a written one
-    # takes the unit of the entries beside it (see `entry_quantity`).
-    written_zeros: frozenset = frozenset()
+    # The unitless zeros an operation worked out - a solve, a product, an inverse - apart
+    # from the ones written as `0`, which take the unit of the entries beside them when
+    # one is taken out (see `entry_quantity`). Kept through the operations that only move
+    # entries: a transpose, a part, blocks, a factor.
+    worked_zeros: frozenset = frozenset()
 
     def at(self, row: int, col: int) -> tuple[float, Any]:
         index = row * self.cols + col
@@ -122,6 +130,13 @@ def _same_dimension(left, right) -> bool:
 
 def _unit_text(unit) -> str:
     return f"{unit:~P}" or "no unit"
+
+
+def _unitless_zeros(cols: int, units) -> frozenset:
+    """Every entry an operation left as a zero with no unit: all of them worked out."""
+    return frozenset(
+        divmod(index, cols) for index, unit in enumerate(units) if unit is None
+    )
 
 
 def numbers_of(quantity_matrix: QuantityMatrix) -> NumberMatrix:
@@ -143,7 +158,11 @@ def numbers_of(quantity_matrix: QuantityMatrix) -> NumberMatrix:
         quantity_matrix.cols,
         tuple(magnitudes),
         tuple(units),
-        frozenset(quantity_matrix.adaptable_zeros),
+        frozenset(
+            position
+            for position in quantity_matrix.fixed_zeros
+            if units[position[0] * quantity_matrix.cols + position[1]] is None
+        ),
     )
 
 
@@ -158,13 +177,24 @@ def scalar_numbers(quantity) -> NumberMatrix:
 def quantity_matrix_of(numbers: NumberMatrix, ureg) -> QuantityMatrix:
     entries = []
     zeros = set()
+    fixed = set()
     for index, (magnitude, unit) in enumerate(zip(numbers.magnitudes, numbers.units)):
+        position = divmod(index, numbers.cols)
         if unit is None:
-            zeros.add(divmod(index, numbers.cols))
+            zeros.add(position)
+            if position in numbers.worked_zeros:
+                fixed.add(position)
             entries.append(ureg.Quantity(0, ureg.dimensionless))
         else:
-            entries.append(ureg.Quantity(magnitude, unit))
-    return QuantityMatrix(numbers.rows, numbers.cols, tuple(entries), frozenset(zeros))
+            quantity = ureg.Quantity(magnitude, unit)
+            if magnitude == 0.0 and quantity.dimensionless:
+                # A rotation worked out to be exactly 0: read back, a dimensionless zero
+                # is taken for a written one (`numbers_of`), and this says it is not.
+                fixed.add(position)
+            entries.append(quantity)
+    return QuantityMatrix(
+        numbers.rows, numbers.cols, tuple(entries), frozenset(zeros), frozenset(fixed)
+    )
 
 
 def entry_quantity(numbers: NumberMatrix, row: int, col: int, ureg):
@@ -176,11 +206,11 @@ def entry_quantity(numbers: NumberMatrix, row: int, col: int, ureg):
         # written 0 is a curvature, and `GJ*D[1]/T` read `0.00 m` (his book, Example 7.4).
         # A matrix of several dimensions - a stiffness - leaves its zero a plain 0.
         others = [other for other in numbers.units if other is not None]
-        # Only a zero written in the literal: a rotation a solve found to be exactly 0 is
-        # a number, and lent the vector's metre it read `0.00 m` and stopped the next
-        # line (his book, chapter 9).
+        # Not a zero an operation worked out: a rotation a solve found to be exactly 0 is
+        # a number, and lent the vector's metre it read `0.00 m` and the moment it made
+        # `kN·m²` (his book, chapter 9).
         if (
-            (row, col) in numbers.written_zeros
+            (row, col) not in numbers.worked_zeros
             and others
             and all(_same_dimension(others[0], other) for other in others)
         ):
@@ -215,7 +245,8 @@ def add_numbers(left: NumberMatrix, right: NumberMatrix, sign: int = 1) -> Numbe
             _sum_unit(left.units[index], right.units[index], f"[{row + 1},{col + 1}]")
         )
         magnitudes.append(left.magnitudes[index] + sign * right.magnitudes[index])
-    return NumberMatrix(left.rows, left.cols, tuple(magnitudes), tuple(units))
+    worked = (left.worked_zeros | right.worked_zeros) & _unitless_zeros(left.cols, units)
+    return NumberMatrix(left.rows, left.cols, tuple(magnitudes), tuple(units), worked)
 
 
 def scale_numbers(numbers: NumberMatrix, factor) -> NumberMatrix:
@@ -227,6 +258,7 @@ def scale_numbers(numbers: NumberMatrix, factor) -> NumberMatrix:
         numbers.cols,
         tuple(value * magnitude for value in numbers.magnitudes),
         tuple(None if each is None else each * unit for each in numbers.units),
+        numbers.worked_zeros,
     )
 
 
@@ -261,7 +293,9 @@ def multiply_numbers(left: NumberMatrix, right: NumberMatrix) -> NumberMatrix:
         for col in range(right.cols)
     )
     units = _product_units(left.units, right.units, left.rows, left.cols, right.cols)
-    return NumberMatrix(left.rows, right.cols, magnitudes, tuple(units))
+    return NumberMatrix(
+        left.rows, right.cols, magnitudes, tuple(units), _unitless_zeros(right.cols, units)
+    )
 
 
 def transpose_numbers(numbers: NumberMatrix) -> NumberMatrix:
@@ -275,13 +309,22 @@ def transpose_numbers(numbers: NumberMatrix) -> NumberMatrix:
         numbers.rows,
         tuple(numbers.magnitudes[i] for i in order),
         tuple(numbers.units[i] for i in order),
+        frozenset((col, row) for row, col in numbers.worked_zeros),
     )
 
 
+# What a matrix whose units do not fit has none of, by the operation that found it.
+_MISFIT_CONSEQUENCE = {
+    "det": "so its determinant has no one unit",
+    "eigenvals": "so its eigenvalues have no one unit",
+}
+
+
 def _misfit(operation: str, row: int, col: int) -> EngEvaluationError:
+    consequence = _MISFIT_CONSEQUENCE.get(operation, "so it has no inverse with units")
     return EngEvaluationError(
         f"matrix operation '{operation}': the unit of entry [{row + 1},{col + 1}] does "
-        "not fit the rest of the matrix, so it has no inverse with units"
+        f"not fit the rest of the matrix, {consequence}"
     )
 
 
@@ -379,7 +422,7 @@ def inverse_numbers(numbers: NumberMatrix) -> NumberMatrix:
         for k in range(size)
         for j in range(size)
     )
-    return NumberMatrix(size, size, magnitudes, tuple(units))
+    return NumberMatrix(size, size, magnitudes, tuple(units), _unitless_zeros(size, units))
 
 
 def _a_full_permutation(numbers: NumberMatrix) -> list[int] | None:
@@ -425,15 +468,108 @@ def det_numbers(numbers: NumberMatrix):
     return float(mpmath.det(_mp_matrix(numbers))), unit
 
 
+def _a_cycle(numbers: NumberMatrix) -> list[tuple[int, int]] | None:
+    """Entries [i1,i2], [i2,i3], ... [ik,i1], all nonzero - a closed walk through the
+    matrix, whose product is λ^k in units - or None when there is none, and then every
+    eigenvalue is 0."""
+    size = numbers.rows
+    state = [0] * size  # 0 unseen, 1 on the path, 2 done
+    path: list[int] = []
+
+    def walk(node: int) -> list[tuple[int, int]] | None:
+        state[node] = 1
+        path.append(node)
+        for following in range(size):
+            if numbers.units[node * size + following] is None:
+                continue
+            if state[following] == 1:
+                loop = path[path.index(following):]
+                return [(loop[i], loop[(i + 1) % len(loop)]) for i in range(len(loop))]
+            if state[following] == 0:
+                found = walk(following)
+                if found is not None:
+                    return found
+        path.pop()
+        state[node] = 2
+        return None
+
+    for start in range(size):
+        if state[start] == 0:
+            found = walk(start)
+            if found is not None:
+                return found
+    return None
+
+
+def _eigenvalue_unit(numbers: NumberMatrix):
+    """The unit every eigenvalue has, or None when the matrix has no closed walk and its
+    eigenvalues are all 0.
+
+    A matrix with eigenvalues in a unit is that unit times `s_i / s_k` at [i,k] - a
+    stiffness pencil's `G⁻¹ K` is, with `s` a displacement or a rotation. A diagonal entry
+    says the unit; with none, a closed walk of k entries is its k-th power (`[0, 1; 1, 0]`
+    has λ² = a₁₂ a₂₁: the audit of 0.45.6, where a diagonal of written zeros read as no
+    unit answered [0; 0] for [-1; 1]). Every entry is then checked against it."""
+    size = numbers.rows
+    unit = next(
+        (numbers.units[i * size + i] for i in range(size) if numbers.units[i * size + i] is not None),
+        None,
+    )
+    if unit is None:
+        cycle = _a_cycle(numbers)
+        if cycle is None:
+            return None
+        power = None
+        for row, col in cycle:
+            entry = numbers.units[row * size + col]
+            power = entry if power is None else power * entry
+        exponents = {name: value / len(cycle) for name, value in power._units.items()}
+        if any(abs(value - round(value)) > 1e-9 for value in exponents.values()):
+            raise EngEvaluationError(
+                f"matrix operation 'eigenvals': a walk through {len(cycle)} entries has the "
+                f"unit {_unit_text(power)}, which is no power {len(cycle)} of one unit, so "
+                "its eigenvalues have no one unit"
+            )
+        from pint.util import UnitsContainer
+
+        unit = power._REGISTRY.Unit(
+            UnitsContainer({name: int(round(value)) for name, value in exponents.items() if round(value)})
+        )
+    scale: list[Any] = [None] * size
+    for start in range(size):
+        if scale[start] is not None:
+            continue
+        scale[start] = unit / unit
+        pending = [start]
+        while pending:
+            here = pending.pop()
+            for other in range(size):
+                implied_scales = []
+                forward = numbers.units[here * size + other]
+                if forward is not None:  # [here, other] is unit · s_here / s_other
+                    implied_scales.append((unit * scale[here] / forward, (here, other)))
+                backward = numbers.units[other * size + here]
+                if backward is not None:  # [other, here] is unit · s_other / s_here
+                    implied_scales.append((backward * scale[here] / unit, (other, here)))
+                for implied, where in implied_scales:
+                    if scale[other] is None:
+                        scale[other] = implied
+                        pending.append(other)
+                    elif not _same_dimension(implied, scale[other]):
+                        raise _misfit("eigenvals", *where)
+    return unit
+
+
 def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = None) -> NumberMatrix:
     """The eigenvalues of a matrix of numbers, or of the pencil `K x = λ G x` - the
-    critical load factors of a frame, `eigenvals(K, G)` - as a column, smallest first.
+    critical load factors of a frame, `eigenvals(K, G)` - as a column, smallest first, by
+    value (a negative one before a positive one).
 
     Worked out on `G⁻¹ K` in base units: a stiffness's rows and columns carry forces and
     moments, displacements and rotations, and that product is the same matrix in another
-    basis, whose diagonal carries the eigenvalues' unit. Refused when they are not all real:
-    a stiffness pencil's are (his book, chapter 9, where every critical load had been found
-    by an inverse iteration written by hand)."""
+    basis, in one unit times `s_i / s_k` (see `_eigenvalue_unit`). Refused when they are not
+    all real: a stiffness pencil's are (his book, chapter 9, where every critical load had
+    been found by an inverse iteration written by hand)."""
     import numpy
 
     operation = "eigenvals"
@@ -445,17 +581,22 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
                 f"eigenvals of a {matrix.shape} matrix needs a second matrix of the same size, "
                 f"not {metric.shape}"
             )
-        matrix = multiply_numbers(inverse_numbers(metric), matrix)
-    _inverse_units(matrix, operation)
-    size = matrix.rows
-    diagonal = [matrix.units[i * size + i] for i in range(size) if matrix.units[i * size + i] is not None]
-    unit = diagonal[0] if diagonal else None
-    for other in diagonal[1:]:
-        if not _same_dimension(other, unit):
+        try:
+            inverse = inverse_numbers(metric)
+        except EngEvaluationError as exc:
+            if "singular" not in str(exc):
+                raise
+            # A lumped geometric stiffness or mass often is (the audit of 0.45.6, where the
+            # message sent the reader to K's supports).
             raise EngEvaluationError(
-                "eigenvals needs the entries of its diagonal in one kind of unit: "
-                f"{_unit_text(unit)} and {_unit_text(other)}"
-            )
+                "eigenvals(K, G): the second matrix is singular - it has nothing in some "
+                "direction, whose eigenvalue is infinite; take those degrees of freedom out "
+                "of both matrices"
+            ) from exc
+        matrix = multiply_numbers(inverse, matrix)
+    _inverse_units(matrix, operation)
+    unit = _eigenvalue_unit(matrix)
+    size = matrix.rows
     values = numpy.linalg.eigvals(
         numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
     )
@@ -466,7 +607,8 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
             "stiffness have real ones - check that both matrices are symmetric"
         )
     ordered = sorted(float(value.real) for value in values)
-    return NumberMatrix(size, 1, tuple(ordered), tuple(unit for _ in ordered))
+    units = tuple(unit for _ in ordered)
+    return NumberMatrix(size, 1, tuple(ordered), units, _unitless_zeros(1, units))
 
 
 def solve_numbers(matrix: NumberMatrix, right: NumberMatrix) -> NumberMatrix:
@@ -495,7 +637,9 @@ def solve_numbers(matrix: NumberMatrix, right: NumberMatrix) -> NumberMatrix:
         for row in range(matrix.rows)
         for col in range(right.cols)
     )
-    return NumberMatrix(matrix.rows, right.cols, magnitudes, tuple(units))
+    return NumberMatrix(
+        matrix.rows, right.cols, magnitudes, tuple(units), _unitless_zeros(right.cols, units)
+    )
 
 
 def take_numbers(numbers: NumberMatrix, rows: list[int], cols: list[int]) -> NumberMatrix:
@@ -505,6 +649,12 @@ def take_numbers(numbers: NumberMatrix, rows: list[int], cols: list[int]) -> Num
         len(cols),
         tuple(numbers.magnitudes[i] for i in indices),
         tuple(numbers.units[i] for i in indices),
+        frozenset(
+            (i, j)
+            for i, row in enumerate(rows)
+            for j, col in enumerate(cols)
+            if (row, col) in numbers.worked_zeros
+        ),
     )
 
 
@@ -512,6 +662,7 @@ def blocks_of_numbers(block_rows: list[list[NumberMatrix]]) -> NumberMatrix:
     """`[K_jj, Z; Z, K_jj]`: matrices and numbers put side by side and one under another."""
     magnitudes: list[float] = []
     units: list[Any] = []
+    worked: set[tuple[int, int]] = set()
     width = None
     height = 0
     for blocks in block_rows:
@@ -532,5 +683,9 @@ def blocks_of_numbers(block_rows: list[list[NumberMatrix]]) -> NumberMatrix:
                 start = row * block.cols
                 magnitudes.extend(block.magnitudes[start:start + block.cols])
                 units.extend(block.units[start:start + block.cols])
+        offset = 0
+        for block in blocks:
+            worked.update((height + row, offset + col) for row, col in block.worked_zeros)
+            offset += block.cols
         height += rows
-    return NumberMatrix(height, width, tuple(magnitudes), tuple(units))
+    return NumberMatrix(height, width, tuple(magnitudes), tuple(units), frozenset(worked))

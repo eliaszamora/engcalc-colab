@@ -19,6 +19,7 @@ import time
 
 import numpy as np
 import pytest
+import sympy as sp
 from IPython.display import Math
 
 import engcalc_colab.magic as magic
@@ -78,6 +79,73 @@ def test_eigenvals_of_one_numeric_matrix_and_of_one_that_has_no_real_ones(monkey
     assert "not real" in console and "symmetric" in console, console
 
 
+def test_eigenvals_of_a_matrix_with_nothing_on_its_diagonal(monkeypatch):
+    """The audit of 0.45.6: the eigenvalues' unit was read off the diagonal, and a diagonal
+    of written zeros gave none, so `[0, 1; 1, 0]` answered `[0.00; 0.00]`. The unit is the
+    root of a cycle of entries, λ² = a₁₂ a₂₁; and it is taken from a nonzero entry, not
+    from [1,1]."""
+    page, console = _run(
+        "A := [0, 1; 1, 0]\nv := eigenvals(A)\na_1 := v[1]\na_2 := v[2]\n"
+        "B := [0, 2[kN]; 2[kN], 0]\nw := eigenvals(B)\nb_1 := w[1]\nb_2 := w[2]\n"
+        "C := [0, 2[kN]; 2[kN], 3[kN]]\nz := eigenvals(C)\nc_1 := z[1]\nc_2 := z[2]\n",
+        monkeypatch,
+    )
+    assert not console, console
+    for row in (
+        r"a_{1} & = & v_{1} = -1.00 \\",
+        r"a_{2} & = & v_{2} = 1.00 \\",
+        r"b_{1} & = & w_{1} = -2.00\,\mathrm{kN} \\",
+        r"b_{2} & = & w_{2} = 2.00\,\mathrm{kN} \\",
+        r"c_{1} & = & z_{1} = -1.00\,\mathrm{kN} \\",
+        r"c_{2} & = & z_{2} = 4.00\,\mathrm{kN} \end{array}",
+    ):
+        assert row in page, (row, page)
+
+
+def test_eigenvals_of_a_pencil_whose_second_matrix_has_no_diagonal(monkeypatch):
+    page, console = _run(
+        "k := 1000[kN/m]\nK := [k, 0; 0, k]\nG := [0, 1; 1, 0]\nlam := eigenvals(K, G)\n"
+        "l_1 := lam[1]\nl_2 := lam[2]\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"l_{1} & = & \mathit{lam}_{1} = -1000.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
+    assert r"l_{2} & = & \mathit{lam}_{2} = 1000.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
+
+
+def test_eigenvals_are_in_order_of_value_not_of_size(monkeypatch):
+    page, console = _run("S := [2, 0; 0, -5]\ns := eigenvals(S)\n", monkeypatch)
+    assert not console, console
+    assert r"\left[\begin{matrix}-5.00\\[3pt]2.00\end{matrix}\right]" in page, page
+
+
+def test_eigenvals_and_det_refuse_units_that_do_not_fit(monkeypatch):
+    _, console = _run("M := [1[kN], 0; 0, 1[m]]\nm := eigenvals(M)\n", monkeypatch)
+    assert "eigenvalues" in console and "inverse" not in console, console
+
+    _, console = _run("N := [1[kN], 1[m]; 1[m], 1[kN]]\nn := det(N)\n", monkeypatch)
+    assert "determinant" in console and "inverse" not in console, console
+
+
+def test_the_determinant_keeps_its_sign_and_the_unit_of_a_term(monkeypatch):
+    """`det([0, 2 kN; 2 kN, 0])` is -4 kN²: the unit of the one term that is not zero, the
+    off-diagonal one, and its sign."""
+    page, console = _run("B := [0, 2[kN]; 2[kN], 0]\nD := det(B)\n", monkeypatch)
+    assert not console, console
+    assert r"\operatorname{det}\left(B\right) = -4.00\,\mathrm{kN}^{2}" in page, page
+
+
+def test_eigenvals_of_a_pencil_with_a_singular_second_matrix_says_which(monkeypatch):
+    """A lumped geometric stiffness or mass is often singular; the message blamed the
+    supports, which belong to K."""
+    _, console = _run(
+        "K := [2[kN/m], 0; 0, 3[kN/m]]\nG := [1, 0; 0, 0]\nlam := eigenvals(K, G)\n",
+        monkeypatch,
+    )
+    assert "second matrix" in console and "singular" in console, console
+    assert "supports" not in console, console
+
+
 def test_an_exact_zero_a_solve_found_is_a_number(monkeypatch):
     page, console = _run(
         "k := 1000[kN/m]\nK := [k, 0[kN]; 0[kN], 2*k*1[m^2]]\nF := [10[kN]; 0[kN*m]]\n"
@@ -92,10 +160,61 @@ def test_an_exact_zero_a_solve_found_is_a_number(monkeypatch):
 
 
 def test_a_written_zero_still_takes_the_unit_beside_it(monkeypatch):
-    """What `written_zeros` keeps: Example 7.4's curvature, a `0` written in the literal."""
+    """Example 7.4's curvature, a `0` written in the literal."""
     page, console = _run("z := [0; 2[mm]]\nw := z[1]\n", monkeypatch)
     assert not console, console
     assert r"w & = & z_{1} = 0.00\,\mathrm{m} " in page, page
+
+
+def test_a_written_zero_keeps_its_unit_through_an_operation(monkeypatch):
+    """The audit of 0.45.6: only `numbers_of` knew which zeros were written, so after a
+    `transpose` or a factor on the same line Example 7.4's curvature lost its 1/m and
+    `GJ D_1 / T` read `0.00 m` again."""
+    page, console = _run(
+        "GJ := 10[kN*m^2]\nT := 5[kN*m]\nD := [0; 2[1/m]]\n"
+        "s := GJ*transpose(D)[1]/T\nq := GJ*(2*D)[1]/T\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"\left(D^{T}\right)_{1}}{T} = 0.00 \\" in page, page
+    assert page.rstrip().endswith(r"= 0.00 \end{array}"), page
+    assert r"0.00\,\mathrm{m}" not in page, page
+
+
+@pytest.mark.parametrize("load", ["0[kN*m]", "0"])
+def test_a_zero_a_solve_found_stays_a_number_when_it_is_read_again(load, monkeypatch):
+    """A rotation a solve found to be 0, read on a later line: with the moment written as a
+    plain `0` the solve cannot know its unit, and either way it is not the metre of the
+    displacement beside it (the audit of 0.45.6 found `0.00 m` with `F := [10[kN]; 0]`)."""
+    page, console = _run(
+        "k := 1000[kN/m]\nK := [k, 0; 0, 2*k*1[m^2]]\n"
+        f"F := [10[kN]; {load}]\nd := solve(K, F)\ntheta := d[2]\n"
+        "M := 2*k*1[m^2]*theta\nu := d[1]\n"
+        "t_1 := transpose(d)[2]\nt_2 := (2*d)[2]\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"\theta & = & d_{2} = 0.00 \\" in page, page
+    assert r"M & = & 0.00\,\mathrm{kN} \cdot \mathrm{m} \\" in page, page
+    assert r"u & = & d_{1} = 10.00\,\mathrm{mm}" in page, page
+    # Through an operation that only moves or scales the entries, it is still a number.
+    assert r"\left(d^{T}\right)_{2} = 0.00 \\" in page, page
+    assert page.rstrip().endswith(r"\left(2\,d\right)_{2} = 0.00 \end{array}"), page
+
+
+def test_a_computed_rotation_of_a_frame_keeps_no_unit_once_stored(monkeypatch):
+    """A connected stiffness gives every entry of the solution its unit, a rotation none;
+    stored and read back, a rotation that came out exactly 0 was taken for a written 0 and
+    lent the metre beside it."""
+    page, console = _run(
+        "K := [2000[kN/m], 1000[kN]; 1000[kN], 4000[kN*m]]\nF := [0[kN]; 0[kN*m]]\n"
+        "G := [1000[kN/m], 0[kN]; 0[kN], 1000[kN*m]]\nH := [10[kN]; 0]\n"
+        "d := solve(G, H)\nt := d[2]\nr := 1000[kN*m]*t\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"t & = & d_{2} = 0.00 \\" in page, page
+    assert r"r & = & 0.00\,\mathrm{kN} \cdot \mathrm{m}" in page, page
 
 
 def test_a_placeholder_in_the_condition_of_a_while(monkeypatch):
@@ -109,6 +228,26 @@ def test_a_placeholder_in_the_condition_of_a_while(monkeypatch):
     assert r"s & = & 1.41" in page and r"s & = & 1.73" in page, page
 
 
+def test_a_placeholder_in_a_while_condition_is_read_at_every_pass(monkeypatch):
+    """The audit of 0.45.6: `{k}` was written in once, before the loop, so a counter the
+    body moves never reached the condition - 1000 passes, "does not converge" - where the
+    bare `k`, read at every pass, stops at three."""
+    page, console = _run(
+        "% k = 0\nr := 0\n% while {k} < 3:\nr := r + 1\n% k += 1\n% end\n", monkeypatch
+    )
+    assert not console, console
+    assert r"\textbf{En 3 iteraciones:}" in page and r"r & = & 3.00" in page, page
+
+
+def test_a_placeholder_in_an_if_condition_is_read_as_in_a_while(monkeypatch):
+    page, console = _run(
+        "% for a in [1, 2]:\n% if {a} > 1:\nb_{a} := 10\n% else:\nb_{a} := 20\n% end\n% end\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"b_{1} & = & 20.00" in page and r"b_{2} & = & 10.00" in page, page
+
+
 def test_a_for_holding_a_while_does_not_tabulate_the_value_before_it(monkeypatch):
     page, console = _run(
         "c := 2\n% for a in [1, 2]:\nr := 1\n% while abs(r^2 - c) > 1e-9:\n"
@@ -120,6 +259,18 @@ def test_a_for_holding_a_while_does_not_tabulate_the_value_before_it(monkeypatch
     assert r"s & = & 1.41" in page and r"s & = & 2.83" in page, page
 
 
+def test_a_name_set_again_in_a_later_pass_keeps_its_column(monkeypatch):
+    """The audit of 0.45.6: a `% if` of the second pass sets `r` before that pass's own
+    `r := {a}`. The first pass's `r` was taken for one set again after its line - the
+    block's rows carried no pass - and the whole table went."""
+    page, console = _run(
+        "% for a in [1, 2]:\n% if a > 1:\nr := 7\n% end\nr := {a}\ns := r*2\n% end\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"1 & 1.00 & 2.00" in page and r"2 & 2.00 & 4.00" in page, page
+
+
 def test_a_placeholder_after_a_bracket_or_an_operand_holds_an_operation(monkeypatch):
     page, console = _run(
         "a := 2\n% for i, q in enumerate([\"+ 1\", \"* 2\"], start=1):\n"
@@ -128,6 +279,15 @@ def test_a_placeholder_after_a_bracket_or_an_operand_holds_an_operation(monkeypa
     )
     assert not console, console
     assert r"& 5.00 & 3.00" in page and r"& 8.00 & 4.00" in page, page
+
+    page, console = _run(
+        "v := [1; 2]\n% for i, q in enumerate([\"+ 1\", \"* 3\"], start=1):\n"
+        "w_{i} := v[1]{q}\n% end\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"w_{1} & = & v_{1} + 1 = 2.00" in page, page
+    assert r"w_{2} & = & v_{1} \cdot 3 = 3.00" in page, page
 
 
 def test_the_limit_point_of_example_9_1(monkeypatch):
@@ -149,6 +309,99 @@ def test_the_limit_point_of_example_9_1(monkeypatch):
     assert elapsed < 90.0, elapsed
 
 
+_EXAMPLE_9_1 = (
+    "E := 200000[MPa]\nA_ab := 2[mm^2]\nL := 4[m]\nalpha := 0.05\n"
+    "L_a(phi) = L*sqrt((1 + sin(phi))^2 + (1 - cos(phi))^2)\n"
+    "N_a(phi) = E*A_ab*(L_a(phi) - L)/L\n"
+    "P_e(phi) = L*N_a(phi)*(sin(phi) + cos(phi))/(L_a(phi)*(sin(phi) + alpha*cos(phi)))\n"
+)
+
+
+@pytest.mark.parametrize(
+    "sheet",
+    [
+        "P := 10[kN]\nF(t) = P/sin(t)\nextrema(F(t), t, 0[deg], 180[deg])\n",
+        "extrema(1/sin(x), x, 3, 4)\n",
+        "extrema(1/sin(x) + x, x, 6, 6.5)\n",
+        "extrema(1/sin(x), x, 6, 6.5)\n",
+        "extrema(1/sin(x), x, -3.5, -3)\n",
+    ],
+)
+def test_extrema_with_a_pole_in_its_range_is_refused_not_invented(sheet, monkeypatch):
+    """The audit of 0.45.6: once a periodic family of singularities was let through, a pole
+    inside the range left the slope's numeric search to call hundreds of points of a curve
+    that runs to infinity its minima (`P/sin t` on 0°-180°: 815 rows of "global min"). A
+    family proves only that the range holds none of its members; one inside, at n = 0 or
+    n = 1 or n = 2, is refused as before."""
+    page, console = _run(sheet, monkeypatch)
+    assert "could not resolve" in console or "could not validate" in console, console
+    assert "global min" not in page and "local max" not in page, page[:2000]
+
+
+def test_a_short_trigonometric_root_keeps_its_exact_answers(monkeypatch):
+    """The audit of 0.45.6: every sine under a root was taken from SymPy, and answers it
+    gives at once in closed form - `x = π`, `asin(1/4)`, `-π/4` - came back as numbers.
+    Only a long one, where `solveset` does not return, is left to the numeric search."""
+    page, console = _run(
+        "roots(sqrt(1+sin(x))-1, x, 0, 4)\nroots(sqrt(sin(x))-1/2, x, 0, 3)\n"
+        "extrema(1/sqrt(3+2*sin(x)-2*cos(x)), x, -1, -0.5)\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"x = \pi\,\left(3.14\right)" in page, page
+    assert r"x = \operatorname{asin}{\left(\dfrac{1}{4} \right)}\,\left(0.25\right)" in page, page
+    assert r"x = - \dfrac{\pi}{4}\,\left(-0.79\right)" in page, page
+
+
+def test_a_longer_trigonometric_root_is_found_in_numbers(monkeypatch):
+    """Twenty-two operations in the slope: SymPy took 30 s on it and then gave the search
+    nothing it could validate. In numbers, at once."""
+    started = time.perf_counter()
+    page, console = _run(
+        "extrema((sin(x) + cos(x))/sqrt(3 + 2*sin(x) - 2*cos(x)), x, -0.5, 0.5)\n", monkeypatch
+    )
+    elapsed = time.perf_counter() - started
+    assert not console, console
+    assert r"\approx" in page and "global max" in page, page
+    assert elapsed < 20.0, elapsed
+
+
+def test_extrema_beside_a_pole_just_outside_its_range(monkeypatch):
+    """`1/sin x` on 0.5-3.1: π lies 0.04 past the end, and the minimum is 1 at π/2."""
+    page, console = _run("extrema(1/sin(x), x, 0.5, 3.1)\n", monkeypatch)
+    assert not console, console
+    assert r"\text{value} = 1" in page and "global min" in page, page
+
+
+def test_one_over_the_length_of_example_9_1_still_answers(monkeypatch):
+    """A guard: `1/L_a` on 5-6 answered on main, where the sheet's expression reaches no
+    family of singularities, and still does. (The family itself, 2nπ - π/4 ± i·0.35 with
+    its real part at 5.50, is exercised by `test_example_9_1_past_a_complex_family_of_its_bar`;
+    a mutant that keeps complex families inside the range survived this one.)"""
+    page, console = _run(_EXAMPLE_9_1 + "extrema(1/L_a(phi), phi, 5, 6)\n", monkeypatch)
+    assert not console, console
+    assert "global max" in page and "global min" in page, page
+
+
+def test_example_9_1_past_a_complex_family_of_its_bar(monkeypatch):
+    """On 5-6 the load has a stationary point at 5.22, and the zeros of its bar's length,
+    2π - π/4 ± i·0.35, have their real part at 5.50, inside: a family that is not real is
+    no singularity there. The real pole, where `sin φ + α cos φ` vanishes, is at 6.23."""
+    page, console = _run(_EXAMPLE_9_1 + "extrema(P_e(phi), phi, 5, 6)\n", monkeypatch)
+    assert not console, console
+    assert r"\phi \approx 5.22" in page and r"-162.48\,\mathrm{kN}" in page, page
+
+
+def test_the_limit_point_of_example_9_1_in_degrees(monkeypatch):
+    """The family `nπ - 0.05` read in the range's own unit: in radians its members 15.65
+    and 18.80 would fall between 17.2 and 34.4 and refuse a range that holds none."""
+    page, console = _run(
+        _EXAMPLE_9_1 + "extrema(P_e(phi), phi, 17.2[deg], 34.4[deg])\n", monkeypatch
+    )
+    assert not console, console
+    assert r"339.21\,\mathrm{kN}" in page and "local max, global max" in page, page
+
+
 @pytest.mark.parametrize(
     "sheet",
     [
@@ -163,6 +416,31 @@ def test_a_range_solve_says_its_units_do_not_fit(sheet, monkeypatch):
     assert "no root" not in console, console
 
 
+def test_a_range_solve_whose_range_has_no_unit_says_so(monkeypatch):
+    _, console = _run("k := 3[kN/m]\nx_1 := solve(eq(k*x, 6[kN]), x, 0, 5)\n", monkeypatch)
+    assert "the range has no unit" in console and "0[m]" in console, console
+
+
+@pytest.mark.parametrize(
+    "equation",
+    ["eq(k/x + 1[kN], 6)", "eq(k*sqrt(x - 1), 6[kN])", "eq(k/(x - 2.5) + 1[kN], 6)"],
+)
+def test_a_pole_in_the_range_does_not_hide_units_that_do_not_fit(equation, monkeypatch):
+    """The audit of 0.45.6: one sample with no value - a pole at 0, a root of a negative
+    number - and every other one refused for its units brought back "no root"."""
+    _, console = _run(f"k := 3[kN/m]\nx_1 := solve({equation}, x, 0, 5)\n", monkeypatch)
+    assert "incompatible units" in console and "no root" not in console, console
+
+
+def test_a_range_in_degrees_is_not_said_to_have_no_unit(monkeypatch):
+    """A degree is a number to Pint; the range was written with a unit all the same."""
+    _, console = _run(
+        "k := 3[kN/m]\nx_1 := solve(eq(k*x, 6[kN]), x, 0[deg], 90[deg])\n", monkeypatch
+    )
+    assert "incompatible units" in console, console
+    assert "has no unit" not in console, console
+
+
 def test_a_range_solve_with_fitting_units_still_answers(monkeypatch):
     page, console = _run("k := 3[kN/m]\nx_1 := solve(eq(k*x, 6[kN]), x, 0[m], 5[m])\n", monkeypatch)
     assert not console, console
@@ -170,3 +448,21 @@ def test_a_range_solve_with_fitting_units_still_answers(monkeypatch):
 
     _, console = _run("x_1 := solve(eq(x^2 + 1, 0), x, 0, 5)\n", monkeypatch)
     assert "no root" in console, console
+
+
+def test_a_family_whose_members_are_not_real_holds_no_singularity():
+    """`_no_singularity_in_domain` on families written directly: 2nπ - π/4 + 0.35 i has its
+    real part 5.50 inside 5-6 and no member on the real line; 2nπ - π/4 is real there."""
+    from engcalc_colab.characteristics import normalize_analysis_domain
+    from engcalc_colab.characteristics.extrema import _no_singularity_in_domain
+    from engcalc_colab.numeric import NumericContext
+
+    context = NumericContext()
+    n = sp.Symbol("n", integer=True)
+    domain = normalize_analysis_domain(context, sp.Integer(5), sp.Integer(6))
+    complex_family = sp.ImageSet(sp.Lambda(n, 2 * n * sp.pi - sp.pi / 4 + sp.I * sp.Rational(35, 100)), sp.S.Integers)
+    real_family = sp.ImageSet(sp.Lambda(n, 2 * n * sp.pi - sp.pi / 4), sp.S.Integers)
+    assert _no_singularity_in_domain(complex_family, domain, context, None) is True
+    assert _no_singularity_in_domain(real_family, domain, context, None) is False
+    outside = normalize_analysis_domain(context, sp.Integer(1), sp.Integer(5))
+    assert _no_singularity_in_domain(real_family, outside, context, None) is True

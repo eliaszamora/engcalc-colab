@@ -481,57 +481,67 @@ def _constant_extrema_interval(
     )
 
 
-def _periodic_singularities_in_domain(
-    singular_set, domain: AnalysisDomain, context, overrides
-) -> list[sp.Expr] | None:
-    """The members inside the domain of singularities that repeat - `2nπ + c` for every
-    integer n, the zeros of `sin φ + α cos φ` - or None when the set is of another kind.
+def _no_singularity_in_domain(singular_set, domain: AnalysisDomain, context, overrides) -> bool:
+    """Whether singularities SymPy writes as families that repeat - `2nπ + c` for every
+    integer n, the zeros of `sin φ + α cos φ` - have no real member in the domain, its ends
+    included.
 
-    A family whose `c` is not real has no member on the real line: `acos(3√2/4)` in the
-    zeros of `sqrt(3 + 2 sin φ - 2 cos φ)`, a length that never vanishes (his book,
-    Example 9.1, whose extrema was refused for these sets)."""
+    That is all a family is let to prove. A member inside leaves the analysis unresolved,
+    as any set that is not finite did before: let through, a pole of `P/sin t` had the
+    slope's numeric search call hundreds of points of a curve that runs to infinity its
+    minima (the audit of 0.45.6). A family whose `c` is not real has no member on the real
+    line: `acos(3√2/4)` in the zeros of `sqrt(3 + 2 sin φ - 2 cos φ)`, a length that never
+    vanishes (his book, Example 9.1, whose extrema was refused for these sets)."""
     families = singular_set.args if isinstance(singular_set, sp.Union) else (singular_set,)
     lower = float(domain.lower_quantity.to(domain.unit).magnitude)
     upper = float(domain.upper_quantity.to(domain.unit).magnitude)
-    members: list[sp.Expr] = []
+    tolerance = 1e-9 * max(1.0, abs(lower), abs(upper), abs(upper - lower))
+
+    def inside(value: complex) -> bool:
+        return lower - tolerance <= value.real <= upper + tolerance
+
     for family in families:
         if isinstance(family, sp.Intersection) and sp.S.Reals in family.args:
-            # The real members of a family: a member whose value is not real is dropped
-            # below in any case.
+            # Its real members: one whose value is not real is passed over below anyway.
             rest = [each for each in family.args if each is not sp.S.Reals]
             family = rest[0] if len(rest) == 1 else family
         if isinstance(family, sp.FiniteSet):
-            members.extend(family)
+            for member in family:
+                try:
+                    value = _family_member(member, domain, context, overrides)
+                except (EngEvaluationError, TypeError, ValueError):
+                    return False
+                if abs(value.imag) <= tolerance and inside(value):
+                    return False
             continue
         if not (
             isinstance(family, sp.ImageSet)
             and family.base_sets == (sp.S.Integers,)
             and len(family.lamda.variables) == 1
         ):
-            return None
+            return False
         index = family.lamda.variables[0]
         member = family.lamda.expr
         step = sp.diff(member, index)
         if index in step.free_symbols:
-            return None
+            return False
         try:
             first = _family_member(member.subs(index, 0), domain, context, overrides)
             period = _family_member(step, domain, context, overrides)
         except (EngEvaluationError, TypeError, ValueError):
-            return None
-        scale = max(1.0, abs(first), abs(period.real), abs(upper - lower))
+            return False
+        scale = max(1.0, abs(first), abs(period), abs(upper - lower))
         if abs(first.imag) > 1e-9 * scale:
             continue
         if abs(period.imag) > 1e-9 * scale or period.real == 0.0:
-            return None
+            return False
         ends = sorted(((lower - first.real) / period.real, (upper - first.real) / period.real))
         if ends[1] - ends[0] > 1000:
-            return None
+            return False
         for count in range(math.floor(ends[0]) - 1, math.ceil(ends[1]) + 2):
-            candidate = first.real + count * period.real
-            if lower - 1e-9 * scale <= candidate <= upper + 1e-9 * scale:
-                members.append(member.subs(index, count))
-    return members
+            if inside(complex(first.real + count * period.real)):
+                return False
+    return True
 
 
 def _family_member(expression: sp.Expr, domain: AnalysisDomain, context, overrides) -> complex:
@@ -572,10 +582,9 @@ def _continuous_unbounded_directions(
     if singular_set is sp.S.EmptySet:
         return False, False, False
     if not isinstance(singular_set, sp.FiniteSet):
-        members = _periodic_singularities_in_domain(singular_set, domain, context, overrides)
-        if members is None:
-            return False, False, True
-        singular_set = sp.FiniteSet(*members)
+        return False, False, not _no_singularity_in_domain(
+            singular_set, domain, context, overrides
+        )
 
     unbounded_above = False
     unbounded_below = False

@@ -386,6 +386,16 @@ def _parse_stretch(stretch: _Stretch, insert=None):
     ]
 
 
+def _with_placeholders(text: str, line_no: int, scope: _Scope) -> str:
+    """A condition with the values of the % lines written in, as a line of the body writes
+    them: `% while abs(r^2 - {a}) > 1e-9` read `{2}` as a set (his book, chapter 9). Done
+    each time the condition is decided, as its bare names are read: written in once, a
+    counter the body moves never reached it (the audit of 0.45.6)."""
+    return re.sub(
+        r"\{([^{}]+)\}", lambda match: _inserted(match.group(1), line_no, scope), text
+    )
+
+
 def _condition_tree(text: str, line_no: int) -> ast.AST:
     try:
         tree = ast.parse(normalize_expression(text), mode="eval").body
@@ -474,7 +484,8 @@ def _choose(node: _IfBlock, engine, settings, scope: _Scope) -> Iterator:
         if branch.condition is None:
             chosen = branch
             break
-        tree = _in_scope(_condition_tree(branch.condition, branch.line_no), scope)
+        condition = _with_placeholders(branch.condition, branch.line_no, scope)
+        tree = _in_scope(_condition_tree(condition, branch.line_no), scope)
         verdict, stated = _decide(tree, branch.line_no, engine, settings)
         if verdict:
             chosen = branch
@@ -588,7 +599,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
                 )
                 for item in items:
                     if _shown_as_it_comes(item):
-                        kept.append(_Kept("shown", item=item))
+                        kept.append(_Kept("shown", item=item, index=index))
                         continue
                     result = engine.evaluate(item)
                     notices = tuple(engine.notices)
@@ -919,18 +930,11 @@ def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:
     What the page gets is a sentence - how many iterations, and the condition as it stands
     now, which no longer holds - and then the rows of the last iteration.
     """
-    # The values of an enclosing `% for` written in, as a line of the body writes them:
-    # `% while abs(r^2 - {a}) > 1e-9` read `{2}` as a set (his book, chapter 9).
-    condition = re.sub(
-        r"\{([^{}]+)\}",
-        lambda match: _inserted(match.group(1), node.line_no, scope),
-        node.condition,
-    )
-    tree = _condition_tree(condition, node.line_no)
     count = 0
     last: list = []
     while True:
-        current = _in_scope(tree, scope)
+        condition = _with_placeholders(node.condition, node.line_no, scope)
+        current = _in_scope(_condition_tree(condition, node.line_no), scope)
         holds, _said = _decide(current, node.line_no, engine, settings)
         if not holds:
             break
@@ -1333,8 +1337,8 @@ def _table_columns(kept: list) -> list:
         if entry.kind != "cell" or target(entry) is None:
             continue
         for later in kept[position + 1:]:
-            if later.kind == "cell" and later.index != entry.index:
-                break  # the next pass
+            if later.index != entry.index:
+                break  # the next pass, whatever showed it first
             if later.key != entry.key and target(later) == target(entry):
                 written_twice.add(entry.key[0])
                 break
