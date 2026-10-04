@@ -481,6 +481,81 @@ def _constant_extrema_interval(
     )
 
 
+def _periodic_singularities_in_domain(
+    singular_set, domain: AnalysisDomain, context, overrides
+) -> list[sp.Expr] | None:
+    """The members inside the domain of singularities that repeat - `2nπ + c` for every
+    integer n, the zeros of `sin φ + α cos φ` - or None when the set is of another kind.
+
+    A family whose `c` is not real has no member on the real line: `acos(3√2/4)` in the
+    zeros of `sqrt(3 + 2 sin φ - 2 cos φ)`, a length that never vanishes (his book,
+    Example 9.1, whose extrema was refused for these sets)."""
+    families = singular_set.args if isinstance(singular_set, sp.Union) else (singular_set,)
+    lower = float(domain.lower_quantity.to(domain.unit).magnitude)
+    upper = float(domain.upper_quantity.to(domain.unit).magnitude)
+    members: list[sp.Expr] = []
+    for family in families:
+        if isinstance(family, sp.Intersection) and sp.S.Reals in family.args:
+            # The real members of a family: a member whose value is not real is dropped
+            # below in any case.
+            rest = [each for each in family.args if each is not sp.S.Reals]
+            family = rest[0] if len(rest) == 1 else family
+        if isinstance(family, sp.FiniteSet):
+            members.extend(family)
+            continue
+        if not (
+            isinstance(family, sp.ImageSet)
+            and family.base_sets == (sp.S.Integers,)
+            and len(family.lamda.variables) == 1
+        ):
+            return None
+        index = family.lamda.variables[0]
+        member = family.lamda.expr
+        step = sp.diff(member, index)
+        if index in step.free_symbols:
+            return None
+        try:
+            first = _family_member(member.subs(index, 0), domain, context, overrides)
+            period = _family_member(step, domain, context, overrides)
+        except (EngEvaluationError, TypeError, ValueError):
+            return None
+        scale = max(1.0, abs(first), abs(period.real), abs(upper - lower))
+        if abs(first.imag) > 1e-9 * scale:
+            continue
+        if abs(period.imag) > 1e-9 * scale or period.real == 0.0:
+            return None
+        ends = sorted(((lower - first.real) / period.real, (upper - first.real) / period.real))
+        if ends[1] - ends[0] > 1000:
+            return None
+        for count in range(math.floor(ends[0]) - 1, math.ceil(ends[1]) + 2):
+            candidate = first.real + count * period.real
+            if lower - 1e-9 * scale <= candidate <= upper + 1e-9 * scale:
+                members.append(member.subs(index, count))
+    return members
+
+
+def _family_member(expression: sp.Expr, domain: AnalysisDomain, context, overrides) -> complex:
+    """One member as a complex number in the domain's unit. Worked out here and not by the
+    context, which takes only real values: a real member comes out of `arg` and `log` of
+    complex numbers. Its names are numbers - an angle's family is written in ratios like
+    `α` - and a family holding a name with a unit is left unresolved."""
+    expression = context._resolve_symbolic_names(sp.sympify(expression))
+    values = {**context.values, **dict(overrides or {})}
+    substitutions = {}
+    for symbol in expression.free_symbols:
+        value = values.get(symbol.name)
+        if value is None:
+            raise EngEvaluationError(f"no value for {symbol.name}")
+        if hasattr(value, "dimensionless"):
+            if not value.dimensionless:
+                raise EngEvaluationError(f"{symbol.name} has a unit")
+            value = value.to("").magnitude
+        substitutions[symbol] = sp.Float(float(value), 30)
+    number = complex(sp.N(expression.subs(substitutions), 20))
+    to_domain = float(context.ureg.Quantity(1.0).to(domain.unit).magnitude)
+    return number * to_domain
+
+
 def _continuous_unbounded_directions(
     expression: sp.Expr,
     variable: sp.Symbol,
@@ -497,7 +572,10 @@ def _continuous_unbounded_directions(
     if singular_set is sp.S.EmptySet:
         return False, False, False
     if not isinstance(singular_set, sp.FiniteSet):
-        return False, False, True
+        members = _periodic_singularities_in_domain(singular_set, domain, context, overrides)
+        if members is None:
+            return False, False, True
+        singular_set = sp.FiniteSet(*members)
 
     unbounded_above = False
     unbounded_below = False

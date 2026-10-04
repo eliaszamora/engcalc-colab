@@ -8,14 +8,14 @@
 
 ## Where things stand today
 
-_2026-09-30._
+_2026-10-04._
 
 | | |
 |---|---|
 | released | **0.45.5** - #393, `83ae814`, closed |
 | before that | **0.45.4** - #392, `dddd38b`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3598 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes, pushed, awaiting audit); the fold branch held |
+| default suite | **3611 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2282,26 +2282,44 @@ cell 3, 2026-10-02): `engcalc 0.45.5`, `t_1 = 6.31°` and `sin = 0.11`, `f|_{t=t
 quadrature integral 3.96 m³, a 12 x 12 `:=` assembly in a `% for`; screenshots sent.
 `Capitulo_09.ipynb` in his Drive and Documents (every cell runs on 0.45.5).
 
-**Chapter 9 fixes in progress — branch `feat/numeric-eigenvalues` (WIP, pushed 2026-10-04,
-no PR).** A session ran out of credits mid-work; its uncommitted changes were saved as one
-WIP commit. **No contracts were written yet (not TDD'd)**. In it: `det`/`eigenvals(K, G)` on
-`:=` numeric matrices (`matrix_numeric.det_numbers`, `eigenvalues_of_numbers`; reported
-2485.96 kN matching NumPy, not re-checked); `NumberMatrix.written_zeros` so only a written 0
-takes the vector's unit (solve's exact 0 no longer reads `0.00 m`); `{a}` substituted in a
-`% while` condition; a placeholder after `)`/an operand becomes ` + 1` when parsed; a `% for`
-table drops a column a nested `% while` reassigns; `eigenvals`/`eigenvects`/`transpose`/`inv`
-written as operators; `extrema` hang (skip `solveset` on long transcendental expressions,
-and fallback returns no root when one sign spans the domain). **Suite on that tree: 3588
-pass, 10 fail** — all 10 come from the two `characteristics/` files (with them at `main`
-the 68 affected tests pass): `_TRANSCENDENTAL` includes `sp.Pow`, so float polynomials skip
-`solveset` (near-double-root guards), and the one-sign rule returns `[]` where
-`test_unresolved_region_without_validated_root_raises_instead_of_guessing` expects a raise.
-Not started: a range `solve` saying "incompatible units" instead of "no root".
+### Chapter 9's top findings, fixed (branch `feat/numeric-eigenvalues`, pushed, no PR, not released)
 
-**Exact next step:** on `feat/numeric-eigenvalues`: narrow the extrema fix until the 10 pass,
-write RED contracts for each fix above, then the range-solve units message; then his pick
-among the rest of chapter 9's findings; chapter 10
-(PDF 290-).
+His "sí, sigue con eso" (2026-10-04) to: make the extrema fix pass the suite, contracts for
+each fix, then the range-solve units message. A session that ran out of credits left the
+fixes uncommitted with no contracts; saved as WIP `d33548f`, then finished:
+- `det(K)` and `eigenvals(K)` / `eigenvals(K, G)` (pencil `K x = λ G x`, smallest first, via
+  `G⁻¹K` in base units, refused when not all real) on `:=` numeric matrices
+  (`matrix_numeric.det_numbers`, `eigenvalues_of_numbers`): the one-element cantilever
+  `eigenvals(K, -G)` = 2485.96 kN = NumPy; `det(K)` = 1.20e7 kN².
+- `NumberMatrix.written_zeros`: only a `0` written in the literal takes the unit beside it;
+  a solve's exact 0 rotation reads `0.00` (was `0.00 m`, and `M` read `kN·m²`).
+- `{a}` substituted in a `% while` condition; a placeholder after `)` or an operand parses
+  as ` + 1` (`(2*a){q}`); a `% for` table drops a column a later line of the same pass
+  reassigns (the `% while` inside it).
+- `extrema` of Example 9.1's load: **the WIP's fix did not work on the notebook's form**
+  (it required the variable to be the only symbol; `E`, `A_ab`, `alpha` are names). Now
+  `candidates._a_trigonometric_radical` (a trig function of the variable under a
+  non-integer power) skips `solveset`, and `extrema._periodic_singularities_in_domain`
+  enumerates `ImageSet` singularity families inside the domain (complex families dropped)
+  instead of calling them unresolved. `extrema(P_e(phi), phi, 0.3, 0.6)` answers φ ≈ 0.44,
+  339.21 kN (book 340) in ~20 s; main hangs. The WIP's "one sign = no root" fallback rule was
+  **dropped**: it contradicted the 0.9.x contract that an unvalidated region raises. So a
+  *monotonic* range of such an expression still refuses ("could not validate"), as do
+  poles inside the domain whose family carries float noise (`1/(sin φ + α cos φ)`).
+- A range `solve` whose every sample fails "incompatible units" says so (with a hint to
+  write the range's unit when it has none), not "no root".
+
+Contracts `tests/test_what_chapter_9_found.py` (13): 10 RED on main, the extrema one hangs
+there, 2 guards pass on both. Suite 3611 (SymPy 1.14) and 3611 on 1.13.3 (temporary
+Colab-pinned venv). Corpus: 238 sheets (hojas_ch02-09 + tools/*.eng) rendered on main and
+the branch: 7 differ, all chapter 9 tables losing a pre-while column (kept columns
+identical); 3 chapter 7 pages differ by SymPy nondeterminism (main alternates by itself).
+Not audited by a separate auditor yet. Presentation seen, not changed: a loop label shows
+the value `"+ 1"` as `1`.
+
+**Exact next step:** an independent audit of `feat/numeric-eigenvalues`, then his yes for a
+PR/release (0.45.6); then his pick among the rest of chapter 9's findings (pound-force, kip
+palette, presentation list above); chapter 10 (PDF 290-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

@@ -90,8 +90,17 @@ def closed_form_factors(expression, variable: sp.Symbol):
     return (tuple(solvable), missing) if missing else (None, None)
 
 
-# Functions whose zero sets `solveset` can spend minutes on.
-_TRANSCENDENTAL = (sp.sin, sp.cos, sp.tan, sp.exp, sp.log, sp.Pow)
+def _a_trigonometric_radical(expression: sp.Expr, variable: sp.Symbol) -> bool:
+    """A sine or a cosine of the variable under a root - `sqrt(3 + 2 sin x - 2 cos x)`, the
+    length of a bar that turns. `solveset` rewrites the trigonometry as exponentials,
+    squares the radical away and hands a polynomial of high degree to the quartic formulas,
+    and does not come back."""
+    trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
+    return any(
+        not power.exp.is_integer
+        and any(variable in node.free_symbols for node in power.base.atoms(trigonometric))
+        for power in expression.atoms(sp.Pow)
+    )
 
 
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
@@ -109,15 +118,10 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         for factor in solvable:
             candidates.extend(_exact_real_solution_set(factor, variable).candidates)
         return _ExactDiscovery(tuple(candidates), complete=False)
-    if (
-        expression.free_symbols == {variable}
-        and expression.has(*_TRANSCENDENTAL)
-        and (expression.has(sp.Float) or sp.count_ops(expression) > 40)
-    ):
-        # Numbers and the variable only, through sines and roots: `solveset` of the slope of
-        # `(sin x + cos x)/(sin x + 0.05 cos x) (1 - 1/sqrt(3 + 2 sin x - 2 cos x))` never
-        # returned (his book, Example 9.1), and every point it could give is a number the
-        # numeric search finds.
+    if _a_trigonometric_radical(expression, variable):
+        # The slope of the load of Example 9.1 in his book, `L N_a(φ) (sin φ + cos φ) /
+        # (L_a(φ) (sin φ + α cos φ))`, never returned. Every point it could give is a
+        # number, and the numeric search finds it.
         return _ExactDiscovery((), complete=False)
     equation = sp.Eq(expression, 0)
     try:

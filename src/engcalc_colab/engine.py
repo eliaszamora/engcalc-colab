@@ -4719,6 +4719,8 @@ class _Evaluator(ast.NodeVisitor):
             )
             return float(result.to_base_units().magnitude) if hasattr(result, "units") else float(result)
 
+        refusals: set[str] = set()
+
         def value_or_nothing(x: float) -> float:
             # A point the equation has no value at - a pole - is no root and no sample.
             try:
@@ -4726,6 +4728,7 @@ class _Evaluator(ast.NodeVisitor):
             except EngEvaluationError as exc:
                 if "requires values for" in str(exc):
                     raise
+                refusals.add(str(exc))
                 return math.nan
 
         try:
@@ -4733,6 +4736,21 @@ class _Evaluator(ast.NodeVisitor):
             values = [value_or_nothing(x) for x in samples]
         except EngCalcError:
             return None
+        if refusals == {"incompatible units"} and not any(map(math.isfinite, values)):
+            # Not one point of the range gave the equation a value: its two sides, or two
+            # of its terms, are of different kinds there - `k x = 6 kN` with `x` a number.
+            # That is what to say, not that there is no root (his book, chapter 9).
+            bounds = f"between {_said_quantity(lower)} and {_said_quantity(upper)}"
+            hint = (
+                f"; the range has no unit - if {unknown_name} has one, write it in the "
+                "bounds, as in 0[m]"
+                if quantity(1.0, unit).dimensionless
+                else ""
+            )
+            raise EngEvaluationError(
+                f"solve: incompatible units in the equation for {unknown_name} {bounds}"
+                + hint
+            )
         scale = max((abs(v) for v in values if math.isfinite(v)), default=0.0) or 1.0
         roots: list[float] = []
         for (x0, v0), (x1, v1) in zip(zip(samples, values), zip(samples[1:], values[1:])):
