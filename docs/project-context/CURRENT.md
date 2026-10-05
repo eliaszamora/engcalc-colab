@@ -2424,7 +2424,7 @@ written `1000000000000.0` (the chapter 9 presentation item "1e8[mm^4] written 10
 - **`U^-1`, `U^2` on `:=` lines**: `engine._MatrixNumbers._binary` - whole nonzero powers by
   `inverse_numbers` and repeated `multiply_numbers`; a fractional power refused.
 - **First audit (subagent, at `26749b0`): NOT CLEAN.** Blocker: a split line in a gathering
-  `% for` wrote its rule as its first physical line (`	exttt{f\_\{i\} := (k\_\{i\}*}`) -
+  `% for` wrote its rule as its first physical line, cut off (raw `f_{i} := (k_{i}*`) -
   `control._parse_stretch` recorded the written form per line. Also: `U'^-1`, `inv(U)^2`,
   `U''` wrote `U^{T}^{-1}` (KaTeX double superscript, the whole block red); `U^n` hung for
   n = 1e9 and overflowed for `[2,1;1,2]^1000`; a trailing `#` comment on a continued line
@@ -2432,7 +2432,8 @@ written `1000000000000.0` (the chapter 9 presentation item "1e8[mm^4] written 10
   survived. Fixed: `_parse_stretch` joins a statement's lines first (`continued_lines`,
   matrix literals left to the parser) and leaves `#` lines so the numbering holds;
   `without_comment` on joined lines; `renderer._superscript_base` puts a power or
-  inv/transpose in `\left(...ight)` before another superscript; powers by squaring,
+  inv/transpose in `\left(...
+ight)` before another superscript; powers by squaring,
   |n| <= 1000, a non-finite result refused. Contracts for each finding and for the
   survivors (T_1', d[...]', T'', U^0, U^(2[m]), each stop).
 - Contracts `tests/test_multiline_and_transpose.py` (28; the 6 fixes RED on `26749b0`).
