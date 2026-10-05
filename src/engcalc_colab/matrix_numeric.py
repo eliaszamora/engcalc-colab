@@ -626,8 +626,11 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
     values = numpy.linalg.eigvals(
         numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
     )
+    # Each eigenvalue by its own size, above the round-off of the whole spectrum: judged
+    # by the largest, ±i beside 1e12 passed as two real zeros (the review of #395).
     scale = max((abs(value) for value in values), default=0.0) or 1.0
-    if any(abs(value.imag) > 1e-9 * scale for value in values):
+    floor = 1e-13 * scale
+    if any(abs(value.imag) > 1e-9 * abs(value) + floor for value in values):
         raise EngEvaluationError(
             "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
             "stiffness have real ones - check that both matrices are symmetric"

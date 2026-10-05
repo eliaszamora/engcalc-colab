@@ -614,3 +614,15 @@ def test_a_zero_on_the_diagonal_gets_no_unit_by_work(monkeypatch):
     )
     assert not console, console
     assert "t & = & d_{2} = 0.00" in page, page[-300:]
+
+
+def test_a_complex_pair_beside_a_large_eigenvalue_is_refused(monkeypatch):
+    """The Codex review of #395: the tolerance on the imaginary part was the largest
+    eigenvalue's, so ±i beside 1e12 passed as two real zeros. Each is judged by its own size,
+    above a floor of round-off on the whole spectrum."""
+    _, console = _run("A := [0, -1, 0; 1, 0, 0; 0, 0, 1e12]\nv := eigenvals(A)\n", monkeypatch)
+    assert "not real" in console, console
+
+    page, console = _run("C := [2, 1, 0; 1, 2, 0; 0, 0, 1e12]\nw := eigenvals(C)\n", monkeypatch)
+    assert not console, console
+    assert r"1.00" in page and r"3.00" in page, page
