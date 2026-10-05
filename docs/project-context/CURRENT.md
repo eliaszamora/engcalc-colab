@@ -2444,8 +2444,14 @@ ight)` before another superscript; powers by squaring,
   on continued lines in a loop and on a middle line, quotes holding `#` and `(` on a split
   line) now killed by 5 more contracts: 33 in the file, suite 3693.
 
-**Exact next step:** his yes to
-release (version bump, wheel, smoke, PR, CI, merge, check in his Colab via Chrome). Then (done in 0.46.0 above): (1) an expression or call split over lines inside parentheses or
+**0.46.0 release evidence (tree `5a789cc`, his "Sí, publica la 0.46.0"):** the seven
+version assertions RED then GREEN; suite 3693 twice (SymPy 1.14) and on 1.13.3; wheel 33
+files = commit; clean Colab-pinned venv adds only Pint and four small deps; smoke 57/57
+(new check: a solve over two lines, `U'`, `U^-1`); suite against the wheel 3692 + surface
+5/5; 24 reference pages wheel = source.
+
+**Exact next step:** PR, CI green on the exact SHA, merge; git+https install and smoke; check
+in his Colab through Chrome with his Untitled9 Example 2.1 cell. Then (done in 0.46.0 above): (1) an expression or call split over lines inside parentheses or
 brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
 `matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"
 (only matrix literals continue); (2) `T'` for `transpose(T)` (now "invalid syntax"); (3)
