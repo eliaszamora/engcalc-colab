@@ -210,3 +210,38 @@ def test_a_power_on_a_power_is_grouped_for_katex(monkeypatch):
 def test_powers_a_matrix_is_not_raised_to(power, said, monkeypatch):
     _, console = _run(f"U := [1, 0; 0, 1]\nW := [2, 1; 1, 2]\nX := {power}\n", monkeypatch)
     assert said in console, console
+
+
+# --- what the re-audit of 0.46.0 found unguarded -----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "line, written",
+    [
+        ("A := U''", r"\left(U^{T}\right)^{T}"),
+        ("B := solve(U', F)", r"\left(U^{T}\right)^{-1}\,F"),
+    ],
+)
+def test_a_superscript_on_a_transpose_is_grouped(line, written, monkeypatch):
+    page, console = _run("U := [1, 2; 3, 4]\nF := [1; 1]\n" + line + "\n", monkeypatch)
+    assert not console, console
+    assert written in page, page
+
+
+def test_comments_on_continued_lines_in_a_loop_and_in_the_middle(monkeypatch):
+    page, console = _run(
+        "% for i in [1, 2]:\nc_{i} := (1 +  # uno\n  {i} +  # dos\n  1)\n% end\n", monkeypatch
+    )
+    assert not console, console
+    assert "3.00" in page and "4.00" in page, page
+
+
+def test_quotes_on_a_split_line_hold_their_hash_and_parenthesis(monkeypatch):
+    page, console = _run('plot(x^2, x, 0, 1,\n     title="Momento # 1 (kN m")\n', monkeypatch)
+    assert "never closed" not in console and "invalid syntax" not in console, console
+
+
+def test_a_comment_on_a_middle_continued_line(monkeypatch):
+    page, console = _run("y := (1 +  # uno\n      2 +  # dos\n      1)\n", monkeypatch)
+    assert not console, console
+    assert r"y & = & 4.00" in page, page

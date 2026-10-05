@@ -2438,9 +2438,13 @@ ight)` before another superscript; powers by squaring,
   survivors (T_1', d[...]', T'', U^0, U^(2[m]), each stop).
 - Contracts `tests/test_multiline_and_transpose.py` (28; the 6 fixes RED on `26749b0`).
   Suite 3688 on SymPy 1.14 and 1.13.3; corpus of 238 sheets identical to the audited branch
-  but chapter 7 noise. Re-audit pending.
+  but chapter 7 noise. **Re-audit at `67d14a6`: CLEAN** (all four fixes verified,
+  KaTeX checked, no regression from the control.py join, corpus = main but chapter 7
+  noise); its six non-equivalent surviving mutants (grouped `U''`, `solve(U', F)`, comments
+  on continued lines in a loop and on a middle line, quotes holding `#` and `(` on a split
+  line) now killed by 5 more contracts: 33 in the file, suite 3693.
 
-**Exact next step:** the auditor's check of the fixes; if clean, his yes to
+**Exact next step:** his yes to
 release (version bump, wheel, smoke, PR, CI, merge, check in his Colab via Chrome). Then (done in 0.46.0 above): (1) an expression or call split over lines inside parentheses or
 brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
 `matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"
