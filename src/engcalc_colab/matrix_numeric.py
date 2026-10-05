@@ -554,18 +554,13 @@ def _eigenvalue_unit(numbers: NumberMatrix):
         for row, col in cycle:
             entry = numbers.units[row * size + col]
             power = entry if power is None else power * entry
-        exponents = {name: value / len(cycle) for name, value in power._units.items()}
-        if any(abs(value - round(value)) > 1e-9 for value in exponents.values()):
+        unit = _unit_root(power, len(cycle))
+        if unit is None:
             raise EngEvaluationError(
                 f"matrix operation 'eigenvals': a walk through {len(cycle)} entries has the "
                 f"unit {_unit_text(power)}, which is no power {len(cycle)} of one unit, so "
                 "its eigenvalues have no one unit"
             )
-        from pint.util import UnitsContainer
-
-        unit = power._REGISTRY.Unit(
-            UnitsContainer({name: int(round(value)) for name, value in exponents.items() if round(value)})
-        )
     scale: list[Any] = [None] * size
     for start in range(size):
         if scale[start] is not None:
@@ -678,7 +673,14 @@ def _units_by_work(matrix: NumberMatrix, right: NumberMatrix, units: list) -> li
             continue
         for row in range(size):
             stiffness = matrix.units[row * size + row]
-            if units[row * cols + col] is not None or stiffness is None:
+            # A stiffness's diagonal has a dimension (kN/m, kN·m, kg). One without is a
+            # system of another kind - equilibrium, a transformation - whose loads are not
+            # work (the fourth audit of 0.45.6: V of `[M; H; V]` read N·m).
+            if (
+                units[row * cols + col] is not None
+                or stiffness is None
+                or (1 * stiffness).dimensionless
+            ):
                 continue
             units[row * cols + col] = _unit_root(work / stiffness, 2)
     return units

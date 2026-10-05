@@ -558,3 +558,31 @@ def test_what_a_worked_zero_becomes_through_a_solve_a_product_and_an_inverse(lin
     page, console = _run(_FRAME_ZERO + line + "\n", monkeypatch)
     assert not console, console
     assert page.rstrip().endswith(ending), page[-300:]
+
+
+@pytest.mark.parametrize(
+    "sheet, line, ending",
+    [
+        # Equilibrium written as a system [M; H; V]: V is a force, not the moment loaded first.
+        ("H_0 := 10[kN]\nh := 3[m]\nA := [1, 0, 0; 0, 1, 0; 0, 0, 1]\nb := [H_0*h; -H_0; 0]\n"
+         "x := solve(A, b)\n", "V := x[3]", r"= 0.00 \end{array}"),
+        # A rotation solved through a transformation keeps no length.
+        ("c := 0.8\ns := 0.6\nG := [c, s, 0, 0, 0, 0; -s, c, 0, 0, 0, 0; 0, 0, 1, 0, 0, 0; "
+         "0, 0, 0, c, s, 0; 0, 0, 0, -s, c, 0; 0, 0, 0, 0, 0, 1]\n"
+         "u := [1[mm]; 2[mm]; 0; 3[mm]; 1[mm]; 0.01]\nD := solve(G, u)\n",
+         "a := D[3]", r"= 0.00 \end{array}"),
+        # A diagonal whose work has no whole root: no unit is made up.
+        ("K := [1000[kN/m], 0; 0, 1000[kN/m^2]]\nF := [10[kN]; 0]\nd := solve(K, F)\n",
+         "t := d[2]", r"= 0.00 \end{array}"),
+        # Only the second load column carries a unit: the first is still read by its work.
+        ("k := 1000[kN/m]\nK := [k, 0; 0, k]\nF := [0, 10[kN]; 0, 0]\nd := solve(K, F)\n",
+         "t := d[2, 2]", r"= 0.00\,\mathrm{m} \end{array}"),
+    ],
+)
+def test_the_work_rule_is_for_stiffnesses(sheet, line, ending, monkeypatch):
+    """The fourth audit of 0.45.6: by work, a solve that is no stiffness - equilibrium, a
+    transformation - took the unit of its first load for an unknown of another kind. A
+    stiffness's diagonal has a dimension; where it has none the rule does not apply."""
+    page, console = _run(sheet + line + "\n", monkeypatch)
+    assert not console, console
+    assert page.rstrip().endswith(ending), page[-300:]

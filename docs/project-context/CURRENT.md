@@ -14,8 +14,8 @@ _2026-10-04._
 |---|---|
 | released | **0.45.5** - #393, `83ae814`, closed |
 | before that | **0.45.4** - #392, `dddd38b`, closed |
-| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, all fixed; 4th pending); the fold branch held |
-| default suite | **3653 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed; its check pending); the fold branch held |
+| default suite | **3657 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2358,15 +2358,24 @@ entry of a solution its load leaves unknown takes its unit from its own stiffnes
 holds a zero of unknown kind or the root has no whole exponents; contracts for SF1 and SF3.
 Visible effect: his p5_10c prints its zero translations `0.00 mm` (rotations stay plain).
 
-Contracts `tests/test_what_chapter_9_found.py`: 55; on main 41 fail or hang (three Example
-9.1 extrema ones hang), 14 are guards of main's behaviour. Suite 3653 passing on
+**Fourth audit (subagent, at `aa4de89`): NOT CLEAN by a hair** - the work rule is right on
+every stiffness tried (flexibility N·m, mass 1/s², grids, torsion, kN/mm, kgf, rotational
+springs left plain) but a solve that is no stiffness took the unit of its first load:
+equilibrium `[M; H; V]` gave V `0.00 N·m`, a 6×6 transformation gave a rotation `0.00 m`.
+Fixed: the rule applies only where K_ii has a dimension; `_eigenvalue_unit` reuses
+`_unit_root`. Contracts for both cases, a kN/m² diagonal and a load only in column 2.
+Notes kept: `numeric(d, mm)` of the axial-only frame now refuses its rotation (as with any
+nonzero rotation on main); `inv(K)*F` leaves the zero plain where `solve` gives it a unit;
+zeros print in base SI (main too); `d[3] + 1[mm]` silently 1 mm (main too).
+
+Contracts `tests/test_what_chapter_9_found.py`: 59. Suite 3657 collected and passing on
 SymPy 1.14 and 1.13.3 (39 KaTeX tests skip without `tools/katex/node_modules`). Mutation
 (author's 33): 31 killed, 2 equivalent; the second audit's 46 found the zero-propagation and
 two-placeholder gaps now covered. Corpus, 238 sheets: the 7 chapter 9 tables (byte-identical
 to the audited render) and chapter 7 pages that alternate on main by itself (ex7_12, p7_17,
 p7_23, p7_29); render total 2000 s against main's 2622 s.
 
-**Exact next step:** a fourth, focused audit of `_units_by_work`; if clean,
+**Exact next step:** the fourth auditor's check of the dimension guard; if clean,
 release 0.45.6 (his yes is given for a clean audit): version bump with the seven version
 assertions RED then GREEN, wheel from `git archive`, clean Colab-pinned venv, smoke
 (`tools/smoke_installed.py` + a 0.45.6 check), suite against the installed wheel, 24
