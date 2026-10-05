@@ -521,3 +521,40 @@ def test_two_placeholders_in_one_condition(monkeypatch):
     )
     assert not console, console
     assert r"\textbf{En 2 iteraciones:}" in page and r"r & = & 2.00" in page, page
+
+
+def test_each_zero_of_a_frame_takes_the_unit_its_stiffness_gives(monkeypatch):
+    """The third audit of 0.45.6: a frame loaded only along its axis has its transverse
+    displacement and its rotation exactly 0, and the solve cannot read their units off the
+    load. Marking both plain numbers gave the shear `12EI/L³ v` in kN/m. Each takes its
+    unit from its own stiffness by work: K_ii c_i² is the work F x of the loaded entries -
+    a metre against kN/m, nothing against kN·m."""
+    page, console = _run(
+        "EA := 2000[kN]\nEI := 500[kN*m^2]\nL := 2[m]\n"
+        "K := [EA/L, 0, 0; 0, 12*EI/L^3, -6*EI/L^2; 0, -6*EI/L^2, 4*EI/L]\n"
+        "F := [10[kN]; 0; 0]\nd := solve(K, F)\nv := d[2]\ntheta := d[3]\n"
+        "V := 12*EI/L^3*v\nM := 4*EI/L*theta\nS := 12*EI/L^3*v - 6*EI/L^2*theta\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"v & = & d_{2} = 0.00\,\mathrm{m}" in page, page
+    assert r"\theta & = & d_{3} = 0.00 \\" in page, page
+    assert r"V & = & 0.00\,\mathrm{kN} \\" in page, page
+    assert r"M & = & 0.00\,\mathrm{kN} \cdot \mathrm{m} \\" in page, page
+    assert r"S & = & 0.00\,\mathrm{kN}" in page, page[-300:]
+
+
+@pytest.mark.parametrize(
+    "line, ending",
+    [
+        # A zero of unknown kind solved against: still unknown.
+        ("I := [1, 0; 0, 1]\nt := solve(I, d)[2]", r"= 0.00 \end{array}"),
+        ("I := [1, 0; 0, 1]\nt := (transpose(d)*I)[1, 2]", r"= 0.00 \end{array}"),
+        # The inverse of springs is of one kind: its zero borrows m/kN, as on main.
+        ("t := inv([k, 0; 0, k])[1, 2]", r"= 0.00\,\frac{\mathrm{m}}{\mathrm{kN}} \end{array}"),
+    ],
+)
+def test_what_a_worked_zero_becomes_through_a_solve_a_product_and_an_inverse(line, ending, monkeypatch):
+    page, console = _run(_FRAME_ZERO + line + "\n", monkeypatch)
+    assert not console, console
+    assert page.rstrip().endswith(ending), page[-300:]

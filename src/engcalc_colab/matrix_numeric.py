@@ -642,6 +642,48 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
     return NumberMatrix(size, 1, tuple(ordered), units, _unitless_zeros(1, units))
 
 
+def _unit_root(unit, power: int):
+    """`unit` to the 1/power, or None when that is no unit with whole exponents."""
+    exponents = {name: value / power for name, value in unit._units.items()}
+    if any(abs(value - round(value)) > 1e-9 for value in exponents.values()):
+        return None
+    from pint.util import UnitsContainer
+
+    return unit._REGISTRY.Unit(
+        UnitsContainer({name: int(round(value)) for name, value in exponents.items() if round(value)})
+    )
+
+
+def _units_by_work(matrix: NumberMatrix, right: NumberMatrix, units: list) -> list:
+    """The unit of each entry of a solution its load leaves unknown - a group of degrees
+    of freedom that only written zeros load, so all its entries are 0 - from its own
+    stiffness by work: `K_ii c_i²` is the work `F_j x_j` of an entry that is loaded. A
+    metre against kN/m, nothing against kN·m (the third audit of 0.45.6: an axial load on a
+    frame left its shear `12EI/L³ v` in kN/m). An entry whose diagonal is 0, or whose root
+    has no whole exponents, stays unknown; so does any against a zero of unknown kind."""
+    if right.worked_zeros:
+        return units
+    size, cols = matrix.rows, right.cols
+    for col in range(cols):
+        work = next(
+            (
+                right.units[row * cols + col] * units[row * cols + col]
+                for row in range(size)
+                if right.units[row * cols + col] is not None
+                and units[row * cols + col] is not None
+            ),
+            None,
+        )
+        if work is None:
+            continue
+        for row in range(size):
+            stiffness = matrix.units[row * size + row]
+            if units[row * cols + col] is not None or stiffness is None:
+                continue
+            units[row * cols + col] = _unit_root(work / stiffness, 2)
+    return units
+
+
 def solve_numbers(matrix: NumberMatrix, right: NumberMatrix) -> NumberMatrix:
     import mpmath
 
@@ -653,6 +695,10 @@ def solve_numbers(matrix: NumberMatrix, right: NumberMatrix) -> NumberMatrix:
         )
     inverse_units = _inverse_units(matrix, "solve")
     units = _product_units(inverse_units, right.units, matrix.rows, matrix.rows, right.cols)
+    # An entry with no unit was given none by the load: every load of its group is a
+    # written zero, and so is the entry. Its unit, where its stiffness says it.
+    unknown = [unit is None for unit in units]
+    units = _units_by_work(matrix, right, units)
     system = _mp_matrix(matrix)
     columns = []
     for col in range(right.cols):
@@ -664,7 +710,7 @@ def solve_numbers(matrix: NumberMatrix, right: NumberMatrix) -> NumberMatrix:
         except ZeroDivisionError as exc:
             raise _singular("solve") from exc
     magnitudes = tuple(
-        0.0 if units[row * right.cols + col] is None else float(columns[col][row])
+        0.0 if unknown[row * right.cols + col] else float(columns[col][row])
         for row in range(matrix.rows)
         for col in range(right.cols)
     )
