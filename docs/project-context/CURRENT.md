@@ -14,8 +14,8 @@ _2026-10-04._
 |---|---|
 | released | **0.45.5** - #393, `83ae814`, closed |
 | before that | **0.45.4** - #392, `dddd38b`, closed |
-| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed; its check pending); the fold branch held |
-| default suite | **3657 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed, follow-up CLEAN; 0.45.6 release PR); the fold branch held |
+| default suite | **3659 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2375,19 +2375,32 @@ two-placeholder gaps now covered. Corpus, 238 sheets: the 7 chapter 9 tables (by
 to the audited render) and chapter 7 pages that alternate on main by itself (ex7_12, p7_17,
 p7_23, p7_29); render total 2000 s against main's 2622 s.
 
-**Exact next step:** the fourth auditor's check of the dimension guard; if clean,
-release 0.45.6 (his yes is given for a clean audit): version bump with the seven version
-assertions RED then GREEN, wheel from `git archive`, clean Colab-pinned venv, smoke
-(`tools/smoke_installed.py` + a 0.45.6 check), suite against the installed wheel, 24
-reference pages wheel = tree, PR, CI green on the exact SHA, merge; then the closure in his
-Colab. After that, **0.46.0, his asks of 2026-10-04 (high on the list)**, on a new branch:
-(1) an expression or call split over lines inside parentheses or brackets - today
-`y = sin(` + `x)` says "unbalanced parentheses", and `matrix_syntax.consume_matrix_statement`
-says "ordinary multiline calls remain unsupported" (only matrix literals continue);
-(2) `T'` for `transpose(T)` (now "invalid syntax"); (3) `U^-1` on a `:=` line ("is not an
-operation between matrices"; `inv(U)`, `solve(U, F)` and `T^-1` on `=` lines work). Then his
-pick among the rest of chapter 9's findings (pound-force, kip palette, presentation list
-above); chapter 10 (PDF 290-).
+**Fourth audit follow-up at `932685d`: CLEAN** (the guard holds; every stiffness case
+unchanged; full corpus identical to aa4de89 but chapter 7 noise). Its contract gap (a load in
+column 2 only on a frame, a zero diagonal) closed with two contracts; the three mutants it
+named are killed.
+
+**0.45.6 release evidence (tree `a6541de`, "release 0.45.6"):** the seven version assertions
+RED before the bump, GREEN after; source suite 3659 twice (SymPy 1.14) and 3659 on 1.13.3;
+wheel from `git archive`, its 33 package files byte-identical to the commit (the working
+copy differs only by CRLF); clean Python 3.12 venv with Colab's pins (ipython 7.34.0, numpy
+2.2.6, matplotlib 3.10.0, sympy 1.13.3) adds only Pint 0.26.1, flexcache, flexparser,
+platformdirs, typing_extensions; smoke outside the repository 55/55 (new 0.45.6 check:
+2485.96 kN by eigenvals, a frame's θ = 0.00 without metre, `{a}` in a while); suite against
+the installed wheel from a tree with no `src/`: 3658 + the by-path surface test (5/5 on the
+wheel's `magic.py`); 24 reference pages (tools/*.eng × none/kN/kgf) wheel = source. His
+yes: "Audita la rama y, si está limpia, publica la 0.45.6".
+
+**Exact next step:** PR from `feat/numeric-eigenvalues`, CI green on the exact SHA, merge;
+then post-merge checks (Deep gate on main, a `git+https` install in a Colab-like venv, smoke)
+and the closure in his Colab. After that, **0.46.0, his asks of 2026-10-04 (high on the
+list)**, on a new branch: (1) an expression or call split over lines inside parentheses or
+brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
+`matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"
+(only matrix literals continue); (2) `T'` for `transpose(T)` (now "invalid syntax"); (3)
+`U^-1` on a `:=` line ("is not an operation between matrices"; `inv(U)`, `solve(U, F)` and
+`T^-1` on `=` lines work). Then his pick among the rest of chapter 9's findings
+(pound-force, kip palette, presentation list above); chapter 10 (PDF 290-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
