@@ -13,7 +13,29 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.45.5**.
+Current version: **0.45.6**.
+
+
+## v0.45.6 what chapter 9 found refused, wrong or hanging
+
+- **A critical load from numeric matrices**: `eigenvals(K, G)` - `K x = λ G x`, by value,
+  smallest first - and `det(K)` on `:=` lines, with their units. The one-element cantilever
+  reads `eigenvals(K, -G)` = 2485.96 kN; every frame of chapter 9 had needed an inverse
+  iteration written by hand in a `% while`. A diagonal of zeros, `[0, 1; 1, 0]`, has its
+  eigenvalues and their unit; eigenvalues that are not real, units that do not fit and a
+  singular second matrix are each said.
+- **A zero a `solve` found has the unit it should**: a frame's rotation exactly 0 read
+  `θ = 0.00 m` and its moment `kN·m²`. A zero the load leaves unknown takes its unit from its
+  own stiffness - a metre against kN/m, none against kN·m - and a written `0` still takes the
+  unit beside it (`GJ D_1/T`, Example 7.4).
+- **`% while` inside `% for`**: `{a}` in a `% while` or `% if` condition is read at every pass
+  (it read `{2}`, a set); the loop's table no longer shows a value from before the while
+  beside the converged one (Example 9.2 tabulated `v = 150 mm`, its starting point).
+- **A placeholder holding an operation**, `(2*a){q}`, is no longer refused before the loop runs.
+- **`extrema` of a load with sines under a root returns**: Example 9.1's limit point,
+  φ ≈ 0.44 and 339.21 kN, where the cell hung. A pole inside the range is refused, as before.
+- **`solve` in a range says when its units do not fit** - `k*x = 6 kN` with a range of plain
+  numbers - instead of "no root".
 
 
 ## v0.45.5 what chapter 8 found read wrong or refused
@@ -4070,6 +4092,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.45.6** — `eigenvals(K, G)` and `det` of numeric matrices; a solve's zero has its unit; `{a}` in `% while`/`% if` conditions; a loop table without pre-while values; extrema of a trigonometric root returns; range solve says incompatible units.
 - **0.45.5** — angle roots are angles; rad² is a number; `subs`/`sum` on `:=` lines; quadrature for integrals with no closed form; `interp` plots to the table's end.
 - **0.45.4** — quick `inv` of trigonometric matrices; integrals with symbolic powers return; `assume(integer(n))`; readable logs; collected definite integrals; `ln`.
 - **0.45.3** — a unit no family names reads in a force and a length (no more `0.00 m/(MPa·mm⁴)`); ratio columns are numbers; a vector's zero has its unit; real logs in integrals and log ratios; `:=` matrices built with integrate/zeros/diag and assembled by parts; assumed `psi`; `subs` with lists; `atanh`.
@@ -4205,4 +4228,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.45.5`.
+Version: `0.45.6`.

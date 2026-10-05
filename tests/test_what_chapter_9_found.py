@@ -586,3 +586,31 @@ def test_the_work_rule_is_for_stiffnesses(sheet, line, ending, monkeypatch):
     page, console = _run(sheet + line + "\n", monkeypatch)
     assert not console, console
     assert page.rstrip().endswith(ending), page[-300:]
+
+
+_AXIAL_FRAME = (
+    "EA := 2000[kN]\nEI := 500[kN*m^2]\nL := 2[m]\n"
+    "K := [EA/L, 0, 0; 0, 12*EI/L^3, -6*EI/L^2; 0, -6*EI/L^2, 4*EI/L]\n"
+)
+
+
+def test_the_work_rule_reads_a_load_in_any_column(monkeypatch):
+    """The fourth audit's follow-up: a load only in the second column, on a frame (springs
+    borrow their unit without the rule)."""
+    page, console = _run(
+        _AXIAL_FRAME + "F := [0, 10[kN]; 0, 0; 0, 0]\nd := solve(K, F)\nt := d[2, 2]\nr := d[3, 2]\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"t & = & d_{2,2} = 0.00\,\mathrm{m}" in page, page[-500:]
+    assert page.rstrip().endswith(r"r & = & d_{3,2} = 0.00 \end{array}"), page[-300:]
+
+
+def test_a_zero_on_the_diagonal_gets_no_unit_by_work(monkeypatch):
+    k = "k := 1000[kN/m]\n"
+    page, console = _run(
+        k + "K := [k, 0, 0; 0, 0, k; 0, k, 0]\nF := [10[kN]; 0; 0]\nd := solve(K, F)\nt := d[2]\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert "t & = & d_{2} = 0.00" in page, page[-300:]
