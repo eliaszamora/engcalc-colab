@@ -13,7 +13,27 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.45.7**.
+Current version: **0.46.0**.
+
+
+## v0.46.0 lines that continue, T' and U^-1
+
+- **A statement over several lines**: a line that leaves a `(` or a `[` open goes on to the
+  next lines until it is closed - a long `solve`, a formula of many terms, a call with many
+  arguments - on `=` and `:=` lines and in loops, with a `#` comment at the end of any of
+  them. It was refused "unbalanced parentheses" though its parentheses were balanced. A
+  blank line, a narrative or a comment line ends it, and a parenthesis never closed says
+  the line it was opened on.
+
+  ```
+  solve(
+      eq(delta_ba, a_x*cos(theta) + a_y*sin(theta)),
+      eq(delta_ac, a_x*cos(phi) - a_y*sin(phi)),
+      a_x, a_y)
+  ```
+- **`T'` is the transpose of `T`**, as the book writes it: `T'*K*T`, `(K*d)'`, `T_1'`.
+- **`U^-1` and `U^2` on a `:=` line**: the inverse and powers of a matrix of numbers, as a
+  `=` line reads them. A power on a power is written in parentheses, `(U^T)^{-1}`.
 
 
 ## v0.45.7 a complex pair beside a large eigenvalue is refused
@@ -4100,6 +4120,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.46.0** — statements over several lines inside parentheses; `T'` for the transpose; `U^-1` and `U^2` on `:=` lines.
 - **0.45.7** — a complex pair beside a large eigenvalue is refused, not read as zeros.
 - **0.45.6** — `eigenvals(K, G)` and `det` of numeric matrices; a solve's zero has its unit; `{a}` in `% while`/`% if` conditions; a loop table without pre-while values; extrema of a trigonometric root returns; range solve says incompatible units.
 - **0.45.5** — angle roots are angles; rad² is a number; `subs`/`sum` on `:=` lines; quadrature for integrals with no closed form; `interp` plots to the table's end.
@@ -4237,4 +4258,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.45.7`.
+Version: `0.46.0`.

@@ -77,6 +77,11 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.46.0: lines that continue, T' and U^-1
+check("a solve over three lines, T', U^-1 on a := line",
+      "x_1 := solve(eq(x^2, 2),\n             x, 0, 3)\nU := [2, 0; 0, 4[kN/m]]\nV := U'\nX := U^-1",
+      r"x_{1} & = & \displaystyle 1.41", r"U^{T}", r"U^{-1}",
+      absent=("unbalanced", "invalid syntax", "not an operation"))
 # 0.45.7: a complex pair beside a large eigenvalue
 check("eigenvals refuses ±i beside 1e12",
       "A := [0, -1, 0; 1, 0, 0; 0, 0, 1e12]\nv := eigenvals(A)",
