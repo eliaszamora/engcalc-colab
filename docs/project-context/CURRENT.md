@@ -12,10 +12,10 @@ _2026-10-04._
 
 | | |
 |---|---|
-| released | **0.45.7** - #396, `0651274`, closed (checked in his Colab); 0.45.6 - #395, `dd6da36` |
-| before that | **0.45.5** - #393, `83ae814`, closed |
+| released | **0.46.0** - #398, `69d6475`, closed (checked in his Colab) |
+| before that | **0.45.7** - #396, `0651274`, closed |
 | open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed, follow-up CLEAN; 0.45.6 release PR); the fold branch held |
-| default suite | **3660 passing** on 0.45.7 (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| default suite | **3693 passing** on 0.46.0 (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2450,14 +2450,16 @@ files = commit; clean Colab-pinned venv adds only Pint and four small deps; smok
 (new check: a solve over two lines, `U'`, `U^-1`); suite against the wheel 3692 + surface
 5/5; 24 reference pages wheel = source.
 
-**Exact next step:** PR, CI green on the exact SHA, merge; git+https install and smoke; check
-in his Colab through Chrome with his Untitled9 Example 2.1 cell. Then (done in 0.46.0 above): (1) an expression or call split over lines inside parentheses or
-brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
-`matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"
-(only matrix literals continue); (2) `T'` for `transpose(T)` (now "invalid syntax"); (3)
-`U^-1` on a `:=` line ("is not an operation between matrices"; `inv(U)`, `solve(U, F)` and
-`T^-1` on `=` lines work). Then his pick among the rest of chapter 9's findings
-(pound-force, kip palette, presentation list above); chapter 10 (PDF 290-).
+**0.46.0 merged** (#398, squash `69d6475`, 6/6 CI on `9515005`): git+https install of main in
+a Colab-pinned venv = 0.46.0, smoke 57/57. **Checked in his Colab** (2026-10-05, through
+Chrome; the first try met "No hay backends disponibles"): Untitled9, cell 0 installed main,
+his Example 2.1 cell (cell 1, untouched) now solves a_x and a_y where it said "line 20:
+unbalanced parentheses" (symbolic; `numeric(a_x, mm)` gives the number); cell 5:
+`x_1 = 1.41` from a split solve, `V = U^T`, `X = U^{-1}`, `A = (U^T)^{-1}` typeset in KaTeX,
+the split loop rule `f_i = k_i * 1 mm` with its table 100.00 / 66.67 kN; screenshots sent.
+
+**Exact next step:** his pick among the rest of chapter 9's findings (pound-force, kip
+palette, the presentation list), or chapter 10 (PDF 290-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
