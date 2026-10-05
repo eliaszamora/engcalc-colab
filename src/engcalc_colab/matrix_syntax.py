@@ -25,15 +25,34 @@ def consume_matrix_statement(
     lines: list[str],
     start_index: int,
 ) -> tuple[str, int]:
-    """Collect one restricted multiline matrix assignment.
+    """Collect one statement written over several lines.
 
-    Ordinary multiline Python/EngCalc calls remain unsupported. Continuation is
-    enabled only when an unmatched ``[`` occurs after a top-level symbolic ``=``.
+    A matrix literal opened after a top-level symbolic ``=`` continues as it always has,
+    its rows on lines of their own. Any other line that leaves a ``(`` or a ``[`` open
+    goes on to the next lines until it is closed, and they are read as one line (his ask
+    of 2026-10-04: a long `solve` or a formula of many terms was refused "unbalanced
+    parentheses", though its parentheses were balanced). A blank line, a narrative or a
+    comment ends it: a parenthesis left open by mistake does not swallow the sheet.
     """
     first = lines[start_index]
     balance = _square_balance(first)
     if balance <= 0 or not _has_symbolic_assignment_before_first_bracket(first):
-        return first, start_index + 1
+        depth = _bracket_depth(first)
+        if depth <= 0:
+            return first, start_index + 1
+        parts = [first.strip()]
+        index = start_index + 1
+        while depth > 0:
+            following = lines[index].strip() if index < len(lines) else ""
+            if not following or following.startswith(('"""', "#")):
+                raise EngSyntaxError(
+                    f"line {start_index + 1}: unbalanced parentheses - one opened on this line is never "
+                    "closed"
+                )
+            parts.append(following)
+            depth += _bracket_depth(following)
+            index += 1
+        return " ".join(parts), index
 
     parts = [first]
     index = start_index + 1
@@ -224,6 +243,33 @@ def _matching_square(text: str, open_index: int) -> int | None:
             if depth == 0:
                 return index
     return None
+
+
+def is_transpose_prime(text: str, index: int) -> bool:
+    """Whether the `'` at `index` is a transpose, `T'`, `(K d)'`, `d[2]'`, and not the
+    start of a quoted text: it follows a name, a closing parenthesis or bracket at once."""
+    if text[index] != "'" or index == 0:
+        return False
+    previous = text[index - 1]
+    return previous.isalnum() or previous in "_)]'"
+
+
+def _bracket_depth(text: str) -> int:
+    """Parentheses and brackets a line leaves open, outside quotes."""
+    depth = 0
+    quote: str | None = None
+    for index, char in enumerate(text):
+        if quote is not None:
+            if char == quote:
+                quote = None
+            continue
+        if char == '"' or (char == "'" and not is_transpose_prime(text, index)):
+            quote = char
+        elif char in "([":
+            depth += 1
+        elif char in ")]":
+            depth -= 1
+    return depth
 
 
 def _square_balance(text: str) -> int:

@@ -690,6 +690,21 @@ class _MatrixNumbers:
             return scale_numbers(right, self.context._as_quantity(left))
         if isinstance(node.op, ast.Div) and left_matrix and not right_matrix:
             return scale_numbers(left, 1 / self.context._as_quantity(right))
+        if isinstance(node.op, ast.Pow) and left_matrix and not right_matrix:
+            # `U^-1` and `U^2` on a `:=` line, as a `=` line reads them (his ask of
+            # 2026-10-04): the inverse and repeated products.
+            exponent = self.context._as_quantity(right)
+            power = float(exponent.magnitude) if exponent.dimensionless else math.nan
+            if not (math.isfinite(power) and power == round(power) and power != 0):
+                raise EngEvaluationError(
+                    f"'{ast.unparse(node)}': a matrix is raised only to a whole power other "
+                    "than 0, as U^-1 or U^2"
+                )
+            base = inverse_numbers(left) if power < 0 else left
+            result = base
+            for _ in range(abs(int(power)) - 1):
+                result = multiply_numbers(result, base)
+            return result
         raise EngEvaluationError(
             f"'{ast.unparse(node)}' is not an operation between matrices; they are "
             "added, subtracted, multiplied and divided by a number"

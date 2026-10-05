@@ -5,7 +5,12 @@ import keyword
 import re
 
 from .errors import EngSyntaxError, diagnostic_hint
-from .matrix_syntax import consume_matrix_statement, mark_typed_decimals, rewrite_matrix_literals
+from .matrix_syntax import (
+    consume_matrix_statement,
+    is_transpose_prime,
+    mark_typed_decimals,
+    rewrite_matrix_literals,
+)
 from .models import ParsedHeading, ParsedNarrative, ParsedNumericAssignment, ParsedStatement
 from .numeric import BRACKETED_UNIT_PREFIX, _UNIT_ALIASES
 
@@ -140,7 +145,57 @@ def _rewrite_bracketed_units(text: str, line_no: int | None) -> str:
     return _BRACKETED_UNIT.sub(quantity, text)
 
 
+def _operand_start(text: str, end: int) -> int:
+    """Where the operand that ends just before `end` begins: a name, `d[2]`, `f(x)`, `(K d)`."""
+    index = end
+    while True:
+        if index > 0 and text[index - 1] in ")]":
+            closing = text[index - 1]
+            opening = "(" if closing == ")" else "["
+            depth = 0
+            index -= 1
+            while index >= 0:
+                if text[index] == closing:
+                    depth += 1
+                elif text[index] == opening:
+                    depth -= 1
+                    if depth == 0:
+                        break
+                index -= 1
+            if index < 0:
+                return 0
+            continue
+        if index > 0 and (text[index - 1].isalnum() or text[index - 1] in "_."):
+            while index > 0 and (text[index - 1].isalnum() or text[index - 1] in "_."):
+                index -= 1
+            return index
+        return index
+
+
+def _rewrite_transpose_primes(text: str) -> str:
+    """`T'` is `transpose(T)`, as the book writes it (his ask of 2026-10-04): `T'*K*T`,
+    `(K*d)'`, `d[[1, 2], 1]'`. A quote that opens a text - after a comma, a parenthesis or
+    a space - is left as it is."""
+    index = 0
+    quote = None
+    while index < len(text):
+        char = text[index]
+        if quote is not None:
+            if char == quote:
+                quote = None
+        elif char == "'" and is_transpose_prime(text, index):
+            start = _operand_start(text, index)
+            text = f"{text[:start]}transpose({text[start:index]}){text[index + 1:]}"
+            index = start
+            continue
+        elif char in "'\"":
+            quote = char
+        index += 1
+    return text
+
+
 def normalize_expression(text: str, line_no: int | None = None) -> str:
+    text = _rewrite_transpose_primes(text)
     text = _rewrite_bracketed_units(text, line_no)
     # Before the `^` substitution below, because the bracket notation is written with `^`.
     text = _MACAULAY_BRACKET.sub(r"macaulay(\1, \2)", text)

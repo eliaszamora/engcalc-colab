@@ -2409,8 +2409,26 @@ iterations, Example 9.1's extrema `φ ≈ 0.44 · 339.21 kN`, `eigenvals` of ±i
 refused "not real"; screenshots sent. Seen there, not changed: `1e12` in a matrix literal is
 written `1000000000000.0` (the chapter 9 presentation item "1e8[mm^4] written 100000000.0").
 
-**Exact next step:** After that, **0.46.0, his asks of 2026-10-04 (high on the
-list)**, on a new branch: (1) an expression or call split over lines inside parentheses or
+### 0.46.0 - his asks of 2026-10-04 (branch `feat/multiline-and-transpose`, his "Sí, empieza con la 0.46.0")
+
+- **Multiline**: `matrix_syntax.consume_matrix_statement` - a line that leaves `(` or `[`
+  open continues on the next lines until closed, joined with spaces (`_bracket_depth`,
+  outside quotes); a blank line, a `"""` or a `#` line ends it with "line N: unbalanced
+  parentheses - one opened on this line is never closed". Matrix literals after `=` keep
+  their old path. His Untitled9 Example 2.1 (`solve(` over four lines) said "line 20:
+  unbalanced parentheses" on main and now solves a_x, a_y.
+- **`T'`**: `parser._rewrite_transpose_primes` (in `normalize_expression`) rewrites a `'`
+  that follows a name, `)` or `]` (`matrix_syntax.is_transpose_prime`) as `transpose(...)`;
+  a quote after a comma, parenthesis or space stays text. Side effect: `b'x'` (a bytes
+  literal) now reads as a transpose and is refused "invalid syntax" (guard updated).
+- **`U^-1`, `U^2` on `:=` lines**: `engine._MatrixNumbers._binary` - whole nonzero powers by
+  `inverse_numbers` and repeated `multiply_numbers`; a fractional power refused.
+- Contracts `tests/test_multiline_and_transpose.py` (13), RED on main except the quotes
+  guard. Suite 3673 on SymPy 1.14 and 1.13.3; corpus of 238 sheets identical to 0.45.7 but
+  chapter 7 noise. Not yet audited.
+
+**Exact next step:** an independent audit of the 0.46.0 branch; if clean, his yes to
+release (version bump, wheel, smoke, PR, CI, merge, check in his Colab via Chrome). Then (done in 0.46.0 above): (1) an expression or call split over lines inside parentheses or
 brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
 `matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"
 (only matrix literals continue); (2) `T'` for `transpose(T)` (now "invalid syntax"); (3)
