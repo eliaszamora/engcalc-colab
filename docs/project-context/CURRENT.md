@@ -2423,11 +2423,23 @@ written `1000000000000.0` (the chapter 9 presentation item "1e8[mm^4] written 10
   literal) now reads as a transpose and is refused "invalid syntax" (guard updated).
 - **`U^-1`, `U^2` on `:=` lines**: `engine._MatrixNumbers._binary` - whole nonzero powers by
   `inverse_numbers` and repeated `multiply_numbers`; a fractional power refused.
-- Contracts `tests/test_multiline_and_transpose.py` (13), RED on main except the quotes
-  guard. Suite 3673 on SymPy 1.14 and 1.13.3; corpus of 238 sheets identical to 0.45.7 but
-  chapter 7 noise. Not yet audited.
+- **First audit (subagent, at `26749b0`): NOT CLEAN.** Blocker: a split line in a gathering
+  `% for` wrote its rule as its first physical line (`	exttt{f\_\{i\} := (k\_\{i\}*}`) -
+  `control._parse_stretch` recorded the written form per line. Also: `U'^-1`, `inv(U)^2`,
+  `U''` wrote `U^{T}^{-1}` (KaTeX double superscript, the whole block red); `U^n` hung for
+  n = 1e9 and overflowed for `[2,1;1,2]^1000`; a trailing `#` comment on a continued line
+  swallowed the rest; a placeholder at the start of a continued line; 17 of 30 mutants
+  survived. Fixed: `_parse_stretch` joins a statement's lines first (`continued_lines`,
+  matrix literals left to the parser) and leaves `#` lines so the numbering holds;
+  `without_comment` on joined lines; `renderer._superscript_base` puts a power or
+  inv/transpose in `\left(...ight)` before another superscript; powers by squaring,
+  |n| <= 1000, a non-finite result refused. Contracts for each finding and for the
+  survivors (T_1', d[...]', T'', U^0, U^(2[m]), each stop).
+- Contracts `tests/test_multiline_and_transpose.py` (28; the 6 fixes RED on `26749b0`).
+  Suite 3688 on SymPy 1.14 and 1.13.3; corpus of 238 sheets identical to the audited branch
+  but chapter 7 noise. Re-audit pending.
 
-**Exact next step:** an independent audit of the 0.46.0 branch; if clean, his yes to
+**Exact next step:** the auditor's check of the fixes; if clean, his yes to
 release (version bump, wheel, smoke, PR, CI, merge, check in his Colab via Chrome). Then (done in 0.46.0 above): (1) an expression or call split over lines inside parentheses or
 brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
 `matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"

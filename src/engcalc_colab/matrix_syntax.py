@@ -40,7 +40,7 @@ def consume_matrix_statement(
         depth = _bracket_depth(first)
         if depth <= 0:
             return first, start_index + 1
-        parts = [first.strip()]
+        parts = [without_comment(first).strip()]
         index = start_index + 1
         while depth > 0:
             following = lines[index].strip() if index < len(lines) else ""
@@ -49,6 +49,7 @@ def consume_matrix_statement(
                     f"line {start_index + 1}: unbalanced parentheses - one opened on this line is never "
                     "closed"
                 )
+            following = without_comment(following).strip()
             parts.append(following)
             depth += _bracket_depth(following)
             index += 1
@@ -67,6 +68,40 @@ def consume_matrix_statement(
     if balance != 0:
         raise EngSyntaxError(f"line {start_index + 1}: unclosed matrix literal")
     return "\n".join(parts), index
+
+
+def continued_lines(lines: list[str], index: int) -> int:
+    """How many lines from `index` one statement takes, as `consume_matrix_statement`
+    reads them: 1 for a line that closes what it opens, and 1 too for one never closed
+    (the parser then says so). A matrix literal after a top-level `=` is the parser's
+    own, its rows on their lines, and is left to it."""
+    first = lines[index]
+    if _square_balance(first) > 0 and _has_symbolic_assignment_before_first_bracket(first):
+        return 1
+    depth = _bracket_depth(first)
+    count = 1
+    while depth > 0:
+        following = lines[index + count].strip() if index + count < len(lines) else ""
+        if not following or following.startswith(('"""', "#")):
+            return 1
+        depth += _bracket_depth(without_comment(following))
+        count += 1
+    return count
+
+
+def without_comment(text: str) -> str:
+    """A line without a `#` comment after it, outside quotes: `y := (x +  # first term`
+    joined to the next line swallowed its `1)` (the audit of 0.46.0)."""
+    quote: str | None = None
+    for index, char in enumerate(text):
+        if quote is not None:
+            if char == quote:
+                quote = None
+        elif char == '"' or (char == "'" and not is_transpose_prime(text, index)):
+            quote = char
+        elif char == "#":
+            return text[:index].rstrip()
+    return text
 
 
 def rewrite_matrix_literals(

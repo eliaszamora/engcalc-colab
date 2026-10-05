@@ -141,3 +141,72 @@ def test_his_example_2_1_solve_over_four_lines(monkeypatch):
     )
     assert not console, console
     assert "a_{x} & = &" in page and "a_{y} & = &" in page, page[-600:]
+
+
+# --- what the audit of 0.46.0 found ------------------------------------------------------
+
+
+def test_a_gathering_loop_writes_a_split_rule_whole(monkeypatch):
+    """The rule of a split line in a loop that makes a table was its first physical line,
+    `f_{i} := (k_{i}*`, cut off; it is the line as one line writes it."""
+    head = "E := 200[GPa]\nA := 10[cm^2]\nL_1 := 2[m]\nL_2 := 3[m]\n% for i in [1, 2]:\nk_{i} := E*A/L_{i}\n"
+    split, console_split = _run(head + "f_{i} := (k_{i}*\n   1[mm])\n% end\n", monkeypatch)
+    whole, console_whole = _run(head + "f_{i} := (k_{i}*1[mm])\n% end\n", monkeypatch)
+    assert not console_split and not console_whole, (console_split, console_whole)
+    assert r"\texttt" not in split, split
+    assert split == whole, (split, whole)
+
+
+def test_a_placeholder_at_the_start_of_a_continued_line(monkeypatch):
+    page, console = _run("% for q in ['+ 1', '* 2']:\nb := (2\n  {q})\n% end\n", monkeypatch)
+    assert not console, console
+    assert "3.00" in page and "4.00" in page, page
+
+
+def test_a_comment_after_a_continued_line(monkeypatch):
+    page, console = _run("x := 2\ny := (x +  # primer termino\n      1)\n", monkeypatch)
+    assert not console, console
+    assert r"y & = & 3.00" in page, page
+
+
+@pytest.mark.parametrize("stop", ["", "# nota", '"""texto"""'])
+def test_each_stop_ends_a_split_line(stop, monkeypatch):
+    """Without the stop the lines would join into a valid `max(1, 2)`."""
+    _, console = _run(f"b := max(1,\n{stop}\n2)\n", monkeypatch)
+    assert "line 1" in console and "never closed" in console, console
+
+
+def test_a_quote_inside_a_split_line_is_text(monkeypatch):
+    page, console = _run("% for q in ['(', ')']:\nb_1 := max(1,\n  2)\n% end\n", monkeypatch)
+    assert not console, console
+
+
+@pytest.mark.parametrize(
+    "line, entry",
+    [
+        ("V := T_1'", r"1.00 & 3.00"),
+        ("V := d[[1, 2], [1]]'", r"\left[\begin{matrix}5.00 & 6.00\end{matrix}\right]"),
+        ("V := T_1''", r"1.00 & 2.00"),
+    ],
+)
+def test_primes_after_digits_brackets_and_primes(line, entry, monkeypatch):
+    page, console = _run("T_1 := [1, 2; 3, 4]\nd := [5; 6]\n" + line + "\n", monkeypatch)
+    assert not console, console
+    assert entry in page.split("V & =")[-1], page[-500:]
+
+
+def test_a_power_on_a_power_is_grouped_for_katex(monkeypatch):
+    page, console = _run("U := [1, 2; 3, 4]\nA := U'^-1\nB := inv(U)^2\n", monkeypatch)
+    assert not console, console
+    assert r"\left(U^{T}\right)^{-1}" in page and r"\left(U^{-1}\right)^{2}" in page, page
+    assert "}^{" not in page.replace(r"\right)^{", ""), page
+
+
+@pytest.mark.parametrize(
+    "power, said",
+    [("U^0", "whole power"), ("U^(2[m])", "whole power"), ("U^1001", "at most 1000"),
+     ("W^1000", "too large")],
+)
+def test_powers_a_matrix_is_not_raised_to(power, said, monkeypatch):
+    _, console = _run(f"U := [1, 0; 0, 1]\nW := [2, 1; 1, 2]\nX := {power}\n", monkeypatch)
+    assert said in console, console

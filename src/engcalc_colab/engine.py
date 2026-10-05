@@ -700,10 +700,25 @@ class _MatrixNumbers:
                     f"'{ast.unparse(node)}': a matrix is raised only to a whole power other "
                     "than 0, as U^-1 or U^2"
                 )
+            if abs(power) > 1000:
+                # By squaring it would not hang, but no sheet means it; the audit of 0.46.0
+                # waited minutes on U^1000000000.
+                raise EngEvaluationError(
+                    f"'{ast.unparse(node)}': a matrix is raised to a power of at most 1000"
+                )
             base = inverse_numbers(left) if power < 0 else left
-            result = base
-            for _ in range(abs(int(power)) - 1):
-                result = multiply_numbers(result, base)
+            result = None
+            remaining = abs(int(power))
+            while remaining:
+                if remaining & 1:
+                    result = base if result is None else multiply_numbers(result, base)
+                remaining >>= 1
+                if remaining:
+                    base = multiply_numbers(base, base)
+            if not all(math.isfinite(value) for value in result.magnitudes):
+                raise EngEvaluationError(
+                    f"'{ast.unparse(node)}' is too large to be worked out in numbers"
+                )
             return result
         raise EngEvaluationError(
             f"'{ast.unparse(node)}' is not an operation between matrices; they are "
