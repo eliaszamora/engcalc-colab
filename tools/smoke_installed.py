@@ -77,6 +77,10 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.45.7: a complex pair beside a large eigenvalue
+check("eigenvals refuses ±i beside 1e12",
+      "A := [0, -1, 0; 1, 0, 0; 0, 0, 1e12]\nv := eigenvals(A)",
+      "not real")
 # 0.45.6: what chapter 9 found
 check("a critical load by eigenvals, a rotation's zero without a metre, {a} in a while",
       "E := 200000[MPa]\nI := 8e7[mm^4]\nl := 4[m]\nK := E*I/l^3*[12, -6*l; -6*l, 4*l^2]\n"

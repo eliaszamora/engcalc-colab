@@ -13,7 +13,15 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.45.6**.
+Current version: **0.45.7**.
+
+
+## v0.45.7 a complex pair beside a large eigenvalue is refused
+
+- **`eigenvals` refuses eigenvalues that are not real, whatever is beside them**:
+  `eigenvals([0, -1, 0; 1, 0, 0; 0, 0, 1e12])` answered `[0; 0; 1e12]`, the pair ±i taken for
+  two zeros because its imaginary part was measured against the largest eigenvalue. Each is
+  now judged by its own size (a review of #395).
 
 
 ## v0.45.6 what chapter 9 found refused, wrong or hanging
@@ -4092,6 +4100,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.45.7** — a complex pair beside a large eigenvalue is refused, not read as zeros.
 - **0.45.6** — `eigenvals(K, G)` and `det` of numeric matrices; a solve's zero has its unit; `{a}` in `% while`/`% if` conditions; a loop table without pre-while values; extrema of a trigonometric root returns; range solve says incompatible units.
 - **0.45.5** — angle roots are angles; rad² is a number; `subs`/`sum` on `:=` lines; quadrature for integrals with no closed form; `interp` plots to the table's end.
 - **0.45.4** — quick `inv` of trigonometric matrices; integrals with symbolic powers return; `assume(integer(n))`; readable logs; collected definite integrals; `ln`.
@@ -4228,4 +4237,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.45.6`.
+Version: `0.45.7`.
