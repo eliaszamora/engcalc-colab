@@ -466,3 +466,58 @@ def test_a_family_whose_members_are_not_real_holds_no_singularity():
     assert _no_singularity_in_domain(real_family, domain, context, None) is False
     outside = normalize_analysis_domain(context, sp.Integer(1), sp.Integer(5))
     assert _no_singularity_in_domain(real_family, outside, context, None) is True
+
+
+def test_a_zero_of_springs_borrows_the_unit_beside_it(monkeypatch):
+    """The second audit of 0.45.6: marking every worked-out zero a plain number moved the
+    error from a frame's rotation to a spring's displacement - `u_2 = 0.00` and the force
+    `k u_2 = 0.00 kN/m`. Operands of one kind give a zero of that kind, as on main."""
+    page, console = _run(
+        "k := 1000[kN/m]\nK := [k, 0; 0, k]\nF := [10[kN]; 0]\nd := solve(K, F)\n"
+        "u_2 := d[2]\nN_2 := k*u_2\nT := [1, 0; 0, 1]\ne := T*d\nN_3 := k*e[2]\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"u_{2} & = & d_{2} = 0.00\,\mathrm{m}" in page, page
+    assert r"N_{2} & = & 0.00\,\mathrm{kN} \\" in page, page
+    assert r"N_{3} & = & k e_{2} = 0.00\,\mathrm{kN}" in page, page
+
+
+_FRAME_ZERO = (
+    "k := 1000[kN/m]\nK := [k, 0; 0, 2*k*1[m^2]]\nF := [10[kN]; 0]\nd := solve(K, F)\n"
+)
+
+
+@pytest.mark.parametrize(
+    "line, written",
+    [
+        ("t := d[[1, 2], [1]][2]", "t"),
+        ("t := [d; d][4]", "t"),
+        ("T := [1, 0; 0, 1]\nt := (T*d)[2]", "t"),
+        ("t := (d + [1[mm]; 0])[2]", "t"),
+        ("D := zeros(2, 1)\nD[[1, 2], [1]] := d\nt := D[2]", "t"),
+    ],
+)
+def test_a_frame_s_worked_zero_stays_a_number_through_every_operation(line, written, monkeypatch):
+    """A part, blocks, a product, a sum and an assignment into a part keep what the solve
+    knew of its zero: a number, not the metre of the displacement beside it."""
+    page, console = _run(_FRAME_ZERO + line + "\n", monkeypatch)
+    assert not console, console
+    assert page.rstrip().endswith(r"= 0.00 \end{array}"), page[-400:]
+
+
+def test_a_zero_written_over_a_worked_one_is_a_written_zero(monkeypatch):
+    page, console = _run(
+        _FRAME_ZERO + "D := d\nD[[2], [1]] := 0\nt := D[2]\n", monkeypatch
+    )
+    assert not console, console
+    assert page.rstrip().endswith(r"= 0.00\,\mathrm{m} \end{array}"), page[-400:]
+
+
+def test_two_placeholders_in_one_condition(monkeypatch):
+    page, console = _run(
+        "% k = 0\n% n = 2\nr := 0\n% while {k} < {n}:\nr := r + 1\n% k += 1\n% end\n",
+        monkeypatch,
+    )
+    assert not console, console
+    assert r"\textbf{En 2 iteraciones:}" in page and r"r & = & 2.00" in page, page

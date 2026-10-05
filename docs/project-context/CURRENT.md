@@ -14,8 +14,8 @@ _2026-10-04._
 |---|---|
 | released | **0.45.5** - #393, `83ae814`, closed |
 | before that | **0.45.4** - #392, `dddd38b`, closed |
-| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes, first audit NOT CLEAN and fixed, second audit pending); the fold branch held |
-| default suite | **3641 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1 and 2 NOT CLEAN and fixed, third pending); the fold branch held |
+| default suite | **3649 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2336,25 +2336,38 @@ global min/max with no "unbounded" (a named constant defeats the ±∞ test); `P
 `T^{T}^{T}`; `cos x + 1/sin x` on [0.5, 2.5], `1/sin(x²)` on [1, 2] and
 `sin x + 1/cos(x/1000)` on [0, 3000] hang on both.
 
-Contracts `tests/test_what_chapter_9_found.py`: 43 (40 test functions); 30 fail on main
-(two Example 9.1 extrema ones hang there), 10 are guards of main's behaviour.
-Suite 3641 passing on SymPy 1.14 and on 1.13.3 (temporary Colab-pinned venv); 39 of them are
-the KaTeX tests, which skip without `tools/katex/node_modules` (the audit counted 3572 + 39
-skipped).
-Mutation (33 mutants of this branch's code, `scratchpad/mutate.py`): 31 killed, 2 equivalent
-(eigenvalue unit taken from [1,1]: the cycle gives the same unit; pass index on rows a block
-shows that carry no name).
-Corpus: 238 sheets rendered after the fixes: 9 differ from main - the 7 chapter 9 tables, byte-
-identical to the first audited render, and 2 chapter 7 pages of SymPy nondeterminism.
-Second independent audit: pending.
+**Second audit (subagent, at `d2c4955`): NOT CLEAN**, one blocker: marking every worked-out
+zero a number moved the S6 error onto springs - `solve([k, 0; 0, k], [10 kN; 0])` gave
+`u_2 = 0.00` and `k u_2 = 0.00 kN/m` (main: `0.00 m`, `0.00 kN`). Fixed with his "a tu
+criterio": `matrix_numeric._worked_zeros` - a solve, product or inverse marks its unitless
+zeros plain numbers only when its operands mix dimensions (a frame) or already carry such a
+zero; of one kind (springs, a truss) the zero borrows the unit beside it, as on main. Also
+from it: contracts for the zero through a part, blocks, a product, a sum and an assignment
+into a part; two placeholders in one condition; `quantity_matrix_of` asks Pint for a
+dimension only for zeros (p9_5 now 18 s, main 20 s). Re-verified there and kept: B1-B3,
+S1-S7, his p9_4/p9_5/p9_7 eigenvalues = NumPy.
 
-**Exact next step:** a second independent audit of the fixes on this branch; if clean,
+Contracts `tests/test_what_chapter_9_found.py`: 51; on main 36 fail (three Example 9.1
+extrema ones hang there), the rest are guards of main's behaviour. Suite 3649 passing on
+SymPy 1.14 and 1.13.3 (39 KaTeX tests skip without `tools/katex/node_modules`). Mutation
+(author's 33): 31 killed, 2 equivalent; the second audit's 46 found the zero-propagation and
+two-placeholder gaps now covered. Corpus, 238 sheets: the 7 chapter 9 tables (byte-identical
+to the audited render) and chapter 7 pages that alternate on main by itself (ex7_12, p7_17,
+p7_23, p7_29); render total 2000 s against main's 2622 s.
+
+**Exact next step:** a third independent audit of this branch; if clean,
 release 0.45.6 (his yes is given for a clean audit): version bump with the seven version
 assertions RED then GREEN, wheel from `git archive`, clean Colab-pinned venv, smoke
 (`tools/smoke_installed.py` + a 0.45.6 check), suite against the installed wheel, 24
 reference pages wheel = tree, PR, CI green on the exact SHA, merge; then the closure in his
-Colab. After that: his pick among the rest of chapter 9's findings (pound-force, kip
-palette, presentation list above); chapter 10 (PDF 290-).
+Colab. After that, **0.46.0, his asks of 2026-10-04 (high on the list)**, on a new branch:
+(1) an expression or call split over lines inside parentheses or brackets - today
+`y = sin(` + `x)` says "unbalanced parentheses", and `matrix_syntax.consume_matrix_statement`
+says "ordinary multiline calls remain unsupported" (only matrix literals continue);
+(2) `T'` for `transpose(T)` (now "invalid syntax"); (3) `U^-1` on a `:=` line ("is not an
+operation between matrices"; `inv(U)`, `solve(U, F)` and `T^-1` on `=` lines work). Then his
+pick among the rest of chapter 9's findings (pound-force, kip palette, presentation list
+above); chapter 10 (PDF 290-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, `dc0ce3b`, merged with
 his yes on 2026-09-24: *"Tienes mi si mi aprobación"*; released as 0.34.0, #295 `ac6199b`).

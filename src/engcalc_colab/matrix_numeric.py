@@ -133,10 +133,36 @@ def _unit_text(unit) -> str:
 
 
 def _unitless_zeros(cols: int, units) -> frozenset:
-    """Every entry an operation left as a zero with no unit: all of them worked out."""
+    """Every entry an operation left as a zero with no unit."""
     return frozenset(
         divmod(index, cols) for index, unit in enumerate(units) if unit is None
     )
+
+
+def _of_one_kind(*matrices: NumberMatrix) -> bool:
+    """Each matrix's entries of one dimension, and no zero of a kind already unknown."""
+    for numbers in matrices:
+        if numbers.worked_zeros:
+            return False
+        units = list({unit for unit in numbers.units if unit is not None})
+        if any(not _same_dimension(units[0], unit) for unit in units[1:]):
+            return False
+    return True
+
+
+def _worked_zeros(cols: int, units, *sources: NumberMatrix) -> frozenset:
+    """The unitless zeros of an operation's result that stay plain numbers.
+
+    Which kind a zero worked out to be is the operation's to know, not the vector's: the
+    displacements of two springs, `solve([k, 0; 0, k], [10 kN; 0])`, and of a frame,
+    `solve([k, 0; 0, 2k m²], [10 kN; 0])`, are both `[10 mm; 0]`. When the operands are of
+    one kind - springs, a truss - so is the zero, and taken out it borrows the unit beside
+    it, as on main (the second audit of 0.45.6: a spring's force read `0.00 kN/m`). When
+    they mix stiffnesses, the zero may be a rotation, and a number is all that is known
+    (the first audit: `θ = 0.00 m`, its moment `kN·m²`)."""
+    if _of_one_kind(*sources):
+        return frozenset()
+    return _unitless_zeros(cols, units)
 
 
 def numbers_of(quantity_matrix: QuantityMatrix) -> NumberMatrix:
@@ -187,6 +213,8 @@ def quantity_matrix_of(numbers: NumberMatrix, ureg) -> QuantityMatrix:
             entries.append(ureg.Quantity(0, ureg.dimensionless))
         else:
             quantity = ureg.Quantity(magnitude, unit)
+            # The magnitude first: asking Pint for a dimension is slow, and a stiffness has
+            # hundreds of entries (the second audit of 0.45.6 measured 8 s on p9_5).
             if magnitude == 0.0 and quantity.dimensionless:
                 # A rotation worked out to be exactly 0: read back, a dimensionless zero
                 # is taken for a written one (`numbers_of`), and this says it is not.
@@ -294,7 +322,8 @@ def multiply_numbers(left: NumberMatrix, right: NumberMatrix) -> NumberMatrix:
     )
     units = _product_units(left.units, right.units, left.rows, left.cols, right.cols)
     return NumberMatrix(
-        left.rows, right.cols, magnitudes, tuple(units), _unitless_zeros(right.cols, units)
+        left.rows, right.cols, magnitudes, tuple(units),
+        _worked_zeros(right.cols, units, left, right),
     )
 
 
@@ -422,7 +451,9 @@ def inverse_numbers(numbers: NumberMatrix) -> NumberMatrix:
         for k in range(size)
         for j in range(size)
     )
-    return NumberMatrix(size, size, magnitudes, tuple(units), _unitless_zeros(size, units))
+    return NumberMatrix(
+        size, size, magnitudes, tuple(units), _worked_zeros(size, units, numbers)
+    )
 
 
 def _a_full_permutation(numbers: NumberMatrix) -> list[int] | None:
@@ -638,7 +669,8 @@ def solve_numbers(matrix: NumberMatrix, right: NumberMatrix) -> NumberMatrix:
         for col in range(right.cols)
     )
     return NumberMatrix(
-        matrix.rows, right.cols, magnitudes, tuple(units), _unitless_zeros(right.cols, units)
+        matrix.rows, right.cols, magnitudes, tuple(units),
+        _worked_zeros(right.cols, units, matrix, right),
     )
 
 
