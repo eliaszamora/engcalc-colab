@@ -15,7 +15,7 @@ _2026-10-04._
 | released | **0.45.7** - #396 (a complex pair beside a large eigenvalue refused); 0.45.6 - #395, `dd6da36` |
 | before that | **0.45.5** - #393, `83ae814`, closed |
 | open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed, follow-up CLEAN; 0.45.6 release PR); the fold branch held |
-| default suite | **3659 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| default suite | **3660 passing** on 0.45.7 (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
