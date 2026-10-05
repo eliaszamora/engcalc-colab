@@ -12,7 +12,7 @@ _2026-10-04._
 
 | | |
 |---|---|
-| released | **0.45.7** - #396 (a complex pair beside a large eigenvalue refused); 0.45.6 - #395, `dd6da36` |
+| released | **0.45.7** - #396, `0651274`, closed (checked in his Colab); 0.45.6 - #395, `dd6da36` |
 | before that | **0.45.5** - #393, `83ae814`, closed |
 | open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed, follow-up CLEAN; 0.45.6 release PR); the fold branch held |
 | default suite | **3660 passing** on 0.45.7 (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
@@ -2401,8 +2401,15 @@ twice and on 1.13.3; wheel 33 files = commit; clean Colab-pinned venv adds only 
 small deps; smoke 56/56; suite against the wheel 3659 + surface 5/5; 24 reference pages
 wheel = source. Not audited by a separate auditor (a 4-line change; he asked to merge).
 
-**Exact next step:** merge #396 on green CI; then post-merge checks (Deep gate on main, a `git+https` install in a Colab-like venv, smoke)
-and the closure in his Colab. After that, **0.46.0, his asks of 2026-10-04 (high on the
+**0.45.7 merged** (#396, squash `0651274`, 6/6 CI on `d9380e8`). **Checked in his Colab**
+(2026-10-05, by me through Claude in Chrome - his standing rule): Untitled9, session
+restarted from the menu, cell 0 installed main, cell 5 (empty before, now the check sheet):
+`P_cr = 2485.96 kN`, `θ = d_2 = 0.00`, `M = 0.00 kN·m`, `s = 1.41` and `1.73` after 4 and 5
+iterations, Example 9.1's extrema `φ ≈ 0.44 · 339.21 kN`, `eigenvals` of ±i beside 1e12
+refused "not real"; screenshots sent. Seen there, not changed: `1e12` in a matrix literal is
+written `1000000000000.0` (the chapter 9 presentation item "1e8[mm^4] written 100000000.0").
+
+**Exact next step:** After that, **0.46.0, his asks of 2026-10-04 (high on the
 list)**, on a new branch: (1) an expression or call split over lines inside parentheses or
 brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
 `matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"
