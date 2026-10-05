@@ -352,7 +352,15 @@ def _put(insert, match, line_no, line):
     # refused before any pass ran (his book, problem 5.9); anywhere else it is a number.
     before = line[match.start() - 1] if match.start() else " "
     after = line[match.end()] if match.end() < len(line) else " "
-    return "n1" if (after.isalnum() or after == "_" or before.isalnum() or before == "_") else "1"
+    if after.isalnum() or after == "_" or before.isalnum() or before == "_":
+        return "n1"
+    # After an operand - `(2*a){q}`, `a {q}` - the placeholder holds an operation, ` + b`:
+    # a bare number there read `(2*a)1` and the loop was refused before it ran (his book,
+    # chapter 9).
+    previous = line[: match.start()].rstrip()[-1:]
+    if previous in (")", "]") or (previous and (previous.isalnum() or previous == "_") and before == " "):
+        return " + 1"
+    return "1"
 
 
 def _parse_stretch(stretch: _Stretch, insert=None):
@@ -376,6 +384,16 @@ def _parse_stretch(stretch: _Stretch, insert=None):
         else item
         for item in parsed
     ]
+
+
+def _with_placeholders(text: str, line_no: int, scope: _Scope) -> str:
+    """A condition with the values of the % lines written in, as a line of the body writes
+    them: `% while abs(r^2 - {a}) > 1e-9` read `{2}` as a set (his book, chapter 9). Done
+    each time the condition is decided, as its bare names are read: written in once, a
+    counter the body moves never reached it (the audit of 0.45.6)."""
+    return re.sub(
+        r"\{([^{}]+)\}", lambda match: _inserted(match.group(1), line_no, scope), text
+    )
 
 
 def _condition_tree(text: str, line_no: int) -> ast.AST:
@@ -466,7 +484,8 @@ def _choose(node: _IfBlock, engine, settings, scope: _Scope) -> Iterator:
         if branch.condition is None:
             chosen = branch
             break
-        tree = _in_scope(_condition_tree(branch.condition, branch.line_no), scope)
+        condition = _with_placeholders(branch.condition, branch.line_no, scope)
+        tree = _in_scope(_condition_tree(condition, branch.line_no), scope)
         verdict, stated = _decide(tree, branch.line_no, engine, settings)
         if verdict:
             chosen = branch
@@ -580,7 +599,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
                 )
                 for item in items:
                     if _shown_as_it_comes(item):
-                        kept.append(_Kept("shown", item=item))
+                        kept.append(_Kept("shown", item=item, index=index))
                         continue
                     result = engine.evaluate(item)
                     notices = tuple(engine.notices)
@@ -911,11 +930,11 @@ def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:
     What the page gets is a sentence - how many iterations, and the condition as it stands
     now, which no longer holds - and then the rows of the last iteration.
     """
-    tree = _condition_tree(node.condition, node.line_no)
     count = 0
     last: list = []
     while True:
-        current = _in_scope(tree, scope)
+        condition = _with_placeholders(node.condition, node.line_no, scope)
+        current = _in_scope(_condition_tree(condition, node.line_no), scope)
         holds, _said = _decide(current, node.line_no, engine, settings)
         if not holds:
             break
@@ -1304,6 +1323,25 @@ def _table_columns(kept: list) -> list:
         if entry.kind == "cell":
             results.setdefault(entry.key, []).append(entry.result)
     written_twice = {template for template, occurrence in results if occurrence}
+    # A name the pass assigns again after its line - a `% while` inside the loop that
+    # iterates it - is not that line's value at the end of the pass: tabulated, `r = 1.00`
+    # stood beside the converged `s = 1.41` (his book, chapter 9). Its rows stay.
+    def target(entry):
+        # A line of the loop keeps its result; a line of a block inside it is kept as what
+        # that block showed, `Evaluated(result)`, which has no pass of its own.
+        result = entry.result if entry.result is not None else getattr(entry.item, "result", None)
+        statement = getattr(result, "statement", None)
+        return getattr(statement, "target", None)
+
+    for position, entry in enumerate(kept):
+        if entry.kind != "cell" or target(entry) is None:
+            continue
+        for later in kept[position + 1:]:
+            if later.index != entry.index:
+                break  # the next pass, whatever showed it first
+            if later.key != entry.key and target(later) == target(entry):
+                written_twice.add(entry.key[0])
+                break
     columns = []
     for key, passes in results.items():
         if key[0] in written_twice or not all(_a_value(result) for result in passes):

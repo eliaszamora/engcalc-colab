@@ -90,6 +90,27 @@ def closed_form_factors(expression, variable: sp.Symbol):
     return (tuple(solvable), missing) if missing else (None, None)
 
 
+# The size past which a sine under a root is not handed to `solveset`. Measured on 0.45.5
+# (SymPy 1.14): slopes of 9 to 18 operations - `sqrt(1 + sin x) - 1`, the slope of
+# `1/sqrt(3 + 2 sin x - 2 cos x)` - came back exact in under two seconds (`x = π`,
+# `asin(1/4)`, `-π/4`); one of 22 took 67 s, and 24, 44 and Example 9.1's 100 did not
+# return. (The audit of 0.45.6 found every one of them sent to the numeric search.)
+_TRIGONOMETRIC_RADICAL_OPERATIONS = 20
+
+
+def _a_trigonometric_radical(expression: sp.Expr, variable: sp.Symbol) -> bool:
+    """A long expression with a sine or a cosine of the variable under a root -
+    `sqrt(3 + 2 sin x - 2 cos x)`, the length of a bar that turns. `solveset` rewrites the
+    trigonometry as exponentials, squares the radical away and hands a polynomial of high
+    degree to the quartic formulas, and does not come back."""
+    trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
+    return any(
+        not power.exp.is_integer
+        and any(variable in node.free_symbols for node in power.base.atoms(trigonometric))
+        for power in expression.atoms(sp.Pow)
+    ) and sp.count_ops(expression) > _TRIGONOMETRIC_RADICAL_OPERATIONS
+
+
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
     # Common factors out first. `1.2 qD (L/2 - x) + 1.6 qL (L/2 - x)` solved as written is
     # floating point, `0.5 L`, a block away from an extrema that writes the same midspan
@@ -105,6 +126,11 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         for factor in solvable:
             candidates.extend(_exact_real_solution_set(factor, variable).candidates)
         return _ExactDiscovery(tuple(candidates), complete=False)
+    if _a_trigonometric_radical(expression, variable):
+        # The slope of the load of Example 9.1 in his book, `L N_a(φ) (sin φ + cos φ) /
+        # (L_a(φ) (sin φ + α cos φ))`, never returned. Every point it could give is a
+        # number, and the numeric search finds it.
+        return _ExactDiscovery((), complete=False)
     equation = sp.Eq(expression, 0)
     try:
         solution_set = sp.solveset(equation, variable, domain=sp.S.Reals)

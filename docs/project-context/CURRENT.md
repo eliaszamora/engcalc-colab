@@ -8,14 +8,14 @@
 
 ## Where things stand today
 
-_2026-09-30._
+_2026-10-04._
 
 | | |
 |---|---|
 | released | **0.45.5** - #393, `83ae814`, closed |
 | before that | **0.45.4** - #392, `dddd38b`, closed |
-| open PRs | this closure; the fold branch held (not a PR) |
-| default suite | **3598 passing** (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed, follow-up CLEAN; 0.45.6 release PR); the fold branch held |
+| default suite | **3659 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
@@ -2282,9 +2282,125 @@ cell 3, 2026-10-02): `engcalc 0.45.5`, `t_1 = 6.31°` and `sin = 0.11`, `f|_{t=t
 quadrature integral 3.96 m³, a 12 x 12 `:=` assembly in a `% for`; screenshots sent.
 `Capitulo_09.ipynb` in his Drive and Documents (every cell runs on 0.45.5).
 
-**Exact next step:** his pick among chapter 9's findings (top: eigenvals/det of numeric
-matrices for critical loads; the exact-zero unit in a solve; while-in-for tables); chapter 10
-(PDF 290-).
+### Chapter 9's top findings, fixed (branch `feat/numeric-eigenvalues`, pushed, no PR, not released)
+
+His "sí, sigue con eso" (2026-10-04), then "Audita la rama y, si está limpia, publica la
+0.45.6" (2026-10-04; his "Ok" to: fix what the audit finds, re-audit, publish only when
+clean). A session that ran out of credits left the first fixes uncommitted (WIP `d33548f`);
+finished in `17a09f1`; the first independent audit (subagent, 32 mutants) found it **NOT
+CLEAN**, and every finding was fixed with contracts:
+- **B1** `extrema` of `P/sin t` on 0°-180° printed 815 invented "global min" rows (main
+  refused): letting a periodic singularity family through left the slope's numeric search
+  to call points beside a pole its extrema. Now `extrema._no_singularity_in_domain` lets a
+  family only *prove* the range holds none of its members (complex families have none);
+  any member inside or at an end is unresolved, as on main.
+- **B2** `eigenvals([0, 1; 1, 0])` gave `[0; 0]`: the unit was read off the diagonal. Now
+  `matrix_numeric._eigenvalue_unit`: a diagonal entry, or the k-th root of a closed walk of
+  k entries (λ² = a₁₂ a₂₁), every entry checked against `unit · s_i / s_k`; a matrix with no
+  closed walk is nilpotent (all zeros, plain numbers).
+- **B3** Example 7.4 regressed: the WIP's `written_zeros` were known only to `numbers_of`, so
+  `GJ*transpose(D)[1]/T` read `0.00 m` again. Reversed: main's rule stays (a unitless zero
+  taken out of a matrix takes the unit beside it), and `NumberMatrix.worked_zeros` /
+  `QuantityMatrix.fixed_zeros` mark the zeros an operation worked out (solve, product,
+  inverse; kept through transpose, a part, blocks, a factor, assignment into a part, and a
+  `:=` store, including a dimensionless 0 with a unit), which stay plain numbers.
+- **S1** the solveset skip turned main's exact `x = π`, `asin(1/4)`, `-π/4` into `≈`: now only
+  a trig function under a root in an expression of more than 20 operations
+  (`_TRIGONOMETRIC_RADICAL_OPERATIONS`; measured on main: 9-18 exact in < 2 s, 22 took 67 s,
+  24/44/100 hang).
+- **S2** `{k}` in a `% while` condition was written in once (1000 passes); now at every
+  evaluation, in `% if` too (`control._with_placeholders`).
+- **S3** range `solve`: "incompatible units" whenever a sample failed for units and no root
+  was found (a pole at 0 brought "no root" back); the "range has no unit" hint only for a
+  range written without one (a degree is dimensionless to Pint).
+- **S4** a `% for` table lost a correct column when a block of a *later* pass set the same
+  name: rows a block shows now carry their pass, and the scan stops at the next pass.
+- **S5** `eigenvals(K, G)` with a singular G blamed K's supports; now names the second matrix.
+- **S6** the claim "a solve's exact 0 reads 0.00" held only when F's zero had a unit; true now
+  for `F := [10[kN]; 0]` too.
+- **S7** 16 of 32 mutants survived; contracts added for each (see the mutation run below).
+- Dead code removed: the sheet-function guard on `det`/`eigenvals` (both reserved
+  identifiers); `inv`/`transpose` in `_WRITTEN_OPERATORS` (unreachable).
+- Still from the first round: `det` and `eigenvals(K)`/`eigenvals(K, G)` on `:=` numeric
+  matrices (one-element cantilever 2485.96 kN = NumPy; his p9_4 1241.57 = his inverse
+  iteration); the placeholder after `)`/`]`/an operand parses as ` + 1`; Example 9.1's
+  limit point φ ≈ 0.44, 339.21 kN (book 340), also in degrees; main hangs.
+
+Declared limitations (not defects): a monotonic range of a long trig-under-root expression
+refuses ("could not validate", the 0.9.x contract); a pole inside the range refuses;
+eigenvalues are ordered by signed value (with an indefinite G, `lam[1]` is the most
+negative); unit-misfit messages print base SI units; a loop label shows `"+ 1"` as `1`.
+Older defects the audit found, not from this branch (N6): `P/(x-2)` on [1, 3] labels the ends
+global min/max with no "unbounded" (a named constant defeats the ±∞ test); `P/(x(3-x))` on
+[0, 3] labels "local min, global max, global min"; `transpose(transpose(T))` renders
+`T^{T}^{T}`; `cos x + 1/sin x` on [0.5, 2.5], `1/sin(x²)` on [1, 2] and
+`sin x + 1/cos(x/1000)` on [0, 3000] hang on both.
+
+**Second audit (subagent, at `d2c4955`): NOT CLEAN**, one blocker: marking every worked-out
+zero a number moved the S6 error onto springs - `solve([k, 0; 0, k], [10 kN; 0])` gave
+`u_2 = 0.00` and `k u_2 = 0.00 kN/m` (main: `0.00 m`, `0.00 kN`). Fixed with his "a tu
+criterio": `matrix_numeric._worked_zeros` - a solve, product or inverse marks its unitless
+zeros plain numbers only when its operands mix dimensions (a frame) or already carry such a
+zero; of one kind (springs, a truss) the zero borrows the unit beside it, as on main. Also
+from it: contracts for the zero through a part, blocks, a product, a sum and an assignment
+into a part; two placeholders in one condition; `quantity_matrix_of` asks Pint for a
+dimension only for zeros (p9_5 now 18 s, main 20 s). Re-verified there and kept: B1-B3,
+S1-S7, his p9_4/p9_5/p9_7 eigenvalues = NumPy.
+
+**Third audit (subagent, at `51727e8`): CLEAN with conditions** - SF1: a frame loaded only
+axially (`K` axial + bending, `F := [10[kN]; 0; 0]`) left its transverse displacement a
+plain number, so the shear `12EI/L³ v` read kN/m where main read kN (main's rotation was
+wrong instead); SF2: this file had a duplicated, stale block of ~1900 lines (my splice in
+d2c4955 found the closing marker before the section; rebuilt from 17a09f1's structure);
+SF3: three mutants of the zero rule survived. Fixed: `matrix_numeric._units_by_work` - an
+entry of a solution its load leaves unknown takes its unit from its own stiffness by work,
+`K_ii c_i² = F_j x_j` of a loaded entry (m against kN/m, none against kN·m), unless the load
+holds a zero of unknown kind or the root has no whole exponents; contracts for SF1 and SF3.
+Visible effect: his p5_10c prints its zero translations `0.00 mm` (rotations stay plain).
+
+**Fourth audit (subagent, at `aa4de89`): NOT CLEAN by a hair** - the work rule is right on
+every stiffness tried (flexibility N·m, mass 1/s², grids, torsion, kN/mm, kgf, rotational
+springs left plain) but a solve that is no stiffness took the unit of its first load:
+equilibrium `[M; H; V]` gave V `0.00 N·m`, a 6×6 transformation gave a rotation `0.00 m`.
+Fixed: the rule applies only where K_ii has a dimension; `_eigenvalue_unit` reuses
+`_unit_root`. Contracts for both cases, a kN/m² diagonal and a load only in column 2.
+Notes kept: `numeric(d, mm)` of the axial-only frame now refuses its rotation (as with any
+nonzero rotation on main); `inv(K)*F` leaves the zero plain where `solve` gives it a unit;
+zeros print in base SI (main too); `d[3] + 1[mm]` silently 1 mm (main too).
+
+Contracts `tests/test_what_chapter_9_found.py`: 59. Suite 3657 collected and passing on
+SymPy 1.14 and 1.13.3 (39 KaTeX tests skip without `tools/katex/node_modules`). Mutation
+(author's 33): 31 killed, 2 equivalent; the second audit's 46 found the zero-propagation and
+two-placeholder gaps now covered. Corpus, 238 sheets: the 7 chapter 9 tables (byte-identical
+to the audited render) and chapter 7 pages that alternate on main by itself (ex7_12, p7_17,
+p7_23, p7_29); render total 2000 s against main's 2622 s.
+
+**Fourth audit follow-up at `932685d`: CLEAN** (the guard holds; every stiffness case
+unchanged; full corpus identical to aa4de89 but chapter 7 noise). Its contract gap (a load in
+column 2 only on a frame, a zero diagonal) closed with two contracts; the three mutants it
+named are killed.
+
+**0.45.6 release evidence (tree `a6541de`, "release 0.45.6"):** the seven version assertions
+RED before the bump, GREEN after; source suite 3659 twice (SymPy 1.14) and 3659 on 1.13.3;
+wheel from `git archive`, its 33 package files byte-identical to the commit (the working
+copy differs only by CRLF); clean Python 3.12 venv with Colab's pins (ipython 7.34.0, numpy
+2.2.6, matplotlib 3.10.0, sympy 1.13.3) adds only Pint 0.26.1, flexcache, flexparser,
+platformdirs, typing_extensions; smoke outside the repository 55/55 (new 0.45.6 check:
+2485.96 kN by eigenvals, a frame's θ = 0.00 without metre, `{a}` in a while); suite against
+the installed wheel from a tree with no `src/`: 3658 + the by-path surface test (5/5 on the
+wheel's `magic.py`); 24 reference pages (tools/*.eng × none/kN/kgf) wheel = source. His
+yes: "Audita la rama y, si está limpia, publica la 0.45.6".
+
+**Exact next step:** PR from `feat/numeric-eigenvalues`, CI green on the exact SHA, merge;
+then post-merge checks (Deep gate on main, a `git+https` install in a Colab-like venv, smoke)
+and the closure in his Colab. After that, **0.46.0, his asks of 2026-10-04 (high on the
+list)**, on a new branch: (1) an expression or call split over lines inside parentheses or
+brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
+`matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"
+(only matrix literals continue); (2) `T'` for `transpose(T)` (now "invalid syntax"); (3)
+`U^-1` on a `:=` line ("is not an operation between matrices"; `inv(U)`, `solve(U, F)` and
+`T^-1` on `=` lines work). Then his pick among the rest of chapter 9's findings
+(pound-force, kip palette, presentation list above); chapter 10 (PDF 290-).
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with

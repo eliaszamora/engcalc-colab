@@ -99,6 +99,8 @@ from .matrix_numeric import (
     QuantityMatrix,
     add_numbers,
     blocks_of_numbers,
+    det_numbers,
+    eigenvalues_of_numbers,
     ensure_common_scale,
     entry_quantity,
     inverse_numbers,
@@ -713,6 +715,26 @@ class _MatrixNumbers:
         name = node.func.id
         if self._builds_a_matrix(node):
             return self._built(node)
+        if name in ("det", "eigenvals"):  # reserved: a sheet cannot define its own
+            # The determinant and the eigenvalues of a matrix of numbers - a frame's critical
+            # load, `lambda_c := eigenvals(K_ff, -K_G)` - which `=` lines refuse for a `:=`
+            # matrix and a `:=` line took for one number (his book, chapter 9).
+            arguments = [self.value(argument) for argument in node.args]
+            if node.keywords or not arguments or not all(
+                isinstance(each, NumberMatrix) for each in arguments
+            ):
+                raise EngEvaluationError(f"{name} on a := line takes matrices")
+            if name == "det":
+                if len(arguments) != 1:
+                    raise EngEvaluationError("det takes one matrix")
+                magnitude, unit = det_numbers(arguments[0])
+                quantity = self.context.ureg.Quantity
+                return quantity(magnitude, unit) if unit is not None else quantity(magnitude)
+            if len(arguments) > 2:
+                raise EngEvaluationError(
+                    "eigenvals takes one matrix, or two for K x = λ G x: eigenvals(K, G)"
+                )
+            return eigenvalues_of_numbers(*arguments)
         if name not in self._MATRIX_CALLS:
             return self._number_call(node)
         arguments = [self.value(argument) for argument in node.args]
@@ -819,6 +841,7 @@ class _MatrixNumbers:
             )
         magnitudes = list(numbers.magnitudes)
         units = list(numbers.units)
+        worked = set(numbers.worked_zeros)
         for i, row in enumerate(rows):
             for j, col in enumerate(cols):
                 if not (1 <= row <= numbers.rows and 1 <= col <= numbers.cols):
@@ -828,7 +851,12 @@ class _MatrixNumbers:
                     )
                 position = (row - 1) * numbers.cols + (col - 1)
                 magnitudes[position], units[position] = value.at(i, j)
-        return NumberMatrix(numbers.rows, numbers.cols, tuple(magnitudes), tuple(units))
+                worked.discard((row - 1, col - 1))
+                if (i, j) in value.worked_zeros:
+                    worked.add((row - 1, col - 1))
+        return NumberMatrix(
+            numbers.rows, numbers.cols, tuple(magnitudes), tuple(units), frozenset(worked)
+        )
 
     @staticmethod
     def _whole(node: ast.AST) -> int | None:
@@ -4697,6 +4725,8 @@ class _Evaluator(ast.NodeVisitor):
             )
             return float(result.to_base_units().magnitude) if hasattr(result, "units") else float(result)
 
+        refusals: set[str] = set()
+
         def value_or_nothing(x: float) -> float:
             # A point the equation has no value at - a pole - is no root and no sample.
             try:
@@ -4704,6 +4734,7 @@ class _Evaluator(ast.NodeVisitor):
             except EngEvaluationError as exc:
                 if "requires values for" in str(exc):
                     raise
+                refusals.add(str(exc))
                 return math.nan
 
         try:
@@ -4744,6 +4775,24 @@ class _Evaluator(ast.NodeVisitor):
         for root in sorted(roots):
             if not distinct or root - distinct[-1] > tolerance:
                 distinct.append(root)
+        if not distinct and "incompatible units" in refusals:
+            # Points of the range where the equation's two sides, or two of its terms, are
+            # of different kinds - `k x = 6 kN` with `x` a number. An equation whose units
+            # fit has no such point, so that is what to say, not that there is no root
+            # (his book, chapter 9), whatever a pole at 0 made of another point (the audit
+            # of 0.45.6).
+            bounds = f"between {_said_quantity(lower)} and {_said_quantity(upper)}"
+            hint = (
+                f"; the range has no unit - if {unknown_name} has one, write it in the "
+                "bounds, as in 0[m]"
+                # Written without one: a degree is a number to Pint, and was written.
+                if unit == context.ureg.dimensionless
+                else ""
+            )
+            raise EngEvaluationError(
+                f"solve: incompatible units in the equation for {unknown_name} {bounds}"
+                + hint
+            )
         return [quantity(root, unit) for root in distinct], lower, upper
 
     def _evaluate_characteristic(self, node: ast.Call, name: str):

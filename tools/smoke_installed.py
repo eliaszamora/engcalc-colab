@@ -77,6 +77,14 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.45.6: what chapter 9 found
+check("a critical load by eigenvals, a rotation's zero without a metre, {a} in a while",
+      "E := 200000[MPa]\nI := 8e7[mm^4]\nl := 4[m]\nK := E*I/l^3*[12, -6*l; -6*l, 4*l^2]\n"
+      "G := -1/(30*l)*[36, -3*l; -3*l, 4*l^2]\nlam := eigenvals(K, -G)\nP_cr := lam[1]\n"
+      "k := 1000[kN/m]\nS := [k, 0; 0, 2*k*1[m^2]]\nF := [10[kN]; 0]\nd := solve(S, F)\n"
+      "theta := d[2]\n% for a in [2]:\nr := 1\n% while abs(r^2 - {a}) > 1e-9:\nr := (r + {a}/r)/2\n% end\n% end",
+      r"2485.96\,\mathrm{kN}", r"\theta & = & \displaystyle d_{2} = 0.00 \\", r"r & = & \displaystyle 1.41",
+      absent=("not a unit", "unsupported", "Set"))
 # 0.45.5: what chapter 8 found
 check("an angle root, subs on :=, an integral by quadrature",
       "a := 15[deg]\nt_1 := solve(eq(cos(a - t)^3, cos(a)), t, 0[deg], 15[deg])\ny := sin(t_1)\n"
