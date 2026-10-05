@@ -12,8 +12,8 @@ _2026-10-04._
 
 | | |
 |---|---|
-| released | **0.45.5** - #393, `83ae814`, closed |
-| before that | **0.45.4** - #392, `dddd38b`, closed |
+| released | **0.45.7** - #396 (a complex pair beside a large eigenvalue refused); 0.45.6 - #395, `dd6da36` |
+| before that | **0.45.5** - #393, `83ae814`, closed |
 | open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed, follow-up CLEAN; 0.45.6 release PR); the fold branch held |
 | default suite | **3659 passing** on `feat/numeric-eigenvalues` (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
 
@@ -2391,8 +2391,17 @@ the installed wheel from a tree with no `src/`: 3658 + the by-path surface test 
 wheel's `magic.py`); 24 reference pages (tools/*.eng × none/kN/kgf) wheel = source. His
 yes: "Audita la rama y, si está limpia, publica la 0.45.6".
 
-**Exact next step:** PR from `feat/numeric-eigenvalues`, CI green on the exact SHA, merge;
-then post-merge checks (Deep gate on main, a `git+https` install in a Colab-like venv, smoke)
+**0.45.6 merged** (#395, squash `dd6da36`, 6/6 CI on `7984ddf`): git+https install of main
+in a Colab-pinned venv = 0.45.6 at `dd6da36`, 33 files identical to main, smoke 55/55;
+Deep qualification green on main. **0.45.7** (#396, his "Fusiónala como 0.45.7"): the Codex
+review of #395 found `eigenvals([0, -1, 0; 1, 0, 0; 0, 0, 1e12])` read ±i as two zeros (the
+tolerance used the largest eigenvalue); each eigenvalue now judged by its own size above a
+1e-13 round-off floor. Evidence on `090ee46`: version assertions RED then GREEN; suite 3660
+twice and on 1.13.3; wheel 33 files = commit; clean Colab-pinned venv adds only Pint and four
+small deps; smoke 56/56; suite against the wheel 3659 + surface 5/5; 24 reference pages
+wheel = source. Not audited by a separate auditor (a 4-line change; he asked to merge).
+
+**Exact next step:** merge #396 on green CI; then post-merge checks (Deep gate on main, a `git+https` install in a Colab-like venv, smoke)
 and the closure in his Colab. After that, **0.46.0, his asks of 2026-10-04 (high on the
 list)**, on a new branch: (1) an expression or call split over lines inside parentheses or
 brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
