@@ -92,7 +92,9 @@ def test_a_malformed_assignment_names_its_problem(says, source, fragment):
         ("a = ~x\n", "unsupported syntax 'Invert'"),
         ("a = x @ x\n", "unsupported syntax 'MatMult'"),
         ("a = 'hola'\n", "only numeric constants are supported"),
-        ("a = b'x'\n", "only numeric constants are supported"),
+        # Since 0.46.0 `b'` is the transpose of b (his ask), so a bytes literal is no
+        # longer read as one; it is still refused.
+        ("a = b'x'\n", "invalid syntax"),
         ("a = frobnicate(2)\n", "unsupported function 'frobnicate'"),
         ("a = (f)(2)\n", "unsupported function"),
         ("a = (f())(2)\n", "unsupported syntax 'Call'"),

@@ -31,6 +31,7 @@ import sympy as sp
 from pint.errors import DimensionalityError
 
 from .errors import EngCalcError, EngEvaluationError, EngSyntaxError
+from .matrix_syntax import continued_lines, without_comment
 from .parser import normalize_expression, parse_cell
 
 _KEYWORD = re.compile(r"^(\w+)\b(.*)$", re.S)
@@ -367,6 +368,17 @@ def _parse_stretch(stretch: _Stretch, insert=None):
     lines = list(stretch.lines)
     written = {}
     if insert is not None:
+        # A statement over several lines is made one line first, the rest left as comments
+        # so the lines keep their numbers: its placeholders are read on the whole line, and
+        # a gathering loop writes its rule whole - it wrote the first line, cut off (the
+        # audit of 0.46.0).
+        index = 0
+        while index < len(lines):
+            count = 1 if index in stretch.text else continued_lines(lines, index)
+            if count > 1:
+                parts = [without_comment(line).strip() for line in lines[index:index + count]]
+                lines[index:index + count] = [" ".join(parts)] + ["#"] * (count - 1)
+            index += count
         for index, line in enumerate(lines):
             if index not in stretch.text and "{" in line:
                 line_no = stretch.first_line + index

@@ -2409,8 +2409,49 @@ iterations, Example 9.1's extrema `φ ≈ 0.44 · 339.21 kN`, `eigenvals` of ±i
 refused "not real"; screenshots sent. Seen there, not changed: `1e12` in a matrix literal is
 written `1000000000000.0` (the chapter 9 presentation item "1e8[mm^4] written 100000000.0").
 
-**Exact next step:** After that, **0.46.0, his asks of 2026-10-04 (high on the
-list)**, on a new branch: (1) an expression or call split over lines inside parentheses or
+### 0.46.0 - his asks of 2026-10-04 (branch `feat/multiline-and-transpose`, his "Sí, empieza con la 0.46.0")
+
+- **Multiline**: `matrix_syntax.consume_matrix_statement` - a line that leaves `(` or `[`
+  open continues on the next lines until closed, joined with spaces (`_bracket_depth`,
+  outside quotes); a blank line, a `"""` or a `#` line ends it with "line N: unbalanced
+  parentheses - one opened on this line is never closed". Matrix literals after `=` keep
+  their old path. His Untitled9 Example 2.1 (`solve(` over four lines) said "line 20:
+  unbalanced parentheses" on main and now solves a_x, a_y.
+- **`T'`**: `parser._rewrite_transpose_primes` (in `normalize_expression`) rewrites a `'`
+  that follows a name, `)` or `]` (`matrix_syntax.is_transpose_prime`) as `transpose(...)`;
+  a quote after a comma, parenthesis or space stays text. Side effect: `b'x'` (a bytes
+  literal) now reads as a transpose and is refused "invalid syntax" (guard updated).
+- **`U^-1`, `U^2` on `:=` lines**: `engine._MatrixNumbers._binary` - whole nonzero powers by
+  `inverse_numbers` and repeated `multiply_numbers`; a fractional power refused.
+- **First audit (subagent, at `26749b0`): NOT CLEAN.** Blocker: a split line in a gathering
+  `% for` wrote its rule as its first physical line, cut off (raw `f_{i} := (k_{i}*`) -
+  `control._parse_stretch` recorded the written form per line. Also: `U'^-1`, `inv(U)^2`,
+  `U''` wrote `U^{T}^{-1}` (KaTeX double superscript, the whole block red); `U^n` hung for
+  n = 1e9 and overflowed for `[2,1;1,2]^1000`; a trailing `#` comment on a continued line
+  swallowed the rest; a placeholder at the start of a continued line; 17 of 30 mutants
+  survived. Fixed: `_parse_stretch` joins a statement's lines first (`continued_lines`,
+  matrix literals left to the parser) and leaves `#` lines so the numbering holds;
+  `without_comment` on joined lines; `renderer._superscript_base` puts a power or
+  inv/transpose in `\left(...
+ight)` before another superscript; powers by squaring,
+  |n| <= 1000, a non-finite result refused. Contracts for each finding and for the
+  survivors (T_1', d[...]', T'', U^0, U^(2[m]), each stop).
+- Contracts `tests/test_multiline_and_transpose.py` (28; the 6 fixes RED on `26749b0`).
+  Suite 3688 on SymPy 1.14 and 1.13.3; corpus of 238 sheets identical to the audited branch
+  but chapter 7 noise. **Re-audit at `67d14a6`: CLEAN** (all four fixes verified,
+  KaTeX checked, no regression from the control.py join, corpus = main but chapter 7
+  noise); its six non-equivalent surviving mutants (grouped `U''`, `solve(U', F)`, comments
+  on continued lines in a loop and on a middle line, quotes holding `#` and `(` on a split
+  line) now killed by 5 more contracts: 33 in the file, suite 3693.
+
+**0.46.0 release evidence (tree `5a789cc`, his "Sí, publica la 0.46.0"):** the seven
+version assertions RED then GREEN; suite 3693 twice (SymPy 1.14) and on 1.13.3; wheel 33
+files = commit; clean Colab-pinned venv adds only Pint and four small deps; smoke 57/57
+(new check: a solve over two lines, `U'`, `U^-1`); suite against the wheel 3692 + surface
+5/5; 24 reference pages wheel = source.
+
+**Exact next step:** PR, CI green on the exact SHA, merge; git+https install and smoke; check
+in his Colab through Chrome with his Untitled9 Example 2.1 cell. Then (done in 0.46.0 above): (1) an expression or call split over lines inside parentheses or
 brackets - today `y = sin(` + `x)` says "unbalanced parentheses", and
 `matrix_syntax.consume_matrix_statement` says "ordinary multiline calls remain unsupported"
 (only matrix literals continue); (2) `T'` for `transpose(T)` (now "invalid syntax"); (3)

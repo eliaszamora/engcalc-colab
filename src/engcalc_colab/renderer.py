@@ -4007,17 +4007,32 @@ class _WrittenLine:
         if isinstance(node.op, ast.Div):
             return rf"\frac{{{self.latex(node.left)}}}{{{self.latex(node.right)}}}"
         if isinstance(node.op, ast.Pow):
-            return f"{self.grouped(node.left, _WRITTEN_ATOM)}^{{{self.latex(node.right)}}}"
+            return f"{self._superscript_base(node.left)}^{{{self.latex(node.right)}}}"
         return ast.unparse(node)
+
+    def _superscript_base(self, node) -> str:
+        """What a `^{...}` is put on: in parentheses when it carries one already -
+        `U'^-1` wrote `U^{T}^{-1}`, which KaTeX refuses as a double superscript and with
+        it the whole block (the audit of 0.46.0)."""
+        if (
+            isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow)
+        ) or (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in ("inv", "transpose")
+            and len(node.args) == 1
+        ):
+            return rf"\left({self.latex(node)}\right)"
+        return self.grouped(node, _WRITTEN_ATOM)
 
     def _call(self, name: str, arguments) -> str:
         if name == "solve" and len(arguments) == 2:
             matrix, right = arguments
-            return rf"{self.grouped(matrix, _WRITTEN_ATOM)}^{{-1}}\,{self.grouped(right, 2)}"
+            return rf"{self._superscript_base(matrix)}^{{-1}}\,{self.grouped(right, 2)}"
         if name == "inv" and len(arguments) == 1:
-            return f"{self.grouped(arguments[0], _WRITTEN_ATOM)}^{{-1}}"
+            return f"{self._superscript_base(arguments[0])}^{{-1}}"
         if name == "transpose" and len(arguments) == 1:
-            return f"{self.grouped(arguments[0], _WRITTEN_ATOM)}^{{T}}"
+            return f"{self._superscript_base(arguments[0])}^{{T}}"
         inner = ", ".join(self.latex(argument) for argument in arguments)
         if name == "sqrt" and len(arguments) == 1:
             return rf"\sqrt{{{inner}}}"
