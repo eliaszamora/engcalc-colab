@@ -753,21 +753,23 @@ def _pencil_values(stiffness, geometric, refuse: bool = True):
     if refuse:
         _refuse_complex(values, values)
     finite = sorted(float(value.real) for value in values)
-    if numpy.allclose(stiffness, stiffness.T, rtol=1e-10, atol=0) and numpy.allclose(
+    # Every pencil: one a little out of symmetry went unpolished and G⁻¹K's bias beside a
+    # stiff spring through (the fifth audit: 1570.18 for 1515.90).
+    symmetric = numpy.allclose(stiffness, stiffness.T, rtol=1e-10, atol=0) and numpy.allclose(
         geometric, geometric.T, rtol=1e-10, atol=0
-    ):
-        polished = [
-            _polished(value, stiffness, geometric, finite[:index] + finite[index + 1:])
-            for index, value in enumerate(finite)
-        ]
-        if not all(verified for _value, verified in polished):
-            return refused(
-                "eigenvals(K, G): these eigenvalues cannot be told with the figures a float "
-                "holds - one does not settle as an eigenvalue of K and G; a stiffness far "
-                "beyond the rest (a support written as a spring) does this - take that degree "
-                "of freedom out instead"
-            )
-        finite = sorted(value for value, _verified in polished)
+    )
+    polished = [
+        _polished(value, stiffness, geometric, finite[:index] + finite[index + 1:], symmetric)
+        for index, value in enumerate(finite)
+    ]
+    if not all(verified for _value, verified in polished):
+        return refused(
+            "eigenvals(K, G): these eigenvalues cannot be told with the figures a float "
+            "holds - one does not settle as an eigenvalue of K and G; a stiffness far "
+            "beyond the rest (a support written as a spring) does this - take that degree "
+            "of freedom out instead"
+        )
+    finite = sorted(value for value, _verified in polished)
     if not finite:
         return refused(
             "eigenvals(K, G): the second matrix has nothing in any direction; there is no "
@@ -776,8 +778,8 @@ def _pencil_values(stiffness, geometric, refuse: bool = True):
     return finite
 
 
-def _polished(value: float, stiffness, geometric, others) -> tuple[float, bool]:
-    """A λ of a symmetric pencil, polished, and whether it is verified.
+def _polished(value: float, stiffness, geometric, others, symmetric: bool = True) -> tuple[float, bool]:
+    """A λ of the pencil, polished, and whether it is verified.
 
     G⁻¹K reads a small λ beside a stiff spring with a bias no perturbation shows (the third
     audit's column: 1517.60 for 1517.59, and 1512.23 with a 1e20 spring). Inverse iteration
@@ -796,20 +798,33 @@ def _polished(value: float, stiffness, geometric, others) -> tuple[float, bool]:
     )
     # Not an evenly spaced start: 1, 1.5, 2 is orthogonal to a chain's [1, -2, 1], and the
     # iteration never found that mode.
-    vector = numpy.random.default_rng(7).uniform(0.5, 1.5, len(stiffness))
+    start = numpy.random.default_rng(7).uniform(0.5, 1.5, len(stiffness))
+    vector, left = start, start
     polished = value
-    for _ in range(4):
+    for _ in range(10):
+        previous = polished
         try:
-            vector = numpy.linalg.solve(stiffness - polished * geometric, geometric @ vector)
+            shifted = stiffness - polished * geometric
+            vector = numpy.linalg.solve(shifted, geometric @ vector)
+            # Out of symmetry the quotient is two-sided, yᵀKx / yᵀGx with y from (K - λG)ᵀ,
+            # and keeps the second-order accuracy xᵀKx / xᵀGx has for a symmetric pencil.
+            left = vector if symmetric else numpy.linalg.solve(shifted.T, geometric.T @ left)
         except numpy.linalg.LinAlgError:
             return polished, True  # K - λG singular to the last bit: λ is one
-        if not numpy.all(numpy.isfinite(vector)) or not numpy.abs(vector).max():
+        if not (numpy.all(numpy.isfinite(vector)) and numpy.all(numpy.isfinite(left))):
+            return value, False
+        if not numpy.abs(vector).max() or not numpy.abs(left).max():
             return value, False
         vector = vector / numpy.abs(vector).max()
-        weight = vector @ geometric @ vector
-        if not weight:
+        left = left / numpy.abs(left).max()
+        weight = left @ geometric @ vector
+        if abs(weight) <= 1e-12 * (numpy.abs(left) @ numpy.abs(geometric) @ numpy.abs(vector)):
             return value, False
-        polished = float((vector @ stiffness @ vector) / weight)
+        polished = float((left @ stiffness @ vector) / weight)
+        # Until it stops moving: an estimate 1% off, as G⁻¹K gives beside a 1e20 spring out of
+        # symmetry, took more than the four steps first allowed.
+        if abs(polished - previous) <= 1e-15 * max(abs(polished), 1e-300):
+            break
     residual = numpy.linalg.norm(stiffness @ vector - polished * (geometric @ vector))
     size = numpy.linalg.norm(numpy.abs(stiffness) @ numpy.abs(vector)) + abs(polished) * numpy.linalg.norm(
         numpy.abs(geometric) @ numpy.abs(vector)
