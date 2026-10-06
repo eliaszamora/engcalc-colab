@@ -30,7 +30,7 @@ from typing import Iterator
 import sympy as sp
 from pint.errors import DimensionalityError
 
-from .errors import EngCalcError, EngEvaluationError, EngSyntaxError
+from .errors import EngCalcError, EngEvaluationError, EngSyntaxError, diagnostic_hint
 from .matrix_syntax import continued_lines, without_comment
 from .parser import normalize_expression, parse_cell
 
@@ -331,18 +331,25 @@ def _check_lines(nodes: list) -> None:
         elif isinstance(node, _ForBlock):
             _check_lines(node.body)
         elif isinstance(node, _WhileBlock):
-            _condition_tree(node.condition, node.line_no)
+            _condition_tree(_probed(node.condition, node.line_no), node.line_no)
             _check_lines(node.body)
         elif isinstance(node, _IfBlock):
             for branch in node.branches:
                 if branch.condition is not None:
-                    _condition_tree(branch.condition, branch.line_no)
+                    _condition_tree(_probed(branch.condition, branch.line_no), branch.line_no)
                 _check_lines(branch.body)
 
 
 def _PROBE(_text, _line_no):
     """What a line's structure is read with before any pass runs: a stand-in value."""
     return _PROBE
+
+
+def _probed(condition: str, line_no: int) -> str:
+    """A condition read before any pass, its placeholders stand-ins as a line's are:
+    `% if h_{e} < 0.5` read `h_` beside a set and was refused before the loop ran (his
+    book, chapter 10, found by all four solvers)."""
+    return _INSERTED.sub(lambda match: _put(_PROBE, match, line_no, condition), condition)
 
 
 def _put(insert, match, line_no, line):
@@ -354,6 +361,10 @@ def _put(insert, match, line_no, line):
     before = line[match.start() - 1] if match.start() else " "
     after = line[match.end()] if match.end() < len(line) else " "
     if after.isalnum() or after == "_" or before.isalnum() or before == "_":
+        return "n1"
+    # `{n} := 1`: the whole target is a name, or the line read `1 := 1` (his book, chapter 10).
+    rest = line[match.end():].lstrip()
+    if not line[: match.start()].strip() and (rest.startswith(":=") or (rest.startswith("=") and not rest.startswith("=="))):
         return "n1"
     # After an operand - `(2*a){q}`, `a {q}` - the placeholder holds an operation, ` + b`:
     # a bare number there read `(2*a)1` and the loop was refused before it ran (his book,
@@ -412,7 +423,11 @@ def _condition_tree(text: str, line_no: int) -> ast.AST:
     try:
         tree = ast.parse(normalize_expression(text), mode="eval").body
     except SyntaxError as exc:
-        raise EngSyntaxError(f"line {line_no}: the condition of this % line is not one: {text}") from exc
+        message = f"line {line_no}: the condition of this % line is not one: {text}"
+        # The hint a `:=` line gives: `% if y > 1*kip*in` is the inch (his book, chapter 10).
+        if re.search(r"\bin\b", text):
+            message += ". " + diagnostic_hint("keyword_unit_name", name="in", replacement="inch")
+        raise EngSyntaxError(message) from exc
     return _read_in_numbers(tree, text, line_no)
 
 
@@ -1160,8 +1175,10 @@ def _value(operand: ast.AST, line_no: int, engine):
     side = _ItsValue(whole, lambda call: _value(call, line_no, engine)).visit(side)
     text = ast.unparse(side)
     try:
-        (statement,) = parse_cell(text if whole is not None else f"numeric({text})")
-        result = engine.evaluate(statement)
+        result = _from_numbers(text, engine) if whole is None else None
+        if result is None:
+            (statement,) = parse_cell(text if whole is not None else f"numeric({text})")
+            result = engine.evaluate(statement)
     except EngCalcError as exc:
         # The line is the condition's own, one line long, and not a line of the sheet.
         told = re.sub(r"^line \d+: ", "", str(exc))
@@ -1180,7 +1197,75 @@ def _value(operand: ast.AST, line_no: int, engine):
         written = _WrittenFormEvaluator(engine, ()).visit(shown)
     except Exception:  # noqa: BLE001 - the page then writes the number alone
         written = None
+    if written is None and getattr(result, "statement", None) is not None and getattr(
+        result.statement, "target", None
+    ) == "eng_condition":
+        written = _entries_written(side, engine)
     return result, written, getattr(result, "unit_literals", frozenset())
+
+
+def _entries_written(side: ast.AST, engine):
+    """`f[2]/f[1]` as the page writes it, `f_2/f_1`: each entry by its name, the rest names
+    with values. `None` when anything else is in it, and the page writes the number alone."""
+    from .engine import _entry_name  # noqa: PLC0415 - engine imports this module's users
+
+    symbols: dict = {}
+
+    class _Entries(ast.NodeTransformer):
+        def visit_Subscript(self, node):
+            name = _entry_name(node)
+            if name is None:
+                return node
+            key = f"eng_written_{len(symbols)}"
+            symbols[key] = sp.Symbol(name)
+            return ast.Name(id=key, ctx=ast.Load())
+
+    tree = _Entries().visit(copy.deepcopy(side))
+    if any(isinstance(each, ast.Subscript) for each in ast.walk(tree)) or not all(
+        each.id in symbols or each.id in engine.numeric_context.values
+        for each in ast.walk(tree)
+        if isinstance(each, ast.Name)
+    ):
+        return None
+    try:
+        return sp.sympify(ast.unparse(tree), locals=symbols)
+    except (sp.SympifyError, SyntaxError, TypeError):
+        return None
+
+
+def _from_numbers(text: str, engine):
+    """A side that reads a matrix of numbers, `f[1]`, worked out as a `:=` line works it out.
+
+    `numeric(f[1])` refuses a `:=` matrix, rightly for a formula, and the condition said
+    "Use it on a := line" (his book, chapter 10: which hinge forms next). Nothing is
+    assigned. `None` when the side reads no such matrix, and `numeric` answers as before.
+    """
+    from .engine import _MatrixNumbers  # noqa: PLC0415 - engine imports this module's users
+    from .matrix_numeric import NumberMatrix  # noqa: PLC0415
+    from .models import NumericEvaluationResult  # noqa: PLC0415
+
+    matrices = engine.numeric_context.matrices
+    if not any(name in matrices for name in re.findall(r"[A-Za-z_]\w*", text)):
+        return None
+    (statement,) = parse_cell(f"eng_condition := {text}")
+    numbers = _MatrixNumbers(engine, statement)
+    body = statement.expression.body
+    if not any(
+        isinstance(each, ast.Name) and each.id in matrices and numbers.names_a_matrix(each.id)
+        for each in ast.walk(body)
+    ):
+        return None
+    value = numbers.value(body)
+    if isinstance(value, NumberMatrix):
+        raise EngEvaluationError(
+            f"{text} is a matrix; a condition compares one of its entries, such as {text}[1]"
+        )
+    return NumericEvaluationResult(
+        statement=statement,
+        symbolic_expression=None,
+        substitutions={},
+        quantity=engine.numeric_context._as_quantity(value),
+    )
 
 
 def _in_one_unit(operands, values, settings, engine) -> list:

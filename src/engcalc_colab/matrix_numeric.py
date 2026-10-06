@@ -621,13 +621,10 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
         except EngEvaluationError as exc:
             if "singular" not in str(exc):
                 raise
-            # A lumped geometric stiffness or mass often is (the audit of 0.45.6, where the
-            # message sent the reader to K's supports).
-            raise EngEvaluationError(
-                "eigenvals(K, G): the second matrix is singular - it has nothing in some "
-                "direction, whose eigenvalue is infinite; take those degrees of freedom out "
-                "of both matrices"
-            ) from exc
+            # A frame's geometric stiffness always is: nothing along the bars, whose
+            # eigenvalue is infinite (his book, chapter 10). The finite ones are found as
+            # the inverses of those of K⁻¹ G that are not zero.
+            return _finite_eigenvalues(matrix, metric)
         matrix = multiply_numbers(inverse, matrix)
     _inverse_units(matrix, operation)
     unit = _eigenvalue_unit(matrix)
@@ -647,6 +644,34 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
     ordered = sorted(float(value.real) for value in values)
     units = tuple(unit for _ in ordered)
     return NumberMatrix(size, 1, tuple(ordered), units, _unitless_zeros(1, units))
+
+
+def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix) -> NumberMatrix:
+    """`eigenvals(K, G)` with a singular G: λ = 1/μ for each μ of K⁻¹ G that is not 0,
+    smallest first. As many as G has directions; refused when K is singular too, since
+    then a λ can be anything."""
+    try:
+        inverse = inverse_numbers(matrix)
+    except EngEvaluationError as exc:
+        if "singular" not in str(exc):
+            raise
+        raise EngEvaluationError(
+            "eigenvals(K, G): both matrices are singular - in a direction where both have "
+            "nothing, any λ satisfies K x = λ G x; take those degrees of freedom out of both"
+        ) from exc
+    inverses = eigenvalues_of_numbers(multiply_numbers(inverse, metric))
+    unit = next((each for each in inverses.units if each is not None), None)
+    scale = max((abs(value) for value in inverses.magnitudes), default=0.0)
+    finite = sorted(
+        1.0 / value for value in inverses.magnitudes if abs(value) > 1e-10 * scale
+    )
+    if not finite:
+        raise EngEvaluationError(
+            "eigenvals(K, G): the second matrix is zero in every direction of K; "
+            "there is no finite eigenvalue"
+        )
+    units = tuple((1 / unit if unit is not None else None) for _ in finite)
+    return NumberMatrix(len(finite), 1, tuple(finite), units, _unitless_zeros(1, units))
 
 
 def _unit_root(unit, power: int):
