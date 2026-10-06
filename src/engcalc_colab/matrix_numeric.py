@@ -625,7 +625,12 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
             # eigenvalue is infinite (his book, chapter 10). The finite ones are found as
             # the inverses of those of K⁻¹ G that are not zero.
             return _finite_eigenvalues(matrix, metric)
-        matrix = multiply_numbers(inverse, matrix)
+        # G⁻¹K tells the unit and refuses units that do not fit; its numbers do not serve:
+        # a G singular only to round-off inverts, and G⁻¹K's eigenvalues were noise - 1e16
+        # and -0.33 for 0.165 (the second audit). The values come from the shifted pencil.
+        product = multiply_numbers(inverse, matrix)
+        _inverse_units(product, operation)
+        return _finite_eigenvalues(matrix, metric, unit=_eigenvalue_unit(product))
     _inverse_units(matrix, operation)
     unit = _eigenvalue_unit(matrix)
     size = matrix.rows
@@ -646,53 +651,85 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
     return NumberMatrix(size, 1, tuple(ordered), units, _unitless_zeros(1, units))
 
 
-def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix) -> NumberMatrix:
-    """`eigenvals(K, G)` with a singular G: λ = 1/μ - σ for each μ of (K + σG)⁻¹ G that is
-    not 0, smallest first - as many as G has directions. σ is 0 when K is regular, and a
-    shift otherwise: a singular K beside a singular G is not a singular pencil (the audit
-    of these fixes: det(K - λG) = -λ was refused). Refused when K + σG is singular for
-    every σ, since then any λ satisfies K x = λ G x."""
-    unit = next(
-        (k / g for k, g in zip(matrix.units, metric.units) if k is not None and g is not None),
-        None,
-    )
-    stiffest = max((abs(value) for value in matrix.magnitudes), default=0.0)
-    largest = max((abs(value) for value in metric.magnitudes), default=0.0)
+def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -> NumberMatrix:
+    """`eigenvals(K, G)` with a singular G - a frame's geometric stiffness always is: λ =
+    1/μ - σ for each μ of (K + σG)⁻¹ G that is not 0, smallest first.
+
+    σ is the shift that leaves K + σG best conditioned, 0 among them: a singular K beside a
+    singular G is not a singular pencil (the audit of these fixes: det(K - λG) = -λ was
+    refused). A μ is 0 - its λ infinite - against ‖(K + σG)⁻¹‖·‖G‖, the round-off of the
+    product, and not against the largest μ: a K singular only to round-off made a μ of
+    1e13 and λ = 5 was dropped in silence (the second audit). Refused when K + σG is
+    singular for every σ, since then any λ satisfies K x = λ G x."""
+    import numpy
+
+    size = matrix.rows
+    stiffness = numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
+    geometric = numpy.array(metric.magnitudes, dtype=float).reshape(size, size)
+    largest = numpy.abs(geometric).max()
     if not largest:
         raise EngEvaluationError(
             "eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue"
         )
-    scale = stiffest / largest if stiffest else 1.0
-    for sigma in (0.0, 1.0, -1.0, 0.37, -2.9):
-        shift = sigma * scale
-        if sigma and unit is None:
-            break
-        shifted = (
-            matrix if not sigma
-            else add_numbers(matrix, scale_numbers(metric, unit._REGISTRY.Quantity(shift, unit)))
+    scale = numpy.abs(stiffness).max() / largest or 1.0
+    best = None
+    for sigma in (0.0, 1.0, -1.0, 0.37, -2.9, 7.3):
+        shifted = stiffness + sigma * scale * geometric
+        condition = numpy.linalg.cond(shifted)
+        if numpy.isfinite(condition) and (best is None or condition < best[0]):
+            best = (condition, sigma * scale, shifted)
+    if best is None or best[0] > 1e14:
+        raise EngEvaluationError(
+            "eigenvals(K, G): K - λG is singular for every λ - in a direction where both "
+            "matrices have nothing, any λ satisfies K x = λ G x; take those degrees of freedom "
+            "out of both"
         )
-        try:
-            inverse = inverse_numbers(shifted)
-        except EngEvaluationError as exc:
-            if "singular" not in str(exc):
-                raise
-            continue
-        inverses = eigenvalues_of_numbers(multiply_numbers(inverse, metric))
-        top = max((abs(value) for value in inverses.magnitudes), default=0.0)
-        finite = sorted(
-            1.0 / value - shift for value in inverses.magnitudes if abs(value) > 1e-10 * top
+    _condition, shift, shifted = best
+    inverse = numpy.linalg.inv(shifted)
+    values = numpy.linalg.eigvals(inverse @ geometric)
+    floor = 1e-10 * numpy.linalg.norm(inverse, 2) * numpy.linalg.norm(geometric, 2)
+    kept = [value for value in values if abs(value) > floor]
+    if any(abs(value.imag) > 1e-9 * abs(value) for value in kept):
+        raise EngEvaluationError(
+            "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
+            "stiffness have real ones - check that both matrices are symmetric"
         )
-        if not finite:
-            break
-        if unit is None:
-            mu_unit = next((each for each in inverses.units if each is not None), None)
-            unit = 1 / mu_unit if mu_unit is not None else None
-        units = tuple(unit for _ in finite)
-        return NumberMatrix(len(finite), 1, tuple(finite), units, _unitless_zeros(1, units))
+    # λ = 1/μ - σ leaves the round-off of σ where λ is 0: an exact zero read -2.33e-10.
+    noise = 1e-13 * scale
+    finite = sorted(
+        0.0 if abs(1.0 / value.real - shift) <= noise else 1.0 / value.real - shift
+        for value in kept
+    )
+    if not finite:
+        raise EngEvaluationError(
+            "eigenvals(K, G): the second matrix is zero in every direction of K; "
+            "there is no finite eigenvalue"
+        )
+    if unit is None:
+        unit = _pencil_unit(matrix, metric)
+    units = tuple(unit for _ in finite)
+    return NumberMatrix(len(finite), 1, tuple(finite), units, _unitless_zeros(1, units))
+
+
+def _pencil_unit(matrix: NumberMatrix, metric: NumberMatrix):
+    """The unit of λ in K x = λ G x: K over G where both have an entry, or, written with
+    plain zeros between them, the one unit of K over the one unit of G (the second audit:
+    `[1[kN/m], 0; 0, 0]` against `[0, 0; 0, 1[kN/m]]`). None for a number."""
+    pair = next(
+        (k / g for k, g in zip(matrix.units, metric.units) if k is not None and g is not None),
+        None,
+    )
+    if pair is not None:
+        return pair
+    stiffness = [unit for unit in matrix.units if unit is not None]
+    geometric = [unit for unit in metric.units if unit is not None]
+    if not stiffness or not geometric:
+        return stiffness[0] if stiffness else (1 / geometric[0] if geometric else None)
+    if all(unit == stiffness[0] for unit in stiffness) and all(unit == geometric[0] for unit in geometric):
+        return stiffness[0] / geometric[0]
     raise EngEvaluationError(
-        "eigenvals(K, G): K - λG is singular for every λ - in a direction where both "
-        "matrices have nothing, any λ satisfies K x = λ G x; take those degrees of freedom "
-        "out of both"
+        "eigenvals(K, G): the unit of λ cannot be told - no entry of K stands where G has "
+        "one; write the zeros with their units, such as 0[kN/m]"
     )
 
 

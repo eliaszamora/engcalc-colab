@@ -4783,16 +4783,29 @@ class _Evaluator(ast.NodeVisitor):
         return points[0].x_symbolic
 
     def _one_root(self, roots, unknown_name, lower, upper):
-        # A bound taken from an entry of a matrix of numbers is in base units: said in the
-        # other bound's, or `444822.16 m·kg/s²` stood beside `0.00 kip` (the audit of 0.46.1).
+        # A bound taken from an entry of a matrix of numbers reaches here in base units, as
+        # the matrix holds it: said in the other bound's unit, or as the page would show it -
+        # `444822.16 m·kg/s²` stood beside `0.00 kip` (the audits of 0.46.1).
+        from .renderer import RenderSettings, _display_quantity  # noqa: PLC0415 - renderer imports the engine's users
+
+        def in_base_units(quantity) -> bool:
+            try:
+                return not quantity.dimensionless and quantity.units == quantity.to_base_units().units
+            except AttributeError:
+                return False
+
         try:
-            if not lower.dimensionless:
+            if in_base_units(upper) and not lower.dimensionless and not in_base_units(lower):
                 upper = upper.to(lower.units)
-            elif not upper.dimensionless:
+            elif in_base_units(lower) and not upper.dimensionless and not in_base_units(upper):
                 lower = lower.to(upper.units)
+            lower, upper = (
+                _display_quantity(bound, RenderSettings(), declared=False) if in_base_units(bound) else bound
+                for bound in (lower, upper)
+            )
         except (AttributeError, DimensionalityError):
             pass
-        between =f"between {_said_quantity(lower)} and {_said_quantity(upper)}"
+        between = f"between {_said_quantity(lower)} and {_said_quantity(upper)}"
         if not roots:
             raise EngEvaluationError(f"solve found no root for {unknown_name} {between}")
         if len(roots) > 1:
