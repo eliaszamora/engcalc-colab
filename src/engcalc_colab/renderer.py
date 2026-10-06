@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass, replace
 from html import escape
 
+import mpmath
 import sympy as sp
 from sympy.core.function import AppliedUndef, _coeff_isneg
 from sympy.printing.conventions import split_super_sub
@@ -437,6 +438,10 @@ class _EngineeringLatexPrinter(LatexPrinter):
         decimals = written.partition(".")[2]
         if len(decimals) <= self.render_settings.precision:
             return written
+        if not math.isfinite(float(expr)):
+            # SymPy holds `1e300*1e300` exactly; a float holds it as infinity, and the page
+            # read `inf`. Written in powers of ten from the exact value.
+            return _exact_scientific_latex(expr, self.render_settings.precision)
         typed = repr(float(expr))
         if "e" not in typed and _significant_digits(typed) <= _TYPED_FIGURES:
             return typed
@@ -2198,6 +2203,14 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     # also needs it.
     start = canonical if own_figures > 0 else None
     return _best_in_family(quantity, family, settings, start=start)
+
+
+def _exact_scientific_latex(value, precision: int) -> str:
+    r"""`_scientific_latex` of a SymPy number beyond a float, `1.00 \times 10^{600}`."""
+    number = mpmath.mpf(sp.Float(value, 30)._mpf_)
+    exponent = int(mpmath.floor(mpmath.log10(abs(number))))
+    mantissa = float(number / mpmath.mpf(10) ** exponent)
+    return rf"{mantissa:.{precision}f} \times 10^{{{exponent}}}"
 
 
 def _scientific_latex(magnitude: float, precision: int) -> str:

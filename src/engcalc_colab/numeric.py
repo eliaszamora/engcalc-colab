@@ -285,6 +285,17 @@ class NumericContext:
                 _, quantity = self.evaluate_symbolic(formula)
             except Exception:
                 raise exc from None
+        try:
+            too_large = not math.isfinite(float(quantity.magnitude))
+        except OverflowError:
+            too_large = True  # `10^400`, an integer no float holds
+        except (TypeError, ValueError):
+            too_large = False
+        if too_large:
+            # It reached the printer as infinity and stopped the cell with a traceback.
+            raise EngEvaluationError(
+                f"{name} is too large for a number to hold: a float stops at 1.8 × 10^308"
+            )
         self.values[name] = quantity
         self.matrices.pop(name, None)
         return quantity
@@ -1112,7 +1123,17 @@ class NumericContext:
             None,
         )
         if dimensional is None:
-            return quantities
+            # A ratio of two units of one kind is dimensionless and still a unit:
+            # `1 kN/kip` handed back as it was compared as 1 against 0.5 and won,
+            # `max(1 kN/kip, 0.5) = 0.22` (his book, chapter 10). Values in different
+            # units are read in one: the first angle written, or none at all.
+            if len({quantity.units for quantity in quantities}) <= 1:
+                return quantities
+            angle = next(
+                (quantity.units for quantity in quantities if self._has_explicit_angle_unit(quantity)),
+                self.ureg.dimensionless,
+            )
+            return tuple(quantity.to(angle) for quantity in quantities)
 
         unit = dimensional.units
         normalized = []

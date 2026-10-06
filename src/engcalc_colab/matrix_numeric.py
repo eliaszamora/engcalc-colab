@@ -496,7 +496,16 @@ def det_numbers(numbers: NumberMatrix):
     for row, col in enumerate(permutation):
         entry = numbers.units[row * numbers.cols + col]
         unit = entry if unit is None else unit * entry
-    return float(mpmath.det(_mp_matrix(numbers))), unit
+    determinant = mpmath.det(_mp_matrix(numbers))
+    if determinant and abs(determinant) > mpmath.mpf("1.7976931348623157e308"):
+        # Exact here, infinity as a float, and the printer raised OverflowError (his book,
+        # chapter 10: a 38 x 38 stiffness matrix in newtons). Its size is still worth saying.
+        exponent = int(mpmath.floor(mpmath.log10(abs(determinant))))
+        raise EngEvaluationError(
+            f"det is about 10^{exponent} (in base units), too large for a number to hold: "
+            "a float stops at 1.8 × 10^308"
+        )
+    return float(determinant), unit
 
 
 def _a_cycle(numbers: NumberMatrix) -> list[tuple[int, int]] | None:
