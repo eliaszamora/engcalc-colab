@@ -144,7 +144,7 @@ def test_eigenvals_of_a_pencil_with_a_singular_second_matrix_says_which(monkeypa
         monkeypatch,
     )
     assert not console, console
-    assert r"& = & \displaystyle 2.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
+    assert r"& = & 2.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
     _, console = _run(
         "K := [2[kN/m], 0; 0, 0[kN/m]]\nG := [1, 0; 0, 0]\nlam := eigenvals(K, G)\n",
         monkeypatch,
