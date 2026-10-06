@@ -652,19 +652,14 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
 
 
 def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -> NumberMatrix:
-    """`eigenvals(K, G)`: the finite λ of K x = λ G x, smallest first - as many as G has
-    rank, since a frame's geometric stiffness is singular (his book, chapter 10).
+    """`eigenvals(K, G)`: the finite λ of K x = λ G x, smallest first (`_pencil_values`).
 
-    Worked on the pencil scaled by its diagonal, which leaves λ as they are, through the μ
-    of (K + σG)⁻¹ G. σ is 0 whenever K inverts in floating point, as main read every
-    pencil; otherwise the shift that leaves K + σG best conditioned - a singular K beside
-    a singular G is not a singular pencil (the first audit of these fixes). The infinite λ
-    are the n - rank(G) smallest μ, not those small beside the largest μ (the second
-    audit: λ = 5 was dropped beside a mechanism's 1e13). Each λ is the Rayleigh quotient
-    xᵀKx / xᵀGx of its vector, not 1/μ - σ, which loses a small λ beside a large σ (the
-    third audit: a support written as a stiff spring read ω₁² = 0.00 for 1517.59), and is
-    0 when xᵀKx is round-off against |x|ᵀ|K||x|. Refused when K + σG is singular for
-    every σ, since then any λ satisfies K x = λ G x."""
+    Four audits of these fixes found a silently wrong λ in each way tried first - a shift
+    of K, a cut on the size of μ, a Rayleigh quotient - and the fourth one a pencil no
+    float can answer, whose G is singular to 1e-12 in exact arithmetic (5e-7 read 2.7e-6;
+    main read 1.8e-7). So the answer is asked again with the entries moved by 1e-13 - zeros
+    stay zeros - and refused when it moves by more than 1e-6 of itself, or changes how many
+    there are: those figures are not in the numbers. A wrong λ is not printed."""
     import numpy
 
     size = matrix.rows
@@ -674,71 +669,165 @@ def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -
         _inverse_units(matrix, "eigenvals")
     stiffness = numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
     geometric = numpy.array(metric.magnitudes, dtype=float).reshape(size, size)
-    largest = numpy.abs(geometric).max()
-    if not largest:
-        raise EngEvaluationError(
-            "eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue"
+    finite = _pencil_values(stiffness, geometric)
+    # A move of 1e-14 is a hundred times a float's own round-off: a λ it moves by 1e-3 of
+    # itself is 1e-5 off as written - inside the figures the page shows.
+    largest = max(
+        max(abs(value) for value in finite),
+        numpy.linalg.norm(stiffness, 2) / numpy.linalg.norm(geometric, 2),
+    )
+    trials = numpy.random.default_rng(20261006)
+    for _ in range(2):
+        moved = _pencil_values(
+            stiffness * (1 + 1e-14 * trials.standard_normal(stiffness.shape)),
+            geometric * (1 + 1e-14 * trials.standard_normal(geometric.shape)),
+            refuse=False,
         )
-    scale = numpy.abs(stiffness).max() / largest or 1.0
-    diagonal = numpy.maximum(numpy.abs(numpy.diag(stiffness)), scale * numpy.abs(numpy.diag(geometric)))
-    factor = 1.0 / numpy.sqrt(numpy.where(diagonal > 0, diagonal, 1.0))
-    stiffness = factor[:, None] * stiffness * factor[None, :]
-    geometric = factor[:, None] * geometric * factor[None, :]
-    scale = numpy.abs(stiffness).max() / numpy.abs(geometric).max() or 1.0
-
-    # How many λ are finite: the rank of G, each row and column read on its own scale.
-    own = numpy.abs(numpy.diag(geometric))
-    own = 1.0 / numpy.sqrt(numpy.where(own > 0, own, numpy.abs(geometric).max(axis=1).clip(min=1e-300)))
-    singular_values = numpy.linalg.svd(own[:, None] * geometric * own[None, :], compute_uv=False)
-    rank = int(numpy.sum(singular_values > 1e-10 * singular_values.max()))
-
-    best = None
-    for sigma in (0.0, 1.0, -1.0, 0.37, -2.9, 7.3):
-        shifted = stiffness + sigma * scale * geometric
-        condition = numpy.linalg.cond(shifted)
-        if not numpy.isfinite(condition):
-            continue
-        if not sigma and condition <= 1e19:
-            best = (condition, 0.0, shifted)
-            break
-        if best is None or condition < best[0]:
-            best = (condition, sigma * scale, shifted)
-    if best is None or best[0] > 1e14 and best[1]:
-        raise EngEvaluationError(
-            "eigenvals(K, G): K - λG is singular for every λ - in a direction where both "
-            "matrices have nothing, any λ satisfies K x = λ G x; take those degrees of freedom "
-            "out of both"
-        )
-    _condition, shift, shifted = best
-    values, vectors = numpy.linalg.eig(numpy.linalg.solve(shifted, geometric))
-    kept = sorted(range(size), key=lambda index: -abs(values[index]))[:rank]
-    kept = [index for index in kept if values[index]]
-    if any(abs(values[index].imag) > 1e-9 * abs(values[index]) for index in kept):
-        raise EngEvaluationError(
-            "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
-            "stiffness have real ones - check that both matrices are symmetric"
-        )
-    finite = []
-    for index in kept:
-        vector = vectors[:, index].real
-        work = vector @ stiffness @ vector
-        weight = vector @ geometric @ vector
-        if abs(work) <= 1e-12 * (numpy.abs(vector) @ numpy.abs(stiffness) @ numpy.abs(vector)):
-            finite.append(0.0)
-        elif abs(weight) > 1e-12 * (numpy.abs(vector) @ numpy.abs(geometric) @ numpy.abs(vector)):
-            finite.append(float(work / weight))
-        else:
-            finite.append(float(1.0 / values[index].real - shift))
-    finite.sort()
-    if not finite:
-        raise EngEvaluationError(
-            "eigenvals(K, G): no finite eigenvalue can be told - G is zero, or so small "
-            "beside K that every λ is beyond what a float holds apart"
-        )
+        if moved is None or len(moved) != len(finite) or any(
+            abs(a - b) > 1e-3 * abs(a) + 1e-10 * largest for a, b in zip(finite, moved)
+        ):
+            raise EngEvaluationError(
+                "eigenvals(K, G): these eigenvalues cannot be told with the figures a float "
+                "holds - a change of 1e-14 in the entries moves them; G is singular or nearly "
+                "in a way the numbers do not settle. Take out the degrees of freedom where G "
+                "has (almost) nothing, or write it exactly"
+            )
     if unit is None:
         unit = _pencil_unit(matrix, metric)
     units = tuple(unit for _ in finite)
     return NumberMatrix(len(finite), 1, tuple(finite), units, _unitless_zeros(1, units))
+
+
+def _pencil_values(stiffness, geometric, refuse: bool = True):
+    """The finite λ of K x = λ G x in floats, smallest first; None for a pencil refused when
+    `refuse` is False.
+
+    Scaled by G's own diagonal, every entry that is not 0 (a G spanning 24 decades lost its
+    1e12 when only the large ones were - the fourth audit), which leaves λ as they are. A G
+    that inverts well is read as main read every pencil, the eigenvalues of G⁻¹K. A singular
+    G - a frame's geometric stiffness, a lumped mass (his book, chapter 10) - is taken apart
+    exactly: with G = U S Vᵀ, Uᵀ(K - λG)V = K' - λS, and the directions where S is 0 are
+    condensed out, K* = K'aa - K'ab K'bb⁻¹ K'ba, as a static condensation takes out a
+    massless degree of freedom; what is left has a G that inverts. Refused when K'bb is
+    singular: where G has nothing K has nothing either, and any λ satisfies K x = λ G x."""
+    import numpy
+
+    def refused(message: str):
+        if refuse:
+            raise EngEvaluationError(message)
+        return None
+
+    if not numpy.abs(geometric).max():
+        return refused("eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue")
+    own = numpy.abs(numpy.diag(geometric))
+    floor = own.max() if own.max() else numpy.abs(geometric).max()
+    factor = 1.0 / numpy.sqrt(numpy.where(own > 0, own, floor))
+    stiffness = factor[:, None] * stiffness * factor[None, :]
+    geometric = factor[:, None] * geometric * factor[None, :]
+
+    if numpy.linalg.cond(geometric) <= 1e10:
+        values = numpy.linalg.eigvals(numpy.linalg.solve(geometric, stiffness))
+    else:
+        left, singular, right = numpy.linalg.svd(geometric)
+        # A λ that hangs on what G holds below 1e-12 of its largest direction is round-off
+        # (the fourth audit: 2.9967 for 3.0006), and that direction is one G does not have.
+        null = singular <= 1e-12 * singular[0]
+        if not null.any():
+            values = numpy.linalg.eigvals(numpy.linalg.solve(geometric, stiffness))
+        else:
+            reduced = left.T @ stiffness @ right.T
+            a, b = ~null, null
+            kept = reduced[numpy.ix_(b, b)]
+            # Against all of K, not K'bb's own condition: one direction is a 1 x 1 block,
+            # whose condition is 1 however near 0 it is.
+            if numpy.linalg.svd(kept, compute_uv=False).min() <= 1e-12 * numpy.linalg.norm(stiffness, 2):
+                return refused(
+                    "eigenvals(K, G): K - λG is singular for every λ - in a direction where "
+                    "G has nothing, K has nothing either, and any λ satisfies K x = λ G x; "
+                    "take those degrees of freedom out of both"
+                )
+            condensed = reduced[numpy.ix_(a, a)] - reduced[numpy.ix_(a, b)] @ numpy.linalg.solve(
+                kept, reduced[numpy.ix_(b, a)]
+            )
+            values = numpy.linalg.eigvals(condensed / singular[a][:, None])
+    if refuse:
+        _refuse_complex(values, values)
+    finite = sorted(float(value.real) for value in values)
+    if numpy.allclose(stiffness, stiffness.T, rtol=1e-10, atol=0) and numpy.allclose(
+        geometric, geometric.T, rtol=1e-10, atol=0
+    ):
+        polished = [
+            _polished(value, stiffness, geometric, finite[:index] + finite[index + 1:])
+            for index, value in enumerate(finite)
+        ]
+        if not all(verified for _value, verified in polished):
+            return refused(
+                "eigenvals(K, G): these eigenvalues cannot be told with the figures a float "
+                "holds - one does not settle as an eigenvalue of K and G; a stiffness far "
+                "beyond the rest (a support written as a spring) does this - take that degree "
+                "of freedom out instead"
+            )
+        finite = sorted(value for value, _verified in polished)
+    if not finite:
+        return refused(
+            "eigenvals(K, G): the second matrix has nothing in any direction; there is no "
+            "finite eigenvalue"
+        )
+    return finite
+
+
+def _polished(value: float, stiffness, geometric, others) -> tuple[float, bool]:
+    """A λ of a symmetric pencil, polished, and whether it is verified.
+
+    G⁻¹K reads a small λ beside a stiff spring with a bias no perturbation shows (the third
+    audit's column: 1517.60 for 1517.59, and 1512.23 with a 1e20 spring). Inverse iteration
+    on K - λG from where it was found, then the Rayleigh quotient xᵀKx / xᵀGx; taken when
+    the pair's residual is round-off against |K||x| + |λ||G||x| - it is then a λ of the
+    pencil - and it stayed nearer its own estimate than half the gap to the next one, so it
+    is this λ and not a neighbour."""
+    import numpy
+
+    # A repeated λ - K = 2G, the three rigid-body zeros of a free frame - is no neighbour:
+    # landing on its twin is landing on it.
+    spread = max((abs(other) for other in others), default=0.0) + abs(value)
+    gap = min(
+        (abs(value - other) for other in others if abs(value - other) > 1e-6 * spread),
+        default=numpy.inf,
+    )
+    # Not an evenly spaced start: 1, 1.5, 2 is orthogonal to a chain's [1, -2, 1], and the
+    # iteration never found that mode.
+    vector = numpy.random.default_rng(7).uniform(0.5, 1.5, len(stiffness))
+    polished = value
+    for _ in range(4):
+        try:
+            vector = numpy.linalg.solve(stiffness - polished * geometric, geometric @ vector)
+        except numpy.linalg.LinAlgError:
+            return polished, True  # K - λG singular to the last bit: λ is one
+        if not numpy.all(numpy.isfinite(vector)) or not numpy.abs(vector).max():
+            return value, False
+        vector = vector / numpy.abs(vector).max()
+        weight = vector @ geometric @ vector
+        if not weight:
+            return value, False
+        polished = float((vector @ stiffness @ vector) / weight)
+    residual = numpy.linalg.norm(stiffness @ vector - polished * (geometric @ vector))
+    size = numpy.linalg.norm(numpy.abs(stiffness) @ numpy.abs(vector)) + abs(polished) * numpy.linalg.norm(
+        numpy.abs(geometric) @ numpy.abs(vector)
+    )
+    if residual <= 1e-10 * size and abs(polished - value) < 0.5 * gap:
+        return polished, True
+    return value, False
+
+
+def _refuse_complex(values, judged) -> None:
+    """Refused when an eigenvalue is not real: each by its own size, above the round-off of
+    the whole spectrum (the review of #395)."""
+    top = max((abs(value) for value in values), default=0.0) or 1.0
+    if any(abs(value.imag) > 1e-9 * abs(value) + 1e-13 * top for value in judged):
+        raise EngEvaluationError(
+            "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
+            "stiffness have real ones - check that both matrices are symmetric"
+        )
 
 
 def _pencil_unit(matrix: NumberMatrix, metric: NumberMatrix):
