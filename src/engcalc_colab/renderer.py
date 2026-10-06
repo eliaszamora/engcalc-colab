@@ -2210,12 +2210,21 @@ def _exact_scientific_latex(value, precision: int) -> str:
     number = mpmath.mpf(sp.Float(value, 30)._mpf_)
     exponent = int(mpmath.floor(mpmath.log10(abs(number))))
     mantissa = float(number / mpmath.mpf(10) ** exponent)
-    return rf"{mantissa:.{precision}f} \times 10^{{{exponent}}}"
+    return _power_of_ten_latex(mantissa, exponent, precision)
 
 
 def _scientific_latex(magnitude: float, precision: int) -> str:
     exponent = int(math.floor(math.log10(abs(magnitude))))
     mantissa = magnitude / (10.0**exponent)
+    return _power_of_ten_latex(mantissa, exponent, precision)
+
+
+def _power_of_ten_latex(mantissa: float, exponent: int, precision: int) -> str:
+    # A mantissa that rounds to ten moves into the exponent: `9.999e300` was written
+    # `10.00 \times 10^{300}` (the audit of 0.46.1).
+    if abs(round(mantissa, precision)) >= 10:
+        mantissa /= 10
+        exponent += 1
     # `\times`, not `\cdot`. It is the conventional mark for a power of ten, and it keeps
     # the glyph distinct from the multiplication dot that starts a wrapped product line.
     # With both as dots a continuation read `· 1/(8.00 · 10^7 mm^4)`: the same mark

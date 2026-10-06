@@ -331,12 +331,12 @@ def _check_lines(nodes: list) -> None:
         elif isinstance(node, _ForBlock):
             _check_lines(node.body)
         elif isinstance(node, _WhileBlock):
-            _condition_tree(_probed(node.condition, node.line_no), node.line_no)
+            _condition_tree(_probed(node.condition, node.line_no), node.line_no, node.condition)
             _check_lines(node.body)
         elif isinstance(node, _IfBlock):
             for branch in node.branches:
                 if branch.condition is not None:
-                    _condition_tree(_probed(branch.condition, branch.line_no), branch.line_no)
+                    _condition_tree(_probed(branch.condition, branch.line_no), branch.line_no, branch.condition)
                 _check_lines(branch.body)
 
 
@@ -419,11 +419,12 @@ def _with_placeholders(text: str, line_no: int, scope: _Scope) -> str:
     )
 
 
-def _condition_tree(text: str, line_no: int) -> ast.AST:
+def _condition_tree(text: str, line_no: int, written: str | None = None) -> ast.AST:
     try:
         tree = ast.parse(normalize_expression(text), mode="eval").body
     except SyntaxError as exc:
-        message = f"line {line_no}: the condition of this % line is not one: {text}"
+        # Quoted as typed, `x {op} 3`, and not as the stand-ins it was read with.
+        message = f"line {line_no}: the condition of this % line is not one: {written or text}"
         # The hint a `:=` line gives: `% if y > 1*kip*in` is the inch (his book, chapter 10).
         if re.search(r"\bin\b", text):
             message += ". " + diagnostic_hint("keyword_unit_name", name="in", replacement="inch")
@@ -1213,7 +1214,7 @@ def _entries_written(side: ast.AST, engine):
 
     class _Entries(ast.NodeTransformer):
         def visit_Subscript(self, node):
-            name = _entry_name(node)
+            name = _entry_name(node, engine)
             if name is None:
                 return node
             key = f"eng_written_{len(symbols)}"
@@ -1240,7 +1241,7 @@ def _from_numbers(text: str, engine):
     "Use it on a := line" (his book, chapter 10: which hinge forms next). Nothing is
     assigned. `None` when the side reads no such matrix, and `numeric` answers as before.
     """
-    from .engine import _MatrixNumbers  # noqa: PLC0415 - engine imports this module's users
+    from .engine import _MatrixNumbers, _a_matrix_in, one_number  # noqa: PLC0415 - engine imports this module's users
     from .matrix_numeric import NumberMatrix  # noqa: PLC0415
     from .models import NumericEvaluationResult  # noqa: PLC0415
 
@@ -1255,10 +1256,11 @@ def _from_numbers(text: str, engine):
         for each in ast.walk(body)
     ):
         return None
-    value = numbers.value(body)
+    value = one_number(numbers.value(body), engine.numeric_context.ureg)
     if isinstance(value, NumberMatrix):
         raise EngEvaluationError(
-            f"{text} is a matrix; a condition compares one of its entries, such as {text}[1]"
+            f"{text} is a matrix; a condition compares one of its entries, such as "
+            f"{_a_matrix_in(body, numbers)}[1]"
         )
     return NumericEvaluationResult(
         statement=statement,

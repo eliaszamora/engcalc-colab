@@ -814,15 +814,15 @@ class _MatrixNumbers:
                     # that reads a whole matrix, `g'*k*g`, is one number.
                     and (_entry_name(each) is not None or not _reads_only_entries(each, numbers))
                 ):
-                    value = numbers.value(each)
+                    value = one_number(numbers.value(each), numbers.context.ureg)
                     if isinstance(value, NumberMatrix):
                         raise EngEvaluationError(
                             f"solve takes numbers in its equation, and '{ast.unparse(each)}' "
-                            "is a matrix; take one of its entries, such as d[1,1]"
+                            f"is a matrix; take one of its entries, such as {_a_matrix_in(each, numbers)}[1]"
                         )
                     key = f"eng_entry_{len(bound)}"
                     bound[key] = value
-                    written[key] = _entry_name(each)
+                    written[key] = _entry_name(each, numbers.engine)
                     return ast.copy_location(ast.Name(id=key, ctx=ast.Load()), each)
                 return super().visit(each)
 
@@ -4783,7 +4783,16 @@ class _Evaluator(ast.NodeVisitor):
         return points[0].x_symbolic
 
     def _one_root(self, roots, unknown_name, lower, upper):
-        between = f"between {_said_quantity(lower)} and {_said_quantity(upper)}"
+        # A bound taken from an entry of a matrix of numbers is in base units: said in the
+        # other bound's, or `444822.16 m·kg/s²` stood beside `0.00 kip` (the audit of 0.46.1).
+        try:
+            if not lower.dimensionless:
+                upper = upper.to(lower.units)
+            elif not upper.dimensionless:
+                lower = lower.to(upper.units)
+        except (AttributeError, DimensionalityError):
+            pass
+        between =f"between {_said_quantity(lower)} and {_said_quantity(upper)}"
         if not roots:
             raise EngEvaluationError(f"solve found no root for {unknown_name} {between}")
         if len(roots) > 1:
@@ -7117,9 +7126,10 @@ def _as_written_quantity(quantity, evaluator):
     return magnitude * evaluator.visit(ast.parse(text, mode="eval").body)
 
 
-def _entry_name(node: ast.AST) -> str | None:
+def _entry_name(node: ast.AST, engine=None) -> str | None:
     """`f[1]` as the name the page writes it, `f_1`; `K[1, 2]` is `K_{1,2}`. None for
-    anything that is not one entry of a named matrix."""
+    anything that is not one entry of a named matrix, and for a name the sheet already
+    gives a value: `f_1 := 7 kip` beside `f[1]` read as that scalar (the audit of 0.46.1)."""
     if not (isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name)):
         return None
     index = node.slice
@@ -7127,8 +7137,30 @@ def _entry_name(node: ast.AST) -> str | None:
     if not all(isinstance(part, ast.Constant) and isinstance(part.value, int) for part in parts):
         return None
     if len(parts) == 1:
-        return f"{node.value.id}_{parts[0].value}"
-    return f"{node.value.id}_{{{','.join(str(part.value) for part in parts)}}}"
+        name = f"{node.value.id}_{parts[0].value}"
+    else:
+        name = f"{node.value.id}_{{{','.join(str(part.value) for part in parts)}}}"
+    if engine is not None and any(
+        name in store
+        for store in (engine.numeric_context.values, engine.numeric_context.matrices, engine.namespace)
+    ):
+        return None
+    return name
+
+
+def one_number(value, ureg):
+    """A 1 x 1 matrix of numbers - `g'*f` - as the one number it holds; anything else as it is."""
+    if isinstance(value, NumberMatrix) and value.rows == value.cols == 1:
+        return entry_quantity(value, 0, 0, ureg)
+    return value
+
+
+def _a_matrix_in(node: ast.AST, numbers: "_MatrixNumbers") -> str:
+    """The first matrix `node` names, for a hint that names the sheet's own."""
+    return next(
+        (each.id for each in ast.walk(node) if isinstance(each, ast.Name) and numbers.names_a_matrix(each.id)),
+        "d",
+    )
 
 
 def _reads_only_entries(node: ast.AST, numbers: "_MatrixNumbers") -> bool:

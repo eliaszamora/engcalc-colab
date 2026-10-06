@@ -647,31 +647,53 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
 
 
 def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix) -> NumberMatrix:
-    """`eigenvals(K, G)` with a singular G: λ = 1/μ for each μ of K⁻¹ G that is not 0,
-    smallest first. As many as G has directions; refused when K is singular too, since
-    then a λ can be anything."""
-    try:
-        inverse = inverse_numbers(matrix)
-    except EngEvaluationError as exc:
-        if "singular" not in str(exc):
-            raise
-        raise EngEvaluationError(
-            "eigenvals(K, G): both matrices are singular - in a direction where both have "
-            "nothing, any λ satisfies K x = λ G x; take those degrees of freedom out of both"
-        ) from exc
-    inverses = eigenvalues_of_numbers(multiply_numbers(inverse, metric))
-    unit = next((each for each in inverses.units if each is not None), None)
-    scale = max((abs(value) for value in inverses.magnitudes), default=0.0)
-    finite = sorted(
-        1.0 / value for value in inverses.magnitudes if abs(value) > 1e-10 * scale
+    """`eigenvals(K, G)` with a singular G: λ = 1/μ - σ for each μ of (K + σG)⁻¹ G that is
+    not 0, smallest first - as many as G has directions. σ is 0 when K is regular, and a
+    shift otherwise: a singular K beside a singular G is not a singular pencil (the audit
+    of these fixes: det(K - λG) = -λ was refused). Refused when K + σG is singular for
+    every σ, since then any λ satisfies K x = λ G x."""
+    unit = next(
+        (k / g for k, g in zip(matrix.units, metric.units) if k is not None and g is not None),
+        None,
     )
-    if not finite:
+    stiffest = max((abs(value) for value in matrix.magnitudes), default=0.0)
+    largest = max((abs(value) for value in metric.magnitudes), default=0.0)
+    if not largest:
         raise EngEvaluationError(
-            "eigenvals(K, G): the second matrix is zero in every direction of K; "
-            "there is no finite eigenvalue"
+            "eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue"
         )
-    units = tuple((1 / unit if unit is not None else None) for _ in finite)
-    return NumberMatrix(len(finite), 1, tuple(finite), units, _unitless_zeros(1, units))
+    scale = stiffest / largest if stiffest else 1.0
+    for sigma in (0.0, 1.0, -1.0, 0.37, -2.9):
+        shift = sigma * scale
+        if sigma and unit is None:
+            break
+        shifted = (
+            matrix if not sigma
+            else add_numbers(matrix, scale_numbers(metric, unit._REGISTRY.Quantity(shift, unit)))
+        )
+        try:
+            inverse = inverse_numbers(shifted)
+        except EngEvaluationError as exc:
+            if "singular" not in str(exc):
+                raise
+            continue
+        inverses = eigenvalues_of_numbers(multiply_numbers(inverse, metric))
+        top = max((abs(value) for value in inverses.magnitudes), default=0.0)
+        finite = sorted(
+            1.0 / value - shift for value in inverses.magnitudes if abs(value) > 1e-10 * top
+        )
+        if not finite:
+            break
+        if unit is None:
+            mu_unit = next((each for each in inverses.units if each is not None), None)
+            unit = 1 / mu_unit if mu_unit is not None else None
+        units = tuple(unit for _ in finite)
+        return NumberMatrix(len(finite), 1, tuple(finite), units, _unitless_zeros(1, units))
+    raise EngEvaluationError(
+        "eigenvals(K, G): K - λG is singular for every λ - in a direction where both "
+        "matrices have nothing, any λ satisfies K x = λ G x; take those degrees of freedom "
+        "out of both"
+    )
 
 
 def _unit_root(unit, power: int):

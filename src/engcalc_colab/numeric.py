@@ -286,15 +286,22 @@ class NumericContext:
             except Exception:
                 raise exc from None
         try:
-            too_large = not math.isfinite(float(quantity.magnitude))
+            magnitude = float(quantity.magnitude)
         except OverflowError:
-            too_large = True  # `10^400`, an integer no float holds
+            magnitude = math.inf  # `10^400`, an integer no float holds
         except (TypeError, ValueError):
-            too_large = False
-        if too_large:
-            # It reached the printer as infinity and stopped the cell with a traceback.
+            magnitude = 0.0
+        # Either reached the printer and stopped the cell with a traceback. A step can pass
+        # the range when the result would not - `a*b/1e300` over values of 1e200.
+        if math.isnan(magnitude):
             raise EngEvaluationError(
-                f"{name} is too large for a number to hold: a float stops at 1.8 × 10^308"
+                f"{name} is not a number: a step of it is too large for a number to hold, "
+                "and what follows, such as 0 times it, has no value"
+            )
+        if math.isinf(magnitude):
+            raise EngEvaluationError(
+                f"{name} is too large for a number to hold, or a step of it is: a float "
+                "stops at 1.8 × 10^308"
             )
         self.values[name] = quantity
         self.matrices.pop(name, None)
@@ -1126,14 +1133,17 @@ class NumericContext:
             # A ratio of two units of one kind is dimensionless and still a unit:
             # `1 kN/kip` handed back as it was compared as 1 against 0.5 and won,
             # `max(1 kN/kip, 0.5) = 0.22` (his book, chapter 10). Values in different
-            # units are read in one: the first angle written, or none at all.
+            # units are read in one: angles alone in the first angle written, ratios as
+            # plain numbers. A plain number beside an angle is left as it was - read as
+            # radians, `max(10°, 45)` became 2578.31° (the audit of these fixes).
             if len({quantity.units for quantity in quantities}) <= 1:
                 return quantities
-            angle = next(
-                (quantity.units for quantity in quantities if self._has_explicit_angle_unit(quantity)),
-                self.ureg.dimensionless,
-            )
-            return tuple(quantity.to(angle) for quantity in quantities)
+            angles = [self._has_explicit_angle_unit(quantity) for quantity in quantities]
+            if all(angles):
+                return tuple(quantity.to(quantities[0].units) for quantity in quantities)
+            if any(angles):
+                return quantities
+            return tuple(quantity.to(self.ureg.dimensionless) for quantity in quantities)
 
         unit = dimensional.units
         normalized = []

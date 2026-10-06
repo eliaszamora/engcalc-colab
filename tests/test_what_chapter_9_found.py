@@ -149,7 +149,7 @@ def test_eigenvals_of_a_pencil_with_a_singular_second_matrix_says_which(monkeypa
         "K := [2[kN/m], 0; 0, 0[kN/m]]\nG := [1, 0; 0, 0]\nlam := eigenvals(K, G)\n",
         monkeypatch,
     )
-    assert "both matrices are singular" in console, console
+    assert "any λ satisfies" in console, console
     assert "supports" not in console, console
 
 

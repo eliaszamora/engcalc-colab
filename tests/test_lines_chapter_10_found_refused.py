@@ -125,7 +125,7 @@ def test_the_unknown_need_not_be_x(sheet):
 
 
 def test_a_matrix_in_the_equation_is_told(sheet):
-    _, printed = sheet("g := [1; 2]\ns := 3[kip]\nw := solve(eq(g'*g*w, s), w, 0, 10)\n")
+    _, printed = sheet("g := [1; 2]\ns := 3[kip]\nw := solve(eq(g[1]*w + g, s), w, 0, 10)\n")
     assert "engcalc:" in printed and "take one of its entries" in printed, printed
 
 
