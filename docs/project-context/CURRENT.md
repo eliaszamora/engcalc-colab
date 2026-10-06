@@ -14,35 +14,44 @@ _2026-10-06._
 |---|---|
 | released | **0.46.0** - #398, `69d6475`, closed (checked in his Colab) |
 | before that | **0.45.7** - #396, `0651274`, closed |
-| in progress | **0.46.1** on `fix/chapter-10-findings` (chapter 10 findings; audit 1 NOT CLEAN, fixed in `2df6760`; follow-up audit and corpus running) |
-| default suite | **3739 passing** on the branch (SymPy 1.14 and 1.13.3); 3693 on 0.46.0 |
+| in progress | **0.46.1** on `fix/chapter-10-findings` (head `036fc88`; five audits NOT CLEAN, each fixed; sixth running) |
+| default suite | **3769 passing** on the branch (SymPy 1.14 and 1.13.3); 3693 on 0.46.0 |
 
 **0.46.1 in progress** (his "sigue con lo que tu propusiste", 2026-10-06): branch
-`fix/chapter-10-findings`, not yet released or merged. What chapter 10 found, fixed:
+`fix/chapter-10-findings` (head `036fc88`), not yet released or merged. What chapter 10 found:
 
 1. **`max`/`min` of unit ratios compare converted** - `max(1[kN]/1[kip], 0.5)` read 0.22 in
-   silence, now 0.50; `max(1[m]/1[ft], 2)` = 3.28. Ratios in different units are read as plain
-   numbers, angles alone in the first angle; a plain number beside an angle is left as main
-   had it (the audit: converting it made `max(10°, 45)` 2578.31°).
-2. **A value beyond a float is refused, not a traceback** - `D := det(K)` of a 40x40 1e9
-   diagonal says "det is about 10^360 (in base units), too large ..."; `x := 1e300*1e300`,
-   `10^400` refused; a step past the range and NaN have their own messages. A `=` line holds
-   the exact number and writes `1.00 \times 10^{600}` instead of `inf`.
-3. **Refused lines now run**: a placeholder inside a name in `% if`/`% while` (`h_{e}`);
-   a condition on an entry of a `:=` matrix (`% if f[1] > 0.5[kip]`, the note writes
-   `f_{1} = ...`); a range `solve` over entries (`x := solve(eq(f[1] + x*df[1], 300[kip]),
-   x, 0, 1000)`, the equation shown above the value); a 1x1 product `g'*f` as a number;
-   `{n} := 1`; `eigenvals(K, G)` with a singular G gives the finite eigenvalues (λ = 1/μ - σ
-   of (K + σG)⁻¹G; refused only for a singular pencil); `% if y > 1*kip*in` says "write inch".
+   silence, now 0.50. Ratios in different units are read as plain numbers, angles alone in
+   the first angle; a plain number beside an angle is left as main had it.
+2. **A value beyond a float is refused, not a traceback** (`det` of a 40x40 1e9 diagonal,
+   `1e300*1e300`, `10^400`); a step past the range and NaN have their own messages; a `=`
+   line writes `1.00 \times 10^{600}`; a mantissa that rounds to ten moves into the exponent.
+3. **Refused lines now run**: placeholders inside names in `% if`/`% while`; conditions on
+   entries of a `:=` matrix (named `f_{1}` unless that name is a scalar of the sheet); range
+   `solve` over entries (equation shown above the value; bounds in base units said as the
+   page would say them); 1x1 products as numbers; `{n} := 1`; "write inch" in a condition.
+4. **`eigenvals(K, G)` rewritten** - it now takes a singular G (a frame's K_G). Five
+   independent audits each found a silently wrong λ in a heuristic (shifts, cuts on μ,
+   Rayleigh quotients alone; a mechanism beside masses, a 1e20 spring, a pencil out of
+   symmetry). The method now: scaled by G's diagonal; G that inverts well → G⁻¹K as main;
+   singular G → SVD, null directions condensed out exactly; every λ polished by inverse
+   iteration + (two-sided) Rayleigh quotient and taken only if its residual is round-off;
+   the whole repeated with entries moved 1e-14 and **refused if it moves** - a wrong λ is
+   never printed. Checked against mpmath (60 digits) on ~300 audit cases (scratchpad a3/
+   a4/ a5/): every printed value right; left out by design: eigenvalues that exist only
+   because G is singular to round-off (±1e16). Refused where main answered: G with a
+   direction 1e-11 below the rest and K = 2G (B_*_1e-11). G⁻¹K on a nearly singular G
+   (main) printed garbage (-0.33 for 0.165); that is fixed too.
 
-Audit 1 NOT CLEAN (no wrong number on the targeted paths; F1 angles, F2 a regular pencil
-refused, F3-F8 messages, base-unit bound, `d[1,1]` hint, entry name colliding with a scalar,
-`10.00 × 10^{300}`) - all fixed in `2df6760` with 13 contracts (11 RED before). One existing
-contract changed on purpose: chapter 9's "singular second matrix is refused" now gives the
-eigenvalue (his approval covered it). Suite **3739** on SymPy 1.14 and 1.13.3. KaTeX page of
-the fixes: 0 errors. Still pre-existing: a literal `9.999e600` prints `\infty`; a zero with a
-unit in a condition writes `__u_kip`; `numeric(x)` of `1e300*1e300` says "diverges"; kip
-sheets shown in kN (known).
+Contracts: test_min_and_max_compare_ratios_converted, test_a_value_beyond_a_float_is_refused,
+test_lines_chapter_10_found_refused, test_what_the_{,second_,third_,fourth_,fifth_}audit_of_0_46_1_found
+(+ tests/sheets/ fixtures). Chapter 9's "singular second matrix is refused" now gives the
+eigenvalue (his approval covered it). Suite **3769** on SymPy 1.14 and 1.13.3. Corpus of his
+270 sheets: identical to main except chapter 7's known integral forms (main differs with
+PYTHONHASHSEED itself) and p9_13's `10.00 × 10^{-10}` now `1.00 × 10^{-9}`; heavy chapter 10
+sheets rerun with 30 min limits. KaTeX page of the fixes: 0 errors. Pre-existing, not
+touched: a literal `9.999e600` prints `\infty`; a zero with a unit in a condition writes
+`__u_kip`; kip sheets shown in kN.
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
