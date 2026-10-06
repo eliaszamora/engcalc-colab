@@ -652,18 +652,26 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
 
 
 def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -> NumberMatrix:
-    """`eigenvals(K, G)` with a singular G - a frame's geometric stiffness always is: λ =
-    1/μ - σ for each μ of (K + σG)⁻¹ G that is not 0, smallest first.
+    """`eigenvals(K, G)`: the finite λ of K x = λ G x, smallest first - as many as G has
+    rank, since a frame's geometric stiffness is singular (his book, chapter 10).
 
-    σ is the shift that leaves K + σG best conditioned, 0 among them: a singular K beside a
-    singular G is not a singular pencil (the audit of these fixes: det(K - λG) = -λ was
-    refused). A μ is 0 - its λ infinite - against ‖(K + σG)⁻¹‖·‖G‖, the round-off of the
-    product, and not against the largest μ: a K singular only to round-off made a μ of
-    1e13 and λ = 5 was dropped in silence (the second audit). Refused when K + σG is
-    singular for every σ, since then any λ satisfies K x = λ G x."""
+    Worked on the pencil scaled by its diagonal, which leaves λ as they are, through the μ
+    of (K + σG)⁻¹ G. σ is 0 whenever K inverts in floating point, as main read every
+    pencil; otherwise the shift that leaves K + σG best conditioned - a singular K beside
+    a singular G is not a singular pencil (the first audit of these fixes). The infinite λ
+    are the n - rank(G) smallest μ, not those small beside the largest μ (the second
+    audit: λ = 5 was dropped beside a mechanism's 1e13). Each λ is the Rayleigh quotient
+    xᵀKx / xᵀGx of its vector, not 1/μ - σ, which loses a small λ beside a large σ (the
+    third audit: a support written as a stiff spring read ω₁² = 0.00 for 1517.59), and is
+    0 when xᵀKx is round-off against |x|ᵀ|K||x|. Refused when K + σG is singular for
+    every σ, since then any λ satisfies K x = λ G x."""
     import numpy
 
     size = matrix.rows
+    if unit is None:
+        # With G singular nothing inverted K: its units are checked as its inverse checks
+        # them (the third audit: an entry in kN/m among kN·m read in kN).
+        _inverse_units(matrix, "eigenvals")
     stiffness = numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
     geometric = numpy.array(metric.magnitudes, dtype=float).reshape(size, size)
     largest = numpy.abs(geometric).max()
@@ -672,38 +680,60 @@ def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -
             "eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue"
         )
     scale = numpy.abs(stiffness).max() / largest or 1.0
+    diagonal = numpy.maximum(numpy.abs(numpy.diag(stiffness)), scale * numpy.abs(numpy.diag(geometric)))
+    factor = 1.0 / numpy.sqrt(numpy.where(diagonal > 0, diagonal, 1.0))
+    stiffness = factor[:, None] * stiffness * factor[None, :]
+    geometric = factor[:, None] * geometric * factor[None, :]
+    scale = numpy.abs(stiffness).max() / numpy.abs(geometric).max() or 1.0
+
+    # How many λ are finite: the rank of G, each row and column read on its own scale.
+    own = numpy.abs(numpy.diag(geometric))
+    own = 1.0 / numpy.sqrt(numpy.where(own > 0, own, numpy.abs(geometric).max(axis=1).clip(min=1e-300)))
+    singular_values = numpy.linalg.svd(own[:, None] * geometric * own[None, :], compute_uv=False)
+    rank = int(numpy.sum(singular_values > 1e-10 * singular_values.max()))
+
     best = None
     for sigma in (0.0, 1.0, -1.0, 0.37, -2.9, 7.3):
         shifted = stiffness + sigma * scale * geometric
         condition = numpy.linalg.cond(shifted)
-        if numpy.isfinite(condition) and (best is None or condition < best[0]):
+        if not numpy.isfinite(condition):
+            continue
+        if not sigma and condition <= 1e19:
+            best = (condition, 0.0, shifted)
+            break
+        if best is None or condition < best[0]:
             best = (condition, sigma * scale, shifted)
-    if best is None or best[0] > 1e14:
+    if best is None or best[0] > 1e14 and best[1]:
         raise EngEvaluationError(
             "eigenvals(K, G): K - λG is singular for every λ - in a direction where both "
             "matrices have nothing, any λ satisfies K x = λ G x; take those degrees of freedom "
             "out of both"
         )
     _condition, shift, shifted = best
-    inverse = numpy.linalg.inv(shifted)
-    values = numpy.linalg.eigvals(inverse @ geometric)
-    floor = 1e-10 * numpy.linalg.norm(inverse, 2) * numpy.linalg.norm(geometric, 2)
-    kept = [value for value in values if abs(value) > floor]
-    if any(abs(value.imag) > 1e-9 * abs(value) for value in kept):
+    values, vectors = numpy.linalg.eig(numpy.linalg.solve(shifted, geometric))
+    kept = sorted(range(size), key=lambda index: -abs(values[index]))[:rank]
+    kept = [index for index in kept if values[index]]
+    if any(abs(values[index].imag) > 1e-9 * abs(values[index]) for index in kept):
         raise EngEvaluationError(
             "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
             "stiffness have real ones - check that both matrices are symmetric"
         )
-    # λ = 1/μ - σ leaves the round-off of σ where λ is 0: an exact zero read -2.33e-10.
-    noise = 1e-13 * scale
-    finite = sorted(
-        0.0 if abs(1.0 / value.real - shift) <= noise else 1.0 / value.real - shift
-        for value in kept
-    )
+    finite = []
+    for index in kept:
+        vector = vectors[:, index].real
+        work = vector @ stiffness @ vector
+        weight = vector @ geometric @ vector
+        if abs(work) <= 1e-12 * (numpy.abs(vector) @ numpy.abs(stiffness) @ numpy.abs(vector)):
+            finite.append(0.0)
+        elif abs(weight) > 1e-12 * (numpy.abs(vector) @ numpy.abs(geometric) @ numpy.abs(vector)):
+            finite.append(float(work / weight))
+        else:
+            finite.append(float(1.0 / values[index].real - shift))
+    finite.sort()
     if not finite:
         raise EngEvaluationError(
-            "eigenvals(K, G): the second matrix is zero in every direction of K; "
-            "there is no finite eigenvalue"
+            "eigenvals(K, G): no finite eigenvalue can be told - G is zero, or so small "
+            "beside K that every λ is beyond what a float holds apart"
         )
     if unit is None:
         unit = _pencil_unit(matrix, metric)

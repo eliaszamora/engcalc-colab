@@ -4789,8 +4789,14 @@ class _Evaluator(ast.NodeVisitor):
         from .renderer import RenderSettings, _display_quantity  # noqa: PLC0415 - renderer imports the engine's users
 
         def in_base_units(quantity) -> bool:
+            # A compound of base units, `m·kg/s²`, which nobody types; a metre typed as a
+            # metre stays one (the third audit: `0.2[m]` was said `200.00 mm`).
             try:
-                return not quantity.dimensionless and quantity.units == quantity.to_base_units().units
+                return (
+                    not quantity.dimensionless
+                    and len(quantity.units._units) > 1
+                    and quantity.units == quantity.to_base_units().units
+                )
             except AttributeError:
                 return False
 
