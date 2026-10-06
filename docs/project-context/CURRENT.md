@@ -2494,7 +2494,9 @@ Findings, not fixed (his pick):
   displacement vectors mixing mm and m·10⁻⁷; symbolic [km] not simplified and wider than the page; pages
   150 000-211 000 px from per-pass matrices (known); kip sheets in SI (known).
 
-**Exact next step:** finish the check of `Capitulo_10.ipynb` and upload it to his Drive; then his pick
+`Capitulo_10.ipynb`: every cell runs on 0.46.0 (0 errors), uploaded to his Drive folder and in Documents.
+
+**Exact next step:** his pick
 among chapter 10's findings (top: max/min with mixed units, det overflow, placeholders in condition
 names, matrix entries in conditions and range solve, a singular G in eigenvals) and chapter 9's rest.
 
