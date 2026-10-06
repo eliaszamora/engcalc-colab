@@ -2458,8 +2458,47 @@ unbalanced parentheses" (symbolic; `numeric(a_x, mm)` gives the number); cell 5:
 `x_1 = 1.41` from a split solve, `V = U^T`, `X = U^{-1}`, `A = (U^T)^{-1}` typeset in KaTeX,
 the split loop rule `f_i = k_i * 1 mm` with its table 100.00 / 66.67 kN; screenshots sent.
 
-**Exact next step:** his pick among the rest of chapter 9's findings (pound-force, kip
-palette, the presentation list), or chapter 10 (PDF 290-).
+### His book, chapter 10 complete (material nonlinear analysis; examples 10.1-10.10, problems 10.1-10.20)
+
+Four solvers (subagents) on a frozen 0.46.0 snapshot, PDF pages 290-321 rendered in the book scratchpad
+(`...5a68024d.../scratchpad/book/png`, `ch10/BRIEF.md`; brief copied to Documents `herramientas/BRIEF_ch10.md`).
+Every number EngCalc printed matches an independent numpy oracle (event-to-event with Ec. 10.16/10.18, the
+plastic reduction matrix, inelastic critical loads by bisection on `eigenvals`); the book is reproduced
+wherever it prints results (Ex. 10.1 385.8 kip, 10.2 265.5, 10.4 331 / 316, 10.6 312 with its hinge
+sequence, 10.8 2.13 / 1.86, 10.9 shakedown 84.91 kip). Book slips: Ex. 10.4 prints m = 0.8507 for 0.8577;
+Ex. 10.3 frame 2's 1346 depends on an incremental force distribution (1310 elastic). `Capitulo_10.ipynb`
+generated in Documents (10 examples, 30 problem sheets; 10.10(b) first + second order joined; 10.14 first
+order only - both orders did not finish in 40 min).
+
+Findings, not fixed (his pick):
+- **Wrong value, silent:** `max`/`min` compare unconverted magnitudes - `max(1[kN]/1[kip], 0.5)` = 0.22,
+  `max(1[m]/1[ft], 2)` = 2.00; also with a scalar taken from a computed `:=` matrix (an adaptive step became
+  15276 kip). Found by three solvers.
+- **Crash:** `det` of a large matrix (38x38 stiffness in SI) overflows float and the printer raises
+  `OverflowError` (`_scientific_latex`).
+- **Refused:** a placeholder inside a name in a `% if`/`% while` condition (`% if x_{q} > 0`) - parsed before
+  substitution (found by all four); a condition cannot read an entry of a `:=` matrix (`% if f[1] > ...`,
+  "Use it on a := line"); a range `solve` whose equation holds a matrix entry ("unknown numeric name 'x'");
+  `{n} := 1` (a placeholder as the whole target); `eigenvals(K, G)` with a singular G - a frame's K_g always
+  is (workaround `eigenvals(inv(K)*(-G))`, 1/mu); `*in` in a condition without the `:=` lines' "write inch"
+  hint.
+- **Missing:** no argmin / index of the governing entry (hinge selection needs `%` Python tricks); no
+  `% break`/redo (hinge unloading inside a step cannot be written, so truss-type frames are overestimated);
+  values set in a `% if` inside a `% for` not tabulated; `%` helper lambdas cannot see other helpers; speed
+  ~0.15 s per element per event (10.13b 852 s, 10.14 > 40 min) - impractical for large frames in Colab.
+- **Presentation:** `(x[1]/y)^2` written `\frac{x_1}{y}^{2}` without parentheses (every Φ line); a loop table
+  converts a value typed in ft to inches; kip step sizes in lbf / small forces in N; a function call inside
+  `solve` shown expanded (`E_t(σ)` folded into 5184 in²); loop rule `{Lr}*r` reads "L_Lr = Lr r"; integer
+  loop variables with decimals ("Como 1.00 ≤ 1.00"); a `% while` stop at two decimals ("φ = 1.00 < 1.00");
+  integer and zero vectors written twice; `Z*sigma_y` shown in kip·ft; `1000[kN]/1[kip]` not reduced;
+  displacement vectors mixing mm and m·10⁻⁷; symbolic [km] not simplified and wider than the page; pages
+  150 000-211 000 px from per-pass matrices (known); kip sheets in SI (known).
+
+`Capitulo_10.ipynb`: every cell runs on 0.46.0 (0 errors), uploaded to his Drive folder and in Documents.
+
+**Exact next step:** his pick
+among chapter 10's findings (top: max/min with mixed units, det overflow, placeholders in condition
+names, matrix entries in conditions and range solve, a singular G in eigenvals) and chapter 9's rest.
 
 **`d := solve(K, F)` - a matrix defined by its numbers** (#294, 0.34.0).
 A `:=` line that names a matrix is worked out in numbers (`engine._MatrixNumbers`, with
