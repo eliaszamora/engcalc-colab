@@ -1,0 +1,112 @@
+{
+ "w_kip": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 0.00 kip and 200.00 kip\n",
+  "error": ""
+ },
+ "w_mixed": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 0.00 kN and 200.00 kip\n",
+  "error": ""
+ },
+ "w_mixed2": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 10.00 kip and 200.00 kN\n",
+  "error": ""
+ },
+ "w_m": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 0.20 m and 1.50 m\n",
+  "error": ""
+ },
+ "w_mm": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 200.00 mm and 1.50 m\n",
+  "error": ""
+ },
+ "w_kg": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 0.50 kg and 2.00 kg\n",
+  "error": ""
+ },
+ "w_s": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 0.50 s and 2.00 s\n",
+  "error": ""
+ },
+ "w_N": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 0.50 N and 2.00 N\n",
+  "error": ""
+ },
+ "w_plain": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 0.00 and 10.00\n",
+  "error": ""
+ },
+ "w_plain0_unit": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between 0.00 and 200.00 kip\n",
+  "error": ""
+ },
+ "w_unit_plain0": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found no root for x between -200.00 kip and 0.00\n",
+  "error": ""
+ },
+ "e_lower": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle f & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 100\\,\\mathrm{kip}\\\\[3pt]\\displaystyle 50\\,\\mathrm{kip}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 444.82\\\\[3pt]\\displaystyle 222.41\\end{matrix}\\right]\\,\\mathrm{kN} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "e_upper_0": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle f & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 100\\,\\mathrm{kip}\\\\[3pt]\\displaystyle 50\\,\\mathrm{kip}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 444.82\\\\[3pt]\\displaystyle 222.41\\end{matrix}\\right]\\,\\mathrm{kN} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "e_both": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle f & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 100\\,\\mathrm{kip}\\\\[3pt]\\displaystyle 50\\,\\mathrm{kip}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 444.82\\\\[3pt]\\displaystyle 222.41\\end{matrix}\\right]\\,\\mathrm{kN} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "e_m": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle d & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 0.2\\,\\mathrm{m}\\\\[3pt]\\displaystyle 1.5\\,\\mathrm{m}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 200.00\\\\[3pt]\\displaystyle 1500.00\\end{matrix}\\right]\\,\\mathrm{mm} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "e_m_written": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle d & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 0.2\\,\\mathrm{m}\\\\[3pt]\\displaystyle 1.5\\,\\mathrm{m}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 200.00\\\\[3pt]\\displaystyle 1500.00\\end{matrix}\\right]\\,\\mathrm{mm} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "e_kNm": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle d & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 10\\,\\mathrm{kN} \\cdot \\mathrm{m}\\\\[3pt]\\displaystyle 50\\,\\mathrm{kN} \\cdot \\mathrm{m}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 10.00\\\\[3pt]\\displaystyle 50.00\\end{matrix}\\right]\\,\\mathrm{kN} \\cdot \\mathrm{m} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "e_mixed_dim": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle d & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 10\\,\\mathrm{kN} \\cdot \\mathrm{m}\\\\[3pt]\\displaystyle 50\\,\\mathrm{kN} \\cdot \\mathrm{m}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 10.00\\\\[3pt]\\displaystyle 50.00\\end{matrix}\\right]\\,\\mathrm{kN} \\cdot \\mathrm{m} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "two_roots": {
+  "page": "",
+  "printed": "engcalc: line 1: solve found 2 roots for x between -3.00 m and 3.00 m: -2.00 m, 2.00 m; narrow the range to the one you want\n",
+  "error": ""
+ },
+ "two_roots_e": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle d & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle -3\\,\\mathrm{m}\\\\[3pt]\\displaystyle 3\\,\\mathrm{m}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle -3.00\\\\[3pt]\\displaystyle 3.00\\end{matrix}\\right]\\,\\mathrm{m} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "one_root_ok": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl} \\displaystyle f & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 100\\,\\mathrm{kip}\\\\[3pt]\\displaystyle 50\\,\\mathrm{kip}\\end{matrix}\\right] \\\\[8pt] \\rule{0pt}{0.7em} \\\\  & = & \\displaystyle \\left[\\begin{matrix}\\displaystyle 444.82\\\\[3pt]\\displaystyle 222.41\\end{matrix}\\right]\\,\\mathrm{kN} \\end{array}",
+  "printed": "engcalc: line 2: unsupported numeric function\n",
+  "error": ""
+ },
+ "one_root_ok_w": {
+  "page": "\\hspace{0.2em}\\begin{array}{lcl}  & & \\displaystyle x = 70\\,\\mathrm{kip} \\\\[8pt] \\displaystyle x & = & \\displaystyle 70.00\\,\\mathrm{kip} \\end{array}",
+  "printed": "",
+  "error": ""
+ }
+}

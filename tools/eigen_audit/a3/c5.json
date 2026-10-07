@@ -1,0 +1,5 @@
+{"kip_reg": "K := [2[kip/in], 1[kip]; 1[kip], 3[kip*in]]\nG := [1[1/in], 0.1; 0.1, 0.2[in]]\nl := eigenvals(K, G)\n",
+ "kip_mass": "K := [2[kip/in], -1[kip/in]; -1[kip/in], 1[kip/in]]\nG := [1[lb], 0[lb]; 0[lb], 2[lb]]\nl := eigenvals(K, G)\n",
+ "Nmm_reg": "K := [2000[N/mm], 1000[N]; 1000[N], 3000000[N*mm]]\nG := [1[1/mm], 0.1; 0.1, 200[mm]]\nl := eigenvals(K, G)\n",
+ "bad_units": "K := [2[kN/m], 1[kN]; 1[kN], 3[kN*m]]\nG := [1[1/m], 0.1[m]; 0.1[m], 0.2[m]]\nl := eigenvals(K, G)\n",
+ "bad_units_sing": "K := [2[kN/m], 1[kN], 0[kN]; 1[kN], 3[kN*m], 0[kN*m]; 0[kN], 0[kN*m], 1[kN*m]]\nG := [1[1/m], 0.1[m], 0[m]; 0.1[m], 0.2[m], 0[m]; 0[m], 0[m], 0[m]]\nl := eigenvals(K, G)\n"}

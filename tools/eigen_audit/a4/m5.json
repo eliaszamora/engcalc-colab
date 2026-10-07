@@ -1,0 +1,62 @@
+{
+ "NS_zero_rayleigh": {
+  "vals": [
+   1.0,
+   2.0
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.006456000031903386
+ },
+ "NS_zero_rayleigh_b": {
+  "vals": [
+   4.0,
+   5.0
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.004212499945424497
+ },
+ "near_defective_1e-06": {
+  "vals": [
+   2.999,
+   3.001
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.004596599959768355
+ },
+ "near_defective_1e-20": {
+  "vals": [
+   2.9999999999,
+   3.0000000001
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.004219900001771748
+ },
+ "near_defective_1e-26": {
+  "vals": [
+   2.9999999999999,
+   3.0000000000001
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.003802899969741702
+ },
+ "plain_sym": {
+  "vals": [
+   1.6339745962155614,
+   3.366025403784439
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.002139099990017712
+ }
+}
