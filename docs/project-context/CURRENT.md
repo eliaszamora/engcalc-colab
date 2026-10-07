@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-> **Read the block directly below, then `NEXT.md`.** Everything after it was last
+> **Read the block directly below (start with its Handoff 2026-10-07), then `NEXT.md`.** Everything after it was last
 > updated at 0.13.0 on `9a9d6e3` and describes a tree that no longer exists. Its
 > *approved behaviour* and *evidence hierarchy* sections are still in force and are
 > regression requirements; its baseline numbers, release history and open-issue list are
@@ -15,6 +15,42 @@ _2026-10-07._
 | released | **0.46.1** - #401, `928b716`, closed (checked in his Colab); `eigenvals` with singular G parked on `fix/chapter-10-findings` |
 | before that | **0.46.0** - #398, `69d6475`, closed |
 | default suite | **3736 passing** on 0.46.1 (SymPy 1.14 and 1.13.3) |
+
+**Handoff 2026-10-07 (moving to another Claude account).** `main` = `0e1da3b`, 0.46.1
+released and closed, no open PRs, nothing running. Branches worth knowing:
+`fix/chapter-10-findings` (`5da704c`, pushed) holds the parked `eigenvals(K, G)` rewrite and
+its audit harness in `tools/eigen_audit/` (see its README); `release/0.46.1` and
+`docs/*` are merged leftovers.
+
+**Exact next step - proposed, he has not answered yet** (he said "las decisiones te las dejo
+a ti, tienes mi autorización"; ask before starting a multi-hour release if unsure):
+a short **0.46.2** with the 0.46.1 audit's low findings -
+1. a range `solve` whose bounds are in inches fails "symbolic evaluation failed: invalid
+   syntax" (`x := solve(eq(x, 2[inch]), x, 0[inch], 10[inch])`; also with `lo := 0[inch]`
+   bounds) - pre-existing, matters for his kip/inch sheets; mm, ft and kip bounds work;
+2. `max(2[mm/m], 0.001)` now shows `0.002` (main `2.00 mm/m`): keep a ratio's unit when every
+   argument is that same ratio unit or convertible to it without loss;
+3. two refusal messages leak internals: `% if f[1] > 0.5[m]` with kip entries says
+   `0.5 * __u_m: m·kg/s² against m`; `% u = 'kN'` then `% if P > 3[{u}]` quotes the stand-in
+   `3[1]`.
+Then **0.46.3 (or 0.47.0)**: `eigenvals(K, G)` with a singular G from
+`fix/chapter-10-findings` - rebase on main, rerun `tools/eigen_audit/battery.sh`, look at the
+refusals where main was right (A_tie_*, F18_free_fullmass, L_two_rigid_12), then an
+independent audit until one comes back CLEAN. Seven audits each found a silent wrong λ;
+do not release it on fewer.
+
+**Release routine that worked for 0.46.1** (see also `NEXT.md`): TDD contracts RED first;
+suite on `.venv` (SymPy 1.14) and a Colab-like venv (py 3.12 + ipython 7.34.0, numpy 2.2.6,
+matplotlib 3.10.0, sympy 1.13.3, pytest, pytest-xdist, hypothesis, pyyaml) with
+`PYTHONPATH=src`; his 270 book sheets main vs branch (`tools/eigen_audit/corpus.py` on the
+fix branch; chapter 7 integral forms vary with PYTHONHASHSEED on main itself - not a
+regression); an independent subagent audit; version bump in 7 places RED → GREEN (then
+`pip install -e . --no-deps` so the metadata test sees it); wheel from `git archive`; clean
+venv with Colab's pins (must add only Pint + small deps); `tools/smoke_installed.py` from
+outside the repo; the suite against the installed wheel from a copy without `src/` (copy
+`.github` too); the 24 `tools/*.eng` pages wheel vs src, byte-identical; PR; CI 6/6 on the
+exact SHA; squash merge; `git+https` install + smoke; the check in his Colab through Claude in
+Chrome; a docs PR closing it.
 
 **0.46.1 is closed** (#401, squash `928b716`, 6/6 CI on `7559cce`): a `git+https` install of
 main in a clean Colab-pinned venv reports 0.46.1, adds only Pint and its small deps, smoke 61/61.
@@ -3257,6 +3293,32 @@ this Claude account or another one - knows only what is in the repository. Start
    given a browser; the user checks a release there with the install cell after a restart
    from the menu.
 5. The user writes in Spanish; answer in Spanish. The documents here are in English.
+
+**Updated 2026-10-07 for the move to another account.** The newest state is the block
+**Where things stand today** at the top of this file - start with its **Handoff
+2026-10-07** paragraph, which has the exact next step. Specifics a new session needs:
+
+- **His Colab**: the release check notebook is "Untitled9"
+  (`colab.research.google.com/drive/12CCpV_S6Q5GdXDEo_j2yUvfFwtpP0zhH`): cell 0 = his install
+  cell (`%pip install -q --upgrade --no-cache-dir git+https://github.com/eliaszamora/engcalc-colab.git@main`,
+  `%load_ext engcalc_colab`, `%eng_units kN`), cells 1-2 his Example 2.1, cell 5 the
+  session's check cell. **He wants the check done by Claude through Claude in Chrome in his
+  real Chrome, not handed to him.** Edit cells by position (`colab.global.notebook.cells[5].setText(...)`),
+  never by matching text. If the install prints "extension is already loaded", restart the
+  session from the menu (Entorno de ejecución → Reiniciar la sesión), never Ctrl+M. Colab may
+  ask to accept its terms: ask him first. His book notebooks (Capitulo_02..10) are in his
+  Drive folder "EngCalc - Matrix Structural Analysis" and in Documents; the book sheets
+  `hojas_ch02..ch10/*.eng` there are the corpus.
+- **Merging**: he authorizes in chat; the auto-mode classifier refuses `gh pr merge` without
+  an explicit authorization in the conversation.
+- **Never `--force-reinstall`** in his Colab (it upgrades ipython/numpy and breaks Colab).
+- **Windows/Git Bash gotchas**: heredocs mangle `\b`, `\t`, `\r` in code - write patch scripts
+  to files with the Write tool; this file is CRLF - edit it as bytes and keep the endings;
+  the console is cp1252 - set `PYTHONIOENCODING=utf-8` for scripts that print λ, ⁴, ×.
+- **Subagent auditors leave background wait loops** (`sleep` loops "Block until sheet runs
+  finish") - check for orphaned bash/python processes when an audit ends and stop them.
+- **His laptop slows to a crawl every ~8-9 days** from a kernel nonpaged-pool leak (NTFS,
+  12+ GB); it is not Claude. "Apagar" keeps it (fast startup); "Reiniciar" clears it.
 
 Two rules that have each paid for themselves repeatedly: never merge without explicit user
 approval, and never let whoever built something be the one to certify it. The second is
