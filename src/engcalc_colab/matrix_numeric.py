@@ -758,8 +758,25 @@ def _pencil_values(stiffness, geometric, refuse: bool = True):
     symmetric = numpy.allclose(stiffness, stiffness.T, rtol=1e-10, atol=0) and numpy.allclose(
         geometric, geometric.T, rtol=1e-10, atol=0
     )
+    # The λ that are 0 - a mechanism, or a singular first matrix as in his `eigenvals(-K_g, K)`
+    # (his book, problem 10.9: ten of seventeen) - have no K - λG to iterate on. They are as
+    # many as the directions K has nothing in; when the estimates that are 0 beside the
+    # largest count exactly those, each is 0, verified by K's own rank.
+    # K's null directions are its singular values at round-off of a typical column of K -
+    # the median of those that are not 0. Against the largest, a 1e20 kN/m spring made
+    # ω₁² = 1515.90 a zero; component by component, the null directions of his -K_g, whose
+    # entries there are round-off themselves, did not count (both found writing this).
+    top = max(abs(value) for value in finite) if finite else 0.0
+    zero = [abs(value) <= 1e-12 * top for value in finite]
+    columns = numpy.linalg.norm(stiffness, axis=0)
+    typical = float(numpy.median(columns[columns > 0])) if numpy.any(columns > 0) else 0.0
+    nullity = int(numpy.sum(numpy.linalg.svd(stiffness, compute_uv=False) <= 1e-12 * typical))
+    if not any(zero) or sum(zero) != nullity:
+        zero = [False for _ in finite]
     polished = [
-        _polished(value, stiffness, geometric, finite[:index] + finite[index + 1:], symmetric)
+        (0.0, True)
+        if zero[index]
+        else _polished(value, stiffness, geometric, finite[:index] + finite[index + 1:], symmetric)
         for index, value in enumerate(finite)
     ]
     if not all(verified for _value, verified in polished):
