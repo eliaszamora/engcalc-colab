@@ -8,14 +8,27 @@
 
 ## Where things stand today
 
-_2026-10-06._
+_2026-10-07._
 
 | | |
 |---|---|
-| released | **0.46.0** - #398, `69d6475`, closed (checked in his Colab) |
-| before that | **0.45.7** - #396, `0651274`, closed |
-| in progress | **0.46.1** - `release/0.46.1`, PR open; `eigenvals` with singular G parked on `fix/chapter-10-findings` for 0.46.2 |
+| released | **0.46.1** - #401, `928b716`, closed (checked in his Colab); `eigenvals` with singular G parked on `fix/chapter-10-findings` |
+| before that | **0.46.0** - #398, `69d6475`, closed |
 | default suite | **3736 passing** on 0.46.1 (SymPy 1.14 and 1.13.3) |
+
+**0.46.1 is closed** (#401, squash `928b716`, 6/6 CI on `7559cce`): a `git+https` install of
+main in a clean Colab-pinned venv reports 0.46.1, adds only Pint and its small deps, smoke 61/61.
+**Checked in his Colab** (2026-10-07, through Chrome; Colab asked to accept its terms again - he
+told me to; the first install hit "extension is already loaded", so the session was restarted
+from the menu): Untitled9, cell 0 installed main, my cell 5 now holds the 0.46.1 check and shows
+`r = 0.50` (`max(1[kN]/1[kip], 0.5)`), the range solve over entries with `x df_1 + f_1 = 300 kip`
+above `x = 100.00`, "Como h_1 = 0.00 < 0.50" and "Como f_1 = 889.64 kN > 667.23 kN" deciding,
+`w = 1.00 × 10^600`, and `v := 1e300*1e300` refused with the "too large" message; screenshots sent.
+
+**Exact next step:** his pick - 0.46.2 (`eigenvals(K, G)` with a singular G, parked on
+`fix/chapter-10-findings`), the audit's low findings (a strain ratio shown as a plain number;
+refusal messages quoting `__u_m`; range `solve` with inch bounds fails, pre-existing), or the
+rest of chapter 10's list (argmin, `% break`, presentation).
 
 **0.46.1 release** (his choice 2026-10-07: release what is ready, `eigenvals` with a singular
 G later): branch `release/0.46.1`, cut from `fix/chapter-10-findings` with `matrix_numeric.py`
