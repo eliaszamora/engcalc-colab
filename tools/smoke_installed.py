@@ -86,7 +86,7 @@ check("a root in tonnes is not the sheet's t",
       r"x & = & \displaystyle 2.00\,\mathrm{t}", absent=(r"20.00\,\mathrm{mm}",))
 check("a refused condition is quoted as typed",
       "f := [100[kip]; 50[kip]]\n% if f[1] > 0.5[m]:\ny := 1\n% end",
-      "f[1] > 0.5[m]: kN against m", absent=("__u_", "kg"))
+      "f[1] > 0.5[m]: kN against m", absent=("__u_", "m·kg"))
 check("a placeholder in a unit's brackets",
       "P := 5[kN]\n% u = 'kN'\n% if P > 3[{u}]:\ny := 1\n% end", r"y & = & \displaystyle 1.00",
       absent=("holds no unit",))
