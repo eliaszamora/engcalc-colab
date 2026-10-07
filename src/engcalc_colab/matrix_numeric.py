@@ -652,14 +652,19 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
 
 
 def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -> NumberMatrix:
-    """`eigenvals(K, G)`: the finite λ of K x = λ G x, smallest first (`_pencil_values`).
+    """`eigenvals(K, G)`: the finite λ of K x = λ G x, smallest first.
 
-    Four audits of these fixes found a silently wrong λ in each way tried first - a shift
-    of K, a cut on the size of μ, a Rayleigh quotient - and the fourth one a pencil no
-    float can answer, whose G is singular to 1e-12 in exact arithmetic (5e-7 read 2.7e-6;
-    main read 1.8e-7). So the answer is asked again with the entries moved by 1e-13 - zeros
-    stay zeros - and refused when it moves by more than 1e-6 of itself, or changes how many
-    there are: those figures are not in the numbers. A wrong λ is not printed."""
+    Worked out in 60 figures on the entries exactly as the floats hold them
+    (`_exact_pencil_values`). Seven audits of a method in floats each found a silently wrong
+    λ - supports and links written as springs of 1e16-1e20, a G singular to round-off - and
+    every one was the solver's round-off, not the matrices': in 60 figures a 1e20 spring
+    beside a soft mode leaves forty to spare.
+
+    What the floats of the entries themselves do not settle is told by asking again with
+    every entry moved by 1e-14 of itself - zeros stay zeros, a symmetric matrix stays so:
+    a λ that holds is printed; one that only a G singular to round-off makes finite runs off
+    to ±1e16 and is infinite; a mechanism's λ that scatters around 0 is 0; anything else is
+    refused. A wrong λ is not printed."""
     import numpy
 
     size = matrix.rows
@@ -669,364 +674,179 @@ def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -
         _inverse_units(matrix, "eigenvals")
     stiffness = numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
     geometric = numpy.array(metric.magnitudes, dtype=float).reshape(size, size)
-    first = _pencil_values(stiffness, geometric)
-    # A move of 1e-14 is a hundred times a float's own round-off. Each λ is verified by its
-    # polish already; this catches what a polish cannot, a pencil that changes its answer -
-    # how many there are, or a λ moving by 1e-2 of itself. Finer, it refused a small λ beside
-    # a spectrum reaching 1e12 that the polish had settled (the sixth audit's clusters).
-    # Each against itself, with no floor from the largest: a 1e21 spring's let 0 stand for
-    # 0.999 and 0.999 for 7494 (found writing this). Values below their round-off in both
-    # runs are decided as zeros or not just below, and not judged as moves.
+    if not numpy.abs(geometric).max():
+        raise EngEvaluationError("eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue")
+    symmetric = bool((stiffness == stiffness.T).all() and (geometric == geometric.T).all())
+    first = _exact_pencil_values(stiffness, geometric, symmetric)
     trials = numpy.random.default_rng(20261006)
-    runs = [first]
-    for _ in range(2):
-        runs.append(_pencil_values(
-            stiffness * (1 + 1e-14 * trials.standard_normal(stiffness.shape)),
-            geometric * (1 + 1e-14 * trials.standard_normal(geometric.shape)),
-            refuse=False,
-        ))
-    # A λ below its round-off in every run is 0 when the runs disagree on it - a mechanism's
-    # noise changes size and sign with the entries - and itself when they agree: a soft mode
-    # beside a stiff link (EA = 1e15 kN) holds 1 to the third figure, and was printed 0 when
-    # one run's bound decided it (the seventh audit).
-    # Scattered around 0 - straddling it, or spread wider than their mean - they are a zero;
-    # agreeing, a λ; anything else is a λ the floats do not settle, refused below: a soft
-    # mode beside a 1e17 N/m link read 0.99, 1.11 and 1.21.
-    # A zero's scatter is round-off beside the λ that are not: under 1e-8 of the smallest
-    # of them. A portal whose beam is EA = 1e17 kN scattered its ω² = 3.79 by ±4 beside
-    # 50000 - a λ the floats do not hold, not a mechanism (the seventh audit's sweep).
-    # Small: below its own round-off, or below 1e-12 of the largest - his -K_g's zeros are
-    # noise above a round-off that is noise itself. A soft mode beside a 1e20 spring is small
-    # so too; what tells it from a zero is that it holds across the runs.
-    def small(run):
-        top = max((abs(v) for v, _b in run), default=0.0)
-        return [abs(v) <= max(b, 1e-12 * top) for v, b in run]
-
-    runs_small = [small(run) if run is not None and len(run) == len(first) else None for run in runs]
-    settled = [abs(value) for (value, _bound), tiny in zip(first, runs_small[0]) if not tiny]
-    # None settled - every λ small - and they are all zeros, as K = 0 in G's directions
-    # makes them.
-    smallest = min(settled) if settled else numpy.inf
-    finite = []
-    unsettled = False
-    for index, (value, _bound) in enumerate(first):
-        others = [run[index] for run in runs[1:] if run is not None and len(run) == len(first)]
-        if len(others) == 2 and all(flags is not None and flags[index] for flags in runs_small):
-            values = [value] + [v for v, _b in others]
-            mean = sum(values) / 3
-            scattered = min(values) <= 0.0 <= max(values) or abs(mean) <= max(values) - min(values)
-            if scattered and max(abs(v) for v in values) <= 1e-8 * smallest:
-                finite.append(0.0)
-            elif scattered:
-                unsettled = True
-                finite.append(value)
-            elif all(abs(v - value) <= 1e-2 * max(abs(v), abs(value)) for v in values):
-                finite.append(value)
-            else:
-                unsettled = True
-                finite.append(value)
-        else:
-            finite.append(value)
-    for moved, moved_small in zip(runs[1:], runs_small[1:]):
-        if unsettled or moved is None or len(moved) != len(first) or any(
-            not (runs_small[0][index] and moved_small[index])
-            and abs(a - b) > 1e-2 * max(abs(a), abs(b))
-            for index, ((a, _ba), (b, _bb)) in enumerate(zip(first, moved))
-        ):
-            raise EngEvaluationError(
-                "eigenvals(K, G): these eigenvalues cannot be told with the figures a float "
-                "holds - a change of 1e-14 in the entries moves them; G is singular or nearly "
-                "in a way the numbers do not settle. Take out the degrees of freedom where G "
-                "has (almost) nothing, or write it exactly"
-            )
+    runs = [
+        _exact_pencil_values(
+            _moved(stiffness, trials, symmetric), _moved(geometric, trials, symmetric), symmetric, refuse=False
+        )
+        for _ in range(2)
+    ]
+    finite = _settled(first, runs)
     if unit is None:
         unit = _pencil_unit(matrix, metric)
     units = tuple(unit for _ in finite)
     return NumberMatrix(len(finite), 1, tuple(finite), units, _unitless_zeros(1, units))
 
 
-def _pencil_values(stiffness, geometric, refuse: bool = True):
-    """The finite λ of K x = λ G x in floats, smallest first; None for a pencil refused when
-    `refuse` is False.
+_UNSETTLED = (
+    "eigenvals(K, G): these eigenvalues cannot be told with the figures a float holds - a "
+    "change of 1e-14 in the entries moves them; G is singular or nearly in a way the numbers "
+    "do not settle. Take out the degrees of freedom where G has (almost) nothing, or write it "
+    "exactly"
+)
 
-    Scaled by G's own diagonal, every entry that is not 0 (a G spanning 24 decades lost its
-    1e12 when only the large ones were - the fourth audit), which leaves λ as they are. A G
-    that inverts well is read as main read every pencil, the eigenvalues of G⁻¹K. A singular
-    G - a frame's geometric stiffness, a lumped mass (his book, chapter 10) - is taken apart
-    exactly: with G = U S Vᵀ, Uᵀ(K - λG)V = K' - λS, and the directions where S is 0 are
-    condensed out, K* = K'aa - K'ab K'bb⁻¹ K'ba, as a static condensation takes out a
-    massless degree of freedom; what is left has a G that inverts. Refused when K'bb is
-    singular: where G has nothing K has nothing either, and any λ satisfies K x = λ G x."""
-    import numpy
+
+def _moved(numbers, trials, symmetric: bool):
+    """Every entry moved by about 1e-14 of itself: a zero stays 0, a symmetric matrix stays so."""
+    noise = trials.standard_normal(numbers.shape)
+    if symmetric:
+        noise = (noise + noise.T) / 2
+    return numbers * (1 + 1e-14 * noise)
+
+
+def _settled(first: list[float], runs: list) -> list[float]:
+    """The λ the entries settle, from the exact answers to them as written and moved by 1e-14.
+
+    Held to 1e-4 of itself in every run, a λ is printed. Running off - more than 1e8 times
+    the largest that holds - it is a direction G has only to round-off, whose λ is infinite
+    (the second audit: an inclined bar whose G is c² and s² products). Scattered around 0,
+    below 1e-8 of the smallest that holds, it is a mechanism's 0. Anything else - a soft
+    mode beside a 1e17 N/m link that reads 0.99, 1.11 and 1.21 - is refused."""
+    if any(run is None for run in runs):
+        raise EngEvaluationError(_UNSETTLED)
+    # Each λ beside the nearest of each run, not the one in the same place: one that runs
+    # off changes sign, and sorted by value it took another's place. A G singular exactly
+    # in the floats as written is not once moved, and that run has one more, running off
+    # (a pinned column on 1e16 springs: 3e30); it is left over, or this one has none.
+    columns = [[value] for value in first]
+    left_over = []
+    # Near 0 by how far apart, not by how much of themselves: -9e-15 and 1.3e-11 are both a
+    # mechanism's 0, and each is as far from the other as from 5 (found writing this).
+    floor = 1e-10 * max((abs(value) for value in first), default=0.0)
+    for run in runs:
+        free = list(run)
+        for index in sorted(range(len(first)), key=lambda i: abs(first[i])):
+            value = first[index]
+            if not free:
+                columns[index].append(None)
+                continue
+            nearest = min(free, key=lambda v: abs(v - value) / (max(abs(v), abs(value)) + floor or 1.0))
+            free.remove(nearest)
+            columns[index].append(nearest)
+        left_over.extend(free)
+
+    def holds(values):
+        return None not in values and max(values) - min(values) <= 1e-4 * max(abs(v) for v in values)
+
+    held = [abs(values[0]) for values in columns if holds(values) and values[0]]
+    largest = max(held, default=0.0)
+    smallest = min(held, default=float("inf"))
+    if any(not held or abs(value) < 1e8 * largest for value in left_over):
+        raise EngEvaluationError(_UNSETTLED)
+    finite = []
+    for values in columns:
+        if holds(values):
+            finite.append(values[0])
+        elif held and min(abs(v) for v in values if v is not None) >= 1e8 * largest:
+            continue
+        elif None in values:
+            raise EngEvaluationError(_UNSETTLED)
+        elif (min(values) <= 0.0 <= max(values) or abs(sum(values)) / 3 <= max(values) - min(values)) and (
+            max(abs(v) for v in values) <= 1e-8 * smallest
+        ):
+            finite.append(0.0)
+        else:
+            raise EngEvaluationError(_UNSETTLED)
+    return finite
+
+
+_PENCIL_FIGURES = 60
+
+
+def _exact_pencil_values(stiffness, geometric, symmetric: bool, refuse: bool = True):
+    """The finite λ of K x = λ G x, smallest first, worked out in `_PENCIL_FIGURES` figures
+    on the floats as they are; None for a pencil refused when `refuse` is False.
+
+    Symmetric, through a Cholesky factor: of G when it is positive definite (a mass, his
+    `eigenvals(-K_g, K)`), else of K - σG for the first σ that makes it so, whose μ in
+    L⁻¹ G L⁻ᵀ give λ = σ + 1/μ - a μ of 0 is a direction G does not have, and its λ is
+    infinite. Otherwise through (K - σG)⁻¹ G for a σ where it inverts. Refused when no σ
+    does - K - λG is singular for every λ - and when a λ is not real."""
+    import mpmath
 
     def refused(message: str):
         if refuse:
             raise EngEvaluationError(message)
         return None
 
-    if not numpy.abs(geometric).max():
-        return refused("eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue")
-    own = numpy.abs(numpy.diag(geometric))
-    floor = own.max() if own.max() else numpy.abs(geometric).max()
-    factor = 1.0 / numpy.sqrt(numpy.where(own > 0, own, floor))
-    stiffness = factor[:, None] * stiffness * factor[None, :]
-    geometric = factor[:, None] * geometric * factor[None, :]
+    with mpmath.workdps(_PENCIL_FIGURES):
+        k = mpmath.matrix(stiffness.tolist())
+        g = mpmath.matrix(geometric.tolist())
+        size = k.rows
+        k_norm = mpmath.mnorm(k, 1)
+        g_norm = mpmath.mnorm(g, 1)
+        tiny = mpmath.mpf(10) ** (-_PENCIL_FIGURES // 2)
+        shifts = [mpmath.mpf(0)]
+        scale = k_norm / g_norm if k_norm else mpmath.mpf(1)
+        for power in range(-8, 9):
+            for sign in (-1, 1):
+                shifts.append(sign * mpmath.mpf("1.37") * mpmath.mpf(10) ** power * scale)
+        shifts.sort(key=abs)
 
-    if numpy.linalg.cond(geometric) <= 1e10:
-        values = numpy.linalg.eigvals(numpy.linalg.solve(geometric, stiffness))
-    else:
-        left, singular, right = numpy.linalg.svd(geometric)
-        # A λ that hangs on what G holds below 1e-12 of its largest direction is round-off
-        # (the fourth audit: 2.9967 for 3.0006), and that direction is one G does not have.
-        null = singular <= 1e-12 * singular[0]
-        if not null.any():
-            values = numpy.linalg.eigvals(numpy.linalg.solve(geometric, stiffness))
-        else:
-            reduced = left.T @ stiffness @ right.T
-            a, b = ~null, null
-            kept = reduced[numpy.ix_(b, b)]
-            # Against all of K, not K'bb's own condition: one direction is a 1 x 1 block,
-            # whose condition is 1 however near 0 it is.
-            if numpy.linalg.svd(kept, compute_uv=False).min() <= 1e-12 * numpy.linalg.norm(stiffness, 2):
-                return refused(
-                    "eigenvals(K, G): K - λG is singular for every λ - in a direction where "
-                    "G has nothing, K has nothing either, and any λ satisfies K x = λ G x; "
-                    "take those degrees of freedom out of both"
-                )
-            condensed = reduced[numpy.ix_(a, a)] - reduced[numpy.ix_(a, b)] @ numpy.linalg.solve(
-                kept, reduced[numpy.ix_(b, a)]
-            )
-            values = numpy.linalg.eigvals(condensed / singular[a][:, None])
-    if refuse:
-        _refuse_complex(values, values)
-    finite = sorted(float(value.real) for value in values)
-    symmetric = numpy.allclose(stiffness, stiffness.T, rtol=1e-10, atol=0) and numpy.allclose(
-        geometric, geometric.T, rtol=1e-10, atol=0
-    )
-    if symmetric:
-        before = set(finite)
-        finite = _from_the_stiffness(stiffness, geometric, finite)
-        through_k = [value not in before for value in finite]
-    else:
-        through_k = [False for _ in finite]
-    # Every λ polished from its estimate, each judged against itself: a window measured
-    # against the largest λ - a support written as a 1e20 kN/m spring - made every soft mode
-    # a repeat of every other, and one was printed twice while another was lost (the sixth
-    # audit). Out of symmetry too (the fifth audit: 1570.18 for 1515.90).
-    polished = [
-        _polished(value, stiffness, geometric, finite[:index] + finite[index + 1:], symmetric)
-        for index, value in enumerate(finite)
-    ]
-    # A λ whose polish fails and that is 0 beside the largest - a mechanism, or the singular
-    # first matrix of his `eigenvals(-K_g, K)` (his book, problem 10.9: ten of seventeen) -
-    # has no K - λG to iterate on. It is 0 when K has that many null directions: singular
-    # values at round-off of a typical column of K, the median of those that are not 0.
-    # Only after the polish: before it, a 1e20 spring on half the degrees of freedom made
-    # every soft mode such a zero (the sixth audit).
-    # 0 beside the smallest λ that settled, not beside the largest: a spring's 5e20 made
-    # 32768 such a zero (found writing this).
-    failed = [index for index, (_value, verified, _bound) in enumerate(polished) if not verified]
-    # Settled and not small: above their own round-off and above 1e-12 of the largest. His
-    # -K_g's other zeros, noise of 1e-19 above a round-off of 1e-33 - its entries there are
-    # round-off themselves - made the floor 1e-28 and problem 10.9 was refused (found writing
-    # this). And only when K is not positive definite: one that is has no zeros, and a
-    # failed polish there is refused, never 0.
-    top = max((abs(value) for value, verified, _bound in polished if verified), default=0.0)
-    settled = [
-        abs(value) for value, verified, bound in polished
-        if verified and abs(value) > max(bound, 1e-12 * top)
-    ]
-    floor = 1e-9 * min(settled) if settled else 0.0
-    try:
-        numpy.linalg.cholesky(stiffness)
-        definite = True
-    except numpy.linalg.LinAlgError:
-        definite = False
-    if failed and floor and not definite and all(abs(finite[index]) <= floor for index in failed):
-        columns = numpy.linalg.norm(stiffness, axis=0)
-        typical = float(numpy.median(columns[columns > 0])) if numpy.any(columns > 0) else 0.0
-        nullity = int(numpy.sum(numpy.linalg.svd(stiffness, compute_uv=False) <= 1e-12 * typical))
-        zeros = sum(1 for value in finite if abs(value) <= floor)
-        if zeros == nullity:
-            for index in failed:
-                polished[index] = (0.0, True, numpy.inf)
-    if not all(verified for _value, verified, _bound in polished):
-        return refused(
-            "eigenvals(K, G): these eigenvalues cannot be told with the figures a float "
-            "holds - one does not settle as an eigenvalue of K and G; a stiffness far "
-            "beyond the rest (a support written as a spring) does this - take that degree "
-            "of freedom out instead"
-        )
-    # Two ways to one λ - through K's Cholesky factor, and the polish - agree to 1e-12 when
-    # the floats hold it, stiff diagonal springs and all. A link that cancels inside K x
-    # (a beam of EA = 1e16 kN) costs both their last figures: 280.669 and 280.662 for
-    # 280.693 (the seventh audit's sweep). Apart by 1e-5 of it - twins closer than that may
-    # come out either way - it is not printed.
-    for index, (value, verified, bound) in enumerate(polished):
-        # Above its round-off only: a mechanism's 0 is noise both ways, and is decided across
-        # the runs (`_finite_eigenvalues`).
-        if (
-            through_k[index] and verified and abs(value) > bound
-            and abs(value - finite[index]) > 1e-5 * abs(value)
-        ):
-            return refused(
-                "eigenvals(K, G): these eigenvalues cannot be told with the figures a float "
-                "holds - two ways to one of them disagree; a stiffness far beyond the rest (a "
-                "rigid link written as a large EA, a support as a spring) does this - take "
-                "that degree of freedom out instead"
-            )
-    # Distinct estimates must stay distinct: two that settle on one λ have lost another.
-    for i in range(len(finite)):
-        for j in range(i + 1, len(finite)):
-            # Zeros verified within their round-off are one λ of several directions (a
-            # mechanism's, a singular first matrix's), whatever noise their estimates had.
-            if abs(polished[i][0]) <= polished[i][2] and abs(polished[j][0]) <= polished[j][2]:
+        def cholesky(m):
+            try:
+                factor = mpmath.cholesky(m)
+            except (ValueError, ZeroDivisionError):
+                return None
+            if any(not factor[i, i] or factor[i, i] <= tiny * mpmath.sqrt(mpmath.mnorm(m, 1)) for i in range(size)):
+                return None
+            return factor
+
+        def cleaned(values, reference):
+            top = max([abs(v) for v in values] + [abs(reference)])
+            return sorted(float(v) if abs(v) > tiny * tiny * top else 0.0 for v in values)
+
+        if symmetric:
+            factor = cholesky(g)
+            if factor is not None:
+                inverse = mpmath.inverse(factor)
+                values = mpmath.eigsy(inverse * k * inverse.T, eigvals_only=True)
+                return cleaned([values[i] for i in range(size)], 0)
+            for shift in shifts:
+                factor = cholesky(k - shift * g)
+                if factor is None:
+                    continue
+                inverse = mpmath.inverse(factor)
+                mus = mpmath.eigsy(inverse * g * inverse.T, eigvals_only=True)
+                mus = [mus[i] for i in range(size)]
+                top = max(abs(mu) for mu in mus)
+                return cleaned([shift + 1 / mu for mu in mus if abs(mu) > tiny * top], shift)
+        for shift in shifts:
+            shifted = k - shift * g
+            try:
+                inverse = mpmath.inverse(shifted)
+            except ZeroDivisionError:
                 continue
-            if _distinct(finite[i], finite[j]) and not _distinct(polished[i][0], polished[j][0], 1e-9):
+            if mpmath.mnorm(inverse, 1) * mpmath.mnorm(shifted, 1) > mpmath.mpf(10) ** (_PENCIL_FIGURES - 10):
+                continue
+            mus = mpmath.eig(inverse * g, left=False, right=False)
+            mus = [mus[i] for i in range(size)]
+            top = max(abs(mu) for mu in mus)
+            kept = [mu for mu in mus if abs(mu) > tiny * top]
+            if any(abs(mpmath.im(mu)) > mpmath.mpf(10) ** -20 * abs(mu) for mu in kept):
                 return refused(
-                    "eigenvals(K, G): these eigenvalues cannot be told with the figures a "
-                    "float holds - two of them settle on one value; a stiffness far beyond the "
-                    "rest (a support written as a spring) does this - take that degree of "
-                    "freedom out instead"
+                    "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
+                    "stiffness have real ones - check that both matrices are symmetric"
                 )
-    finite = sorted((value, bound) for value, _verified, bound in polished)
-    if not finite:
+            return cleaned([shift + 1 / mpmath.re(mu) for mu in kept], shift)
         return refused(
-            "eigenvals(K, G): the second matrix has nothing in any direction; there is no "
-            "finite eigenvalue"
-        )
-    return finite
-
-
-def _distinct(a: float, b: float, tolerance: float = 1e-6) -> bool:
-    """Whether two λ are two, each measured against its own size."""
-    return abs(a - b) > tolerance * (abs(a) + abs(b))
-
-
-def _from_the_stiffness(stiffness, geometric, estimates: list[float]) -> list[float]:
-    """The small λ of a symmetric pencil whose K is positive definite, from K's Cholesky
-    factor: μ of L⁻¹GL⁻ᵀ, λ = 1/μ. G⁻¹K reads a soft mode beside a stiff spring with a bias
-    the polish can then carry to a neighbour (the sixth audit: 3352161 twice, 3298107 lost);
-    through K a small λ is a large μ, read to the last figure. Only the μ above round-off
-    of the largest are taken - the rest are the stiff modes, and their estimates stay - and
-    only when they replace estimates they agree with to 10 %."""
-    import numpy
-
-    try:
-        factor = numpy.linalg.cholesky(stiffness)
-    except numpy.linalg.LinAlgError:
-        return estimates
-    reduced = numpy.linalg.solve(factor, numpy.linalg.solve(factor, geometric).T)
-    values = numpy.linalg.eigvalsh((reduced + reduced.T) / 2)
-    largest = numpy.abs(values).max() if len(values) else 0.0
-    if not largest:
-        return estimates
-    small = sorted(1.0 / value for value in values if abs(value) > 1e-10 * largest)
-    by_size = sorted(range(len(estimates)), key=lambda index: abs(estimates[index]))
-    if len(small) > len(estimates):
-        return estimates
-    # Taken outright: when G is singular to 4e16 beside 1e20 springs the estimates are what
-    # is wrong (21061.795 twice for 9600 and 24000), and asking them to agree kept them.
-    replaced = list(estimates)
-    for index, value in zip(sorted(by_size[: len(small)], key=lambda index: estimates[index]), small):
-        replaced[index] = value
-    return sorted(replaced)
-
-
-def _polished(value: float, stiffness, geometric, others, symmetric: bool = True) -> tuple[float, bool, float]:
-    """A λ of the pencil, polished, and whether it is verified.
-
-    Inverse iteration on K - λG from where it was found, then the Rayleigh quotient - two-
-    sided out of symmetry, yᵀKx / yᵀGx; taken when the pair's residual is round-off against
-    |K||x| + |λ||G||x| - it is then a λ of the pencil - and it stayed nearer its own estimate
-    than half the gap to the next distinct one, each measured against itself, so it is this
-    λ and not a neighbour."""
-    import numpy
-
-    # A repeated λ - K = 2G, the three rigid-body zeros of a free frame - is no neighbour:
-    # landing on its twin is landing on it.
-    gap = min((abs(value - other) for other in others if _distinct(value, other)), default=numpy.inf)
-    # Not an evenly spaced start: 1, 1.5, 2 is orthogonal to a chain's [1, -2, 1], and the
-    # iteration never found that mode.
-    start = numpy.random.default_rng(7).uniform(0.5, 1.5, len(stiffness))
-    vector, left = start, start
-    polished = value
-    for _ in range(10):
-        previous = polished
-        try:
-            shifted = stiffness - polished * geometric
-            vector = numpy.linalg.solve(shifted, geometric @ vector)
-            left = vector if symmetric else numpy.linalg.solve(shifted.T, geometric.T @ left)
-        except numpy.linalg.LinAlgError:
-            # K - λG singular to the last bit: λ is one - 0 when within its round-off, judged
-            # with the pair's own vectors, the null ones of K - λG. With the random start, a
-            # 1e23 N/m spring in it made ω² = 7494.38 a zero (found writing this).
-            left_vectors, _values, right_vectors = numpy.linalg.svd(shifted)
-            vector, left = right_vectors[-1], left_vectors[:, -1]
-            weight = left @ geometric @ vector
-            bound = (
-                1e-13 * (numpy.abs(left) @ numpy.abs(stiffness) @ numpy.abs(vector)) / abs(weight)
-                if weight else 0.0
-            )
-            return polished, True, bound
-        if not (numpy.all(numpy.isfinite(vector)) and numpy.all(numpy.isfinite(left))):
-            return value, False, numpy.inf
-        if not numpy.abs(vector).max() or not numpy.abs(left).max():
-            return value, False, numpy.inf
-        vector = vector / numpy.abs(vector).max()
-        left = left / numpy.abs(left).max()
-        weight = left @ geometric @ vector
-        if abs(weight) <= 1e-12 * (numpy.abs(left) @ numpy.abs(geometric) @ numpy.abs(vector)):
-            return value, False, numpy.inf
-        polished = float((left @ stiffness @ vector) / weight)
-        # Until it stops moving: an estimate 1% off, as G⁻¹K gives beside a 1e20 spring out of
-        # symmetry, took more than four steps.
-        if abs(polished - previous) <= 1e-15 * max(abs(polished), 1e-300):
-            break
-    # The quotient itself in 40 digits from the same floats: in floats K x loses what a stiff
-    # link cancels inside it - a portal whose beam is EA = 1e16 kN read ω² = 280.659 for
-    # 280.693, which its numbers settle to 1e-6 (the seventh audit's sweep).
-    polished = _exact_quotient(left, vector, stiffness, geometric, polished)
-    residual = numpy.linalg.norm(stiffness @ vector - polished * (geometric @ vector))
-    size = numpy.linalg.norm(numpy.abs(stiffness) @ numpy.abs(vector)) + abs(polished) * numpy.linalg.norm(
-        numpy.abs(geometric) @ numpy.abs(vector)
-    )
-    if residual <= 1e-10 * size and abs(polished - value) < 0.5 * gap:
-        # Its round-off, 1e-13 |y|ᵀ|K||x| / |yᵀGx| component by component, goes back with it:
-        # below it a λ may be a mechanism's 0 read as noise, or a soft mode beside a stiff
-        # link (the seventh audit: 1 read 0) - which, the three runs tell (_finite_eigenvalues).
-        bound = 1e-13 * (numpy.abs(left) @ numpy.abs(stiffness) @ numpy.abs(vector)) / abs(
-            left @ geometric @ vector
-        )
-        return polished, True, bound
-    return value, False, numpy.inf
-
-
-def _exact_quotient(left, vector, stiffness, geometric, fallback: float) -> float:
-    """yᵀKx / yᵀGx with every product and sum in 40 digits, from the floats as they are."""
-    import mpmath
-
-    with mpmath.workdps(40):
-        x = [mpmath.mpf(float(value)) for value in vector]
-        y = [mpmath.mpf(float(value)) for value in left]
-
-        def form(matrix):
-            return mpmath.fdot(y, [mpmath.fdot([mpmath.mpf(float(v)) for v in row], x) for row in matrix])
-
-        weight = form(geometric)
-        if not weight:
-            return fallback
-        return float(form(stiffness) / weight)
-
-
-def _refuse_complex(values, judged) -> None:
-    """Refused when an eigenvalue is not real: each by its own size, above the round-off of
-    the whole spectrum (the review of #395)."""
-    top = max((abs(value) for value in values), default=0.0) or 1.0
-    if any(abs(value.imag) > 1e-9 * abs(value) + 1e-13 * top for value in judged):
-        raise EngEvaluationError(
-            "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
-            "stiffness have real ones - check that both matrices are symmetric"
+            "eigenvals(K, G): K - λG is singular for every λ - in a direction where G has "
+            "nothing, K has nothing either, and any λ satisfies K x = λ G x; take those "
+            "degrees of freedom out of both"
         )
 
 
