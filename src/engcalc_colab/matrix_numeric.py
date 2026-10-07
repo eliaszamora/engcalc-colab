@@ -711,7 +711,11 @@ def _moved(numbers, trials, symmetric: bool):
 def _settled(first: list[float], runs: list) -> list[float]:
     """The λ the entries settle, from the exact answers to them as written and moved by 1e-14.
 
-    Held to 1e-4 of itself in every run, a λ is printed. Running off - more than 1e8 times
+    Held to a tenth of itself in every run, a λ is printed as the exact answer to the entries
+    as written: a move of 1e-14 is a hundred times a float's round-off, so a λ that moves by a
+    tenth under it moves by a thousandth under the round-off that made the entries - two
+    stiff DOFs tied by a 1e12 spring, whose soft λ = 1 is (1 + P) - P, as main printed it
+    (the audits' A_tie). Running off - more than 1e8 times
     the largest that holds - it is a direction G has only to round-off, whose λ is infinite
     (the second audit: an inclined bar whose G is c² and s² products). Scattered around 0,
     below 1e-8 of the smallest that holds, it is a mechanism's 0. Anything else - a soft
@@ -724,6 +728,7 @@ def _settled(first: list[float], runs: list) -> list[float]:
     # (a pinned column on 1e16 springs: 3e30); it is left over, or this one has none.
     columns = [[value] for value in first]
     left_over = []
+    left_by_run = []
     # Near 0 by how far apart, not by how much of themselves: -9e-15 and 1.3e-11 are both a
     # mechanism's 0, and each is as far from the other as from 5 (found writing this).
     floor = 1e-10 * max((abs(value) for value in first), default=0.0)
@@ -738,14 +743,20 @@ def _settled(first: list[float], runs: list) -> list[float]:
             free.remove(nearest)
             columns[index].append(nearest)
         left_over.extend(free)
+        left_by_run.append(free)
 
     def holds(values):
-        return None not in values and max(values) - min(values) <= 1e-4 * max(abs(v) for v in values)
+        return None not in values and max(values) - min(values) <= 0.1 * max(abs(v) for v in values)
 
     held = [abs(values[0]) for values in columns if holds(values) and values[0]]
     largest = max(held, default=0.0)
     smallest = min(held, default=float("inf"))
     if any(not held or abs(value) < 1e8 * largest for value in left_over):
+        raise EngEvaluationError(_UNSETTLED)
+    # Left over in both moved runs and agreeing, it is a λ that holds and this run lost:
+    # refused, never dropped as one running off (the battery of 0.47.0: a 1e14 spring's λ).
+    first_left, second_left = left_by_run
+    if any(abs(a - b) <= 0.1 * max(abs(a), abs(b)) for a in first_left for b in second_left):
         raise EngEvaluationError(_UNSETTLED)
     finite = []
     for values in columns:
@@ -772,61 +783,81 @@ def _exact_pencil_values(stiffness, geometric, symmetric: bool, refuse: bool = T
     on the floats as they are; None for a pencil refused when `refuse` is False.
 
     Symmetric, through a Cholesky factor: of G when it is positive definite (a mass, his
-    `eigenvals(-K_g, K)`), else of K - σG for the first σ that makes it so, whose μ in
-    L⁻¹ G L⁻ᵀ give λ = σ + 1/μ - a μ of 0 is a direction G does not have, and its λ is
-    infinite. Otherwise through (K - σG)⁻¹ G for a σ where it inverts. Refused when no σ
-    does - K - λG is singular for every λ - and when a λ is not real."""
+    `eigenvals(-K_g, K)`), else of K - σG, whose μ in L⁻¹ G L⁻ᵀ give λ = σ + 1/μ - a μ of 0
+    is a direction G does not have, and its λ is infinite. Otherwise through (K - σG)⁻¹ G.
+    σ is the best conditioned of a ladder, measured in floats: the first that inverted was
+    σ = 0 beside a K singular to round-off, whose μ of 1e16 made the μ of a 1e14 spring look
+    like a zero, and that λ was lost (the battery of 0.47.0). A μ is 0 against what 0 leaves
+    in these figures, ‖(K - σG)⁻¹‖ ‖G‖ 10⁻⁴⁵, not against the largest μ. Refused when no σ
+    inverts - K - λG is singular for every λ - and when a λ is not real."""
     import mpmath
+    import numpy
 
     def refused(message: str):
         if refuse:
             raise EngEvaluationError(message)
         return None
 
+    size = stiffness.shape[0]
+    k_norm = numpy.abs(stiffness).sum(axis=0).max()
+    g_norm = numpy.abs(geometric).sum(axis=0).max()
+    scale = k_norm / g_norm if k_norm else 1.0
+    shifts = [0.0] + [sign * 1.37 * 10.0 ** power * scale for power in range(-8, 9) for sign in (-1, 1)]
+
+    def condition(matrix) -> float:
+        with numpy.errstate(all="ignore"):
+            try:
+                value = float(numpy.linalg.cond(matrix))
+            except numpy.linalg.LinAlgError:
+                return float("inf")
+        return value if numpy.isfinite(value) else float("inf")
+
+    def definite(matrix) -> bool:
+        try:
+            numpy.linalg.cholesky(matrix)
+        except numpy.linalg.LinAlgError:
+            return False
+        return True
+
     with mpmath.workdps(_PENCIL_FIGURES):
         k = mpmath.matrix(stiffness.tolist())
         g = mpmath.matrix(geometric.tolist())
-        size = k.rows
-        k_norm = mpmath.mnorm(k, 1)
-        g_norm = mpmath.mnorm(g, 1)
-        tiny = mpmath.mpf(10) ** (-_PENCIL_FIGURES // 2)
-        shifts = [mpmath.mpf(0)]
-        scale = k_norm / g_norm if k_norm else mpmath.mpf(1)
-        for power in range(-8, 9):
-            for sign in (-1, 1):
-                shifts.append(sign * mpmath.mpf("1.37") * mpmath.mpf(10) ** power * scale)
-        shifts.sort(key=abs)
+        zero = mpmath.mpf(10) ** -45
 
         def cholesky(m):
             try:
                 factor = mpmath.cholesky(m)
             except (ValueError, ZeroDivisionError):
                 return None
-            if any(not factor[i, i] or factor[i, i] <= tiny * mpmath.sqrt(mpmath.mnorm(m, 1)) for i in range(size)):
+            if any(factor[i, i] <= 0 for i in range(size)):
                 return None
             return factor
 
         def cleaned(values, reference):
             top = max([abs(v) for v in values] + [abs(reference)])
-            return sorted(float(v) if abs(v) > tiny * tiny * top else 0.0 for v in values)
+            return sorted(float(v) if abs(v) > zero * zero * top else 0.0 for v in values)
 
         if symmetric:
-            factor = cholesky(g)
+            factor = cholesky(g) if definite(geometric) else None
             if factor is not None:
                 inverse = mpmath.inverse(factor)
                 values = mpmath.eigsy(inverse * k * inverse.T, eigvals_only=True)
                 return cleaned([values[i] for i in range(size)], 0)
-            for shift in shifts:
-                factor = cholesky(k - shift * g)
+            candidates = sorted(
+                (shift for shift in shifts if definite(stiffness - shift * geometric)),
+                key=lambda shift: condition(stiffness - shift * geometric),
+            )
+            for shift in candidates:
+                factor = cholesky(k - mpmath.mpf(shift) * g)
                 if factor is None:
                     continue
                 inverse = mpmath.inverse(factor)
                 mus = mpmath.eigsy(inverse * g * inverse.T, eigvals_only=True)
-                mus = [mus[i] for i in range(size)]
-                top = max(abs(mu) for mu in mus)
-                return cleaned([shift + 1 / mu for mu in mus if abs(mu) > tiny * top], shift)
-        for shift in shifts:
-            shifted = k - shift * g
+                floor = zero * mpmath.mnorm(inverse, 1) ** 2 * mpmath.mnorm(g, 1)
+                return cleaned([shift + 1 / mus[i] for i in range(size) if abs(mus[i]) > floor], shift)
+        candidates = sorted(shifts, key=lambda shift: condition(stiffness - shift * geometric))
+        for shift in candidates:
+            shifted = k - mpmath.mpf(shift) * g
             try:
                 inverse = mpmath.inverse(shifted)
             except ZeroDivisionError:
@@ -834,9 +865,8 @@ def _exact_pencil_values(stiffness, geometric, symmetric: bool, refuse: bool = T
             if mpmath.mnorm(inverse, 1) * mpmath.mnorm(shifted, 1) > mpmath.mpf(10) ** (_PENCIL_FIGURES - 10):
                 continue
             mus = mpmath.eig(inverse * g, left=False, right=False)
-            mus = [mus[i] for i in range(size)]
-            top = max(abs(mu) for mu in mus)
-            kept = [mu for mu in mus if abs(mu) > tiny * top]
+            floor = zero * mpmath.mnorm(inverse, 1) * mpmath.mnorm(g, 1)
+            kept = [mus[i] for i in range(size) if abs(mus[i]) > floor]
             if any(abs(mpmath.im(mu)) > mpmath.mpf(10) ** -20 * abs(mu) for mu in kept):
                 return refused(
                     "eigenvals found eigenvalues that are not real; a stiffness and a geometric "

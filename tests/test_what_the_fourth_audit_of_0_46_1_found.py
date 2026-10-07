@@ -119,12 +119,14 @@ def test_a_g_singular_to_one_e_twelve_in_exact_arithmetic():
     close(got, [4.9999987e-07, 2.0000005], 1e-7)
 
 
-def test_a_pencil_no_float_settles_is_refused_not_printed(sheet):
-    # G = Q diag(1, 1e-13) Qᵀ with K = 2G: the second λ hangs on the 1e-13.
+def test_a_pencil_whose_k_is_twice_its_g_is_two(sheet):
+    # G = Q diag(1, 1e-13) Qᵀ with K = 2G. In floats the second λ hung on the 1e-13 and was
+    # refused; K is 2G exactly in the floats too, so λ = 2 twice whatever G holds - 80
+    # figures say 2.000...0001 (0.47.0, worked out in 60 figures).
     q = np.array([[np.cos(0.3), -np.sin(0.3)], [np.sin(0.3), np.cos(0.3)]])
     g = q @ np.diag([1, 1e-13]) @ q.T
-    _, printed = sheet(f"K := [{written(2 * g)}]\nG := [{written(g)}]\nl := eigenvals(K, G)\n")
-    assert "engcalc:" in printed and "cannot be told" in printed or "singular for every" in printed, printed
+    got = eigenvalues(f"K := [{written(2 * g)}]\nG := [{written(g)}]\nl := eigenvals(K, G)\n")
+    close(got, [2.0, 2.0])
 
 
 def test_a_free_frame_with_a_full_mass_keeps_its_rigid_zeros():
