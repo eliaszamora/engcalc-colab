@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import copy
-import keyword
 import math
 import re
 from dataclasses import dataclass, replace
@@ -119,7 +118,7 @@ from .matrix_numeric import (
 from .matrix_solve import solve_linear_system
 from .interpolation import Interpolation
 from .min_max import WrittenMax, WrittenMin
-from .numeric import BRACKETED_UNIT_PREFIX, _UNIT_ALIASES, NumericContext, _NumericAstEvaluator
+from .numeric import BRACKETED_UNIT_PREFIX, _UNIT_ALIASES, NumericContext, _NumericAstEvaluator, engineering_registry
 
 # The units a sheet writes plainly, `m` and `kN`, and not the `__u_m` of `6[m]`.
 _PLAIN_UNIT_NAMES = frozenset(
@@ -7125,6 +7124,27 @@ _ROOT_HALVINGS = 60
 _ANGLE_UNITS = frozenset({"degree", "radian", "arcminute", "arcsecond", "gradian", "turn"})
 
 
+def _bracketed_spelling(units) -> str | None:
+    """`kip/inch` as `__u_kip*__u_inch**(-1)`; None for a unit no bracket spells."""
+    if not _BRACKETED_SPELLING:
+        # Pint's own name, `delta_degree_Celsius` for the `delta_degC` the table writes.
+        registry = engineering_registry()
+        for spelling, unit in _UNIT_ALIASES.items():
+            if spelling.startswith(BRACKETED_UNIT_PREFIX):
+                _BRACKETED_SPELLING.setdefault(registry.get_name(unit), spelling)
+    parts = []
+    for name, power in units._units.items():
+        spelling = _BRACKETED_SPELLING.get(name)
+        if spelling is None:
+            return None
+        parts.append(spelling if power == 1 else f"{spelling}**({power})")
+    return "*".join(parts) or None
+
+
+# Pint's name of a unit -> the first bracketed spelling of it, `inch` -> `__u_inch`.
+_BRACKETED_SPELLING: dict[str, str] = {}
+
+
 def _as_written_quantity(quantity, evaluator):
     """A root in numbers, back in the symbolic layer as a number times its unit: `10.55 cm`."""
     text = f"{quantity.units:~}".replace(" ", "")
@@ -7143,16 +7163,14 @@ def _as_written_quantity(quantity, evaluator):
     magnitude = sp.Float(float(quantity.magnitude), 15)
     if not text:
         return magnitude
-    # Each unit under its bracketed name, as `2[inch]` is read: the inch is `in`, Python's
-    # keyword - a root between `0[inch]` and `10[inch]` failed "invalid syntax" (the audit
-    # of 0.46.1) - and a bare `m` was a name the sheet never wrote as a unit, and said so.
-    text = re.sub(
-        r"[A-Za-z_]\w*",
-        lambda word: BRACKETED_UNIT_PREFIX + word.group(0)
-        if BRACKETED_UNIT_PREFIX + word.group(0) in _UNIT_ALIASES or keyword.iskeyword(word.group(0))
-        else word.group(0),
-        text,
-    )
+    # Each unit by Pint's own name, under the bracketed spelling a sheet writes it with -
+    # never its symbol read back as text: the inch's `in` is Python's keyword, "invalid
+    # syntax" (the audit of 0.46.1); the tonne's `t` was the sheet's `t`, a root of `2 ton`
+    # read 20.00 mm beside `t := 10[mm]`; `Δ°C` is no name at all; a bare `m` was the
+    # sheet's mass (the audit of 0.46.2's fixes).
+    spelled = _bracketed_spelling(quantity.units)
+    if spelled is not None:
+        text = spelled
     return magnitude * evaluator.visit(ast.parse(text, mode="eval").body)
 
 

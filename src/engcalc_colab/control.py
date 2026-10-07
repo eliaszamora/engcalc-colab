@@ -352,6 +352,11 @@ def _probed(condition: str, line_no: int) -> str:
     return _INSERTED.sub(lambda match: _put(_PROBE, match, line_no, condition), condition)
 
 
+_IN_A_NUMBER_S_BRACKETS = re.compile(
+    r"(?:(?<![\w.])(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?|(?<![\w}])\{[^{}]+\})\s*\[[^\[\]]*$"
+)
+
+
 def _put(insert, match, line_no, line):
     written = insert(match.group(1), line_no)
     if written is not _PROBE:
@@ -360,9 +365,10 @@ def _put(insert, match, line_no, line):
     # refused before any pass ran (his book, problem 5.9); anywhere else it is a number.
     before = line[match.start() - 1] if match.start() else " "
     after = line[match.end()] if match.end() < len(line) else " "
-    # `3[{u}]`: inside a number's brackets it holds a unit, and the number `1` there was
-    # refused, "3[1] holds no unit", before any pass ran (the audit of 0.46.1).
-    if re.search(r"\d\s*\[[^\[\]]*$", line[: match.start()]) and re.match(r"[^\[\]]*\]", line[match.end():]):
+    # `3[{u}]`, `{i}[{u}]`: inside a number's brackets it holds a unit, and the number `1`
+    # there was refused, "3[1] holds no unit", before any pass ran (the audits of 0.46.1 and
+    # of its fixes). An index, `x2[{i}]`, follows a name and is not this.
+    if _IN_A_NUMBER_S_BRACKETS.search(line[: match.start()]) and re.match(r"[^\[\]]*\]", line[match.end():]):
         return "m"
     if after.isalnum() or after == "_" or before.isalnum() or before == "_":
         return "n1"
@@ -1291,12 +1297,17 @@ def _as_typed(tree: ast.AST) -> str:
     return _A_READ_BRACKET.sub(bracket, ast.unparse(tree))
 
 
+_SI_BASE = frozenset({"meter", "kilogram", "second", "kelvin", "ampere", "mole", "candela", "radian"})
+
+
 def _shown_units(quantity, settings) -> str:
     from .renderer import _display_quantity  # noqa: PLC0415 - renderer imports models only
 
-    # One unit is said as it was typed, `0.5[m]` in m; the compound an entry holds, kips
-    # in `m·kg/s²`, as the page would show it.
-    if len(quantity.units._units) > 1:
+    if quantity.dimensionless and not quantity.units._units:
+        return "a number"  # it said nothing, `1 < P < 3[m]:  against kN`
+    # A unit is said as it was typed, `0.5[kN/m]` in kN/m; what an entry holds, kips in
+    # SI base units `m·kg/s²`, as the page would show it.
+    if len(quantity.units._units) > 1 and set(quantity.units._units) <= _SI_BASE:
         current = settings() if callable(settings) else settings
         try:
             quantity = _display_quantity(quantity, current, declared=False)

@@ -135,15 +135,6 @@ def _refuse_another_temperature_scale(quantity, target_unit) -> None:
     )
 
 
-def _a_power_of_ten(factor) -> bool:
-    """`mm/m` is 0.001 and `cm/m` 0.01; `kN/kip` is 0.2248 and is not."""
-    try:
-        exponent = math.log10(float(factor))
-    except (TypeError, ValueError):
-        return False
-    return math.isclose(exponent, round(exponent), abs_tol=1e-9)
-
-
 def _value_text(value) -> str:
     """A value as a message quotes it: four figures, and its unit when it has one."""
     text = f"{float(getattr(value, 'magnitude', value)):.4g}"
@@ -1152,12 +1143,6 @@ class NumericContext:
                 return tuple(quantity.to(quantities[0].units) for quantity in quantities)
             if any(angles):
                 return quantities
-            # A strain in mm/m keeps its unit, plain numbers read in it: `max(2[mm/m],
-            # 0.001)` drew `0.002` (the audit of 0.46.1). Only a ratio whose scale is a
-            # power of ten - `1 kN/kip` is 0.2248 and stays a number, as above.
-            scaled = [quantity.units for quantity in quantities if quantity.units != self.ureg.dimensionless]
-            if all(_a_power_of_ten(self.ureg.Quantity(1, units).to(self.ureg.dimensionless).magnitude) for units in scaled):
-                return tuple(quantity.to(scaled[0]) for quantity in quantities)
             return tuple(quantity.to(self.ureg.dimensionless) for quantity in quantities)
 
         unit = dimensional.units
