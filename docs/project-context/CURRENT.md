@@ -14,44 +14,39 @@ _2026-10-06._
 |---|---|
 | released | **0.46.0** - #398, `69d6475`, closed (checked in his Colab) |
 | before that | **0.45.7** - #396, `0651274`, closed |
-| in progress | **0.46.1** on `fix/chapter-10-findings` (pushed, no PR) - paused; items 1-3 ready, `eigenvals` with singular G not yet audit-clean; his choice pending |
-| default suite | **3769 passing** on the branch (SymPy 1.14 and 1.13.3); 3693 on 0.46.0 |
+| in progress | **0.46.1** - `release/0.46.1`, PR open; `eigenvals` with singular G parked on `fix/chapter-10-findings` for 0.46.2 |
+| default suite | **3736 passing** on 0.46.1 (SymPy 1.14 and 1.13.3) |
 
-**0.46.1 in progress - paused 2026-10-07 at night** (his "sigue con lo que tu propusiste",
-2026-10-06): branch `fix/chapter-10-findings`, pushed to GitHub, no PR, nothing released.
+**0.46.1 release** (his choice 2026-10-07: release what is ready, `eigenvals` with a singular
+G later): branch `release/0.46.1`, cut from `fix/chapter-10-findings` with `matrix_numeric.py`
+back to main except `det_numbers`, and the eigenvals tests left on the old branch.
 
-**Ready and audited (no wrong value found):**
+What it carries:
 1. `max`/`min` of unit ratios compare converted - `max(1[kN]/1[kip], 0.5)` read 0.22, now 0.50;
-   a plain number beside an angle is left as main had it.
-2. A value beyond a float is refused with a message, not a traceback (`det` of a 40x40 1e9
-   diagonal, `1e300*1e300`, `10^400`, NaN); a `=` line writes `1.00 \times 10^{600}`; a mantissa
-   that rounds to ten moves into the exponent (p9_13's `10.00 × 10^{-10}` → `1.00 × 10^{-9}`).
+   angles alone in the first angle; a plain number beside an angle as main had it.
+2. A value beyond a float is refused with a message, not a traceback (`det` of 1e360,
+   `1e300*1e300`, `10^400`, NaN); a `=` line writes `1.00 \times 10^{600}`; a mantissa that
+   rounds to ten moves into the exponent (p9_13: `1.00 × 10^{-9}`, not `10.00 × 10^{-10}`).
 3. Refused lines now run: placeholders inside names in `% if`/`% while`; conditions on entries
-   of a `:=` matrix; range `solve` over entries (equation shown); 1x1 products as numbers;
-   `{n} := 1`; "write inch" in a condition.
+   of a `:=` matrix (named `f_{1}`); range `solve` over entries (equation shown, bounds said in a
+   unit); 1x1 products; `{n} := 1`; "write inch" in a condition.
 
-**`eigenvals(K, G)` with a singular G (his chapter 10) - not yet clean.** Seven independent
-audits each found a silently wrong λ, mostly supports/links written as 1e16-1e20 springs.
-Method now (matrix_numeric.py `_finite_eigenvalues`, `_pencil_values`, `_from_the_stiffness`,
-`_polished`, `_exact_quotient`): G-diagonal scaling; G⁻¹K (as main) or exact SVD condensation
-of G's null directions; soft modes of a PD K from its Cholesky factor; every λ polished
-(inverse iteration + two-sided Rayleigh quotient, quotient in 40 digits) and verified by its
-residual; two methods must agree to 1e-5; small values (below round-off or 1e-12 of the
-largest) decided across three runs with entries moved 1e-14 (scatter → 0, hold → λ, else
-refused); refused, never printed wrong. Last full battery on the code before the final two
-fixes: 0 wrong in ~900 audit cases (scratchpad a3-a8; `battery.sh`), refusals where main was
-right: A_tie_1e10-14 (two DOFs tied by a stiff spring), F18_free_fullmass, L_two_rigid_12,
-B_*_1e-9/-11 - to look at. Problems 10.8 and 10.9 identical to main again (`eigenvals(-K_g,K)`).
+Release evidence, on `d5390bf`: version assertions 7 RED → GREEN; suite **3736** on SymPy 1.14
+and 1.13.3; wheel from `git archive`, 33 package files identical to `src` (fallback.py differs
+only in CRLF); clean Python 3.12 venv with Colab's pins adds Pint 0.26.1 + 4 small deps and
+upgrades nothing; `tools/smoke_installed.py` outside the repo 61/61 (4 new checks); suite against
+the installed wheel all pass (the `.github` readers with the workflows copied in, the
+`magic.py`-by-path test with the wheel's copy); 24 reference pages byte-identical wheel vs src;
+corpus of his 270 sheets vs main: 265 identical, p9_13's exponent, chapter 7's four known
+integral forms (main itself varies). Independent audit of `02b9e2a`: **CLEAN** (278 sheets
+compared; eigenvals identical to main). Its low findings, not fixed: `max(2[mm/m], 0.001)` shows
+`0.002` (main `2.00 mm/m`; main was wrong for `0.5 mm/m`); two refusal messages quote `__u_m` /
+the stand-in `3[1]`; pre-existing: a range `solve` with bounds in inches fails "invalid syntax".
 
-**Suite** 3770 on SymPy 1.14 and 1.13.3 at `9e925a1`; the eigen tests (131) pass at head.
-Corpus of his 270 sheets on `9e925a1`: identical to main except chapter 7's known integral forms
-(main varies with PYTHONHASHSEED), p9_13's exponent and p10_5's "117 → 115 términos no nulos"
-(same bisection result). KaTeX page of the fixes: 0 errors. Pre-existing, untouched: a literal
-`9.999e600` prints `\infty`; a zero with a unit in a condition writes `__u_kip`; kip sheets in kN.
-
-**His decision pending** (asked 2026-10-07): (1) release 0.46.1 now with items 1-3 and keep
-main's `eigenvals` (refuses a singular G; his workaround `eigenvals(inv(K)*(-G))` works) for a
-0.46.2 - my recommendation; or (2) wait until `eigenvals` passes an audit clean.
+**Parked for 0.46.2 - `eigenvals(K, G)` with a singular G** on `fix/chapter-10-findings`
+(`f2f969c`, pushed): seven audits each found a silently wrong λ (springs/links of 1e16-1e20); the
+last battery had 0 wrong in ~900 cases but new refusals where main was right (A_tie_*,
+F18_free_fullmass, L_two_rigid_12). Harnesses + mpmath refs in session scratchpad a3-a8.
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
