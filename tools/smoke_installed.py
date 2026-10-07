@@ -77,6 +77,19 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.46.2: a root in its own unit, refusals as typed
+check("a range solve with bounds in inches",
+      "x := solve(eq(x, 2[inch]), x, 0[inch], 10[inch])", r"x & = & \displaystyle 2.00\,\mathrm{in}",
+      absent=("invalid syntax",))
+check("a root in tonnes is not the sheet's t",
+      "t := 10[mm]\nx := solve(eq(x, 2[ton]), x, 0[ton], 10[ton])",
+      r"x & = & \displaystyle 2.00\,\mathrm{t}", absent=(r"20.00\,\mathrm{mm}",))
+check("a refused condition is quoted as typed",
+      "f := [100[kip]; 50[kip]]\n% if f[1] > 0.5[m]:\ny := 1\n% end",
+      "f[1] > 0.5[m]: kN against m", absent=("__u_", "kg"))
+check("a placeholder in a unit's brackets",
+      "P := 5[kN]\n% u = 'kN'\n% if P > 3[{u}]:\ny := 1\n% end", r"y & = & \displaystyle 1.00",
+      absent=("holds no unit",))
 # 0.46.1: what chapter 10 found
 check("max of a ratio of units is compared converted",
       "r := max(1[kN]/1[kip], 0.5)", r"r & = & \displaystyle 0.50")
