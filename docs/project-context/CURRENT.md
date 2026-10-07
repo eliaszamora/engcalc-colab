@@ -1,6 +1,6 @@
 # EngCalc Current Project Context
 
-> **Read the block directly below (start with its Handoff 2026-10-07), then `NEXT.md`.** Everything after it was last
+> **Read the block directly below (start with its newest release paragraph), then `NEXT.md`.** Everything after it was last
 > updated at 0.13.0 on `9a9d6e3` and describes a tree that no longer exists. Its
 > *approved behaviour* and *evidence hierarchy* sections are still in force and are
 > regression requirements; its baseline numbers, release history and open-issue list are
@@ -12,27 +12,44 @@ _2026-10-07._
 
 | | |
 |---|---|
-| released | **0.46.1** - #401, `928b716`, closed (checked in his Colab); `eigenvals` with singular G parked on `fix/chapter-10-findings` |
-| before that | **0.46.0** - #398, `69d6475`, closed |
-| default suite | **3736 passing** on 0.46.1 (SymPy 1.14 and 1.13.3) |
+| released | **0.46.1** - #401, `928b716`, closed (checked in his Colab) |
+| in release | **0.46.2** - branch `fix/0.46.2`, the 0.46.1 audit's low findings and what three audits of them found |
+| default suite | **3769 passing** on `fix/0.46.2` (SymPy 1.14 and 1.13.3); 3736 on 0.46.1 |
 
-**Handoff 2026-10-07 (moving to another Claude account).** `main` = `0e1da3b`, 0.46.1
-released and closed, no open PRs, nothing running. Branches worth knowing:
-`fix/chapter-10-findings` (`5da704c`, pushed) holds the parked `eigenvals(K, G)` rewrite and
-its audit harness in `tools/eigen_audit/` (see its README); `release/0.46.1` and
-`docs/*` are merged leftovers.
+**0.46.2 (session of 2026-10-07, new account; he: "las decisiones te las dejo a ti y tienes
+mi autorización para fusionar y publicar").** Branch `fix/0.46.2` from `05cac07`. What it
+carries:
+1. A range `solve`'s root is read back by Pint's unit name under its bracketed spelling
+   (`_bracketed_spelling` in engine.py), not by re-parsing its symbol: inch bounds failed
+   "invalid syntax" (`in`); **silently wrong on main**: a sheet's `t` stood in for the tonne
+   (`t := 10[mm]`, root of `2[ton]` read `20.00 mm`), its `m`/`s`/`N`/`kip`/`kN` for those
+   units (`kip := 3[m]` made 5 kip read 15.00 m), its `rad` for an angle root; degC roots run.
+2. Refused `% if`/`% while` conditions quoted as typed (`f[1] > 0.5[m]: kN against m`), a
+   matrix entry's SI-base compound in the page's unit, typed units as typed, a plain number
+   "a number", the line said; `3[{u}]`, `{i}[{u}]`, `{M}[{i}, 1]` run in loops/conditions.
+3. **Decided, not done:** `max(2[mm/m], 0.001)` stays `0.002` as 0.46.1 - keeping mm/m (tried)
+   carried `mm·MPa/m` into `max(eps, 0.002)*E` (audit 1). Root cause: the page does not
+   simplify `mm·MPa/m` (`2[mm/m]*200000[MPa]` reads `400000.00 mm·MPa/m` on main too).
 
-**Exact next step - proposed, he has not answered yet** (he said "las decisiones te las dejo
-a ti, tienes mi autorización"; ask before starting a multi-hour release if unsure):
-a short **0.46.2** with the 0.46.1 audit's low findings -
-1. a range `solve` whose bounds are in inches fails "symbolic evaluation failed: invalid
-   syntax" (`x := solve(eq(x, 2[inch]), x, 0[inch], 10[inch])`; also with `lo := 0[inch]`
-   bounds) - pre-existing, matters for his kip/inch sheets; mm, ft and kip bounds work;
-2. `max(2[mm/m], 0.001)` now shows `0.002` (main `2.00 mm/m`): keep a ratio's unit when every
-   argument is that same ratio unit or convertible to it without loss;
-3. two refusal messages leak internals: `% if f[1] > 0.5[m]` with kip entries says
-   `0.5 * __u_m: m·kg/s² against m`; `% u = 'kN'` then `% if P > 3[{u}]` quotes the stand-in
-   `3[1]`.
+Audits: 1 NOT CLEAN (the max/min regression; tonnes/degC/shadowed names, pre-existing),
+2 NOT CLEAN (`rad` shadowing, pre-existing; message quoting), 3 **CLEAN** on `79f2ef9`.
+Known, left (low, all messages or pre-existing presentation): a scalar read from kip
+entries (`F := f[1]`, `% if F > 0.5[m]`) still says `m·kg/s²`; `3[m^0.5]` quoted
+`3[m^0].5`; `2*3[m]` quoted `2 * (3[m])`, `1e3[mm]` as `1000.0[mm]`; `% op = '+'` then
+`2[kN] {op} 3[{u}]` says "unsupported syntax 'Constant'" (refused on main too); on a `=` line
+an exact root is written `2.0` (any unit, main too); a bracketed compound on a `=` line reads
+in SymPy's order, `2.5[kip*ft]` -> `ft·kip` (main too).
+
+Release evidence on `92102cb`/`3cba8c7` (release commit, then a smoke-script fix outside the
+package): version assertions 7 RED -> GREEN; suite 3769 on SymPy 1.14 and 1.13.3; wheel from
+`git archive`, 33 package files identical to `src` (fallback.py CRLF only); clean py3.12 venv
+with Colab's pins adds Pint 0.26.1 + 4 small deps, upgrades nothing; `smoke_installed.py`
+outside the repo 65/65 (4 new checks); suite against the installed wheel from a tree without
+`src/`: 3768 + the magic.py-by-path test with the wheel's copy; 24 reference pages
+(`render_memoria.py`, 8 sheets x palettes none/kN/kgf) byte-identical wheel vs src - note
+`python -I` drops PYTHONHASHSEED/PYTHONIOENCODING, do not use it for this comparison.
+Corpus of his 270 sheets main vs `79f2ef9`: see the PR.
+
 Then **0.46.3 (or 0.47.0)**: `eigenvals(K, G)` with a singular G from
 `fix/chapter-10-findings` - rebase on main, rerun `tools/eigen_audit/battery.sh`, look at the
 refusals where main was right (A_tie_*, F18_free_fullmass, L_two_rigid_12), then an
@@ -61,10 +78,10 @@ from the menu): Untitled9, cell 0 installed main, my cell 5 now holds the 0.46.1
 above `x = 100.00`, "Como h_1 = 0.00 < 0.50" and "Como f_1 = 889.64 kN > 667.23 kN" deciding,
 `w = 1.00 × 10^600`, and `v := 1e300*1e300` refused with the "too large" message; screenshots sent.
 
-**Exact next step:** his pick - 0.46.2 (`eigenvals(K, G)` with a singular G, parked on
-`fix/chapter-10-findings`), the audit's low findings (a strain ratio shown as a plain number;
-refusal messages quoting `__u_m`; range `solve` with inch bounds fails, pre-existing), or the
-rest of chapter 10's list (argmin, `% break`, presentation).
+**Exact next step:** merge the 0.46.2 PR on 6/6 CI, `git+https` install + smoke, the
+check in his Colab through Claude in Chrome, a docs PR closing it. Then his pick: `eigenvals(K,
+G)` with a singular G (above), the page simplifying `mm·MPa/m` (would let max/min keep a
+strain's unit), or the rest of chapter 10's list (argmin, `% break`, presentation).
 
 **0.46.1 release** (his choice 2026-10-07: release what is ready, `eigenvals` with a singular
 G later): branch `release/0.46.1`, cut from `fix/chapter-10-findings` with `matrix_numeric.py`
@@ -3295,8 +3312,8 @@ this Claude account or another one - knows only what is in the repository. Start
 5. The user writes in Spanish; answer in Spanish. The documents here are in English.
 
 **Updated 2026-10-07 for the move to another account.** The newest state is the block
-**Where things stand today** at the top of this file - start with its **Handoff
-2026-10-07** paragraph, which has the exact next step. Specifics a new session needs:
+**Where things stand today** at the top of this file - start with its newest release
+paragraph (0.46.2 as of this writing) and its **Exact next step**. Specifics a new session needs:
 
 - **His Colab**: the release check notebook is "Untitled9"
   (`colab.research.google.com/drive/12CCpV_S6Q5GdXDEo_j2yUvfFwtpP0zhH`): cell 0 = his install
