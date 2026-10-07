@@ -2,6 +2,8 @@ r"""What the independent audit of the chapter 10 fixes found (2026-10-06).
 
 - `max(10[deg], 45)` printed 45.00 before and 2578.31° after the first fix: a plain number
   beside an angle is left as it was, and `max` of angles alone is read in the first one.
+- `eigenvals(K, G)` with K and G both singular said "any λ satisfies K x = λ G x" of a
+  pencil whose only eigenvalue is 0: refused only when K + σG is singular for every σ.
 - A condition refused before it ran quoted the stand-ins, `x  + 1 3`, not `x {op} 3`.
 - `c := a*b/1e300` over `1e200` values, true value 1e100, was "too large": a step passed
   the float range, and the message says that. `0*(1e300*1e300)` is not a number.
@@ -48,6 +50,43 @@ def test_a_plain_number_beside_an_angle_is_as_it_was(sheet):
 def test_angles_alone_are_read_in_the_first(sheet):
     page, _ = sheet("t := max(30[deg], 0.5[rad])\n")
     assert "30.00" in value_of(page, "t"), page
+
+
+def test_a_regular_pencil_with_both_singular(sheet):
+    # det(K - λG) = -λ: one finite eigenvalue, 0.
+    page, printed = sheet(
+        "K := [1[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m]]\nG := [0[kN/m], 0[kN/m]; 0[kN/m], 1[kN/m]]\n"
+        "l := eigenvals(K, G)\n"
+    )
+    assert "engcalc:" not in printed, printed
+    assert r"& = & \displaystyle 0.00" in page.split("l & = &", 1)[1], page
+
+
+def test_a_shifted_pencil_matches_numpy(sheet):
+    import numpy as np
+
+    page, printed = sheet(
+        "K := [4[kN/m], -2[kN/m], 0[kN/m]; -2[kN/m], 2[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m], 0[kN/m]]\n"
+        "G := [1[kN/m], 0[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m], 3[kN/m]]\n"
+        "l := eigenvals(K, G)\n"
+    )
+    assert "engcalc:" not in printed, printed
+    stiffness = np.array([[4, -2, 0], [-2, 2, 0], [0, 0, 0.0]])
+    geometric = np.diag([1, 0, 3.0])
+    shift = 1.0
+    inverses = np.linalg.eigvals(np.linalg.solve(stiffness + shift * geometric, geometric))
+    expected = sorted(1 / value.real - shift for value in inverses if abs(value) > 1e-12)
+    shown = page.split("l & = &", 1)[1]
+    for value in expected:
+        assert f"{value:.2f}" in shown, (expected, shown)
+
+
+def test_a_singular_pencil_is_refused(sheet):
+    _, printed = sheet(
+        "K := [1[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m]]\nG := [1[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m]]\n"
+        "l := eigenvals(K, G)\n"
+    )
+    assert "engcalc:" in printed and "any λ" in printed, printed
 
 
 def test_a_refused_condition_is_quoted_as_typed(sheet):

@@ -1,0 +1,5 @@
+{"K_misfit_Gsing": "K := [2[kN/m], 1[kN/m], 0[kN/m]; 1[kN/m], 3[kN*m], 0[kN]; 0[kN/m], 0[kN], 4[kN/m]]\nG := [1[1/m], 0, 0[1/m]; 0, 0[m], 0; 0[1/m], 0, 1[1/m]]\nl := eigenvals(K, G)\n",
+ "G_misfit_sing": "K := [2[kN/m], 1[kN], 0[kN/m]; 1[kN], 3[kN*m], 0[kN]; 0[kN/m], 0[kN], 4[kN/m]]\nG := [1[1/m], 0.5[m], 0[1/m]; 0.5[m], 0[m], 0; 0[1/m], 0, 0[1/m]]\nl := eigenvals(K, G)\n",
+ "GK_unit_mismatch_sing": "K := [2[kN/m], 0[kN/m]; 0[kN/m], 3[kN/m]]\nG := [1[kg], 0[kg]; 0[kg], 0[kg]]\nl := eigenvals(K, G)\n",
+ "GK_dimension_mixed_sing": "K := [2[kN/m], 0[kN/m]; 0[kN/m], 3[kN/m]]\nG := [1[kg], 0[kg]; 0[kg], 0[1/m]]\nl := eigenvals(K, G)\n",
+ "GK_entry_ratio_mismatch_sing": "K := [2[kN/m], 0[kN/m], 0[kN/m]; 0[kN/m], 3[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m], 1[kN/m]]\nG := [1[kg], 0[kg], 0[kg]; 0[kg], 1[1/m], 0[kg]; 0[kg], 0[kg], 0[kg]]\nl := eigenvals(K, G)\n"}
