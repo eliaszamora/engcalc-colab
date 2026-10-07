@@ -12,9 +12,19 @@ _2026-10-07._
 
 | | |
 |---|---|
-| released | **0.46.1** - #401, `928b716`, closed (checked in his Colab) |
-| in release | **0.46.2** - branch `fix/0.46.2`, the 0.46.1 audit's low findings and what three audits of them found |
-| default suite | **3769 passing** on `fix/0.46.2` (SymPy 1.14 and 1.13.3); 3736 on 0.46.1 |
+| released | **0.46.2** - #404, `987c589`, closed (checked in his Colab) |
+| before that | **0.46.1** - #401, `928b716`, closed |
+| default suite | **3769 passing** on 0.46.2 (SymPy 1.14 and 1.13.3) |
+
+**0.46.2 is closed** (#404, squash `987c589`, 6/6 CI on `6621050`, merged with his "fusiona
+cuando la CI esté verde"): a `git+https` install of main in a clean Colab-pinned venv reports
+0.46.2, adds only Pint and its small deps, smoke 65/65. Corpus of his 270 sheets main vs
+`79f2ef9`: 269 identical, p7_17 unstable on main itself. **Checked in his Colab** (2026-10-07,
+through Claude in Chrome - the extension had to be signed in to this new account first; session
+restarted from the menu, then his cell 0): my cell 5 of Untitled9 now holds the 0.46.2 check
+and shows, under his `%eng_units kN`, `x = 2000.00 kg` for a root of `2[ton]` beside `t :=
+10[mm]`, `d = 0.0610 m` for the kip/inch root, "Como P = 5.00 kN > 3.00 kN" from `3[{u}]`, and
+"line 11: the condition cannot compare f[1] > 0.5[m]: kN against m"; screenshots sent.
 
 **0.46.2 (session of 2026-10-07, new account; he: "las decisiones te las dejo a ti y tienes
 mi autorización para fusionar y publicar").** Branch `fix/0.46.2` from `05cac07`. What it
@@ -48,7 +58,7 @@ outside the repo 65/65 (4 new checks); suite against the installed wheel from a 
 `src/`: 3768 + the magic.py-by-path test with the wheel's copy; 24 reference pages
 (`render_memoria.py`, 8 sheets x palettes none/kN/kgf) byte-identical wheel vs src - note
 `python -I` drops PYTHONHASHSEED/PYTHONIOENCODING, do not use it for this comparison.
-Corpus of his 270 sheets main vs `79f2ef9`: see the PR.
+Corpus of his 270 sheets main vs `79f2ef9`: 269 identical, p7_17 unstable on main.
 
 Then **0.46.3 (or 0.47.0)**: `eigenvals(K, G)` with a singular G from
 `fix/chapter-10-findings` - rebase on main, rerun `tools/eigen_audit/battery.sh`, look at the
@@ -78,9 +88,7 @@ from the menu): Untitled9, cell 0 installed main, my cell 5 now holds the 0.46.1
 above `x = 100.00`, "Como h_1 = 0.00 < 0.50" and "Como f_1 = 889.64 kN > 667.23 kN" deciding,
 `w = 1.00 × 10^600`, and `v := 1e300*1e300` refused with the "too large" message; screenshots sent.
 
-**Exact next step:** merge the 0.46.2 PR on 6/6 CI, `git+https` install + smoke, the
-check in his Colab through Claude in Chrome, a docs PR closing it. Then his pick: `eigenvals(K,
-G)` with a singular G (above), the page simplifying `mm·MPa/m` (would let max/min keep a
+**Exact next step:** his pick: `eigenvals(K, G)` with a singular G (above), the page simplifying `mm·MPa/m` (would let max/min keep a
 strain's unit), or the rest of chapter 10's list (argmin, `% break`, presentation).
 
 **0.46.1 release** (his choice 2026-10-07: release what is ready, `eigenvals` with a singular
