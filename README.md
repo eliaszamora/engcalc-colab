@@ -13,7 +13,23 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.46.1**.
+Current version: **0.46.2**.
+
+
+## v0.46.2 a root in its own unit, refusals as typed
+
+- **A range `solve` gives its root in the unit of its bounds, whatever the sheet names**:
+  bounds in inches failed "invalid syntax" (`x := solve(eq(x, 2[inch]), x, 0[inch],
+  10[inch])`), and a root came back through the spelling of its unit, so a sheet's own `t`,
+  `m`, `s`, `N`, `rad`, `kip` or `kN` stood in for it - `t := 10[mm]` made a root of
+  `2[ton]` read `20.00 mm`, with no message. Roots in degrees Celsius run.
+- **A refused `% if` or `% while` says the condition as it was typed**: `f[1] > 0.5[m]: kN
+  against m`, not `0.5 * __u_m: m·kg/s² against m`; a plain number is "a number".
+- **A placeholder in a unit's brackets runs**: `P > 3[{u}]` in a condition, `P_{i} :=
+  {i}[{u}]` in a loop, and `{M}[{i}, 1]`, were refused before the loop ran ("3[1] holds no
+  unit").
+- `max(2[mm/m], 0.001)` stays `0.002`: keeping mm/m there carried `mm·MPa/m` into
+  `max(eps, 0.002)*E`, which a page does not simplify yet.
 
 
 ## v0.46.1 what chapter 10 found
@@ -4139,6 +4155,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.46.2** — a range solve's root in its own unit (inches, tonnes, °C; never a sheet's name); refused conditions quoted as typed; placeholders in a unit's brackets run.
 - **0.46.1** — max/min of unit ratios compared converted; a number too large is refused, not a crash; placeholders and matrix entries in conditions, range solve over entries, `{n} :=` run.
 - **0.46.0** — statements over several lines inside parentheses; `T'` for the transpose; `U^-1` and `U^2` on `:=` lines.
 - **0.45.7** — a complex pair beside a large eigenvalue is refused, not read as zeros.
@@ -4278,4 +4295,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.46.1`.
+Version: `0.46.2`.
