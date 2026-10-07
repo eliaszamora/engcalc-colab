@@ -360,6 +360,10 @@ def _put(insert, match, line_no, line):
     # refused before any pass ran (his book, problem 5.9); anywhere else it is a number.
     before = line[match.start() - 1] if match.start() else " "
     after = line[match.end()] if match.end() < len(line) else " "
+    # `3[{u}]`: inside a number's brackets it holds a unit, and the number `1` there was
+    # refused, "3[1] holds no unit", before any pass ran (the audit of 0.46.1).
+    if re.search(r"\d\s*\[[^\[\]]*$", line[: match.start()]) and re.match(r"[^\[\]]*\]", line[match.end():]):
+        return "m"
     if after.isalnum() or after == "_" or before.isalnum() or before == "_":
         return "n1"
     # `{n} := 1`: the whole target is a name, or the line read `1 := 1` (his book, chapter 10).
@@ -421,7 +425,7 @@ def _with_placeholders(text: str, line_no: int, scope: _Scope) -> str:
 
 def _condition_tree(text: str, line_no: int, written: str | None = None) -> ast.AST:
     try:
-        tree = ast.parse(normalize_expression(text), mode="eval").body
+        tree = ast.parse(normalize_expression(text, line_no), mode="eval").body
     except SyntaxError as exc:
         # Quoted as typed, `x {op} 3`, and not as the stand-ins it was read with.
         message = f"line {line_no}: the condition of this % line is not one: {written or text}"
@@ -1103,7 +1107,7 @@ def _decide(tree: ast.AST, line_no: int, engine, settings) -> tuple[bool, str]:
         return _compare(tree, line_no, engine, settings, tree.ops)
     raise EngEvaluationError(
         f"line {line_no}: a condition compares, as in Vu > phi*V_c; "
-        f"{ast.unparse(tree)} is not a comparison"
+        f"{_as_typed(tree)} is not a comparison"
     )
 
 
@@ -1127,9 +1131,11 @@ def _compare(tree: ast.Compare, line_no: int, engine, settings, operators) -> tu
         try:
             holds = _OPERATORS[type(operator)][2](first, second)
         except DimensionalityError as exc:
+            # As the sheet writes it, each side in the unit the page would show: an entry of
+            # kips said `0.5 * __u_m: m·kg/s² against m` (the audit of 0.46.1).
             raise EngEvaluationError(
-                f"line {line_no}: the condition cannot compare {ast.unparse(tree)}: "
-                f"{first.units:~P} against {second.units:~P}"
+                f"line {line_no}: the condition cannot compare {_as_typed(tree)}: "
+                f"{_shown_units(first, settings)} against {_shown_units(second, settings)}"
             ) from exc
         verdict = verdict and bool(holds)
     shown = _in_one_unit(operands, values, settings, engine)
@@ -1183,7 +1189,7 @@ def _value(operand: ast.AST, line_no: int, engine):
     except EngCalcError as exc:
         # The line is the condition's own, one line long, and not a line of the sheet.
         told = re.sub(r"^line \d+: ", "", str(exc))
-        raise EngEvaluationError(f"line {line_no}: the condition needs a value for {text}: {told}") from exc
+        raise EngEvaluationError(f"line {line_no}: the condition needs a value for {_as_typed(side)}: {told}") from exc
     if not isinstance(result, NumericEvaluationResult):
         raise EngEvaluationError(f"line {line_no}: the condition needs one value for {text}")
     quantity = result.quantity
@@ -1268,6 +1274,35 @@ def _from_numbers(text: str, engine):
         substitutions={},
         quantity=engine.numeric_context._as_quantity(value),
     )
+
+
+# `0.5 * __u_m`, `10 * __u_kN / __u_m`, `6000 * __u_mm ** 2`: a number in brackets as
+# the parser reads it.
+_A_READ_BRACKET = re.compile(r"(\d[\w.]*) \* (__u_\w+(?: (?:\*\*|\*|/) (?:__u_\w+|\d+))*)")
+
+
+def _as_typed(tree: ast.AST) -> str:
+    """A comparison as the sheet writes it: `f[1] > 0.5[m]`, its units in brackets."""
+
+    def bracket(match: re.Match) -> str:
+        units = match.group(2).replace("__u_", "").replace(" ** ", "^").replace(" ", "")
+        return f"{match.group(1)}[{units}]"
+
+    return _A_READ_BRACKET.sub(bracket, ast.unparse(tree))
+
+
+def _shown_units(quantity, settings) -> str:
+    from .renderer import _display_quantity  # noqa: PLC0415 - renderer imports models only
+
+    # One unit is said as it was typed, `0.5[m]` in m; the compound an entry holds, kips
+    # in `m·kg/s²`, as the page would show it.
+    if len(quantity.units._units) > 1:
+        current = settings() if callable(settings) else settings
+        try:
+            quantity = _display_quantity(quantity, current, declared=False)
+        except Exception:  # noqa: BLE001 - a message is not refused for its units
+            pass
+    return f"{quantity.units:~P}"
 
 
 def _in_one_unit(operands, values, settings, engine) -> list:

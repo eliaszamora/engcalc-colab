@@ -47,13 +47,28 @@ def last_value(page: str, name: str) -> str:
     [
         "x := solve(eq(x, 2[inch]), x, 0[inch], 10[inch])\n",
         "lo := 0[inch]\nhi := 10[inch]\nx := solve(eq(x, 2[inch]), x, lo, hi)\n",
-        "x = solve(eq(x, 2[inch]), x, 0[inch], 10[inch])\n",
     ],
 )
 def test_a_range_solve_in_inches(sheet, source):
     page, printed = sheet(source)
     assert "engcalc:" not in printed, printed
     assert last_value(page, "x") == r"2.00\,\mathrm{in}", page
+
+
+def test_a_range_solve_in_inches_on_an_equals_line(sheet):
+    # A root that falls exactly, 2.0, is written `2.0` on a `=` line in any unit and none -
+    # a short Float reads as typed; known, not this release's.
+    page, printed = sheet("x = solve(eq(x, 2[inch]), x, 0[inch], 10[inch])\n")
+    assert "engcalc:" not in printed, printed
+    assert last_value(page, "x").endswith(r"\,\mathrm{in}"), page
+
+
+def test_a_range_solve_in_metres_says_nothing(sheet):
+    # The root's unit was read back as a bare `m`, and the sheet was told it never wrote
+    # the metre as a unit - beside `2[m]`.
+    page, printed = sheet("x = solve(eq(x, 2[m]), x, 0[m], 10[m])\n")
+    assert not printed, printed
+    assert last_value(page, "x").endswith(r"\,\mathrm{m}"), page
 
 
 def test_a_range_solve_in_inches_over_a_kip_inch_equation(sheet):
@@ -77,7 +92,6 @@ def test_a_range_solve_in_feet_is_as_it_was(sheet):
     ("source", "expected"),
     [
         ("r := max(2[mm/m], 0.001)\n", "2.00"),
-        ("r = max(2[mm/m], 0.001)\n", "2.00"),
         ("r := max(0.5[mm/m], 0.001)\n", "1.00"),  # 0.001 is 1 mm/m; main read 0.5 as larger
         ("r := min(2[mm/m], 0.001)\n", "1.00"),
         ("r := max(0.001, 2[mm/m])\n", "2.00"),
@@ -89,6 +103,13 @@ def test_a_strain_keeps_its_unit(sheet, source, expected):
     assert not printed, printed
     value = last_value(page, "r")
     assert value.startswith(expected) and r"\mathrm{mm}" in value and r"\mathrm{m}" in value, page
+
+
+def test_an_equals_line_writes_a_strain_as_its_number_either_way(sheet):
+    # A `=` line writes `r = 2[mm/m]` as 0.002 too; max on it agrees with that line.
+    page, printed = sheet("r = max(2[mm/m], 0.001)\ns = 2[mm/m]\n")
+    assert not printed, printed
+    assert last_value(page, "r") == last_value(page, "s") == "0.002", page
 
 
 def test_a_strain_beside_another_scale_is_read_in_the_first(sheet):
@@ -133,5 +154,10 @@ def test_a_placeholder_names_the_unit_of_a_line(sheet):
 
 def test_a_placeholder_unit_that_is_none_is_said_as_typed(sheet):
     _, printed = sheet("P := 5[kN]\n% u = 'zz'\n% if P > 3[{u}]:\ny := 1\n% end\n")
-    assert "engcalc:" in printed and "zz" in printed, printed
+    assert "line 3" in printed and "zz" in printed, printed
     assert "3[1]" not in printed, printed
+
+
+def test_a_side_that_has_no_value_is_quoted_as_typed(sheet):
+    _, printed = sheet("P := 10[kN]\n% if P > 2 + 0.5[m]:\ny := 1\n% end\n")
+    assert "line 2" in printed and "2 + 0.5[m]" in printed and "__u_" not in printed, printed

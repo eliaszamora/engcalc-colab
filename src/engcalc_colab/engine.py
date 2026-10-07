@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import keyword
 import math
 import re
 from dataclasses import dataclass, replace
@@ -7142,6 +7143,16 @@ def _as_written_quantity(quantity, evaluator):
     magnitude = sp.Float(float(quantity.magnitude), 15)
     if not text:
         return magnitude
+    # Each unit under its bracketed name, as `2[inch]` is read: the inch is `in`, Python's
+    # keyword - a root between `0[inch]` and `10[inch]` failed "invalid syntax" (the audit
+    # of 0.46.1) - and a bare `m` was a name the sheet never wrote as a unit, and said so.
+    text = re.sub(
+        r"[A-Za-z_]\w*",
+        lambda word: BRACKETED_UNIT_PREFIX + word.group(0)
+        if BRACKETED_UNIT_PREFIX + word.group(0) in _UNIT_ALIASES or keyword.iskeyword(word.group(0))
+        else word.group(0),
+        text,
+    )
     return magnitude * evaluator.visit(ast.parse(text, mode="eval").body)
 
 
