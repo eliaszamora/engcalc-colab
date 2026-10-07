@@ -368,9 +368,15 @@ def _put(insert, match, line_no, line):
     # `3[{u}]`, `{i}[{u}]`: inside a number's brackets it holds a unit, and the number `1`
     # there was refused, "3[1] holds no unit", before any pass ran (the audits of 0.46.1 and
     # of its fixes). An index, `x2[{i}]`, follows a name and is not this.
-    if _IN_A_NUMBER_S_BRACKETS.search(line[: match.start()]) and re.match(r"[^\[\]]*\]", line[match.end():]):
+    # A comma makes it an entry, `{M}[{i}, 1]`: a unit has none.
+    inside = _IN_A_NUMBER_S_BRACKETS.search(line[: match.start()])
+    rest = re.match(r"[^\[\]]*\]", line[match.end():])
+    if inside and rest and "," not in inside.group(0) + rest.group(0):
         return "m"
     if after.isalnum() or after == "_" or before.isalnum() or before == "_":
+        return "n1"
+    # `{M}[{i}, 1]`: brackets with a comma hold an entry, so what opens them is a matrix.
+    if after == "[" and re.match(r"\[[^\[\]]*,[^\[\]]*\]", line[match.end():]):
         return "n1"
     # `{n} := 1`: the whole target is a name, or the line read `1 := 1` (his book, chapter 10).
     rest = line[match.end():].lstrip()
@@ -1132,7 +1138,9 @@ def _compare(tree: ast.Compare, line_no: int, engine, settings, operators) -> tu
         [_value(operand, line_no, engine) for operand in operands]
     )
     verdict = True
-    for (left, right), operator in zip(zip(values, values[1:]), tree.ops):
+    for (left, right), operator, (left_side, right_side) in zip(
+        zip(values, values[1:]), tree.ops, zip(operands, operands[1:])
+    ):
         first, second = left[0].quantity, right[0].quantity
         try:
             holds = _OPERATORS[type(operator)][2](first, second)
@@ -1141,7 +1149,8 @@ def _compare(tree: ast.Compare, line_no: int, engine, settings, operators) -> tu
             # kips said `0.5 * __u_m: m·kg/s² against m` (the audit of 0.46.1).
             raise EngEvaluationError(
                 f"line {line_no}: the condition cannot compare {_as_typed(tree)}: "
-                f"{_shown_units(first, settings)} against {_shown_units(second, settings)}"
+                f"{_shown_units(first, left_side, settings)} against "
+                f"{_shown_units(second, right_side, settings)}"
             ) from exc
         verdict = verdict and bool(holds)
     shown = _in_one_unit(operands, values, settings, engine)
@@ -1284,7 +1293,7 @@ def _from_numbers(text: str, engine):
 
 # `0.5 * __u_m`, `10 * __u_kN / __u_m`, `6000 * __u_mm ** 2`: a number in brackets as
 # the parser reads it.
-_A_READ_BRACKET = re.compile(r"(\d[\w.]*) \* (__u_\w+(?: (?:\*\*|\*|/) (?:__u_\w+|\d+))*)")
+_A_READ_BRACKET = re.compile(r"(\d[\w.]*) \* (__u_\w+(?: (?:\*|/) __u_\w+| \*\* \d+)*)")
 
 
 def _as_typed(tree: ast.AST) -> str:
@@ -1300,14 +1309,14 @@ def _as_typed(tree: ast.AST) -> str:
 _SI_BASE = frozenset({"meter", "kilogram", "second", "kelvin", "ampere", "mole", "candela", "radian"})
 
 
-def _shown_units(quantity, settings) -> str:
+def _shown_units(quantity, side: ast.AST, settings) -> str:
     from .renderer import _display_quantity  # noqa: PLC0415 - renderer imports models only
 
     if quantity.dimensionless and not quantity.units._units:
         return "a number"  # it said nothing, `1 < P < 3[m]:  against kN`
-    # A unit is said as it was typed, `0.5[kN/m]` in kN/m; what an entry holds, kips in
-    # SI base units `m·kg/s²`, as the page would show it.
-    if len(quantity.units._units) > 1 and set(quantity.units._units) <= _SI_BASE:
+    # A unit is said as it was typed, `0.5[kN/m]` in kN/m, `2400[kg/m^3]` in kg/m³; what an
+    # entry of a matrix holds, kips in SI base units `m·kg/s²`, as the page would show it.
+    if isinstance(side, ast.Subscript) and len(quantity.units._units) > 1 and set(quantity.units._units) <= _SI_BASE:
         current = settings() if callable(settings) else settings
         try:
             quantity = _display_quantity(quantity, current, declared=False)

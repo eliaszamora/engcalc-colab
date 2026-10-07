@@ -212,3 +212,40 @@ def test_an_index_placeholder_is_still_an_index(sheet):
     page, printed = sheet("x2 := [1[kN]; 2[kN]]\n% for i in range(1, 3):\ny_{i} := x2[{i}]\n% end\n")
     assert "engcalc:" not in printed, printed
     assert row_of(page, "y_{2}").endswith(r"= 2.00\,\mathrm{kN}"), page
+
+
+# -- what the second audit of these fixes found -------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "rad := 7[mm]\nx := solve(eq(x, 0.2[rad]), x, 0[rad], 1[rad])\ny := 3*x\n",
+        "rad := 7[mm]\nx := solve(eq(x, 2[deg]), x, 0[deg], 10[deg])\ny := 3*x\n",
+        "rad := 7[mm]\nx = solve(eq(x, 2[deg]), x, 0[deg], 10[deg])\ny := 3*x\n",
+    ],
+)
+def test_an_angle_root_is_not_the_sheet_s_rad(sheet, source):
+    page, printed = sheet(source)
+    assert "engcalc:" not in printed, printed
+    assert "mm" not in row_of(page, "x") and "mm" not in row_of(page, "y"), page
+
+
+def test_a_typed_compound_of_base_units_is_said_as_typed(sheet):
+    _, printed = sheet("rho := 2400[kg/m^3]\n% if rho > 5[kN]:\na := 1\n% end\n")
+    assert "kg/m³ against kN" in printed, printed
+
+
+def test_a_number_after_the_brackets_stays_outside_them(sheet):
+    _, printed = sheet("x := 1[kN]\n% if x > 3[m]*2:\ny := 1\n% end\n")
+    assert "x > 3[m] * 2" in printed, printed
+    _, printed = sheet("x := 1[kN]\n% if x > 3[m^2]/2:\ny := 1\n% end\n")
+    assert "x > 3[m^2] / 2" in printed, printed
+
+
+def test_an_entry_of_a_placeholder_matrix_is_an_entry(sheet):
+    page, printed = sheet(
+        "% M = 'K'\nK := [1[m], 2[m]; 3[m], 4[m]]\n% for i in range(1, 3):\ny{i} := {M}[{i}, 1]\n% end\n"
+    )
+    assert "engcalc:" not in printed, printed
+    assert row_of(page, "y_{2}").endswith(r"3.00\,\mathrm{m}") or row_of(page, "y2").endswith(r"3.00\,\mathrm{m}"), page

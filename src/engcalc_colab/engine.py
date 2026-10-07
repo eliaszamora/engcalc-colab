@@ -7158,7 +7158,9 @@ def _as_written_quantity(quantity, evaluator):
         # 0.0231 for 0.1098 (his book, Example 8.2). In radians, which a bare number means.
         quantity = quantity.to("radian")
         return sp.Float(float(quantity.magnitude), 15) * evaluator.visit(
-            ast.parse("rad", mode="eval").body
+            # Under its bracketed name: a sheet's `rad := 7[mm]` made a root of 0.2 rad
+            # 14.00 mm (the second audit of 0.46.2).
+            ast.parse(BRACKETED_UNIT_PREFIX + "rad", mode="eval").body
         )
     magnitude = sp.Float(float(quantity.magnitude), 15)
     if not text:
