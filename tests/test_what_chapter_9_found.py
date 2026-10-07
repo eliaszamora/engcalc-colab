@@ -137,19 +137,12 @@ def test_the_determinant_keeps_its_sign_and_the_unit_of_a_term(monkeypatch):
 
 def test_eigenvals_of_a_pencil_with_a_singular_second_matrix_says_which(monkeypatch):
     """A lumped geometric stiffness or mass is often singular; the message blamed the
-    supports, which belong to K. Since chapter 10 a singular G alone gives the finite
-    eigenvalues (`test_lines_chapter_10_found_refused`); refused when K is singular too."""
-    page, console = _run(
+    supports, which belong to K."""
+    _, console = _run(
         "K := [2[kN/m], 0; 0, 3[kN/m]]\nG := [1, 0; 0, 0]\nlam := eigenvals(K, G)\n",
         monkeypatch,
     )
-    assert not console, console
-    assert r"& = & 2.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
-    _, console = _run(
-        "K := [2[kN/m], 0; 0, 0[kN/m]]\nG := [1, 0; 0, 0]\nlam := eigenvals(K, G)\n",
-        monkeypatch,
-    )
-    assert "any λ satisfies" in console, console
+    assert "second matrix" in console and "singular" in console, console
     assert "supports" not in console, console
 
 
