@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import ast
+import copy
 import math
 import re
 from dataclasses import dataclass, replace
+from types import SimpleNamespace
 
 import sympy as sp
 from pint.errors import DimensionalityError
@@ -521,6 +523,8 @@ class _MatrixNumbers:
             binding.name: binding.literal
             for binding in getattr(statement, "matrix_literals", ())
         }
+        # The equation a range `solve` on the line solved, for the page.
+        self.solved_equation = None
 
     def names_a_matrix(self, name: str) -> bool:
         if name in self.literals:
@@ -745,6 +749,8 @@ class _MatrixNumbers:
         name = node.func.id
         if self._builds_a_matrix(node):
             return self._built(node)
+        if name == "solve" and _solves_in_a_range(node, self.engine.namespace):
+            return self._root_in_a_range(node)
         if name in ("det", "eigenvals"):  # reserved: a sheet cannot define its own
             # The determinant and the eigenvalues of a matrix of numbers - a frame's critical
             # load, `lambda_c := eigenvals(K_ff, -K_G)` - which `=` lines refuse for a `:=`
@@ -782,6 +788,68 @@ class _MatrixNumbers:
                 + ("a matrix and a right-hand side" if name == "solve" else "one matrix")
             )
         raise EngEvaluationError(f"{name} cannot be worked out in numbers on a := line")
+
+    def _root_in_a_range(self, node: ast.Call):
+        """`x := solve(eq(f[1] + x*df[1], P), x, 0, 100)`: an equation that reads entries.
+
+        Every argument was worked out first, the equation too, and its unknown has no value:
+        "unknown numeric name 'x'" (his book, chapter 10, an event-to-event step). Each part
+        that reads a matrix and not the unknown is its number, and the rest is the range
+        `solve` a `:=` line without a matrix makes.
+        """
+        unknown = node.args[1].id
+        bound: dict[str, object] = {}
+        written: dict[str, str | None] = {}
+        numbers = self
+
+        class _Entries(ast.NodeTransformer):
+            def visit(self, each):
+                if (
+                    isinstance(each, ast.expr)
+                    and numbers.reads_a_matrix(each)
+                    and not any(
+                        isinstance(name, ast.Name) and name.id == unknown for name in ast.walk(each)
+                    )
+                    # `2*f[1]` is gone into, so `f[1]` keeps its name on the page; a part
+                    # that reads a whole matrix, `g'*k*g`, is one number.
+                    and (_entry_name(each) is not None or not _reads_only_entries(each, numbers))
+                ):
+                    value = one_number(numbers.value(each), numbers.context.ureg)
+                    if isinstance(value, NumberMatrix):
+                        raise EngEvaluationError(
+                            f"solve takes numbers in its equation, and '{ast.unparse(each)}' "
+                            f"is a matrix; take one of its entries, such as {_a_matrix_in(each, numbers)}[1]"
+                        )
+                    key = f"eng_entry_{len(bound)}"
+                    bound[key] = value
+                    written[key] = _entry_name(each, numbers.engine)
+                    return ast.copy_location(ast.Name(id=key, ctx=ast.Load()), each)
+                return super().visit(each)
+
+        call = ast.fix_missing_locations(_Entries().visit(copy.deepcopy(node)))
+        values = self.context.values
+        clash = [key for key in bound if key in values]
+        if clash:
+            raise EngEvaluationError(f"{clash[0]} is a name this solve needs for itself")
+        values.update(bound)
+        try:
+            probe = self.engine._as_numeric(SimpleNamespace(expression=ast.Expression(body=call)))
+        finally:
+            for key in bound:
+                values.pop(key, None)
+        if probe.numeric_evaluation is None:
+            raise EngEvaluationError(f"'{ast.unparse(node)}' needs a single numeric value")
+        # The equation goes on the page above the value, as a `solve` without a matrix
+        # puts it, each entry by its name: `f_{1} + x df_{1} = P`. A part that is not one
+        # entry has no name, and the line is then written as typed.
+        equation = probe.display_input
+        if isinstance(equation, sp.Equality) and all(written.values()):
+            self.solved_equation = equation.xreplace({
+                symbol: sp.Symbol(written[symbol.name])
+                for symbol in equation.free_symbols
+                if symbol.name in written
+            })
+        return probe.numeric_evaluation[2]
 
     def _number_call(self, node: ast.Call):
         """`min(3*h, d[1,1])`, `M(d[1,1])`, `sqrt(u^2 + v^2)`: a call that takes numbers.
@@ -1852,6 +1920,16 @@ class EngineeringEngine:
         quantity = context._as_quantity(value)
         context.matrices.pop(statement.target, None)
         context.values[statement.target] = quantity
+        body = statement.expression.body
+        if numbers.solved_equation is not None and isinstance(body, ast.Call) and _solves_in_a_range(
+            body, self.namespace
+        ):
+            return NumericAssignmentResult(
+                statement=statement,
+                quantity=quantity,
+                written_units=written_units,
+                equation=numbers.solved_equation,
+            )
         return NumericAssignmentResult(
             statement=statement,
             quantity=quantity,
@@ -4705,6 +4783,34 @@ class _Evaluator(ast.NodeVisitor):
         return points[0].x_symbolic
 
     def _one_root(self, roots, unknown_name, lower, upper):
+        # A bound taken from an entry of a matrix of numbers reaches here in base units, as
+        # the matrix holds it: said in the other bound's unit, or as the page would show it -
+        # `444822.16 m·kg/s²` stood beside `0.00 kip` (the audits of 0.46.1).
+        from .renderer import RenderSettings, _display_quantity  # noqa: PLC0415 - renderer imports the engine's users
+
+        def in_base_units(quantity) -> bool:
+            # A compound of base units, `m·kg/s²`, which nobody types; a metre typed as a
+            # metre stays one (the third audit: `0.2[m]` was said `200.00 mm`).
+            try:
+                return (
+                    not quantity.dimensionless
+                    and len(quantity.units._units) > 1
+                    and quantity.units == quantity.to_base_units().units
+                )
+            except AttributeError:
+                return False
+
+        try:
+            if in_base_units(upper) and not lower.dimensionless and not in_base_units(lower):
+                upper = upper.to(lower.units)
+            elif in_base_units(lower) and not upper.dimensionless and not in_base_units(upper):
+                lower = lower.to(upper.units)
+            lower, upper = (
+                _display_quantity(bound, RenderSettings(), declared=False) if in_base_units(bound) else bound
+                for bound in (lower, upper)
+            )
+        except (AttributeError, DimensionalityError):
+            pass
         between = f"between {_said_quantity(lower)} and {_said_quantity(upper)}"
         if not roots:
             raise EngEvaluationError(f"solve found no root for {unknown_name} {between}")
@@ -7037,6 +7143,57 @@ def _as_written_quantity(quantity, evaluator):
     if not text:
         return magnitude
     return magnitude * evaluator.visit(ast.parse(text, mode="eval").body)
+
+
+def _entry_name(node: ast.AST, engine=None) -> str | None:
+    """`f[1]` as the name the page writes it, `f_1`; `K[1, 2]` is `K_{1,2}`. None for
+    anything that is not one entry of a named matrix, and for a name the sheet already
+    gives a value: `f_1 := 7 kip` beside `f[1]` read as that scalar (the audit of 0.46.1)."""
+    if not (isinstance(node, ast.Subscript) and isinstance(node.value, ast.Name)):
+        return None
+    index = node.slice
+    parts = list(index.elts) if isinstance(index, ast.Tuple) else [index]
+    if not all(isinstance(part, ast.Constant) and isinstance(part.value, int) for part in parts):
+        return None
+    if len(parts) == 1:
+        name = f"{node.value.id}_{parts[0].value}"
+    else:
+        name = f"{node.value.id}_{{{','.join(str(part.value) for part in parts)}}}"
+    if engine is not None and any(
+        name in store
+        for store in (engine.numeric_context.values, engine.numeric_context.matrices, engine.namespace)
+    ):
+        return None
+    return name
+
+
+def one_number(value, ureg):
+    """A 1 x 1 matrix of numbers - `g'*f` - as the one number it holds; anything else as it is."""
+    if isinstance(value, NumberMatrix) and value.rows == value.cols == 1:
+        return entry_quantity(value, 0, 0, ureg)
+    return value
+
+
+def _a_matrix_in(node: ast.AST, numbers: "_MatrixNumbers") -> str:
+    """The first matrix `node` names, for a hint that names the sheet's own."""
+    return next(
+        (each.id for each in ast.walk(node) if isinstance(each, ast.Name) and numbers.names_a_matrix(each.id)),
+        "d",
+    )
+
+
+def _reads_only_entries(node: ast.AST, numbers: "_MatrixNumbers") -> bool:
+    """Whether every matrix `node` reads is read one entry at a time, `f[1]`, `K[1, 2]`."""
+    entries = {
+        id(each.value) for each in ast.walk(node) if _entry_name(each) is not None
+    }
+    return not numbers._writes_a_row(node) and not any(
+        numbers._builds_a_matrix(each) for each in ast.walk(node)
+    ) and all(
+        id(each) in entries
+        for each in ast.walk(node)
+        if isinstance(each, ast.Name) and numbers.names_a_matrix(each.id)
+    )
 
 
 def _solves_in_a_range(node: ast.Call, namespace) -> bool:

@@ -13,7 +13,26 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.46.0**.
+Current version: **0.46.1**.
+
+
+## v0.46.1 what chapter 10 found
+
+- **`max` and `min` compare ratios of units converted**: `max(1[kN]/1[kip], 0.5)` read 0.22,
+  because 1 kN/kip was compared as 1 and then printed converted; it is 0.50. Ratios in
+  different units are read as plain numbers, angles alone in the first angle written.
+- **A value too large for a number is refused with a message**, not a traceback: `det` of a
+  large stiffness matrix in newtons (10^360), `1e300*1e300`, `10^400`. A `=` line that holds
+  such a number exactly writes it in powers of ten, `1.00 × 10^{600}`; a mantissa that rounds
+  to ten moves into the exponent (`1.00 × 10^{-9}`, not `10.00 × 10^{-10}`).
+- **Lines that were refused now run**: a placeholder inside a name in a `% if` or `% while`
+  condition (`% if h_{e} < 0.5`); a condition on an entry of a `:=` matrix (`% if f[1] >
+  0.5[kip]`, the note naming it `f_{1}`); a range `solve` whose equation reads entries
+  (`x := solve(eq(f[1] + x*df[1], 300[kip]), x, 0, 1000)`, the equation shown above the
+  value); a 1 x 1 product `g'*f` as a number; `{n} := 1` with the whole target a placeholder;
+  `% if y > 1*kip*in` now says "write inch".
+- `eigenvals(K, G)` with a singular `G` is still refused, as in 0.46.0; write
+  `eigenvals(inv(K)*(-G))` for 1/λ meanwhile.
 
 
 ## v0.46.0 lines that continue, T' and U^-1
@@ -4120,6 +4139,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.46.1** — max/min of unit ratios compared converted; a number too large is refused, not a crash; placeholders and matrix entries in conditions, range solve over entries, `{n} :=` run.
 - **0.46.0** — statements over several lines inside parentheses; `T'` for the transpose; `U^-1` and `U^2` on `:=` lines.
 - **0.45.7** — a complex pair beside a large eigenvalue is refused, not read as zeros.
 - **0.45.6** — `eigenvals(K, G)` and `det` of numeric matrices; a solve's zero has its unit; `{a}` in `% while`/`% if` conditions; a loop table without pre-while values; extrema of a trigonometric root returns; range solve says incompatible units.
@@ -4258,4 +4278,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.46.0`.
+Version: `0.46.1`.

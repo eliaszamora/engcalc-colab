@@ -77,6 +77,19 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.46.1: what chapter 10 found
+check("max of a ratio of units is compared converted",
+      "r := max(1[kN]/1[kip], 0.5)", r"r & = & \displaystyle 0.50")
+check("a value too large for a float is refused with a message",
+      "x := 1e300*1e300", "too large for a number to hold", absent=("Traceback", "OverflowError"))
+check("a placeholder in a name in a condition, an entry of a := matrix in another",
+      "h_1 := 0\n% for e in [1]:\n% if h_{e} < 0.5:\ny_{e} := 1\n% end\n% end\n"
+      "f := [1[kip]; 2[kip]]\n% if f[1] > 0.5[kip]:\nz := 1\n% end",
+      r"y_{1}", r"f_{1} = ", absent=("is not one", "Use it on a := line"))
+check("a range solve over entries of a := matrix",
+      "f := [200[kip]; 900[kip*inch]]\ndf := [1[kip]; 2[kip*inch]]\n"
+      "x := solve(eq(f[1] + x*df[1], 300[kip]), x, 0, 1000)",
+      r"x & = & \displaystyle 100.00", absent=("unknown numeric name",))
 # 0.46.0: lines that continue, T' and U^-1
 check("a solve over three lines, T', U^-1 on a := line",
       "x_1 := solve(eq(x^2, 2),\n             x, 0, 3)\nU := [2, 0; 0, 4[kN/m]]\nV := U'\nX := U^-1",

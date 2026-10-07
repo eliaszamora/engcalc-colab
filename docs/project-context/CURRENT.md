@@ -8,14 +8,45 @@
 
 ## Where things stand today
 
-_2026-10-04._
+_2026-10-06._
 
 | | |
 |---|---|
 | released | **0.46.0** - #398, `69d6475`, closed (checked in his Colab) |
 | before that | **0.45.7** - #396, `0651274`, closed |
-| open PRs | none; branch `feat/numeric-eigenvalues` (chapter 9 fixes; audits 1-2 NOT CLEAN, 3 clean with conditions, 4 NOT CLEAN by a hair, fixed, follow-up CLEAN; 0.45.6 release PR); the fold branch held |
-| default suite | **3693 passing** on 0.46.0 (SymPy 1.14 and 1.13.3), about two minutes with `-n auto` |
+| in progress | **0.46.1** - `release/0.46.1`, PR open; `eigenvals` with singular G parked on `fix/chapter-10-findings` for 0.46.2 |
+| default suite | **3736 passing** on 0.46.1 (SymPy 1.14 and 1.13.3) |
+
+**0.46.1 release** (his choice 2026-10-07: release what is ready, `eigenvals` with a singular
+G later): branch `release/0.46.1`, cut from `fix/chapter-10-findings` with `matrix_numeric.py`
+back to main except `det_numbers`, and the eigenvals tests left on the old branch.
+
+What it carries:
+1. `max`/`min` of unit ratios compare converted - `max(1[kN]/1[kip], 0.5)` read 0.22, now 0.50;
+   angles alone in the first angle; a plain number beside an angle as main had it.
+2. A value beyond a float is refused with a message, not a traceback (`det` of 1e360,
+   `1e300*1e300`, `10^400`, NaN); a `=` line writes `1.00 \times 10^{600}`; a mantissa that
+   rounds to ten moves into the exponent (p9_13: `1.00 × 10^{-9}`, not `10.00 × 10^{-10}`).
+3. Refused lines now run: placeholders inside names in `% if`/`% while`; conditions on entries
+   of a `:=` matrix (named `f_{1}`); range `solve` over entries (equation shown, bounds said in a
+   unit); 1x1 products; `{n} := 1`; "write inch" in a condition.
+
+Release evidence, on `d5390bf`: version assertions 7 RED → GREEN; suite **3736** on SymPy 1.14
+and 1.13.3; wheel from `git archive`, 33 package files identical to `src` (fallback.py differs
+only in CRLF); clean Python 3.12 venv with Colab's pins adds Pint 0.26.1 + 4 small deps and
+upgrades nothing; `tools/smoke_installed.py` outside the repo 61/61 (4 new checks); suite against
+the installed wheel all pass (the `.github` readers with the workflows copied in, the
+`magic.py`-by-path test with the wheel's copy); 24 reference pages byte-identical wheel vs src;
+corpus of his 270 sheets vs main: 265 identical, p9_13's exponent, chapter 7's four known
+integral forms (main itself varies). Independent audit of `02b9e2a`: **CLEAN** (278 sheets
+compared; eigenvals identical to main). Its low findings, not fixed: `max(2[mm/m], 0.001)` shows
+`0.002` (main `2.00 mm/m`; main was wrong for `0.5 mm/m`); two refusal messages quote `__u_m` /
+the stand-in `3[1]`; pre-existing: a range `solve` with bounds in inches fails "invalid syntax".
+
+**Parked for 0.46.2 - `eigenvals(K, G)` with a singular G** on `fix/chapter-10-findings`
+(`f2f969c`, pushed): seven audits each found a silently wrong λ (springs/links of 1e16-1e20); the
+last battery had 0 wrong in ~900 cases but new refusals where main was right (A_tie_*,
+F18_free_fullmass, L_two_rigid_12). Harnesses + mpmath refs in session scratchpad a3-a8.
 
 **0.31.15 is closed** (#237, `ebf5ca9`): the audit of 0.31.14 — `numeric(w, 1/s)`, the weekly
 suite, dead code, the multiplicity label, 51 stale branches deleted. Verified after its
