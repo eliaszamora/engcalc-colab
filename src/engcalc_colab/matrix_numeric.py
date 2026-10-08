@@ -835,7 +835,11 @@ def _exact_pencil_values(stiffness, geometric, symmetric: bool, refuse: bool = T
 
         def cleaned(values, reference):
             top = max([abs(v) for v in values] + [abs(reference)])
-            return sorted(float(v) if abs(v) > zero * zero * top else 0.0 for v in values)
+            # What 0 leaves in these figures is about 1e-60 of the largest; a λ of the floats
+            # is never below 1e-50 of it. Left as numbers, his -K_g's exact zeros came out
+            # -3.5e-64, -1.9e-64 and -2.9e-64 - the same sign, not scattered around 0 - and
+            # problem 10.9 was refused (the battery of 0.47.0).
+            return sorted(float(v) if abs(v) > zero * mpmath.mpf(10) ** -5 * top else 0.0 for v in values)
 
         if symmetric:
             factor = cholesky(g) if definite(geometric) else None
