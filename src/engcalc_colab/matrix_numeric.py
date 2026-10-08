@@ -792,6 +792,12 @@ def _settled(first, runs: list) -> list[float]:
     near = [first_values[i] for i in zeros] + [v for left in left_by_run for v in left if abs(v) <= tiny]
     if near and not (min(near) <= 0.0 <= max(near) or abs(sum(near)) / len(near) <= max(near) - min(near)):
         raise EngEvaluationError(_UNSETTLED)
+    # And it is round-off in the entries as written: a move of 1e-14, a hundred times that, makes
+    # it about a hundred times larger. A soft mode the floats do not settle is as large unmoved -
+    # ω² = 3.79 beside a 1e17 link read ±4 moved, and was printed 0 (the battery, on the 1e-12).
+    noise = max((abs(v) for left in left_by_run for v in left if abs(v) <= tiny), default=0.0)
+    if any(abs(first_values[i]) > 0.1 * noise for i in zeros):
+        raise EngEvaluationError(_UNSETTLED)
     away = []
     for (values, round_off), left in zip(runs, left_by_run):
         large = [v for v in left if abs(v) > tiny]

@@ -159,3 +159,18 @@ def test_a_mechanism_beside_a_tiny_eigenvalue_that_holds(tiny, g_sign):
     got = eigenvalues(k, np.diag([1.0, 1, g_sign]))
     want = sorted([0.0, 2.0, tiny * g_sign])
     assert len(got) == 3 and all(abs(a - b) <= 1e-9 * abs(b) + 1e-15 * (b == 0) for a, b in zip(got, want)), got
+
+
+def test_a_soft_mode_the_floats_do_not_settle_is_not_a_zero():
+    # A portal whose beam is a link of EA = 1e17: ω² = 3.79 reads about ±4 when the entries move
+    # by 1e-14 - no mechanism, a λ the floats do not hold. Counted as a 0 within 1e-12 of the
+    # largest, it was printed 0 (the battery of 0.47.0); it is refused.
+    import pathlib
+
+    from engcalc_colab.engine import EngineeringEngine
+
+    source = (pathlib.Path(__file__).parent / "sheets" / "portal_link_1e17_soft_mode.eng").read_text(encoding="utf-8")
+    engine = EngineeringEngine()
+    with pytest.raises(EngEvaluationError, match="cannot be told"):
+        for item in parse_cell(source):
+            engine.evaluate(item)
