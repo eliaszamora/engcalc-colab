@@ -128,3 +128,34 @@ def test_two_round_off_eigenvalues_that_meet_by_chance_are_not_one_lost():
     want = sorted(1 / m.real for m in mu if abs(m) > 1e-9 * np.abs(mu).max())
     got = eigenvalues(k, g)
     assert len(got) == 2 and all(abs(x - y) <= 1e-6 * abs(y) for x, y in zip(got, want)), (got, want)
+
+
+@pytest.mark.parametrize("spring", [1e12, 1e16, 1e22])
+def test_a_complex_pair_beside_a_stiff_spring_is_refused(spring):
+    # det = (2 - λ)² + 1: λ = 2 ± i. Beside a spring the best conditioned σ was huge, the μ of
+    # the pair differed by 1e-30 of themselves and 2 ± i printed 2 twice (the second audit of
+    # 0.47.0; main did so from 1e16).
+    k = np.array([[1.0, 2, 0], [2, -1, 0], [0, 0, spring]])
+    g = np.array([[0.0, 1, 0], [1, 0, 0], [0, 0, 1]])
+    with pytest.raises(EngEvaluationError, match="not real"):
+        eigenvalues(k, g)
+    with pytest.raises(EngEvaluationError, match="not real"):
+        eigenvalues(np.array([[3.0, 0.5, 0], [-0.5, 3, 0], [0, 0, spring]]), np.eye(3))
+
+
+def test_a_settled_eigenvalue_45_decades_above_the_rest():
+    # μ = 1e-20 / 1e25 = 1e-45 was taken for 0 and its λ for infinite (the second audit).
+    got = eigenvalues(np.diag([1.0, 1, 1e25]), np.diag([1.0, -1, 1e-20]))
+    assert got[:2] == [-1.0, 1.0] and len(got) == 3 and abs(got[2] - 1e45) <= 1e-12 * 1e45, got
+
+
+@pytest.mark.parametrize("tiny", [1e-9, 1e-14, 1e-20])
+@pytest.mark.parametrize("g_sign", [1.0, -1.0])
+def test_a_mechanism_beside_a_tiny_eigenvalue_that_holds(tiny, g_sign):
+    # His eigenvals(-K_g, K) has zeros beside λ of 1e-18 that hold; the moved runs' 0 read
+    # 1e-16, above 1e-8 of the tiny one, and the pencil was refused (the second audit; main
+    # printed 0, t, 2).
+    k = np.array([[1.0, -1, 0], [-1, 1, 0], [0, 0, tiny]])
+    got = eigenvalues(k, np.diag([1.0, 1, g_sign]))
+    want = sorted([0.0, 2.0, tiny * g_sign])
+    assert len(got) == 3 and all(abs(a - b) <= 1e-9 * abs(b) + 1e-15 * (b == 0) for a, b in zip(got, want)), got

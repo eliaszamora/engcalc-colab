@@ -758,7 +758,13 @@ def _settled(first, runs: list) -> list[float]:
 
     held = [i for i in range(len(first_values)) if len(partners[i]) == len(runs)]
     sizes = [abs(first_values[i]) for i in held if first_values[i]]
-    tiny = 1e-8 * min(sizes, default=float("inf"))
+    # A mechanism's 0 is below 1e-8 of the smallest that holds, or within the noise the moves
+    # make, 1e-12 of the largest: beside a tiny λ that holds - his -K_g's 5e-18 - the moved
+    # runs' 0 read 5e-16 and was refused (the second audit of 0.47.0). The scatter around 0
+    # below keeps a λ near 1 beside 1e14 from being one.
+    tiny = max(1e-8 * min(sizes, default=float("inf")) if sizes else 0.0, 1e-12 * max(sizes, default=0.0))
+    if not sizes:
+        tiny = float("inf")
     lone = sorted(set().union(*unmatched_first))
     zeros = [i for i in lone if abs(first_values[i]) <= tiny]
     running = [i for i in lone if abs(first_values[i]) > tiny]
@@ -808,7 +814,7 @@ def _settled(first, runs: list) -> list[float]:
 
 def _round_off_directions(geometric, symmetric: bool) -> int:
     """How many directions G has only to round-off: singular values, in `_PENCIL_FIGURES`
-    figures on the floats as they are, above what 0 leaves (1e-45 of the largest) and below
+    figures on the floats as they are, above what 0 leaves (1e-52 of the largest) and below
     1e-11 of it. An exact 0 is a direction G does not have, whose λ is infinite and dropped
     before this; one of these gives a λ that is round-off over round-off."""
     import mpmath
@@ -822,7 +828,7 @@ def _round_off_directions(geometric, symmetric: bool) -> int:
             values = mpmath.svd_r(g, compute_uv=False)
             sizes = [abs(values[i]) for i in range(g.rows)]
         top = max(sizes)
-        return sum(1 for size in sizes if mpmath.mpf(10) ** -45 * top < size <= mpmath.mpf(10) ** -11 * top)
+        return sum(1 for size in sizes if mpmath.mpf(10) ** -52 * top < size <= mpmath.mpf(10) ** -11 * top)
 
 
 _PENCIL_FIGURES = 60
@@ -869,10 +875,19 @@ def _exact_pencil_values(stiffness, geometric, symmetric: bool, refuse: bool = T
             return False
         return True
 
+    def preferred(shift):
+        # The nearest to 0 of those conditioned to 1e8, then the best conditioned: the best
+        # alone was σ = -1.4e30 beside a 1e22 spring, where μ = 1/(λ - σ) of 2 ± i differ by
+        # 1e-30 of themselves and came out real - 2 printed twice (the second audit of 0.47.0).
+        measured = condition(stiffness - shift * geometric)
+        return (0, abs(shift)) if measured <= 1e8 else (1, measured)
+
     with mpmath.workdps(_PENCIL_FIGURES):
         k = mpmath.matrix(stiffness.tolist())
         g = mpmath.matrix(geometric.tolist())
-        zero = mpmath.mpf(10) ** -45
+        # A μ of 0 against what 0 leaves, about 1e-60 of the norms: 1e-45 dropped a λ of 1e45
+        # beside 1 as infinite (the second audit of 0.47.0); 1e-52 keeps 52 decades.
+        zero = mpmath.mpf(10) ** -52
 
         def cholesky(m):
             try:
@@ -889,7 +904,7 @@ def _exact_pencil_values(stiffness, geometric, symmetric: bool, refuse: bool = T
             # is never below 1e-50 of it. Left as numbers, his -K_g's exact zeros came out
             # -3.5e-64, -1.9e-64 and -2.9e-64 - the same sign, not scattered around 0 - and
             # problem 10.9 was refused (the battery of 0.47.0).
-            return sorted(float(v) if abs(v) > zero * mpmath.mpf(10) ** -5 * top else 0.0 for v in values)
+            return sorted(float(v) if abs(v) > mpmath.mpf(10) ** -50 * top else 0.0 for v in values)
 
         if symmetric:
             factor = cholesky(g) if definite(geometric) else None
@@ -898,8 +913,7 @@ def _exact_pencil_values(stiffness, geometric, symmetric: bool, refuse: bool = T
                 values = mpmath.eigsy(inverse * k * inverse.T, eigvals_only=True)
                 return cleaned([values[i] for i in range(size)], 0)
             candidates = sorted(
-                (shift for shift in shifts if definite(stiffness - shift * geometric)),
-                key=lambda shift: condition(stiffness - shift * geometric),
+                (shift for shift in shifts if definite(stiffness - shift * geometric)), key=preferred
             )
             for shift in candidates:
                 factor = cholesky(k - mpmath.mpf(shift) * g)
@@ -909,24 +923,30 @@ def _exact_pencil_values(stiffness, geometric, symmetric: bool, refuse: bool = T
                 mus = mpmath.eigsy(inverse * g * inverse.T, eigvals_only=True)
                 floor = zero * mpmath.mnorm(inverse, 1) ** 2 * mpmath.mnorm(g, 1)
                 return cleaned([shift + 1 / mus[i] for i in range(size) if abs(mus[i]) > floor], shift)
-        candidates = sorted(shifts, key=lambda shift: condition(stiffness - shift * geometric))
+        candidates = sorted(shifts, key=preferred)
         for shift in candidates:
             shifted = k - mpmath.mpf(shift) * g
+            # mpmath's own failures on a matrix it cannot invert are that too: a free gable
+            # whose K and K_g share a translation read "'>=' not supported between 'NoneType'
+            # and 'int'" (the second audit of 0.47.0).
             try:
                 inverse = mpmath.inverse(shifted)
-            except ZeroDivisionError:
+                if mpmath.mnorm(inverse, 1) * mpmath.mnorm(shifted, 1) > mpmath.mpf(10) ** (_PENCIL_FIGURES - 10):
+                    continue
+                mus = mpmath.eig(inverse * g, left=False, right=False)
+            except (ZeroDivisionError, TypeError, ValueError):
                 continue
-            if mpmath.mnorm(inverse, 1) * mpmath.mnorm(shifted, 1) > mpmath.mpf(10) ** (_PENCIL_FIGURES - 10):
-                continue
-            mus = mpmath.eig(inverse * g, left=False, right=False)
             floor = zero * mpmath.mnorm(inverse, 1) * mpmath.mnorm(g, 1)
-            kept = [mus[i] for i in range(size) if abs(mus[i]) > floor]
-            if any(abs(mpmath.im(mu)) > mpmath.mpf(10) ** -20 * abs(mu) for mu in kept):
+            lambdas = [shift + 1 / mus[i] for i in range(size) if abs(mus[i]) > floor]
+            # Not real judged on λ, not on μ: beside a σ of -1.2e20 the μ of 2 ± i are
+            # -1/σ ± 1e-40 i, and 2 ± i printed 2 twice (the second audit of 0.47.0).
+            top = max([abs(lam) for lam in lambdas] + [abs(shift)])
+            if any(abs(mpmath.im(lam)) > mpmath.mpf(10) ** -30 * top for lam in lambdas):
                 return refused(
                     "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
                     "stiffness have real ones - check that both matrices are symmetric"
                 )
-            return cleaned([shift + 1 / mpmath.re(mu) for mu in kept], shift)
+            return cleaned([mpmath.re(lam) for lam in lambdas], shift)
         return refused(
             "eigenvals(K, G): K - λG is singular for every λ - in a direction where G has "
             "nothing, K has nothing either, and any λ satisfies K x = λ G x; take those "
