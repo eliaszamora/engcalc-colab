@@ -79,7 +79,22 @@ fixed: σ = 0 beside a K singular to round-off lost a 1e14 spring's λ; his -K_g
 (1e-64, one sign) refused problems 10.8/10.9. Chapter 10 corpus vs main: 38 same, p10_14 times
 out on both, p10_5 differs only in a "términos no nulos" count of K_t (117 vs 119/113 - entries
 cancelling to 0 or 1e-17 after last-bit changes of λ); its printed values are main's.
-Next: full corpus, independent audits until one is CLEAN, then the release routine.
+**Paused 2026-10-08 (he shut the PC down), branch at `83664bb`, pushed.** Since the above:
+audit 1 of the new method NOT CLEAN (a round-off λ took a settled λ's partner; fixed `9296e83`:
+closest-first pairing within a tenth, drops limited to G's round-off directions in 60 figures);
+audit 2 NOT CLEAN (complex pair 2 ± i printed 2 twice beside a stiff spring - σ preference +
+Im test on λ; μ floor 1e-52; mechanism 0 beside a tiny held λ refused - `tiny` also 1e-12 of
+the largest; fixed `d40b7a0`); the battery then found that 1e-12 printed an unsettled soft
+mode (ω² 3.79 beside an EA 1e17 link) as 0 - fixed `83664bb` (a 0 must be under a tenth of the
+moved runs' noise). Suite **3839** on `d40b7a0` (both SymPy); 281 eigen tests on `83664bb`.
+Battery on `d40b7a0`: a5-a7 483 ok / 23 refused / 0 bad; a8 casesA/B 155 / 0 refused; a8
+portals refused again on `83664bb`. Corpus on `c512eb1`: 267 same, p7_17 (main varies), p10_5
+(K_t nonzero count only), p10_14 (no eigenvals; 15m21s on both, identical output).
+Audit 3 was stopped mid-run (its scripts in session scratchpad eaudit3, lost with the session).
+Harnesses of audits 1-2 were in the session scratchpad too (eaudit1/eaudit2; the repro cases are
+pinned as contracts in tests/test_eigenvals_in_sixty_figures.py).
+**Exact next step:** full suite on `83664bb`, the battery, full corpus, then a fresh independent
+audit of `83664bb`; repeat until one is CLEAN; then the release routine (0.47.0).
 
 **Release routine that worked for 0.46.1** (see also `NEXT.md`): TDD contracts RED first;
 suite on `.venv` (SymPy 1.14) and a Colab-like venv (py 3.12 + ipython 7.34.0, numpy 2.2.6,
