@@ -677,14 +677,14 @@ def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -
     if not numpy.abs(geometric).max():
         raise EngEvaluationError("eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue")
     symmetric = bool((stiffness == stiffness.T).all() and (geometric == geometric.T).all())
-    first = _exact_pencil_values(stiffness, geometric, symmetric)
+    first = (_exact_pencil_values(stiffness, geometric, symmetric), _round_off_directions(geometric, symmetric))
     trials = numpy.random.default_rng(20261006)
-    runs = [
-        _exact_pencil_values(
-            _moved(stiffness, trials, symmetric), _moved(geometric, trials, symmetric), symmetric, refuse=False
-        )
-        for _ in range(2)
-    ]
+    runs = []
+    for _ in range(2):
+        moved_k = _moved(stiffness, trials, symmetric)
+        moved_g = _moved(geometric, trials, symmetric)
+        values = _exact_pencil_values(moved_k, moved_g, symmetric, refuse=False)
+        runs.append(None if values is None else (values, _round_off_directions(moved_g, symmetric)))
     finite = _settled(first, runs)
     if unit is None:
         unit = _pencil_unit(matrix, metric)
@@ -708,71 +708,121 @@ def _moved(numbers, trials, symmetric: bool):
     return numbers * (1 + 1e-14 * noise)
 
 
-def _settled(first: list[float], runs: list) -> list[float]:
+def _settled(first, runs: list) -> list[float]:
     """The λ the entries settle, from the exact answers to them as written and moved by 1e-14.
 
-    Held to a tenth of itself in every run, a λ is printed as the exact answer to the entries
+    Each answer is its λ and how many directions G has only to round-off - a singular value
+    between what 0 leaves in 60 figures and 1e-11 of the largest - each of which gives a λ that
+    is round-off divided by round-off, and runs off when the entries move.
+
+    A λ held to a tenth of itself in every run is printed as the exact answer to the entries
     as written: a move of 1e-14 is a hundred times a float's round-off, so a λ that moves by a
-    tenth under it moves by a thousandth under the round-off that made the entries - two
-    stiff DOFs tied by a 1e12 spring, whose soft λ = 1 is (1 + P) - P, as main printed it
-    (the audits' A_tie). Running off - more than 1e8 times
-    the largest that holds - it is a direction G has only to round-off, whose λ is infinite
-    (the second audit: an inclined bar whose G is c² and s² products). Scattered around 0,
-    below 1e-8 of the smallest that holds, it is a mechanism's 0. Anything else - a soft
-    mode beside a 1e17 N/m link that reads 0.99, 1.11 and 1.21 - is refused."""
+    tenth under it moves by a thousandth under the round-off that made the entries - two stiff
+    DOFs tied by a 1e12 spring, whose soft λ = 1 is (1 + P) - P, as main printed it (the
+    audits' A_tie). Pairs are taken closest first and only within that tenth: taken smallest
+    first, a round-off λ of 3e10 took the moved runs' 1e11 of a decoupled DOF, and the 1e11 was
+    dropped as running off, in silence (the first audit of 0.47.0).
+
+    What does not hold: below 1e-8 of the smallest that holds in every run, a mechanism's 0;
+    otherwise running off, which as many may as G has directions only to round-off in that run,
+    and no more - a size never told it (the same audit). Anything else - a soft mode beside a
+    1e17 N/m link that reads 0.99, 1.11 and 1.21, or one that both moved runs agree on and this
+    one lacks - is refused."""
     if any(run is None for run in runs):
         raise EngEvaluationError(_UNSETTLED)
-    # Each λ beside the nearest of each run, not the one in the same place: one that runs
-    # off changes sign, and sorted by value it took another's place. A G singular exactly
-    # in the floats as written is not once moved, and that run has one more, running off
-    # (a pinned column on 1e16 springs: 3e30); it is left over, or this one has none.
-    columns = [[value] for value in first]
-    left_over = []
+    first_values, first_round_off = first
+
+    def apart(a: float, b: float) -> float:
+        top = max(abs(a), abs(b))
+        return abs(a - b) / top if top else 0.0
+
+    unmatched_first = []
     left_by_run = []
-    # Near 0 by how far apart, not by how much of themselves: -9e-15 and 1.3e-11 are both a
-    # mechanism's 0, and each is as far from the other as from 5 (found writing this).
-    floor = 1e-10 * max((abs(value) for value in first), default=0.0)
-    for run in runs:
-        free = list(run)
-        for index in sorted(range(len(first)), key=lambda i: abs(first[i])):
-            value = first[index]
-            if not free:
-                columns[index].append(None)
+    partners = [[] for _ in first_values]
+    for values, _round_off in runs:
+        pairs = sorted(
+            (apart(a, b), i, j)
+            for i, a in enumerate(first_values)
+            for j, b in enumerate(values)
+            if apart(a, b) <= 0.1
+        )
+        taken_first, taken_run = set(), set()
+        for _distance, i, j in pairs:
+            if i in taken_first or j in taken_run:
                 continue
-            nearest = min(free, key=lambda v: abs(v - value) / (max(abs(v), abs(value)) + floor or 1.0))
-            free.remove(nearest)
-            columns[index].append(nearest)
-        left_over.extend(free)
-        left_by_run.append(free)
+            taken_first.add(i)
+            taken_run.add(j)
+            partners[i].append(values[j])
+        unmatched_first.append({i for i in range(len(first_values)) if i not in taken_first})
+        left_by_run.append([values[j] for j in range(len(values)) if j not in taken_run])
 
-    def holds(values):
-        return None not in values and max(values) - min(values) <= 0.1 * max(abs(v) for v in values)
-
-    held = [abs(values[0]) for values in columns if holds(values) and values[0]]
-    largest = max(held, default=0.0)
-    smallest = min(held, default=float("inf"))
-    if any(not held or abs(value) < 1e8 * largest for value in left_over):
+    held = [i for i in range(len(first_values)) if len(partners[i]) == len(runs)]
+    sizes = [abs(first_values[i]) for i in held if first_values[i]]
+    tiny = 1e-8 * min(sizes, default=float("inf"))
+    lone = sorted(set().union(*unmatched_first))
+    zeros = [i for i in lone if abs(first_values[i]) <= tiny]
+    running = [i for i in lone if abs(first_values[i]) > tiny]
+    # A mechanism's 0 in each run: as many below `tiny` left over as here.
+    for left, alone in zip(left_by_run, unmatched_first):
+        if sum(1 for v in left if abs(v) <= tiny) != sum(1 for i in alone if i in zeros):
+            raise EngEvaluationError(_UNSETTLED)
+    if len(running) > first_round_off:
         raise EngEvaluationError(_UNSETTLED)
-    # Left over in both moved runs and agreeing, it is a λ that holds and this run lost:
-    # refused, never dropped as one running off (the battery of 0.47.0: a 1e14 spring's λ).
-    first_left, second_left = left_by_run
-    if any(abs(a - b) <= 0.1 * max(abs(a), abs(b)) for a in first_left for b in second_left):
+    # Running off is far beyond what holds - 1e8 times the largest - or orders of magnitude
+    # between runs: a round-off λ of 3e10 beside a 1e11 that holds read 5e8 moved. One that is
+    # neither is a λ the floats do not settle, not an infinite one - K = 2G beside a G of
+    # 1 + 1e-13 read 2, 2.99 and 2.03 (found writing this).
+    largest = max((abs(first_values[i]) for i in held), default=0.0)
+    for index in running:
+        value = first_values[index]
+        if largest and abs(value) >= 1e8 * largest:
+            continue
+        for left in left_by_run:
+            if any(v * value > 0 and 0.1 <= abs(v) / abs(value) <= 10 for v in left):
+                raise EngEvaluationError(_UNSETTLED)
+    # A mechanism's 0 scatters around 0 - straddling it, or spread wider than its mean; a λ near
+    # 1 beside 1e14 that holds no tenth is no 0 and is refused (the audits' A_tie at 1e14, a soft
+    # mode beside a stiff link).
+    near = [first_values[i] for i in zeros] + [v for left in left_by_run for v in left if abs(v) <= tiny]
+    if near and not (min(near) <= 0.0 <= max(near) or abs(sum(near)) / len(near) <= max(near) - min(near)):
+        raise EngEvaluationError(_UNSETTLED)
+    away = []
+    for (values, round_off), left in zip(runs, left_by_run):
+        large = [v for v in left if abs(v) > tiny]
+        if len(large) > round_off:
+            raise EngEvaluationError(_UNSETTLED)
+        away.append(large)
+    # Left over in both moved runs and agreeing as a λ that holds agrees - to 1e-3, where two
+    # round-off λ meet by chance within a tenth (5.18e14 and 5.75e14) - it is a λ this run lost.
+    if any(apart(a, b) <= 1e-3 for a in away[0] for b in away[1]):
         raise EngEvaluationError(_UNSETTLED)
     finite = []
-    for values in columns:
-        if holds(values):
-            finite.append(values[0])
-        elif held and min(abs(v) for v in values if v is not None) >= 1e8 * largest:
-            continue
-        elif None in values:
-            raise EngEvaluationError(_UNSETTLED)
-        elif (min(values) <= 0.0 <= max(values) or abs(sum(values)) / 3 <= max(values) - min(values)) and (
-            max(abs(v) for v in values) <= 1e-8 * smallest
-        ):
+    for index, value in enumerate(first_values):
+        if index in held:
+            finite.append(value)
+        elif index in zeros:
+            # 0 even where one run paired it: a mechanism's 0 is no λ to print as a number.
             finite.append(0.0)
+    return sorted(finite)
+
+
+def _round_off_directions(geometric, symmetric: bool) -> int:
+    """How many directions G has only to round-off: singular values, in `_PENCIL_FIGURES`
+    figures on the floats as they are, above what 0 leaves (1e-45 of the largest) and below
+    1e-11 of it. An exact 0 is a direction G does not have, whose λ is infinite and dropped
+    before this; one of these gives a λ that is round-off over round-off."""
+    import mpmath
+
+    with mpmath.workdps(_PENCIL_FIGURES):
+        g = mpmath.matrix(geometric.tolist())
+        if symmetric:
+            values = mpmath.eigsy(g, eigvals_only=True)
+            sizes = [abs(values[i]) for i in range(g.rows)]
         else:
-            raise EngEvaluationError(_UNSETTLED)
-    return finite
+            values = mpmath.svd_r(g, compute_uv=False)
+            sizes = [abs(values[i]) for i in range(g.rows)]
+        top = max(sizes)
+        return sum(1 for size in sizes if mpmath.mpf(10) ** -45 * top < size <= mpmath.mpf(10) ** -11 * top)
 
 
 _PENCIL_FIGURES = 60

@@ -89,3 +89,42 @@ def test_a_stiff_spring_beside_a_k_singular_to_round_off_keeps_its_eigenvalue():
     assert abs(got[-1] - want[-1]) <= 1e-9 * want[-1], (got[-1], want[-1])
     for a, b in zip(got[2:], want[2:]):
         assert abs(a - b) <= 1e-9 * abs(b), (got, want)
+
+
+@pytest.mark.parametrize("angle", [31.0, 37.0])
+@pytest.mark.parametrize("stiff", [1e11, 1e12, 1e14])
+def test_a_round_off_eigenvalue_does_not_take_a_settled_ones_place(angle, stiff):
+    # A decoupled DOF with K = stiff and G = 1, beside a G block 100 [c², cs; cs, s²] singular
+    # only to round-off, whose λ (round-off over round-off) is below the decoupled one. Paired
+    # smallest first, the round-off λ took the moved runs' copy of the decoupled one, which was
+    # then dropped as running off, in silence (the first audit of 0.47.0).
+    import math
+
+    import mpmath
+
+    c, s = math.cos(math.radians(angle)), math.sin(math.radians(angle))
+    block = 100.0 * np.array([[c * c, c * s], [c * s, s * s]])
+    with mpmath.workdps(50):
+        small = float(min(mpmath.eigsy(mpmath.matrix(block.tolist()), eigvals_only=True), key=abs))
+    k_block = abs(0.3 * stiff * small)
+    k = np.diag([1.0, stiff, k_block, k_block])
+    g = np.zeros((4, 4))
+    g[0, 0] = g[1, 1] = 1.0
+    g[2:, 2:] = block
+    got = eigenvalues(k, g)
+    assert 1.0 in got and stiff in got, got
+
+
+def test_two_round_off_eigenvalues_that_meet_by_chance_are_not_one_lost():
+    # G = b bᵀ of rank 2: its two round-off directions read 5.18e14 and 5.75e14 in the moved
+    # runs, within a tenth of each other, and were taken for a λ the first run lost.
+    rng = np.random.default_rng(7)
+    for _ in range(4):
+        a = rng.normal(size=(4, 4))
+        k = a @ a.T + np.eye(4)
+        b = rng.normal(size=(4, 2))
+        g = b @ b.T
+    mu = np.linalg.eigvals(np.linalg.solve(k, g))
+    want = sorted(1 / m.real for m in mu if abs(m) > 1e-9 * np.abs(mu).max())
+    got = eigenvalues(k, g)
+    assert len(got) == 2 and all(abs(x - y) <= 1e-6 * abs(y) for x, y in zip(got, want)), (got, want)
