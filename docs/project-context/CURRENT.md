@@ -60,11 +60,26 @@ outside the repo 65/65 (4 new checks); suite against the installed wheel from a 
 `python -I` drops PYTHONHASHSEED/PYTHONIOENCODING, do not use it for this comparison.
 Corpus of his 270 sheets main vs `79f2ef9`: 269 identical, p7_17 unstable on main.
 
-Then **0.46.3 (or 0.47.0)**: `eigenvals(K, G)` with a singular G from
-`fix/chapter-10-findings` - rebase on main, rerun `tools/eigen_audit/battery.sh`, look at the
-refusals where main was right (A_tie_*, F18_free_fullmass, L_two_rigid_12), then an
-independent audit until one comes back CLEAN. Seven audits each found a silent wrong λ;
-do not release it on fewer.
+**In progress - 0.47.0, `eigenvals(K, G)` with a singular G** (his "sigue con eigenvals",
+2026-10-07), branch `fix/eigenvals-singular-g` from `9756e82`: the old branch's
+matrix_numeric.py, contracts, sheets and `tools/eigen_audit` brought over (`7a45ebf`), then
+**the float method replaced** (`c173ed6`, `2e16fcf`, `c512eb1`): the pencil is solved in 60
+figures (mpmath, already a SymPy dependency) on the floats as stored - Cholesky of G, or of
+K - σG for the best-conditioned σ (measured in floats), `eigsy`; `eig((K - σG)⁻¹G)` otherwise -
+and two more exact runs on entries moved by 1e-14 tell what the floats settle (`_settled`):
+held to a tenth → printed; runs off ≥1e8 × the largest held → infinite; scattered around 0
+below 1e-8 of the smallest held → 0; else refused. What 0 leaves (<1e-50 of the largest) is 0.
+Why: every silent wrong λ of the seven audits was the float solver's round-off.
+Evidence so far: suite **3822** on SymPy 1.14 and 1.13.3; battery (`tools/eigen_audit/battery.sh`)
+on `2e16fcf`: a5-a7 480 ok / 26 refused / 0 bad; a4 only A_tie_1e14 and B_K2G_1e-13 refused
+(main wrong on the latter), L_two_rigid_sing_4 and M_G_decades_off flagged by the harness but
+right (a zero the refs write 1e-51; a λ of 7e27 from G's round-off); a8 a portal off by 1e-4
+from kN→N rounding of its entries (within the audits' criterion). Found by the battery and
+fixed: σ = 0 beside a K singular to round-off lost a 1e14 spring's λ; his -K_g's exact zeros
+(1e-64, one sign) refused problems 10.8/10.9. Chapter 10 corpus vs main: 38 same, p10_14 times
+out on both, p10_5 differs only in a "términos no nulos" count of K_t (117 vs 119/113 - entries
+cancelling to 0 or 1e-17 after last-bit changes of λ); its printed values are main's.
+Next: full corpus, independent audits until one is CLEAN, then the release routine.
 
 **Release routine that worked for 0.46.1** (see also `NEXT.md`): TDD contracts RED first;
 suite on `.venv` (SymPy 1.14) and a Colab-like venv (py 3.12 + ipython 7.34.0, numpy 2.2.6,
