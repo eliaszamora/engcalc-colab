@@ -181,3 +181,60 @@ def test_a_soft_mode_the_floats_do_not_settle_is_not_a_zero():
     with pytest.raises(EngEvaluationError, match="cannot be told"):
         for item in parse_cell(source):
             engine.evaluate(item)
+
+
+def _sheet_eigenvalues(name: str) -> list[float]:
+    import pathlib
+
+    from engcalc_colab.engine import EngineeringEngine
+
+    source = (pathlib.Path(__file__).parent / "sheets" / name).read_text(encoding="utf-8")
+    engine = EngineeringEngine()
+    for item in parse_cell(source):
+        engine.evaluate(item)
+    return [float(q.magnitude) if hasattr(q, "magnitude") else float(q) for q in engine.numeric_context.matrices["l"].entries]
+
+
+def _exact(name: str) -> list[float]:
+    import pathlib
+
+    import mpmath
+
+    source = (pathlib.Path(__file__).parent / "sheets" / name).read_text(encoding="utf-8")
+
+    def matrix(label):
+        body = source.split(f"{label} := [", 1)[1].split("]", 1)[0]
+        return [[float(v) for v in row.split(",")] for row in body.split(";")]
+
+    with mpmath.workdps(90):
+        values = mpmath.eig(mpmath.inverse(mpmath.matrix(matrix("G"))) * mpmath.matrix(matrix("K")), left=False, right=False)
+        return sorted(float(mpmath.re(v)) for v in values)
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["frame_minus_kg_k_tiny_and_zero.eng", "frame_minus_kg_k_nonsymmetric.eng", "free_frame_k_m_nonsymmetric.eng"],
+)
+def test_his_frames_print_as_main(name):
+    # Frames assembled with tᵀkt - inclined columns, beam forces of 1e-11, non-symmetric by an
+    # ulp - in his eigenvals(-K_g, K), and a free frame's eigenvals(K, M): the runs on moved
+    # entries refused them, where main printed them right (the fourth audit of 0.47.0).
+    got = _sheet_eigenvalues(name)
+    want = _exact(name)
+    scale = max(abs(v) for v in want)
+    assert len(got) == len(want), (got, want)
+    for a, b in zip(got, want):
+        assert abs(a - b) <= 1e-6 * abs(b) + 1e-12 * scale, (got, want)
+
+
+def test_a_complex_pair_beside_a_spring_of_1e22_and_a_g_of_1e_10():
+    # λ = 2 ± 0.3i and 1e32: no σ conditioned to 1e8, the best was 1e30, and the pair came out
+    # 2 twice - on main too (the fourth audit of 0.47.0).
+    with pytest.raises(EngEvaluationError, match="not real"):
+        eigenvalues(np.array([[2.0, 0.3, 0], [-0.3, 2, 0], [0, 0, 1e22]]), np.diag([1.0, 1, 1e-10]))
+
+
+def test_a_spectrum_of_55_decades_keeps_every_eigenvalue():
+    # μ of 1e15 below a floor of 1e-52 against ‖L⁻¹‖² of 1e40: lost (the fourth audit).
+    got = eigenvalues(np.diag([1e-40, 1e15, 1.0]), np.diag([1.0, 1, -1]))
+    assert got == [-1.0, 1e-40, 1e15], got
