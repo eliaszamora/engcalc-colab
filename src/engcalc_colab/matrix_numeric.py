@@ -961,7 +961,7 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
             return [float(value), float("inf"), 0.0, x, seen]
         return [float(value), 1e-15 * weight / seen, seen / magnitude if magnitude else 0.0, x, seen]
 
-    def finished(rows):
+    def finished(rows, nulls=()):
         # What symmetrizing dropped, ΔK = |K - Kᵀ|/2 and ΔG, couples any two λ by
         # c = |x|ᵀ(|ΔK| + |λ||ΔG|)|x'| / √(|xᵀGx||x'ᵀGx'|), and moves λ by c when they are
         # within 2c - they may meet and leave the real line - else by c²/gap: an antisymmetric
@@ -989,6 +989,16 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
         # Summed over every partner, not the largest: six pairs each under the gate moved a λ of
         # 1 to 2.149 together (the ninth audit of 0.47.0).
         dropped = moved.sum(axis=1) if len(rows) else numpy.zeros(0)
+        # And through each direction G does not have, z with Gz = 0, whose λ is infinite and
+        # not a row here: (xᵀΔK z)² / (|xᵀGx| zᵀKz) - an antisymmetric 14 between a tied mode
+        # and a soft direction G lacks moved λ = 1 to 6.06, blind to every pair above (the
+        # tenth audit of 0.47.0).
+        for null, stiff in nulls:
+            if not stiff:
+                continue
+            reach = (vectors @ skews[0] @ null) + lams * (vectors @ skews[1] @ null)
+            with numpy.errstate(divide="ignore", invalid="ignore"):
+                dropped = dropped + numpy.where(seens > 0, reach * reach / (seens * stiff), numpy.inf)
         return [(value, s, g, float(d)) for (value, s, g, _x, _seen), d in zip(rows, dropped)]
 
     with mpmath.workdps(_PENCIL_FIGURES):
@@ -1021,11 +1031,16 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
             inverse = mpmath.inverse(factor)
             mus, vectors = mpmath.eigsy(inverse * g * inverse.T)
             zero = floor * mpmath.mnorm(inverse, 1) ** 2 * g_size
+            nulls = [
+                (numpy.abs(numpy.array([float(v) for v in inverse.T * column(vectors, i)])), 1.0)
+                for i in range(size)
+                if abs(mus[i]) <= zero
+            ]
             return finished([
                 judged(shift + 1 / mus[i], inverse.T * column(vectors, i), mus[i])
                 for i in range(size)
                 if abs(mus[i]) > zero
-            ])
+            ], nulls)
         for shift in shifts:
             shifted = k - mpmath.mpf(shift) * g
             # mpmath's own failures on a matrix it cannot invert are that too: a free gable
@@ -1040,8 +1055,13 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
                 continue
             zero = floor * mpmath.mnorm(inverse, 1) * g_size
             out = []
+            nulls = []
             for i in range(size):
                 if abs(mus[i]) <= zero:
+                    z = column(vectors, i)
+                    phase = max((z[j] for j in range(size)), key=abs)
+                    z = mpmath.matrix([mpmath.re(z[j] / phase) for j in range(size)])
+                    nulls.append((numpy.abs(numpy.array([float(v) for v in z])), abs(float((z.T * k * z)[0]))))
                     continue
                 value = shift + 1 / mus[i]
                 if abs(mpmath.im(value)) > mpmath.mpf(10) ** -30 * max(abs(value), abs(shift)):
@@ -1054,7 +1074,7 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
                 phase = max((x[j] for j in range(size)), key=abs)
                 x = mpmath.matrix([mpmath.re(x[j] / phase) for j in range(size)])
                 out.append(judged(mpmath.re(value), x, (x.T * g * x)[0]))
-            return finished(out)
+            return finished(out, nulls)
         raise EngEvaluationError(
             "eigenvals(K, G): K - λG is singular for every λ - in a direction where G has "
             "nothing, K has nothing either, and any λ satisfies K x = λ G x; take those "

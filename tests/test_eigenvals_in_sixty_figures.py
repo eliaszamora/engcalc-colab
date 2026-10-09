@@ -330,3 +330,17 @@ def test_a_non_symmetric_pencil_whose_iteration_needs_more_figures():
     # error reached the page; in 120 it does, and the pair is refused as not real.
     with pytest.raises(EngEvaluationError, match="not real"):
         _sheet_eigenvalues("ten_ties_summed_coupling.eng")
+
+
+def test_a_coupling_to_a_direction_g_lacks_is_seen():
+    # An antisymmetric 14.2 between a tied mode (λ = 1) and a soft direction where G is 0 - whose
+    # λ is infinite and was no row of the check - moved λ to 6.06, and 1 was printed (the tenth
+    # audit of 0.47.0). Weighed through those directions too, the pencil is not symmetric, and
+    # with G singular it is refused as main refuses it.
+    q, ks = 1e14, 40.0
+    e = 0.9 * 5e-13 * ((1e13 + 1) * (q + ks)) ** 0.5
+    k = np.array([
+        [1e13 + 1, -1e13, e, 0], [-1e13, 1e13 + 1, 0, e], [-e, 0, q + ks, -q], [0, -e, -q, q + ks],
+    ])
+    with pytest.raises(EngEvaluationError, match="second matrix is singular"):
+        eigenvalues(k, np.diag([1.0, 1.0, 0.0, 0.0]))
