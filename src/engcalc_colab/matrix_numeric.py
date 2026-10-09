@@ -961,7 +961,7 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
             return [float(value), float("inf"), 0.0, x, seen]
         return [float(value), 1e-15 * weight / seen, seen / magnitude if magnitude else 0.0, x, seen]
 
-    def finished(rows, nulls=()):
+    def finished(rows, nulls=None):
         # What symmetrizing dropped, ΔK = |K - Kᵀ|/2 and ΔG, couples any two λ by
         # c = |x|ᵀ(|ΔK| + |λ||ΔG|)|x'| / √(|xᵀGx||x'ᵀGx'|), and moves λ by c when they are
         # within 2c - they may meet and leave the real line - else by c²/gap: an antisymmetric
@@ -993,12 +993,15 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
         # not a row here: (xᵀΔK z)² / (|xᵀGx| zᵀKz) - an antisymmetric 14 between a tied mode
         # and a soft direction G lacks moved λ = 1 to 6.06, blind to every pair above (the
         # tenth audit of 0.47.0).
-        for null, stiff in nulls:
-            if not stiff:
-                continue
-            reach = (vectors @ skews[0] @ null) + lams * (vectors @ skews[1] @ null)
+        # nulls: the directions G lacks, as |Z| and |(ZᵀKZ)⁻¹| - their own K-Gram matrix, not
+        # one stiffness each: two such directions tied by 1e13 have a soft combination of 20,
+        # through which an antisymmetric 4.5 moved λ = 1 to 3.025 (the eleventh audit).
+        if nulls:
+            null_vectors, inverse_gram = nulls
+            reach = vectors @ skews[0] @ null_vectors + lams[:, None] * (vectors @ skews[1] @ null_vectors)
+            through = numpy.einsum("ij,jk,ik->i", reach, inverse_gram, reach)
             with numpy.errstate(divide="ignore", invalid="ignore"):
-                dropped = dropped + numpy.where(seens > 0, reach * reach / (seens * stiff), numpy.inf)
+                dropped = dropped + numpy.where(seens > 0, through / seens, numpy.where(through > 0, numpy.inf, 0.0))
         return [(value, s, g, float(d)) for (value, s, g, _x, _seen), d in zip(rows, dropped)]
 
     with mpmath.workdps(_PENCIL_FIGURES):
@@ -1031,11 +1034,13 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
             inverse = mpmath.inverse(factor)
             mus, vectors = mpmath.eigsy(inverse * g * inverse.T)
             zero = floor * mpmath.mnorm(inverse, 1) ** 2 * g_size
-            nulls = [
-                (numpy.abs(numpy.array([float(v) for v in inverse.T * column(vectors, i)])), 1.0)
+            # Orthonormal in K - σG and with Gz = 0, ZᵀKZ = I.
+            null_columns = [
+                numpy.abs(numpy.array([float(v) for v in inverse.T * column(vectors, i)]))
                 for i in range(size)
                 if abs(mus[i]) <= zero
             ]
+            nulls = (numpy.array(null_columns).T, numpy.eye(len(null_columns))) if null_columns else None
             return finished([
                 judged(shift + 1 / mus[i], inverse.T * column(vectors, i), mus[i])
                 for i in range(size)
@@ -1061,7 +1066,7 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
                     z = column(vectors, i)
                     phase = max((z[j] for j in range(size)), key=abs)
                     z = mpmath.matrix([mpmath.re(z[j] / phase) for j in range(size)])
-                    nulls.append((numpy.abs(numpy.array([float(v) for v in z])), abs(float((z.T * k * z)[0]))))
+                    nulls.append(z)
                     continue
                 value = shift + 1 / mus[i]
                 if abs(mpmath.im(value)) > mpmath.mpf(10) ** -30 * max(abs(value), abs(shift)):
@@ -1074,7 +1079,16 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
                 phase = max((x[j] for j in range(size)), key=abs)
                 x = mpmath.matrix([mpmath.re(x[j] / phase) for j in range(size)])
                 out.append(judged(mpmath.re(value), x, (x.T * g * x)[0]))
-            return finished(out, nulls)
+            if nulls:
+                basis = mpmath.matrix([[z[j] for z in nulls] for j in range(size)])
+                try:
+                    gram = mpmath.inverse(basis.T * k * basis)
+                    inverse_gram = numpy.abs(numpy.array([[float(gram[a, b]) for b in range(len(nulls))] for a in range(len(nulls))]))
+                except (ZeroDivisionError, ValueError):
+                    inverse_gram = numpy.full((len(nulls), len(nulls)), numpy.inf)
+                null_vectors = numpy.abs(numpy.array([[float(z[j]) for z in nulls] for j in range(size)]))
+                return finished(out, (null_vectors, inverse_gram))
+            return finished(out)
         raise EngEvaluationError(
             "eigenvals(K, G): K - λG is singular for every λ - in a direction where G has "
             "nothing, K has nothing either, and any λ satisfies K x = λ G x; take those "

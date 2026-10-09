@@ -344,3 +344,17 @@ def test_a_coupling_to_a_direction_g_lacks_is_seen():
     ])
     with pytest.raises(EngEvaluationError, match="second matrix is singular"):
         eigenvalues(k, np.diag([1.0, 1.0, 0.0, 0.0]))
+
+
+def test_directions_g_lacks_are_weighed_by_their_own_gram_matrix():
+    # K and G both indefinite (no definite combination): the directions G lacks came as two
+    # coordinate vectors tied by 1e13, weighed one by one at 1e13 each; the antisymmetric 4.5
+    # reached λ = 1 through their soft combination of 20 and moved it to 3.025 (the eleventh
+    # audit of 0.47.0). Weighed through (ZᵀKZ)⁻¹, the pencil is not symmetric and is refused.
+    e = 4.500000000002475
+    k = np.array([
+        [1e13 + 1, -1e13, 0, e, 0], [-1e13, 1e13 + 1, 0, 0, e], [0, 0, -2.0, 0, 0],
+        [-e, 0, 0, 1e13 + 10, -1e13], [0, -e, 0, -1e13, 1e13 + 10],
+    ])
+    with pytest.raises(EngEvaluationError, match="second matrix is singular"):
+        eigenvalues(k, np.diag([1.0, 1.0, -1.0, 0.0, 0.0]))
