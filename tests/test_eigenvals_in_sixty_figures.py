@@ -269,3 +269,24 @@ def test_a_round_off_direction_of_g_below_zero_is_counted():
     g[2:, 2:] = block
     got = eigenvalues(k, g)
     assert 1.0 in got and 1e11 in got and len(got) == 3, got
+
+
+@pytest.mark.parametrize("name", ["tied_twins_antisymmetric_coupling.eng", "complex_pair_beside_3e37.eng"])
+def test_a_complex_pair_hidden_by_symmetry_or_scale_is_refused(name):
+    # Two tied systems coupled by an antisymmetric 0.45e-12 of their scale: symmetric pair by
+    # pair, symmetrized, their double printed 1 twice for 1 ± 0.00225i; and 2 ± 0.001i beside
+    # a λ of 3e37 passed as real at 1e-40 of the largest (the seventh audit of 0.47.0). What
+    # symmetrizing drops is weighed against each λ's round-off, and beyond it the pencil is
+    # worked out as one that is not symmetric.
+    with pytest.raises(EngEvaluationError, match="not real"):
+        _sheet_eigenvalues(name)
+
+
+def test_a_joint_where_kg_cancels_is_symmetric():
+    # Five members at a joint whose axial forces cancel: K_g's entries there are round-off,
+    # their last bits O(1) of themselves. Against their own diagonal - round-off too - the pair
+    # failed the symmetry test and his eigenvals(-K_g, K) was refused (the seventh audit).
+    got = _sheet_eigenvalues("joint_where_kg_cancels_minus_kg_k.eng")
+    want = _exact("joint_where_kg_cancels_minus_kg_k.eng")
+    scale = max(abs(v) for v in want)
+    assert len(got) == len(want) and all(abs(a - b) <= 1e-12 * scale for a, b in zip(got, want)), (got, want)
