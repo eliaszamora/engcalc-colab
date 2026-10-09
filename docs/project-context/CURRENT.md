@@ -61,40 +61,50 @@ outside the repo 65/65 (4 new checks); suite against the installed wheel from a 
 Corpus of his 270 sheets main vs `79f2ef9`: 269 identical, p7_17 unstable on main.
 
 **In progress - 0.47.0, `eigenvals(K, G)` with a singular G** (his "sigue con eigenvals",
-2026-10-07), branch `fix/eigenvals-singular-g` from `9756e82`: the old branch's
-matrix_numeric.py, contracts, sheets and `tools/eigen_audit` brought over (`7a45ebf`), then
-**the float method replaced** (`c173ed6`, `2e16fcf`, `c512eb1`): the pencil is solved in 60
-figures (mpmath, already a SymPy dependency) on the floats as stored - Cholesky of G, or of
-K - σG for the best-conditioned σ (measured in floats), `eigsy`; `eig((K - σG)⁻¹G)` otherwise -
-and two more exact runs on entries moved by 1e-14 tell what the floats settle (`_settled`):
-held to a tenth → printed; runs off ≥1e8 × the largest held → infinite; scattered around 0
-below 1e-8 of the smallest held → 0; else refused. What 0 leaves (<1e-50 of the largest) is 0.
-Why: every silent wrong λ of the seven audits was the float solver's round-off.
-Evidence so far: suite **3822** on SymPy 1.14 and 1.13.3; battery (`tools/eigen_audit/battery.sh`)
-on `2e16fcf`: a5-a7 480 ok / 26 refused / 0 bad; a4 only A_tie_1e14 and B_K2G_1e-13 refused
-(main wrong on the latter), L_two_rigid_sing_4 and M_G_decades_off flagged by the harness but
-right (a zero the refs write 1e-51; a λ of 7e27 from G's round-off); a8 a portal off by 1e-4
-from kN→N rounding of its entries (within the audits' criterion). Found by the battery and
-fixed: σ = 0 beside a K singular to round-off lost a 1e14 spring's λ; his -K_g's exact zeros
-(1e-64, one sign) refused problems 10.8/10.9. Chapter 10 corpus vs main: 38 same, p10_14 times
-out on both, p10_5 differs only in a "términos no nulos" count of K_t (117 vs 119/113 - entries
-cancelling to 0 or 1e-17 after last-bit changes of λ); its printed values are main's.
-**Paused 2026-10-08 (he shut the PC down), branch at `83664bb`, pushed.** Since the above:
-audit 1 of the new method NOT CLEAN (a round-off λ took a settled λ's partner; fixed `9296e83`:
-closest-first pairing within a tenth, drops limited to G's round-off directions in 60 figures);
-audit 2 NOT CLEAN (complex pair 2 ± i printed 2 twice beside a stiff spring - σ preference +
-Im test on λ; μ floor 1e-52; mechanism 0 beside a tiny held λ refused - `tiny` also 1e-12 of
-the largest; fixed `d40b7a0`); the battery then found that 1e-12 printed an unsettled soft
-mode (ω² 3.79 beside an EA 1e17 link) as 0 - fixed `83664bb` (a 0 must be under a tenth of the
-moved runs' noise). Suite **3839** on `d40b7a0` (both SymPy); 281 eigen tests on `83664bb`.
-Battery on `d40b7a0`: a5-a7 483 ok / 23 refused / 0 bad; a8 casesA/B 155 / 0 refused; a8
-portals refused again on `83664bb`. Corpus on `c512eb1`: 267 same, p7_17 (main varies), p10_5
-(K_t nonzero count only), p10_14 (no eigenvals; 15m21s on both, identical output).
-Audit 3 was stopped mid-run (its scripts in session scratchpad eaudit3, lost with the session).
-Harnesses of audits 1-2 were in the session scratchpad too (eaudit1/eaudit2; the repro cases are
-pinned as contracts in tests/test_eigenvals_in_sixty_figures.py).
-**Exact next step:** full suite on `83664bb`, the battery, full corpus, then a fresh independent
-audit of `83664bb`; repeat until one is CLEAN; then the release routine (0.47.0).
+2026-10-07; his choices 2026-10-09: "rediseñar la capa", then "acotar a simétricos"), branch
+`fix/eigenvals-singular-g`, head `4d0d869`, pushed, no PR yet.
+
+The design now (src/engcalc_colab/matrix_numeric.py, after `eigenvalues_of_numbers`):
+- **Routing.** K and G symmetric pair by pair to 1e-12 of max(|a_ij|, |a_ji|, √(r_i r_j)), r the
+  row maxima (`_nearly_symmetric`) → the exact symmetric way; else → `_exact_nonsymmetric`: the λ
+  of G⁻¹K in 80 figures (120 if mpmath's QR does not settle), refused "not real" when
+  |Im λ| > 1e-6|λ| (complex pairs refused by design even where main printed a real part);
+  singular G refused as main refuses it.
+- **Symmetric way** (`_finite_eigenvalues` → `_judged`): symmetrized, solved exactly in 80
+  figures with vectors (`_exact_pencil`: Cholesky of G, else of K - σG for the σ nearest 0
+  that is definite, else (K - σG)⁻¹G). Each λ carries s = 1e-15 |x|ᵀ(|K|+|λ||G|)|x| / |xᵀGx|.
+  What symmetrizing dropped is weighed by perturbation theory (`finished`): over every pair of
+  λ (c, or c²/gap) and through the directions G lacks (rᵀ(ZᵀKZ)⁻¹r), summed; beyond 10 s the
+  pencil is treated as not symmetric (`_OutOfSymmetry`). Then: s ≤ 3% → printed (kN→N rounding
+  moves a λ by ~s/30, so the third figure holds); a group within 1e-6 has its s measured on
+  entries moved 1e-15 (`_clusters_measured`); G cancelling on the vector with first-order
+  s ≥ |λ| → infinite, no more than G's round-off directions (`_round_off_directions`, scaled by
+  its diagonal in 80 figures); below 1e-12 of the settled λ's lower median → its value, or 0
+  when no figure holds; else refused "cannot be told".
+- Why: seven audits of a float method each found a silently wrong λ from solver round-off; four
+  audits of a three-run way of judging (moved entries, paired runs) each found a misjudged λ;
+  the first-order sensitivity is the audits' own measure.
+
+Audits of the exact method: 1-4 on the three-run judging (each NOT CLEAN, fixed); 5 on the
+first sensitivity version (a nearly defective non-symmetric λ lost → scope to symmetric
+pencils, his choice); 6-11 each NOT CLEAN with fixes - a 1e18 spring hiding Beck's follower
+load (pair-by-pair symmetry), round-off pairs refusing his multi-storey `K, K_g` (infinite rule
+by first order), antisymmetric couplings just under 1e-12 (dropped part weighed per λ, per pair,
+summed, through G's null directions, by their K-Gram matrix), a cancelling K_g joint (row
+scale), QR not settling. The later audits found nothing in realistic families (fam/cond/dbl/
+free/follow, new seeds each time, ~1000 pencils per audit): the gate never tripped on them.
+Audit 12 running on `4d0d869`.
+
+Evidence on `4d0d869`: suite **3857** on SymPy 1.14 and 1.13.3; battery on `6d17844`: a5-a7 484
+ok / 22 refused / 0 bad, a8 casesA/B 155/155, his p10_8/p10_9 run; corpus of his 270 sheets on
+`b6aadcb` 269 as main, chapter 10 on `5e79b2d` 39 of 40 as main; p10_5 differs only in a
+"términos no nulos" count of K_t (117 vs 119/113). Timing: ~0.2 s at 18 DOF, 1.3 s at 36,
+10 s at 60, 21 s at 75 (one call). Harnesses: tools/eigen_audit (battery.sh); the audits'
+scripts and cases live in the session scratchpad (eaudit1-12), their repro cases are pinned in
+tests/test_eigenvals_in_sixty_figures.py and tests/sheets/.
+**Exact next step:** read audit 12; if CLEAN, the full corpus on the final commit, then the
+release routine (0.47.0: version bump 7 places, wheel, clean venv, smoke incl. an eigenvals
+check, suite on the wheel, 24 pages, PR, CI 6/6, merge with his authorization, Colab check).
 
 **Release routine that worked for 0.46.1** (see also `NEXT.md`): TDD contracts RED first;
 suite on `.venv` (SymPy 1.14) and a Colab-like venv (py 3.12 + ipython 7.34.0, numpy 2.2.6,
