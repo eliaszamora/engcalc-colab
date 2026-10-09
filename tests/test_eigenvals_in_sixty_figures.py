@@ -290,3 +290,26 @@ def test_a_joint_where_kg_cancels_is_symmetric():
     want = _exact("joint_where_kg_cancels_minus_kg_k.eng")
     scale = max(abs(v) for v in want)
     assert len(got) == len(want) and all(abs(a - b) <= 1e-12 * scale for a, b in zip(got, want)), (got, want)
+
+
+def test_an_antisymmetric_coupling_between_two_apart_eigenvalues_is_seen():
+    # Two tied systems whose soft λ are 1e-3 apart, coupled by an antisymmetric 2.25e-4 - each
+    # λ alone blind to it - were symmetrized and printed 1 and 1.001; the exact λ are 1.000282
+    # and 1.000718 (the eighth audit of 0.47.0). Every pair of λ is weighed now, and this
+    # pencil is worked out as the non-symmetric one it is.
+    e = 0.00022500000045
+    k = np.array([
+        [500000001.0, -500000000.0, e, e],
+        [-500000000.0, 500000001.0, e, e],
+        [-e, -e, 750000001.001, -750000000.0],
+        [-e, -e, -750000000.0, 750000001.001],
+    ])
+    got = eigenvalues(k, np.eye(4))
+    assert got[:2] == pytest.approx([1.00028202482, 1.00071802191], rel=1e-6), got
+
+
+def test_an_imaginary_part_below_a_millionth_prints_the_real_part():
+    # 2 ± 1e-6i beside 1e8, out of symmetry: main printed 2 twice, within its figures; refused
+    # at 1e-9 of itself (the eighth audit of 0.47.0).
+    got = eigenvalues(np.array([[2.0, 1e-6, 0], [-1e-6, 2.0, 0], [0, 0, 1e8]]), np.eye(3))
+    assert got == pytest.approx([2.0, 2.0, 1e8], rel=1e-9), got

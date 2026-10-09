@@ -697,7 +697,9 @@ def _exact_nonsymmetric(matrix: NumberMatrix, metric: NumberMatrix, unit) -> Num
         # Each against itself, in these figures: against the largest, as main judges floats,
         # 2 ± 0.3i beside a λ of 1e32 passed as 2 twice (the fourth audit of 0.47.0), and at
         # 1e-40 of it 2 ± 0.001i beside 3e37 (the seventh).
-        if any(abs(mpmath.im(value)) > 1e-9 * abs(value) + mpmath.mpf(10) ** -70 * scale for value in values):
+        # Below a millionth of itself an imaginary part is beyond the figures printed: main
+        # printed 2 for 2 ± 1e-6i beside 1e8, and so does this (the eighth audit of 0.47.0).
+        if any(abs(mpmath.im(value)) > 1e-6 * abs(value) + mpmath.mpf(10) ** -70 * scale for value in values):
             raise EngEvaluationError(
                 "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
                 "stiffness have real ones - check that both matrices are symmetric"
@@ -946,25 +948,30 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
         return [float(value), 1e-15 * weight / seen, seen / magnitude if magnitude else 0.0, x, seen]
 
     def finished(rows):
-        # What symmetrizing dropped, |K - Kᵀ|/2 and |G - Gᵀ|/2, can move a λ by |x|ᵀ(|ΔK| +
-        # |λ||ΔG|)|x| / |xᵀGx| - and a group of λ by the same between any two of its vectors: a
-        # double's vectors, one in each of two tied systems, saw nothing of an antisymmetric
-        # 4.5 coupling them, which split it into 1 ± 2.25i (the seventh audit of 0.47.0).
+        # What symmetrizing dropped, ΔK = |K - Kᵀ|/2 and ΔG, couples any two λ by
+        # c = |x|ᵀ(|ΔK| + |λ||ΔG|)|x'| / √(|xᵀGx||x'ᵀGx'|), and moves λ by c when they are
+        # within 2c - they may meet and leave the real line - else by c²/gap: an antisymmetric
+        # 4.5 between two tied systems split their double into 1 ± 2.25i (the seventh audit of
+        # 0.47.0), and one between two λ 1e-3 apart, each blind to it alone, moved them by 3e-4
+        # (the eighth). Every pair, not a group's.
         if skews is None or not (skews[0].any() or skews[1].any()):
             return [(value, s, g, 0.0) for value, s, g, _x, _seen in rows]
-        out = []
-        for value, s, g, x, seen in rows:
-            group = [
-                (other_x, other_seen) for other, _s, _g, other_x, other_seen in rows
-                if abs(other - value) <= 1e-6 * max(abs(other), abs(value))
-            ]
-            dropped = 0.0
-            for other_x, other_seen in group:
-                cross = float(x @ ((skews[0] + abs(value) * skews[1]) @ other_x))
-                scale = (seen * other_seen) ** 0.5
-                dropped = max(dropped, cross / scale if scale else (float("inf") if cross else 0.0))
-            out.append((value, s, g, dropped))
-        return out
+        lams = numpy.array([abs(row[0]) for row in rows])
+        vectors = numpy.array([row[3] for row in rows])
+        seens = numpy.array([row[4] for row in rows])
+        through_k = vectors @ skews[0] @ vectors.T
+        through_g = vectors @ skews[1] @ vectors.T
+        lam_pair = numpy.maximum(lams[:, None], lams[None, :])
+        coupling = through_k + lam_pair * through_g
+        scale = numpy.sqrt(numpy.outer(seens, seens))
+        with numpy.errstate(divide="ignore", invalid="ignore"):
+            c = numpy.where(scale > 0, coupling / scale, numpy.where(coupling > 0, numpy.inf, 0.0))
+            values = numpy.array([row[0] for row in rows])
+            gap = numpy.abs(values[:, None] - values[None, :])
+            moved = numpy.where(gap <= 2 * c, c, numpy.where(gap > 0, c * c / gap, c))
+        moved = numpy.nan_to_num(moved, nan=numpy.inf)
+        dropped = moved.max(axis=1) if len(rows) else numpy.zeros(0)
+        return [(value, s, g, float(d)) for (value, s, g, _x, _seen), d in zip(rows, dropped)]
 
     with mpmath.workdps(_PENCIL_FIGURES):
         k = mpmath.matrix(stiffness.tolist())
