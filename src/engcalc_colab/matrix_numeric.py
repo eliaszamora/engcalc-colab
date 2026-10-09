@@ -687,11 +687,25 @@ def _exact_nonsymmetric(matrix: NumberMatrix, metric: NumberMatrix, unit) -> Num
     size = matrix.rows
     stiffness = numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
     geometric = numpy.array(metric.magnitudes, dtype=float).reshape(size, size)
-    with mpmath.workdps(_PENCIL_FIGURES):
-        values = mpmath.eig(
-            mpmath.inverse(mpmath.matrix(geometric.tolist())) * mpmath.matrix(stiffness.tolist()),
-            left=False, right=False,
+    # mpmath's QR does not always converge in these figures - ten tied systems coupled
+    # antisymmetrically, "qr: failed to converge after 321 steps" (the ninth audit of 0.47.0):
+    # once more in half as many again, then refused in words.
+    for figures in (_PENCIL_FIGURES, _PENCIL_FIGURES * 3 // 2):
+        try:
+            with mpmath.workdps(figures):
+                values = mpmath.eig(
+                    mpmath.inverse(mpmath.matrix(geometric.tolist())) * mpmath.matrix(stiffness.tolist()),
+                    left=False, right=False,
+                )
+            break
+        except RuntimeError:
+            continue
+    else:
+        raise EngEvaluationError(
+            "eigenvals(K, G): the eigenvalues of this pencil, which is not symmetric, could not be "
+            "worked out - the iteration does not settle; check that both matrices are symmetric"
         )
+    with mpmath.workdps(_PENCIL_FIGURES):
         values = [values[i] for i in range(size)]
         scale = max((abs(value) for value in values), default=0) or 1
         # Each against itself, in these figures: against the largest, as main judges floats,
@@ -953,7 +967,7 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
         # within 2c - they may meet and leave the real line - else by c²/gap: an antisymmetric
         # 4.5 between two tied systems split their double into 1 ± 2.25i (the seventh audit of
         # 0.47.0), and one between two λ 1e-3 apart, each blind to it alone, moved them by 3e-4
-        # (the eighth). Every pair, not a group's.
+        # (the eighth). Every pair, not a group's, and summed.
         if skews is None or not (skews[0].any() or skews[1].any()):
             return [(value, s, g, 0.0) for value, s, g, _x, _seen in rows]
         lams = numpy.array([abs(row[0]) for row in rows])
@@ -961,8 +975,10 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
         seens = numpy.array([row[4] for row in rows])
         through_k = vectors @ skews[0] @ vectors.T
         through_g = vectors @ skews[1] @ vectors.T
-        lam_pair = numpy.maximum(lams[:, None], lams[None, :])
-        coupling = through_k + lam_pair * through_g
+        # Through ΔK - λ_i ΔG: its own λ, not the larger of the pair - a mechanism's 0 keeps 0
+        # whatever ΔG is, and charged with its partner's λ it sent his condensed -K_g out of
+        # symmetry (the ninth audit of 0.47.0).
+        coupling = through_k + lams[:, None] * through_g
         scale = numpy.sqrt(numpy.outer(seens, seens))
         with numpy.errstate(divide="ignore", invalid="ignore"):
             c = numpy.where(scale > 0, coupling / scale, numpy.where(coupling > 0, numpy.inf, 0.0))
@@ -970,7 +986,9 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
             gap = numpy.abs(values[:, None] - values[None, :])
             moved = numpy.where(gap <= 2 * c, c, numpy.where(gap > 0, c * c / gap, c))
         moved = numpy.nan_to_num(moved, nan=numpy.inf)
-        dropped = moved.max(axis=1) if len(rows) else numpy.zeros(0)
+        # Summed over every partner, not the largest: six pairs each under the gate moved a λ of
+        # 1 to 2.149 together (the ninth audit of 0.47.0).
+        dropped = moved.sum(axis=1) if len(rows) else numpy.zeros(0)
         return [(value, s, g, float(d)) for (value, s, g, _x, _seen), d in zip(rows, dropped)]
 
     with mpmath.workdps(_PENCIL_FIGURES):
@@ -1018,7 +1036,7 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
                 if mpmath.mnorm(inverse, 1) * mpmath.mnorm(shifted, 1) > mpmath.mpf(10) ** 40:
                     continue
                 mus, vectors = mpmath.eig(inverse * g, left=False, right=True)
-            except (ZeroDivisionError, TypeError, ValueError):
+            except (ZeroDivisionError, TypeError, ValueError, RuntimeError):
                 continue
             zero = floor * mpmath.mnorm(inverse, 1) * g_size
             out = []

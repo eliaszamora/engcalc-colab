@@ -313,3 +313,20 @@ def test_an_imaginary_part_below_a_millionth_prints_the_real_part():
     # at 1e-9 of itself (the eighth audit of 0.47.0).
     got = eigenvalues(np.array([[2.0, 1e-6, 0], [-1e-6, 2.0, 0], [0, 0, 1e8]]), np.eye(3))
     assert got == pytest.approx([2.0, 2.0, 1e8], rel=1e-9), got
+
+
+def test_couplings_each_under_the_gate_are_summed():
+    # Six tied systems, one coupled to the other five by an antisymmetric 2: each pair moved the
+    # soft λ by 0.18, under ten times its round-off, so the largest of them let the pencil be
+    # symmetrized and 1 was printed for 2.149 (the ninth audit of 0.47.0). Summed, it is
+    # worked out as the non-symmetric pencil it is.
+    got = _sheet_eigenvalues("six_ties_summed_coupling.eng")
+    want = _exact("six_ties_summed_coupling.eng")
+    assert got[:2] == pytest.approx(want[:2], rel=1e-9), (got[:3], want[:3])
+
+
+def test_a_non_symmetric_pencil_whose_iteration_needs_more_figures():
+    # Ten such systems: 3.75 ± 1.2i. In 80 figures mpmath's QR did not settle and its own
+    # error reached the page; in 120 it does, and the pair is refused as not real.
+    with pytest.raises(EngEvaluationError, match="not real"):
+        _sheet_eigenvalues("ten_ties_summed_coupling.eng")
