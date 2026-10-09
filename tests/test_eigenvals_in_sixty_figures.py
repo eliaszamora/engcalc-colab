@@ -10,8 +10,8 @@ entries moved by 1e-14, was misjudged by four audits; several contracts below co
   (1 + P) - P. The float method refused it from P = 1e10 (main printed it); it is the exact
   answer to the entries, and a move of 1e-14 - a hundred times their round-off - moves it
   by 2% up to P = 1e13, and at 1e14 by 20% - negligible beside the tie's 2e14, printed as main.
-- A G nearly singular, `G = [1, 1; 1, 1 + d]` with K = 2G: λ = 2 twice down to d = 1e-13
-  (main printed noise there).
+- A G nearly singular, `G = [1, 1; 1, 1 + d]` with K = 2G: λ = 2 twice down to d = 1e-12;
+  at d = 1e-13 the pair moves by more than 3% and is refused (main printed noise).
 """
 
 import numpy as np
@@ -54,12 +54,12 @@ def test_a_nearly_singular_g_with_k_twice_it(d):
     assert eigenvalues(2 * g, g) == [2.0, 2.0]
 
 
-def test_a_g_nearly_singular_beside_k_twice_it_is_two_twice():
-    # K = 2G exactly in the floats, λ = 2 twice. First-order, the second moves by 8% under a
-    # change of 1e-15 in the entries; a double is measured instead, by working it out again on
-    # moved entries, and it moves by about 1% (0.47.0).
+def test_a_g_singular_to_round_off_beside_k_twice_it_is_refused():
+    # K = 2G exactly in the floats, λ = 2 twice; the second hangs on G's 1e-13, and the pair,
+    # worked out again on entries moved by 1e-15, moves by more than the 3% a printed λ may.
     g = np.array([[1, 1], [1, 1 + 1e-13]])
-    assert eigenvalues(2 * g, g) == [2.0, 2.0]
+    with pytest.raises(EngEvaluationError, match="cannot be told"):
+        eigenvalues(2 * g, g)
 
 
 def test_a_rotated_nearly_singular_g():
@@ -226,3 +226,46 @@ def test_a_spectrum_of_55_decades_keeps_every_eigenvalue():
     # μ of 1e15 below a floor of 1e-52 against ‖L⁻¹‖² of 1e40: lost (the fourth audit).
     got = eigenvalues(np.diag([1e-40, 1e15, 1.0]), np.diag([1.0, 1, -1]))
     assert got == [-1.0, 1e-40, 1e15], got
+
+
+def test_a_follower_load_beside_a_support_spring_is_not_symmetrized():
+    # Beck's column under a follower load of 1.5e5, its base a 1e18 spring: against K's largest
+    # entry the asymmetry passed for round-off, the pencil was symmetrized and a negative ω²
+    # was printed (the sixth audit of 0.47.0). Each pair against its own scale: G⁻¹K, exactly.
+    got = _sheet_eigenvalues("beck_follower_on_springs_1e18.eng")
+    want = _exact("beck_follower_on_springs_1e18.eng")
+    assert all(value > 0 for value in got), got
+    for a, b in zip(got[:8], want[:8]):
+        assert abs(a - b) <= 1e-9 * abs(b), (got, want)
+    assert eigenvalues(np.array([[1e16, 0, 0], [0, 2.0, 1.5], [0, 0.1, 3.0]]), np.eye(3))[:2] == pytest.approx(
+        [1.867544468, 3.132455532], rel=1e-9
+    )
+
+
+def test_storeys_on_springs_keep_their_critical_loads():
+    # eigenvals(K, K_g) of a frame on 1e20 springs: G's two round-off directions gave a pair of
+    # λ of 7e28; measured as a pair at 93% they were refused, where they are infinite (the
+    # battery of 0.47.0). The ten critical load factors print.
+    got = _sheet_eigenvalues("storeys_on_springs_1e20_k_kg.eng")
+    assert len(got) == 10 and abs(got[0] - 63.5274) <= 1e-4, got
+
+
+def test_a_round_off_direction_of_g_below_zero_is_counted():
+    # The block 100 [c², cs; cs, s²] at 29°: its round-off eigenvalue is negative. Scaled by its
+    # diagonal in floats the round-off was lost, the direction was not counted, and a pencil
+    # whose λ the floats settle was refused (the battery of 0.47.0).
+    import math
+
+    import mpmath
+
+    c, s = math.cos(math.radians(29.0)), math.sin(math.radians(29.0))
+    block = 100.0 * np.array([[c * c, c * s], [c * s, s * s]])
+    with mpmath.workdps(50):
+        small = float(min(mpmath.eigsy(mpmath.matrix(block.tolist()), eigvals_only=True), key=abs))
+    k_block = abs(0.3 * 1e11 * small)
+    k = np.diag([1.0, 1e11, k_block, k_block])
+    g = np.zeros((4, 4))
+    g[0, 0] = g[1, 1] = 1.0
+    g[2:, 2:] = block
+    got = eigenvalues(k, g)
+    assert 1.0 in got and 1e11 in got and len(got) == 3, got

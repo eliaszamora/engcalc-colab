@@ -641,8 +641,12 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
             # and -0.33 for 0.165 (the second audit). The values come from the exact pencil.
             _inverse_units(product, operation)
             return _finite_eigenvalues(matrix, metric, unit=_eigenvalue_unit(product))
-        # Not symmetric - follower loads, not a frame's stiffness - as main works it.
-        matrix = product
+        # Not symmetric - follower loads, not a frame's stiffness: the λ of G⁻¹K as main reads
+        # them, worked out exactly instead of in floats - a column on 1e20 springs, out of
+        # symmetry by 2.4 in 24000, read 1512.14 for 1515.90 in floats (the fifth audit of
+        # 0.46.1). No λ is judged here: a nearly defective one has no first-order measure.
+        _inverse_units(product, operation)
+        return _exact_nonsymmetric(matrix, metric, _eigenvalue_unit(product))
     _inverse_units(matrix, operation)
     unit = _eigenvalue_unit(matrix)
     size = matrix.rows
@@ -663,15 +667,47 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
     return NumberMatrix(size, 1, tuple(ordered), units, _unitless_zeros(1, units))
 
 
+def _exact_nonsymmetric(matrix: NumberMatrix, metric: NumberMatrix, unit) -> NumberMatrix:
+    """The eigenvalues of G⁻¹K for a G that inverts, in `_PENCIL_FIGURES` figures on the floats
+    as they are; refused as main refuses when they are not all real."""
+    import mpmath
+    import numpy
+
+    size = matrix.rows
+    stiffness = numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
+    geometric = numpy.array(metric.magnitudes, dtype=float).reshape(size, size)
+    with mpmath.workdps(_PENCIL_FIGURES):
+        values = mpmath.eig(
+            mpmath.inverse(mpmath.matrix(geometric.tolist())) * mpmath.matrix(stiffness.tolist()),
+            left=False, right=False,
+        )
+        values = [values[i] for i in range(size)]
+        scale = max((abs(value) for value in values), default=0) or 1
+        # Each against itself, in these figures: against the largest, as main judges floats,
+        # 2 ± 0.3i beside a λ of 1e32 passed as 2 twice (the fourth audit of 0.47.0).
+        if any(abs(mpmath.im(value)) > 1e-9 * abs(value) + mpmath.mpf(10) ** -40 * scale for value in values):
+            raise EngEvaluationError(
+                "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
+                "stiffness have real ones - check that both matrices are symmetric"
+            )
+        ordered = sorted(float(mpmath.re(value)) for value in values)
+    units = tuple(unit for _ in ordered)
+    return NumberMatrix(size, 1, tuple(ordered), units, _unitless_zeros(1, units))
+
+
 def _nearly_symmetric(numbers: NumberMatrix) -> bool:
     """Symmetric to its round-off: assembled as tᵀkt a stiffness or a mass differs from its
-    transpose in the last bit (3e-17 of the entries), and is symmetric all the same."""
+    transpose in the last bit (3e-17 of the entries), and is symmetric all the same. Each pair
+    against its own scale, the larger of the two and of √|a_ii a_jj|: against the largest entry,
+    a support written as a 1e18 spring hid a follower load of 1.5e5, the pencil was symmetrized
+    and Beck's column read a negative ω² (the sixth audit of 0.47.0)."""
     import numpy
 
     size = numbers.rows
     values = numpy.array(numbers.magnitudes, dtype=float).reshape(size, size)
-    top = numpy.abs(values).max()
-    return bool(numpy.abs(values - values.T).max() <= 1e-12 * top) if top else True
+    diagonal = numpy.abs(numpy.diag(values))
+    own = numpy.maximum(numpy.maximum(numpy.abs(values), numpy.abs(values.T)), numpy.sqrt(numpy.outer(diagonal, diagonal)))
+    return bool(numpy.all(numpy.abs(values - values.T) <= 1e-12 * own))
 
 
 def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -> NumberMatrix:
@@ -726,10 +762,11 @@ def _judged(stiffness, geometric) -> list[float]:
       printed it. The round-off of entries as a sheet writes them - kN to N - moved a λ by about
       a thirtieth of its s: a portal's soft ω² of 3.736 read 3.723 with s at 9% (the battery of
       0.47.0), a third figure the page would print wrong; at 3% the third figure holds.
-    - G cancelling to round-off on its vector, |xᵀGx| ≤ 1e-11 |x|ᵀ|G||x|, not one figure
-      holding (s ≥ |λ|), and alone - no other λ within 1e-6 of it: a direction G has only to
-      round-off, whose λ is round-off over round-off - infinite, not printed; no more of these
-      than G has such directions (`_round_off_directions`).
+    - G cancelling to round-off on its vector, |xᵀGx| ≤ 1e-11 |x|ᵀ|G||x|, and not one figure
+      holding at first order (s ≥ |λ|): a direction G has only to round-off, whose λ is
+      round-off over round-off - infinite, not printed; no more of these than G has such
+      directions (`_round_off_directions`). A group's own s decides only whether it prints
+      (`_clusters_measured`).
     - negligible, below 1e-12 of the λ that are settled (their lower median): its own value
       while one figure of it holds (s < |λ|), else 0 - a mechanism, or his -K_g's λ of 1e-17
       beside 1e-3, as main printed them (the fourth audit of 0.47.0). The upper median of two -
@@ -743,20 +780,15 @@ def _judged(stiffness, geometric) -> list[float]:
     # What 0 leaves in these figures - 1.6e-89 beside 1e9 - is 0, and judged as one: beside K's
     # scale over G's, not the largest λ, which a G of 1e-60 makes 1e60 (the fifth audit).
     scale = numpy.abs(stiffness).sum(axis=0).max() / numpy.abs(geometric).sum(axis=0).max()
-    pencil = [(0.0 if abs(value) <= 1e-65 * scale else value, s, g) for value, s, g in pencil]
-    sizes = sorted(abs(value) for value, s, _g in pencil if value and s <= 0.03 * abs(value))
+    pencil = [(0.0 if abs(value) <= 1e-65 * scale else value, s, g, first) for value, s, g, first in pencil]
+    sizes = sorted(abs(value) for value, s, _g, _f in pencil if value and s <= 0.03 * abs(value))
     typical = sizes[(len(sizes) - 1) // 2] if sizes else 0.0
-    values = [value for value, _s, _g in pencil]
     finite = []
     infinite = 0
-    for value, sensitivity, g_part in pencil:
+    for value, sensitivity, g_part, first in pencil:
         if sensitivity <= 0.03 * abs(value):
             finite.append(value)
-        elif (
-            g_part <= 1e-11
-            and sensitivity >= abs(value)
-            and sum(1 for other in values if abs(other - value) <= 1e-6 * abs(value)) == 1
-        ):
+        elif g_part <= 1e-11 and first >= abs(value):
             infinite += 1
         elif abs(value) <= 1e-12 * typical:
             finite.append(0.0 if sensitivity >= abs(value) else value)
@@ -768,25 +800,36 @@ def _judged(stiffness, geometric) -> list[float]:
 
 
 def _clusters_measured(stiffness, geometric, pencil):
-    """A λ beside another within 1e-6 of it, whose first-order s says it holds no figure, has
-    its s measured instead: the pencil again, exactly, on entries moved by 1e-15 of themselves.
-    A defective double - K = [1, 3; 3, 0] against G = [0, 1; 1, 0], λ = 3 twice - has xᵀGx = 0
-    and no first-order s, and moves by the square root of the change, 3e-8: it was refused
-    where main printed it (the fifth audit of 0.47.0)."""
+    """Each λ as (value, s to print by, g, first-order s). A group of λ within 1e-6 of each
+    other, one of whose first-order s says it holds no figure, has its s to print by measured
+    instead: the pencil again, exactly, on entries moved by 1e-15 of themselves, the group
+    against as many values of each run nearest it, both in order. A defective double - K =
+    [1, 3; 3, 0] against G = [0, 1; 1, 0], λ = 3 twice - has xᵀGx = 0 and no first-order s,
+    and moves by the square root of the change, 3e-8: it was refused where main printed it
+    (the fifth audit of 0.47.0). Member against its nearest, a twin's copy was its own nearest
+    and the s came out low (the sixth audit). Whether a λ is infinite stays the first-order
+    measure's: a pair of round-off λ of 7e28 measured at 93% was refused, where it is two
+    directions G lacks (the battery, multi-storey frames on springs)."""
     import numpy
 
+    out = [(value, s, g, s) for value, s, g in pencil]
     values = [value for value, _s, _g in pencil]
-
-    def clustered(index):
-        value = values[index]
-        return any(
-            other != index and abs(values[other] - value) <= 1e-6 * max(abs(value), abs(values[other]))
-            for other in range(len(values))
-        )
-
-    doubtful = [i for i, (value, s, _g) in enumerate(pencil) if s > 0.03 * abs(value) and clustered(i)]
+    order = sorted(range(len(values)), key=lambda i: values[i])
+    groups, current = [], [order[0]] if order else []
+    for previous, index in zip(order, order[1:]):
+        if abs(values[index] - values[previous]) <= 1e-6 * max(abs(values[index]), abs(values[previous])):
+            current.append(index)
+        else:
+            groups.append(current)
+            current = [index]
+    if current:
+        groups.append(current)
+    doubtful = [
+        group for group in groups
+        if len(group) > 1 and any(pencil[i][1] > 0.03 * abs(values[i]) for i in group)
+    ]
     if not doubtful:
-        return pencil
+        return out
     trials = numpy.random.default_rng(20261009)
     moved_runs = []
     for _ in range(2):
@@ -795,16 +838,23 @@ def _clusters_measured(stiffness, geometric, pencil):
         noise = trials.standard_normal(geometric.shape)
         g = geometric * (1 + 1e-15 * (noise + noise.T) / 2)
         try:
-            moved_runs.append([value for value, _s, _g in _exact_pencil(k, g)])
+            run = [value for value, _s, _g in _exact_pencil(k, g)]
         except EngEvaluationError:
-            return pencil
-    out = list(pencil)
-    for index in doubtful:
-        value = values[index]
-        if not all(moved_runs):
-            return pencil
-        moved = max(min(abs(other - value) for other in run) for run in moved_runs)
-        out[index] = (value, moved, pencil[index][2] if moved >= abs(value) else 1.0)
+            return out
+        if len(run) < max(len(group) for group in doubtful):
+            return out
+        moved_runs.append(run)
+    for group in doubtful:
+        mine = sorted(group, key=lambda i: values[i])
+        centre = sum(values[i] for i in mine) / len(mine)
+        moved = [0.0] * len(mine)
+        for run in moved_runs:
+            theirs = sorted(sorted(run, key=lambda v: abs(v - centre))[: len(mine)])
+            for place, (index, other) in enumerate(zip(mine, theirs)):
+                moved[place] = max(moved[place], abs(other - values[index]))
+        for place, index in enumerate(mine):
+            value, first, g_part, _ = out[index]
+            out[index] = (value, moved[place], g_part, first)
     return out
 
 
@@ -813,14 +863,16 @@ def _round_off_directions(geometric) -> int:
     (a spring of 1e20 in G is no direction it lacks), in `_PENCIL_FIGURES` figures on the floats
     as they are, above what 0 leaves (1e-70 of the largest) and below 1e-11 of it."""
     import mpmath
-    import numpy
 
-    own = numpy.sqrt(numpy.abs(numpy.diag(geometric)))
-    own = numpy.where(own > 0, own, 1.0)
-    scaled = geometric / own[:, None] / own[None, :]
+    size = len(geometric)
     with mpmath.workdps(_PENCIL_FIGURES):
-        values = mpmath.eigsy(mpmath.matrix(scaled.tolist()), eigvals_only=True)
-        sizes = [abs(values[i]) for i in range(len(scaled))]
+        # Scaled in these figures, not in floats: rounded, a 2x2 block of 100 [c², cs; cs, s²]
+        # lost the round-off it is singular to, and its direction was not counted (the battery).
+        g = mpmath.matrix(geometric.tolist())
+        own = [mpmath.sqrt(abs(g[i, i])) or mpmath.mpf(1) for i in range(size)]
+        scaled = mpmath.matrix([[g[i, j] / own[i] / own[j] for j in range(size)] for i in range(size)])
+        values = mpmath.eigsy(scaled, eigvals_only=True)
+        sizes = [abs(values[i]) for i in range(size)]
         top = max(sizes)
         return sum(1 for size in sizes if mpmath.mpf(10) ** -70 * top < size <= mpmath.mpf(10) ** -11 * top)
 
