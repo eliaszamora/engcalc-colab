@@ -1,15 +1,17 @@
-r"""`eigenvals(K, G)` worked out in 60 figures on the entries as written (0.47.0).
+r"""`eigenvals(K, G)` worked out exactly on the entries as written (0.47.0).
 
 Seven audits of a method in floats each found a silently wrong λ, and every one was the
-solver's round-off. The pencil is now solved exactly on the floats the sheet holds; three
-runs, the entries moved by 1e-14 of themselves, tell what those floats do not settle.
+solver's round-off. The pencil is now solved in 80 figures on the floats the sheet holds, and
+each λ's sensitivity to a change of 1e-15 in every entry - from its left and right vectors -
+tells what those floats do not settle. (A first way of telling it, the same λ asked again on
+entries moved by 1e-14, was misjudged by four audits; several contracts below come from them.)
 
 - Two DOFs tied by a stiff spring P, `K = [1 + P, -P; -P, 1 + P]`: the soft λ = 1 is
   (1 + P) - P. The float method refused it from P = 1e10 (main printed it); it is the exact
   answer to the entries, and a move of 1e-14 - a hundred times their round-off - moves it
-  by less than a tenth up to P = 1e13. At 1e14 it does not hold, and is refused.
-- A G nearly singular, `G = [1, 1; 1, 1 + d]` with K = 2G: λ = 2 twice down to d = 1e-11;
-  at d = 1e-13 the move of 1e-14 is d itself, and it is refused (main printed noise).
+  by 2% up to P = 1e13, and at 1e14 by 20% - negligible beside the tie's 2e14, printed as main.
+- A G nearly singular, `G = [1, 1; 1, 1 + d]` with K = 2G: λ = 2 twice down to d = 1e-12;
+  at d = 1e-13 the second moves by 8% under 1e-15 and is refused (main printed noise).
 """
 
 import numpy as np
@@ -37,10 +39,13 @@ def test_two_dofs_tied_by_a_stiff_spring(tie):
     assert got == [1.0, 1 + 2 * tie], got
 
 
-def test_a_tie_no_float_settles_is_refused():
+def test_a_tie_of_1e14_prints_its_soft_eigenvalue_as_main():
+    # λ = 1 moves by 20% under a change of 1e-15 in the entries - more than a printed λ may -
+    # but beside the tie's 2e14 it is negligible, and one figure of it holds: as main printed it.
+    # Written in kN/m and stored in N/m, the entries round: the exact answer to them is 0.992.
     tie = 1e14
-    with pytest.raises(EngEvaluationError, match="cannot be told"):
-        eigenvalues(np.array([[1 + tie, -tie], [-tie, 1 + tie]]), np.eye(2))
+    got = eigenvalues(np.array([[1 + tie, -tie], [-tie, 1 + tie]]), np.eye(2))
+    assert abs(got[0] - 1.0) <= 0.2 and got[1] == 1 + 2 * tie, got
 
 
 @pytest.mark.parametrize("d", [1e-9, 1e-11, 1e-12])
@@ -50,6 +55,8 @@ def test_a_nearly_singular_g_with_k_twice_it(d):
 
 
 def test_a_g_singular_to_round_off_beside_k_twice_it_is_refused():
+    # K = 2G exactly in the floats, λ = 2 twice; the second hangs on G's 1e-13 and moves by 8%
+    # of itself under a change of 1e-15 in the entries - more than the 3% a printed λ may.
     g = np.array([[1, 1], [1, 1 + 1e-13]])
     with pytest.raises(EngEvaluationError, match="cannot be told"):
         eigenvalues(2 * g, g)
