@@ -2682,29 +2682,43 @@ def _quantity_matrix_latex(
     `_aggregate_unit` would otherwise choose again and convert them back.
     """
     common_unit, homogeneous = _quantity_matrix_common_unit(quantity_matrix)
+    # Angles read in degrees, as a scalar angle does: `[30[deg], 45[deg]]` read `[0.52 0.79]`,
+    # radians with no unit; a rotation of exactly zero among them is an angle too (0.48.1).
+    entries = list(quantity_matrix)
+    angles = [quantity for quantity in entries if str(getattr(quantity, "units", "")) == "radian"]
+    if not declared and angles and all(
+        str(getattr(quantity, "units", "")) == "radian"
+        or (getattr(quantity, "dimensionless", False) and float(quantity.magnitude) == 0.0)
+        for quantity in entries
+    ):
+        # Radians where the line wrote them, `[0.5[rad]; 1[rad]]`, as a scalar keeps them.
+        registry = angles[0]._REGISTRY
+        angle_unit = registry.radian if keeps_radians else registry.degree
+        quantity_matrix = QuantityMatrix(
+            quantity_matrix.rows,
+            quantity_matrix.cols,
+            tuple(
+                quantity.to(angle_unit)
+                if str(getattr(quantity, "units", "")) == "radian"
+                else registry.Quantity(0.0, angle_unit)
+                for quantity in entries
+            ),
+            frozenset(),
+            frozenset(),
+        )
+        common_unit, homogeneous, declared = angle_unit, True, True
     if homogeneous and not declared:
         common_unit = _aggregate_unit(list(quantity_matrix), settings, common_unit)
         # Temperatures held in base units read in degrees, as a scalar does.
         if common_unit is not None and str(common_unit) == "kelvin":
             common_unit = quantity_matrix.entries[0]._REGISTRY.delta_degC
-        # Angles read in degrees, as a scalar angle does: `[30[deg], 45[deg]]` read
-        # `[0.52 0.79]`, radians with no unit (0.48.1).
-        entries = list(quantity_matrix)
-        if common_unit is None and entries and all(
-            str(getattr(quantity, "units", "")) == "radian" for quantity in entries
-        ):
-            # Radians where the line wrote them, `[0.5[rad]; 1[rad]]`, as a scalar keeps them.
-            registry = entries[0]._REGISTRY
-            common_unit = registry.radian if keeps_radians else registry.degree
 
     # The unit each cell will be shown in has to be settled before the scale can be,
     # because the magnitudes it is computed from are the ones the reader will see.
     shown = []
     for quantity in quantity_matrix:
         if homogeneous:
-            if common_unit is not None and (
-                not getattr(quantity, "dimensionless", False) or str(common_unit) in ("degree", "radian")
-            ):
+            if common_unit is not None and not getattr(quantity, "dimensionless", False):
                 quantity = quantity.to(common_unit)
         else:
             # `declared=False` and not `declared`, which a mixed cell can never see as
@@ -5120,7 +5134,9 @@ def _latex_unit_text(unit) -> str:
 _DEGREE_LATEX = {"degC": r"{}^{\circ}\mathrm{C}", "degF": r"{}^{\circ}\mathrm{F}", "inch": r"\mathrm{in}", "deg": r"{}^{\circ}"}
 # `45\,{}^{\circ}` from a number beside the degree, with no `\mathrm{C}` after it: an
 # angle, written `45^{\circ}`. A difference of degrees Celsius keeps its space.
-_ANGLE_MARK_SPACED = re.compile(r"(?:\\,|\s)*\{\}\^\{\\circ\}(?!\s*\\mathrm\{[CF]\})")
+_ANGLE_MARK_SPACED = re.compile(r"(?<=\d)(?:\\,|\s)*\{\}\^\{\\circ\}(?!\s*\\mathrm\{[CF]\})")
+# Only after a digit: `cos(alpha*deg)` kept its base and read `° α` with the base taken away,
+# and `10^{8}` would carry a second superscript (the audit of 0.48.1).
 
 
 def _temperature_latex(latex: str) -> str:

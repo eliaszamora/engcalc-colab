@@ -93,3 +93,24 @@ def test_a_power_of_ten_is_written_as_one(sheet, source, expected):
     page, printed = sheet(source)
     assert not printed, printed
     assert expected in page and "100000000" not in page and "1e-07" not in page, page
+
+
+# The audit of 0.48.1.
+
+
+def test_a_degree_beside_a_name_keeps_its_base(sheet):
+    page, printed = sheet("P := 10[kN]\nF = P*cos(alpha*deg)\n")
+    assert not printed, printed
+    assert r"{}^{\circ}\,\alpha" in page and r"(^{\circ}" not in page, page
+
+
+def test_a_vector_of_angles_with_a_zero_reads_in_degrees(sheet):
+    page, printed = sheet("a := [30[deg]; 0[deg]]\n")
+    assert not printed, printed
+    assert r"\displaystyle 0.00\end{matrix}\right]\,{}^{\circ}" in page, page
+
+
+def test_a_power_of_ten_in_degrees_is_not_a_double_superscript(sheet):
+    page, printed = sheet("x := [1e8[deg]; 2[deg]]\n")
+    assert not printed, printed
+    assert r"10^{8}\,{}^{\circ}" in page and r"10^{8}^{\circ}" not in page, page
