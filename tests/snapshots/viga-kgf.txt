@@ -75,14 +75,14 @@ engcalc units: kgf — cm, cm², cm⁴, kgf, kgf·cm, kgf/cm², kgf/cm, kg, s, 1
 === 18 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle M_{D}\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[17pt]
 \displaystyle M_{L}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[17pt]
-\displaystyle M_{P}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
-\displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[25pt]
+\displaystyle M_{P}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{si}\: x \leq \dfrac{L}{2} \\[4pt]
+\displaystyle \dfrac{P \left(L - x\right)}{2} & \text{si}\: x \leq L \\[4pt]
+\displaystyle 0 & \text{en otro caso} \end{cases} \\[25pt]
 \displaystyle D\left(x\right) & = & \displaystyle \frac{\mathit{qD}\,x \left(L - x\right)}{2} \\[17pt]
 \displaystyle \mathit{Lv}\left(x\right) & = & \displaystyle \frac{\mathit{qL}\,x \left(L - x\right)}{2} \\[17pt]
-\displaystyle \mathit{Mo}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
-\displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \end{array}
+\displaystyle \mathit{Mo}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P x}{2} & \text{si}\: x \leq \dfrac{L}{2} \\[4pt]
+\displaystyle \dfrac{P \left(L - x\right)}{2} & \text{si}\: x \leq L \\[4pt]
+\displaystyle 0 & \text{en otro caso} \end{cases} \end{array}
 
 === 19 · HTML ===
 <div style="height:18px"></div>

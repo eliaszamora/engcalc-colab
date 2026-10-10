@@ -131,9 +131,9 @@ def test_the_branches_still_say_what_they_said(page):
     plain = [condition.replace(r"\dfrac", r"\frac") for condition in conditions]
 
     assert plain == [
-        r"\text{for}\: x \leq \frac{L}{2}",
-        r"\text{for}\: x \leq L",
-        r"\text{otherwise}",
+        r"\text{si}\: x \leq \frac{L}{2}",
+        r"\text{si}\: x \leq L",
+        r"\text{en otro caso}",
     ], conditions
 
 

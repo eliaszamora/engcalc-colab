@@ -69,9 +69,9 @@ numeric(q_v(x))
 # numerator of 20 over a denominator of 6 measured 26 whether it was summed or maxed.
 # `qD` comes from the engineer's own beam, where `M_D(x)` is written exactly this way.
 BRANCHES = (
-    r"\displaystyle \dfrac{x P}{2} & \text{for}\: x \leq \dfrac{L}{2}",
-    r"\displaystyle \dfrac{\mathit{qD}\,x \left(L - x\right)}{2} & \text{for}\: x \leq L",
-    r"\displaystyle 0 & \text{otherwise}",
+    r"\displaystyle \dfrac{x P}{2} & \text{si}\: x \leq \dfrac{L}{2}",
+    r"\displaystyle \dfrac{\mathit{qD}\,x \left(L - x\right)}{2} & \text{si}\: x \leq L",
+    r"\displaystyle 0 & \text{en otro caso}",
 )
 FLUSH = r"\begin{cases} " + r" \\ ".join(BRANCHES) + r" \end{cases}"
 SPACED = r"\begin{cases} " + r" \\[4pt] ".join(BRANCHES) + r" \end{cases}"
@@ -155,9 +155,9 @@ def test_the_branches_still_say_what_they_said(page):
     said = [branch.strip() for branch in body.split(r"\\[4pt]")]
 
     assert said == [
-        r"\displaystyle \dfrac{P x}{2} & \text{for}\: x \leq \dfrac{L}{2}",
-        r"\displaystyle \dfrac{P \left(L - x\right)}{2} & \text{for}\: x \leq L",
-        r"\displaystyle 0 & \text{otherwise}",
+        r"\displaystyle \dfrac{P x}{2} & \text{si}\: x \leq \dfrac{L}{2}",
+        r"\displaystyle \dfrac{P \left(L - x\right)}{2} & \text{si}\: x \leq L",
+        r"\displaystyle 0 & \text{en otro caso}",
     ], said
 
 

@@ -39,9 +39,9 @@ M_P(x) = piecewise(P*x/2, x <= L/2, P*(L - x)/2, x <= L, 0*kgf*cm)
 """
 
 CASES = (
-    r"\begin{cases} \frac{x P}{2} & \text{for}\: x \leq \frac{L}{2} \\"
-    r"\frac{P \left(L - x\right)}{2} & \text{for}\: x \leq L \\"
-    r"0 & \text{otherwise} \end{cases}"
+    r"\begin{cases} \frac{x P}{2} & \text{si}\: x \leq \frac{L}{2} \\"
+    r"\frac{P \left(L - x\right)}{2} & \text{si}\: x \leq L \\"
+    r"0 & \text{en otro caso} \end{cases}"
 )
 
 
@@ -59,9 +59,9 @@ def page(monkeypatch):
 def test_a_cases_body_is_measured_across_its_branches():
     """Stated as the property: the whole body costs about what one branch costs."""
     branches = [
-        r"\frac{x P}{2} & \text{for}\: x \leq \frac{L}{2}",
-        r"\frac{P \left(L - x\right)}{2} & \text{for}\: x \leq L",
-        r"0 & \text{otherwise}",
+        r"\frac{x P}{2} & \text{si}\: x \leq \frac{L}{2}",
+        r"\frac{P \left(L - x\right)}{2} & \text{si}\: x \leq L",
+        r"0 & \text{en otro caso}",
     ]
     widest = max(_latex_visual_width(branch) for branch in branches)
     added_up = sum(_latex_visual_width(branch) for branch in branches)
@@ -72,8 +72,8 @@ def test_a_cases_body_is_measured_across_its_branches():
 
 def test_the_widest_branch_decides_even_when_it_is_the_last():
     """The order of the branches cannot change what the body costs."""
-    short = r"0 & \text{otherwise}"
-    long = r"\frac{" + "a" * 30 + r"}{2} & \text{for}\: x \leq L"
+    short = r"0 & \text{en otro caso}"
+    long = r"\frac{" + "a" * 30 + r"}{2} & \text{si}\: x \leq L"
     first = rf"\begin{{cases}} {long} \\ {short} \end{{cases}}"
     last = rf"\begin{{cases}} {short} \\ {long} \end{{cases}}"
 
@@ -83,7 +83,7 @@ def test_the_widest_branch_decides_even_when_it_is_the_last():
 def test_a_condition_counts_toward_its_branch():
     """A branch is its value and its condition, side by side on one line."""
     bare = r"\begin{cases} 0 \\ 1 \end{cases}"
-    with_condition = r"\begin{cases} 0 & \text{for}\: x \leq L \\ 1 \end{cases}"
+    with_condition = r"\begin{cases} 0 & \text{si}\: x \leq L \\ 1 \end{cases}"
 
     assert _latex_visual_width(with_condition) > _latex_visual_width(bare)
 
@@ -134,5 +134,5 @@ def test_a_fraction_is_still_measured_across():
 def test_the_branches_still_say_what_they_said(page):
     """Read past the fraction's size, which is a separate question from its width."""
     written = page(BEAM).replace(r"\dfrac", r"\frac")
-    assert r"\text{for}\: x \leq \frac{L}{2}" in written, written
-    assert r"\text{otherwise}" in written, written
+    assert r"\text{si}\: x \leq \frac{L}{2}" in written, written
+    assert r"\text{en otro caso}" in written, written

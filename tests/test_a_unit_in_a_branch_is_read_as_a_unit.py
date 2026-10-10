@@ -95,8 +95,8 @@ def test_the_branch_answers_in_the_unit_it_was_written_in(page):
     """The row the engineer reads off."""
     written = page(SHEET + "numeric(q_v(x))\n").replace(r"\dfrac", r"\frac")
 
-    assert r"5.00\,\frac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise}" in written, written
-    assert r"8.00\,\frac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00" in written, written
+    assert r"5.00\,\frac{\mathrm{kN}}{\mathrm{m}} & \text{en otro caso}" in written, written
+    assert r"8.00\,\frac{\mathrm{kN}}{\mathrm{m}} & \text{si}\: x < 3.00" in written, written
 
 
 def test_a_unit_stays_a_unit_and_is_not_substituted(page):

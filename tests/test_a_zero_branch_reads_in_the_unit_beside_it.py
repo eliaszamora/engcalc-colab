@@ -156,7 +156,7 @@ def test_the_conditions_are_untouched(page):
     ]
 
     assert conditions == [
-        r"\text{for}\: x < \left(3.00\,\mathrm{m}\right)",
-        r"\text{for}\: x \leq \left(6.00\,\mathrm{m}\right)",
-        r"\text{otherwise}",
+        r"\text{si}\: x < \left(3.00\,\mathrm{m}\right)",
+        r"\text{si}\: x \leq \left(6.00\,\mathrm{m}\right)",
+        r"\text{en otro caso}",
     ], conditions

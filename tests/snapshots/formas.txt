@@ -324,15 +324,15 @@ summary: 1200
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{1} & = & \displaystyle 8.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[17pt]
 \displaystyle q_{2} & = & \displaystyle 4.00\,\frac{\mathrm{kN}}{\mathrm{m}} \\[17pt]
 \displaystyle a_{q} & = & \displaystyle 3.00\,\mathrm{m} \\[8pt]
-\displaystyle q_{v}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
-\displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\[4pt]
-\displaystyle 4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
-\displaystyle 0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
+\displaystyle q_{v}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{si}\: x < a_{q} \\[4pt]
+\displaystyle q_{2} & \text{si}\: x \leq L \\[4pt]
+\displaystyle 0 & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{si}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{si}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{si}\: x < 3.00\,\mathrm{m} \\[4pt]
+\displaystyle 4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{si}\: x \leq 6.00\,\mathrm{m} \\[4pt]
+\displaystyle 0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{en otro caso} \end{cases} \end{array}
 
 === 75 · HTML ===
 <div style="height:18px"></div>
@@ -350,12 +350,12 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 80 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
-\displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{for}\: x < 3.00\,\mathrm{m} \\[4pt]
-\displaystyle 5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \end{array}
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{si}\: x < a_{q} \\[4pt]
+\displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{si}\: x < \left(3.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle 8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{si}\: x < 3.00\,\mathrm{m} \\[4pt]
+\displaystyle 5.00\,\dfrac{\mathrm{kN}}{\mathrm{m}} & \text{en otro caso} \end{cases} \end{array}
 
 === 81 · HTML ===
 <div style="height:18px"></div>
@@ -373,12 +373,12 @@ summary: 1200
 <div style="height:18px"></div>
 
 === 86 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: 9\,\mathrm{m} < a_{q} \\[4pt]
-\displaystyle q_{2} & \text{for}\: 9\,\mathrm{m} \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) < \left(3.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{for}\: \left(9.00\,\mathrm{m}\right) \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{otherwise} \end{cases} \\[17pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{si}\: 9\,\mathrm{m} < a_{q} \\[4pt]
+\displaystyle q_{2} & \text{si}\: 9\,\mathrm{m} \leq L \\[4pt]
+\displaystyle 0 & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle \left(8.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{si}\: \left(9.00\,\mathrm{m}\right) < \left(3.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(4.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{si}\: \left(9.00\,\mathrm{m}\right) \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(0.00\,\dfrac{\mathrm{kN}}{\mathrm{m}}\right) & \text{en otro caso} \end{cases} \\[17pt]
 & = & \displaystyle 0.00\,\frac{\mathrm{kN}}{\mathrm{m}} \end{array}
 
 === 87 · HTML ===
@@ -398,12 +398,12 @@ summary: 1200
 
 === 92 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle P_{v} & = & \displaystyle 40.00\,\mathrm{kN} \\[8pt]
-\displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P_{v} x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
-\displaystyle \dfrac{P_{v} \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,x}{2} & \text{for}\: x \leq \dfrac{\left(6.00\,\mathrm{m}\right)}{2} \\[4pt]
-\displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,\left(\left(6.00\,\mathrm{m}\right) - x\right)}{2} & \text{for}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
-\displaystyle \left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 3.00\,\mathrm{m} \\[4pt]
-\displaystyle 120.00\,\mathrm{kN} \cdot \mathrm{m} - 20.00\,\mathrm{kN}\,x & \text{for}\: x \leq 6.00\,\mathrm{m} \\[4pt]
-\displaystyle 0.00\,\mathrm{kN} \cdot \mathrm{m} & \text{otherwise} \end{cases} \end{array}
+\displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P_{v} x}{2} & \text{si}\: x \leq \dfrac{L}{2} \\[4pt]
+\displaystyle \dfrac{P_{v} \left(L - x\right)}{2} & \text{si}\: x \leq L \\[4pt]
+\displaystyle 0 & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,x}{2} & \text{si}\: x \leq \dfrac{\left(6.00\,\mathrm{m}\right)}{2} \\[4pt]
+\displaystyle \dfrac{\left(40.00\,\mathrm{kN}\right)\,\left(\left(6.00\,\mathrm{m}\right) - x\right)}{2} & \text{si}\: x \leq \left(6.00\,\mathrm{m}\right) \\[4pt]
+\displaystyle \left(0.00\,\mathrm{kN} \cdot \mathrm{m}\right) & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle 20.00\,\mathrm{kN}\,x & \text{si}\: x \leq 3.00\,\mathrm{m} \\[4pt]
+\displaystyle 120.00\,\mathrm{kN} \cdot \mathrm{m} - 20.00\,\mathrm{kN}\,x & \text{si}\: x \leq 6.00\,\mathrm{m} \\[4pt]
+\displaystyle 0.00\,\mathrm{kN} \cdot \mathrm{m} & \text{en otro caso} \end{cases} \end{array}

@@ -325,15 +325,15 @@ summary: $1.22 \times 10^{7}$
 \hspace{0.2em}\begin{array}{lcl} \displaystyle q_{1} & = & \displaystyle 8.16\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[17pt]
 \displaystyle q_{2} & = & \displaystyle 4.08\,\frac{\mathrm{kgf}}{\mathrm{cm}} \\[17pt]
 \displaystyle a_{q} & = & \displaystyle 300.00\,\mathrm{cm} \\[8pt]
-\displaystyle q_{v}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
-\displaystyle q_{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: x < \left(300.00\,\mathrm{cm}\right) \\[4pt]
-\displaystyle \left(4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: x \leq \left(600.00\,\mathrm{cm}\right) \\[4pt]
-\displaystyle \left(0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle 8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{for}\: x < 300.00\,\mathrm{cm} \\[4pt]
-\displaystyle 4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{for}\: x \leq 600.00\,\mathrm{cm} \\[4pt]
-\displaystyle 0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{otherwise} \end{cases} \end{array}
+\displaystyle q_{v}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{si}\: x < a_{q} \\[4pt]
+\displaystyle q_{2} & \text{si}\: x \leq L \\[4pt]
+\displaystyle 0 & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{si}\: x < \left(300.00\,\mathrm{cm}\right) \\[4pt]
+\displaystyle \left(4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{si}\: x \leq \left(600.00\,\mathrm{cm}\right) \\[4pt]
+\displaystyle \left(0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle 8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{si}\: x < 300.00\,\mathrm{cm} \\[4pt]
+\displaystyle 4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{si}\: x \leq 600.00\,\mathrm{cm} \\[4pt]
+\displaystyle 0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{en otro caso} \end{cases} \end{array}
 
 === 75 · HTML ===
 <div style="height:18px"></div>
@@ -351,12 +351,12 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 80 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: x < a_{q} \\[4pt]
-\displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: x < \left(300.00\,\mathrm{cm}\right) \\[4pt]
-\displaystyle \left(5.10\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle 8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{for}\: x < 300.00\,\mathrm{cm} \\[4pt]
-\displaystyle 5.10\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{otherwise} \end{cases} \end{array}
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{w}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{si}\: x < a_{q} \\[4pt]
+\displaystyle \dfrac{5\,\mathrm{kN}}{\mathrm{m}} & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{si}\: x < \left(300.00\,\mathrm{cm}\right) \\[4pt]
+\displaystyle \left(5.10\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle 8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{si}\: x < 300.00\,\mathrm{cm} \\[4pt]
+\displaystyle 5.10\,\dfrac{\mathrm{kgf}}{\mathrm{cm}} & \text{en otro caso} \end{cases} \end{array}
 
 === 81 · HTML ===
 <div style="height:18px"></div>
@@ -374,12 +374,12 @@ summary: $1.22 \times 10^{7}$
 <div style="height:18px"></div>
 
 === 86 · Math ===
-\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{for}\: 9\,\mathrm{m} < a_{q} \\[4pt]
-\displaystyle q_{2} & \text{for}\: 9\,\mathrm{m} \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: \left(900.00\,\mathrm{cm}\right) < \left(300.00\,\mathrm{cm}\right) \\[4pt]
-\displaystyle \left(4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{for}\: \left(900.00\,\mathrm{cm}\right) \leq \left(600.00\,\mathrm{cm}\right) \\[4pt]
-\displaystyle \left(0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{otherwise} \end{cases} \\[17pt]
+\hspace{0.2em}\begin{array}{lcl} \displaystyle q_{v}\left(9\,\mathrm{m}\right) & = & \displaystyle \begin{cases} \displaystyle q_{1} & \text{si}\: 9\,\mathrm{m} < a_{q} \\[4pt]
+\displaystyle q_{2} & \text{si}\: 9\,\mathrm{m} \leq L \\[4pt]
+\displaystyle 0 & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle \left(8.16\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{si}\: \left(900.00\,\mathrm{cm}\right) < \left(300.00\,\mathrm{cm}\right) \\[4pt]
+\displaystyle \left(4.08\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{si}\: \left(900.00\,\mathrm{cm}\right) \leq \left(600.00\,\mathrm{cm}\right) \\[4pt]
+\displaystyle \left(0.00\,\dfrac{\mathrm{kgf}}{\mathrm{cm}}\right) & \text{en otro caso} \end{cases} \\[17pt]
 & = & \displaystyle 0.00\,\frac{\mathrm{kgf}}{\mathrm{cm}} \end{array}
 
 === 87 · HTML ===
@@ -399,12 +399,12 @@ summary: $1.22 \times 10^{7}$
 
 === 92 · Math ===
 \hspace{0.2em}\begin{array}{lcl} \displaystyle P_{v} & = & \displaystyle 4078.86\,\mathrm{kgf} \\[8pt]
-\displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P_{v} x}{2} & \text{for}\: x \leq \dfrac{L}{2} \\[4pt]
-\displaystyle \dfrac{P_{v} \left(L - x\right)}{2} & \text{for}\: x \leq L \\[4pt]
-\displaystyle 0 & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle \dfrac{\left(4078.86\,\mathrm{kgf}\right)\,x}{2} & \text{for}\: x \leq \dfrac{\left(600.00\,\mathrm{cm}\right)}{2} \\[4pt]
-\displaystyle \dfrac{\left(4078.86\,\mathrm{kgf}\right)\,\left(\left(600.00\,\mathrm{cm}\right) - x\right)}{2} & \text{for}\: x \leq \left(600.00\,\mathrm{cm}\right) \\[4pt]
-\displaystyle \left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) & \text{otherwise} \end{cases} \\[17pt]
-& = & \displaystyle \begin{cases} \displaystyle 2039.43\,\mathrm{kgf}\,x & \text{for}\: x \leq 300.00\,\mathrm{cm} \\[4pt]
-\displaystyle 1.22 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} - 2039.43\,\mathrm{kgf}\,x & \text{for}\: x \leq 600.00\,\mathrm{cm} \\[4pt]
-\displaystyle 0.00\,\mathrm{kgf} \cdot \mathrm{cm} & \text{otherwise} \end{cases} \end{array}
+\displaystyle M_{Pv}\left(x\right) & = & \displaystyle \begin{cases} \displaystyle \dfrac{P_{v} x}{2} & \text{si}\: x \leq \dfrac{L}{2} \\[4pt]
+\displaystyle \dfrac{P_{v} \left(L - x\right)}{2} & \text{si}\: x \leq L \\[4pt]
+\displaystyle 0 & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle \dfrac{\left(4078.86\,\mathrm{kgf}\right)\,x}{2} & \text{si}\: x \leq \dfrac{\left(600.00\,\mathrm{cm}\right)}{2} \\[4pt]
+\displaystyle \dfrac{\left(4078.86\,\mathrm{kgf}\right)\,\left(\left(600.00\,\mathrm{cm}\right) - x\right)}{2} & \text{si}\: x \leq \left(600.00\,\mathrm{cm}\right) \\[4pt]
+\displaystyle \left(0.00\,\mathrm{kgf} \cdot \mathrm{cm}\right) & \text{en otro caso} \end{cases} \\[17pt]
+& = & \displaystyle \begin{cases} \displaystyle 2039.43\,\mathrm{kgf}\,x & \text{si}\: x \leq 300.00\,\mathrm{cm} \\[4pt]
+\displaystyle 1.22 \times 10^{6}\,\mathrm{kgf} \cdot \mathrm{cm} - 2039.43\,\mathrm{kgf}\,x & \text{si}\: x \leq 600.00\,\mathrm{cm} \\[4pt]
+\displaystyle 0.00\,\mathrm{kgf} \cdot \mathrm{cm} & \text{en otro caso} \end{cases} \end{array}

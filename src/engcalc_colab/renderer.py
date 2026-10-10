@@ -585,7 +585,11 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if flat is not expr:
             return self._print_Piecewise(flat)
         written = super()._print_Piecewise(expr)
-        start = written.index(r"\begin{cases}") + len(r"\begin{cases}")
+        # In the page's language: SymPy writes "for ... otherwise" (0.49.0).
+        written = written.replace(r"\text{for}", r"\text{si}").replace(
+            r"\text{otherwise}", r"\text{en otro caso}"
+        )
+        start =written.index(r"\begin{cases}") + len(r"\begin{cases}")
         end = written.index(r"\end{cases}")
         cases = [
             rf"\displaystyle {case.strip()}" for case in written[start:end].split(r"\\")
@@ -2962,7 +2966,7 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
             )
 
         if branch.operator is None:
-            rendered.append(rf"{value_latex} & \text{{otherwise}}")
+            rendered.append(rf"{value_latex} & \text{{en otro caso}}")
             continue
 
         breakpoint = branch.breakpoint
@@ -2975,7 +2979,7 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
                 settings,
             )
         rendered.append(
-            rf"{value_latex} & \text{{for}}\: "
+            rf"{value_latex} & \text{{si}}\: "
             rf"{variable_latex} {operator_latex[branch.operator]} {breakpoint_latex}"
         )
 
