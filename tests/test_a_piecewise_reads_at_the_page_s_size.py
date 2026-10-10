@@ -146,9 +146,9 @@ def test_the_answer_row_still_answers(page):
     kn_per_m = r"\frac{\mathrm{kN}}{\mathrm{m}}"
 
     assert said == [
-        rf"8.00\,{kn_per_m} & \text{{for}}\: x < 3.00\,\mathrm{{m}}",
-        rf"4.00\,{kn_per_m} & \text{{for}}\: x \leq 6.00\,\mathrm{{m}}",
-        rf"0.00\,{kn_per_m} & \text{{otherwise}}",
+        rf"8.00\,{kn_per_m} & \text{{si}}\: x < 3.00\,\mathrm{{m}}",
+        rf"4.00\,{kn_per_m} & \text{{si}}\: x \leq 6.00\,\mathrm{{m}}",
+        rf"0.00\,{kn_per_m} & \text{{en otro caso}}",
     ], said
 
 

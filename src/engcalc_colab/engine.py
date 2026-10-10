@@ -5420,10 +5420,26 @@ class _Evaluator(ast.NodeVisitor):
                     value.to(canonical_unit)
                     for value in values
                 )
-            except DimensionalityError as exc:
-                raise EngEvaluationError(
-                    "table response columns have incompatible units"
-                ) from exc
+            except DimensionalityError:
+                # A column of another kind - a load beside its moment - reads in its own
+                # unit; it was refused "incompatible units" (his chapter 3; 0.49.0).
+                own_unit = values[0].units
+                try:
+                    normalized_values = tuple(value.to(own_unit) for value in values)
+                except DimensionalityError as exc:
+                    raise EngEvaluationError(
+                        f"the column {response.display_label} of this table has incompatible "
+                        "units from one row to the next"
+                    ) from exc
+                columns.append(
+                    TableColumn(
+                        display_label=response.display_label,
+                        unit=own_unit,
+                        values=normalized_values,
+                        reference=None,
+                    )
+                )
+                continue
 
             reference = None
             if all(float(value.magnitude) == 0 for value in normalized_values):

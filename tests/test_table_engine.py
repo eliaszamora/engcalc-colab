@@ -125,7 +125,8 @@ def test_table_reports_unresolved_non_table_symbol():
     assert "numeric evaluation requires values for: q" in str(exc_info.value)
 
 
-def test_table_rejects_incompatible_response_dimensions():
+def test_table_columns_of_different_kinds_each_keep_their_unit():
+    """Refused until 0.49.0 ("incompatible units"): a shear beside its moment."""
     engine = EngineeringEngine()
     eval_cell(
         engine,
@@ -135,11 +136,10 @@ def test_table_rejects_incompatible_response_dimensions():
         "L := 2*m",
     )
 
-    with pytest.raises(
-        EngEvaluationError,
-        match="table response columns have incompatible units",
-    ):
-        eval_cell(engine, "table(V(x), M(x), x, 0, L, 3)")
+    result = eval_cell(engine, "table(V(x), M(x), x, 0, L, 3)")[-1]
+    shear, moment = result.columns
+    assert shear.values[-1].to("kN").magnitude == pytest.approx(4.0)
+    assert moment.values[-1].to("kN*m").magnitude == pytest.approx(8.0)
 
 
 def test_table_invalid_count_is_rejected_end_to_end():

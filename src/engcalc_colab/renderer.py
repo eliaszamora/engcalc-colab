@@ -5344,6 +5344,16 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
             best_score is None or candidate_score < best_score
         ):
             best_unit, best_score = physical[0].to(name).units, candidate_score
+    # A tie keeps the family member the values already carry: `L_i := {i}*10[ft]` read
+    # `[in] 120.00` in its loop's table (his chapter 10; 0.49.0). Only a member - not a
+    # compound the algebra left, which is what the note above is about.
+    if best_score is not None and fallback is not None and fallback != best_unit:
+        try:
+            members = [registry_unit for registry_unit in (physical[0].to(name).units for name in family)]
+        except DimensionalityError:
+            members = []
+        if fallback in members and score(fallback) == best_score:
+            return fallback
     return best_unit
 
 
