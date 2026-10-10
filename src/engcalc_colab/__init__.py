@@ -1,4 +1,4 @@
-__version__ = "0.49.0"
+__version__ = "0.50.0"
 
 
 def load_ipython_extension(ipython):

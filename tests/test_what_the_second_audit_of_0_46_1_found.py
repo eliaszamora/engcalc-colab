@@ -131,8 +131,9 @@ def test_a_lower_bound_from_an_entry_is_said_in_its_unit(sheet):
 
 def test_an_upper_bound_from_an_entry_beside_a_plain_zero(sheet):
     _, printed = sheet("f := [100[kip]; 50[kip]]\nx := solve(eq(x, 300[kip]), x, 0, f[1])\n")
-    # The matrix holds its entries in base units and the page shows f in kN: so is the bound.
-    assert "444.82 kN" in printed and "kg" not in printed, printed
+    # The matrix holds its entries in base units; a kip sheet shows them in kip since 0.50.0,
+    # and the bound reads as the page does (it read 444.82 kN).
+    assert "100.00 kip" in printed and "kg" not in printed, printed
 
 
 def test_a_bound_typed_in_metres_stays_in_metres(sheet):

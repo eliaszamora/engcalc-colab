@@ -80,7 +80,8 @@ def test_a_typed_short_number_still_reads_as_typed(sheet):
 
 def test_a_name_read_from_kip_entries_is_said_in_the_page_s_unit(sheet):
     _, printed = sheet("f := [100[kip]; 50[kip]]\nF := f[1]\n% if F > 0.5[m]:\ny := 1\n% end\n")
-    assert "F > 0.5[m]: kN against m" in printed and "kg" not in printed, printed
+    # In kip since 0.50.0: the sheet writes kips and no kilonewton.
+    assert "F > 0.5[m]: kip against m" in printed and "kg" not in printed, printed
 
 
 def test_a_name_with_a_written_unit_is_said_as_written(sheet):

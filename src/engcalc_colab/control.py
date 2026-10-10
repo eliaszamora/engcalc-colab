@@ -609,6 +609,62 @@ def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
                 f"{value!r}: {exc}"
             ) from exc
 
+    # Two loops, one directly inside the other with nothing else in it, are one table over
+    # their pairs: `% for i` / `% for j` printed every pass as it came, a row per value (his
+    # chapter 9; 0.50.0). The pairs are worked out here, the inner range at each outer value.
+    inner = _the_only_loop_inside(node)
+    if inner is not None and not (scope.gathering or scope.depth) and _gathers(inner.body):
+        pairs = []
+        for value in values:
+            take(value)
+            try:
+                inner_values = list(_evaluated(inner.header.iter, scope, inner.line_no))
+            except TypeError as exc:
+                raise EngEvaluationError(
+                    f"line {inner.line_no}: % for goes through a list, a range or an enumerate; "
+                    f"{ast.unparse(inner.header.iter)} is not one"
+                ) from exc
+            pairs.extend((value, each) for each in inner_values)
+        if len(pairs) > _MOST_ITERATIONS:
+            raise EngEvaluationError(
+                f"line {line_no}: these % for run more than {_MOST_ITERATIONS} times together, "
+                "more rows than a memoria can hold"
+            )
+        both = _ForBlock(
+            line_no=line_no,
+            header=ast.For(
+                target=ast.Tuple(elts=[node.header.target, inner.header.target], ctx=ast.Store()),
+                iter=ast.List(elts=[], ctx=ast.Load()),
+                body=[],
+                orelse=[],
+            ),
+            body=inner.body,
+        )
+        joint = compile(
+            ast.fix_missing_locations(ast.Module(
+                body=[ast.Assign(targets=[both.header.target], value=ast.Name("__value__", ast.Load()))],
+                type_ignores=[],
+            )),
+            "<% for>",
+            "exec",
+        )
+
+        def take_both(value) -> None:
+            exec(joint, {"__builtins__": _BUILTINS, "__value__": value}, scope)  # noqa: S102 - the sheet's own % layer
+
+        scope.gathering = True
+        scope.depth += 1
+        try:
+            yield from _gathered(both, pairs, take_both, engine, settings, scope)
+        finally:
+            scope.gathering = False
+            scope.depth -= 1
+        # The outer name ends at its last value, as two loops leave it, even when that value
+        # ran no inner pass (the audit of 0.50.0).
+        if values:
+            take(values[-1])
+        return
+
     # A loop inside another streams its lines into it: one that gathers shows its assembly
     # once for both, and one that does not shows its rows as they come - an inner table per
     # outer pass had no outer index to say which it was. A loop with nothing to gather shows
@@ -717,7 +773,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
             if entry.kind == "cell" and entry.key in cells:
                 cells[entry.key][entry.index] = entry.result.quantity
                 said.extend(notice for notice in entry.notices if notice not in said)
-        variable = [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+        variable = _target_names(node.header.target)
         table = loop_table_latex(
             variable, values, [(_written_target(key[0]), cells[key]) for key in columns], _current(settings)
         )
@@ -736,7 +792,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
 
 
 def _header_names(node: _ForBlock) -> list[str]:
-    return [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+    return _target_names(node.header.target)
 
 
 def _reads_its_earlier_passes(item, earlier) -> bool:
@@ -1608,7 +1664,6 @@ def _a_value(result) -> bool:
     return (
         isinstance(result, NumericAssignmentResult)
         and getattr(result, "equation", None) is None
-        and not getattr(result, "shown_as_written", False)
     )
 
 
@@ -1665,3 +1720,39 @@ def _named_in_text(insert, match: re.Match, line_no: int) -> str:
     if not isinstance(written, str) or written == match.group(1):
         return match.group(0)
     return written
+
+
+def _the_only_loop_inside(node: _ForBlock) -> _ForBlock | None:
+    """The `% for` that is all a `% for` holds - no line, helper or `% if` beside it - and
+    that holds no loop or `% break` itself; else None."""
+    children = [
+        child for child in node.body
+        if not (isinstance(child, _Stretch) and not any(line.strip() for line in child.lines))
+    ]
+    if len(children) != 1 or not isinstance(children[0], _ForBlock):
+        return None
+    inner = children[0]
+    if any(isinstance(child, (_ForBlock, _WhileBlock)) for child in inner.body):
+        return None
+    # A `% break` stops the inner loop alone; over the pairs it would stop both.
+    if _breaks(inner.body):
+        return None
+    return inner
+
+
+def _breaks(body: list) -> bool:
+    return any(
+        isinstance(child, _Break)
+        or (isinstance(child, _IfBlock) and any(_breaks(branch.body) for branch in child.branches))
+        for child in body
+    )
+
+
+def _target_names(target) -> list[str]:
+    """A loop's names in the order they are written: `(e, L), j` is e, L, j. `ast.walk` goes
+    breadth first and gave j, e, L for two loops read as one (the audit of 0.50.0)."""
+    if isinstance(target, ast.Name):
+        return [target.id]
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return [name for element in target.elts for name in _target_names(element)]
+    return []
