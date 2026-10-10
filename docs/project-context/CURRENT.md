@@ -8,13 +8,34 @@
 
 ## Where things stand today
 
-_2026-10-07._
+_2026-10-09._
 
 | | |
 |---|---|
-| released | **0.46.2** - #404, `987c589`, closed (checked in his Colab) |
-| before that | **0.46.1** - #401, `928b716`, closed |
-| default suite | **3769 passing** on 0.46.2 (SymPy 1.14 and 1.13.3) |
+| released | **0.47.0** - #406, `20933d1`, closed (checked in his Colab) |
+| before that | **0.46.2** - #404, `987c589`, closed |
+| default suite | **3858 passing** on 0.47.0 (SymPy 1.14 and 1.13.3) |
+
+**0.47.0 is closed** (#406, squash `20933d1`, 6/6 CI on `ee7ed6a`, merged with his "procede
+según tu criterio y recomendación, tienes mi autorización"): `eigenvals(K, G)` with a singular G,
+worked out exactly (design and audit history in the block below). Release gate: audit 13
+(realistic use) **CLEAN** on `5ca4630`; audits 1-12 each NOT CLEAN and fixed (from 6 on, every high
+finding a constructed antisymmetric coupling under the 1e-12 symmetry test; realistic families
+never tripped the gate). Evidence on `ee7ed6a`: version assertions 7 RED -> GREEN; suite 3858 on
+both SymPy; wheel from `git archive`, 33 files identical to src; clean Colab-pinned venv adds Pint +
+4 small deps, upgrades nothing (mpmath comes with SymPy); smoke outside the repo 67/67 (2 new
+eigenvals checks); suite against the installed wheel passes; 24 reference pages byte-identical.
+Corpus of his 270 sheets on `5ca4630`: 268 as main, p7_17 unstable on main, p10_5 differs only in
+K_t's "términos no nulos" count (117 vs 119/113). After merge: `git+https` of main resolves to
+`20933d1`, reports 0.47.0, smoke 67/67. **Checked in his Colab** (2026-10-09, Claude in Chrome):
+cell 0 installed main, cell 5 holds the 0.47.0 check and shows `eigenvals(K, G)` with a singular G
+= 1.00 (main refused it) and a column on a 1e20 spring = [12.00, 12.00] (exact); screenshots sent.
+Known limits, recorded: a pencil with an antisymmetric part built just under the 1e-12 symmetry
+test can still pass as symmetric in shapes no audit tried; complex λ are refused even where main
+printed a real part; ~10 s at 60 DOF, ~21 s at 75.
+**Exact next step:** his pick - the page simplifying `mm·MPa/m` (would let max/min keep a strain's
+unit), the rest of chapter 10's list (argmin, `% break`, presentation), or the `=`-line items noted
+at 0.46.2 (an exact root written `2.0`; a bracketed `kip*ft` written `ft·kip`).
 
 **0.46.2 is closed** (#404, squash `987c589`, 6/6 CI on `6621050`, merged with his "fusiona
 cuando la CI esté verde"): a `git+https` install of main in a clean Colab-pinned venv reports
@@ -60,7 +81,7 @@ outside the repo 65/65 (4 new checks); suite against the installed wheel from a 
 `python -I` drops PYTHONHASHSEED/PYTHONIOENCODING, do not use it for this comparison.
 Corpus of his 270 sheets main vs `79f2ef9`: 269 identical, p7_17 unstable on main.
 
-**In progress - 0.47.0, `eigenvals(K, G)` with a singular G** (his "sigue con eigenvals",
+**0.47.0 - `eigenvals(K, G)` with a singular G (released, see above)** (his "sigue con eigenvals",
 2026-10-07; his choices 2026-10-09: "rediseñar la capa", then "acotar a simétricos"), branch
 `fix/eigenvals-singular-g`, head `4d0d869`, pushed, no PR yet.
 
@@ -102,9 +123,7 @@ ok / 22 refused / 0 bad, a8 casesA/B 155/155, his p10_8/p10_9 run; corpus of his
 10 s at 60, 21 s at 75 (one call). Harnesses: tools/eigen_audit (battery.sh); the audits'
 scripts and cases live in the session scratchpad (eaudit1-12), their repro cases are pinned in
 tests/test_eigenvals_in_sixty_figures.py and tests/sheets/.
-**Exact next step:** read audit 12; if CLEAN, the full corpus on the final commit, then the
-release routine (0.47.0: version bump 7 places, wheel, clean venv, smoke incl. an eigenvals
-check, suite on the wheel, 24 pages, PR, CI 6/6, merge with his authorization, Colab check).
+Released as 0.47.0 (#406) after audit 13 came back CLEAN; see the block above.
 
 **Release routine that worked for 0.46.1** (see also `NEXT.md`): TDD contracts RED first;
 suite on `.venv` (SymPy 1.14) and a Colab-like venv (py 3.12 + ipython 7.34.0, numpy 2.2.6,
