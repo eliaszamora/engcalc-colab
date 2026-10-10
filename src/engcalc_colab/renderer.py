@@ -1795,9 +1795,43 @@ def _unit_family(quantity) -> tuple[str, ...]:
         table = _US_CUSTOMARY_UNIT_FAMILIES
     elif _is_technical(quantity):
         table = _TECHNICAL_UNIT_FAMILIES
+    elif _in_base_units(quantity) and _the_sheet_writes_only("us"):
+        # A matrix of numbers holds its entries in base units, and a kip-inch sheet's
+        # stiffness read `10^3 [42.32 ...] kN/m` beside its scalar `k` in kip/ft (his chapter
+        # 9; 0.50.0). What the sheet writes decides, when it writes one system only.
+        table = _US_CUSTOMARY_UNIT_FAMILIES
+    elif _in_base_units(quantity) and _the_sheet_writes_only("technical"):
+        table = _TECHNICAL_UNIT_FAMILIES
     else:
         table = _UNIT_FAMILIES
     return table.get(key, ())
+
+
+_SHEET_SYSTEMS = {
+    "us": frozenset({"kip", "ksi", "psi", "inch", "in", "ft", "lbf", "lb"}),
+    "technical": frozenset({"kgf", "tonf", "ton"}),
+    "si": frozenset({"N", "kN", "MN", "Pa", "kPa", "MPa", "GPa", "mm", "cm", "m", "km"}),
+}
+
+
+def _the_sheet_writes_only(system: str) -> bool:
+    """True when the units the sheet writes as measurements belong to `system` and to no
+    other: a kip-inch sheet writes `ksi`, `in`, `ft` and never a kilonewton."""
+    written = {name.removeprefix(BRACKETED_UNIT_PREFIX) for name in MEASURED_UNITS.get()}
+    if not written & _SHEET_SYSTEMS[system]:
+        return False
+    return not any(written & units for other, units in _SHEET_SYSTEMS.items() if other != system)
+
+
+def _in_base_units(quantity) -> bool:
+    """True when every unit the value carries is a base unit - metres, kilograms, seconds -
+    as a matrix of numbers holds its entries."""
+    try:
+        return all(
+            name in ("meter", "kilogram", "second", "radian") for name in quantity.units._units
+        )
+    except AttributeError:
+        return False
 
 
 def _factor_shape(quantity) -> tuple[str, ...]:
@@ -1860,6 +1894,12 @@ def _unit_is_the_engineers(quantity, settings: RenderSettings) -> bool:
     reason recorded in `HOW-THIS-WORK-GOES-WRONG.md` section 6.
     """
     family = _unit_family(quantity)
+    # Base units on a sheet that writes another system are not the engineer's: they are how
+    # a matrix of numbers holds its entries (0.50.0).
+    if _in_base_units(quantity) and (
+        _the_sheet_writes_only("us") or _the_sheet_writes_only("technical")
+    ):
+        return False
     # Units rather than their spellings, for the reason `_display_quantity` gives at its
     # own copy of this question: `meter * kilonewton` and `kilonewton * meter` are one
     # unit written two ways, and only the string comparison disagreed.
