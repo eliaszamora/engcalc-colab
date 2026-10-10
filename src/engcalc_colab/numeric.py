@@ -33,6 +33,8 @@ _UNIT_ALIASES = {
     "mm": "millimeter",
     "cm": "centimeter",
     "m": "meter",
+    # A span or a route in kilometres (his chapter 10; 0.48.0). Written, never chosen.
+    "km": "kilometer",
     "N": "newton",
     "kN": "kilonewton",
     # `MN` is here and deliberately not in `_UNIT_FAMILIES`, and the two tables answer
@@ -67,6 +69,8 @@ _UNIT_ALIASES = {
     "Hz": "hertz",
     "rad": "radian",
     "deg": "degree",
+    # `5[percent]` is 0.05: a ratio written the way a code writes it (0.48.0).
+    "percent": "percent",
     # US customary. Pint knows every one of these already, so this is a table of the
     # spellings an engineer writes, not a set of definitions. Two traps it steps around:
     # `inch` rather than `in`, because `in` is a Python keyword and can never be a name
@@ -74,6 +78,11 @@ _UNIT_ALIASES = {
     # which is Pint's force, where its `kilopound` is a mass of 453 kg, one letter away
     # and never what a structural engineer means by the word.
     "kip": "kip",
+    # A pound on a structural sheet is a force - `500[lb]`, `w := 30[lb/ft]`, a unit weight
+    # in `lb/ft^3` - for the reason `kip` above is: Pint's `lb` is a mass of 0.45 kg, and a
+    # load in it would not add to a load in kip (his chapter 9; 0.48.0).
+    "lbf": "force_pound",
+    "lb": "force_pound",
     "ksi": "ksi",
     "psi": "psi",
     "inch": "inch",

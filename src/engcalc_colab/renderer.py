@@ -1387,6 +1387,20 @@ _PALETTES: dict[str, dict[tuple[tuple[str, int], ...], str]] = {
         (("[time]", 1),): "s",
         (("[time]", -1),): "1 / s",
     },
+    # Kips and inches, the units of his chapter-9 sheets: 393 `[kip*in]` to 196 `[kip*ft]`,
+    # 301 `[in]` to 204 `[ft]`. A stiffness and a line load share a dimension, and a matrix
+    # sheet reads its stiffness in kip/in (0.48.0). No mass: a US sheet writes none.
+    "kip": {
+        (("[length]", 1),): "inch",
+        (("[length]", 2),): "inch ** 2",
+        (("[length]", 4),): "inch ** 4",
+        (("[length]", 1), ("[mass]", 1), ("[time]", -2)): "kip",
+        (("[length]", 2), ("[mass]", 1), ("[time]", -2)): "kip * inch",
+        (("[length]", -1), ("[mass]", 1), ("[time]", -2)): "ksi",
+        (("[mass]", 1), ("[time]", -2)): "kip / inch",
+        (("[time]", 1),): "s",
+        (("[time]", -1),): "1 / s",
+    },
 }
 
 # Public so the `%eng_units` summary is read off the table rather than repeated in a

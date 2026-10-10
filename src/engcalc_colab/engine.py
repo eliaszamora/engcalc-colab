@@ -544,8 +544,18 @@ class _MatrixNumbers:
                 for each in ast.walk(node)
             )
             or self._writes_a_row(node)
-            or any(self._builds_a_matrix(each) for each in ast.walk(node))
+            or any(
+                self._builds_a_matrix(each) or self._calls_a_matrix_function(each)
+                for each in ast.walk(node)
+            )
         )
+
+    def _calls_a_matrix_function(self, node: ast.AST) -> bool:
+        """`k_e(E, A, L)` of a sheet function whose body is a matrix."""
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+            return False
+        function = self.engine.functions.get(node.func.id)
+        return function is not None and is_matrix(getattr(function, "expression", None))
 
     def _builds_a_matrix(self, node: ast.AST) -> bool:
         if not (
@@ -679,6 +689,15 @@ class _MatrixNumbers:
         right_matrix = isinstance(right, NumberMatrix)
         if not (left_matrix or right_matrix):
             return self._scalar_binary(node.op, left, right)
+        if isinstance(node.op, (ast.Add, ast.Sub)) and left_matrix != right_matrix:
+            # A 1x1 matrix is the number it holds: `N := k*transpose(g)*D + 1[kN]`, the axial
+            # force of a bar out of its displacements, is one number (his chapter 4; 0.48.0).
+            one = left if left_matrix else right
+            if (one.rows, one.cols) == (1, 1):
+                number = entry_quantity(one, 0, 0, self.context.ureg)
+                if left_matrix:
+                    return self._scalar_binary(node.op, number, right)
+                return self._scalar_binary(node.op, left, number)
         if isinstance(node.op, (ast.Add, ast.Sub)):
             if not (left_matrix and right_matrix):
                 raise EngEvaluationError(
@@ -748,6 +767,16 @@ class _MatrixNumbers:
     def _call(self, node: ast.Call):
         name = node.func.id
         if self._builds_a_matrix(node):
+            return self._built(node)
+        function = self.engine.functions.get(name)
+        if (
+            function is not None
+            and is_matrix(getattr(function, "expression", None))
+            and not any(self.reads_a_matrix(argument) for argument in node.args)
+        ):
+            # A sheet function that makes a matrix - a bar's stiffness `k_e(E, A, L) =
+            # E*A/L*[1, -1; -1, 1]` - in numbers, as `=` makes it: it was "numeric evaluation
+            # does not support symbolic type 'ImmutableDenseMatrix'" (his chapter 4; 0.48.0).
             return self._built(node)
         if name == "solve" and _solves_in_a_range(node, self.engine.namespace):
             return self._root_in_a_range(node)
@@ -885,7 +914,8 @@ class _MatrixNumbers:
             raise EngEvaluationError(f"'{ast.unparse(node.value)}' is not a matrix")
         index = node.slice
         parts = list(index.elts) if isinstance(index, ast.Tuple) else [index]
-        selections = [self._positions(part) for part in parts]
+        sizes = [numbers.rows, numbers.cols] if len(parts) == 2 else [max(numbers.rows, numbers.cols)]
+        selections = [self._positions(part, size) for part, size in zip(parts, sizes)]
         written = f"{ast.unparse(node.value)}[{','.join(ast.unparse(p) for p in parts)}]"
         if len(selections) == 1 and 1 in (numbers.rows, numbers.cols):
             # `d[4]` of a column or a row: its fourth entry.
@@ -920,7 +950,8 @@ class _MatrixNumbers:
         numbers = self._named(name)
         parts = list(index.elts) if isinstance(index, ast.Tuple) else [index]
         where = ", ".join(ast.unparse(part) for part in parts)
-        selections = [self._positions(part) for part in parts]
+        sizes = [numbers.rows, numbers.cols] if len(parts) == 2 else [max(numbers.rows, numbers.cols)]
+        selections = [self._positions(part, size) for part, size in zip(parts, sizes)]
         if len(selections) == 1 and 1 in (numbers.rows, numbers.cols):
             selections.append(([1], False))
             if numbers.cols != 1:
@@ -956,6 +987,33 @@ class _MatrixNumbers:
             numbers.rows, numbers.cols, tuple(magnitudes), tuple(units), frozenset(worked)
         )
 
+    def _whole_numbers_named(self, name: str) -> tuple[list[int], bool] | None:
+        """The whole numbers a name holds - a row or column of them, or one - or None."""
+        if name in self.literals or name in self.context.matrices:
+            numbers = self._named(name)
+            if 1 not in (numbers.rows, numbers.cols):
+                return None
+            listed = True
+            values = [numbers.at(i, j) for i in range(numbers.rows) for j in range(numbers.cols)]
+        elif name in self.context.values:
+            listed = False
+            quantity = self.context.values[name]
+            values = [(getattr(quantity, "magnitude", quantity), getattr(quantity, "units", None))]
+        else:
+            return None
+        wholes = []
+        for magnitude, unit in values:
+            try:
+                number = float(magnitude)
+            except (TypeError, ValueError):
+                return None
+            if unit is not None and not getattr(unit, "dimensionless", str(unit) in ("", "dimensionless")):
+                return None
+            if not number.is_integer():
+                return None
+            wholes.append(int(number))
+        return wholes, listed
+
     @staticmethod
     def _whole(node: ast.AST) -> int | None:
         """A whole number written as one, or as sums and products of them: `1 + 1` is what
@@ -975,8 +1033,7 @@ class _MatrixNumbers:
             return left * right
         return None
 
-    @staticmethod
-    def _positions(part: ast.AST) -> tuple[list[int], bool]:
+    def _positions(self, part: ast.AST, size: int) -> tuple[list[int], bool]:
         whole = _MatrixNumbers._whole(part)
         if whole is not None:
             return [whole], False
@@ -984,6 +1041,20 @@ class _MatrixNumbers:
             wholes = [_MatrixNumbers._whole(each) for each in part.elts]
             if all(each is not None for each in wholes):
                 return wholes, True
+        # `K[1:2, 1:2]`, both ends included and counted from one, as on a `=` line; and
+        # `K[libres, libres]` with `libres := [1, 2]` - the free degrees of freedom of a
+        # matrix sheet, named once (his chapters 4 and 5; 0.48.0).
+        if isinstance(part, ast.Slice) and part.step is None:
+            lower = 1 if part.lower is None else _MatrixNumbers._whole(part.lower)
+            upper = size if part.upper is None else _MatrixNumbers._whole(part.upper)
+            if lower is not None and upper is not None:
+                if upper < lower:
+                    raise EngEvaluationError(f"the range {lower}:{upper} runs backwards")
+                return list(range(lower, upper + 1)), True
+        if isinstance(part, ast.Name):
+            named = self._whole_numbers_named(part.id)
+            if named is not None:
+                return named
         raise EngEvaluationError(
             f"'{ast.unparse(part)}': an index on a := line is a whole number or a list "
             "of them, such as d[4,1] or K[[1, 2], [1, 2]]"
