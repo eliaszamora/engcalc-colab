@@ -13,7 +13,25 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.46.2**.
+Current version: **0.47.0**.
+
+
+## v0.47.0 eigenvals with a singular second matrix
+
+- **`eigenvals(K, G)` answers a G that is singular** - a frame's geometric stiffness, which
+  has nothing along its bars, or a lumped mass without rotary inertia. It was refused ("the
+  second matrix is singular"); the finite λ are now found, and those that are infinite are
+  left out.
+- **Worked out exactly, and only what the numbers settle is printed.** A symmetric pencil is
+  solved in 80 figures on the entries as the floats hold them, and each λ is printed only when
+  a change of 1e-15 in every entry moves it by less than 3% of itself - so supports and links
+  written as springs of 1e16-1e20 no longer give a wrong λ in silence. A λ that the numbers do
+  not settle is refused with "cannot be told with the figures a float holds", and one that is
+  not real with "not real".
+- A pencil that is not symmetric (a follower load) gives the λ of G⁻¹K, worked out exactly;
+  with a singular G it is refused as before. A last-bit difference between K and its
+  transpose, as an assembly tᵀkt leaves, counts as symmetric.
+- About 0.2 s for 18 degrees of freedom, 1.3 s for 36, 10 s for 60.
 
 
 ## v0.46.2 a root in its own unit, refusals as typed
@@ -4155,6 +4173,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.47.0** — `eigenvals(K, G)` with a singular G (a frame's K_g), worked out exactly; a λ the floats do not settle is refused, never printed wrong.
 - **0.46.2** — a range solve's root in its own unit (inches, tonnes, °C; never a sheet's name); refused conditions quoted as typed; placeholders in a unit's brackets run.
 - **0.46.1** — max/min of unit ratios compared converted; a number too large is refused, not a crash; placeholders and matrix entries in conditions, range solve over entries, `{n} :=` run.
 - **0.46.0** — statements over several lines inside parentheses; `T'` for the transpose; `U^-1` and `U^2` on `:=` lines.
@@ -4295,4 +4314,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.46.2`.
+Version: `0.47.0`.
