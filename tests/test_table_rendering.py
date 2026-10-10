@@ -62,7 +62,8 @@ def test_render_table_omits_dimensionless_unit_suffixes():
     html = render_table(result)
     header, _ = table_cells(html)
 
-    assert header == ["x", "x**2"], header
+    # Written as mathematics, not as the source: `x**2` before 0.47.1.
+    assert header == ["x", "x²"], header
 
 
 def test_render_table_preserves_response_and_row_order():

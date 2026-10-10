@@ -1149,8 +1149,8 @@ def _compare(tree: ast.Compare, line_no: int, engine, settings, operators) -> tu
             # kips said `0.5 * __u_m: m·kg/s² against m` (the audit of 0.46.1).
             raise EngEvaluationError(
                 f"line {line_no}: the condition cannot compare {_as_typed(tree)}: "
-                f"{_shown_units(first, left_side, settings)} against "
-                f"{_shown_units(second, right_side, settings)}"
+                f"{_shown_units(first, left_side, settings, engine)} against "
+                f"{_shown_units(second, right_side, settings, engine)}"
             ) from exc
         verdict = verdict and bool(holds)
     shown = _in_one_unit(operands, values, settings, engine)
@@ -1293,30 +1293,58 @@ def _from_numbers(text: str, engine):
 
 # `0.5 * __u_m`, `10 * __u_kN / __u_m`, `6000 * __u_mm ** 2`: a number in brackets as
 # the parser reads it.
-_A_READ_BRACKET = re.compile(r"(\d[\w.]*) \* (__u_\w+(?: (?:\*|/) __u_\w+| \*\* \d+)*)")
+_A_READ_BRACKET = re.compile(r"(\d[\w.]*) \* (__u_\w+(?: (?:\*|/) __u_\w+| \*\* \d+(?:\.\d+)?)*)")
+# `2 * (3[m])`: the brackets ast.unparse keeps around a number in its unit.
+_A_WRAPPED_BRACKET = re.compile(r"\((\d[\w.]*\[[^\[\]]*\])\)")
 
 
-def _as_typed(tree: ast.AST) -> str:
+def _as_typed(tree: "ast.AST | str") -> str:
     """A comparison as the sheet writes it: `f[1] > 0.5[m]`, its units in brackets."""
 
     def bracket(match: re.Match) -> str:
         units = match.group(2).replace("__u_", "").replace(" ** ", "^").replace(" ", "")
         return f"{match.group(1)}[{units}]"
 
-    return _A_READ_BRACKET.sub(bracket, ast.unparse(tree))
+    # `3[m^0.5]` read `3[m^0].5` with a whole power only, and `2*3[m]` read `2 * (3[m])` (the
+    # third audit of 0.46.2).
+    text = ast.unparse(tree) if isinstance(tree, ast.AST) else tree
+    return _A_WRAPPED_BRACKET.sub(r"\1", _A_READ_BRACKET.sub(bracket, text))
+
+
+def said_as_typed(message: str) -> str:
+    """A message as the sheet writes its units: the engine quotes a line from its tree,
+    and `5[kN/m] - k` came out `'5 * __u_kN / __u_m - k' adds a number to a matrix`
+    (0.47.1). A unit name standing alone keeps its name, without the prefix."""
+    if "__u_" not in message:
+        return message
+    return _as_typed(message).replace("__u_", "")
 
 
 _SI_BASE = frozenset({"meter", "kilogram", "second", "kelvin", "ampere", "mole", "candela", "radian"})
 
 
-def _shown_units(quantity, side: ast.AST, settings) -> str:
+def _typed_number(side: ast.AST) -> bool:
+    """A number in its unit as the sheet typed it, `0.5[kN/m]`: no name but the unit's."""
+    return not any(
+        isinstance(node, ast.Subscript) or (isinstance(node, ast.Name) and not node.id.startswith("__u_"))
+        for node in ast.walk(side)
+    )
+
+
+def _shown_units(quantity, side: ast.AST, settings, engine=None) -> str:
     from .renderer import _display_quantity  # noqa: PLC0415 - renderer imports models only
 
     if quantity.dimensionless and not quantity.units._units:
         return "a number"  # it said nothing, `1 < P < 3[m]:  against kN`
-    # A unit is said as it was typed, `0.5[kN/m]` in kN/m, `2400[kg/m^3]` in kg/m³; what an
-    # entry of a matrix holds, kips in SI base units `m·kg/s²`, as the page would show it.
-    if isinstance(side, ast.Subscript) and len(quantity.units._units) > 1 and set(quantity.units._units) <= _SI_BASE:
+    # A unit is said as it was typed, `0.5[kN/m]` in kN/m, `2400[kg/m^3]` in kg/m³, and a name
+    # in the unit its definition wrote; what a matrix holds, or a name read from it
+    # (`F := f[1]` of kips), in SI base units `m·kg/s²`, as the page would show it (the
+    # third audit of 0.46.2).
+    declared = isinstance(side, ast.Name) and engine is not None and side.id in engine.declared_unit_names
+    if (
+        not _typed_number(side) and not declared
+        and len(quantity.units._units) > 1 and set(quantity.units._units) <= _SI_BASE
+    ):
         current = settings() if callable(settings) else settings
         try:
             quantity = _display_quantity(quantity, current, declared=False)

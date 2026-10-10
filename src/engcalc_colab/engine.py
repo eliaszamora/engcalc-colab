@@ -3430,7 +3430,11 @@ class EngineeringEngine:
                 written = self._written_form(statement, evaluator, value)
             elif statement.parameters is None:
                 written = self.written_namespace.get(statement.target)
-            elif self._a_line_reaches_a_kept_name(statement):
+            elif self._a_line_reaches_a_kept_name(statement) or _divides_by_a_typed_decimal(
+                statement.expression.body
+            ):
+                # Or one that divides by a decimal: `f(x) = x/0.85` read `1.18 x`, a
+                # coefficient nobody wrote (his chapter 8, 0.47.1).
                 # A function that reads a kept name is written as typed, or `f_cw` in
                 # `As_req(Mu)` is expanded and 2/0.85 folded into 2.35. Any other function
                 # prints as it always has. See `test_a_kept_name_survives_a_sheet_function`.
@@ -6398,6 +6402,16 @@ class TypedFloat(sp.Float):
         return number
 
 
+class ComputedFloat(sp.Float):
+    """A number worked out, not typed: a root of a range `solve`. A short Float reads as
+    typed - `1.0` of `0.9*D - 1.0*Lv` - and a root that fell exactly on 2 read `2.0` on a
+    `=` line, beside every other value at the page's precision (0.47.1). The renderer
+    writes it as a value."""
+
+    __slots__ = ()
+    computed = True
+
+
 def _plain_floats(expression):
     """`expression` with every TypedFloat an ordinary Float, for `srepr` to read back."""
     if isinstance(expression, TypedFloat):
@@ -7151,18 +7165,20 @@ def _as_written_quantity(quantity, evaluator):
     if quantity.dimensionless and text and not set(quantity.units._units) & _ANGLE_UNITS:
         # A ratio with a scale, a strain in `mm/m`: its number, 0.003 - not an angle (the
         # audit of 0.45.5: `solve(eq(x, 3[mm/m]), x, 0[mm/m], 10[mm/m])` read 0.17°).
-        return sp.Float(float(quantity.to("dimensionless").magnitude), 15)
+        return ComputedFloat(float(quantity.to("dimensionless").magnitude), 15)
     if quantity.dimensionless and text:
         # An angle is dimensionless to Pint and is not a plain number: a root found between
         # `0[deg]` and `15[deg]` came back as `6.31`, read as radians - `sin(t_1)` gave
         # 0.0231 for 0.1098 (his book, Example 8.2). In radians, which a bare number means.
         quantity = quantity.to("radian")
-        return sp.Float(float(quantity.magnitude), 15) * evaluator.visit(
-            # Under its bracketed name: a sheet's `rad := 7[mm]` made a root of 0.2 rad
-            # 14.00 mm (the second audit of 0.46.2).
-            ast.parse(BRACKETED_UNIT_PREFIX + "rad", mode="eval").body
+        # Under its bracketed name: a sheet's `rad := 7[mm]` made a root of 0.2 rad 14.00 mm
+        # (the second audit of 0.46.2).
+        return sp.Mul(
+            ComputedFloat(float(quantity.magnitude), 15),
+            evaluator.visit(ast.parse(BRACKETED_UNIT_PREFIX + "rad", mode="eval").body),
+            evaluate=False,
         )
-    magnitude = sp.Float(float(quantity.magnitude), 15)
+    magnitude = ComputedFloat(float(quantity.magnitude), 15)
     if not text:
         return magnitude
     # Each unit by Pint's own name, under the bracketed spelling a sheet writes it with -
@@ -7173,7 +7189,13 @@ def _as_written_quantity(quantity, evaluator):
     spelled = _bracketed_spelling(quantity.units)
     if spelled is not None:
         text = spelled
-    return magnitude * evaluator.visit(ast.parse(text, mode="eval").body)
+    unit = evaluator.visit(ast.parse(text, mode="eval").body)
+    # Unevaluated, or the product turns the root back into a plain Float and it reads `2.0`.
+    if unit.is_Mul:
+        # One product, not a number times a product: nested, `4[kN*m]` printed `4.00 kN·m`
+        # without the thin space every value has (the audit of 0.47.1).
+        return sp.Mul(magnitude, *unit.args, evaluate=False)
+    return sp.Mul(magnitude, unit, evaluate=False) if unit.is_Symbol or unit.is_Pow else magnitude * unit
 
 
 def _entry_name(node: ast.AST, engine=None) -> str | None:
@@ -7256,3 +7278,27 @@ def _said_quantity(quantity) -> str:
         return f"{float(quantity.magnitude):.2f} {quantity.units:~P}".strip()
     except (AttributeError, TypeError, ValueError):
         return str(quantity)
+
+
+def _divides_by_a_typed_decimal(body) -> bool:
+    """True when the line divides an expression by a number with a decimal point: `x/0.85`,
+    `M/(0.9*b)`. Not inside a call - SymPy takes `sqrt(x/1.5)` apart and the written form
+    read `0.82 · 2 m √x` - and not a number over the decimal, `1/0.85*x`, which read `1 x/0.85`
+    (the audit of 0.47.1)."""
+
+    def found(node) -> bool:
+        if isinstance(node, ast.Call):
+            return False
+        if (
+            isinstance(node, ast.BinOp)
+            and isinstance(node.op, ast.Div)
+            and not isinstance(node.left, ast.Constant)
+            and any(
+                isinstance(each, ast.Constant) and isinstance(each.value, float)
+                for each in ast.walk(node.right)
+            )
+        ):
+            return True
+        return any(found(child) for child in ast.iter_child_nodes(node))
+
+    return found(body)

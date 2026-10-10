@@ -331,7 +331,7 @@ class EngMagics(Magics):
                     )
                     pending_results.clear()
                     for notice in item.notices:
-                        print(f"engcalc: {notice}")
+                        print(f"engcalc: {control.said_as_typed(str(notice))}")
                     page.show(Math(item.latex))
                     continue
 
@@ -362,7 +362,7 @@ class EngMagics(Magics):
                     result = self.engine.evaluate(item)
                     notices = self.engine.notices
                 for notice in notices:
-                    print(f"engcalc: {notice}")
+                    print(f"engcalc: {control.said_as_typed(str(notice))}")
                 if isinstance(result, PlotResult):
                     _display_equation_group(
                         pending_results,
@@ -477,7 +477,7 @@ class EngMagics(Magics):
                 self._settings(),
                 page,
             )
-            print(f"engcalc: {exc}")
+            print(f"engcalc: {control.said_as_typed(str(exc))}")
         return None
 
     @line_magic
