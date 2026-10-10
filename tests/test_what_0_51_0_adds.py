@@ -88,3 +88,55 @@ def test_a_load_that_starts_at_a_point(sheet):
     assert not printed, printed
     assert r"w_{1} & = & \displaystyle 0.00" in page and r"w_{3} & = & \displaystyle 5.00" in page, page
     assert r"= & \displaystyle 10.00\,\mathrm{kN}" in page and r"\theta" not in page, page
+
+
+# His Colab now shows a cell's results beside its code, in a column narrower than a 4x4
+# matrix of fractions; its KaTeX frame lets the browser wrap a formula there, so the
+# columns of `K_G = transpose(T)*K_L*T` fell under each other and over the next row.
+
+
+def _outputs(monkeypatch, source: str):
+    captured = []
+    monkeypatch.setattr(magic, "display", captured.append)
+    with contextlib.redirect_stdout(io.StringIO()):
+        magic.EngMagics().eng("", source)
+    return captured
+
+
+def test_in_colab_a_cell_keeps_its_formulas_on_one_line(monkeypatch):
+    import sys
+    import types
+
+    from IPython.display import HTML
+
+    monkeypatch.setitem(sys.modules, "google.colab", types.ModuleType("google.colab"))
+    outputs = _outputs(monkeypatch, "a := 1[m]\nb := 2[m]\n")
+    styles = [o for o in outputs if isinstance(o, HTML) and "<style>" in o.data]
+    assert len(styles) == 1 and outputs[0] is styles[0], outputs
+    assert "nowrap" in styles[0].data and "overflow-x:auto" in styles[0].data, styles[0].data
+
+
+def test_outside_colab_a_cell_shows_no_style(monkeypatch):
+    import sys
+
+    from IPython.display import HTML
+
+    monkeypatch.delitem(sys.modules, "google.colab", raising=False)
+    outputs = _outputs(monkeypatch, "a := 1[m]\n")
+    assert not [o for o in outputs if isinstance(o, HTML) and "<style>" in o.data], outputs
+
+
+# The audit of 0.51.0: arithmetic typed in a matrix is what the page shows as typed.
+
+
+@pytest.mark.parametrize("source", ["v := [1/3; 2]\n", "v := [2^3; 1]\n", "v := [10[kN]/4; 1[kN]]\n"])
+def test_a_matrix_typed_with_arithmetic_keeps_what_was_typed(sheet, source):
+    page, printed = sheet(source)
+    assert not printed, printed
+    assert page.count(r"\begin{matrix}") == 2, page
+
+
+def test_a_matrix_typed_per_metre_is_written_once(sheet):
+    page, printed = sheet("w := [1[kN/m]; 2[kN/m]]\n")
+    assert not printed, printed
+    assert page.count(r"\begin{matrix}") == 1, page

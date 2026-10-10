@@ -6841,14 +6841,25 @@ def _a_literal_of_numbers(result) -> bool:
             return a_number(node.operand)
         if isinstance(node, ast.Constant):
             return isinstance(node.value, (int, float)) and not isinstance(node.value, bool)
-        names = [each for each in ast.walk(node) if isinstance(each, ast.Name)]
+        # A number and its unit, `1[kN]` or `2[kN/m]` (read `(2*kN)/m`); `1/3` or `10[kN]/4`
+        # is arithmetic the page shows as typed (the audit of 0.51.0).
         return (
             isinstance(node, ast.BinOp)
-            and all(name.id.startswith(BRACKETED_UNIT_PREFIX) for name in names)
-            and all(
-                isinstance(each, (ast.BinOp, ast.Name, ast.Constant, ast.Mult, ast.Div, ast.Pow, ast.Load))
-                for each in ast.walk(node)
-            )
+            and isinstance(node.op, (ast.Mult, ast.Div))
+            and a_number(node.left)
+            and a_unit(node.right)
+        )
+
+    def a_unit(node) -> bool:
+        if isinstance(node, ast.Name):
+            return node.id.startswith(BRACKETED_UNIT_PREFIX)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow):
+            return a_unit(node.left) and isinstance(node.right, (ast.Constant, ast.UnaryOp))
+        return (
+            isinstance(node, ast.BinOp)
+            and isinstance(node.op, (ast.Mult, ast.Div))
+            and a_unit(node.left)
+            and a_unit(node.right)
         )
 
     return all(a_number(cell.body) for row in bindings[body.id].literal.rows for cell in row)
