@@ -13,7 +13,28 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.47.1**.
+Current version: **0.48.0**.
+
+
+## v0.48.0 what a matrix sheet asks of `:=` lines and loops
+
+- **Units a sheet writes**: `km`, `lbf`, `lb` (a force, as `kip` is - a load in pounds adds
+  to a load in kips) and `percent` (`5[percent]` is 0.05), bare or in brackets.
+- **`%eng_units kip`**: kips and inches - in, in², in⁴, kip, kip·in, ksi, kip/in.
+- **Parts of a matrix on a `:=` line** by a named list of degrees of freedom
+  (`libres := [1, 2]` then `K_ff := K[libres, libres]`), by a range (`K[1:2, 1:2]`, `K[3:, :]`,
+  both ends included, counted from 1, as on a `=` line) or by a name holding a whole number.
+- **A 1x1 matrix plus or minus a number is that number**: a bar's axial force
+  `N := k*transpose(g)*D + N_0`.
+- **A sheet function that makes a matrix works on a `:=` line**: `k_e(E, A, L) =
+  E*A/L*[1, -1; -1, 1]` then `K_1 := k_e(200[GPa], 10[cm^2], 2[m])`.
+- **`% break`** stops the `% for` or `% while` it stands in, under a `% if`; the page says
+  "Como ...: el ciclo se detiene.".
+- **`{i}` in a text line inside a loop** writes the loop's value.
+- **`argmin` / `argmax`** give which value governs, counted from 1 (values or a vector), and
+  **`rank`** works on a `:=` line.
+- **`lam` is written λ** (`lambda` is a word of Python; the message says to write `lam`).
+- `numeric` of a matrix with a name that has no value says which name.
 
 
 ## v0.47.1 units and formulas as a memoria writes them
@@ -4194,6 +4215,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.48.0** — `km`, `lbf`, `lb`, `percent`; `%eng_units kip`; `K[libres, libres]` and `K[1:2, 1:2]` on `:=`; 1x1 ± number; matrix functions on `:=`; `% break`; `{i}` in loop text; `argmin`/`argmax`, `rank`; `lam` written λ.
 - **0.47.1** — `mm·MPa/m` reads MPa, `kip·ft` force first, exact roots at the page's precision, `(x₁/y)²` and `x/0.85` as typed, no internal unit names on the page or in messages.
 - **0.47.0** — `eigenvals(K, G)` with a singular G (a frame's K_g), worked out exactly; a λ the floats do not settle is refused, never printed wrong.
 - **0.46.2** — a range solve's root in its own unit (inches, tonnes, °C; never a sheet's name); refused conditions quoted as typed; placeholders in a unit's brackets run.
@@ -4336,4 +4358,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.47.1`.
+Version: `0.48.0`.

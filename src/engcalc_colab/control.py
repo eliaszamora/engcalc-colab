@@ -1648,7 +1648,9 @@ def _written_target(template: str) -> str:
     return re.sub(r"\{([^{}]+)\}", lambda match: "{" + match.group(1).strip() + "}", target)
 
 
-_NAMED = re.compile(r"\{([A-Za-z_]\w*)\}")
+# Not a group of LaTeX's: `$\mathbf{k}$` in a loop over `k` read `\mathbf3`, and `x_{i}`,
+# `x^{n}` are a subscript and a power (his chapter 10, the corpus of 0.48.0).
+_NAMED = re.compile(r"(?<![\w\\}^_])\{([A-Za-z_]\w*)\}")
 
 
 def _named_in_text(insert, match: re.Match, line_no: int) -> str:

@@ -264,3 +264,11 @@ def test_a_break_after_other_lines_of_its_branch_still_says_the_loop_stops(sheet
 def test_a_wrong_index_names_every_form_an_index_takes(sheet):
     _, printed = sheet(_K + "x := K[1.5, 1]\n")
     assert "a range or a name holding them" in printed, printed
+
+
+def test_a_latex_group_in_loop_text_is_left_alone(sheet):
+    r"""His chapter 10: `$\mathbf{k}$` in a loop over `k` read `\mathbf3`."""
+    page, printed = sheet('% for k in [1, 2]:\n"""rigidez $\\mathbf{k}_m$ y $x_{k}$, paso {k}"""\n% end\n')
+    assert not printed, printed
+    assert r"\mathbf{k}_m" in page and "x_{k}" in page and r"\mathbf1" not in page, page
+    assert r"\text{1}" in page and r"\text{2}" in page, page
