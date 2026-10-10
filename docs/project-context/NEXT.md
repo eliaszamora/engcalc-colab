@@ -8,9 +8,9 @@ of `CURRENT.md` was written at 0.13.0 and says so._
 
 | | |
 |---|---|
-| `main` | 0.47.1 released by #408 (`ec15aea`), closed and checked in his Colab |
-| declared version | **0.47.1** — units of one kind cancel, parentheses where the reading needs them |
-| default suite (`pytest -q`) | **3889 passing**, about 2 minutes with `-n auto` — `tests` plus `quality_tests/fast` |
+| `main` | 0.48.0 released by #410 (`9ec08ea`), closed and checked in his Colab |
+| declared version | **0.48.0** — what a matrix sheet asks of `:=` lines and loops |
+| default suite (`pytest -q`) | **3936 passing**, about 2 minutes with `-n auto` — `tests` plus `quality_tests/fast` |
 | Deep Property Gate (`pytest quality_tests/deep`) | **53 modules of properties**, about 2 minutes |
 | CI | six jobs: Python 3.10–3.14 plus one pinned to Colab's `ipython==7.34.0`; on every PR, every push to `main`, every Monday, and by hand |
 
