@@ -7191,7 +7191,11 @@ def _as_written_quantity(quantity, evaluator):
         text = spelled
     unit = evaluator.visit(ast.parse(text, mode="eval").body)
     # Unevaluated, or the product turns the root back into a plain Float and it reads `2.0`.
-    return sp.Mul(magnitude, unit, evaluate=False) if unit.is_Symbol or unit.is_Pow or unit.is_Mul else magnitude * unit
+    if unit.is_Mul:
+        # One product, not a number times a product: nested, `4[kN*m]` printed `4.00 kN·m`
+        # without the thin space every value has (the audit of 0.47.1).
+        return sp.Mul(magnitude, *unit.args, evaluate=False)
+    return sp.Mul(magnitude, unit, evaluate=False) if unit.is_Symbol or unit.is_Pow else magnitude * unit
 
 
 def _entry_name(node: ast.AST, engine=None) -> str | None:
@@ -7277,13 +7281,24 @@ def _said_quantity(quantity) -> str:
 
 
 def _divides_by_a_typed_decimal(body) -> bool:
-    """True when the line divides by a number with a decimal point: `x/0.85`, `M/(0.9*b)`."""
-    return any(
-        isinstance(node, ast.BinOp)
-        and isinstance(node.op, ast.Div)
-        and any(
-            isinstance(each, ast.Constant) and isinstance(each.value, float)
-            for each in ast.walk(node.right)
-        )
-        for node in ast.walk(body)
-    )
+    """True when the line divides an expression by a number with a decimal point: `x/0.85`,
+    `M/(0.9*b)`. Not inside a call - SymPy takes `sqrt(x/1.5)` apart and the written form
+    read `0.82 · 2 m √x` - and not a number over the decimal, `1/0.85*x`, which read `1 x/0.85`
+    (the audit of 0.47.1)."""
+
+    def found(node) -> bool:
+        if isinstance(node, ast.Call):
+            return False
+        if (
+            isinstance(node, ast.BinOp)
+            and isinstance(node.op, ast.Div)
+            and not isinstance(node.left, ast.Constant)
+            and any(
+                isinstance(each, ast.Constant) and isinstance(each.value, float)
+                for each in ast.walk(node.right)
+            )
+        ):
+            return True
+        return any(found(child) for child in ast.iter_child_nodes(node))
+
+    return found(body)

@@ -2040,6 +2040,22 @@ def _one_group(latex: str) -> bool:
     return depth == 0
 
 
+def _one_measurement(body) -> bool:
+    """True when a line is one number in its brackets: `25[kN*cm/m]`, not `2[mm/m]*200000[MPa]`."""
+    exponents = {id(node.right) for node in ast.walk(body) if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow)}
+    numbers = [
+        node for node in ast.walk(body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float))
+        and id(node) not in exponents and node.value != 1
+    ]
+    names = [node for node in ast.walk(body) if isinstance(node, ast.Name)]
+    return (
+        len(numbers) <= 1
+        and all(name.id.startswith(BRACKETED_UNIT_PREFIX) for name in names)
+        and not any(isinstance(node, ast.Call) for node in ast.walk(body))
+    )
+
+
 def _is_a_dimensionless_ratio(quantity) -> bool:
     """True when the units are left over from arithmetic on a value that is a number.
 
@@ -2151,7 +2167,7 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     # a modulus - are a scale the algebra left, not a unit anyone writes, declared or not:
     # `2[mm/m]*200000[MPa]` read `400000.00 mm·MPa/m` (0.47.1). Cancelled first; what is left
     # is chosen as any value's unit is.
-    cancelled = _cancelling_factors(quantity)
+    cancelled = None if declared else _cancelling_factors(quantity)
     if cancelled is not None:
         quantity = quantity.to(quantity.units / cancelled)
         try:
@@ -4070,7 +4086,10 @@ class _WrittenLine:
             return _matrix_from_cells_latex(
                 [[self.latex(cell.body) for cell in row] for row in self.literals[name].rows]
             )
-        if name in self.unit_names:
+        # A bracketed unit standing alone - the `1[m]` of `x/1[m]` once SymPy has dropped
+        # its `1` - is written `1 m`: as a name it read `\mathit{__u}_{m}`, which KaTeX
+        # refuses, and the table under it was lost (the audit of 0.47.1).
+        if name in self.unit_names or name.startswith(BRACKETED_UNIT_PREFIX):
             return _latex(sp.Symbol(name), frozenset({name}), self.settings)
         return _render_lhs(name, None)
 
@@ -5742,11 +5761,13 @@ def render_result(result: CalculationResult, *, settings: RenderSettings | None 
         # used `:=`. The two agree on `q := 2.8*tonf/m` and part company on
         # `phiMn := 0.9*As*fy*z`, where the units came from three stored values and the
         # statement declared only a name.
-        value = _quantity_latex(
-            result.quantity,
-            settings=active_settings,
-            declared=unit_was_written(result.quantity, result.written_units),
+        # A unit made of brackets whose lengths cancel - `2[mm/m]*200000[MPa]` - was not
+        # written as one; `25[kN*cm/m]`, a moment per metre of width, was (the audit of 0.47.1).
+        declared = unit_was_written(result.quantity, result.written_units) and (
+            _cancelling_factors(result.quantity) is None
+            or _one_measurement(result.statement.expression.body)
         )
+        value = _quantity_latex(result.quantity, settings=active_settings, declared=declared)
         if result.shown_as_written:
             return rf"{lhs} = {_written_line_latex(result, active_settings)} = {value}"
         return rf"{lhs} = {value}"

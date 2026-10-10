@@ -162,3 +162,42 @@ def test_a_function_dividing_by_a_decimal_is_written_as_typed(sheet, source, exp
     page, printed = sheet(source)
     assert not printed, printed
     assert expected in page, page
+
+
+# The audit of 0.47.1.
+
+
+def test_a_table_over_one_bracketed_unit_heads_its_column_as_a_measurement(sheet):
+    page, printed = sheet("table(x/1[m], x, 0[m], 1[m], 3)\n")
+    assert not printed, printed
+    assert r"\frac{x}{1\,\mathrm{m}}" in page and "__u" not in page, page
+
+
+@pytest.mark.parametrize("unit", ["kN*m", "kip*ft"])
+def test_a_root_in_a_compound_unit_keeps_its_thin_space(sheet, unit):
+    page, printed = sheet(f"x = solve(eq(x, 4[{unit}]), x, 0[{unit}], 10[{unit}])\n")
+    assert not printed, printed
+    assert r"4.00\,\mathrm{" in last_value(page, "x"), page
+
+
+@pytest.mark.parametrize(
+    ("source", "kept"),
+    [
+        ("m := 2500[kgf*cm/m]\n", r"2500.00\,\frac{\mathrm{kgf} \cdot \mathrm{cm}}{\mathrm{m}}"),
+        ("M := 4[kip*in/ft]\n", r"4.00\,\frac{\mathrm{kip} \cdot \mathrm{in}}{\mathrm{ft}}"),
+    ],
+)
+def test_a_moment_per_width_typed_in_one_bracket_keeps_its_unit(sheet, source, kept):
+    page, printed = sheet(source)
+    assert not printed, printed
+    assert kept in page, page
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [("g(x) = 1/0.85*x\n", "1.18 x"), ("h(x) = sqrt(x/1.5)*2[m]\n", r"1.63\,\mathrm{m}\,\sqrt{x}")],
+)
+def test_a_decimal_under_a_number_or_inside_a_call_folds_as_before(sheet, source, expected):
+    page, printed = sheet(source)
+    assert not printed, printed
+    assert expected in page, page

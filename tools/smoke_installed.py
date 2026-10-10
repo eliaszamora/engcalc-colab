@@ -77,6 +77,18 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.47.1: units of one kind cancel, parentheses where the reading needs them
+check("a strain times a modulus reads as a stress",
+      "r := 2[mm/m]*200000[MPa]", r"400.00\,\mathrm{MPa}", absent=(r"\mathrm{mm} \cdot",))
+check("a bracketed moment reads force first",
+      "M = 2.5[kip*ft]", r"\mathrm{kip} \cdot \mathrm{ft}")
+check("a power of a fraction keeps its parentheses",
+      "x := [3[kN]; 4[kN]]\ny := 2[kN]\np := (x[1]/y)^2", r"\left(\frac{x_{1}}{y}\right)^{2}")
+check("a function dividing by a decimal is written as typed",
+      "f(x) = x/0.85", r"\frac{x}{0.85}")
+check("a matrix refusal quotes units as typed",
+      "k := [2[kN/m]]\ny := 5[kN/m] - k", "'5[kN/m] - k' adds a number", absent=("__u_",))
+
 # 0.47.0: eigenvals(K, G) with a singular G, worked out exactly
 check("eigenvals with a singular second matrix",
       "K := [2[kN/m], -1[kN/m]; -1[kN/m], 1[kN/m]]\nG := [1[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m]]\nl := eigenvals(K, G)",
