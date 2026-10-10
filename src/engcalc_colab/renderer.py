@@ -20,7 +20,7 @@ from pint.util import UnitsContainer
 from .matrix_modes import mode_key
 from .matrix_numeric import MATRIX_CALLS, QuantityMatrix
 from .unit_text import quantity_text, unit_text, unit_was_written
-from .numeric import BRACKETED_UNIT_PREFIX
+from .numeric import BRACKETED_UNIT_PREFIX, _UNIT_ALIASES
 from .models import (
     AssumptionResult,
     CharacteristicInterval,
@@ -434,6 +434,9 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if typed is not None:
             # `0.90` as the sheet typed it. See `test_a_number_is_written_as_typed`.
             return typed
+        if getattr(expr, "computed", False) and math.isfinite(float(expr)):
+            # A worked-out number - a root - reads as every value does: `2.00`, not `2.0`.
+            return _magnitude_text(float(expr), self.render_settings)
         written = super()._print_Float(expr)
         decimals = written.partition(".")[2]
         if len(decimals) <= self.render_settings.precision:
@@ -675,7 +678,9 @@ class _EngineeringLatexPrinter(LatexPrinter):
             base, exponent = (term.base, term.exp) if term.is_Pow else (term, sp.S.One)
             if not exponent.is_Integer:
                 return args
-            factors.append((base.name, int(exponent)))
+            # Pint's name for it: a unit typed in brackets is read under `__u_ft`, which Pint
+            # does not know, and `2.5[kip*ft]` kept the alphabet's `ft·kip` (0.47.1).
+            factors.append((_UNIT_ALIASES.get(base.name, base.name), int(exponent)))
         order = _page_unit_order(tuple(factors))
         if order is None:
             return args

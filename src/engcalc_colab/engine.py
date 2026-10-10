@@ -6398,6 +6398,16 @@ class TypedFloat(sp.Float):
         return number
 
 
+class ComputedFloat(sp.Float):
+    """A number worked out, not typed: a root of a range `solve`. A short Float reads as
+    typed - `1.0` of `0.9*D - 1.0*Lv` - and a root that fell exactly on 2 read `2.0` on a
+    `=` line, beside every other value at the page's precision (0.47.1). The renderer
+    writes it as a value."""
+
+    __slots__ = ()
+    computed = True
+
+
 def _plain_floats(expression):
     """`expression` with every TypedFloat an ordinary Float, for `srepr` to read back."""
     if isinstance(expression, TypedFloat):
@@ -7151,18 +7161,20 @@ def _as_written_quantity(quantity, evaluator):
     if quantity.dimensionless and text and not set(quantity.units._units) & _ANGLE_UNITS:
         # A ratio with a scale, a strain in `mm/m`: its number, 0.003 - not an angle (the
         # audit of 0.45.5: `solve(eq(x, 3[mm/m]), x, 0[mm/m], 10[mm/m])` read 0.17°).
-        return sp.Float(float(quantity.to("dimensionless").magnitude), 15)
+        return ComputedFloat(float(quantity.to("dimensionless").magnitude), 15)
     if quantity.dimensionless and text:
         # An angle is dimensionless to Pint and is not a plain number: a root found between
         # `0[deg]` and `15[deg]` came back as `6.31`, read as radians - `sin(t_1)` gave
         # 0.0231 for 0.1098 (his book, Example 8.2). In radians, which a bare number means.
         quantity = quantity.to("radian")
-        return sp.Float(float(quantity.magnitude), 15) * evaluator.visit(
-            # Under its bracketed name: a sheet's `rad := 7[mm]` made a root of 0.2 rad
-            # 14.00 mm (the second audit of 0.46.2).
-            ast.parse(BRACKETED_UNIT_PREFIX + "rad", mode="eval").body
+        # Under its bracketed name: a sheet's `rad := 7[mm]` made a root of 0.2 rad 14.00 mm
+        # (the second audit of 0.46.2).
+        return sp.Mul(
+            ComputedFloat(float(quantity.magnitude), 15),
+            evaluator.visit(ast.parse(BRACKETED_UNIT_PREFIX + "rad", mode="eval").body),
+            evaluate=False,
         )
-    magnitude = sp.Float(float(quantity.magnitude), 15)
+    magnitude = ComputedFloat(float(quantity.magnitude), 15)
     if not text:
         return magnitude
     # Each unit by Pint's own name, under the bracketed spelling a sheet writes it with -
@@ -7173,7 +7185,9 @@ def _as_written_quantity(quantity, evaluator):
     spelled = _bracketed_spelling(quantity.units)
     if spelled is not None:
         text = spelled
-    return magnitude * evaluator.visit(ast.parse(text, mode="eval").body)
+    unit = evaluator.visit(ast.parse(text, mode="eval").body)
+    # Unevaluated, or the product turns the root back into a plain Float and it reads `2.0`.
+    return sp.Mul(magnitude, unit, evaluate=False) if unit.is_Symbol or unit.is_Pow or unit.is_Mul else magnitude * unit
 
 
 def _entry_name(node: ast.AST, engine=None) -> str | None:
