@@ -68,3 +68,30 @@ def test_an_si_sheet_still_reads_its_matrices_in_si(sheet):
     page, printed = sheet("k := 100[kN/m]\nK := [k, -k; -k, k]\nF := [1[kN]; 2[kN]]\nd := solve(K + [1, 0; 0, 0]*1[kN/m], F)\n")
     assert not printed, printed
     assert r"\frac{\mathrm{kN}}{\mathrm{m}}" in page and r"\mathrm{kip}" not in page, page
+
+
+# The audit of 0.50.0.
+
+
+def test_nested_loops_name_their_columns_in_the_order_written(sheet):
+    page, printed = sheet(
+        '% for e, L in [(1, "2[m]"), (2, "3[m]")]:\n% for j in [1, 2]:\n'
+        "a_{e}{j} := {j}*{L}\nb_{e}{j} := 2*a_{e}{j}\n% end\n% end\n"
+    )
+    assert not printed, printed
+    assert r"e, L, j & a_{ej}" in page, page
+    assert r"2, 3\,\mathrm{m}, 2 & 6.00 & 12.00" in page, page
+
+
+def test_the_outer_name_ends_at_its_last_value(sheet):
+    page, printed = sheet(
+        "% for i in [1, 2, 3]:\n% for j in range(i, 3):\nc_{i}{j} := {i}*{j}\nd_{i}{j} := {i}+{j}\n% end\n% end\np := {i}\n"
+    )
+    assert not printed, printed
+    assert r"p & = & \displaystyle 3.00" in page, page
+
+
+def test_a_kgf_sheet_reads_its_matrices_in_its_system(sheet):
+    page, printed = sheet("k := 2000[kgf/cm]\nK := [k, -k; -k, k]\nL_0 := 5[m]\n")
+    assert not printed, printed
+    assert r"200.00 & \displaystyle -200.00" in page and r"\frac{\mathrm{tonf}}{\mathrm{m}}" in page, page

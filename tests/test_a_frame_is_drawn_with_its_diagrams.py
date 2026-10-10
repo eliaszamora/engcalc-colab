@@ -198,10 +198,11 @@ def test_a_beam_alone_is_drawn(tmp_path):
     assert not console, console
     (figure,) = [item for item in outputs if isinstance(item, Figure)]
     labels = texts(figure)
-    # w L^2/24 at the middle of a fixed-ended beam, -w L^2/12 at its ends: in kN·m, as the
-    # page writes f without a palette - not in the base units a matrix of numbers keeps.
-    assert "29.42" in labels and "-58.84" in labels, labels
-    assert "kN" in title(figure), title(figure)
+    # w L^2/24 at the middle of a fixed-ended beam, -w L^2/12 at its ends - not in the base
+    # units a matrix of numbers keeps. In tonf·m since 0.50.0: the sheet writes kgf and no
+    # kilonewton, and its matrices read in its own system (29.42 and -58.84 kN·m before).
+    assert "3.00" in labels and "-6.00" in labels, labels
+    assert "tonf" in title(figure), title(figure)
     # The load keeps the unit the sheet typed, as `w := 2000*kgf/m` does on the page; it
     # read `2.00 tonf/m`, a unit the sheet never wrote.
     assert "2 000 kgf/m" in labels, labels

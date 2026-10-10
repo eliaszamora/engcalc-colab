@@ -659,6 +659,10 @@ def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
         finally:
             scope.gathering = False
             scope.depth -= 1
+        # The outer name ends at its last value, as two loops leave it, even when that value
+        # ran no inner pass (the audit of 0.50.0).
+        if values:
+            take(values[-1])
         return
 
     # A loop inside another streams its lines into it: one that gathers shows its assembly
@@ -769,7 +773,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
             if entry.kind == "cell" and entry.key in cells:
                 cells[entry.key][entry.index] = entry.result.quantity
                 said.extend(notice for notice in entry.notices if notice not in said)
-        variable = [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+        variable = _target_names(node.header.target)
         table = loop_table_latex(
             variable, values, [(_written_target(key[0]), cells[key]) for key in columns], _current(settings)
         )
@@ -788,7 +792,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
 
 
 def _header_names(node: _ForBlock) -> list[str]:
-    return [element.id for element in ast.walk(node.header.target) if isinstance(element, ast.Name)]
+    return _target_names(node.header.target)
 
 
 def _reads_its_earlier_passes(item, earlier) -> bool:
@@ -1742,3 +1746,13 @@ def _breaks(body: list) -> bool:
         or (isinstance(child, _IfBlock) and any(_breaks(branch.body) for branch in child.branches))
         for child in body
     )
+
+
+def _target_names(target) -> list[str]:
+    """A loop's names in the order they are written: `(e, L), j` is e, L, j. `ast.walk` goes
+    breadth first and gave j, e, L for two loops read as one (the audit of 0.50.0)."""
+    if isinstance(target, ast.Name):
+        return [target.id]
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return [name for element in target.elts for name in _target_names(element)]
+    return []

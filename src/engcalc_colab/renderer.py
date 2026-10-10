@@ -1810,7 +1810,9 @@ def _unit_family(quantity) -> tuple[str, ...]:
 _SHEET_SYSTEMS = {
     "us": frozenset({"kip", "ksi", "psi", "inch", "in", "ft", "lbf", "lb"}),
     "technical": frozenset({"kgf", "tonf", "ton"}),
-    "si": frozenset({"N", "kN", "MN", "Pa", "kPa", "MPa", "GPa", "mm", "cm", "m", "km"}),
+    # Forces and stresses only: a length - `m`, `cm` - is written on a kgf sheet as on an SI
+    # one, and counting it made the technical system never apply (the audit of 0.50.0).
+    "si": frozenset({"N", "kN", "MN", "Pa", "kPa", "MPa", "GPa"}),
 }
 
 
