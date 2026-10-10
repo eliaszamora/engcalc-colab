@@ -12,11 +12,29 @@ _2026-10-10._
 
 | | |
 |---|---|
-| released | **0.49.0** - #414, `7a653d5`, closed (checked in his Colab) |
-| before that | **0.48.1** - #412, `8c9c111`, closed |
-| default suite | **3964 passing** on 0.49.0 (SymPy 1.14 and 1.13.3) |
+| released | **0.50.0** - #416, `d05a2b6`, closed (checked in his Colab) |
+| before that | **0.49.0** - #414, `7a653d5`, closed |
+| default suite | **3972 passing** on 0.50.0 (SymPy 1.14 and 1.13.3) |
 | open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
 | in progress | nothing |
+
+**0.50.0 is closed** (#416, squash `d05a2b6`, 6/6 CI on `ac0e7ee`, his "sí, sigue"): two `% for`
+one directly inside the other make one gathered table over their pairs (`control._the_only_loop_inside`,
+names in the order written by `_target_names`, not when the inner loop has a `% break`; the outer
+name ends at its last value); a loop line shown with its formula is a table column (`_a_value`);
+a sheet whose measured units are one system only - US (kip, ksi, in, ft, lb...) or technical (kgf,
+tonf) - reads values held in base units (matrices of numbers) in that system's families, and in
+its force and length for dimensions no family names (`EI` in kip·in²) (`renderer._the_sheet_writes_only`,
+`_in_base_units`; lengths count for no system; a palette still wins). Audit: conversions exact;
+three findings fixed (header order, outer name after an empty inner range, technical branch never
+applying). Corpus: 204 identical, 55 differ - kip sheets of ch4-10 in kip/ft/in/kip·in² (spot-checked
+exact) and new loop-table columns; console identical everywhere; no sheet slower. Wheel `4a6793e`
+(+ smoke-only commit): 33 files identical, upgrades nothing, smoke 87/87, wheel suite, 24 pages
+identical. After merge `git+https` resolves to `d05a2b6`, reports 0.50.0, smoke 87/87. **Checked in
+his Colab** (2026-10-11; cell 3 `engcalc 0.50.0`; cell 5: the `i, j` table and the `y_i`/`z_i` table
+with its rule; his notebook's `%eng_units kN` keeps kip sheets out of that check by design).
+Process lesson: a RED check restored `src` with uncommitted work and lost it (redone from the
+session); commit before any RED check, or run it on an exported tree.
 
 **0.49.0 is closed** (#414, squash `7a653d5`, 6/6 CI on `45f229d`, his "sí, sigue con esa
 tanda"): kept names stand in part assignments, `zeros + K`, `piecewise` bodies, a `solve` inside a
@@ -72,9 +90,10 @@ installed wheel; 24 reference pages identical. After merge `git+https` of main r
 `rank(K) = 2`, `argmax(D)`, `2[km]`, `1[kip] + 1000[lb]` = 8.90 kN under his kN palette, λ, and
 `% break` with its note).
 
-**Exact next step:** the next batch from `OPEN-FINDINGS.md` - loop-table gaps (C9i nested loops,
-L44 entries read from a matrix, C10c values set in a `% if`), C5h kip sheets' matrices in SI (needs
-the sheet's unit system), then the remaining PRESENTATION and MESSAGE rows by realism.
+**Exact next step:** the remaining PRESENTATION and MESSAGE rows of `OPEN-FINDINGS.md` by realism
+(C10c values set in a `% if` inside a loop, EXd kN/mm, C10k integer vectors written twice, C5a a
+formula printed twice before `numeric`, C2k a bare `solve` with nothing on the left, the
+`y = f(1e8)` + `numeric(y)` repeated row), then MISSING (C6a, C6i, C7c, C8j, C8k...).
 
 **0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
 lo que falte o quede y las decisiones las dejo a tu criterio", 2026-10-09). First batch of the
