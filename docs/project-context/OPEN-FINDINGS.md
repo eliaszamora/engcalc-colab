@@ -26,6 +26,12 @@ fixed in 0.49.0: a `=` assembly that keeps adding parts after a name it reads ch
 per pass) gave every part the last value in silence (main too) - now a notice pointing to `:=`
 assembly. Left: loop-table gaps (C9i nested loops, L44 entries read from a matrix, C10c values set
 in a `% if`), C5h, EXd; `assume` bounds are not checked against later values (a bound is data).
+
+**Status after 0.50.0 (2026-10-11):** fixed in 0.50.0 - C9i (nested loops make one table over
+their pairs), L44 (a loop line written with its formula is a column), C5h (a sheet that writes one
+system - kip or kgf - reads its matrices of numbers in it, `EI` entries included). Left: C10c
+(values set in a `% if` inside a loop are printed after the table), EXd (kN/mm), and the remaining
+PRESENTATION/MESSAGE rows below.
 Decided as the page's rules, not defects: C4k/C6c/C8i (two decimals; `%eng_config precision=`
 changes it), and D1-D23 below.
 
