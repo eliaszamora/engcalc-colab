@@ -12,11 +12,27 @@ _2026-10-10._
 
 | | |
 |---|---|
-| released | **0.50.0** - #416, `d05a2b6`, closed (checked in his Colab) |
-| before that | **0.49.0** - #414, `7a653d5`, closed |
-| default suite | **3972 passing** on 0.50.0 (SymPy 1.14 and 1.13.3) |
+| released | **0.51.0** - #418, `595b2b4`, closed (checked in his Colab) |
+| before that | **0.50.0** - #416, `d05a2b6`, closed |
+| default suite | **3996 passing** on 0.51.0 (SymPy 1.14 and 1.13.3) |
 | open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
 | in progress | nothing |
+
+**0.51.0 is closed** (#418, squash `595b2b4`, 6/6 CI on `9155f07`, his "sigue con esa tanda"
+and "sigue con lo que queda"): in Colab a wide formula stays in its columns - Colab now shows a
+cell's results beside its code (~630 px) and its output frame leaves KaTeX's `.base` inline with
+`white-space: normal`, so his chapter-2 `K_G = factor(transpose(T)*K_L*T)` (a 4x4 of fractions)
+wrapped, columns under each other and over the next row. The LaTeX of that cell is byte-identical
+from 0.40.0 to 0.51.0: the frame changed, not EngCalc. `magic.KEEP_FORMULAS_ON_ONE_LINE`, one
+`<style>` per cell only when `google.colab` is loaded (`.katex .base{inline-block;nowrap}`,
+`body{overflow-x:auto}`), measured in his Colab; a local KaTeX page does not reproduce the wrap.
+Also `cot`/`sec`/`csc`/`heaviside`; a matrix typed as numbers written once
+(`renderer._a_literal_of_numbers`, `_shows_the_unit_typed`); `numeric(d)` of a matrix just above
+not repeated (`_bracketed_units_in` reads `MEASURED_UNITS`); a bare `solve(e1, x)` writes `x = 2`.
+Audit: one defect (arithmetic in a literal lost its typed row), fixed. Corpus: 235 identical, 29
+differ (matrices of numbers once), numbers and console identical; 5 ch10 timeouts on both trees.
+Wheel 33 files identical, smoke 90/90, wheel suite, 24 pages identical. **Checked in his Colab** (2026-10-10; cell 3 `engcalc 0.51.0`; cell 5: his `K_G` in its columns with a sideways scrollbar, `cot(30°) = 1.73`, `w_3 = 5.00 kN/m`, `v` once, `z = 2`). Process slip: I typed over
+Untitled9's cell 4 picking it by text (Chrome `find`); restored with undo.
 
 **0.50.0 is closed** (#416, squash `d05a2b6`, 6/6 CI on `ac0e7ee`, his "sí, sigue"): two `% for`
 one directly inside the other make one gathered table over their pairs (`control._the_only_loop_inside`,
@@ -90,10 +106,9 @@ installed wheel; 24 reference pages identical. After merge `git+https` of main r
 `rank(K) = 2`, `argmax(D)`, `2[km]`, `1[kip] + 1000[lb]` = 8.90 kN under his kN palette, λ, and
 `% break` with its note).
 
-**Exact next step:** the remaining PRESENTATION and MESSAGE rows of `OPEN-FINDINGS.md` by realism
-(C10c values set in a `% if` inside a loop, EXd kN/mm, C10k integer vectors written twice, C5a a
-formula printed twice before `numeric`, C2k a bare `solve` with nothing on the left, the
-`y = f(1e8)` + `numeric(y)` repeated row), then MISSING (C6a, C6i, C7c, C8j, C8k...).
+**Exact next step:** what `OPEN-FINDINGS.md` "Status after 0.51.0" leaves: the `y = f(1e8)` +
+`numeric(y)` repeated last row, C10c (values set in a `% if` inside a loop), then MISSING C6a
+(δθ names), C7c (a general `b(y)` inside `integrate`), C8k (`dsolve`), by realism.
 
 **0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
 lo que falte o quede y las decisiones las dejo a tu criterio", 2026-10-09). First batch of the
