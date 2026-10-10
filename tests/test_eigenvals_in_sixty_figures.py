@@ -358,3 +358,18 @@ def test_directions_g_lacks_are_weighed_by_their_own_gram_matrix():
     ])
     with pytest.raises(EngEvaluationError, match="second matrix is singular"):
         eigenvalues(k, np.diag([1.0, 1.0, -1.0, 0.0, 0.0]))
+
+
+def test_an_antisymmetric_g_inside_its_own_null_space_makes_eigenvalues():
+    # G's symmetric part singular along (1, -1) of [1, 1; 1, 1] blocks, and an antisymmetric
+    # 4e-13 inside that null space: it makes λ = ±22.9 of its own, finite and settled, which were
+    # dropped as infinite where main printed them (the twelfth audit of 0.47.0).
+    k = np.array([
+        [1.0000000000009999, 0.9999999999989998, 2.4999999999999994e-12, -2.4999999999999994e-12],
+        [0.9999999999989998, 1.0000000000009999, -2.4999999999999994e-12, 2.4999999999999994e-12],
+        [2.4999999999999994e-12, -2.4999999999999994e-12, 3.0000000000009996, 2.9999999999989995],
+        [-2.4999999999999994e-12, 2.4999999999999994e-12, 2.9999999999989995, 3.0000000000009996],
+    ])
+    g = np.array([[1.0, 1, 0, 0], [1, 1, 0, 4e-13], [0, 0, 1, 1], [0, -4e-13, 1, 1]])
+    got = eigenvalues(k, g)
+    assert len(got) == 4 and got[0] == pytest.approx(-22.9126, rel=1e-3) and got[3] == pytest.approx(22.9126, rel=1e-3), got

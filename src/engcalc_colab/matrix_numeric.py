@@ -998,6 +998,14 @@ def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, 
         # through which an antisymmetric 4.5 moved λ = 1 to 3.025 (the eleventh audit).
         if nulls:
             null_vectors, inverse_gram = nulls
+            # Inside the directions G lacks, its antisymmetric part is all G has: beyond its
+            # round-off there it makes λ of its own, finite and real - ±22.9 from a 4e-13 in a
+            # G of [1, 1; 1, 1] blocks, lost as infinite where main printed them (the twelfth
+            # audit of 0.47.0). Such a pencil is not symmetric.
+            inside = null_vectors.T @ skews[1] @ null_vectors
+            scale = null_vectors.T @ g_abs @ null_vectors + 1e-300
+            if numpy.any(inside > 10 * 1e-15 * scale):
+                raise _OutOfSymmetry
             reach = vectors @ skews[0] @ null_vectors + lams[:, None] * (vectors @ skews[1] @ null_vectors)
             through = numpy.einsum("ij,jk,ik->i", reach, inverse_gram, reach)
             with numpy.errstate(divide="ignore", invalid="ignore"):
