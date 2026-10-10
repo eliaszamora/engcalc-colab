@@ -77,6 +77,13 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.48.1: angles with their mark, powers of ten as powers of ten
+check("an angle in degrees reads with its mark",
+      "P := 10[kN]\nF = P*cos(45*deg)\nnumeric(F)\na := [30[deg], 45[deg]]",
+      r"\cos{\left(45^{\circ} \right)}", r"30^{\circ}", absent=(r"\mathrm{deg}",))
+check("a round-off entry does not move a vector to newtons",
+      "F := [1[kN]; 1e-7[kN]]", r"\end{matrix}\right]\,\mathrm{kN}", absent=("1e-07", "1000.00"))
+
 # 0.48.0: what a matrix sheet asks of := lines and loops
 check("km, lb and percent are units",
       "L := 2[km]\nP := 1[kip] + 1000[lb]\nr := 5[percent]\nQ := r*100[kN]",
