@@ -32,6 +32,16 @@ their pairs), L44 (a loop line written with its formula is a column), C5h (a she
 system - kip or kgf - reads its matrices of numbers in it, `EI` entries included). Left: C10c
 (values set in a `% if` inside a loop are printed after the table), EXd (kN/mm), and the remaining
 PRESENTATION/MESSAGE rows below.
+
+**Status after 0.51.0 (2026-10-10):** fixed in 0.51.0 - C5a (`numeric(d)` of a matrix defined
+just above repeated it, `kN` italic), C2k (a bare `solve` names its unknown), C10k (a matrix typed
+as numbers in one unit is written once; arithmetic, two units or another unit keep both rows),
+C8j (`cot`, `sec`, `csc`), C6i (`heaviside`, 0 before zero and 1 from zero; its integral's middle
+rows are long piecewise forms - the value is right). New and fixed: in Colab a formula wider than
+the output column wrapped (KaTeX `.base` left `white-space: normal` by Colab's frame; results now
+sit beside the code, ~630 px) - a per-cell style keeps it on one line and the frame scrolls.
+Decided: EXd stays the family rule. Left: C10c, C6a (δθ names), C7c (a general `b(y)` inside
+`integrate`), C8k (`dsolve`), the `y = f(1e8[mm^4])` + `numeric(y)` repeated last row.
 Decided as the page's rules, not defects: C4k/C6c/C8i (two decimals; `%eng_config precision=`
 changes it), and D1-D23 below.
 
