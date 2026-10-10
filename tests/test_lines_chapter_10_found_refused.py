@@ -9,6 +9,7 @@ Four solvers wrote these and found each refused:
 - `% if f[1] > 0.5[kip]` on `f := [...]` - "Use it on a := line";
 - `x := solve(eq(f[1] + x*df[1], 300[kip]), x, 0, 1000)` - "unknown numeric name 'x'";
 - `{n} := 1` - "invalid numeric assignment target '1'";
+- `eigenvals(K, G)` with a singular G, as a frame's geometric stiffness always is;
 - `% if y > 1*kip*in` - refused without the hint a `:=` line gives, "write inch".
 """
 
@@ -139,6 +140,45 @@ def test_a_placeholder_is_the_whole_target(sheet):
 def test_a_placeholder_target_in_a_loop(sheet):
     page = ran(sheet("% for n in ['a_1', 'b_2']:\n{n} := 2[m]\n% end\n"))
     assert r"a_{1}" in page and r"b_{2}" in page, page
+
+
+# -- eigenvals with a singular second matrix -----------------------------------------------
+
+
+def test_a_singular_second_matrix_gives_the_finite_eigenvalues(sheet):
+    page = ran(sheet(
+        "K := [2[kN/m], -1[kN/m]; -1[kN/m], 1[kN/m]]\n"
+        "G := [1[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m]]\nl := eigenvals(K, G)\n"
+    ))
+    # det(K - λG) = 1 - λ: one finite eigenvalue, 1.
+    assert value_of(page, "l").startswith(r"\operatorname{eigenvals}"), page
+    assert r"& = & \displaystyle 1.00" in page.split("l & = &", 1)[1], page
+
+
+def test_a_frame_pencil_matches_numpy(sheet):
+    import numpy as np
+
+    page = ran(sheet(
+        "K := [12[kN/m], 6[kN], 0[kN/m]; 6[kN], 4[kN*m], 2[kN]; 0[kN/m], 2[kN], 9[kN/m]]\n"
+        "G := [1.2[kN/m], 0.1[kN], 0[kN/m]; 0.1[kN], 0.13[kN*m], 0[kN]; 0[kN/m], 0[kN], 0[kN/m]]\n"
+        "l := eigenvals(K, G)\n"
+    ))
+    stiffness = np.array([[12, 6, 0], [6, 4, 2], [0, 2, 9.0]])
+    geometric = np.array([[1.2, 0.1, 0], [0.1, 0.13, 0], [0, 0, 0]])
+    inverses = np.linalg.eigvals(np.linalg.solve(stiffness, geometric))
+    expected = sorted(1 / value.real for value in inverses if abs(value) > 1e-12)
+    shown = page.split("l & = &", 1)[1]
+    assert len(expected) == 2
+    for value in expected:
+        assert f"{value:.2f}" in shown, (expected, shown)
+
+
+def test_both_singular_is_refused(sheet):
+    _, printed = sheet(
+        "K := [1[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m]]\n"
+        "G := [0[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m]]\nl := eigenvals(K, G)\n"
+    )
+    assert "engcalc:" in printed, printed
 
 
 # -- the inch in a condition ---------------------------------------------------------------

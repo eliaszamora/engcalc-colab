@@ -616,11 +616,20 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
                 f"eigenvals of a {matrix.shape} matrix needs a second matrix of the same size, "
                 f"not {metric.shape}"
             )
+        symmetric = _nearly_symmetric(matrix) and _nearly_symmetric(metric)
         try:
             inverse = inverse_numbers(metric)
         except EngEvaluationError as exc:
             if "singular" not in str(exc):
                 raise
+            if symmetric:
+                # A frame's geometric stiffness always is: nothing along the bars, whose
+                # eigenvalue is infinite (his book, chapter 10). The finite ones are found
+                # exactly, and judged one by one.
+                try:
+                    return _finite_eigenvalues(matrix, metric)
+                except _OutOfSymmetry:
+                    pass
             # A lumped geometric stiffness or mass often is (the audit of 0.45.6, where the
             # message sent the reader to K's supports).
             raise EngEvaluationError(
@@ -628,7 +637,22 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
                 "direction, whose eigenvalue is infinite; take those degrees of freedom out "
                 "of both matrices"
             ) from exc
-        matrix = multiply_numbers(inverse, matrix)
+        product = multiply_numbers(inverse, matrix)
+        if symmetric:
+            # G⁻¹K tells the unit and refuses units that do not fit; its numbers do not serve:
+            # a G singular only to round-off inverts, and G⁻¹K's eigenvalues were noise - 1e16
+            # and -0.33 for 0.165 (the second audit). The values come from the exact pencil.
+            _inverse_units(product, operation)
+            try:
+                return _finite_eigenvalues(matrix, metric, unit=_eigenvalue_unit(product))
+            except _OutOfSymmetry:
+                pass
+        # Not symmetric - follower loads, not a frame's stiffness: the λ of G⁻¹K as main reads
+        # them, worked out exactly instead of in floats - a column on 1e20 springs, out of
+        # symmetry by 2.4 in 24000, read 1512.14 for 1515.90 in floats (the fifth audit of
+        # 0.46.1). No λ is judged here: a nearly defective one has no first-order measure.
+        _inverse_units(product, operation)
+        return _exact_nonsymmetric(matrix, metric, _eigenvalue_unit(product))
     _inverse_units(matrix, operation)
     unit = _eigenvalue_unit(matrix)
     size = matrix.rows
@@ -647,6 +671,459 @@ def eigenvalues_of_numbers(matrix: NumberMatrix, metric: NumberMatrix | None = N
     ordered = sorted(float(value.real) for value in values)
     units = tuple(unit for _ in ordered)
     return NumberMatrix(size, 1, tuple(ordered), units, _unitless_zeros(1, units))
+
+
+class _OutOfSymmetry(Exception):
+    """A pencil symmetric pair by pair whose dropped antisymmetric part moves a λ beyond its
+    round-off: it is worked out as a pencil that is not symmetric."""
+
+
+def _exact_nonsymmetric(matrix: NumberMatrix, metric: NumberMatrix, unit) -> NumberMatrix:
+    """The eigenvalues of G⁻¹K for a G that inverts, in `_PENCIL_FIGURES` figures on the floats
+    as they are; refused as main refuses when they are not all real."""
+    import mpmath
+    import numpy
+
+    size = matrix.rows
+    stiffness = numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
+    geometric = numpy.array(metric.magnitudes, dtype=float).reshape(size, size)
+    # mpmath's QR does not always converge in these figures - ten tied systems coupled
+    # antisymmetrically, "qr: failed to converge after 321 steps" (the ninth audit of 0.47.0):
+    # once more in half as many again, then refused in words.
+    for figures in (_PENCIL_FIGURES, _PENCIL_FIGURES * 3 // 2):
+        try:
+            with mpmath.workdps(figures):
+                values = mpmath.eig(
+                    mpmath.inverse(mpmath.matrix(geometric.tolist())) * mpmath.matrix(stiffness.tolist()),
+                    left=False, right=False,
+                )
+            break
+        except RuntimeError:
+            continue
+    else:
+        raise EngEvaluationError(
+            "eigenvals(K, G): the eigenvalues of this pencil, which is not symmetric, could not be "
+            "worked out - the iteration does not settle; check that both matrices are symmetric"
+        )
+    with mpmath.workdps(_PENCIL_FIGURES):
+        values = [values[i] for i in range(size)]
+        scale = max((abs(value) for value in values), default=0) or 1
+        # Each against itself, in these figures: against the largest, as main judges floats,
+        # 2 ± 0.3i beside a λ of 1e32 passed as 2 twice (the fourth audit of 0.47.0), and at
+        # 1e-40 of it 2 ± 0.001i beside 3e37 (the seventh).
+        # Below a millionth of itself an imaginary part is beyond the figures printed: main
+        # printed 2 for 2 ± 1e-6i beside 1e8, and so does this (the eighth audit of 0.47.0).
+        if any(abs(mpmath.im(value)) > 1e-6 * abs(value) + mpmath.mpf(10) ** -70 * scale for value in values):
+            raise EngEvaluationError(
+                "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
+                "stiffness have real ones - check that both matrices are symmetric"
+            )
+        ordered = sorted(float(mpmath.re(value)) for value in values)
+    units = tuple(unit for _ in ordered)
+    return NumberMatrix(size, 1, tuple(ordered), units, _unitless_zeros(1, units))
+
+
+def _nearly_symmetric(numbers: NumberMatrix) -> bool:
+    """Symmetric to its round-off: assembled as tᵀkt a stiffness or a mass differs from its
+    transpose in the last bit (3e-17 of the entries), and is symmetric all the same. Each pair
+    against its own scale, the larger of the two and of √(r_i r_j), r the largest of a row - not
+    of the diagonal, which at a joint where K_g cancels is round-off itself, and his -K_g was
+    sent out of symmetry and refused (the seventh audit of 0.47.0). Against the largest entry,
+    a support written as a 1e18 spring hid a follower load of 1.5e5, the pencil was symmetrized
+    and Beck's column read a negative ω² (the sixth audit of 0.47.0)."""
+    import numpy
+
+    size = numbers.rows
+    values = numpy.array(numbers.magnitudes, dtype=float).reshape(size, size)
+    rows = numpy.abs(values).max(axis=1)
+    own = numpy.maximum(numpy.maximum(numpy.abs(values), numpy.abs(values.T)), numpy.sqrt(numpy.outer(rows, rows)))
+    return bool(numpy.all(numpy.abs(values - values.T) <= 1e-12 * own))
+
+
+def _finite_eigenvalues(matrix: NumberMatrix, metric: NumberMatrix, unit=None) -> NumberMatrix:
+    """`eigenvals(K, G)` of a symmetric pencil: the finite λ of K x = λ G x, smallest first.
+
+    Worked out in `_PENCIL_FIGURES` figures on the entries exactly as the floats hold them -
+    symmetrized, a last-bit difference from tᵀkt being round-off - with each λ's vector
+    (`_exact_pencil`). Seven audits of a method in floats each found a silently wrong λ -
+    supports and links written as springs of 1e16-1e20, a G singular to round-off - and every
+    one was the solver's round-off, not the matrices'.
+
+    What the floats themselves do not settle is told by each λ's own sensitivity to a change
+    of 1e-15 in every entry (`_judged`). A pencil that is not symmetric is worked out as main
+    works it (`eigenvalues_of_numbers`): a nearly defective λ of one has no first-order
+    sensitivity to tell it by, and lost a double of a ring in silence (the fifth audit)."""
+    import numpy
+
+    size = matrix.rows
+    if unit is None:
+        # With G singular nothing inverted K: its units are checked as its inverse checks
+        # them (the third audit: an entry in kN/m among kN·m read in kN).
+        _inverse_units(matrix, "eigenvals")
+    stiffness = numpy.array(matrix.magnitudes, dtype=float).reshape(size, size)
+    geometric = numpy.array(metric.magnitudes, dtype=float).reshape(size, size)
+    # What symmetrizing drops, |K - Kᵀ| / 2, is weighed against each λ's round-off: symmetric
+    # pair by pair to 1e-12, an antisymmetric 4.5 beside a tie of 1e13 split a double into
+    # 1 ± 2.25i, and symmetrized it printed 1 twice (the seventh audit of 0.47.0).
+    skews = (numpy.abs(stiffness - stiffness.T) / 2, numpy.abs(geometric - geometric.T) / 2)
+    stiffness = (stiffness + stiffness.T) / 2
+    geometric = (geometric + geometric.T) / 2
+    if not numpy.abs(geometric).max():
+        raise EngEvaluationError("eigenvals(K, G): the second matrix is zero; there is no finite eigenvalue")
+    finite = _judged(stiffness, geometric, skews)
+    if unit is None:
+        unit = _pencil_unit(matrix, metric)
+    units = tuple(unit for _ in finite)
+    return NumberMatrix(len(finite), 1, tuple(finite), units, _unitless_zeros(1, units))
+
+
+_UNSETTLED = (
+    "eigenvals(K, G): these eigenvalues cannot be told with the figures a float holds - a "
+    "change of 1e-15 in the entries moves one by more than 3% of itself; G is singular or "
+    "nearly, or a stiffness far beyond the rest (a support written as a spring) does this. Take "
+    "out the degrees of freedom where G has (almost) nothing, or write it exactly"
+)
+
+_PENCIL_FIGURES = 80
+
+
+def _judged(stiffness, geometric, skews=None) -> list[float]:
+    """The λ the floats settle, each by its sensitivity s to a change of 1e-15 in every entry,
+    s = 1e-15 |x|ᵀ(|K| + |λ||G|)|x| / |xᵀGx|.
+
+    - s ≤ 3% of |λ|: printed, the exact answer to the entries as written - two stiff DOFs tied
+      by a 1e13 spring, whose soft λ = 1 is (1 + P) - P, s = 2% (the audits' A_tie), as main
+      printed it. The round-off of entries as a sheet writes them - kN to N - moved a λ by about
+      a thirtieth of its s: a portal's soft ω² of 3.736 read 3.723 with s at 9% (the battery of
+      0.47.0), a third figure the page would print wrong; at 3% the third figure holds.
+    - G cancelling to round-off on its vector, |xᵀGx| ≤ 1e-11 |x|ᵀ|G||x|, and not one figure
+      holding at first order (s ≥ |λ|): a direction G has only to round-off, whose λ is
+      round-off over round-off - infinite, not printed; no more of these than G has such
+      directions (`_round_off_directions`). A group's own s decides only whether it prints
+      (`_clusters_measured`).
+    - negligible, below 1e-12 of the λ that are settled (their lower median): its own value
+      while one figure of it holds (s < |λ|), else 0 - a mechanism, or his -K_g's λ of 1e-17
+      beside 1e-3, as main printed them (the fourth audit of 0.47.0). The upper median of two -
+      an axial mode and a link's - made a sway mode of 176 negligible, and it was printed 0
+      (the fifth audit).
+    - anything else is refused: a sway mode beside a link of 3e20, λ = 176 with s of 270, is a
+      mechanism or not as the last bit of the link has it."""
+    import numpy
+
+    exact = _exact_pencil(stiffness, geometric, skews)
+    # What symmetrizing dropped moves a λ by more than ten times what round-off could: the
+    # pencil is not symmetric there, and is worked out as one that is not.
+    if any(dropped > 10 * s for _value, s, _g, dropped in exact):
+        raise _OutOfSymmetry
+    pencil = _clusters_measured(stiffness, geometric, exact)
+    # What 0 leaves in these figures - 1.6e-89 beside 1e9 - is 0, and judged as one: beside K's
+    # scale over G's, not the largest λ, which a G of 1e-60 makes 1e60 (the fifth audit).
+    scale = numpy.abs(stiffness).sum(axis=0).max() / numpy.abs(geometric).sum(axis=0).max()
+    pencil = [(0.0 if abs(value) <= 1e-65 * scale else value, s, g, first) for value, s, g, first in pencil]
+    sizes = sorted(abs(value) for value, s, _g, _f in pencil if value and s <= 0.03 * abs(value))
+    typical = sizes[(len(sizes) - 1) // 2] if sizes else 0.0
+    finite = []
+    infinite = 0
+    for value, sensitivity, g_part, first in pencil:
+        if sensitivity <= 0.03 * abs(value):
+            finite.append(value)
+        elif g_part <= 1e-11 and first >= abs(value):
+            infinite += 1
+        elif abs(value) <= 1e-12 * typical:
+            finite.append(0.0 if sensitivity >= abs(value) else value)
+        else:
+            raise EngEvaluationError(_UNSETTLED)
+    if infinite and infinite > _round_off_directions(geometric):
+        raise EngEvaluationError(_UNSETTLED)
+    return sorted(finite)
+
+
+def _clusters_measured(stiffness, geometric, pencil):
+    """Each λ as (value, s to print by, g, first-order s). A group of λ within 1e-6 of each
+    other, one of whose first-order s says it holds no figure, has its s to print by measured
+    instead: the pencil again, exactly, on entries moved by 1e-15 of themselves, the group
+    against as many values of each run nearest it, both in order. A defective double - K =
+    [1, 3; 3, 0] against G = [0, 1; 1, 0], λ = 3 twice - has xᵀGx = 0 and no first-order s,
+    and moves by the square root of the change, 3e-8: it was refused where main printed it
+    (the fifth audit of 0.47.0). Member against its nearest, a twin's copy was its own nearest
+    and the s came out low (the sixth audit). Whether a λ is infinite stays the first-order
+    measure's: a pair of round-off λ of 7e28 measured at 93% was refused, where it is two
+    directions G lacks (the battery, multi-storey frames on springs)."""
+    import numpy
+
+    out = [(value, s, g, s) for value, s, g, _skew in pencil]
+    values = [value for value, _s, _g, _skew in pencil]
+    order = sorted(range(len(values)), key=lambda i: values[i])
+    groups, current = [], [order[0]] if order else []
+    for previous, index in zip(order, order[1:]):
+        if abs(values[index] - values[previous]) <= 1e-6 * max(abs(values[index]), abs(values[previous])):
+            current.append(index)
+        else:
+            groups.append(current)
+            current = [index]
+    if current:
+        groups.append(current)
+    doubtful = [
+        group for group in groups
+        if len(group) > 1 and any(pencil[i][1] > 0.03 * abs(values[i]) for i in group)
+    ]
+    if not doubtful:
+        return out
+    trials = numpy.random.default_rng(20261009)
+    moved_runs = []
+    for _ in range(2):
+        noise = trials.standard_normal(stiffness.shape)
+        k = stiffness * (1 + 1e-15 * (noise + noise.T) / 2)
+        noise = trials.standard_normal(geometric.shape)
+        g = geometric * (1 + 1e-15 * (noise + noise.T) / 2)
+        try:
+            run = [value for value, _s, _g, _skew in _exact_pencil(k, g)]
+        except EngEvaluationError:
+            return out
+        if len(run) < max(len(group) for group in doubtful):
+            return out
+        moved_runs.append(run)
+    for group in doubtful:
+        mine = sorted(group, key=lambda i: values[i])
+        centre = sum(values[i] for i in mine) / len(mine)
+        moved = [0.0] * len(mine)
+        for run in moved_runs:
+            theirs = sorted(sorted(run, key=lambda v: abs(v - centre))[: len(mine)])
+            for place, (index, other) in enumerate(zip(mine, theirs)):
+                moved[place] = max(moved[place], abs(other - values[index]))
+        for place, index in enumerate(mine):
+            value, first, g_part, _ = out[index]
+            out[index] = (value, moved[place], g_part, first)
+    return out
+
+
+def _round_off_directions(geometric) -> int:
+    """How many directions G has only to round-off: eigenvalues of G scaled by its own diagonal
+    (a spring of 1e20 in G is no direction it lacks), in `_PENCIL_FIGURES` figures on the floats
+    as they are, above what 0 leaves (1e-70 of the largest) and below 1e-11 of it."""
+    import mpmath
+
+    size = len(geometric)
+    with mpmath.workdps(_PENCIL_FIGURES):
+        # Scaled in these figures, not in floats: rounded, a 2x2 block of 100 [c², cs; cs, s²]
+        # lost the round-off it is singular to, and its direction was not counted (the battery).
+        g = mpmath.matrix(geometric.tolist())
+        own = [mpmath.sqrt(abs(g[i, i])) or mpmath.mpf(1) for i in range(size)]
+        scaled = mpmath.matrix([[g[i, j] / own[i] / own[j] for j in range(size)] for i in range(size)])
+        values = mpmath.eigsy(scaled, eigvals_only=True)
+        sizes = [abs(values[i]) for i in range(size)]
+        top = max(sizes)
+        return sum(1 for size in sizes if mpmath.mpf(10) ** -70 * top < size <= mpmath.mpf(10) ** -11 * top)
+
+
+def _exact_pencil(stiffness, geometric, skews=None) -> list[tuple[float, float, float, float]]:
+    """The finite λ of a symmetric pencil K x = λ G x on the floats as they are, in
+    `_PENCIL_FIGURES` figures, each with its sensitivity to a change of 1e-15 in every entry and
+    |xᵀGx| / |x|ᵀ|G||x|.
+
+    Through a Cholesky factor: of G when it is positive definite (a mass, his `eigenvals(-K_g,
+    K)`) - xᵀGx = 1 - else of K - σG for the σ nearest 0 that makes it so - xᵀGx = μ, and λ =
+    σ + 1/μ, a μ of 0 being a direction G does not have, whose λ is infinite. A pencil with no
+    definite combination - G and K both indefinite - through (K - σG)⁻¹ G, the σ nearest 0 that
+    inverts with condition up to 1e40 (the best conditioned alone was -1.4e30 beside a 1e22
+    spring, where 2 ± i came out real - the second audit); refused when a λ is not real, and
+    when no σ inverts: K - λG is singular for every λ. The sums of s are of magnitudes and are
+    taken in floats; what cancels is not."""
+    import mpmath
+    import numpy
+
+    size = stiffness.shape[0]
+    k_norm = numpy.abs(stiffness).sum(axis=0).max()
+    g_norm = numpy.abs(geometric).sum(axis=0).max()
+    scales = sorted({1.0, k_norm / g_norm if k_norm else 1.0})
+    shifts = sorted(
+        {0.0} | {sign * 1.37 * 10.0 ** power * scale for scale in scales for power in range(-8, 9) for sign in (-1, 1)},
+        key=abs,
+    )
+    k_abs = numpy.abs(stiffness)
+    g_abs = numpy.abs(geometric)
+
+    def definite(matrix) -> bool:
+        try:
+            numpy.linalg.cholesky(matrix)
+        except numpy.linalg.LinAlgError:
+            return False
+        return True
+
+    def judged(value, vector, seen):
+        # s = 1e-15 |x|ᵀ(|K| + |λ||G|)|x| / |xᵀGx|, and |xᵀGx| against |x|ᵀ|G||x|; what
+        # symmetrizing dropped is added by `finished`, over each group of λ.
+        x = numpy.abs(numpy.array([float(vector[i]) for i in range(size)]))
+        weight = float(x @ ((k_abs + abs(float(value)) * g_abs) @ x))
+        magnitude = float(x @ (g_abs @ x))
+        seen = abs(float(seen))
+        if not seen:
+            return [float(value), float("inf"), 0.0, x, seen]
+        return [float(value), 1e-15 * weight / seen, seen / magnitude if magnitude else 0.0, x, seen]
+
+    def finished(rows, nulls=None):
+        # What symmetrizing dropped, ΔK = |K - Kᵀ|/2 and ΔG, couples any two λ by
+        # c = |x|ᵀ(|ΔK| + |λ||ΔG|)|x'| / √(|xᵀGx||x'ᵀGx'|), and moves λ by c when they are
+        # within 2c - they may meet and leave the real line - else by c²/gap: an antisymmetric
+        # 4.5 between two tied systems split their double into 1 ± 2.25i (the seventh audit of
+        # 0.47.0), and one between two λ 1e-3 apart, each blind to it alone, moved them by 3e-4
+        # (the eighth). Every pair, not a group's, and summed.
+        if skews is None or not (skews[0].any() or skews[1].any()):
+            return [(value, s, g, 0.0) for value, s, g, _x, _seen in rows]
+        lams = numpy.array([abs(row[0]) for row in rows])
+        vectors = numpy.array([row[3] for row in rows])
+        seens = numpy.array([row[4] for row in rows])
+        through_k = vectors @ skews[0] @ vectors.T
+        through_g = vectors @ skews[1] @ vectors.T
+        # Through ΔK - λ_i ΔG: its own λ, not the larger of the pair - a mechanism's 0 keeps 0
+        # whatever ΔG is, and charged with its partner's λ it sent his condensed -K_g out of
+        # symmetry (the ninth audit of 0.47.0).
+        coupling = through_k + lams[:, None] * through_g
+        scale = numpy.sqrt(numpy.outer(seens, seens))
+        with numpy.errstate(divide="ignore", invalid="ignore"):
+            c = numpy.where(scale > 0, coupling / scale, numpy.where(coupling > 0, numpy.inf, 0.0))
+            values = numpy.array([row[0] for row in rows])
+            gap = numpy.abs(values[:, None] - values[None, :])
+            moved = numpy.where(gap <= 2 * c, c, numpy.where(gap > 0, c * c / gap, c))
+        moved = numpy.nan_to_num(moved, nan=numpy.inf)
+        # Summed over every partner, not the largest: six pairs each under the gate moved a λ of
+        # 1 to 2.149 together (the ninth audit of 0.47.0).
+        dropped = moved.sum(axis=1) if len(rows) else numpy.zeros(0)
+        # And through each direction G does not have, z with Gz = 0, whose λ is infinite and
+        # not a row here: (xᵀΔK z)² / (|xᵀGx| zᵀKz) - an antisymmetric 14 between a tied mode
+        # and a soft direction G lacks moved λ = 1 to 6.06, blind to every pair above (the
+        # tenth audit of 0.47.0).
+        # nulls: the directions G lacks, as |Z| and |(ZᵀKZ)⁻¹| - their own K-Gram matrix, not
+        # one stiffness each: two such directions tied by 1e13 have a soft combination of 20,
+        # through which an antisymmetric 4.5 moved λ = 1 to 3.025 (the eleventh audit).
+        if nulls:
+            null_vectors, inverse_gram = nulls
+            # Inside the directions G lacks, its antisymmetric part is all G has: beyond its
+            # round-off there it makes λ of its own, finite and real - ±22.9 from a 4e-13 in a
+            # G of [1, 1; 1, 1] blocks, lost as infinite where main printed them (the twelfth
+            # audit of 0.47.0). Such a pencil is not symmetric.
+            inside = null_vectors.T @ skews[1] @ null_vectors
+            scale = null_vectors.T @ g_abs @ null_vectors + 1e-300
+            if numpy.any(inside > 10 * 1e-15 * scale):
+                raise _OutOfSymmetry
+            reach = vectors @ skews[0] @ null_vectors + lams[:, None] * (vectors @ skews[1] @ null_vectors)
+            through = numpy.einsum("ij,jk,ik->i", reach, inverse_gram, reach)
+            with numpy.errstate(divide="ignore", invalid="ignore"):
+                dropped = dropped + numpy.where(seens > 0, through / seens, numpy.where(through > 0, numpy.inf, 0.0))
+        return [(value, s, g, float(d)) for (value, s, g, _x, _seen), d in zip(rows, dropped)]
+
+    with mpmath.workdps(_PENCIL_FIGURES):
+        k = mpmath.matrix(stiffness.tolist())
+        g = mpmath.matrix(geometric.tolist())
+        floor = mpmath.mpf(10) ** -70
+        g_size = mpmath.mnorm(g, 1)
+
+        def cholesky(m):
+            try:
+                factor = mpmath.cholesky(m)
+            except (ValueError, ZeroDivisionError):
+                return None
+            if any(factor[i, i] <= 0 for i in range(size)):
+                return None
+            return factor
+
+        def column(m, j):
+            return mpmath.matrix([m[i, j] for i in range(size)])
+
+        factor = cholesky(g) if definite(geometric) else None
+        if factor is not None:
+            inverse = mpmath.inverse(factor)
+            values, vectors = mpmath.eigsy(inverse * k * inverse.T)
+            return finished([judged(values[i], inverse.T * column(vectors, i), 1) for i in range(size)])
+        for shift in (shift for shift in shifts if definite(stiffness - shift * geometric)):
+            factor = cholesky(k - mpmath.mpf(shift) * g)
+            if factor is None:
+                continue
+            inverse = mpmath.inverse(factor)
+            mus, vectors = mpmath.eigsy(inverse * g * inverse.T)
+            zero = floor * mpmath.mnorm(inverse, 1) ** 2 * g_size
+            # Orthonormal in K - σG and with Gz = 0, ZᵀKZ = I.
+            null_columns = [
+                numpy.abs(numpy.array([float(v) for v in inverse.T * column(vectors, i)]))
+                for i in range(size)
+                if abs(mus[i]) <= zero
+            ]
+            nulls = (numpy.array(null_columns).T, numpy.eye(len(null_columns))) if null_columns else None
+            return finished([
+                judged(shift + 1 / mus[i], inverse.T * column(vectors, i), mus[i])
+                for i in range(size)
+                if abs(mus[i]) > zero
+            ], nulls)
+        for shift in shifts:
+            shifted = k - mpmath.mpf(shift) * g
+            # mpmath's own failures on a matrix it cannot invert are that too: a free gable
+            # whose K and K_g share a translation read "'>=' not supported between 'NoneType'
+            # and 'int'" (the second audit of 0.47.0).
+            try:
+                inverse = mpmath.inverse(shifted)
+                if mpmath.mnorm(inverse, 1) * mpmath.mnorm(shifted, 1) > mpmath.mpf(10) ** 40:
+                    continue
+                mus, vectors = mpmath.eig(inverse * g, left=False, right=True)
+            except (ZeroDivisionError, TypeError, ValueError, RuntimeError):
+                continue
+            zero = floor * mpmath.mnorm(inverse, 1) * g_size
+            out = []
+            nulls = []
+            for i in range(size):
+                if abs(mus[i]) <= zero:
+                    z = column(vectors, i)
+                    phase = max((z[j] for j in range(size)), key=abs)
+                    z = mpmath.matrix([mpmath.re(z[j] / phase) for j in range(size)])
+                    nulls.append(z)
+                    continue
+                value = shift + 1 / mus[i]
+                if abs(mpmath.im(value)) > mpmath.mpf(10) ** -30 * max(abs(value), abs(shift)):
+                    raise EngEvaluationError(
+                        "eigenvals found eigenvalues that are not real; a stiffness and a geometric "
+                        "stiffness have real ones - check that both matrices are symmetric"
+                    )
+                # A real λ of a symmetric pencil has a real vector, up to a phase.
+                x = column(vectors, i)
+                phase = max((x[j] for j in range(size)), key=abs)
+                x = mpmath.matrix([mpmath.re(x[j] / phase) for j in range(size)])
+                out.append(judged(mpmath.re(value), x, (x.T * g * x)[0]))
+            if nulls:
+                basis = mpmath.matrix([[z[j] for z in nulls] for j in range(size)])
+                try:
+                    gram = mpmath.inverse(basis.T * k * basis)
+                    inverse_gram = numpy.abs(numpy.array([[float(gram[a, b]) for b in range(len(nulls))] for a in range(len(nulls))]))
+                except (ZeroDivisionError, ValueError):
+                    inverse_gram = numpy.full((len(nulls), len(nulls)), numpy.inf)
+                null_vectors = numpy.abs(numpy.array([[float(z[j]) for z in nulls] for j in range(size)]))
+                return finished(out, (null_vectors, inverse_gram))
+            return finished(out)
+        raise EngEvaluationError(
+            "eigenvals(K, G): K - λG is singular for every λ - in a direction where G has "
+            "nothing, K has nothing either, and any λ satisfies K x = λ G x; take those "
+            "degrees of freedom out of both"
+        )
+
+
+def _pencil_unit(matrix: NumberMatrix, metric: NumberMatrix):
+    """The unit of λ in K x = λ G x: K over G where both have an entry, or, written with
+    plain zeros between them, the one unit of K over the one unit of G (the second audit:
+    `[1[kN/m], 0; 0, 0]` against `[0, 0; 0, 1[kN/m]]`). None for a number."""
+    pair = next(
+        (k / g for k, g in zip(matrix.units, metric.units) if k is not None and g is not None),
+        None,
+    )
+    if pair is not None:
+        return pair
+    stiffness = [unit for unit in matrix.units if unit is not None]
+    geometric = [unit for unit in metric.units if unit is not None]
+    if not stiffness or not geometric:
+        return stiffness[0] if stiffness else (1 / geometric[0] if geometric else None)
+    if all(unit == stiffness[0] for unit in stiffness) and all(unit == geometric[0] for unit in geometric):
+        return stiffness[0] / geometric[0]
+    raise EngEvaluationError(
+        "eigenvals(K, G): the unit of λ cannot be told - no entry of K stands where G has "
+        "one; write the zeros with their units, such as 0[kN/m]"
+    )
 
 
 def _unit_root(unit, power: int):

@@ -28,3 +28,10 @@ htmlcov/
 
 # KaTeX for tests/test_colab_can_typeset_every_formula.py; `npm ci --prefix tools/katex`
 tools/katex/node_modules/
+
+# outputs of tools/eigen_audit/battery.sh, regenerated on every run
+tools/eigen_audit/**/now*.json
+tools/eigen_audit/master_out/
+tools/eigen_audit/corpus_out/
+tools/eigen_audit/*.now.txt
+tools/eigen_audit/corpus_report.json

@@ -1,0 +1,1 @@
+{"unit_syntax": "K := [2[kN/m], 1[kN]; 1[kN], 3[kN*m]]\nG := [1[1/m], 0.1; 0.1, 0.2[m]]\nl := eigenvals(K, G)\n", "mass": "K := [200[kN/m], -100[kN/m]; -100[kN/m], 100[kN/m]]\nM := [1000[kg], 0[kg]; 0[kg], 500[kg]]\nw := eigenvals(K, M)\n"}

@@ -1,0 +1,204 @@
+{
+ "F18_free_fullmass": {
+  "vals": [
+   -1.3703099112254502e-11,
+   1.8889415864506398e-11,
+   2.323476501051859e-10,
+   4702.773103448189,
+   5242.996328906695,
+   12676.584357893405,
+   213223.044768863,
+   217798.211721333,
+   470381.8726667231,
+   470826.8813346984,
+   848787.876742511,
+   957668.4790022211,
+   1359029.8791310631,
+   1662951.4606666095,
+   1662972.7197418208,
+   2091042.4063902113,
+   2906140.213529551,
+   3662332.3782919343
+  ],
+  "units": [
+   "1 / second ** 2"
+  ],
+  "t": 0.3149433999788016
+ },
+ "F18_free_lump": {
+  "err": "EngEvaluationError: line 3: eigenvals(K, G): the second matrix is singular - it has nothing in some direction, whose eigenvalue is infinite; take those degrees of freedom out of both matrices",
+  "t": 0.1763980999821797
+ },
+ "F18_free_buckle": {
+  "err": "EngEvaluationError: line 3: eigenvals(K, G): the second matrix is singular - it has nothing in some direction, whose eigenvalue is infinite; take those degrees of freedom out of both matrices",
+  "t": 0.1846083999844268
+ },
+ "L_rot_mass_4": {
+  "vals": [
+   1.751506742634747e-16,
+   4.276240994676405,
+   14.600000000000005,
+   24.92375900532359
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.011990100028924644
+ },
+ "L_diagmass_4": {
+  "vals": [
+   3.4935914153973947e-13,
+   2434.5658105288626,
+   7348.337434689347,
+   10352.145911087198
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.012268299935385585
+ },
+ "L_singmass_4": {
+  "err": "EngEvaluationError: line 3: eigenvals(K, G): the second matrix is singular - it has nothing in some direction, whose eigenvalue is infinite; take those degrees of freedom out of both matrices",
+  "t": 0.010121200000867248
+ },
+ "L_two_rigid_4": {
+  "vals": [
+   -2.220446049250313e-16,
+   0.0,
+   2.174557019689515,
+   2.238646179461721
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.011899800039827824
+ },
+ "L_two_rigid_sing_4": {
+  "err": "EngEvaluationError: line 3: eigenvals(K, G): the second matrix is singular - it has nothing in some direction, whose eigenvalue is infinite; take those degrees of freedom out of both matrices",
+  "t": 0.0101873999228701
+ },
+ "L_rot_mass_8": {
+  "vals": [
+   4.4113841808445935e-15,
+   1.1113588253352145,
+   4.2762409946763995,
+   9.012821887469675,
+   14.600000000000016,
+   20.187178112530287,
+   24.92375900532357,
+   28.088641174664794
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.047976400004699826
+ },
+ "L_diagmass_8": {
+  "vals": [
+   -8.650043046100314e-13,
+   454.6407664487416,
+   1818.079691553157,
+   4065.921109371734,
+   6369.071664589302,
+   8116.796330792322,
+   11920.655493694265,
+   19768.599284950506
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.04776129999663681
+ },
+ "L_singmass_8": {
+  "err": "EngEvaluationError: line 3: eigenvals(K, G): the second matrix is singular - it has nothing in some direction, whose eigenvalue is infinite; take those degrees of freedom out of both matrices",
+  "t": 0.03618479997385293
+ },
+ "L_two_rigid_8": {
+  "vals": [
+   3.709626564449326e-17,
+   4.109611522031757e-17,
+   0.5253473680703288,
+   0.5662935581060236,
+   1.8423506913375831,
+   1.9225104746854345,
+   3.0380000261297173,
+   5.840036080080408
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.05088110000360757
+ },
+ "L_two_rigid_sing_8": {
+  "err": "EngEvaluationError: line 3: eigenvals(K, G): the second matrix is singular - it has nothing in some direction, whose eigenvalue is infinite; take those degrees of freedom out of both matrices",
+  "t": 0.036479200003668666
+ },
+ "L_rot_mass_12": {
+  "vals": [
+   1.6475600292382707e-15,
+   0.4974829361796016,
+   1.9560291047471963,
+   4.276240994676408,
+   7.3000000000000025,
+   10.82124194150319,
+   14.599999999999993,
+   18.378758058496814,
+   21.90000000000002,
+   24.923759005323593,
+   27.243970895252833,
+   28.702517063820395
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.11820789997000247
+ },
+ "L_diagmass_12": {
+  "vals": [
+   1.6632839996779627e-13,
+   213.8507621139569,
+   874.6955851903348,
+   1897.0496498395657,
+   3216.298931126985,
+   4475.883667076689,
+   6137.814644783445,
+   8114.497220119084,
+   8778.360300723813,
+   10745.51072303658,
+   11192.002734828799,
+   12546.445698238449
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.13371289998758584
+ },
+ "L_singmass_12": {
+  "err": "EngEvaluationError: line 3: eigenvals(K, G): the second matrix is singular - it has nothing in some direction, whose eigenvalue is infinite; take those degrees of freedom out of both matrices",
+  "t": 0.0907917000586167
+ },
+ "L_two_rigid_12": {
+  "vals": [
+   -1.6369369446936554e-16,
+   5.573004026527777e-16,
+   0.23851040423425746,
+   0.2913309843061052,
+   0.9268681886734679,
+   1.0290170151231157,
+   1.7728242684219881,
+   1.9801138472355704,
+   2.551714663254401,
+   2.892217617211569,
+   3.3572309258822766,
+   3.358190701288028
+  ],
+  "units": [
+   "dimensionless"
+  ],
+  "t": 0.149104000069201
+ },
+ "L_two_rigid_sing_12": {
+  "err": "EngEvaluationError: line 3: eigenvals(K, G): the second matrix is singular - it has nothing in some direction, whose eigenvalue is infinite; take those degrees of freedom out of both matrices",
+  "t": 0.14109339995775372
+ }
+}

@@ -77,6 +77,13 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.47.0: eigenvals(K, G) with a singular G, worked out exactly
+check("eigenvals with a singular second matrix",
+      "K := [2[kN/m], -1[kN/m]; -1[kN/m], 1[kN/m]]\nG := [1[kN/m], 0[kN/m]; 0[kN/m], 0[kN/m]]\nl := eigenvals(K, G)",
+      r"\operatorname{eigenvals}\left(K, G\right)", r"& = & \displaystyle 1.00", absent=("singular",))
+check("eigenvals of a pencil with a complex pair is refused",
+      "K := [1[kN/m], 2[kN/m]; 2[kN/m], -1[kN/m]]\nG := [0[kN/m], 1[kN/m]; 1[kN/m], 0[kN/m]]\nl := eigenvals(K, G)",
+      "not real")
 # 0.46.2: a root in its own unit, refusals as typed
 check("a range solve with bounds in inches",
       "x := solve(eq(x, 2[inch]), x, 0[inch], 10[inch])", r"x & = & \displaystyle 2.00\,\mathrm{in}",
