@@ -12,11 +12,27 @@ _2026-10-10._
 
 | | |
 |---|---|
-| released | **0.48.0** - #410, `9ec08ea`, closed (checked in his Colab) |
-| before that | **0.47.1** - #408, `ec15aea`, closed |
-| default suite | **3936 passing** on 0.48.0 (SymPy 1.14 and 1.13.3) |
+| released | **0.48.1** - #412, `8c9c111`, closed (checked in his Colab) |
+| before that | **0.48.0** - #410, `9ec08ea`, closed |
+| default suite | **3952 passing** on 0.48.1 (SymPy 1.14 and 1.13.3) |
 | open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
-| in progress | `fix/0.48.1` (local): `cos(45°)` in formulas, angle vectors in degrees |
+| in progress | nothing |
+
+**0.48.1 is closed** (#412, squash `8c9c111`, 6/6 CI on `6626b21`, under his standing "aborda todo
+lo que falte o quede"; paused overnight on 2026-10-10 at his request and resumed with his
+"retoma"): an angle in degrees reads with its mark (`cos(45°)`, `30°` in `:=` literals; a `deg`
+beside a name keeps its base; `°C` keeps its space); vectors of angles read in degrees (zeros too;
+typed `rad` kept); an entry a million times smaller than the largest does not choose a vector's
+unit (`[1 kN; 1e-7 kN]` stayed kN); powers of ten written as such (`1e8` -> `10^8`, plain floats
+1e6-1e100 as `a × 10^n`). Short realism audit: no wrong number; its three findings fixed with
+contracts. Evidence on `6626b21`: suite 3952 on both SymPy; corpus 255 identical, 9 differ only
+by `45°`/`60°` and `10^{-7}`, 5 ch10 time out on both trees, p7_17 unstable on main; wheel 33
+files identical to src; clean Colab-pinned venv upgrades nothing; smoke 81/81; suite against the
+installed wheel; 24 reference pages identical. After merge `git+https` of main resolves to
+`8c9c111`, reports 0.48.1, smoke 81/81. **Checked in his Colab** (2026-10-10; the runtime was
+disconnected, so cell 0 connected and installed; cell 3 printed `engcalc 0.48.1`; cell 5:
+`cos(45°)`, `[30° 0° 45°]` -> `[30.00 0.00 45.00]°`, `[1 kN; 10⁻⁷ kN]` in kN,
+`f(1.00 × 10⁸ mm⁴)` = 0.0002 m⁴ under his kN palette).
 
 **0.48.0 is closed** (#410, squash `9ec08ea`, 6/6 CI on `fcc1e54`, under his standing "aborda
 todo lo que falte o quede"): `km`, `lbf`, `lb` (a force, as `kip`), `percent`; `%eng_units kip`
@@ -39,9 +55,10 @@ installed wheel; 24 reference pages identical. After merge `git+https` of main r
 `rank(K) = 2`, `argmax(D)`, `2[km]`, `1[kip] + 1000[lb]` = 8.90 kN under his kN palette, λ, and
 `% break` with its note).
 
-**Exact next step:** finish `fix/0.48.1` (presentation by realism from `OPEN-FINDINGS.md`: done
-so far `cos(45°)` and angle vectors; next a kN vector switching to N for a tiny entry, kip sheets'
-matrices in SI, `1e8` written `100000000.0`), then its release routine.
+**Exact next step:** the next batch from `OPEN-FINDINGS.md` by realism - kept names expanded
+(C2e part assignment, C2f `solve` answers, B1 `phiMn` with definitions before values), `piecewise`
+reading "for ... otherwise" (C2l), loop-table gaps (C9i, C10c, C10f), `table` with columns of
+different units (C3i), relational `assume` (C7a), C5h kip matrices; then its release routine.
 
 **0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
 lo que falte o quede y las decisiones las dejo a tu criterio", 2026-10-09). First batch of the
