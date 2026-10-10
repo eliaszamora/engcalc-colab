@@ -13,7 +13,21 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.50.0**.
+Current version: **0.51.0**.
+
+
+## v0.51.0 cot, sec, csc, heaviside; rows written once
+
+- **In Colab a wide formula stays in its columns.** Colab now shows a cell's results beside
+  its code, in a narrower column; a 4x4 matrix of fractions (`K_G = transpose(T)*K_L*T`) wrapped
+  there, its columns falling under each other and over the next row. It now scrolls sideways.
+- **`cot`, `sec`, `csc`** - with angles in degrees too - and **`heaviside`**, the unit step: a
+  load that starts at `x = a` is `w(x) = w_0*heaviside(x - a)`.
+- **A matrix typed as numbers is written once**: `v := [1; 2; 3]` was written as typed and again
+  with decimals. Typed with a formula or in two units, both rows stay.
+- **`numeric(d)` of a matrix defined just above is not repeated**, and a unit written as a
+  measurement (`10*kN`) is no longer set in italic as if it were a name.
+- **`solve(e1, x)` of an equation already on the page writes `x = 2`**; it wrote `2` alone.
 
 
 ## v0.50.0 loop tables that hold everything, kip sheets in kips
@@ -4253,6 +4267,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.51.0** — wide formulas stay in their columns in Colab; cot, sec, csc, heaviside; a matrix of numbers written once; `numeric` of a matrix just above not repeated; a bare `solve` names its unknown.
 - **0.50.0** — nested loops make one table; a loop line with its formula is a column; kip and kgf sheets read their matrices in their own system.
 - **0.49.0** — kept names in assemblies, `zeros + K`, `piecewise`, `solve` in a product and definitions before values; `table` with mixed kinds; `assume` with a bound; `piecewise` in Spanish.
 - **0.48.1** — `cos(45°)` and vectors of angles in degrees; a round-off entry does not move a vector to N; `1e8` written `10^8`.
@@ -4399,4 +4414,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.50.0`.
+Version: `0.51.0`.
