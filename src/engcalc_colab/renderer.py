@@ -286,6 +286,11 @@ class _EngineeringLatexPrinter(LatexPrinter):
         # in it is a factor or stands where a quantity stands. See `_print`.
         self._printing: list = []
 
+    def doprint(self, expr):
+        # An angle in degrees reads `45°`, as its value does, not `45 deg` (his chapter 2,
+        # 0.48.1): the unit's mark sits on the number, with no space before it.
+        return _ANGLE_MARK_SPACED.sub(r"^{\\circ}", super().doprint(expr))
+
     def _print_AppliedUndef(self, expr):
         r"""A call of a function of the sheet, `U_{1}\left(\frac{L}{2}\right)`.
 
@@ -2635,6 +2640,7 @@ def _quantity_matrix_latex(
     settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
     *,
     declared: bool = False,
+    keeps_radians: bool = False,
 ) -> str:
     """Render a matrix of quantities.
 
@@ -2649,13 +2655,24 @@ def _quantity_matrix_latex(
         # Temperatures held in base units read in degrees, as a scalar does.
         if common_unit is not None and str(common_unit) == "kelvin":
             common_unit = quantity_matrix.entries[0]._REGISTRY.delta_degC
+        # Angles read in degrees, as a scalar angle does: `[30[deg], 45[deg]]` read
+        # `[0.52 0.79]`, radians with no unit (0.48.1).
+        entries = list(quantity_matrix)
+        if common_unit is None and entries and all(
+            str(getattr(quantity, "units", "")) == "radian" for quantity in entries
+        ):
+            # Radians where the line wrote them, `[0.5[rad]; 1[rad]]`, as a scalar keeps them.
+            registry = entries[0]._REGISTRY
+            common_unit = registry.radian if keeps_radians else registry.degree
 
     # The unit each cell will be shown in has to be settled before the scale can be,
     # because the magnitudes it is computed from are the ones the reader will see.
     shown = []
     for quantity in quantity_matrix:
         if homogeneous:
-            if common_unit is not None and not getattr(quantity, "dimensionless", False):
+            if common_unit is not None and (
+                not getattr(quantity, "dimensionless", False) or str(common_unit) in ("degree", "radian")
+            ):
                 quantity = quantity.to(common_unit)
         else:
             # `declared=False` and not `declared`, which a mixed cell can never see as
@@ -2712,6 +2729,8 @@ def _quantity_matrix_latex(
                 magnitude = _magnitude_text(quantity.magnitude, settings)
                 if getattr(quantity, "dimensionless", False) and str(quantity.units) == "dimensionless":
                     rendered_row.append(magnitude)
+                elif str(quantity.units) == "degree":
+                    rendered_row.append(rf"{magnitude}^{{\circ}}")
                 else:
                     rendered_row.append(
                         rf"{magnitude}\,{_temperature_latex(format(quantity.units, '~L'))}"
@@ -2723,7 +2742,9 @@ def _quantity_matrix_latex(
         # Before the brackets, the way it is written by hand: `K = 10^3 [ ... ] kN`.
         matrix_latex = rf"10^{{{exponent}}}\," + matrix_latex
     if homogeneous and common_unit is not None:
-        return rf"{matrix_latex}\,{_temperature_latex(format(common_unit, '~L'))}"
+        written = rf"{matrix_latex}\,{_latex_unit_text(common_unit)}"
+        # One entry, written as a number: `6.00°`, as a scalar angle reads.
+        return written if r"\begin{matrix}" in written else _ANGLE_MARK_SPACED.sub(r"^{\\circ}", written)
     return matrix_latex
 
 
@@ -4099,12 +4120,16 @@ class _WrittenLine:
 
         def unit(name: str, power: int) -> str:
             written = _latex(sp.Symbol(name), frozenset({name}), self.settings).removeprefix("1" + r"\,")
+            if written == r"1^{\circ}":
+                written = r"{}^{\circ}"
             return written if power == 1 else f"{written}^{{{power}}}"
 
         above = r" \cdot ".join(unit(name, power) for name, power in units.items() if power > 0)
         below = r" \cdot ".join(unit(name, -power) for name, power in units.items() if power < 0)
         number = numbers[0] if numbers else ""
+        # `30[deg]` reads `30°`: the mark on the number, as a value writes it (0.48.1).
         top = r"\,".join(part for part in (number, above) if part) or "1"
+        top = _ANGLE_MARK_SPACED.sub(r"^{\\circ}", top)
         return rf"\frac{{{top}}}{{{below}}}" if below else top
 
     def _name(self, name: str) -> str:
@@ -4215,6 +4240,9 @@ def _numeric_matrix_assignment_stages(
         result.quantity_matrix,
         _settings_for(result, settings),
         declared=_shows_as_stored(result),
+        keeps_radians=any(
+            name.removeprefix(BRACKETED_UNIT_PREFIX) == "rad" for name in result.written_units or ()
+        ),
     )
     written = _written_line_latex(result, settings)
     # `numeric(d)` writes `d = [...]`, not `d = d = [...]`.
@@ -5049,7 +5077,10 @@ def _latex_unit_text(unit) -> str:
     return _temperature_latex(format(unit, "~L"))
 
 
-_DEGREE_LATEX = {"degC": r"{}^{\circ}\mathrm{C}", "degF": r"{}^{\circ}\mathrm{F}", "inch": r"\mathrm{in}"}
+_DEGREE_LATEX = {"degC": r"{}^{\circ}\mathrm{C}", "degF": r"{}^{\circ}\mathrm{F}", "inch": r"\mathrm{in}", "deg": r"{}^{\circ}"}
+# `45\,{}^{\circ}` from a number beside the degree, with no `\mathrm{C}` after it: an
+# angle, written `45^{\circ}`. A difference of degrees Celsius keeps its space.
+_ANGLE_MARK_SPACED = re.compile(r"(?:\\,|\s)*\{\}\^\{\\circ\}(?!\s*\\mathrm\{[CF]\})")
 
 
 def _temperature_latex(latex: str) -> str:
