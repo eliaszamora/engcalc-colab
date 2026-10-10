@@ -78,12 +78,12 @@ def test_an_assumption_after_first_use_is_refused():
     assert "L" in message
 
 
-def test_a_comparison_against_something_other_than_zero_is_refused():
-    """`L > 5` is not a symbol assumption and pretending otherwise would mislead."""
+def test_a_bound_is_stated_and_gives_only_the_sign_it_implies():
+    """Refused until 0.49.0. `L > 5` is stated as given data; what a symbol carries from it
+    is its sign - `L > 5` makes `L` positive - and nothing pretends it carries the bound."""
     engine = EngineeringEngine()
-    with pytest.raises(EngEvaluationError) as excinfo:
-        run_cell(engine, "assume(L > 5)")
-    assert "zero" in str(excinfo.value).lower()
+    run_cell(engine, "assume(L > 5)")
+    assert engine.assumptions["L"] == {"positive": True}
 
 
 def test_the_subject_must_be_a_plain_symbol():

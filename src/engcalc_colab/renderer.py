@@ -5810,6 +5810,9 @@ def render_assumption_result(result: AssumptionResult) -> str:
     parts = [
         rf"{_render_lhs(name, None)} \in \mathbb{{Z}}"
         if keyword == "integer"
+        # A bound, written by the engine as LaTeX already: `eta < rac{\pi}{2}`.
+        else name
+        if keyword == "bound"
         else rf"{_render_lhs(name, None)} {_ASSUMPTION_RELATIONS[keyword]} 0"
         for name, keyword in result.assumptions
     ]
