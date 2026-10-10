@@ -8,8 +8,15 @@ order is left).
 `percent`), C9k (kip palette), C3e/C3e2 (named lists, ranges and names on `:=`), C3f (1x1 plus a
 number), C2b (matrix functions on `:=`), C10b (`% break`), C3k (`{i}` in loop text), C10a
 (`argmin`/`argmax`), C3d (`rank` on `:=`), C4a (`lam` written λ, `lambda` says what to write),
-C5l (`numeric` of a matrix names the missing value). In progress on `fix/0.48.1`: C2j (`cos(45°)`)
-and angle vectors in degrees.
+C5l (`numeric` of a matrix names the missing value).
+
+**Status after 0.48.1 (2026-10-10):** fixed in 0.48.1 - C2j (`cos(45°)`, `30°` in literals),
+angle vectors in degrees (zeros too; typed `rad` kept), C10n (a round-off entry no longer moves a
+vector to N), C9f (`1e8` written `10^8`, `1e-7` `10^{-7}`, large plain floats as `a × 10^n`).
+Left, recorded: C5h (kip sheets' matrices read in SI - needs the sheet's unit system; `%eng_units
+kip` is the way meanwhile), EXd (kN/mm stiffness read in kN/m), rotational-spring and
+angle-rate vectors losing `/rad` (pre-existing), `y = f(1e8[mm^4])` then `numeric(y)` repeating
+`2.00 × 10^8 mm^4` on two rows.
 Decided as the page's rules, not defects: C4k/C6c/C8i (two decimals; `%eng_config precision=`
 changes it), and D1-D23 below.
 
