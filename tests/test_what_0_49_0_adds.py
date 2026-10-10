@@ -110,8 +110,18 @@ _LOOP = (
 
 def test_an_equals_assembly_reading_a_redefined_name_says_so(sheet):
     _, printed = sheet(_LOOP.format(op="="))
-    assert "K was assembled with = and is a formula that reads L" in printed, printed
+    assert "K is assembled with = and reads L, which has a new value since its last part" in printed, printed
     assert printed.count("assembled with =") == 1, printed
+
+
+def test_a_name_changed_after_the_assembly_is_a_study_and_says_nothing(sheet):
+    """His p9_14: `A_bc := {a}*A_min` over a finished `K`, to read `K` for each area."""
+    _, printed = sheet(
+        "E := 200[GPa]\nA := 10[cm^2]\nL := 2[m]\nkeep k = E*A/L\nK = zeros(2,2)\n"
+        "K[[1,2],[1,2]] = K[[1,2],[1,2]] + k*[1, -1; -1, 1]\n"
+        "% for a in [1, 2]:\nA := {a}*10[cm^2]\nK_f := K[[1], [1]]\n% end\n"
+    )
+    assert "assembled with =" not in printed, printed
 
 
 def test_a_colon_equals_assembly_adds_numbers_pass_by_pass(sheet):

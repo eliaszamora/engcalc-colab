@@ -1376,7 +1376,7 @@ class EngineeringEngine:
         # `_notice_a_value_of_equals_written_in`.
         self.equals_sources: dict[str, ParsedStatement] = {}
         # Matrices assembled into with `=`, and the warnings said about them.
-        self.assembled_names: set[str] = set()
+        self.assembled_names: dict[str, dict[str, object]] = {}
         self.assembly_warnings: set[tuple[str, str]] = set()
         self.equals_told: dict[str, str] = {}
         self.frame_members: dict[str, FrameMember] = {}
@@ -1449,7 +1449,7 @@ class EngineeringEngine:
             current, evaluator.index_values(statement.target_index), replacement, name
         )
         self.namespace[name] = value
-        self.assembled_names.add(name)
+        self._notice_an_assembly_mixing_passes(statement, name, value)
         written = self._written_part(statement, evaluator, value)
         if written is None:
             self.written_namespace.pop(name, None)
@@ -2974,23 +2974,46 @@ class EngineeringEngine:
         said = self._notice_a_value_of_equals_written_in(statement, result)
         if said is not None:
             self.notices.append(said)
-        said = self._notice_an_assembly_reading_a_redefined_name(statement)
-        if said is not None:
-            self.notices.append(said)
         return result
 
-    def _notice_an_assembly_reading_a_redefined_name(self, statement) -> str | None:
-        """A `:=` that gives a new value to a name a `=` assembly still reads.
+    def _notice_an_assembly_mixing_passes(self, statement, name: str, value) -> None:
+        """A `=` assembly that goes on adding parts after a name it reads took a new value.
 
         `K[[p, q], [p, q]] = K[...] + k*[1, -1; -1, 1]` with `keep k = E*A/L` and `L := ...`
         each pass: `K` is a formula in `L`, and every element took the last `L` - K[1,1]
-        200000 kN/m for 100000, in silence (the audit of 0.49.0; main did the same). Said
-        once per matrix and name."""
-        if not isinstance(statement, ParsedNumericAssignment):
-            return None
+        200000 kN/m for 100000, in silence (the audit of 0.49.0; main did the same). A name
+        changed after the assembly is over is a study of that name - his `A_bc := {a}*A_min`
+        over a finished `K` - and is not said."""
+        values = {
+            symbol.name: self.numeric_context.values[symbol.name]
+            for symbol in getattr(value, "free_symbols", ())
+            if symbol.name in self.numeric_context.values
+        }
+        before = self.assembled_names.get(name, {})
+        for read, now in values.items():
+            if read not in before or (name, read) in self.assembly_warnings:
+                continue
+            try:
+                same = bool(before[read] == now)
+            except Exception:  # noqa: BLE001 - not comparable: said
+                same = False
+            if not same:
+                self.assembly_warnings.add((name, read))
+                self.notices.append(
+                    f"line {statement.line_no}: {name} is assembled with = and reads {read}, "
+                    f"which has a new value since its last part: every part of {name} takes "
+                    f"the last {read}, not the one it was added with. To add numbers pass by "
+                    f"pass, assemble with := ({name} := zeros(...) and {name}[...] := "
+                    f"{name}[...] + ...)."
+                )
+        self.assembled_names[name] = {**before, **values}
         name = statement.target
         for matrix_name in sorted(self.assembled_names):
             value = self.namespace.get(matrix_name)
+            # Only a name that held a number while the parts were added: values given once,
+            # after a matrix assembled in symbols, are what a derivation does (his book).
+            if name not in self.assembled_names[matrix_name]:
+                continue
             if not is_matrix(value) or (matrix_name, name) in self.assembly_warnings:
                 continue
             if any(getattr(symbol, "name", None) == name for symbol in value.free_symbols):
@@ -3700,6 +3723,8 @@ class EngineeringEngine:
                 else:
                     self.namespace[statement.target] = value
                     self._fixed_by_its_own_solve(statement, evaluator, value)
+                    # A matrix defined whole starts a new assembly.
+                    self.assembled_names.pop(statement.target, None)
                     if declaration == "keep":
                         self.equals_sources.pop(statement.target, None)
                     else:
