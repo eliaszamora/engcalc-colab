@@ -72,13 +72,13 @@ def test_a_round_off_entry_does_not_move_a_vector_to_newtons(sheet):
     """His chapter 10: `[1 kN; 1e-7 kN]` read `[1000.00; 0.0001] N`."""
     page, printed = sheet("F := [1[kN]; 1e-7[kN]]\n")
     assert not printed, printed
-    assert r"\displaystyle 1.00\[3pt]\displaystyle 1.00 \times 10^{-7}\end{matrix}\right]\,\mathrm{kN}" in page, page
+    assert r"\displaystyle 1.00\\[3pt]\displaystyle 1.00 \times 10^{-7}\end{matrix}\right]\,\mathrm{kN}" in page, page
 
 
 def test_a_small_force_beside_a_large_one_still_chooses_by_both(sheet):
     page, printed = sheet("G := [1[kN]; 0.5[N]]\n")
     assert not printed, printed
-    assert r"\displaystyle 1000.00\[3pt]\displaystyle 0.50\end{matrix}\right]\,\mathrm{N}" in page, page
+    assert r"\displaystyle 1000.00\\[3pt]\displaystyle 0.50\end{matrix}\right]\,\mathrm{N}" in page, page
 
 
 @pytest.mark.parametrize(
