@@ -522,6 +522,16 @@ class _EngineeringLatexPrinter(LatexPrinter):
             if subs:
                 name += "_{%s}" % " ".join(subs)
             return name
+        increment = _AN_INCREMENT.fullmatch(base)
+        if increment:
+            # `dtheta`, `deltaphi`: an increment of an angle, as the book writes a virtual
+            # rotation, `δθ` - it read `dtheta` as one italic word (C6a, 0.52.0).
+            name = (r"\delta" if increment.group(1) == "delta" else "d") + rf"\{increment.group(2)}"
+            if supers:
+                name += "^{%s}" % " ".join(supers)
+            if subs:
+                name += "_{%s}" % " ".join(subs)
+            return name
 
         # Italic, as every quantity is, and not upright: upright is a unit's letter, and
         # `Vu = 7920 kgf` next to an italic `V_c` read as a unit and as a second V. He chose
@@ -2115,6 +2125,12 @@ def _in_force_and_length(quantity, settings: RenderSettings):
 
 
 _LAMBDA_SPELLINGS = frozenset({"lam", "lamda"})
+# An increment of an angle or a strain, `d` or `delta` before the letter: `dtheta` reads
+# `dθ`, `deltaphi` `δφ`. Only the letters a structure's increments use, so `dpi`, `dnu` or
+# `deta` stay the words they may be.
+_AN_INCREMENT = re.compile(
+    r"(d|delta)(alpha|beta|gamma|theta|phi|varphi|psi|omega|epsilon|varepsilon|kappa|sigma|tau)"
+)
 
 
 def _constant_latex(node) -> str:

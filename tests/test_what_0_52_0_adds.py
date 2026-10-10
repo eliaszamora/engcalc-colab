@@ -58,3 +58,22 @@ def test_an_if_with_an_else_keeps_its_rows(sheet):
     )
     assert not printed, printed
     assert "Como" in page, page
+
+
+# C6a: an increment of an angle read as one italic word.
+
+
+@pytest.mark.parametrize(
+    ("source", "shown"),
+    [("dtheta := 2\n", r"d\theta & ="), ("deltaphi := 3\n", r"\delta\phi & ="), ("dtheta_A := 4\n", r"d\theta_{A} & =")],
+)
+def test_an_increment_of_an_angle(sheet, source, shown):
+    page, printed = sheet(source)
+    assert not printed, printed
+    assert shown in page and r"\mathit{d" not in page, page
+
+
+@pytest.mark.parametrize(("source", "shown"), [("dx := 1[m]\n", r"\mathit{dx}"), ("dpi := 6\n", r"\mathit{dpi}")])
+def test_other_names_beginning_with_d_stay_words(sheet, source, shown):
+    page, printed = sheet(source)
+    assert shown in page, page
