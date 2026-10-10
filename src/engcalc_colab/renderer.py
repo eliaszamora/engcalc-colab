@@ -4920,6 +4920,16 @@ def _within_katex_s_expansions(latex: str) -> str:
     return _THIN_SPACE.sub(lambda _match: r"\mkern3mu ", latex)
 
 
+def _same_value_row(row: str, above: str) -> bool:
+    """True when `row` has no name of its own and writes what `above` writes after its `=`."""
+    marker = r" & = & "
+    if not row.startswith(marker.lstrip()) and not row.startswith(marker):
+        return False
+    if marker not in above:
+        return False
+    return row.split(marker, 1)[-1].strip() == above.split(marker, 1)[-1].strip()
+
+
 def render_aligned_results(results: list[CalculationResult], *, settings: RenderSettings | None = None) -> str:
     """Render all calculation groups with one consistent MathJax array layout."""
     if not results:
@@ -4947,6 +4957,11 @@ def render_aligned_results(results: list[CalculationResult], *, settings: Render
             # side, so the array's alignment needs nothing else, and the separator
             # becomes the stage spacing this block would have used internally.
             for spacing, continuation_row in zip(internal_spacings, result_rows[1:]):
+                # A row that says again what the row above it says is not written: `y =
+                # f(1e8[mm^4])` ends on its value, and `numeric(y)` under it opened on the
+                # same value (OPEN-FINDINGS, 0.52.0).
+                if _same_value_row(continuation_row, rows[-1]):
+                    continue
                 rows.append(_row_break(spacing, rows[-1], continuation_row))
                 rows.append(continuation_row)
             # The whole block, not the tail that was emitted. Only `[-1]` is ever read
@@ -6350,7 +6365,9 @@ def assembly_note_latex(passes: int, template: str, variable=(), labels=None, he
     return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
 
 
-def formula_rules_latex(passes: int, templates, variable=(), labels=None, helpers=(), constants=()) -> str:
+def formula_rules_latex(
+    passes: int, templates, variable=(), labels=None, helpers=(), constants=(), conditions=None
+) -> str:
     r"""The `=` lines a loop ran every pass, once, as the sheet writes them:
 
         En cada uno de los 33 pasos, para (i, j, m, n) = (A, B, 1, 3), …:
@@ -6362,8 +6379,32 @@ def formula_rules_latex(passes: int, templates, variable=(), labels=None, helper
     """
     opening = rf"\textbf{{En cada uno de los {passes} pasos}}" if passes != 1 else r"\textbf{En el paso}"
     rows = _loop_note_rows(opening, variable, labels, helpers, constants)
-    rows.extend(rf"\quad \displaystyle {_formula_rule_latex(template)}" for template in templates)
+    conditions = conditions or {}
+    for template in templates:
+        rule = rf"\quad \displaystyle {_formula_rule_latex(template)}"
+        if template in conditions:
+            # A line under a `% if`: when it ran; the table has `---` in the other passes.
+            rule += rf"\quad \text{{si}}\ {_condition_rule_latex(conditions[template])}"
+        rows.append(rule)
     return r"\begin{array}{l} " + r" \\[4pt] ".join(rows) + r" \end{array}"
+
+
+def _condition_rule_latex(condition: str) -> str:
+    """`{i} > 1` or `a_{i} > 1.5[m]` as a rule writes each side: `i > 1`, `a_{i} > 1.5 m`."""
+    match = re.search(r"\s*(>=|<=|==|!=|>|<)\s*", condition)
+    if not match:
+        return _side_latex(condition)
+    relation = {">=": r"\geq", "<=": r"\leq", "==": "=", "!=": r"\neq"}.get(match.group(1), match.group(1))
+    left, right = condition[: match.start()], condition[match.end():]
+    return f"{_side_latex(left)} {relation} {_side_latex(right)}"
+
+
+def _side_latex(side: str) -> str:
+    """One side of a condition, written as a rule's right-hand side."""
+    bare = re.sub(r"^\{([A-Za-z]\w*)\}$", r"\1", side.strip())
+    rule = _formula_rule_latex("condition_side := " + bare)
+    _, _, body = rule.partition(" = ")
+    return body if body and not rule.startswith(r"\texttt") else rf"\text{{{_escaped_text(side.strip())}}}"
 
 
 def _loop_note_rows(opening: str, variable, labels, helpers, constants=()) -> list[str]:

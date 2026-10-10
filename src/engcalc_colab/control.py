@@ -718,6 +718,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
     stands_on: dict = {}
     defined: dict = {}  # the names each line of the loop has defined so far
     kept: list[_Kept] = []
+    conditions: dict = {}  # the line of a tabled `% if`, and the condition it ran under
     ran = len(values)
     try:
         for index, value in enumerate(values):
@@ -725,19 +726,27 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
             occurrences: dict = {}
             try:
                 for child in node.body:
-                    direct = isinstance(child, _Stretch)
+                    # A `% if` of one branch holding only values is part of the table: its
+                    # passes are cells, `---` where it did not hold (C10c, 0.52.0); they were
+                    # printed after the table one by one, each under its "Como 2.00 > 1.00".
+                    tabled_if = _values_only_if(child)
+                    direct = isinstance(child, _Stretch) or tabled_if
                     items = (
                         _parse_stretch(child, lambda text, line_no: _inserted(text, line_no, scope))
-                        if direct
+                        if isinstance(child, _Stretch)
                         else _walk([child], engine, settings, scope)
                     )
                     for item in items:
+                        if tabled_if and isinstance(item, ConditionNote):
+                            continue
                         if _shown_as_it_comes(item):
                             kept.append(_Kept("shown", item=item, index=index))
                             continue
                         result = engine.evaluate(item)
                         notices = tuple(engine.notices)
                         template = getattr(item, "written_as", None) or item.source
+                        if tabled_if:
+                            conditions.setdefault(template, child.branches[0].condition)
                         if template not in stands_on:
                             stands_on[template] = _names_it_stands_on(template, helpers)
                         said = {name: dict.get(scope, name) for name in stands_on[template] if dict.__contains__(scope, name)}
@@ -785,7 +794,9 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
             # values; the helpers and the `%` names the formulas stand on are said here.
             entries = [entry for entry in kept if entry.kind == "cell" and entry.key[0] in formulas]
             _names, _labels, made, constants = _what_it_stands_on(formulas, entries, helpers, variable)
-            yield ConditionNote(latex=formula_rules_latex(len(values), formulas, (), None, made, constants))
+            yield ConditionNote(
+                latex=formula_rules_latex(len(values), formulas, (), None, made, constants, conditions)
+            )
         yield ConditionNote(latex=table, notices=tuple(said))
     yield from _in_the_order_they_ran(node, values, kept, columns, helpers)
     yield from _assemblies(kept, helpers, settings, _header_names(node))
@@ -1556,6 +1567,25 @@ def _writes_text(body: list) -> bool:
     return False
 
 
+def _values_only_if(node) -> bool:
+    """A `% if` with one branch and no `% else` whose lines are all `:=` values."""
+    from .models import ParsedNumericAssignment  # noqa: PLC0415 - models import nothing back
+
+    if not isinstance(node, _IfBlock) or len(node.branches) != 1 or node.branches[0].condition is None:
+        return False
+    body = node.branches[0].body
+    if not body or not all(isinstance(each, _Stretch) for each in body):
+        return False
+    for stretch in body:
+        try:
+            items = _parse_stretch(stretch, _PROBE)
+        except EngCalcError:
+            return False
+        if not items or not all(isinstance(item, ParsedNumericAssignment) for item in items):
+            return False
+    return True
+
+
 def _assembles_under_if(body: list) -> bool:
     for node in body:
         if isinstance(node, _IfBlock) and any(
@@ -1654,6 +1684,9 @@ def _values_in(body: list) -> list[str]:
                 if isinstance(item, ParsedNumericAssignment):
                     index = item.line_no - node.first_line
                     lines.append(node.lines[index].strip())
+        elif _values_only_if(node):
+            # Its values are columns of the table too (0.52.0).
+            lines.extend(_values_in(node.branches[0].body))
     return lines
 
 
