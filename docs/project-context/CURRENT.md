@@ -12,11 +12,36 @@ _2026-10-10._
 
 | | |
 |---|---|
-| released | **0.47.1** - #408, `ec15aea`, closed (checked in his Colab) |
-| before that | **0.47.0** - #406, `20933d1`, closed |
-| default suite | **3889 passing** on 0.47.1 (SymPy 1.14 and 1.13.3) |
+| released | **0.48.0** - #410, `9ec08ea`, closed (checked in his Colab) |
+| before that | **0.47.1** - #408, `ec15aea`, closed |
+| default suite | **3936 passing** on 0.48.0 (SymPy 1.14 and 1.13.3) |
 | open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
-| in progress | `feat/0.48.0` (local, `6b6ca6b` WIP, not pushed) |
+| in progress | `fix/0.48.1` (local): `cos(45°)` in formulas, angle vectors in degrees |
+
+**0.48.0 is closed** (#410, squash `9ec08ea`, 6/6 CI on `fcc1e54`, under his standing "aborda
+todo lo que falte o quede"): `km`, `lbf`, `lb` (a force, as `kip`), `percent`; `%eng_units kip`
+(in, in², in⁴, kip, kip·in, ksi, kip/in); on `:=` lines parts of a matrix by a named list
+(`K[libres, libres]`), a range (`K[1:2, 1:2]`, `K[1:n, 1:n]`, both ends included, from 1) or a
+name holding a whole number, also when assigning; a 1x1 matrix plus a number is a number; a sheet
+function that makes a matrix works on `:=`; `% break` ("Como ...: el ciclo se detiene.", a while
+says "En N iteraciones (% break):"); `{i}` in loop text (LaTeX groups and sheet names keep their
+braces); `argmin`/`argmax`/`rank` on `:=`; `lam` written λ; `numeric(K)` with an undefined name
+says which (not `result(K)`, not a `=` line); help for `% break`, `argmin`, `argmax`. Short realism
+audit: no wrong number; its presentation/message findings fixed with contracts. The corpus caught
+two of the branch's own regressions before release (`$\mathbf{k}$` in a loop over `k`; the
+missing-values notice on his symbolic `result(K)`), both fixed with contracts. Evidence on
+`fcc1e54`: suite 3936 on both SymPy; corpus 239 identical, the rest only λ for `lam` and
+`θ = 30°` for `{th}` (5 ch10 time out on both trees, 2 ch7 unstable on main); wheel 33 files
+identical to src; clean Colab-pinned venv upgrades nothing; smoke 79/79; suite against the
+installed wheel; 24 reference pages identical. After merge `git+https` of main resolves to
+`9ec08ea`, reports 0.48.0, smoke 79/79. **Checked in his Colab** (2026-10-10, cell 3 printed
+`engcalc 0.48.0`; cell 5: a 2-bar assembly with `k_e(...)` in a loop, `K[libres, libres]`,
+`rank(K) = 2`, `argmax(D)`, `2[km]`, `1[kip] + 1000[lb]` = 8.90 kN under his kN palette, λ, and
+`% break` with its note).
+
+**Exact next step:** finish `fix/0.48.1` (presentation by realism from `OPEN-FINDINGS.md`: done
+so far `cos(45°)` and angle vectors; next a kN vector switching to N for a tiny entry, kip sheets'
+matrices in SI, `1e8` written `100000000.0`), then its release routine.
 
 **0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
 lo que falte o quede y las decisiones las dejo a tu criterio", 2026-10-09). First batch of the

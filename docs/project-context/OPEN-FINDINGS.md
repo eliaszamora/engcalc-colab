@@ -2,9 +2,14 @@
 
 **Status after 0.47.1 (2026-10-10):** fixed in 0.47.1 - A1, A2, A3 (`2*3[m]`; `1e3[mm]` still
 `1000.0[mm]`), A5, A6, A7, C10e, C3b, C2h, C8d, N1, N2 (`kip*ft + kip*ft` reading in SymPy's
-order is left). In progress on `feat/0.48.0`: B10 (`km`, `lbf`, `lb` as a force, `percent`), C9k
-(kip palette), C3e/C3e2 (named and ranged indices on `:=`), C3f (1x1 matrix plus a number), C2b
-(matrix-valued function on `:=`), C10b (`% break`), C3k (`{name}` in text inside a loop).
+order is left).
+
+**Status after 0.48.0 (2026-10-10):** fixed in 0.48.0 - B10 (`km`, `lbf`, `lb` as a force,
+`percent`), C9k (kip palette), C3e/C3e2 (named lists, ranges and names on `:=`), C3f (1x1 plus a
+number), C2b (matrix functions on `:=`), C10b (`% break`), C3k (`{i}` in loop text), C10a
+(`argmin`/`argmax`), C3d (`rank` on `:=`), C4a (`lam` written λ, `lambda` says what to write),
+C5l (`numeric` of a matrix names the missing value). In progress on `fix/0.48.1`: C2j (`cos(45°)`)
+and angle vectors in degrees.
 Decided as the page's rules, not defects: C4k/C6c/C8i (two decimals; `%eng_config precision=`
 changes it), and D1-D23 below.
 
