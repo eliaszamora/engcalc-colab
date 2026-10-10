@@ -77,6 +77,14 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.51.0: cot, sec, csc, heaviside; rows written once
+check("cot of an angle in degrees", "theta := 30[deg]\nc := cot(theta)", r"c & = & \displaystyle 1.73")
+check("a load that starts at a point",
+      "a := 2[m]\nw(x) = 5[kN/m]*heaviside(x - a)\nw_3 := w(3[m])",
+      r"w_{3} & = & \displaystyle 5.00")
+check("a matrix typed as numbers is written once", "v := [1; 2; 3]",
+      r"v & = & \displaystyle \left[\begin{matrix}\displaystyle 1.00")
+
 # 0.50.0: loop tables that hold everything, kip sheets in kips
 check("nested loops make one table",
       "% for i in range(1, 3):\n% for j in range(1, 3):\na_{i}{j} := {i}*{j}\nb_{i}{j} := {i}+{j}\n% end\n% end",

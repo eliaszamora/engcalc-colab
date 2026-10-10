@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 import re
+import sys
 from html import escape
 
 from IPython.core.magic import Magics, cell_magic, line_magic, magics_class
@@ -224,6 +225,20 @@ def _display_equation_group(
 # opens wider on its own (34 px), with the heading's margin.
 BLOCK_SPACER = '<div style="height:18px"></div>'
 
+# His Colab shows a cell's results beside its code (2026-10-10), in a column of ~630 px. Its
+# output frame sets KaTeX's `.base` inline with `white-space: normal`, so a formula wider than
+# that column wraps: the columns of a 4x4 matrix of fractions fell under each other and over
+# the next row. Measured in his Colab: keeping `.base` on one line and letting the frame
+# scroll sideways puts the sheet back in its columns. One style per cell, only in Colab - the
+# frame is per cell, and nowhere else needs it.
+KEEP_FORMULAS_ON_ONE_LINE = (
+    "<style>.katex .base{display:inline-block;white-space:nowrap}body{overflow-x:auto}</style>"
+)
+
+
+def _in_colab() -> bool:
+    return "google.colab" in sys.modules
+
 
 class _Page:
     """What a cell puts on the page, a block at a time, with the same room between any two."""
@@ -233,6 +248,8 @@ class _Page:
 
     def show(self, *outputs) -> None:
         """One block - a figure and its caption are one - after the room every block has."""
+        if not self.blocks and _in_colab():
+            display(HTML(KEEP_FORMULAS_ON_ONE_LINE))
         if self.blocks:
             display(HTML(BLOCK_SPACER))
         for output in outputs:
