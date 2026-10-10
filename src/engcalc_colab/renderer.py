@@ -2091,6 +2091,12 @@ def _in_force_and_length(quantity, settings: RenderSettings):
         force, length = _FORCE_AND_LENGTH["us"]
     elif _is_technical(quantity):
         force, length = _FORCE_AND_LENGTH["technical"]
+    # A value in base units on a sheet in one system - an `EI` entry of a kip sheet's
+    # flexibility matrix read `kN·m²` beside `kip·ft` (0.50.0).
+    elif _in_base_units(quantity) and _the_sheet_writes_only("us"):
+        force, length = _FORCE_AND_LENGTH["us"]
+    elif _in_base_units(quantity) and _the_sheet_writes_only("technical"):
+        force, length = _FORCE_AND_LENGTH["technical"]
     else:
         force, length = _FORCE_AND_LENGTH["si"]
     powers = (
