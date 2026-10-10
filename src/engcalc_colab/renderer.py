@@ -291,15 +291,18 @@ class _EngineeringLatexPrinter(LatexPrinter):
         # 0.48.1): the unit's mark sits on the number, with no space before it.
         return _ANGLE_MARK_SPACED.sub(r"^{\\circ}", super().doprint(expr))
 
-    def _print_AppliedUndef(self, expr):
+    def _print_AppliedUndef(self, expr, exp=None):
         r"""A call of a function of the sheet, `U_{1}\left(\frac{L}{2}\right)`.
 
         Spelled as the page spells a function's own name on the left of its definition
         (`_render_function_call_lhs`), not as SymPy's `U_{1}{\left(\frac{L}{2} \right)}`.
+        A power of it, `b(y)^2`, is handed its exponent by SymPy's `_print_Pow` (0.52.0: it
+        stopped the cell with a Python error).
         """
         name = self._print(sp.Symbol(expr.func.__name__))
         arguments = ", ".join(self._print(argument) for argument in expr.args)
-        return rf"{name}\left({arguments}\right)"
+        call = rf"{name}\left({arguments}\right)"
+        return call if exp is None else rf"{call}^{{{exp}}}"
 
     def _print(self, expr, **kwargs):
         """Every node, with a unit standing alone written with its one.
@@ -6406,7 +6409,15 @@ def formula_rules_latex(
 
 
 def _condition_rule_latex(condition: str) -> str:
-    """`{i} > 1` or `a_{i} > 1.5[m]` as a rule writes each side: `i > 1`, `a_{i} > 1.5 m`."""
+    """`{i} > 1` or `a_{i} > 1.5[m]` as a rule writes each side: `i > 1`, `a_{i} > 1.5 m`;
+    `and` and `or` join the comparisons in words, `y`, `o` (the audit of 0.52.0)."""
+    parts = re.split(r"\s+(and|or)\s+", condition.strip())
+    if len(parts) > 1:
+        words = {"and": r"\ \text{y}\ ", "or": r"\ \text{o}\ "}
+        latex = _condition_rule_latex(parts[0])
+        for joint, part in zip(parts[1::2], parts[2::2]):
+            latex += words[joint] + _condition_rule_latex(part)
+        return latex
     match = re.search(r"\s*(>=|<=|==|!=|>|<)\s*", condition)
     if not match:
         return _side_latex(condition)

@@ -1307,6 +1307,10 @@ _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
 _CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff", "eq", "solve"})
 # Where an undefined `b(y)` is a function of its variable rather than a typo (0.52.0).
 _CALLS_THAT_TAKE_AN_UNKNOWN_FUNCTION = frozenset({"integrate", "diff", "dsolve"})
+# What such a function is called: a letter or two and a subscript, `b(y)`, `v(x)`, `w_1(x)`,
+# `EI(x)`. `sni(x)` or `sqr(x)` is a misspelt function and is still refused (the audit of
+# 0.52.0 found them turned silently into functions).
+_AN_UNKNOWN_FUNCTION = re.compile(r"[A-Za-z]{1,2}(_\w+)?")
 
 
 class EngineeringEngine:
@@ -4975,7 +4979,16 @@ class _Evaluator(ast.NodeVisitor):
                 raise EngEvaluationError(
                     f"dsolve found {len(solved)} solutions; write the one you need as an eq(...)"
                 )
-            return solved.rhs
+            # Its constants are names of the sheet, `C_1`, `C_2`, so the boundary conditions
+            # are written as any equation is: `solve(eq(subs(v, x, 0), 0), C_1)`. SymPy's own
+            # `C1` is a different symbol from the sheet's real ones, and solve and subs found
+            # nothing (the audit of 0.52.0).
+            constants = {
+                symbol: self.engine.resolve_symbol(f"C_{symbol.name[1:]}")
+                for symbol in solved.rhs.free_symbols
+                if re.fullmatch(r"C\d+", symbol.name) and symbol not in equation.free_symbols
+            }
+            return solved.rhs.xreplace(constants)
 
         if name == "diff":
             if len(args) not in (2, 3):
@@ -5083,12 +5096,30 @@ class _Evaluator(ast.NodeVisitor):
             raise EngSyntaxError(
                 f"{name} gives a position in numbers: write it on a := line, as i := {name}(a, b, c)"
             )
-        if self.unknown_functions and not name.startswith("_") and args and all(
-            isinstance(arg, sp.Basic) and not is_matrix(arg) for arg in args
+        if (
+            self.unknown_functions
+            and _AN_UNKNOWN_FUNCTION.fullmatch(name)
+            and self._has_no_value(name)
+            and args
+            # Of a variable: `f(2)` is a value of a function nobody gave.
+            and all(
+                isinstance(arg, sp.Basic) and not is_matrix(arg) and arg.free_symbols for arg in args
+            )
         ):
             return sp.Function(name)(*args)
         raise EngSyntaxError(f"unsupported function '{name}'")
 
+
+    def _has_no_value(self, name: str) -> bool:
+        """Whether the sheet has not given `name` a value: `b := 0.3[m]` then `b(y)` is a
+        slip, not a width that varies (the audit of 0.52.0)."""
+        if name in self.engine.namespace or name in self.engine.numeric_context.values:
+            return False
+        try:
+            resolved = self.engine.resolve_name(name)
+        except Exception:  # noqa: BLE001 - a name that cannot be read has no value either
+            return True
+        return isinstance(resolved, sp.Symbol) and resolved.name == name
 
     def _resolve_domain_numeric_value(self, node: ast.AST):
         value = self._resolve_numeric_user_function_argument(node)

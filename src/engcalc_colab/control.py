@@ -701,6 +701,9 @@ class _Kept:
     result: object = None
     notices: tuple = ()
     said: dict = field(default_factory=dict)  # the `%` values of the names its rule stands on
+    # For the "Como ..." of a `% if` whose lines may be columns: those lines. The note goes
+    # when they all are, and stays to give the reason when they are rows (0.52.0).
+    if_templates: set | None = None
 
 
 def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Scope) -> Iterator:
@@ -719,6 +722,7 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
     defined: dict = {}  # the names each line of the loop has defined so far
     kept: list[_Kept] = []
     conditions: dict = {}  # the line of a tabled `% if`, and the condition it ran under
+    tabled_ifs = {id(child) for child in _tabled_ifs(node.body)}
     ran = len(values)
     try:
         for index, value in enumerate(values):
@@ -729,15 +733,18 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
                     # A `% if` of one branch holding only values is part of the table: its
                     # passes are cells, `---` where it did not hold (C10c, 0.52.0); they were
                     # printed after the table one by one, each under its "Como 2.00 > 1.00".
-                    tabled_if = _values_only_if(child)
+                    tabled_if = id(child) in tabled_ifs
                     direct = isinstance(child, _Stretch) or tabled_if
                     items = (
                         _parse_stretch(child, lambda text, line_no: _inserted(text, line_no, scope))
                         if isinstance(child, _Stretch)
                         else _walk([child], engine, settings, scope)
                     )
+                    note = None
                     for item in items:
                         if tabled_if and isinstance(item, ConditionNote):
+                            note = _Kept("shown", item=item, index=index, if_templates=set())
+                            kept.append(note)
                             continue
                         if _shown_as_it_comes(item):
                             kept.append(_Kept("shown", item=item, index=index))
@@ -747,6 +754,8 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
                         template = getattr(item, "written_as", None) or item.source
                         if tabled_if:
                             conditions.setdefault(template, child.branches[0].condition)
+                            if note is not None:
+                                note.if_templates.add(template)
                         if template not in stands_on:
                             stands_on[template] = _names_it_stands_on(template, helpers)
                         said = {name: dict.get(scope, name) for name in stands_on[template] if dict.__contains__(scope, name)}
@@ -932,9 +941,12 @@ def _in_the_order_they_ran(node: _ForBlock, values: list, kept: list, columns: l
             notices=tuple(said),
         )
 
+    tabled = {key[0] for key in columns}
     for entry in kept:
         if entry.kind == "part" or (entry.kind == "cell" and entry.key in columns):
             continue
+        if entry.if_templates is not None and entry.if_templates <= tabled:
+            continue  # the "Como ..." of a `% if` whose lines are columns, `---` where it did not hold
         if entry.kind == "formula" and entry.key in once:
             if entry.index == 0:
                 pending.append(entry.key)
@@ -1684,10 +1696,58 @@ def _values_in(body: list) -> list[str]:
                 if isinstance(item, ParsedNumericAssignment):
                     index = item.line_no - node.first_line
                     lines.append(node.lines[index].strip())
-        elif _values_only_if(node):
+        elif any(node is tabled for tabled in _tabled_ifs(body)):
             # Its values are columns of the table too (0.52.0).
             lines.extend(_values_in(node.branches[0].body))
     return lines
+
+
+def _assigned_names(stretches: list) -> list[str]:
+    """The names the lines of these stretches assign, as written: `phi_{i}`."""
+    names = []
+    for stretch in stretches:
+        for line in stretch.lines:
+            match = re.match(r"\s*([^=:#\"]+?)\s*:?=(?!=)", line)
+            if match:
+                names.append(match.group(1).strip())
+    return names
+
+
+def _tabled_ifs(body: list) -> list:
+    """The `% if` blocks of a loop whose values can be columns: one branch of `:=` values,
+    assigning names nothing else in the loop assigns. `phi_{i} := 0.90` before `% if eps_{i}
+    < 0.005: phi_{i} := ...` is a default the `% if` changes - one value per pass, not a
+    column with `---` beside rows that disagree with it (the audit of 0.52.0)."""
+    candidates = [node for node in body if _values_only_if(node)]
+    if not candidates:
+        return []
+    elsewhere: dict = {}
+    for node in body:
+        is_candidate = any(node is candidate for candidate in candidates)
+        stretches = node.branches[0].body if is_candidate else ([node] if isinstance(node, _Stretch) else [])
+        if not stretches and isinstance(node, (_IfBlock, _ForBlock, _WhileBlock)):
+            stretches = _stretches_in(node)
+        for name in _assigned_names(stretches):
+            elsewhere.setdefault(name, []).append(id(node))
+    return [
+        node
+        for node in candidates
+        if all(elsewhere[name] == [id(node)] for name in _assigned_names(node.branches[0].body))
+    ]
+
+
+def _stretches_in(node) -> list:
+    """Every stretch of lines inside a block, at any depth."""
+    found = []
+    children = (
+        [each for branch in node.branches for each in branch.body] if isinstance(node, _IfBlock) else node.body
+    )
+    for child in children:
+        if isinstance(child, _Stretch):
+            found.append(child)
+        elif isinstance(child, (_IfBlock, _ForBlock, _WhileBlock)):
+            found.extend(_stretches_in(child))
+    return found
 
 
 def _a_value(result) -> bool:

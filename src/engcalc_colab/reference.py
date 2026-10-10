@@ -356,8 +356,8 @@ _ENTRIES: tuple[CallHelp, ...] = (
             ("ecuación", "una expresión igualada a cero, o eq(izquierda, derecha)"),
             ("f(x)", "la función que se busca, escrita con su variable"),
         ),
-        note="Las constantes salen como C_1, C_2; dentro de integrate, diff y dsolve una función no definida, como b(y), es una función de su variable.",
-        example="v = dsolve(eq(diff(v(x), x, 2), -w*x/(E*I)), v(x))",
+        note="Las constantes salen como C_1, C_2 y se fijan con las condiciones de borde: solve(eq(subs(v, x, 0), 0), eq(subs(v, x, L), 0), C_1, C_2). Dentro de integrate, diff y dsolve una función no definida de una o dos letras, como b(y), es una función de su variable.",
+        example="v = dsolve(eq(diff(v(x), x, 2), -w*x/(E*I)), v(x))\nsolve(eq(subs(v, x, 0), 0), eq(subs(v, x, L), 0), C_1, C_2)",
     ),
     CallHelp(
         name="solve",
