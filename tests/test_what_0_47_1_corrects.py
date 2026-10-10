@@ -6,6 +6,11 @@ r"""Presentation left open by 0.46.2 and 0.47.0 (his "aborda todo lo que falte",
   failed, and left SymPy's order; `kN·m` was right by the alphabet alone.
 - A range `solve` on a `=` line whose root falls exactly wrote `2.0`: a short float reads
   as typed, and a root is no typed number.
+- `2[mm/m]*200000[MPa]` read `400000.00 mm·MPa/m`: units of one kind that cancel out are
+  cancelled before the unit is chosen.
+- From the inventory of open findings (2026-10-09): `(x[1]/y)^2` lost its parentheses,
+  `solve(K, -2*F)` read as a subtraction, `A^2` of an area was bracketed twice, `x/0.85` in
+  a function read `1.18 x`, a `table` of an expression and a matrix refusal showed `__u_`.
 """
 
 import contextlib
@@ -91,3 +96,69 @@ def test_a_fractional_power_is_quoted_whole(sheet):
 def test_a_product_with_a_bracketed_number_is_quoted_as_typed(sheet):
     _, printed = sheet("x := 1[kN]\n% if x > 2*3[m]:\ny := 1\n% end\n")
     assert "x > 2 * 3[m]" in printed, printed
+
+
+@pytest.mark.parametrize(
+    ("source", "name", "expected"),
+    [
+        ("r := 2[mm/m]*200000[MPa]\n", "r", r"400.00\,\mathrm{MPa}"),
+        ("fs := min(3[mm/m]*200000[MPa], 420[MPa])\n", r"\mathit{fs}", r"420.00\,\mathrm{MPa}"),
+        ("V = 3[kN/m]*2[cm]\n", "V", r"\mathrm{N}"),
+    ],
+)
+def test_a_strain_times_a_modulus_reads_as_a_stress(sheet, source, name, expected):
+    page, printed = sheet(source)
+    assert not printed, printed
+    value = last_value(page, name)
+    assert expected in value and r"\mathrm{m}}" not in value and "000.00" not in value, page
+
+
+def test_a_typed_strain_keeps_its_mm_per_m(sheet):
+    page, printed = sheet("eps := 2[mm/m]\n")
+    assert not printed, printed
+    assert r"\mathrm{mm}" in page, page
+
+
+def test_a_power_of_a_fraction_keeps_its_parentheses(sheet):
+    page, printed = sheet("x := [3[kN]; 4[kN]]\ny := 2[kN]\np := (x[1]/y)^2\n")
+    assert not printed, printed
+    assert r"\left(\frac{x_{1}}{y}\right)^{2}" in page, page
+
+
+def test_a_solve_of_a_negative_load_is_not_a_subtraction(sheet):
+    page, printed = sheet("K := [2, 0; 0, 4]\nF := [1; 2]\nd := solve(K, -2*F)\n")
+    assert not printed, printed
+    assert r"K^{-1}\,\left(-2" in page, page
+
+
+def test_a_refusal_never_quotes_the_parser_s_unit_names(sheet):
+    _, printed = sheet("k := [2[kN/m]]\ny := 5[kN/m] - k\n")
+    assert "'5[kN/m] - k' adds a number to a matrix" in printed, printed
+    assert "__u_" not in printed, printed
+
+
+def test_a_table_of_an_expression_heads_its_column_in_mathematics(sheet):
+    page, printed = sheet("r = 3[kN]/(1[kN/m])\nx := 1[m]\ntable(r*y/x, y, 0[m], 1[m], 3)\ntable(y^2/2, y, 0, 1, 3)\n")
+    assert not printed, printed
+    assert "__u_" not in page and r"\text{" not in page, page
+    assert r"\frac{y^{2}}{2}" in page, page
+
+
+def test_a_squared_area_is_bracketed_once(sheet):
+    page, printed = sheet("A := 8000[mm^2]\nx = A^2\nnumeric(x)\n")
+    assert not printed, printed
+    assert r"\left(\left(" not in page, page
+    assert r"\left(8000.00\,\mathrm{mm}^{2}\right)^{2}" in page, page
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("f(x) = x/0.85\n", r"\frac{x}{0.85}"),
+        ("g(x) = 2*x/0.9 + 1\n", r"\frac{2 x}{0.9} + 1"),
+    ],
+)
+def test_a_function_dividing_by_a_decimal_is_written_as_typed(sheet, source, expected):
+    page, printed = sheet(source)
+    assert not printed, printed
+    assert expected in page, page

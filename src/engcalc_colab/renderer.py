@@ -5,6 +5,7 @@ import functools
 from contextvars import ContextVar
 import math
 import re
+import types
 from dataclasses import dataclass, replace
 from html import escape
 
@@ -515,6 +516,14 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if subs:
             name += "_{%s}" % " ".join(subs)
         return name
+
+    def parenthesize_super(self, s):
+        r"""A base already in its own brackets is not bracketed again: `A^2` with `A` an
+        area read `((8000.00 mm²))²` - the value's brackets, and SymPy's for the `²` of its
+        unit (his chapter 2, 0.47.1)."""
+        if s.startswith(r"\left(") and s.endswith(r"\right)") and _one_group(s):
+            return s
+        return super().parenthesize_super(s)
 
     def _print_ModeEigenvalue(self, expr, exp=None):
         r"""`lam[1]` as `\lambda_{1}`: a mode is numbered, and the matrix it came from is
@@ -2017,6 +2026,20 @@ def _in_force_and_length(quantity, settings: RenderSettings):
         return None
 
 
+def _one_group(latex: str) -> bool:
+    r"""True when the first `\left(` closes at the last `\right)`: `\left(a\right) b
+    \left(c\right)` starts and ends with brackets and is two groups."""
+    depth = 0
+    for index in range(len(latex)):
+        if latex.startswith(r"\left", index):
+            depth += 1
+        elif latex.startswith(r"\right", index):
+            depth -= 1
+            if depth == 0 and index + len(r"\right)") != len(latex):
+                return False
+    return depth == 0
+
+
 def _is_a_dimensionless_ratio(quantity) -> bool:
     """True when the units are left over from arithmetic on a value that is a number.
 
@@ -2031,6 +2054,31 @@ def _is_a_dimensionless_ratio(quantity) -> bool:
     # is its own value, so the guard an earlier draft had here survived mutation and is
     # left out rather than kept as a branch no test can tell apart from its absence.
     return str(quantity.units) not in _ANGLE_UNIT_NAMES
+
+
+def _cancelling_factors(quantity):
+    """The units of a kind that cancel out entirely - `mm` over `m` in `mm·MPa/m`, `inch`
+    over `ft` in `kip·inch/ft` - as one unit to divide by, or None. Only a kind that leaves
+    nothing behind: `m/cm²` is a curvature, and its family chooses `1/m` for it. A number -
+    a strain typed `2[mm/m]` - is left alone: its `mm/m` is what was written, and a ratio
+    the algebra made is decided above."""
+    try:
+        if quantity.dimensionless:
+            return None
+        registry = quantity._REGISTRY
+        kinds = {}
+        for name, power in quantity.units._units.items():
+            kind = tuple(sorted(registry.Unit(name).dimensionality.items()))
+            kinds.setdefault(kind, []).append((name, power))
+        for factors in kinds.values():
+            if len(factors) > 1 and sum(power for _, power in factors) == 0:
+                cancelled = registry.Unit("dimensionless")
+                for name, power in factors:
+                    cancelled = cancelled * registry.Unit(name) ** power
+                return cancelled
+    except Exception:  # noqa: BLE001 - nothing to cancel in what cannot be read
+        return None
+    return None
 
 
 def _a_temperature_in_degrees(quantity, declared: bool):
@@ -2099,6 +2147,17 @@ def _display_quantity(quantity, settings: RenderSettings, *, declared: bool):
     # `_magnitude_text` still applies the tolerance, now to the honest magnitude.
     if not declared and _is_a_dimensionless_ratio(quantity):
         return quantity.to_base_units()
+    # Two factors of one kind in different units, up and down - the `mm/m` of a strain times
+    # a modulus - are a scale the algebra left, not a unit anyone writes, declared or not:
+    # `2[mm/m]*200000[MPa]` read `400000.00 mm·MPa/m` (0.47.1). Cancelled first; what is left
+    # is chosen as any value's unit is.
+    cancelled = _cancelling_factors(quantity)
+    if cancelled is not None:
+        quantity = quantity.to(quantity.units / cancelled)
+        try:
+            magnitude = float(quantity.magnitude)
+        except (TypeError, ValueError):
+            return quantity
 
     # A declared palette decides, and it decides before everything below: the zero
     # tolerance, the family, the band, the shape rule. That is the whole point of it -
@@ -4038,11 +4097,12 @@ class _WrittenLine:
         return ast.unparse(node)
 
     def _superscript_base(self, node) -> str:
-        """What a `^{...}` is put on: in parentheses when it carries one already -
+        r"""What a `^{...}` is put on: in parentheses when it carries one already -
         `U'^-1` wrote `U^{T}^{-1}`, which KaTeX refuses as a double superscript and with
-        it the whole block (the audit of 0.46.0)."""
+        it the whole block (the audit of 0.46.0). A fraction too: `(x[1]/y)^2` wrote
+        `\frac{x_1}{y}^{2}`, which reads as `x_1/y²` (his chapter 10, 0.47.1)."""
         if (
-            isinstance(node, ast.BinOp) and isinstance(node.op, ast.Pow)
+            isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Pow, ast.Div))
         ) or (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
@@ -4055,7 +4115,11 @@ class _WrittenLine:
     def _call(self, name: str, arguments) -> str:
         if name == "solve" and len(arguments) == 2:
             matrix, right = arguments
-            return rf"{self._superscript_base(matrix)}^{{-1}}\,{self.grouped(right, 2)}"
+            written = self.grouped(right, 2)
+            # `solve(K, -2*F)` wrote `K^{-1}\,-2 F`, a subtraction to the eye (0.47.1).
+            if written.startswith("-"):
+                written = rf"\left({written}\right)"
+            return rf"{self._superscript_base(matrix)}^{{-1}}\,{written}"
         if name == "inv" and len(arguments) == 1:
             return f"{self._superscript_base(arguments[0])}^{{-1}}"
         if name == "transpose" and len(arguments) == 1:
@@ -4761,7 +4825,14 @@ def _response_label_latex(label: str) -> str:
         return rf"\left|{call}\right|" if match.group(1) else call
     if _NAME.fullmatch(label):
         return _latex(sp.Symbol(label))
-    return _block_words(label)
+    # An expression - `table(r*y/x, ...)` - written as a line writes it: as source it read
+    # `\text{3*__u_m*y/x}`, the parser's name for a unit on the page (0.47.1).
+    try:
+        tree = ast.parse(label, mode="eval").body
+    except SyntaxError:
+        return _block_words(label)
+    nothing = types.SimpleNamespace(statement=None, written_units=frozenset(), matrix_names=frozenset())
+    return _WrittenLine(nothing, RenderSettings()).latex(tree)
 
 
 def _computed_block(rows: list[str]) -> str:

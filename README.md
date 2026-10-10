@@ -13,7 +13,28 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.47.0**.
+Current version: **0.47.1**.
+
+
+## v0.47.1 units and formulas as a memoria writes them
+
+- **A strain times a modulus reads as a stress**: `2[mm/m]*200000[MPa]` printed
+  `400000.00 mm·MPa/m`; it reads `400.00 MPa`. Units of one kind that cancel out (`mm/m`,
+  `in/ft`) are cancelled before the unit is chosen. A strain typed `2[mm/m]` keeps its `mm/m`.
+- **A moment typed in brackets reads force first**: `2.5[kip*ft]` printed `2.5 ft·kip`; it
+  reads `2.5 kip·ft` (also `kip·in`, `kgf·cm`).
+- **An exact root reads at the page's precision**: a range `solve` whose root is exactly 2 ft
+  printed `2.0 ft`; it reads `2.00 ft`.
+- **Parentheses where the reading needs them, once**: `(x[1]/y)^2` on a `:=` line printed
+  `x₁/y` with the `²` on the `y`; `solve(K, -2*F)` read `K⁻¹ -2F`, a subtraction to the eye;
+  `A^2` with `A` an area printed `((8000.00 mm²))²`.
+- **A function that divides by a decimal is written as typed**: `f(x) = x/0.85` printed
+  `1.18 x`; it reads `x/0.85`.
+- **A `table` of an expression heads its column in mathematics**: `table(r*y/x, ...)` headed
+  it `3*__u_m*y/x`, the parser's name for a unit on the page.
+- **Messages quote units as typed**: `'5 * __u_kN / __u_m - k' adds a number to a matrix`
+  reads `'5[kN/m] - k' ...`; a name read from kip entries is said in the page's unit, and
+  `3[m^0.5]` and `2*3[m]` are quoted as typed.
 
 
 ## v0.47.0 eigenvals with a singular second matrix
@@ -4173,6 +4194,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.47.1** — `mm·MPa/m` reads MPa, `kip·ft` force first, exact roots at the page's precision, `(x₁/y)²` and `x/0.85` as typed, no internal unit names on the page or in messages.
 - **0.47.0** — `eigenvals(K, G)` with a singular G (a frame's K_g), worked out exactly; a λ the floats do not settle is refused, never printed wrong.
 - **0.46.2** — a range solve's root in its own unit (inches, tonnes, °C; never a sheet's name); refused conditions quoted as typed; placeholders in a unit's brackets run.
 - **0.46.1** — max/min of unit ratios compared converted; a number too large is refused, not a crash; placeholders and matrix entries in conditions, range solve over entries, `{n} :=` run.
@@ -4314,4 +4336,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.47.0`.
+Version: `0.47.1`.

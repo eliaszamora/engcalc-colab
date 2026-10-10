@@ -1298,7 +1298,7 @@ _A_READ_BRACKET = re.compile(r"(\d[\w.]*) \* (__u_\w+(?: (?:\*|/) __u_\w+| \*\* 
 _A_WRAPPED_BRACKET = re.compile(r"\((\d[\w.]*\[[^\[\]]*\])\)")
 
 
-def _as_typed(tree: ast.AST) -> str:
+def _as_typed(tree: "ast.AST | str") -> str:
     """A comparison as the sheet writes it: `f[1] > 0.5[m]`, its units in brackets."""
 
     def bracket(match: re.Match) -> str:
@@ -1307,7 +1307,17 @@ def _as_typed(tree: ast.AST) -> str:
 
     # `3[m^0.5]` read `3[m^0].5` with a whole power only, and `2*3[m]` read `2 * (3[m])` (the
     # third audit of 0.46.2).
-    return _A_WRAPPED_BRACKET.sub(r"\1", _A_READ_BRACKET.sub(bracket, ast.unparse(tree)))
+    text = ast.unparse(tree) if isinstance(tree, ast.AST) else tree
+    return _A_WRAPPED_BRACKET.sub(r"\1", _A_READ_BRACKET.sub(bracket, text))
+
+
+def said_as_typed(message: str) -> str:
+    """A message as the sheet writes its units: the engine quotes a line from its tree,
+    and `5[kN/m] - k` came out `'5 * __u_kN / __u_m - k' adds a number to a matrix`
+    (0.47.1). A unit name standing alone keeps its name, without the prefix."""
+    if "__u_" not in message:
+        return message
+    return _as_typed(message).replace("__u_", "")
 
 
 _SI_BASE = frozenset({"meter", "kilogram", "second", "kelvin", "ampere", "mole", "candela", "radian"})

@@ -3430,7 +3430,11 @@ class EngineeringEngine:
                 written = self._written_form(statement, evaluator, value)
             elif statement.parameters is None:
                 written = self.written_namespace.get(statement.target)
-            elif self._a_line_reaches_a_kept_name(statement):
+            elif self._a_line_reaches_a_kept_name(statement) or _divides_by_a_typed_decimal(
+                statement.expression.body
+            ):
+                # Or one that divides by a decimal: `f(x) = x/0.85` read `1.18 x`, a
+                # coefficient nobody wrote (his chapter 8, 0.47.1).
                 # A function that reads a kept name is written as typed, or `f_cw` in
                 # `As_req(Mu)` is expanded and 2/0.85 folded into 2.35. Any other function
                 # prints as it always has. See `test_a_kept_name_survives_a_sheet_function`.
@@ -7270,3 +7274,16 @@ def _said_quantity(quantity) -> str:
         return f"{float(quantity.magnitude):.2f} {quantity.units:~P}".strip()
     except (AttributeError, TypeError, ValueError):
         return str(quantity)
+
+
+def _divides_by_a_typed_decimal(body) -> bool:
+    """True when the line divides by a number with a decimal point: `x/0.85`, `M/(0.9*b)`."""
+    return any(
+        isinstance(node, ast.BinOp)
+        and isinstance(node.op, ast.Div)
+        and any(
+            isinstance(each, ast.Constant) and isinstance(each.value, float)
+            for each in ast.walk(node.right)
+        )
+        for node in ast.walk(body)
+    )
