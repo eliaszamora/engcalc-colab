@@ -207,7 +207,7 @@ check("an integral with bracket units, a nested piecewise, q = solve(..., q)",
       "L := 9[m]\nW = integrate((270[kN*m] - 30[kN]*x)*(L - x), x, 6[m], L)\n"
       "f(x) = piecewise(1, x < 1, piecewise(2, x < 2, 3))\n"
       "g(x) = q*x\nq = solve(eq(2*q, P), q)\nz = g(2)",
-      r"- 5\,\mathrm{kN}\,L^{3}", r"3 & \text{otherwise} \end{cases}", r"& = & \displaystyle P",
+      r"- 5\,\mathrm{kN}\,L^{3}", r"3 & \text{en otro caso} \end{cases}", r"& = & \displaystyle P",
       absent=("__u", "[4pt] [4pt]", "spacing metadata"))
 # 0.45.1: what chapter 5 found
 check("unknowns that cancel, the inch in brackets, a parameter s",
