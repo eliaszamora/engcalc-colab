@@ -62,6 +62,8 @@ _RETIRED_CALLS = {
 }
 _ALLOWED_CALLS = {
     "integrate", "diff", "solve", "simplify", "expand", "factor",
+    # A differential equation in an unknown function (0.52.0).
+    "dsolve",
     # Written `<x-a>^n`; the call form exists because that is what the notation is
     # rewritten to, and is accepted directly as well.
     "macaulay",

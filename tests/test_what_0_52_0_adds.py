@@ -77,3 +77,24 @@ def test_an_increment_of_an_angle(sheet, source, shown):
 def test_other_names_beginning_with_d_stay_words(sheet, source, shown):
     page, printed = sheet(source)
     assert shown in page, page
+
+
+# C7c, C8k: a function the sheet has not defined, inside an integral or a differential
+# equation.
+
+
+def test_an_undefined_width_inside_an_integral(sheet):
+    page, printed = sheet("y = integrate(b(y)*y, y, 0, h)\n")
+    assert not printed, printed
+    assert r"b\left(y\right)" in page and r"\int" in page, page
+
+
+def test_a_differential_equation(sheet):
+    page, printed = sheet("v = dsolve(eq(diff(v(x), x, 2), -w*x/(E*I)), v(x))\n")
+    assert not printed, printed
+    assert r"C_{1} + x C_{2} - \frac{w x^{3}}{6 E I}" in page, page
+
+
+def test_an_unknown_function_elsewhere_is_still_a_typo(sheet):
+    page, printed = sheet("q = sni(x)\n")
+    assert "unsupported function 'sni'" in printed, printed

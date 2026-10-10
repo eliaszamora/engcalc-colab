@@ -1305,6 +1305,8 @@ _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
 # `EngineeringEngine._a_written_form_may_call`. `eq` builds an equation and nothing else
 # (2026-09-27): `bc2 = eq(subs(v(x), x, L), 0)` then reads in the names `v(x)` reads in.
 _CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff", "eq", "solve"})
+# Where an undefined `b(y)` is a function of its variable rather than a typo (0.52.0).
+_CALLS_THAT_TAKE_AN_UNKNOWN_FUNCTION = frozenset({"integrate", "diff", "dsolve"})
 
 
 class EngineeringEngine:
@@ -3816,6 +3818,9 @@ class _Evaluator(ast.NodeVisitor):
         # Each `solve` call's answer, by the call's node, so the second reading reuses it
         # rather than solving the same equation again. See `visit_Call`.
         self.answered: dict[int, object] = {}
+        # How many integrals, derivatives or differential equations are open around the
+        # node being read: inside one, an undefined `b(y)` is a function (0.52.0).
+        self.unknown_functions = 0
         self.solved_for = None
         self.numeric_evaluation = None
         self.written_arguments = None
@@ -4766,7 +4771,16 @@ class _Evaluator(ast.NodeVisitor):
                 and args[position] not in free
             ]
         else:
-            args = [self.visit(arg) for arg in node.args]
+            # Inside an integral, a derivative or a differential equation a function the
+            # sheet has not defined is a function of its variable, `b(y)` or `f(x)` (C7c,
+            # C8k; 0.52.0). Anywhere else an unknown name is still refused: it is a typo far
+            # more often than a function.
+            takes = name in _CALLS_THAT_TAKE_AN_UNKNOWN_FUNCTION
+            self.unknown_functions += takes
+            try:
+                args = [self.visit(arg) for arg in node.args]
+            finally:
+                self.unknown_functions -= takes
             answer_pairs = []
 
         if name == "identity":
@@ -4942,6 +4956,27 @@ class _Evaluator(ast.NodeVisitor):
                 )
             return sp.SingularityFunction(variable, offset, order)
 
+        if name == "dsolve":
+            # A differential equation in the unknown function it names: `dsolve(diff(f(x),
+            # x, 2) + f(x), f(x))`, or an `eq(...)`. SymPy solves it; its constants are
+            # C_1, C_2 as a textbook names them (C8k, 0.52.0).
+            self._require_arity(name, args, 2, "equation, unknown function")
+            equation, unknown = args
+            if not isinstance(unknown, sp.core.function.AppliedUndef):
+                raise EngEvaluationError(
+                    "dsolve solves for a function of its variable: write it as f(x), as in "
+                    "dsolve(diff(f(x), x, 2) + f(x), f(x))"
+                )
+            try:
+                solved = sp.dsolve(equation, unknown)
+            except (NotImplementedError, ValueError) as error:
+                raise EngEvaluationError(f"dsolve could not solve this equation: {error}") from error
+            if isinstance(solved, list):
+                raise EngEvaluationError(
+                    f"dsolve found {len(solved)} solutions; write the one you need as an eq(...)"
+                )
+            return solved.rhs
+
         if name == "diff":
             if len(args) not in (2, 3):
                 raise EngEvaluationError(
@@ -5048,6 +5083,10 @@ class _Evaluator(ast.NodeVisitor):
             raise EngSyntaxError(
                 f"{name} gives a position in numbers: write it on a := line, as i := {name}(a, b, c)"
             )
+        if self.unknown_functions and not name.startswith("_") and args and all(
+            isinstance(arg, sp.Basic) and not is_matrix(arg) for arg in args
+        ):
+            return sp.Function(name)(*args)
         raise EngSyntaxError(f"unsupported function '{name}'")
 
 
