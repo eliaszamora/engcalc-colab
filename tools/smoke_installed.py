@@ -108,7 +108,7 @@ check("a power of a fraction keeps its parentheses",
 check("a function dividing by a decimal is written as typed",
       "f(x) = x/0.85", r"\frac{x}{0.85}")
 check("a matrix refusal quotes units as typed",
-      "k := [2[kN/m]]\ny := 5[kN/m] - k", "'5[kN/m] - k' adds a number", absent=("__u_",))
+      "k := [2[kN/m]; 3[kN/m]]\ny := 5[kN/m] - k", "'5[kN/m] - k' adds a number", absent=("__u_",))
 
 # 0.47.0: eigenvals(K, G) with a singular G, worked out exactly
 check("eigenvals with a singular second matrix",
