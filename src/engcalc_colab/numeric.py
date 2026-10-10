@@ -410,10 +410,18 @@ class NumericContext:
         if name == "sqrt":
             return _real_power(quantity, 0.5)
 
+        if name == "heaviside":
+            # The unit step of a value of any kind: 0 before its zero, 1 from it (0.51.0).
+            magnitude = float(quantity.to_base_units().magnitude)
+            return 0.0 if magnitude < 0 else 1.0
+
         forward_trig = {
             "sin": math.sin,
             "cos": math.cos,
             "tan": math.tan,
+            "cot": lambda angle: 1 / math.tan(angle),
+            "sec": lambda angle: 1 / math.cos(angle),
+            "csc": lambda angle: 1 / math.sin(angle),
         }
         if name in forward_trig:
             try:
@@ -1753,7 +1761,15 @@ class NumericContext:
             sp.cosh: "cosh",
             sp.tanh: "tanh",
             sp.atanh: "atanh",
+            sp.cot: "cot",
+            sp.sec: "sec",
+            sp.csc: "csc",
+            sp.Heaviside: "heaviside",
         }
+        if expr.func == sp.Heaviside and expr.args:
+            # `Heaviside(x)` carries its value at zero as a second argument in some SymPy.
+            value = self._evaluate_sympy(expr.args[0], substitutions)
+            return self.evaluate_scalar_function("heaviside", value)
         if expr.func in scalar_sympy and len(expr.args) == 1:
             value = self._evaluate_sympy(expr.args[0], substitutions)
             return self.evaluate_scalar_function(scalar_sympy[expr.func], value)
@@ -1889,7 +1905,7 @@ class _NumericAstEvaluator(ast.NodeVisitor):
         value = self.visit(node.args[0])
         if name == "abs":
             return abs(value)
-        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "ln", "sinh", "cosh", "tanh", "atanh"}:
+        if name in {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "ln", "sinh", "cosh", "tanh", "atanh", "cot", "sec", "csc", "heaviside"}:
             return self.context.evaluate_scalar_function(name, value)
         # Named: the message used to be the same for every function, and the engineer
         # could not tell which one it meant.

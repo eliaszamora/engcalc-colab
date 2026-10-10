@@ -820,10 +820,13 @@ def _bracketed_units_in(matrix) -> frozenset[str]:
     itself on the page: `numeric(S)` of `A*E/(5[m])*[1, -1; -1, 1]` read `5 __u_m` (his
     book, chapter 3, 2026-09-29).
     """
+    # And a unit the sheet writes as a measurement, `10*kN`: `numeric(d)` of `solve(K,
+    # [10*kN; ...])` set it in italic as a name, and repeated the row above it (0.51.0).
+    measured = MEASURED_UNITS.get()
     return frozenset(
         symbol.name
         for symbol in getattr(matrix, "free_symbols", ())
-        if symbol.name.startswith(BRACKETED_UNIT_PREFIX)
+        if symbol.name.startswith(BRACKETED_UNIT_PREFIX) or symbol.name in measured
     )
 
 
@@ -4350,6 +4353,10 @@ def _numeric_matrix_assignment_stages(
             name.removeprefix(BRACKETED_UNIT_PREFIX) == "rad" for name in result.written_units or ()
         ),
     )
+    if _a_literal_of_numbers(result) and _shows_the_unit_typed(result, value):
+        # `v := [1; 2; 3]` read `[1; 2; 3]` and then `[1.00; 2.00; 3.00]`, the same numbers
+        # twice (his chapter 10; 0.51.0): a matrix typed as numbers is its values.
+        return [value]
     written = _written_line_latex(result, settings)
     # `numeric(d)` writes `d = [...]`, not `d = d = [...]`.
     if written == _render_lhs(result.statement.target, None):
@@ -4535,6 +4542,12 @@ def _symbolic_value_rows(result: EvaluationResult, settings: RenderSettings) -> 
     units = result.unit_literals
     if display_input is None or sp.sstr(display_input) == sp.sstr(value):
         value_rows = _bounded_expression_rows(value, settings=settings, unit_literals=units)
+        if result.statement.target is None and result.solved_for is not None:
+            # `solve(e1, x)` of an equation already on the page: the answer under its
+            # unknown, `x = 2`; the row read `2` with nothing on its left (0.51.0).
+            rows: list[str] = []
+            _append_assignment_stage(rows, lhs, value_rows)
+            return rows
         if len(value_rows) == 1:
             standard = _standard_result_row(result, settings)
             if _latex_visual_width(standard) <= _COMPLETE_ROW_VISUAL_BUDGET:
@@ -6812,3 +6825,50 @@ def matrix_summary_latex(name: str, matrix) -> str:
         parts.append(r"\text{simétrica}")
     parts.append(rf"{nonzero}\ \text{{términos no nulos}}")
     return rf"{_latex(sp.Symbol(name))} \;:\; " + r",\ ".join(parts)
+
+
+def _a_literal_of_numbers(result) -> bool:
+    """True when a `:=` line is a matrix typed as numbers and nothing else: `[1; 2; 3]`,
+    `[1[kN]; -2[kN]]` - no name, no operation but a sign and a unit's brackets."""
+    statement = result.statement
+    body = getattr(getattr(statement, "expression", None), "body", None)
+    bindings = {binding.name: binding for binding in getattr(statement, "matrix_literals", ())}
+    if not isinstance(body, ast.Name) or body.id not in bindings:
+        return False
+
+    def a_number(node) -> bool:
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            return a_number(node.operand)
+        if isinstance(node, ast.Constant):
+            return isinstance(node.value, (int, float)) and not isinstance(node.value, bool)
+        names = [each for each in ast.walk(node) if isinstance(each, ast.Name)]
+        return (
+            isinstance(node, ast.BinOp)
+            and all(name.id.startswith(BRACKETED_UNIT_PREFIX) for name in names)
+            and all(
+                isinstance(each, (ast.BinOp, ast.Name, ast.Constant, ast.Mult, ast.Div, ast.Pow, ast.Load))
+                for each in ast.walk(node)
+            )
+        )
+
+    return all(a_number(cell.body) for row in bindings[body.id].literal.rows for cell in row)
+
+
+def _shows_the_unit_typed(result, value: str) -> bool:
+    """True when every cell of a literal was typed in one unit, or none, and the values are
+    shown in it: `[500[mm]; 2[m]]` read in metres keeps the row that says what was typed."""
+    statement = result.statement
+    body = statement.expression.body
+    binding = {each.name: each for each in statement.matrix_literals}[body.id]
+    units = {
+        tuple(re.findall(r"__u_\w+", ast.unparse(cell.body)))
+        for row in binding.literal.rows
+        for cell in row
+    }
+    typed = {unit for unit in units if unit}
+    if not typed:
+        return True
+    if len(typed) != 1 or () in units:
+        return False
+    names = [part.removeprefix(BRACKETED_UNIT_PREFIX) for part in typed.pop()]
+    return all(rf"\mathrm{{{_DEGREE_LATEX.get(name, name)}}}" in value or name == "deg" for name in names)

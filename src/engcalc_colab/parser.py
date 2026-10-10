@@ -46,7 +46,10 @@ _DISPLAY_SWEEP_CALLS = {"plot", "envelope"}
 _DISPLAY_TEXT_OPTIONS = {"title", "xlabel", "ylabel"}
 _CHARACTERISTIC_CALLS = {"roots", "extrema", "intersections", "governing"}
 _SCALAR_CALLS = {
-    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh", "atanh", "ln"
+    "sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "sinh", "cosh", "tanh", "atanh", "ln",
+    # The reciprocal functions and the step, as a textbook writes them (his chapters 6 and 8;
+    # 0.51.0).
+    "cot", "sec", "csc", "heaviside"
 }
 _RETIRED_CALLS = {
     # ``integral`` was the original name and ``integrate`` replaced it in 0.11.0, on the

@@ -158,6 +158,13 @@ _SCALAR_SYMBOLIC_FUNCTIONS = {
     "atanh": sp.atanh,
     # The natural log as it is written on a memoria; `log` is the same function.
     "ln": sp.log,
+    # The reciprocal functions and the unit step (0.51.0).
+    "cot": sp.cot,
+    "sec": sp.sec,
+    "csc": sp.csc,
+    # As the two cases it is, not SymPy's `Heaviside`: printed `θ(x - a)` it read as an
+    # angle, and its integral with a symbolic `a` came out as a Meijer G function.
+    "heaviside": lambda z: sp.Piecewise((0, z < 0), (1, True)),
 }
 
 _INVERSE_TRIG_SYMBOLIC_FUNCTIONS = {sp.asin, sp.acos, sp.atan}
@@ -6712,7 +6719,7 @@ class _Evaluator(ast.NodeVisitor):
 # summarises would do that work twice and record its effects twice.
 _WRITTEN_FORM_SAFE_CALLS = frozenset(
     {"sqrt", "sin", "cos", "tan", "asin", "acos", "atan", "exp", "log", "abs",
-     "sinh", "cosh", "tanh", "atanh", "ln",
+     "sinh", "cosh", "tanh", "atanh", "ln", "cot", "sec", "csc", "heaviside",
      # `transpose`, because `K_e = transpose(A_e)*k_e*A_e` is how a stiffness matrix is
      # assembled and the call was the only thing keeping a written form off it. Without
      # it the frame benchmark printed every entry in nodal coordinates,
