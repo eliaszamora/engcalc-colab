@@ -17,6 +17,15 @@ Left, recorded: C5h (kip sheets' matrices read in SI - needs the sheet's unit sy
 kip` is the way meanwhile), EXd (kN/mm stiffness read in kN/m), rotational-spring and
 angle-rate vectors losing `/rad` (pre-existing), `y = f(1e8[mm^4])` then `numeric(y)` repeating
 `2.00 × 10^8 mm^4` on two rows.
+
+**Status after 0.49.0 (2026-10-10):** fixed in 0.49.0 - C2l (`piecewise` in Spanish), C3i (`table`
+with columns of different kinds), C10f (ft stays ft in loop tables), C2e/C3o/C2f/B1 (kept names in
+part assignments, `zeros + K`, `piecewise` bodies, `solve` inside a product, definitions written
+before their values), C7a (`assume` with a bound, stated; only the implied sign is carried). New,
+fixed in 0.49.0: a `=` assembly that keeps adding parts after a name it reads changes (`L := ...`
+per pass) gave every part the last value in silence (main too) - now a notice pointing to `:=`
+assembly. Left: loop-table gaps (C9i nested loops, L44 entries read from a matrix, C10c values set
+in a `% if`), C5h, EXd; `assume` bounds are not checked against later values (a bound is data).
 Decided as the page's rules, not defects: C4k/C6c/C8i (two decimals; `%eng_config precision=`
 changes it), and D1-D23 below.
 
