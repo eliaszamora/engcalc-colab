@@ -13,7 +13,19 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.48.0**.
+Current version: **0.48.1**.
+
+
+## v0.48.1 angles with their mark, powers of ten as powers of ten
+
+- **An angle in degrees reads `45°`** in formulas and typed values: `P*cos(45*deg)` printed
+  `cos(45 deg)`. A vector of angles reads in degrees (it read radians with no unit); one typed
+  in `rad` keeps radians. A difference of degrees Celsius keeps its `20.00 °C`.
+- **A round-off entry does not choose a vector's unit**: `[1 kN; 1e-7 kN]` read
+  `[1000.00; 0.0001] N`; an entry a million times smaller than the largest is left out of the
+  choice.
+- **A power of ten is written as one**: `1e8[mm^4]` read `100000000.0 mm⁴` and `1e-7` read
+  `1e-07`.
 
 
 ## v0.48.0 what a matrix sheet asks of `:=` lines and loops
@@ -4215,6 +4227,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.48.1** — `cos(45°)` and vectors of angles in degrees; a round-off entry does not move a vector to N; `1e8` written `10^8`.
 - **0.48.0** — `km`, `lbf`, `lb`, `percent`; `%eng_units kip`; `K[libres, libres]` and `K[1:2, 1:2]` on `:=`; 1x1 ± number; matrix functions on `:=`; `% break`; `{i}` in loop text; `argmin`/`argmax`, `rank`; `lam` written λ.
 - **0.47.1** — `mm·MPa/m` reads MPa, `kip·ft` force first, exact roots at the page's precision, `(x₁/y)²` and `x/0.85` as typed, no internal unit names on the page or in messages.
 - **0.47.0** — `eigenvals(K, G)` with a singular G (a frame's K_g), worked out exactly; a λ the floats do not settle is refused, never printed wrong.
@@ -4358,4 +4371,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.48.0`.
+Version: `0.48.1`.

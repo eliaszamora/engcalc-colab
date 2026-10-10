@@ -324,7 +324,8 @@ def test_a_loop_value_written_as_an_expression_reads_as_one(monkeypatch):
     page, console = _run(source, monkeypatch)
     assert not console, console
     assert r"\text{-cos" not in page and r"\text{L" not in page, page
-    assert r"\frac{L_{1}}{L_{2}}" in page and r"\cos\left(60\,\mathrm{deg}\right)" in page, page
+    # `60°`, not `60 deg`, since 0.48.1.
+    assert r"\frac{L_{1}}{L_{2}}" in page and r"\cos\left(60^{\circ}\right)" in page, page
     # The formula of the column the table works out, once, above the table.
     assert r"\quad t_{m} = 2 r_{m} L_{1}" in page, page
     assert page.index(r"\quad t_{m} = ") < page.index(r"\hline"), page

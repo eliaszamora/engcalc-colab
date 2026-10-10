@@ -286,6 +286,11 @@ class _EngineeringLatexPrinter(LatexPrinter):
         # in it is a factor or stands where a quantity stands. See `_print`.
         self._printing: list = []
 
+    def doprint(self, expr):
+        # An angle in degrees reads `45°`, as its value does, not `45 deg` (his chapter 2,
+        # 0.48.1): the unit's mark sits on the number, with no space before it.
+        return _ANGLE_MARK_SPACED.sub(r"^{\\circ}", super().doprint(expr))
+
     def _print_AppliedUndef(self, expr):
         r"""A call of a function of the sheet, `U_{1}\left(\frac{L}{2}\right)`.
 
@@ -440,8 +445,13 @@ class _EngineeringLatexPrinter(LatexPrinter):
             return _magnitude_text(float(expr), self.render_settings)
         written = super()._print_Float(expr)
         decimals = written.partition(".")[2]
-        if len(decimals) <= self.render_settings.precision:
+        plain = written.replace("-", "").replace(".", "").isdigit()
+        if len(decimals) <= self.render_settings.precision and not (plain and 1e6 <= abs(float(expr)) < 1e100):
             return written
+        if len(decimals) <= self.render_settings.precision and math.isfinite(float(expr)):
+            # `200000000.0 mm^4` in a substitution row: a large number reads as every value
+            # does, `2.00 x 10^8` (0.48.1).
+            return _magnitude_text(float(expr), self.render_settings)
         if not math.isfinite(float(expr)):
             # SymPy holds `1e300*1e300` exactly; a float holds it as infinity, and the page
             # read `inf`. Written in powers of ten from the exact value.
@@ -2052,6 +2062,33 @@ def _in_force_and_length(quantity, settings: RenderSettings):
 _LAMBDA_SPELLINGS = frozenset({"lam", "lamda"})
 
 
+def _constant_latex(node) -> str:
+    r"""A number on a `:=` line as typed - `0.90` keeps its zero - and a power of ten as a page
+    writes one: `1e8` read `100000000.0` and `1e-7` `1e-07` (his chapter 9; 0.48.1)."""
+    typed = getattr(node, "typed", None)
+    if typed is not None:
+        return typed
+    value = node.value
+    if isinstance(value, float) and value and (abs(value) >= 1e6 or "e" in repr(value)):
+        return _typed_latex(f"{value:g}")
+    return str(value)
+
+
+def _typed_latex(typed: str) -> str:
+    r"""A power of ten as a page writes one: `1e+08` is `10^{8}`, `2.5e-03` is
+    `2.5 \times 10^{-3}`; anything else as it is."""
+    mantissa, marker, exponent = typed.lower().partition("e")
+    if not marker:
+        return typed
+    try:
+        power = int(exponent)
+    except ValueError:
+        return typed
+    if mantissa in ("1", "1.0"):
+        return rf"10^{{{power}}}"
+    return rf"{mantissa} \times 10^{{{power}}}"
+
+
 def _one_group(latex: str) -> bool:
     r"""True when the first `\left(` closes at the last `\right)`: `\left(a\right) b
     \left(c\right)` starts and ends with brackets and is two groups."""
@@ -2635,6 +2672,7 @@ def _quantity_matrix_latex(
     settings: RenderSettings = _DEFAULT_RENDER_SETTINGS,
     *,
     declared: bool = False,
+    keeps_radians: bool = False,
 ) -> str:
     """Render a matrix of quantities.
 
@@ -2644,6 +2682,31 @@ def _quantity_matrix_latex(
     `_aggregate_unit` would otherwise choose again and convert them back.
     """
     common_unit, homogeneous = _quantity_matrix_common_unit(quantity_matrix)
+    # Angles read in degrees, as a scalar angle does: `[30[deg], 45[deg]]` read `[0.52 0.79]`,
+    # radians with no unit; a rotation of exactly zero among them is an angle too (0.48.1).
+    entries = list(quantity_matrix)
+    angles = [quantity for quantity in entries if str(getattr(quantity, "units", "")) == "radian"]
+    if not declared and angles and all(
+        str(getattr(quantity, "units", "")) == "radian"
+        or (getattr(quantity, "dimensionless", False) and float(quantity.magnitude) == 0.0)
+        for quantity in entries
+    ):
+        # Radians where the line wrote them, `[0.5[rad]; 1[rad]]`, as a scalar keeps them.
+        registry = angles[0]._REGISTRY
+        angle_unit = registry.radian if keeps_radians else registry.degree
+        quantity_matrix = QuantityMatrix(
+            quantity_matrix.rows,
+            quantity_matrix.cols,
+            tuple(
+                quantity.to(angle_unit)
+                if str(getattr(quantity, "units", "")) == "radian"
+                else registry.Quantity(0.0, angle_unit)
+                for quantity in entries
+            ),
+            frozenset(),
+            frozenset(),
+        )
+        common_unit, homogeneous, declared = angle_unit, True, True
     if homogeneous and not declared:
         common_unit = _aggregate_unit(list(quantity_matrix), settings, common_unit)
         # Temperatures held in base units read in degrees, as a scalar does.
@@ -2712,6 +2775,8 @@ def _quantity_matrix_latex(
                 magnitude = _magnitude_text(quantity.magnitude, settings)
                 if getattr(quantity, "dimensionless", False) and str(quantity.units) == "dimensionless":
                     rendered_row.append(magnitude)
+                elif str(quantity.units) == "degree":
+                    rendered_row.append(rf"{magnitude}^{{\circ}}")
                 else:
                     rendered_row.append(
                         rf"{magnitude}\,{_temperature_latex(format(quantity.units, '~L'))}"
@@ -2723,7 +2788,9 @@ def _quantity_matrix_latex(
         # Before the brackets, the way it is written by hand: `K = 10^3 [ ... ] kN`.
         matrix_latex = rf"10^{{{exponent}}}\," + matrix_latex
     if homogeneous and common_unit is not None:
-        return rf"{matrix_latex}\,{_temperature_latex(format(common_unit, '~L'))}"
+        written = rf"{matrix_latex}\,{_latex_unit_text(common_unit)}"
+        # One entry, written as a number: `6.00°`, as a scalar angle reads.
+        return written if r"\begin{matrix}" in written else _ANGLE_MARK_SPACED.sub(r"^{\\circ}", written)
     return matrix_latex
 
 
@@ -3696,6 +3763,10 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 
     substituted_rows = _numeric_substituted_rows(result, settings, formula_rows)
     compared_rows = _worked_rows(result, settings, substituted_rows)
+    # A substitution that reads as the value itself is not said twice: `numeric(y)` of
+    # `y = f(1e8[mm^4])` read `2.00 x 10^8 mm^4` on two rows (0.48.1).
+    if substituted_rows == [final_latex] and not compared_rows:
+        substituted_rows = []
 
     rows: list[str] = []
     opening = _relation_opening(
@@ -3925,6 +3996,10 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
             ),
             formula_rows,
         )
+        # Nor one that says what the value below it says: `f(1e8[mm^4])` substitutes to
+        # `2.00 x 10^8 mm^4`, the value itself (0.48.1).
+        if substituted_rows == [evaluated_latex]:
+            substituted_rows = []
 
     rows: list[str] = []
     opening = _relation_opening(
@@ -4024,7 +4099,7 @@ class _WrittenLine:
         if isinstance(node, ast.Name):
             return self._name(node.id)
         if isinstance(node, ast.Constant):
-            return getattr(node, "typed", str(node.value))
+            return _constant_latex(node)
         if isinstance(node, ast.UnaryOp):
             sign = "-" if isinstance(node.op, ast.USub) else "+"
             return sign + self.grouped(node.operand, 2)
@@ -4070,7 +4145,7 @@ class _WrittenLine:
                 if power < 0 and each.value != 1:
                     return False
                 if each.value != 1 or power > 0:
-                    numbers.append(getattr(each, "typed", str(each.value)))
+                    numbers.append(_constant_latex(each))
                 return True
             if isinstance(each, ast.Name):
                 units[each.id] = units.get(each.id, 0) + power
@@ -4099,12 +4174,16 @@ class _WrittenLine:
 
         def unit(name: str, power: int) -> str:
             written = _latex(sp.Symbol(name), frozenset({name}), self.settings).removeprefix("1" + r"\,")
+            if written == r"1^{\circ}":
+                written = r"{}^{\circ}"
             return written if power == 1 else f"{written}^{{{power}}}"
 
         above = r" \cdot ".join(unit(name, power) for name, power in units.items() if power > 0)
         below = r" \cdot ".join(unit(name, -power) for name, power in units.items() if power < 0)
         number = numbers[0] if numbers else ""
+        # `30[deg]` reads `30°`: the mark on the number, as a value writes it (0.48.1).
         top = r"\,".join(part for part in (number, above) if part) or "1"
+        top = _ANGLE_MARK_SPACED.sub(r"^{\\circ}", top)
         return rf"\frac{{{top}}}{{{below}}}" if below else top
 
     def _name(self, name: str) -> str:
@@ -4215,6 +4294,9 @@ def _numeric_matrix_assignment_stages(
         result.quantity_matrix,
         _settings_for(result, settings),
         declared=_shows_as_stored(result),
+        keeps_radians=any(
+            name.removeprefix(BRACKETED_UNIT_PREFIX) == "rad" for name in result.written_units or ()
+        ),
     )
     written = _written_line_latex(result, settings)
     # `numeric(d)` writes `d = [...]`, not `d = d = [...]`.
@@ -5049,7 +5131,12 @@ def _latex_unit_text(unit) -> str:
     return _temperature_latex(format(unit, "~L"))
 
 
-_DEGREE_LATEX = {"degC": r"{}^{\circ}\mathrm{C}", "degF": r"{}^{\circ}\mathrm{F}", "inch": r"\mathrm{in}"}
+_DEGREE_LATEX = {"degC": r"{}^{\circ}\mathrm{C}", "degF": r"{}^{\circ}\mathrm{F}", "inch": r"\mathrm{in}", "deg": r"{}^{\circ}"}
+# `45\,{}^{\circ}` from a number beside the degree, with no `\mathrm{C}` after it: an
+# angle, written `45^{\circ}`. A difference of degrees Celsius keeps its space.
+_ANGLE_MARK_SPACED = re.compile(r"(?<=\d)(?:\\,|\s)*\{\}\^\{\\circ\}(?!\s*\\mathrm\{[CF]\})")
+# Only after a digit: `cos(alpha*deg)` kept its base and read `° α` with the base taken away,
+# and `10^{8}` would carry a second superscript (the audit of 0.48.1).
 
 
 def _temperature_latex(latex: str) -> str:
@@ -5208,6 +5295,20 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
         # kN/mm is what the engineer typed and every cell still says something in it.
         return fallback
 
+    # An entry a million times smaller than the largest is the round-off of a solve, not a
+    # value to choose a unit for: `[1 kN; 1e-7 kN]` moved the whole vector to newtons,
+    # `[1000.00; 0.0001] N` (his chapter 10; 0.48.1).
+    try:
+        largest = max(abs(float(quantity.to_base_units().magnitude)) for quantity in physical)
+    except (DimensionalityError, ValueError):
+        largest = 0.0
+
+    def negligible(quantity) -> bool:
+        try:
+            return abs(float(quantity.to_base_units().magnitude)) < 1e-6 * largest
+        except DimensionalityError:
+            return False
+
     def score(unit):
         total = 0.0
         for quantity in physical:
@@ -5215,7 +5316,7 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
                 converted = quantity.to(unit)
             except DimensionalityError:
                 return None
-            if abs(float(converted.magnitude)) < settings.zero_tolerance:
+            if abs(float(converted.magnitude)) < settings.zero_tolerance or negligible(quantity):
                 continue
             band, distance = _band_distance(converted.magnitude, converted.units)
             total += band + distance
