@@ -3355,6 +3355,9 @@ class EngineeringEngine:
                     isinstance(body, ast.Call)
                     and isinstance(body.func, ast.Name)
                     and body.func.id == "numeric"
+                    # `result(K)` is read as `numeric` and shows a matrix of symbols on
+                    # purpose (his chapter 4, p4_6).
+                    and not re.search(r"\bresult\s*\(", getattr(statement, "source", "") or "")
                 )
                 # Only where numbers were asked for: a matrix of symbols on a `=` line - a
                 # condensed stiffness in E, I, a, b - is meant to stay one (his chapter 4).

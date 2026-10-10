@@ -272,3 +272,9 @@ def test_a_latex_group_in_loop_text_is_left_alone(sheet):
     assert not printed, printed
     assert r"\mathbf{k}_m" in page and "x_{k}" in page and r"\mathbf1" not in page, page
     assert r"\text{1}" in page and r"\text{2}" in page, page
+
+
+def test_result_of_a_matrix_of_symbols_says_nothing(sheet):
+    """His chapter 4: `result(K)` shows a stiffness in E, I, L on purpose."""
+    _, printed = sheet("K = E*I/L^3*[12, 6*L; 6*L, 4*L^2]\nresult(K)\n")
+    assert "needs values" not in printed, printed
