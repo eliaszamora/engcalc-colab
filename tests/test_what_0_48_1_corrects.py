@@ -84,8 +84,9 @@ def test_a_small_force_beside_a_large_one_still_chooses_by_both(sheet):
 @pytest.mark.parametrize(
     ("source", "expected"),
     [
-        ("K := [1e12, 0; 0, 1]\n", r"\displaystyle 10^{12} & \displaystyle 0"),
-        ("F := [1[kN]; 1e-7[kN]]\n", r"\displaystyle 10^{-7}\,\mathrm{kN}"),
+        # A matrix typed as numbers alone is written once (0.51.0): these keep the typed row.
+        ("K := [1e12, 0; 0, 1]*2\n", r"\displaystyle 10^{12} & \displaystyle 0"),
+        ("F := [1[kN]; 1e-7[MN]]\n", r"\displaystyle 10^{-7}\,\mathrm{MN}"),
         ("f(I) = 2*I\ny = f(1e8[mm^4])\nnumeric(y)\n", r"f\left(1.00 \times 10^{8}\,\mathrm{mm}^{4}\right)"),
     ],
 )
@@ -111,6 +112,6 @@ def test_a_vector_of_angles_with_a_zero_reads_in_degrees(sheet):
 
 
 def test_a_power_of_ten_in_degrees_is_not_a_double_superscript(sheet):
-    page, printed = sheet("x := [1e8[deg]; 2[deg]]\n")
+    page, printed = sheet("x := [1e8[deg]; 2[rad]]\n")
     assert not printed, printed
     assert r"10^{8}\,{}^{\circ}" in page and r"10^{8}^{\circ}" not in page, page
