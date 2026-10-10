@@ -13,7 +13,18 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.49.0**.
+Current version: **0.50.0**.
+
+
+## v0.50.0 loop tables that hold everything, kip sheets in kips
+
+- **Two `% for`, one directly inside the other, make one table** over their pairs (`i, j`); every
+  pass was printed as it came.
+- **A loop line written with its formula is a column of the table** - `y_{i} := x[{i}] - 1[m]`
+  - with its rule written once above it; it was printed row by row.
+- **A sheet written in kips and inches reads its matrices in kips and inches**: a stiffness read
+  `10^3 [42.32 ...] kN/m` beside its own `k` in kip/ft, and a displacement in metres. A sheet
+  written in kgf reads them in its system too.
 
 
 ## v0.49.0 names that stay, tables of mixed kinds, bounds as given data
@@ -4242,6 +4253,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.50.0** — nested loops make one table; a loop line with its formula is a column; kip and kgf sheets read their matrices in their own system.
 - **0.49.0** — kept names in assemblies, `zeros + K`, `piecewise`, `solve` in a product and definitions before values; `table` with mixed kinds; `assume` with a bound; `piecewise` in Spanish.
 - **0.48.1** — `cos(45°)` and vectors of angles in degrees; a round-off entry does not move a vector to N; `1e8` written `10^8`.
 - **0.48.0** — `km`, `lbf`, `lb`, `percent`; `%eng_units kip`; `K[libres, libres]` and `K[1:2, 1:2]` on `:=`; 1x1 ± number; matrix functions on `:=`; `% break`; `{i}` in loop text; `argmin`/`argmax`, `rank`; `lam` written λ.
@@ -4387,4 +4399,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.49.0`.
+Version: `0.50.0`.

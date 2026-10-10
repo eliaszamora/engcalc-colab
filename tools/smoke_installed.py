@@ -77,6 +77,14 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.50.0: loop tables that hold everything, kip sheets in kips
+check("nested loops make one table",
+      "% for i in range(1, 3):\n% for j in range(1, 3):\na_{i}{j} := {i}*{j}\nb_{i}{j} := {i}+{j}\n% end\n% end",
+      r"i, j & a_{ij} & b_{ij}")
+check("a kip sheet reads its matrices in kips",
+      "E := 29000[ksi]\nA := 1[in^2]\nk = E*A/L\nL := 10[ft]\nK := [k*1, k; k, 2*k]",
+      r"\end{matrix}\right]\,\frac{\mathrm{kip}}{\mathrm{ft}}", absent=(r"\frac{\mathrm{kN}}{\mathrm{m}}",))
+
 # 0.49.0: names that stay, tables of mixed kinds, bounds as given data
 check("an assembly into parts keeps the kept name",
       "E := 200[GPa]\nA := 10[cm^2]\nL := 2[m]\nc := 0.6\nkeep k = E*A/L\nK = zeros(2,2)\nK[1,1] = K[1,1] + k*c^2",
