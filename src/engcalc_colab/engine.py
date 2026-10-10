@@ -1067,8 +1067,8 @@ class _MatrixNumbers:
         # `K[libres, libres]` with `libres := [1, 2]` - the free degrees of freedom of a
         # matrix sheet, named once (his chapters 4 and 5; 0.48.0).
         if isinstance(part, ast.Slice) and part.step is None:
-            lower = 1 if part.lower is None else _MatrixNumbers._whole(part.lower)
-            upper = size if part.upper is None else _MatrixNumbers._whole(part.upper)
+            lower = 1 if part.lower is None else self._one_whole(part.lower)
+            upper = size if part.upper is None else self._one_whole(part.upper)
             if lower is not None and upper is not None:
                 if upper < lower:
                     raise EngEvaluationError(f"the range {lower}:{upper} runs backwards")
@@ -1078,9 +1078,19 @@ class _MatrixNumbers:
             if named is not None:
                 return named
         raise EngEvaluationError(
-            f"'{ast.unparse(part)}': an index on a := line is a whole number or a list "
-            "of them, such as d[4,1] or K[[1, 2], [1, 2]]"
+            f"'{ast.unparse(part)}': an index on a := line is a whole number, a list of them, "
+            "a range or a name holding them, such as d[4,1], K[[1, 2], [1, 2]], K[1:2, 1:2] "
+            "or K[libres, libres]"
         )
+
+    def _one_whole(self, node: ast.AST) -> int | None:
+        """An end of a range: a whole number, or a name holding one - `K[1:n, 1:n]`."""
+        whole = _MatrixNumbers._whole(node)
+        if whole is None and isinstance(node, ast.Name):
+            named = self._whole_numbers_named(node.id)
+            if named is not None and not named[1]:
+                whole = named[0][0]
+        return whole
 
 
 # Units spelled as a Greek letter is: read as the unit, they are said to be one.
@@ -2943,6 +2953,7 @@ class EngineeringEngine:
         if (
             (len(name) != 1 and not greek)
             or name in self.numeric_context.variables
+            or name in self.numeric_context.matrices
             or name not in _UNIT_ALIASES
             or (name in self.letters_written_as_units and not greek)
             or name in self.letters_said_to_be_units
@@ -3339,7 +3350,15 @@ class EngineeringEngine:
                 # The page shows the substitution and stops: it said nothing of why there was
                 # no matrix of numbers below it, where a scalar names what it lacks (0.48.0).
                 missing = sorted({str(symbol) for symbol in unresolved_symbols})
-                if missing:
+                body = getattr(getattr(statement, "expression", None), "body", None)
+                asked = (
+                    isinstance(body, ast.Call)
+                    and isinstance(body.func, ast.Name)
+                    and body.func.id == "numeric"
+                )
+                # Only where numbers were asked for: a matrix of symbols on a `=` line - a
+                # condensed stiffness in E, I, a, b - is meant to stay one (his chapter 4).
+                if missing and asked:
                     hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
                     self.notices.append(
                         "this matrix has no value in numbers yet; it needs values for: "
@@ -4788,6 +4807,11 @@ class _Evaluator(ast.NodeVisitor):
                 )
             return sp.sympify(args[0]).subs(replacements, simultaneous=True)
 
+        if name in ("argmin", "argmax"):
+            # A position is a number, not a formula (0.48.0).
+            raise EngSyntaxError(
+                f"{name} gives a position in numbers: write it on a := line, as i := {name}(a, b, c)"
+            )
         raise EngSyntaxError(f"unsupported function '{name}'")
 
 

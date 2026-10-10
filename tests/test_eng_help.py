@@ -54,7 +54,7 @@ def run_help(monkeypatch, line: str):
 # He asked on 2026-09-24 what `keep` was for: it was the one thing on the frame's sheet
 # the help had no entry for, and neither had `member`, `frame_plot` or `image`.
 # `if` stands for its block: `% elif`, `% else` and `% end` are explained in its entry.
-DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":=", "if", "for", "while"}
+DOCUMENTED = _ALLOWED_CALLS | PLACING_CALLS | set(_DECLARATIONS) | {":=", "if", "for", "while", "break"}
 
 
 def test_every_call_the_language_accepts_can_be_looked_up():
@@ -108,7 +108,11 @@ def test_the_example_uses_the_call_it_documents(name):
         return
     if entry.kind == "statement":
         written = f" {name} " if name == ":=" else f"{name} "
-        assert any(line.startswith(written.lstrip()) or written in line for line in entry.example.splitlines()), (
+        # `% break` stands alone on its line, with nothing after its name.
+        assert any(
+            line.startswith(written.lstrip()) or written in line or line.rstrip().endswith(f"% {name}")
+            for line in entry.example.splitlines()
+        ), (
             f"the example for {name} never writes it:\n{entry.example}"
         )
         return

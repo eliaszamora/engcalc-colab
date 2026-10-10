@@ -72,6 +72,8 @@ _ALLOWED_CALLS = {
     # What a design code is written with: the smaller of two limits, the larger of two
     # minima. SymPy has both and sorts their arguments; see `min_max`.
     "min", "max",
+    # Which of them governs, counted from 1 - on a `:=` line (0.48.0).
+    "argmin", "argmax",
     # A value read from a code's table; see `interpolation`.
     "interp",
 } | _SCALAR_CALLS | _CHARACTERISTIC_CALLS

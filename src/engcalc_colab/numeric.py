@@ -348,6 +348,9 @@ class NumericContext:
             for node in ast.walk(expression)
             if isinstance(node, ast.Name)
             and node.id not in self.values
+            # A matrix of the sheet named like a unit - `s := [1]`, the support degrees of
+            # freedom beside `f`, the free ones - is that matrix (the audit of 0.48.0).
+            and node.id not in self.matrices
             and node.id in _UNIT_ALIASES
             and self._scalar_formula(node.id) is None
         )

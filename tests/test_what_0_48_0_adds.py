@@ -218,3 +218,49 @@ def test_lambda_as_a_name_says_what_to_write(sheet):
 def test_a_matrix_with_a_name_lacking_a_value_says_which(sheet):
     _, printed = sheet("E := 200[GPa]\nA := 10[cm^2]\nL := 2[m]\nK = E*A/L*[1, -1; -1, 1]*q\nnumeric(K)\n")
     assert "it needs values for: q" in printed, printed
+
+
+def test_argmax_on_an_equals_line_says_where_it_works(sheet):
+    _, printed = sheet("a := 3\nb := 4\nc = argmax(a, b)\n")
+    assert "write it on a := line" in printed, printed
+
+
+def test_a_matrix_of_symbols_on_an_equals_line_says_nothing(sheet):
+    """His chapter 4: a condensed stiffness in E, I, a, b is meant to stay in symbols."""
+    _, printed = sheet("K = 3*E*I/(a^3 + b^3)*[1, a; a, a^2]\nD = simplify(K - K)\n")
+    assert "needs values" not in printed, printed
+
+
+# The audit of 0.48.0.
+
+
+def test_a_sheet_name_in_loop_text_keeps_its_braces_on_every_pass(sheet):
+    page, printed = sheet('L := 5[m]\n% for i in [1, 2]:\n"""a {L} b {i}"""\n% end\n')
+    assert not printed, printed
+    assert page.count(r"\text{\{L\} }") == 2 and r"\text{1}" in page and r"\text{2}" in page, page
+
+
+def test_an_index_list_named_like_a_unit_is_the_list(sheet):
+    page, printed = sheet(_K + "f := [2, 3]\ns := [1]\nK_sf := K[s, f]\nt := 2[s]\n")
+    assert not printed, printed
+    assert r"K_{s,f}" in page and r"-1000.00 & \displaystyle 0.00" in page, page
+    assert r"2.00\,\mathrm{s}" in page, page
+
+
+def test_a_range_ends_at_a_name(sheet):
+    page, printed = sheet(_K + "n := 2\nK_f := K[1:n, 1:n]\n")
+    assert not printed, printed
+    assert _K_FREE in page.split(r"K_{f}", 1)[1], page
+
+
+def test_a_break_after_other_lines_of_its_branch_still_says_the_loop_stops(sheet):
+    page, printed = sheet(
+        "% for i in range(1, 6):\nP_{i} := {i}*10[kN]\n% if P_{i} > 25[kN]:\nz := 1\n% break\n% end\n% end\n"
+    )
+    assert not printed, printed
+    assert r"\text{: el ciclo se detiene.}" in page and r"P_{4}" not in page, page
+
+
+def test_a_wrong_index_names_every_form_an_index_takes(sheet):
+    _, printed = sheet(_K + "x := K[1.5, 1]\n")
+    assert "a range or a name holding them" in printed, printed

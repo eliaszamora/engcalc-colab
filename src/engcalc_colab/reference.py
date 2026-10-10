@@ -139,7 +139,9 @@ _STATEMENTS: tuple[CallHelp, ...] = (
             "Las líneas % son Python y no se escriben en la memoria. {...} pone un valor de "
             "ellas en una línea de la hoja: M_U{i} se escribe M_U1, M({a}, {b}) se escribe "
             "M(1.4, 0). Un nombre de la hoja se escribe como nombre: con [F_1, F_2], {F} es "
-            "F_1 y luego F_2. % n = 0 y % n += 1 guardan un contador. Dentro puede ir un % if."
+            "F_1 y luego F_2; en un texto \"\"\"...\"\"\", {i} escribe el valor de la vuelta. "
+            "% n = 0 y % n += 1 guardan un contador. Dentro puede ir un % if, y % break "
+            "termina las vueltas."
         ),
         example=(
             "q_D := 18*kN/m\nq_L := 12*kN/m\nL := 6*m\n"
@@ -167,6 +169,23 @@ _STATEMENTS: tuple[CallHelp, ...] = (
             "x := 1*m\n"
             "% while abs(x^2 - 2*m^2) > 1e-6*m^2:\n"
             "x := (x + 2*m^2/x)/2\n% end"
+        ),
+    ),
+    CallHelp(
+        name="break",
+        kind="statement",
+        summary="Termina el % for o el % while en que está; se escribe bajo un % if.",
+        forms=("% break",),
+        arguments=(("% break", "va sola en su línea, dentro de un % for o un % while"),),
+        note=(
+            "La memoria dice por qué: Como P_3 = 30.00 kN > 25.00 kN: el ciclo se detiene. "
+            "En un % while dice En 3 iteraciones (% break): y las filas de la última vuelta. "
+            "En un % for dentro de otro termina solo el de adentro."
+        ),
+        example=(
+            "% for i in range(1, 6):\n"
+            "P_{i} := {i}*10*kN\n"
+            "% if P_{i} > 25*kN:\n% break\n% end\n% end"
         ),
     ),
     CallHelp(
@@ -573,6 +592,22 @@ _ENTRIES: tuple[CallHelp, ...] = (
         forms=("max(a, b, ...)",),
         arguments=(("a, b, ...", "dos o más valores de una misma clase"),),
         example="V_A := 30*kN\nV_B := 45*kN\nV_max = max(V_B, V_A)\nnumeric(V_max)",
+    ),
+    CallHelp(
+        name="argmin",
+        summary="Cuál de varios valores es el menor, contado desde 1; en un empate, el primero.",
+        forms=("argmin(a, b, ...)", "argmin(vector)"),
+        arguments=(("a, b, ... o vector", "valores de una misma clase, o un vector de ellos"),),
+        note="En una línea :=. argmax da el mayor.",
+        example="f := [3*kN; 7*kN; 2*kN]\ni := argmin(f)",
+    ),
+    CallHelp(
+        name="argmax",
+        summary="Cuál de varios valores es el mayor, contado desde 1; en un empate, el primero.",
+        forms=("argmax(a, b, ...)", "argmax(vector)"),
+        arguments=(("a, b, ... o vector", "valores de una misma clase, o un vector de ellos"),),
+        note="En una línea :=, como la rótula que se forma primero. argmin da el menor.",
+        example="M_1 := 120*kN*m\nM_2 := 180*kN*m\nM_3 := 150*kN*m\nj := argmax(M_1, M_2, M_3)",
     ),
     CallHelp(
         name="interp",

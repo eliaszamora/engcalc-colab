@@ -569,7 +569,7 @@ def _choose(node: _IfBlock, engine, settings, scope: _Scope) -> Iterator:
         said.append(stated)
     # A branch that stops its loop says so: the note alone read "Como P_3 > 25 kN:" and then
     # nothing (0.48.0).
-    stops = bool(chosen.body) and isinstance(chosen.body[0], _Break)
+    stops = any(isinstance(each, _Break) for each in chosen.body)
     after = r"\text{: el ciclo se detiene.}" if stops else r"\,\text{:}"
     yield ConditionNote(latex=f"\\textbf{{Como}}\\;\\; {_AND.join(said)}{after}")
     yield from _walk(chosen.body, engine, settings, scope)
@@ -1657,5 +1657,9 @@ def _named_in_text(insert, match: re.Match, line_no: int) -> str:
         written = insert(match.group(1), line_no)
     except EngCalcError:
         return match.group(0)
-    # The probe that reads a cell's structure before it runs gives no text.
-    return written if isinstance(written, str) else match.group(0)
+    # The probe that reads a cell's structure before it runs gives no text. A name of the
+    # sheet comes back as itself, and the braces stay: `{L}` read `L` once `L` had a value
+    # and `{L}` before (the audit of 0.48.0). Only a `%` value is written in.
+    if not isinstance(written, str) or written == match.group(1):
+        return match.group(0)
+    return written
