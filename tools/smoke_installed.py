@@ -77,6 +77,18 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.49.0: names that stay, tables of mixed kinds, bounds as given data
+check("an assembly into parts keeps the kept name",
+      "E := 200[GPa]\nA := 10[cm^2]\nL := 2[m]\nc := 0.6\nkeep k = E*A/L\nK = zeros(2,2)\nK[1,1] = K[1,1] + k*c^2",
+      r"\displaystyle k c^{2} & \displaystyle 0", absent=(r"c^{2} E A",))
+check("a table of a shear and its moment",
+      "L := 6[m]\nq := 10[kN/m]\nV(x) = q*(L/2 - x)\nM(x) = q*x*(L - x)/2\ntable(V(x), M(x), x, 0[m], L, 4)",
+      r"V\left(x\right)\,[\mathrm{kN}]", absent=("incompatible",))
+check("assume takes a bound",
+      "assume(beta < pi/2)\ny = sin(beta)", r"\beta < \frac{\pi}{2}", absent=("assume compares",))
+check("piecewise in Spanish",
+      "q(x) = piecewise(1, x < 2, 0)", r"\text{en otro caso}", absent=("otherwise",))
+
 # 0.48.1: angles with their mark, powers of ten as powers of ten
 check("an angle in degrees reads with its mark",
       "P := 10[kN]\nF = P*cos(45*deg)\nnumeric(F)\na := [30[deg], 45[deg]]",
