@@ -1297,7 +1297,7 @@ _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
 # Walked by a written form only on a line that reaches a kept name. See
 # `EngineeringEngine._a_written_form_may_call`. `eq` builds an equation and nothing else
 # (2026-09-27): `bc2 = eq(subs(v(x), x, L), 0)` then reads in the names `v(x)` reads in.
-_CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff", "eq"})
+_CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff", "eq", "solve"})
 
 
 class EngineeringEngine:
@@ -1375,6 +1375,9 @@ class EngineeringEngine:
         # said `:=` would keep standing, the line that said it. See
         # `_notice_a_value_of_equals_written_in`.
         self.equals_sources: dict[str, ParsedStatement] = {}
+        # Matrices assembled into with `=`, and the warnings said about them.
+        self.assembled_names: dict[str, dict[str, object]] = {}
+        self.assembly_warnings: set[tuple[str, str]] = set()
         self.equals_told: dict[str, str] = {}
         self.frame_members: dict[str, FrameMember] = {}
         # What the last statement has to say that is not an error. The magic prints it.
@@ -1446,14 +1449,79 @@ class EngineeringEngine:
             current, evaluator.index_values(statement.target_index), replacement, name
         )
         self.namespace[name] = value
-        self.written_namespace.pop(name, None)
+        self._notice_an_assembly_mixing_passes(statement, name, value)
+        written = self._written_part(statement, evaluator, value)
+        if written is None:
+            self.written_namespace.pop(name, None)
+        else:
+            self.written_namespace[name] = written
         self.numeric_guards.pop(name, None)
         return EvaluationResult(
             statement=statement,
             display_input=None,
             value=value,
+            written=written,
             unit_literals=self._unit_literals_of(value),
         )
+
+    def _written_part(self, statement, evaluator, value):
+        """The matrix after a part assignment with its kept names standing, or None.
+
+        `K[1,1] = K[1,1] + k*c^2` with `keep k = E*A/L` read `2 c² E A/L` (his chapter 3,
+        0.49.0). The part is read as a written form reads a line - kept names standing - into
+        the matrix's own written form, and kept only where it agrees with the value entry by
+        entry, as every written form is."""
+        name = statement.target
+        if not self._a_line_reaches_a_kept_name(statement):
+            return None
+        for node in ast.walk(statement.expression):
+            if isinstance(node, ast.Call) and not self._a_written_form_may_call(
+                getattr(node.func, "id", None), True
+            ):
+                return None
+        base = self.written_namespace.get(name)
+        if base is None or not is_matrix(base):
+            return None
+        try:
+            writer = _WrittenFormEvaluator(self, getattr(statement, "matrix_literals", ()))
+            replacement = writer.visit(statement.expression.body)
+            written = matrix_assign(
+                base, evaluator.index_values(statement.target_index), replacement, name
+            )
+            # The `0` of `zeros(...)` the first assembly adds to: `k c² + 0` reads `k c²`.
+            written = written.applyfunc(
+                lambda entry: entry.replace(
+                    lambda node: isinstance(node, sp.Add) and any(arg == 0 for arg in node.args),
+                    lambda node: sp.Add(*[arg for arg in node.args if arg != 0], evaluate=False)
+                    if any(arg != 0 for arg in node.args)
+                    else sp.Integer(0),
+                )
+                if isinstance(entry, sp.Basic)
+                else entry
+            )
+        except Exception:  # noqa: BLE001 - the value is shown instead
+            return None
+        expansions = {
+            self.resolve_symbol(kept): self.namespace[kept]
+            for kept in self.kept_names
+            if kept in self.namespace
+        }
+        try:
+            # Only the entries this line changed: the others were verified when they were
+            # written. Every entry on every pass took his Example 4.15 - a 42x42 assembled
+            # in a loop - from 2 s to 84 s (the audit of 0.49.0).
+            if written.shape != value.shape or written.shape != base.shape:
+                return None
+            changed = [
+                (w, v) for w, v, before in zip(written, value, base) if w is not before
+            ]
+            if not all(
+                _agrees_with(sp.sympify(w), sp.sympify(v), expansions) for w, v in changed
+            ):
+                return None
+        except Exception:  # noqa: BLE001
+            return None
+        return written
 
     def _unit_literals_of(self, *values) -> frozenset[str]:
         """The names a row reads as units, by the rule its numeric row uses.
@@ -1534,6 +1602,61 @@ class EngineeringEngine:
             self.numeric_context.evaluate_symbolic(value)
         except Exception:  # noqa: BLE001 - nothing to work out in numbers: it expands
             return False
+        return True
+
+    def _keep_what_has_a_number_now(self, statement) -> None:
+        """Rule 2 for definitions written before their values.
+
+        `d = h - cover`, `a = As*fy/(0.85*fc*b)`, `phiMn = phi*As*fy*(d - a/2)` and then the
+        values: `numeric(phiMn)` read `h - 0.59 As fy/(fc b) - cover` over two rows, where the
+        same lines with the values first read `φ As fy (d - a/2)` (his book, 0.49.0). Before
+        a line that reads a definition still waiting, the definitions it stands on that are a
+        number now become names that stay, as they would have been at their own line, and
+        the definitions over them take the written form that keeps those names."""
+        expression = getattr(statement, "expression", None)
+        if expression is None:
+            return
+        waiting = [
+            node.id
+            for node in ast.walk(expression)
+            if isinstance(node, ast.Name)
+            and node.id in self.equals_sources
+            and node.id not in self.kept_names
+            and getattr(statement, "target", None) != node.id
+        ]
+        promoted: list[str] = []
+        for name in dict.fromkeys(waiting):
+            self._promote(name, promoted, set())
+        if not promoted:
+            return
+        for name, source in list(self.equals_sources.items()):
+            if name in self.namespace and self._reaches_a_kept_name(source.expression):
+                try:
+                    written = self._written_form(source, None, self.namespace[name])
+                except Exception:  # noqa: BLE001 - it keeps what it had
+                    written = None
+                if written is not None:
+                    self.written_namespace[name] = written
+
+    def _promote(self, name: str, promoted: list, seen: set) -> bool:
+        """`name` kept if every name it reads holds a number, after those it reads."""
+        if name in self.kept_names:
+            return True
+        if name in seen or name not in self.equals_sources or name not in self.namespace:
+            return False
+        seen.add(name)
+        source = self.equals_sources[name]
+        for node in ast.walk(source.expression):
+            if isinstance(node, ast.Name) and node.id in self.equals_sources:
+                self._promote(node.id, promoted, seen)
+        value = self.namespace[name]
+        if is_matrix(value) or getattr(source, "parameters", None) is not None:
+            return False
+        if not self._a_formula_with_a_number(source, value):
+            return False
+        self.kept_names.add(name)
+        self._store_kept_value(name, value)
+        promoted.append(name)
         return True
 
     def _drop_the_number(self, name: str) -> None:
@@ -2126,6 +2249,17 @@ class EngineeringEngine:
         shown = evaluator.display_input
         if shown is None:
             return None
+        if (
+            not (isinstance(body, ast.Call) and getattr(body.func, "id", None) == "solve")
+            and any(
+                isinstance(node, ast.Call) and getattr(node.func, "id", None) == "solve"
+                for node in ast.walk(body)
+            )
+            and self._reaches_a_kept_name(statement.expression)
+        ):
+            # `solve(...)*k_b` reads in its kept names as its written form, `k_b T/(k_b +
+            # k_c)`; the expanded answer in front of it said the same thing twice (0.49.0).
+            return None
         kept = self._shown_in_kept_names(statement, value)
         if kept is None:
             kept = self._equation_in_kept_names(statement, shown)
@@ -2175,7 +2309,10 @@ class EngineeringEngine:
             return None
         for node in ast.walk(statement.expression):
             if isinstance(node, ast.Call):
-                if not self._a_written_form_may_call(getattr(node.func, "id", None), True):
+                name = getattr(node.func, "id", None)
+                # A `solve` shows the equation it solved, `_equation_in_kept_names`; read
+                # here it would show its answer in that row's place (0.49.0).
+                if name == "solve" or not self._a_written_form_may_call(name, True):
                     return None
         reader = _WrittenFormEvaluator(self, getattr(statement, "matrix_literals", ()))
         reader.showing = True
@@ -2307,6 +2444,12 @@ class EngineeringEngine:
         if not isinstance(value, sp.Expr) and not equation:
             return None
         carries_kept = self._reaches_a_kept_name(statement.expression)
+        body_node = statement.expression.body
+        if isinstance(body_node, ast.Call) and getattr(body_node.func, "id", None) == "solve":
+            # A line that is a `solve` shows its answer as computed, under the equation it
+            # solved (`_equation_in_kept_names`); one inside a product - `solve(...)*k_b` -
+            # is read with its kept names (0.49.0).
+            return None
         for node in ast.walk(statement.expression):
             if isinstance(node, ast.Call):
                 name = getattr(node.func, "id", None)
@@ -2544,6 +2687,8 @@ class EngineeringEngine:
         self.frame_members.clear()
         self.written_functions.clear()
         self.equals_sources.clear()
+        self.assembled_names.clear()
+        self.assembly_warnings.clear()
         self.equals_told.clear()
         self.numeric_context.reset()
 
@@ -2781,6 +2926,7 @@ class EngineeringEngine:
         A statement that fails reads nothing the sheet goes on with, and says nothing.
         """
         self.notices = []
+        self._keep_what_has_a_number_now(statement)
         result = self._evaluate_statement(statement)
         # What the line writes - the units it measures, the order of its products - is
         # taken only once it has evaluated. Taken before, a line that then failed left it
@@ -2829,6 +2975,57 @@ class EngineeringEngine:
         if said is not None:
             self.notices.append(said)
         return result
+
+    def _notice_an_assembly_mixing_passes(self, statement, name: str, value) -> None:
+        """A `=` assembly that goes on adding parts after a name it reads took a new value.
+
+        `K[[p, q], [p, q]] = K[...] + k*[1, -1; -1, 1]` with `keep k = E*A/L` and `L := ...`
+        each pass: `K` is a formula in `L`, and every element took the last `L` - K[1,1]
+        200000 kN/m for 100000, in silence (the audit of 0.49.0; main did the same). A name
+        changed after the assembly is over is a study of that name - his `A_bc := {a}*A_min`
+        over a finished `K` - and is not said."""
+        values = {
+            symbol.name: self.numeric_context.values[symbol.name]
+            for symbol in getattr(value, "free_symbols", ())
+            if symbol.name in self.numeric_context.values
+        }
+        before = self.assembled_names.get(name, {})
+        for read, now in values.items():
+            if read not in before or (name, read) in self.assembly_warnings:
+                continue
+            try:
+                same = bool(before[read] == now)
+            except Exception:  # noqa: BLE001 - not comparable: said
+                same = False
+            if not same:
+                self.assembly_warnings.add((name, read))
+                self.notices.append(
+                    f"line {statement.line_no}: {name} is assembled with = and reads {read}, "
+                    f"which has a new value since its last part: every part of {name} takes "
+                    f"the last {read}, not the one it was added with. To add numbers pass by "
+                    f"pass, assemble with := ({name} := zeros(...) and {name}[...] := "
+                    f"{name}[...] + ...)."
+                )
+        self.assembled_names[name] = {**before, **values}
+        name = statement.target
+        for matrix_name in sorted(self.assembled_names):
+            value = self.namespace.get(matrix_name)
+            # Only a name that held a number while the parts were added: values given once,
+            # after a matrix assembled in symbols, are what a derivation does (his book).
+            if name not in self.assembled_names[matrix_name]:
+                continue
+            if not is_matrix(value) or (matrix_name, name) in self.assembly_warnings:
+                continue
+            if any(getattr(symbol, "name", None) == name for symbol in value.free_symbols):
+                self.assembly_warnings.add((matrix_name, name))
+                return (
+                    f"line {statement.line_no}: {matrix_name} was assembled with = and is a "
+                    f"formula that reads {name}; a new value of {name} reaches every part of "
+                    f"it, not only the ones added after. To add numbers pass by pass, "
+                    f"assemble with := ({matrix_name} := zeros(...) and "
+                    f"{matrix_name}[...] := {matrix_name}[...] + ...)."
+                )
+        return None
 
     def _notice_a_value_of_equals_written_in(self, statement, result) -> str | None:
         """What to say when a formula writes a value of `=` in beside a name that stands.
@@ -3526,6 +3723,8 @@ class EngineeringEngine:
                 else:
                     self.namespace[statement.target] = value
                     self._fixed_by_its_own_solve(statement, evaluator, value)
+                    # A matrix defined whole starts a new assembly.
+                    self.assembled_names.pop(statement.target, None)
                     if declaration == "keep":
                         self.equals_sources.pop(statement.target, None)
                     else:
@@ -3932,6 +4131,32 @@ class _Evaluator(ast.NodeVisitor):
         right = self.visit(node.comparators[0])
         return build_relation(left, node.ops[0], right)
 
+    def _assumed_bound(self, subject_name: str, comparison: ast.Compare) -> tuple[str, str]:
+        """`assume(beta < pi/2)`: the bound as the page states it, and the sign it implies.
+
+        `x > 3` makes `x` positive and `x < -1` negative, as `x > 0` and `x < 0` do; a bound
+        that implies no sign - `beta < pi/2` - is stated and changes no algebra. The sign is
+        given only to a symbol not used yet, as for `assume(x > 0)`."""
+        op = comparison.ops[0]
+        bound = sp.sympify(self.visit(comparison.comparators[0]))
+        symbol = sp.Symbol(subject_name)
+        relation = {
+            ast.Gt: sp.StrictGreaterThan,
+            ast.GtE: sp.GreaterThan,
+            ast.Lt: sp.StrictLessThan,
+            ast.LtE: sp.LessThan,
+        }[type(op)](symbol, bound, evaluate=False)
+        sign = None
+        if bound.is_number and bound.is_real:
+            if isinstance(op, (ast.Gt, ast.GtE)) and bound >= 0:
+                sign = "positive"
+            elif isinstance(op, (ast.Lt, ast.LtE)) and bound <= 0:
+                sign = "negative"
+        if sign is not None and subject_name not in self.engine.symbols:
+            self.engine.assumptions.setdefault(subject_name, {})[sign] = True
+            self.engine.numeric_context.variables.add(subject_name)
+        return (sp.latex(relation), "bound")
+
     def _evaluate_piecewise(self, node: ast.Call):
         if node.keywords or len(node.args) < 3 or len(node.args) % 2 == 0:
             raise EngEvaluationError(
@@ -4034,10 +4259,11 @@ class _Evaluator(ast.NodeVisitor):
                 if not (
                     isinstance(comparator, ast.Constant) and comparator.value == 0
                 ):
-                    raise EngEvaluationError(
-                        "assume compares a symbol against zero, as in assume(L > 0); "
-                        "a bound like L > 5 is not something a symbol can carry"
-                    )
+                    # A bound - `beta < pi/2`, `L < 3*L_e/2` - stopped the cell (his chapter
+                    # 8). It is stated on the page as given data; a symbol carries only a
+                    # sign, so it says what sign it implies when it implies one (0.49.0).
+                    declared.append(self._assumed_bound(subject.id, argument))
+                    continue
                 subject_name = subject.id
                 if subject_name in self.engine.symbols:
                     raise EngEvaluationError(
@@ -5420,10 +5646,26 @@ class _Evaluator(ast.NodeVisitor):
                     value.to(canonical_unit)
                     for value in values
                 )
-            except DimensionalityError as exc:
-                raise EngEvaluationError(
-                    "table response columns have incompatible units"
-                ) from exc
+            except DimensionalityError:
+                # A column of another kind - a load beside its moment - reads in its own
+                # unit; it was refused "incompatible units" (his chapter 3; 0.49.0).
+                own_unit = values[0].units
+                try:
+                    normalized_values = tuple(value.to(own_unit) for value in values)
+                except DimensionalityError as exc:
+                    raise EngEvaluationError(
+                        f"the column {response.display_label} of this table has incompatible "
+                        "units from one row to the next"
+                    ) from exc
+                columns.append(
+                    TableColumn(
+                        display_label=response.display_label,
+                        unit=own_unit,
+                        values=normalized_values,
+                        reference=None,
+                    )
+                )
+                continue
 
             reference = None
             if all(float(value.magnitude) == 0 for value in normalized_values):
@@ -6495,6 +6737,12 @@ _WRITTEN_FORM_SAFE_CALLS = frozenset(
      # all; now it buys the last two matrices of the memoria.
      "transpose",
      "inv",
+     # Builders and a branch, on 0.49.0: `zeros(2, 2) + K` and `f(x) = piecewise(k*x, x < L,
+     # 0)` read `E A/L` where the sheet wrote the kept `k` (his chapters 3 and 7). Neither
+     # has an effect a second walk repeats.
+     "zeros",
+     "identity",
+     "piecewise",
      # The algebra calls, on 2026-09-24. Without them a derivation that passed through one
      # lost every kept name at once: `K_b0 = subs(K_b, c_theta, 1, s_theta, 0)` and the
      # column `K_c` read in `E A / L` and `12 E I / L^3` between matrices that read in `a`

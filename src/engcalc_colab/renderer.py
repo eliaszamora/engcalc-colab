@@ -585,7 +585,11 @@ class _EngineeringLatexPrinter(LatexPrinter):
         if flat is not expr:
             return self._print_Piecewise(flat)
         written = super()._print_Piecewise(expr)
-        start = written.index(r"\begin{cases}") + len(r"\begin{cases}")
+        # In the page's language: SymPy writes "for ... otherwise" (0.49.0).
+        written = written.replace(r"\text{for}", r"\text{si}").replace(
+            r"\text{otherwise}", r"\text{en otro caso}"
+        )
+        start =written.index(r"\begin{cases}") + len(r"\begin{cases}")
         end = written.index(r"\end{cases}")
         cases = [
             rf"\displaystyle {case.strip()}" for case in written[start:end].split(r"\\")
@@ -2962,7 +2966,7 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
             )
 
         if branch.operator is None:
-            rendered.append(rf"{value_latex} & \text{{otherwise}}")
+            rendered.append(rf"{value_latex} & \text{{en otro caso}}")
             continue
 
         breakpoint = branch.breakpoint
@@ -2975,7 +2979,7 @@ def _piecewise_partial_latex(piecewise, substitutions: dict[str, object], settin
                 settings,
             )
         rendered.append(
-            rf"{value_latex} & \text{{for}}\: "
+            rf"{value_latex} & \text{{si}}\: "
             rf"{variable_latex} {operator_latex[branch.operator]} {breakpoint_latex}"
         )
 
@@ -5340,6 +5344,16 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
             best_score is None or candidate_score < best_score
         ):
             best_unit, best_score = physical[0].to(name).units, candidate_score
+    # A tie keeps the family member the values already carry: `L_i := {i}*10[ft]` read
+    # `[in] 120.00` in its loop's table (his chapter 10; 0.49.0). Only a member - not a
+    # compound the algebra left, which is what the note above is about.
+    if best_score is not None and fallback is not None and fallback != best_unit:
+        try:
+            members = [registry_unit for registry_unit in (physical[0].to(name).units for name in family)]
+        except DimensionalityError:
+            members = []
+        if fallback in members and score(fallback) == best_score:
+            return fallback
     return best_unit
 
 
@@ -5796,6 +5810,9 @@ def render_assumption_result(result: AssumptionResult) -> str:
     parts = [
         rf"{_render_lhs(name, None)} \in \mathbb{{Z}}"
         if keyword == "integer"
+        # A bound, written by the engine as LaTeX already: `eta < rac{\pi}{2}`.
+        else name
+        if keyword == "bound"
         else rf"{_render_lhs(name, None)} {_ASSUMPTION_RELATIONS[keyword]} 0"
         for name, keyword in result.assumptions
     ]

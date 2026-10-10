@@ -13,7 +13,22 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.48.1**.
+Current version: **0.49.0**.
+
+
+## v0.49.0 names that stay, tables of mixed kinds, bounds as given data
+
+- **Kept names stay where the sheet uses them**: in an assembly `K[1,1] = K[1,1] + k*c^2`
+  (it read `c² E A/L`), in `zeros(n, n) + K`, in a `piecewise` body, in a `solve(...)` inside a
+  product (`solve(...)*k_b` reads `k_b T/(k_b + k_c)`), and in definitions written before their
+  values: `d = h - cover`, `a = ...`, `phiMn = phi*As*fy*(d - a/2)` and then the values -
+  `numeric(phiMn)` reads `φ As fy (d - a/2)`, as when the values come first.
+- **`table` with columns of different kinds**: a shear beside its moment, each in its unit; it
+  was refused "incompatible units".
+- **`assume` takes a bound**: `assume(beta < pi/2)` is written on the page as given data (it
+  stopped the cell); `assume(x > 3)` makes `x` positive, as `x > 0` does.
+- **`piecewise` reads "si ... en otro caso"**, the page's language.
+- A loop table keeps the unit its values were typed in: feet stay feet.
 
 
 ## v0.48.1 angles with their mark, powers of ten as powers of ten
@@ -4227,6 +4242,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.49.0** — kept names in assemblies, `zeros + K`, `piecewise`, `solve` in a product and definitions before values; `table` with mixed kinds; `assume` with a bound; `piecewise` in Spanish.
 - **0.48.1** — `cos(45°)` and vectors of angles in degrees; a round-off entry does not move a vector to N; `1e8` written `10^8`.
 - **0.48.0** — `km`, `lbf`, `lb`, `percent`; `%eng_units kip`; `K[libres, libres]` and `K[1:2, 1:2]` on `:=`; 1x1 ± number; matrix functions on `:=`; `% break`; `{i}` in loop text; `argmin`/`argmax`, `rank`; `lam` written λ.
 - **0.47.1** — `mm·MPa/m` reads MPa, `kip·ft` force first, exact roots at the page's precision, `(x₁/y)²` and `x/0.85` as typed, no internal unit names on the page or in messages.
@@ -4371,4 +4387,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.48.1`.
+Version: `0.49.0`.

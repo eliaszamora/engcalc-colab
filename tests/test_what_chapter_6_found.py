@@ -66,7 +66,7 @@ def test_a_piecewise_in_a_piecewise_is_one_list_of_cases(monkeypatch):
     assert not console, console
     assert "[4pt] [4pt]" not in page and r"\\[4pt] [4pt]" not in page, page
     assert page.count(r"\begin{cases}") == 1, page
-    assert r"2 & \text{for}\: x < 2" in page and r"3 & \text{otherwise}" in page, page
+    assert r"2 & \text{si}\: x < 2" in page and r"3 & \text{en otro caso}" in page, page
 
 
 def test_a_piecewise_in_a_branch_keeps_both_conditions(monkeypatch):

@@ -71,7 +71,7 @@ def conditions(page: str) -> list[list[str]]:
         blocks.append(
             [
                 piece.split(r"\\")[0].strip()
-                for piece in body.split(r"\text{for}\:")[1:]
+                for piece in body.split(r"\text{si}\:")[1:]
             ]
         )
     return blocks

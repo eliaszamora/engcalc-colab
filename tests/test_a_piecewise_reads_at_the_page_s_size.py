@@ -131,9 +131,9 @@ def test_the_branches_still_say_what_they_said(page):
     plain = [condition.replace(r"\dfrac", r"\frac") for condition in conditions]
 
     assert plain == [
-        r"\text{for}\: x \leq \frac{L}{2}",
-        r"\text{for}\: x \leq L",
-        r"\text{otherwise}",
+        r"\text{si}\: x \leq \frac{L}{2}",
+        r"\text{si}\: x \leq L",
+        r"\text{en otro caso}",
     ], conditions
 
 
@@ -146,9 +146,9 @@ def test_the_answer_row_still_answers(page):
     kn_per_m = r"\frac{\mathrm{kN}}{\mathrm{m}}"
 
     assert said == [
-        rf"8.00\,{kn_per_m} & \text{{for}}\: x < 3.00\,\mathrm{{m}}",
-        rf"4.00\,{kn_per_m} & \text{{for}}\: x \leq 6.00\,\mathrm{{m}}",
-        rf"0.00\,{kn_per_m} & \text{{otherwise}}",
+        rf"8.00\,{kn_per_m} & \text{{si}}\: x < 3.00\,\mathrm{{m}}",
+        rf"4.00\,{kn_per_m} & \text{{si}}\: x \leq 6.00\,\mathrm{{m}}",
+        rf"0.00\,{kn_per_m} & \text{{en otro caso}}",
     ], said
 
 
