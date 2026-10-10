@@ -8,13 +8,42 @@
 
 ## Where things stand today
 
-_2026-10-09._
+_2026-10-10._
 
 | | |
 |---|---|
-| released | **0.47.0** - #406, `20933d1`, closed (checked in his Colab) |
-| before that | **0.46.2** - #404, `987c589`, closed |
-| default suite | **3858 passing** on 0.47.0 (SymPy 1.14 and 1.13.3) |
+| released | **0.47.1** - #408, `ec15aea`, closed (checked in his Colab) |
+| before that | **0.47.0** - #406, `20933d1`, closed |
+| default suite | **3889 passing** on 0.47.1 (SymPy 1.14 and 1.13.3) |
+| open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
+| in progress | `feat/0.48.0` (local, `6b6ca6b` WIP, not pushed) |
+
+**0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
+lo que falte o quede y las decisiones las dejo a tu criterio", 2026-10-09). First batch of the
+inventory (`OPEN-FINDINGS.md`: 98 open on main 9b09b02, none a silently wrong number):
+units of one kind that cancel out entirely are cancelled before the unit is chosen
+(`2[mm/m]*200000[MPa]` = `400.00 MPa`, was `400000.00 mm·MPa/m`; a strain typed `2[mm/m]` and a
+moment per width typed in one bracket `2500[kgf*cm/m]` keep theirs - `_cancelling_factors`,
+`_one_measurement` in renderer.py); `2.5[kip*ft]` force first on `=` lines; an exact range-solve
+root at the page's precision (`ComputedFloat`), thin space kept for compound units;
+`(x[1]/y)^2` keeps its parentheses (every interaction line of chapter 10), `solve(K, -2*F)` reads
+`K⁻¹(−2F)`, `A^2` of an area bracketed once; `f(x) = x/0.85` written as typed (not inside a call,
+not `1/0.85*x`); a `table` of an expression heads its column in mathematics (`x/1[m]` broke KaTeX);
+console messages quote bracketed units as typed (`control.said_as_typed`). Short realism audit on
+`74a2817`: no wrong number; F1-F5 fixed with contracts in `880f197`. Evidence: suite 3889 on both
+SymPy; corpus of his 270 sheets 233 identical, 30 differ only by the fixes, 5 ch10 time out on
+both trees, 2 unstable on main; wheel 33 files identical to src; clean Colab-pinned venv upgrades
+nothing; smoke 72/72 outside the repo; suite against the installed wheel; 24 reference pages
+identical. After merge `git+https` of main resolves to `ec15aea`, reports 0.47.1, smoke 72/72.
+**Checked in his Colab** (2026-10-10, Claude in Chrome; session restarted from the menu, cell 0
+installed main, cell 3 printed `engcalc 0.47.1`, cell 5 holds the check): under his
+`%eng_units kN`, `r = 400.00 MPa`, `M = 2.5 kip·ft`, `x = 4.00 kN·m`, `p = (v₁/y)² = 2.25`,
+`f(t) = t/0.85`, `(0.008 m²)²`, and the `t/1 m` table renders.
+
+**Exact next step:** finish `feat/0.48.0` (rebase onto `ec15aea`; contracts for each item; the
+list is in `OPEN-FINDINGS.md`'s status line), then its release routine as for 0.47.1. After it:
+the remaining MESSAGE/MISSING items (argmin, `rank` on `:=`, `cosh` of degrees, `lambda` hint,
+`numeric` of a matrix with a missing name), then PRESENTATION by realism.
 
 **0.47.0 is closed** (#406, squash `20933d1`, 6/6 CI on `ee7ed6a`, merged with his "procede
 según tu criterio y recomendación, tienes mi autorización"): `eigenvals(K, G)` with a singular G,
@@ -33,9 +62,7 @@ cell 0 installed main, cell 5 holds the 0.47.0 check and shows `eigenvals(K, G)`
 Known limits, recorded: a pencil with an antisymmetric part built just under the 1e-12 symmetry
 test can still pass as symmetric in shapes no audit tried; complex λ are refused even where main
 printed a real part; ~10 s at 60 DOF, ~21 s at 75.
-**Exact next step:** his pick - the page simplifying `mm·MPa/m` (would let max/min keep a strain's
-unit), the rest of chapter 10's list (argmin, `% break`, presentation), or the `=`-line items noted
-at 0.46.2 (an exact root written `2.0`; a bracketed `kip*ft` written `ft·kip`).
+(Its next step was taken by 0.47.1, above.)
 
 **0.46.2 is closed** (#404, squash `987c589`, 6/6 CI on `6621050`, merged with his "fusiona
 cuando la CI esté verde"): a `git+https` install of main in a clean Colab-pinned venv reports
