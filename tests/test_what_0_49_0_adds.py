@@ -85,8 +85,11 @@ def test_definitions_written_before_their_values_stay_names(sheet):
         "As := 1500[mm^2]\nfy := 420[MPa]\nfc := 28[MPa]\nb := 300[mm]\nh := 500[mm]\ncover := 40[mm]\nnumeric(phiMn)\n"
     )
     assert not printed, printed
-    assert r"\mathit{phiMn} & = & \displaystyle \phi\,\mathit{As}\,\mathit{fy}\,\left(d - \frac{a}{2}\right)" in page, page
-    assert "235.81" in page and r"0.59\," not in page, page
+    # The definition's own row, written before any value, reads as it always has; the
+    # `numeric` row, once the values are there, reads in `d` and `a`.
+    shown = page.split(r"\mathit{cover} & = &", 1)[1]
+    assert r"\mathit{phiMn} & = & \displaystyle \phi\,\mathit{As}\,\mathit{fy}\,\left(d - \frac{a}{2}\right)" in shown, page
+    assert "235.81" in shown and r"0.59\," not in shown, page
 
 
 def test_a_bound_is_stated_and_the_cell_goes_on(sheet):
