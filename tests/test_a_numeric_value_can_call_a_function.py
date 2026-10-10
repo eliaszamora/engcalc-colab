@@ -73,10 +73,11 @@ def test_a_function_left_waiting_for_a_value_is_refused():
         run(BEAM + "M_x := M(x)\n")
 
 
-def test_a_function_that_answers_a_matrix_is_refused_by_name():
-    """`:=` holds one quantity; a matrix was refused before and still is, now saying so."""
-    with pytest.raises(EngEvaluationError, match=r"'K_1 := \.\.\.' needs a single numeric value"):
-        run("K_e(k) = [k, -k; -k, k]\nK_1 := K_e(3*kN/m)\n")
+def test_a_function_that_answers_a_matrix_is_worked_out():
+    """Refused until 0.48.0 ("needs a single numeric value"): a sheet function that makes a
+    matrix - a bar's stiffness - is now its matrix of numbers on a `:=` line."""
+    engine = run("K_e(k) = [k, -k; -k, k]\nK_1 := K_e(3*kN/m)\n")
+    assert "K_1" in engine.numeric_context.matrices
 
 
 def test_an_unknown_function_is_named():

@@ -503,6 +503,15 @@ class _EngineeringLatexPrinter(LatexPrinter):
         base, supers, subs = split_super_sub(expr.name)
         if len(base) <= 1 or self._sympy_spells_it_back(base):
             return super()._print_Symbol(expr, style) if style else super()._print_Symbol(expr)
+        if base in _LAMBDA_SPELLINGS:
+            # `lambda` is a word of Python and cannot be a name; `lam` is how a sheet writes a
+            # load factor or an eigenvalue, and the page writes it λ (0.48.0).
+            name = r"\lambda"
+            if supers:
+                name += "^{%s}" % " ".join(supers)
+            if subs:
+                name += "_{%s}" % " ".join(subs)
+            return name
 
         # Italic, as every quantity is, and not upright: upright is a unit's letter, and
         # `Vu = 7920 kgf` next to an italic `V_c` read as a unit and as a second V. He chose
@@ -2038,6 +2047,9 @@ def _in_force_and_length(quantity, settings: RenderSettings):
         return quantity.to(unit)
     except DimensionalityError:
         return None
+
+
+_LAMBDA_SPELLINGS = frozenset({"lam", "lamda"})
 
 
 def _one_group(latex: str) -> bool:
@@ -3975,7 +3987,7 @@ def _index_text(node, latex) -> str:
 _WRITTEN_OPERATORS = frozenset({
     "zeros", "identity", "diag", "min", "max", "interp", "det", "trace", "rank", "asin",
     "acos", "atan", "exp", "atanh", "numeric", "simplify", "expand", "factor", "eye", "ones",
-    "eigenvals", "eigenvects",
+    "eigenvals", "eigenvects", "argmin", "argmax",
 })
 
 

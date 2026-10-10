@@ -1132,6 +1132,19 @@ class NumericContext:
         selector = min if name == "min" else max
         return selector(quantities, key=lambda quantity: quantity.magnitude)
 
+    def governing_index(self, name: str, values):
+        """`argmin` or `argmax`: the position, from 1, of the value `min` or `max` would give -
+        the first written on a tie."""
+        try:
+            quantities = self._normalize_quantity_group(values, name)
+        except EngEvaluationError as exc:
+            raise EngEvaluationError(
+                f"{name} compares values of one kind; its arguments have incompatible units"
+            ) from exc
+        selector = min if name == "argmin" else max
+        index = selector(range(len(quantities)), key=lambda each: quantities[each].magnitude)
+        return self.ureg.Quantity(index + 1)
+
     def _normalize_quantity_group(self, values, context: str):
         quantities = tuple(self._as_quantity(value) for value in values)
         dimensional = next(
@@ -1860,6 +1873,14 @@ class _NumericAstEvaluator(ast.NodeVisitor):
                     f"{name} expects at least 2 arguments: the values to compare"
                 )
             return self.context.extremum(name, [self.visit(arg) for arg in node.args])
+        if name in {"argmin", "argmax"}:
+            # Which one governs, counted from 1: the hinge that forms first, the member that
+            # controls (his chapter 10; 0.48.0). A vector's entries on a matrix line.
+            if len(node.args) < 2:
+                raise EngEvaluationError(
+                    f"{name} expects the values to compare, as {name}(a, b, c), or one vector"
+                )
+            return self.context.governing_index(name, [self.visit(arg) for arg in node.args])
         if len(node.args) != 1:
             raise EngEvaluationError("unsupported numeric function")
         value = self.visit(node.args[0])

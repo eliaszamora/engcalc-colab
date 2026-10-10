@@ -493,6 +493,11 @@ def _parse_function_target(
 
 def _validate_target(name: str, line_no: int) -> None:
     if keyword.iskeyword(name) or name in _RESERVED or name.startswith(BRACKETED_UNIT_PREFIX):
+        if name == "lambda":
+            raise EngSyntaxError(
+                f"line {line_no}: 'lambda' is a word of Python and cannot be a name; "
+                "write lam, which the page writes λ"
+            )
         raise EngSyntaxError(f"line {line_no}: reserved identifier '{name}'")
 
 

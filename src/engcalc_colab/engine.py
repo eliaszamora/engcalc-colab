@@ -780,6 +780,28 @@ class _MatrixNumbers:
             return self._built(node)
         if name == "solve" and _solves_in_a_range(node, self.engine.namespace):
             return self._root_in_a_range(node)
+        if name == "rank" and len(node.args) == 1 and not node.keywords:
+            # How many independent rows a stiffness has - a mechanism shows as a rank short
+            # of its size (his chapter 3; 0.48.0). Its numbers as they stand, row and column
+            # units being scales that do not change it.
+            matrix = self.value(node.args[0])
+            if not isinstance(matrix, NumberMatrix):
+                raise EngEvaluationError("rank takes a matrix")
+            import numpy  # noqa: PLC0415 - matplotlib's, as matrix_numeric uses it
+
+            grid = numpy.array(matrix.magnitudes, dtype=float).reshape(matrix.rows, matrix.cols)
+            return self.context.ureg.Quantity(int(numpy.linalg.matrix_rank(grid)))
+        if name in ("argmin", "argmax") and len(node.args) == 1 and not node.keywords:
+            # `argmin(f)` of a vector: its entries compared (0.48.0).
+            vector = self.value(node.args[0])
+            if not isinstance(vector, NumberMatrix) or 1 not in (vector.rows, vector.cols):
+                raise EngEvaluationError(f"{name} takes one vector, or the values to compare")
+            entries = [
+                entry_quantity(vector, i, j, self.context.ureg)
+                for i in range(vector.rows)
+                for j in range(vector.cols)
+            ]
+            return self.context.governing_index(name, entries)
         if name in ("det", "eigenvals"):  # reserved: a sheet cannot define its own
             # The determinant and the eigenvalues of a matrix of numbers - a frame's critical
             # load, `lambda_c := eigenvals(K_ff, -K_G)` - which `=` lines refuse for a `:=`
@@ -3314,6 +3336,16 @@ class EngineeringEngine:
                     display_name,
                     display_arguments,
                 ) = evaluator.partial_matrix_numeric_evaluation
+                # The page shows the substitution and stops: it said nothing of why there was
+                # no matrix of numbers below it, where a scalar names what it lacks (0.48.0).
+                missing = sorted({str(symbol) for symbol in unresolved_symbols})
+                if missing:
+                    hint = diagnostic_hint("unresolved_numeric_symbols", names=tuple(missing))
+                    self.notices.append(
+                        "this matrix has no value in numbers yet; it needs values for: "
+                        + ", ".join(missing)
+                        + f". {hint}"
+                    )
                 return PartialMatrixNumericEvaluationResult(
                     statement=statement,
                     written_arguments=evaluator.written_arguments,
