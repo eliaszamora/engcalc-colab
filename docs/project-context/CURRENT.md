@@ -12,11 +12,28 @@ _2026-10-10._
 
 | | |
 |---|---|
-| released | **0.48.1** - #412, `8c9c111`, closed (checked in his Colab) |
-| before that | **0.48.0** - #410, `9ec08ea`, closed |
-| default suite | **3952 passing** on 0.48.1 (SymPy 1.14 and 1.13.3) |
+| released | **0.49.0** - #414, `7a653d5`, closed (checked in his Colab) |
+| before that | **0.48.1** - #412, `8c9c111`, closed |
+| default suite | **3964 passing** on 0.49.0 (SymPy 1.14 and 1.13.3) |
 | open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
 | in progress | nothing |
+
+**0.49.0 is closed** (#414, squash `7a653d5`, 6/6 CI on `45f229d`, his "sí, sigue con esa
+tanda"): kept names stand in part assignments, `zeros + K`, `piecewise` bodies, a `solve` inside a
+product and definitions written before their values (`_keep_what_has_a_number_now`, `_promote`,
+`_written_part` verifying only the entries a line changes); `table` with columns of different
+kinds; `assume(beta < pi/2)` stated as given data (only an implied sign is carried); `piecewise`
+reads "si ... en otro caso"; a loop table keeps ft. New notice: a `=` assembly that keeps adding
+parts after a name it reads took a new value (`_notice_an_assembly_mixing_passes`) - a pre-existing
+silent wrong number found by the audit (K[1,1] 200000 for 100000 kN/m); a study over a finished
+matrix or a matrix built again says nothing (his p9_14, p4_12). Realism audit (~400 cells of his
+ch2-8): no wrong number from 0.49.0; it found a slowdown (Example 4.15, 2 s -> 84 s), fixed (~6 s).
+Corpus: 234 identical, the rest by the changes (substitutions in his names with the same final
+values; ft for in in ch10 loop tables); his console identical to main in ch2-4 and ch9. Wheel
+`45f229d`: 33 files identical, upgrades nothing, smoke 85/85, wheel suite, 24 pages identical.
+After merge `git+https` resolves to `7a653d5`, reports 0.49.0, smoke 85/85. **Checked in his
+Colab** (2026-10-10; cell 3 `engcalc 0.49.0`; cell 5: assembly in `k` = 10³[136 -100; -100 100]
+kN/m, `piecewise` "si / en otro caso", `β < π/2` as data, a V/M table in kN and kN·m).
 
 **0.48.1 is closed** (#412, squash `8c9c111`, 6/6 CI on `6626b21`, under his standing "aborda todo
 lo que falte o quede"; paused overnight on 2026-10-10 at his request and resumed with his
@@ -55,10 +72,9 @@ installed wheel; 24 reference pages identical. After merge `git+https` of main r
 `rank(K) = 2`, `argmax(D)`, `2[km]`, `1[kip] + 1000[lb]` = 8.90 kN under his kN palette, λ, and
 `% break` with its note).
 
-**Exact next step:** the next batch from `OPEN-FINDINGS.md` by realism - kept names expanded
-(C2e part assignment, C2f `solve` answers, B1 `phiMn` with definitions before values), `piecewise`
-reading "for ... otherwise" (C2l), loop-table gaps (C9i, C10c, C10f), `table` with columns of
-different units (C3i), relational `assume` (C7a), C5h kip matrices; then its release routine.
+**Exact next step:** the next batch from `OPEN-FINDINGS.md` - loop-table gaps (C9i nested loops,
+L44 entries read from a matrix, C10c values set in a `% if`), C5h kip sheets' matrices in SI (needs
+the sheet's unit system), then the remaining PRESENTATION and MESSAGE rows by realism.
 
 **0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
 lo que falte o quede y las decisiones las dejo a tu criterio", 2026-10-09). First batch of the
