@@ -1375,6 +1375,9 @@ class EngineeringEngine:
         # said `:=` would keep standing, the line that said it. See
         # `_notice_a_value_of_equals_written_in`.
         self.equals_sources: dict[str, ParsedStatement] = {}
+        # Matrices assembled into with `=`, and the warnings said about them.
+        self.assembled_names: set[str] = set()
+        self.assembly_warnings: set[tuple[str, str]] = set()
         self.equals_told: dict[str, str] = {}
         self.frame_members: dict[str, FrameMember] = {}
         # What the last statement has to say that is not an error. The magic prints it.
@@ -1446,6 +1449,7 @@ class EngineeringEngine:
             current, evaluator.index_values(statement.target_index), replacement, name
         )
         self.namespace[name] = value
+        self.assembled_names.add(name)
         written = self._written_part(statement, evaluator, value)
         if written is None:
             self.written_namespace.pop(name, None)
@@ -1503,9 +1507,16 @@ class EngineeringEngine:
             if kept in self.namespace
         }
         try:
-            if written.shape != value.shape or not all(
-                _agrees_with(sp.sympify(w), sp.sympify(v), expansions)
-                for w, v in zip(written, value)
+            # Only the entries this line changed: the others were verified when they were
+            # written. Every entry on every pass took his Example 4.15 - a 42x42 assembled
+            # in a loop - from 2 s to 84 s (the audit of 0.49.0).
+            if written.shape != value.shape or written.shape != base.shape:
+                return None
+            changed = [
+                (w, v) for w, v, before in zip(written, value, base) if w is not before
+            ]
+            if not all(
+                _agrees_with(sp.sympify(w), sp.sympify(v), expansions) for w, v in changed
             ):
                 return None
         except Exception:  # noqa: BLE001
@@ -2676,6 +2687,8 @@ class EngineeringEngine:
         self.frame_members.clear()
         self.written_functions.clear()
         self.equals_sources.clear()
+        self.assembled_names.clear()
+        self.assembly_warnings.clear()
         self.equals_told.clear()
         self.numeric_context.reset()
 
@@ -2961,7 +2974,35 @@ class EngineeringEngine:
         said = self._notice_a_value_of_equals_written_in(statement, result)
         if said is not None:
             self.notices.append(said)
+        said = self._notice_an_assembly_reading_a_redefined_name(statement)
+        if said is not None:
+            self.notices.append(said)
         return result
+
+    def _notice_an_assembly_reading_a_redefined_name(self, statement) -> str | None:
+        """A `:=` that gives a new value to a name a `=` assembly still reads.
+
+        `K[[p, q], [p, q]] = K[...] + k*[1, -1; -1, 1]` with `keep k = E*A/L` and `L := ...`
+        each pass: `K` is a formula in `L`, and every element took the last `L` - K[1,1]
+        200000 kN/m for 100000, in silence (the audit of 0.49.0; main did the same). Said
+        once per matrix and name."""
+        if not isinstance(statement, ParsedNumericAssignment):
+            return None
+        name = statement.target
+        for matrix_name in sorted(self.assembled_names):
+            value = self.namespace.get(matrix_name)
+            if not is_matrix(value) or (matrix_name, name) in self.assembly_warnings:
+                continue
+            if any(getattr(symbol, "name", None) == name for symbol in value.free_symbols):
+                self.assembly_warnings.add((matrix_name, name))
+                return (
+                    f"line {statement.line_no}: {matrix_name} was assembled with = and is a "
+                    f"formula that reads {name}; a new value of {name} reaches every part of "
+                    f"it, not only the ones added after. To add numbers pass by pass, "
+                    f"assemble with := ({matrix_name} := zeros(...) and "
+                    f"{matrix_name}[...] := {matrix_name}[...] + ...)."
+                )
+        return None
 
     def _notice_a_value_of_equals_written_in(self, statement, result) -> str | None:
         """What to say when a formula writes a value of `=` in beside a name that stands.

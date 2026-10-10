@@ -97,3 +97,39 @@ def test_a_bound_is_stated_and_the_cell_goes_on(sheet):
     assert not printed, printed
     assert r"\beta < \frac{\pi}{2},\; L > 0" in page and "x > 3" in page, page
     assert r"z & = & \displaystyle x" in page, page
+
+
+# The audit of 0.49.0.
+
+_LOOP = (
+    "E := 200[GPa]\nA := 10[cm^2]\nkeep k = E*A/L\nK {op} zeros(4,4)\n"
+    "% for p, q, LL in [(1, 2, 2), (2, 3, 4), (3, 4, 1)]:\nL := {{LL}}[m]\n"
+    "K[[{{p}},{{q}}],[{{p}},{{q}}]] {op} K[[{{p}},{{q}}],[{{p}},{{q}}]] + k*[1, -1; -1, 1]\n% end\n"
+)
+
+
+def test_an_equals_assembly_reading_a_redefined_name_says_so(sheet):
+    _, printed = sheet(_LOOP.format(op="="))
+    assert "K was assembled with = and is a formula that reads L" in printed, printed
+    assert printed.count("assembled with =") == 1, printed
+
+
+def test_a_colon_equals_assembly_adds_numbers_pass_by_pass(sheet):
+    page, printed = sheet(_LOOP.format(op=":="))
+    assert not printed, printed
+    assert r"10^{3}\,\left[\begin{matrix}\displaystyle 100.00 & \displaystyle -100.00" in page, page
+    assert r"\displaystyle -50.00 & \displaystyle 250.00 & \displaystyle -200.00" in page, page
+
+
+def test_a_large_assembly_in_a_loop_is_not_slow(sheet):
+    """His Example 4.15: a 42x42 assembled in a loop took 84 s while every entry was
+    verified on every pass; only the entries a line changes are."""
+    import time
+
+    start = time.perf_counter()
+    page, printed = sheet(
+        "k := 2[kN/m]\nh := 3[m]\nk_s = k*h\nK = zeros(42,42)\n% for i in range(2,21):\n"
+        "K[{2*i-1},{2*i-1}] = K[{2*i-1},{2*i-1}] + k_s\n% end\n"
+    )
+    assert not printed, printed
+    assert time.perf_counter() - start < 20, "the assembly took too long"
