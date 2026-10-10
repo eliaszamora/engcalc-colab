@@ -445,8 +445,13 @@ class _EngineeringLatexPrinter(LatexPrinter):
             return _magnitude_text(float(expr), self.render_settings)
         written = super()._print_Float(expr)
         decimals = written.partition(".")[2]
-        if len(decimals) <= self.render_settings.precision:
+        plain = written.replace("-", "").replace(".", "").isdigit()
+        if len(decimals) <= self.render_settings.precision and not (plain and 1e6 <= abs(float(expr)) < 1e100):
             return written
+        if len(decimals) <= self.render_settings.precision and math.isfinite(float(expr)):
+            # `200000000.0 mm^4` in a substitution row: a large number reads as every value
+            # does, `2.00 x 10^8` (0.48.1).
+            return _magnitude_text(float(expr), self.render_settings)
         if not math.isfinite(float(expr)):
             # SymPy holds `1e300*1e300` exactly; a float holds it as infinity, and the page
             # read `inf`. Written in powers of ten from the exact value.
@@ -2055,6 +2060,33 @@ def _in_force_and_length(quantity, settings: RenderSettings):
 
 
 _LAMBDA_SPELLINGS = frozenset({"lam", "lamda"})
+
+
+def _constant_latex(node) -> str:
+    r"""A number on a `:=` line as typed - `0.90` keeps its zero - and a power of ten as a page
+    writes one: `1e8` read `100000000.0` and `1e-7` `1e-07` (his chapter 9; 0.48.1)."""
+    typed = getattr(node, "typed", None)
+    if typed is not None:
+        return typed
+    value = node.value
+    if isinstance(value, float) and value and (abs(value) >= 1e6 or "e" in repr(value)):
+        return _typed_latex(f"{value:g}")
+    return str(value)
+
+
+def _typed_latex(typed: str) -> str:
+    r"""A power of ten as a page writes one: `1e+08` is `10^{8}`, `2.5e-03` is
+    `2.5 \times 10^{-3}`; anything else as it is."""
+    mantissa, marker, exponent = typed.lower().partition("e")
+    if not marker:
+        return typed
+    try:
+        power = int(exponent)
+    except ValueError:
+        return typed
+    if mantissa in ("1", "1.0"):
+        return rf"10^{{{power}}}"
+    return rf"{mantissa} \times 10^{{{power}}}"
 
 
 def _one_group(latex: str) -> bool:
@@ -3717,6 +3749,10 @@ def _numeric_evaluation_rows(result: NumericEvaluationResult, settings: RenderSe
 
     substituted_rows = _numeric_substituted_rows(result, settings, formula_rows)
     compared_rows = _worked_rows(result, settings, substituted_rows)
+    # A substitution that reads as the value itself is not said twice: `numeric(y)` of
+    # `y = f(1e8[mm^4])` read `2.00 x 10^8 mm^4` on two rows (0.48.1).
+    if substituted_rows == [final_latex] and not compared_rows:
+        substituted_rows = []
 
     rows: list[str] = []
     opening = _relation_opening(
@@ -3946,6 +3982,10 @@ def _partial_numeric_evaluation_rows(result: PartialNumericEvaluationResult, set
             ),
             formula_rows,
         )
+        # Nor one that says what the value below it says: `f(1e8[mm^4])` substitutes to
+        # `2.00 x 10^8 mm^4`, the value itself (0.48.1).
+        if substituted_rows == [evaluated_latex]:
+            substituted_rows = []
 
     rows: list[str] = []
     opening = _relation_opening(
@@ -4045,7 +4085,7 @@ class _WrittenLine:
         if isinstance(node, ast.Name):
             return self._name(node.id)
         if isinstance(node, ast.Constant):
-            return getattr(node, "typed", str(node.value))
+            return _constant_latex(node)
         if isinstance(node, ast.UnaryOp):
             sign = "-" if isinstance(node.op, ast.USub) else "+"
             return sign + self.grouped(node.operand, 2)
@@ -4091,7 +4131,7 @@ class _WrittenLine:
                 if power < 0 and each.value != 1:
                     return False
                 if each.value != 1 or power > 0:
-                    numbers.append(getattr(each, "typed", str(each.value)))
+                    numbers.append(_constant_latex(each))
                 return True
             if isinstance(each, ast.Name):
                 units[each.id] = units.get(each.id, 0) + power
@@ -5239,6 +5279,20 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
         # kN/mm is what the engineer typed and every cell still says something in it.
         return fallback
 
+    # An entry a million times smaller than the largest is the round-off of a solve, not a
+    # value to choose a unit for: `[1 kN; 1e-7 kN]` moved the whole vector to newtons,
+    # `[1000.00; 0.0001] N` (his chapter 10; 0.48.1).
+    try:
+        largest = max(abs(float(quantity.to_base_units().magnitude)) for quantity in physical)
+    except (DimensionalityError, ValueError):
+        largest = 0.0
+
+    def negligible(quantity) -> bool:
+        try:
+            return abs(float(quantity.to_base_units().magnitude)) < 1e-6 * largest
+        except DimensionalityError:
+            return False
+
     def score(unit):
         total = 0.0
         for quantity in physical:
@@ -5246,7 +5300,7 @@ def _aggregate_unit(quantities, settings: RenderSettings, fallback):
                 converted = quantity.to(unit)
             except DimensionalityError:
                 return None
-            if abs(float(converted.magnitude)) < settings.zero_tolerance:
+            if abs(float(converted.magnitude)) < settings.zero_tolerance or negligible(quantity):
                 continue
             band, distance = _band_distance(converted.magnitude, converted.units)
             total += band + distance
