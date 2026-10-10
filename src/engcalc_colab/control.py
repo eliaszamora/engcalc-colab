@@ -49,8 +49,8 @@ _BUILTINS = {
     )
 }
 _WHAT_A_PERCENT_LINE_IS = (
-    "a line that starts with % is % if, % elif, % else, % for, % while, % end, or a "
-    "helper such as % n = 0"
+    "a line that starts with % is % if, % elif, % else, % for, % while, % break, % end, "
+    "or a helper such as % n = 0"
 )
 
 
@@ -112,6 +112,18 @@ class Evaluated:
 
     result: object
     notices: tuple = ()
+
+
+@dataclass
+class _Break:
+    """`% break`: the loop it stands in stops here (his chapter 10, an event-to-event
+    analysis that ends at the hinge that makes a mechanism; 0.48.0)."""
+
+    line_no: int
+
+
+class _Stop(Exception):
+    """A `% break` reached: the nearest `% for` or `% while` stops."""
 
 
 @dataclass
@@ -240,6 +252,13 @@ def _structure(cell: str) -> list:
         match = _KEYWORD.match(code)
         keyword = match.group(1) if match else ""
         rest = match.group(2).strip() if match else ""
+        if keyword == "break" and not rest:
+            if not any(isinstance(block, (_ForBlock, _WhileBlock)) for block, _outer in stack):
+                raise EngSyntaxError(
+                    f"line {line_no}: % break stops a % for or a % while, and none is open above it"
+                )
+            body.append(_Break(line_no))
+            continue
         if keyword not in _BLOCKS:
             body.append(_helper(code, line_no))
             continue
@@ -412,6 +431,11 @@ def _parse_stretch(stretch: _Stretch, insert=None):
                 lines[index] = _INSERTED.sub(lambda m, n=line_no, s=line: _put(insert, m, n, s), line)
                 if lines[index] != line:
                     written[line_no] = line.strip()
+            elif index in stretch.text and "{" in line:
+                # In text a brace is LaTeX's, unless it holds a name the `%` layer has:
+                # `"""ángulo {th}"""` in a `% for th in [30, 60]` printed `{th}` (his chapter 3;
+                # 0.48.0). A name it does not have stays as written.
+                lines[index] = _NAMED.sub(lambda m, n=stretch.first_line + index: _named_in_text(insert, m, n), line)
     # Empty lines in front number the stretch as the cell does; a leading blank line
     # changes nothing on the page.
     parsed = parse_cell("\n" * (stretch.first_line - 1) + "\n".join(lines))
@@ -512,6 +536,8 @@ def _walk(nodes: list, engine, settings, scope: _Scope) -> Iterator:
             yield from _parse_stretch(node, lambda text, line_no: _inserted(text, line_no, scope))
         elif isinstance(node, _Helper):
             _run_helper(node, scope)
+        elif isinstance(node, _Break):
+            raise _Stop
         elif isinstance(node, _ForBlock):
             yield from _repeat(node, engine, settings, scope)
         elif isinstance(node, _WhileBlock):
@@ -541,7 +567,11 @@ def _choose(node: _IfBlock, engine, settings, scope: _Scope) -> Iterator:
     said = [_negated(tree, line_no, engine, settings) for tree, line_no in held]
     if chosen.condition is not None:
         said.append(stated)
-    yield ConditionNote(latex=f"\\textbf{{Como}}\\;\\; {_AND.join(said)}\\,\\text{{:}}")
+    # A branch that stops its loop says so: the note alone read "Como P_3 > 25 kN:" and then
+    # nothing (0.48.0).
+    stops = any(isinstance(each, _Break) for each in chosen.body)
+    after = r"\text{: el ciclo se detiene.}" if stops else r"\,\text{:}"
+    yield ConditionNote(latex=f"\\textbf{{Como}}\\;\\; {_AND.join(said)}{after}")
     yield from _walk(chosen.body, engine, settings, scope)
 
 
@@ -589,6 +619,8 @@ def _repeat(node: _ForBlock, engine, settings, scope: _Scope) -> Iterator:
             for value in values:
                 take(value)
                 yield from _walk(node.body, engine, settings, scope)
+        except _Stop:
+            pass
         finally:
             scope.depth -= 1
         return
@@ -630,43 +662,50 @@ def _gathered(node: _ForBlock, values: list, take, engine, settings, scope: _Sco
     stands_on: dict = {}
     defined: dict = {}  # the names each line of the loop has defined so far
     kept: list[_Kept] = []
+    ran = len(values)
     try:
         for index, value in enumerate(values):
             take(value)
             occurrences: dict = {}
-            for child in node.body:
-                direct = isinstance(child, _Stretch)
-                items = (
-                    _parse_stretch(child, lambda text, line_no: _inserted(text, line_no, scope))
-                    if direct
-                    else _walk([child], engine, settings, scope)
-                )
-                for item in items:
-                    if _shown_as_it_comes(item):
-                        kept.append(_Kept("shown", item=item, index=index))
-                        continue
-                    result = engine.evaluate(item)
-                    notices = tuple(engine.notices)
-                    template = getattr(item, "written_as", None) or item.source
-                    if template not in stands_on:
-                        stands_on[template] = _names_it_stands_on(template, helpers)
-                    said = {name: dict.get(scope, name) for name in stands_on[template] if dict.__contains__(scope, name)}
-                    entry = _Kept("shown", index=index, direct=direct, result=result, notices=notices, said=said)
-                    if _adds_into_a_part(item):
-                        entry.kind, entry.key = "part", (item.target, template)
-                    elif direct and isinstance(item, ParsedNumericAssignment):
-                        occurrence = occurrences.get(template, 0)
-                        occurrences[template] = occurrence + 1
-                        entry.kind, entry.key = "cell", (template, occurrence)
-                    elif direct and _a_formula(item, result) and not _reads_its_earlier_passes(item, defined.get(template, ())):
-                        entry.kind, entry.key = "formula", template
-                    if getattr(item, "target", None):
-                        defined.setdefault(template, set()).add(item.target)
-                    kept.append(entry)
+            try:
+                for child in node.body:
+                    direct = isinstance(child, _Stretch)
+                    items = (
+                        _parse_stretch(child, lambda text, line_no: _inserted(text, line_no, scope))
+                        if direct
+                        else _walk([child], engine, settings, scope)
+                    )
+                    for item in items:
+                        if _shown_as_it_comes(item):
+                            kept.append(_Kept("shown", item=item, index=index))
+                            continue
+                        result = engine.evaluate(item)
+                        notices = tuple(engine.notices)
+                        template = getattr(item, "written_as", None) or item.source
+                        if template not in stands_on:
+                            stands_on[template] = _names_it_stands_on(template, helpers)
+                        said = {name: dict.get(scope, name) for name in stands_on[template] if dict.__contains__(scope, name)}
+                        entry = _Kept("shown", index=index, direct=direct, result=result, notices=notices, said=said)
+                        if _adds_into_a_part(item):
+                            entry.kind, entry.key = "part", (item.target, template)
+                        elif direct and isinstance(item, ParsedNumericAssignment):
+                            occurrence = occurrences.get(template, 0)
+                            occurrences[template] = occurrence + 1
+                            entry.kind, entry.key = "cell", (template, occurrence)
+                        elif direct and _a_formula(item, result) and not _reads_its_earlier_passes(item, defined.get(template, ())):
+                            entry.kind, entry.key = "formula", template
+                        if getattr(item, "target", None):
+                            defined.setdefault(template, set()).add(item.target)
+                        kept.append(entry)
+            except _Stop:
+                ran = index + 1
+                break
     except EngCalcError:
         for entry in kept:
             yield _as_it_ran(entry)
         raise
+    # A `% break` ended it: the table has the passes that ran.
+    values = values[:ran]
 
     columns = _table_columns(kept)
     if columns:
@@ -976,7 +1015,8 @@ def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:
     """
     count = 0
     last: list = []
-    while True:
+    stopped = False
+    while not stopped:
         condition = _with_placeholders(node.condition, node.line_no, scope)
         current = _in_scope(_condition_tree(condition, node.line_no), scope)
         holds, _said = _decide(current, node.line_no, engine, settings)
@@ -989,15 +1029,24 @@ def _iterate(node: _WhileBlock, engine, settings, scope: _Scope) -> Iterator:
             )
         count += 1
         last = []
-        for item in _walk(node.body, engine, settings, scope):
-            if isinstance(item, (ConditionNote, Evaluated)) or not hasattr(item, "line_no"):
-                last.append(item)
-            elif type(item).__name__ in ("ParsedHeading", "ParsedNarrative"):
-                last.append(item)
-            else:
-                result = engine.evaluate(item)
-                last.append(Evaluated(result, tuple(engine.notices)))
+        try:
+            for item in _walk(node.body, engine, settings, scope):
+                if isinstance(item, (ConditionNote, Evaluated)) or not hasattr(item, "line_no"):
+                    last.append(item)
+                elif type(item).__name__ in ("ParsedHeading", "ParsedNarrative"):
+                    last.append(item)
+                else:
+                    result = engine.evaluate(item)
+                    last.append(Evaluated(result, tuple(engine.notices)))
+        except _Stop:
+            stopped = True
     word = "iteración" if count == 1 else "iteraciones"
+    if stopped:
+        # The condition still holds: the `% if` over the `% break`, in the rows below, says
+        # why it stopped.
+        yield ConditionNote(latex=f"\\textbf{{En {count} {word}}}\\text{{ (\\% break):}}")
+        yield from last
+        return
     stated = _negated(current, node.line_no, engine, settings)
     yield ConditionNote(latex=f"\\textbf{{En {count} {word}:}}\\;\\; {stated}")
     yield from last
@@ -1597,3 +1646,22 @@ def _written_target(template: str) -> str:
     """`L_{i}` of `L_{i} := ...`, the loop's name standing where a pass puts its value."""
     target = template.split(":=", 1)[0].strip()
     return re.sub(r"\{([^{}]+)\}", lambda match: "{" + match.group(1).strip() + "}", target)
+
+
+# Not a group of LaTeX's: `$\mathbf{k}$` in a loop over `k` read `\mathbf3`, and `x_{i}`,
+# `x^{n}` are a subscript and a power (his chapter 10, the corpus of 0.48.0).
+_NAMED = re.compile(r"(?<![\w\\}^_])\{([A-Za-z_]\w*)\}")
+
+
+def _named_in_text(insert, match: re.Match, line_no: int) -> str:
+    """`{th}` in a line of text: what the `%` layer holds under that name, or the braces."""
+    try:
+        written = insert(match.group(1), line_no)
+    except EngCalcError:
+        return match.group(0)
+    # The probe that reads a cell's structure before it runs gives no text. A name of the
+    # sheet comes back as itself, and the braces stay: `{L}` read `L` once `L` had a value
+    # and `{L}` before (the audit of 0.48.0). Only a `%` value is written in.
+    if not isinstance(written, str) or written == match.group(1):
+        return match.group(0)
+    return written

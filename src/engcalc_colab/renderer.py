@@ -503,6 +503,15 @@ class _EngineeringLatexPrinter(LatexPrinter):
         base, supers, subs = split_super_sub(expr.name)
         if len(base) <= 1 or self._sympy_spells_it_back(base):
             return super()._print_Symbol(expr, style) if style else super()._print_Symbol(expr)
+        if base in _LAMBDA_SPELLINGS:
+            # `lambda` is a word of Python and cannot be a name; `lam` is how a sheet writes a
+            # load factor or an eigenvalue, and the page writes it λ (0.48.0).
+            name = r"\lambda"
+            if supers:
+                name += "^{%s}" % " ".join(supers)
+            if subs:
+                name += "_{%s}" % " ".join(subs)
+            return name
 
         # Italic, as every quantity is, and not upright: upright is a unit's letter, and
         # `Vu = 7920 kgf` next to an italic `V_c` read as a unit and as a second V. He chose
@@ -1387,6 +1396,20 @@ _PALETTES: dict[str, dict[tuple[tuple[str, int], ...], str]] = {
         (("[time]", 1),): "s",
         (("[time]", -1),): "1 / s",
     },
+    # Kips and inches, the units of his chapter-9 sheets: 393 `[kip*in]` to 196 `[kip*ft]`,
+    # 301 `[in]` to 204 `[ft]`. A stiffness and a line load share a dimension, and a matrix
+    # sheet reads its stiffness in kip/in (0.48.0). No mass: a US sheet writes none.
+    "kip": {
+        (("[length]", 1),): "inch",
+        (("[length]", 2),): "inch ** 2",
+        (("[length]", 4),): "inch ** 4",
+        (("[length]", 1), ("[mass]", 1), ("[time]", -2)): "kip",
+        (("[length]", 2), ("[mass]", 1), ("[time]", -2)): "kip * inch",
+        (("[length]", -1), ("[mass]", 1), ("[time]", -2)): "ksi",
+        (("[mass]", 1), ("[time]", -2)): "kip / inch",
+        (("[time]", 1),): "s",
+        (("[time]", -1),): "1 / s",
+    },
 }
 
 # Public so the `%eng_units` summary is read off the table rather than repeated in a
@@ -2024,6 +2047,9 @@ def _in_force_and_length(quantity, settings: RenderSettings):
         return quantity.to(unit)
     except DimensionalityError:
         return None
+
+
+_LAMBDA_SPELLINGS = frozenset({"lam", "lamda"})
 
 
 def _one_group(latex: str) -> bool:
@@ -3961,7 +3987,7 @@ def _index_text(node, latex) -> str:
 _WRITTEN_OPERATORS = frozenset({
     "zeros", "identity", "diag", "min", "max", "interp", "det", "trace", "rank", "asin",
     "acos", "atan", "exp", "atanh", "numeric", "simplify", "expand", "factor", "eye", "ones",
-    "eigenvals", "eigenvects",
+    "eigenvals", "eigenvects", "argmin", "argmax",
 })
 
 

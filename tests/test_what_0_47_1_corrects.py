@@ -132,7 +132,7 @@ def test_a_solve_of_a_negative_load_is_not_a_subtraction(sheet):
 
 
 def test_a_refusal_never_quotes_the_parser_s_unit_names(sheet):
-    _, printed = sheet("k := [2[kN/m]]\ny := 5[kN/m] - k\n")
+    _, printed = sheet("k := [2[kN/m]; 3[kN/m]]\ny := 5[kN/m] - k\n")
     assert "'5[kN/m] - k' adds a number to a matrix" in printed, printed
     assert "__u_" not in printed, printed
 

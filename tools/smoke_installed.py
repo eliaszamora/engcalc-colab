@@ -77,6 +77,27 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.48.0: what a matrix sheet asks of := lines and loops
+check("km, lb and percent are units",
+      "L := 2[km]\nP := 1[kip] + 1000[lb]\nr := 5[percent]\nQ := r*100[kN]",
+      r"2.00\,\mathrm{km}", r"5.00\,\mathrm{kN}", absent=("not a unit",))
+check("the kip palette reads kips and inches",
+      "L := 12[ft]\nP := 10[kip]\nM := P*L", r"1440.00\,\mathrm{kip} \cdot \mathrm{in}", units="kip")
+check("a part of a matrix by a named list and by a range",
+      "K := [2,-1,0;-1,2,-1;0,-1,1]*1000[kN/m]\nlibres := [1, 2]\nK_f := K[libres, libres]\nK_g := K[2:3, 2:3]",
+      r"K_{g}", absent=("an index on a := line",))
+check("a 1x1 matrix plus a number",
+      "k := 100[kN/m]\ng := [1; -1]\nD := [2[mm]; 1[mm]]\nN := k*transpose(g)*D + 1[kN]", r"= 1.10\,\mathrm{kN}")
+check("a matrix function on a := line",
+      "k_e(E, A, L) = E*A/L*[1, -1; -1, 1]\nK_1 := k_e(200[GPa], 10[cm^2], 2[m])",
+      r"\displaystyle 100.00 & \displaystyle -100.00", absent=("ImmutableDenseMatrix",))
+check("% break stops a loop",
+      "% for i in range(1, 6):\nP_{i} := {i}*10[kN]\n% if P_{i} > 25[kN]:\n% break\n% end\n% end",
+      r"\text{: el ciclo se detiene.}", absent=("P_{4}",))
+check("argmax and rank on a := line",
+      "f := [3[kN]; 7[kN]; 2[kN]]\ni := argmax(f)\nK := [1,-1;-1,1]*5[kN/m]\nr := rank(K)",
+      r"\operatorname{argmax}\left(f\right) = 2.00", r"\operatorname{rank}\left(K\right) = 1.00")
+
 # 0.47.1: units of one kind cancel, parentheses where the reading needs them
 check("a strain times a modulus reads as a stress",
       "r := 2[mm/m]*200000[MPa]", r"400.00\,\mathrm{MPa}", absent=(r"\mathrm{mm} \cdot",))
@@ -87,7 +108,7 @@ check("a power of a fraction keeps its parentheses",
 check("a function dividing by a decimal is written as typed",
       "f(x) = x/0.85", r"\frac{x}{0.85}")
 check("a matrix refusal quotes units as typed",
-      "k := [2[kN/m]]\ny := 5[kN/m] - k", "'5[kN/m] - k' adds a number", absent=("__u_",))
+      "k := [2[kN/m]; 3[kN/m]]\ny := 5[kN/m] - k", "'5[kN/m] - k' adds a number", absent=("__u_",))
 
 # 0.47.0: eigenvals(K, G) with a singular G, worked out exactly
 check("eigenvals with a singular second matrix",

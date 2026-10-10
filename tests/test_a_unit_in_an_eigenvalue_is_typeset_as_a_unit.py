@@ -72,10 +72,10 @@ def test_a_set_with_no_closed_form_draws_its_matrix_with_upright_units(cell, cap
     """Three rows with a name in them seek no formula: the row is `det(A - λI) = 0`, and
     its matrix is the sheet's own matrix, which must read the way the sheet's row did."""
     raw = cell(
-        "k := 1*kN/m\nK = [2*k, -1*kN/m, 0; -1*kN/m, 2*k, -k; 0, -k, k]\nlam = eigenvals(K)\n"
+        "k := 1*kN/m\nK = [2*k, -1*kN/m, 0; -1*kN/m, 2*k, -k; 0, -k, k]\nev = eigenvals(K)\n"
     )
     assert "engcalc:" not in capsys.readouterr().out
-    determinant = raw.split(r"\mathit{lam}")[-1]
+    determinant = raw.split(r"\mathit{ev}")[-1]
     assert r"\det\left(" in determinant, determinant
     # `-1*kN/m`, written with its one since a unit alone is, sign and all
     # (test_a_unit_alone_is_written_with_its_one); what this pins is that it is upright.
@@ -85,8 +85,8 @@ def test_a_set_with_no_closed_form_draws_its_matrix_with_upright_units(cell, cap
 
 def test_a_name_with_a_value_is_still_a_variable(cell, capsys):
     """`m := 2 kg` makes `m` a mass: the eigenvalue holding it keeps it italic."""
-    raw = cell("m := 2*kg\nC = [m, 0; 0, 3*kg]\nlam = eigenvals(C)\n")
+    raw = cell("m := 2*kg\nC = [m, 0; 0, 3*kg]\nev = eigenvals(C)\n")
     assert "engcalc:" not in capsys.readouterr().out
-    eigenvalues = raw.split(r"\mathit{lam}")[-1]
+    eigenvalues = raw.split(r"\mathit{ev}")[-1]
     assert r"\lambda=m" in eigenvalues, eigenvalues
     assert r"\lambda=\mathrm{m}" not in eigenvalues, eigenvalues

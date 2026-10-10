@@ -33,6 +33,8 @@ _UNIT_ALIASES = {
     "mm": "millimeter",
     "cm": "centimeter",
     "m": "meter",
+    # A span or a route in kilometres (his chapter 10; 0.48.0). Written, never chosen.
+    "km": "kilometer",
     "N": "newton",
     "kN": "kilonewton",
     # `MN` is here and deliberately not in `_UNIT_FAMILIES`, and the two tables answer
@@ -67,6 +69,8 @@ _UNIT_ALIASES = {
     "Hz": "hertz",
     "rad": "radian",
     "deg": "degree",
+    # `5[percent]` is 0.05: a ratio written the way a code writes it (0.48.0).
+    "percent": "percent",
     # US customary. Pint knows every one of these already, so this is a table of the
     # spellings an engineer writes, not a set of definitions. Two traps it steps around:
     # `inch` rather than `in`, because `in` is a Python keyword and can never be a name
@@ -74,6 +78,11 @@ _UNIT_ALIASES = {
     # which is Pint's force, where its `kilopound` is a mass of 453 kg, one letter away
     # and never what a structural engineer means by the word.
     "kip": "kip",
+    # A pound on a structural sheet is a force - `500[lb]`, `w := 30[lb/ft]`, a unit weight
+    # in `lb/ft^3` - for the reason `kip` above is: Pint's `lb` is a mass of 0.45 kg, and a
+    # load in it would not add to a load in kip (his chapter 9; 0.48.0).
+    "lbf": "force_pound",
+    "lb": "force_pound",
     "ksi": "ksi",
     "psi": "psi",
     "inch": "inch",
@@ -339,6 +348,9 @@ class NumericContext:
             for node in ast.walk(expression)
             if isinstance(node, ast.Name)
             and node.id not in self.values
+            # A matrix of the sheet named like a unit - `s := [1]`, the support degrees of
+            # freedom beside `f`, the free ones - is that matrix (the audit of 0.48.0).
+            and node.id not in self.matrices
             and node.id in _UNIT_ALIASES
             and self._scalar_formula(node.id) is None
         )
@@ -1123,6 +1135,19 @@ class NumericContext:
         selector = min if name == "min" else max
         return selector(quantities, key=lambda quantity: quantity.magnitude)
 
+    def governing_index(self, name: str, values):
+        """`argmin` or `argmax`: the position, from 1, of the value `min` or `max` would give -
+        the first written on a tie."""
+        try:
+            quantities = self._normalize_quantity_group(values, name)
+        except EngEvaluationError as exc:
+            raise EngEvaluationError(
+                f"{name} compares values of one kind; its arguments have incompatible units"
+            ) from exc
+        selector = min if name == "argmin" else max
+        index = selector(range(len(quantities)), key=lambda each: quantities[each].magnitude)
+        return self.ureg.Quantity(index + 1)
+
     def _normalize_quantity_group(self, values, context: str):
         quantities = tuple(self._as_quantity(value) for value in values)
         dimensional = next(
@@ -1851,6 +1876,14 @@ class _NumericAstEvaluator(ast.NodeVisitor):
                     f"{name} expects at least 2 arguments: the values to compare"
                 )
             return self.context.extremum(name, [self.visit(arg) for arg in node.args])
+        if name in {"argmin", "argmax"}:
+            # Which one governs, counted from 1: the hinge that forms first, the member that
+            # controls (his chapter 10; 0.48.0). A vector's entries on a matrix line.
+            if len(node.args) < 2:
+                raise EngEvaluationError(
+                    f"{name} expects the values to compare, as {name}(a, b, c), or one vector"
+                )
+            return self.context.governing_index(name, [self.visit(arg) for arg in node.args])
         if len(node.args) != 1:
             raise EngEvaluationError("unsupported numeric function")
         value = self.visit(node.args[0])

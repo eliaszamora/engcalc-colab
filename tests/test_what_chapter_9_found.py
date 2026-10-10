@@ -56,7 +56,7 @@ def test_the_critical_load_of_a_numeric_pencil(monkeypatch):
 
     stiffness, geometric = _column_in_si()
     loads = np.sort(np.linalg.eigvals(np.linalg.inv(-geometric) @ stiffness).real) / 1000
-    assert f"P_{{cr}} & = & \\mathit{{lam}}_{{1}} = {loads[0]:.2f}\\,\\mathrm{{kN}}" in page, page
+    assert f"P_{{cr}} & = & \\lambda_{{1}} = {loads[0]:.2f}\\,\\mathrm{{kN}}" in page, page
     assert f"{loads[0]:.2f}" == "2485.96"
     assert r"\operatorname{eigenvals}\left(K, -G\right)" in page, page
 
@@ -109,8 +109,8 @@ def test_eigenvals_of_a_pencil_whose_second_matrix_has_no_diagonal(monkeypatch):
         monkeypatch,
     )
     assert not console, console
-    assert r"l_{1} & = & \mathit{lam}_{1} = -1000.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
-    assert r"l_{2} & = & \mathit{lam}_{2} = 1000.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
+    assert r"l_{1} & = & \lambda_{1} = -1000.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
+    assert r"l_{2} & = & \lambda_{2} = 1000.00\,\frac{\mathrm{kN}}{\mathrm{m}}" in page, page
 
 
 def test_eigenvals_are_in_order_of_value_not_of_size(monkeypatch):
