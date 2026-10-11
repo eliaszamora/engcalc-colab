@@ -77,6 +77,15 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.52.0: dsolve, a value under a % if in its loop's table, dθ
+check("dsolve and its constants",
+      "v = dsolve(eq(diff(v(x), x, 2), -w*x/(E*I)), v(x))\nsolve(eq(subs(v, x, 0), 0), eq(subs(v, x, L), 0), C_1, C_2)",
+      r"C_{2} & = & \displaystyle \frac{w L^{2}}{6 E I}")
+check("a value under a % if is a column",
+      "% for i in range(1, 4):\na_{i} := {i}*1[m]\nc_{i} := 2*a_{i}\n% if {i} > 1:\nb_{i} := 3*a_{i}\n% end\n% end",
+      r"\text{---}")
+check("an increment of an angle", "dtheta := 2", r"d\theta & =")
+
 # 0.51.0: cot, sec, csc, heaviside; rows written once
 check("cot of an angle in degrees", "theta := 30[deg]\nc := cot(theta)", r"c & = & \displaystyle 1.73")
 check("a load that starts at a point",

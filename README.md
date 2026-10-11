@@ -13,7 +13,22 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.51.0**.
+Current version: **0.52.0**.
+
+
+## v0.52.0 dsolve, a value under a % if in its loop's table, dθ
+
+- **`dsolve(equation, f(x))`**: a differential equation in an unknown function. Its constants
+  are `C_1`, `C_2`, names of the sheet, so the boundary conditions are an ordinary `solve`:
+  `solve(eq(subs(v, x, 0), 0), eq(subs(v, x, L), 0), C_1, C_2)`.
+- **Inside `integrate`, `diff` and `dsolve` a function the sheet has not defined**, of one or
+  two letters - `b(y)`, `v(x)` - is a function of its variable. Elsewhere, or spelt like a
+  slip (`sni(x)`), it is still refused.
+- **A value set under a `% if` in a loop is a column of its table**, `---` where the
+  condition did not hold, and the rule says when: `b_i = 3 a_i  si i > 1`. A default the
+  `% if` changes (`phi_{i} := 0.90`, then the `% if`) keeps its rows and their reasons.
+- **`dtheta` reads dθ and `deltaphi` δφ**; they read as one italic word.
+- **`numeric(y)` under `y = f(1e8[mm^4])` no longer writes the value twice.**
 
 
 ## v0.51.0 cot, sec, csc, heaviside; rows written once
@@ -4267,6 +4282,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.52.0** — dsolve with its constants as names; b(y) inside integrate; a value under a % if in its loop's table; dθ; numeric's repeated row.
 - **0.51.0** — wide formulas stay in their columns in Colab; cot, sec, csc, heaviside; a matrix of numbers written once; `numeric` of a matrix just above not repeated; a bare `solve` names its unknown.
 - **0.50.0** — nested loops make one table; a loop line with its formula is a column; kip and kgf sheets read their matrices in their own system.
 - **0.49.0** — kept names in assemblies, `zeros + K`, `piecewise`, `solve` in a product and definitions before values; `table` with mixed kinds; `assume` with a bound; `piecewise` in Spanish.
@@ -4414,4 +4430,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.51.0`.
+Version: `0.52.0`.
