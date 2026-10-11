@@ -74,3 +74,38 @@ def test_a_kept_name_with_a_value_still_finds_its_root(sheet):
     )
     assert not printed, printed
     assert r"\text{root}" in page, page
+
+
+# C5i: a hyperbolic function of an angle was refused; sin and cos take degrees.
+
+
+@pytest.mark.parametrize(
+    ("source", "shown"),
+    [("x := cosh(30[deg])\n", r"x & = & \displaystyle 1.14"), ("y := sinh(45[deg])\n", r"y & = & \displaystyle 0.87")],
+)
+def test_a_hyperbolic_function_of_an_angle(sheet, source, shown):
+    page, printed = sheet(source)
+    assert not printed, printed
+    assert shown in page, page
+
+
+def test_a_hyperbolic_function_of_a_length_is_still_refused(sheet):
+    page, printed = sheet("w := cosh(2[m])\n")
+    assert "cosh requires a dimensionless argument" in printed, printed
+
+
+# A4: a placeholder holding an operation between two operands.
+
+
+@pytest.mark.parametrize(
+    ("source", "shown"),
+    [
+        ("% op = '+'\n% u = 'kN'\ny := 2[kN] {op} 3[{u}]\n", r"y & = & \displaystyle 5.00\,\mathrm{kN}"),
+        ("% for s in ['+', '-']:\nz := 5 {s} 2\n% end\n", r"z & = & \displaystyle 3.00"),
+        ("% q = ' + 3'\nw := (2*4){q}\n", r"w & = & \displaystyle 11.00"),
+    ],
+)
+def test_a_placeholder_holding_an_operation(sheet, source, shown):
+    page, printed = sheet(source)
+    assert not printed, printed
+    assert shown in page, page

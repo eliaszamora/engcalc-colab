@@ -464,6 +464,10 @@ class NumericContext:
             "atanh": math.atanh,
             "ln": math.log,
         }
+        if name in ("sinh", "cosh", "tanh") and self._has_explicit_angle_unit(quantity):
+            # A hyperbolic function of an angle reads it in radians, as sin and cos do:
+            # `cosh(30[deg])` was refused (C5i, 0.53.0).
+            return scalar_dimensionless[name](float(quantity.to(self.ureg.radian).magnitude))
         if name in scalar_dimensionless:
             if self._has_explicit_angle_unit(quantity) or not quantity.dimensionless:
                 raise EngEvaluationError(f"{name} requires a dimensionless argument")

@@ -406,6 +406,11 @@ def _put(insert, match, line_no, line):
     # chapter 9).
     previous = line[: match.start()].rstrip()[-1:]
     if previous in (")", "]") or (previous and (previous.isalnum() or previous == "_") and before == " "):
+        # Between two operands it is the operation alone: `2[kN] {op} 3[kN]` with `% op =
+        # '+'` read `2[kN] + 1 3[kN]` and was refused (A4, 0.53.0).
+        following = line[match.end():].lstrip()[:1]
+        if following and (following.isalnum() or following in "({_"):
+            return " + "
         return " + 1"
     return "1"
 
