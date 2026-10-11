@@ -130,3 +130,39 @@ def _quantity_is_zero(quantity) -> bool:
         return float(quantity.magnitude) == 0.0
     except (TypeError, ValueError, OverflowError):
         return False
+
+
+def denominator_scan(expression: sp.Expr, variable: sp.Symbol, domain: AnalysisDomain):
+    """What a denominator of `expression` does between the domain's ends, by its numbers:
+    `("pole", x)` where it reaches zero - a change of sign, or a dip to nothing (`sin(x)^2`
+    touches zero without changing sign) - `("clear", None)` when it stays well away from
+    zero everywhere, `(None, None)` when it cannot be told (another symbol, a unit, a value
+    that is not a number). Used where SymPy's own account of the singularities is a family
+    it cannot place (`sqrt(n π)` for `1/sin(x^2)`) and the analysis would otherwise give
+    up (N6h, 0.53.0)."""
+    try:
+        lower = float(domain.lower_quantity.to(domain.unit).magnitude)
+        upper = float(domain.upper_quantity.to(domain.unit).magnitude)
+        denominator = sp.denom(sp.together(expression))
+        if denominator.free_symbols != {variable}:
+            return None, None
+        values = sp.lambdify(variable, denominator, "math")
+        steps = 4000
+        xs = [lower + (upper - lower) * step / steps for step in range(steps + 1)]
+        ys = [float(values(x)) for x in xs]
+    except Exception:  # noqa: BLE001 - not told rather than told wrong
+        return None, None
+    if not all(math.isfinite(y) for y in ys):
+        return None, None
+    largest = max(abs(y) for y in ys)
+    if largest == 0:
+        return "pole", (lower + upper) / 2
+    for index in range(1, len(ys)):
+        if ys[index - 1] == 0 or ys[index - 1] * ys[index] < 0:
+            return "pole", (xs[index - 1] + xs[index]) / 2
+    smallest = min(range(len(ys)), key=lambda index: abs(ys[index]))
+    if abs(ys[smallest]) < 1e-6 * largest:
+        return "pole", xs[smallest]
+    if abs(ys[smallest]) > 1e-3 * largest:
+        return "clear", None
+    return None, None

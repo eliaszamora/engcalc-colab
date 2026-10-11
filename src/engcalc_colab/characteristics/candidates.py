@@ -111,6 +111,18 @@ def _a_trigonometric_radical(expression: sp.Expr, variable: sp.Symbol) -> bool:
     ) and sp.count_ops(expression) > _TRIGONOMETRIC_RADICAL_OPERATIONS
 
 
+def _a_trigonometric_reciprocal(expression: sp.Expr, variable: sp.Symbol) -> bool:
+    """A sine or a cosine of the variable in a denominator - the slope of `cos x + 1/sin x`
+    is `-sin x - cos x / sin² x`. `solveset` rewrites it as exponentials and did not come
+    back in 100 s (N6h); every point it could give is a number the numeric search finds."""
+    trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
+    return any(
+        power.exp.is_negative
+        and any(variable in node.free_symbols for node in power.base.atoms(trigonometric))
+        for power in expression.atoms(sp.Pow)
+    )
+
+
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
     # Common factors out first. `1.2 qD (L/2 - x) + 1.6 qL (L/2 - x)` solved as written is
     # floating point, `0.5 L`, a block away from an extrema that writes the same midspan
@@ -126,7 +138,7 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         for factor in solvable:
             candidates.extend(_exact_real_solution_set(factor, variable).candidates)
         return _ExactDiscovery(tuple(candidates), complete=False)
-    if _a_trigonometric_radical(expression, variable):
+    if _a_trigonometric_radical(expression, variable) or _a_trigonometric_reciprocal(expression, variable):
         # The slope of the load of Example 9.1 in his book, `L N_a(φ) (sin φ + cos φ) /
         # (L_a(φ) (sin φ + α cos φ))`, never returned. Every point it could give is a
         # number, and the numeric search finds it.

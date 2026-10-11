@@ -5458,6 +5458,25 @@ class _Evaluator(ast.NodeVisitor):
                 "for example A[1,1]"
             )
 
+        # A point on an interval is a number: with a name that has none the analysis can
+        # only fail, and a cubic in four symbols took 45 s to say so in its own words (B6).
+        known = self.engine.numeric_context.values
+        missing = sorted(
+            {
+                symbol.name
+                for item in resolved
+                for symbol in getattr(item.comparison_expression, "free_symbols", ())
+                if symbol != variable_symbol
+                and symbol.name not in known
+                and not symbol.name.startswith(BRACKETED_UNIT_PREFIX)
+            }
+        )
+        if missing:
+            raise EngEvaluationError(
+                f"{name} looks for points between two numbers, so every other name needs a "
+                f"value: give {', '.join(missing)} a value with := first"
+            )
+
         if name == "governing":
             # Built on the exact crossovers rather than on the envelope's 201-point
             # sampling. Reading the envelope's per-sample winner back would have been
@@ -5624,8 +5643,20 @@ class _Evaluator(ast.NodeVisitor):
             )
         )
         if unresolved:
+            from .characteristics.domain import denominator_scan  # noqa: PLC0415
+
+            found, pole = denominator_scan(response.comparison_expression, variable_symbol, domain)
+            if found == "pole":
+                # `1/sin(x^2)` on [1, 2] goes to infinity at x = √π: there is no largest
+                # value to give. Said so, where, rather than in the analysis's words (N6h).
+                raise EngEvaluationError(
+                    f"extrema: the function goes to infinity inside the interval, near "
+                    f"{variable_name} = {pole:.4g} (a denominator is zero there); take an "
+                    "interval on one side of it"
+                )
             raise EngEvaluationError(
-                "extrema characteristic analysis could not resolve a safe solution set"
+                "extrema could not decide the largest and smallest values on this interval; "
+                "try a narrower interval"
             )
         self.characteristic_evaluation = _CharacteristicEvaluation(
             kind="extrema",

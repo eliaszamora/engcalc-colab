@@ -17,6 +17,7 @@ from .candidates import (
     _ordered_unique_points,
 )
 from .domain import (
+    denominator_scan,
     AnalysisDomain,
     ContinuousRegion,
     _analysis_variable,
@@ -582,9 +583,12 @@ def _continuous_unbounded_directions(
     if singular_set is sp.S.EmptySet:
         return False, False, False
     if not isinstance(singular_set, sp.FiniteSet):
-        return False, False, not _no_singularity_in_domain(
-            singular_set, domain, context, overrides
-        )
+        if _no_singularity_in_domain(singular_set, domain, context, overrides):
+            return False, False, False
+        # A family SymPy cannot place, `sqrt(n π)` for `1/sin(x^2)`: the denominator's
+        # numbers say whether it comes near zero here (N6h, 0.53.0).
+        found, _pole = denominator_scan(expression, variable, domain)
+        return False, False, found != "clear"
 
     unbounded_above = False
     unbounded_below = False
