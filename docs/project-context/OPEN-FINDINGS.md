@@ -42,6 +42,17 @@ the output column wrapped (KaTeX `.base` left `white-space: normal` by Colab's f
 sit beside the code, ~630 px) - a per-cell style keeps it on one line and the frame scrolls.
 Decided: EXd stays the family rule. Left: C10c, C6a (δθ names), C7c (a general `b(y)` inside
 `integrate`), C8k (`dsolve`), the `y = f(1e8[mm^4])` + `numeric(y)` repeated last row.
+
+**Status after 0.52.0 (2026-10-11):** fixed in 0.52.0 - C10c (a value under a one-branch `% if`
+in a gathering loop is a column, `---` where it did not hold, rule `... si cond`; a default the
+`% if` changes keeps its rows and "Como"), C6a (`dtheta` dθ, `deltaphi` δφ; `delta_theta` stays
+δ_θ), C7c (an undefined `b(y)` of one or two letters, of a variable, inside `integrate`/`diff`/
+`dsolve`; misspelt or valued names still refused), C8k (`dsolve`, constants `C_1`, `C_2` of the
+sheet), the `numeric(y)` repeated row. New, fixed: a power of an undefined function stopped the
+cell (`_print_AppliedUndef(exp=)`). Open now (49, by kind): HANG B6, N6h; REFUSED A4, C5i;
+MISSING C2c, C9c, C10d, B7, M5; PRESENTATION B2, C4b, C4d-C4h, C8h, C2m, C2d, C3l, C3p-C3r, C5b,
+C5e, C5m, C5f, C6d, C6j, C6e, C6g, C6h, C6l, C6m, C6k, C7b, C7f, C9a, C10g, C10h, C10l, C10m, B5,
+B8, SUMb, TOOL; MESSAGE B14, B15, C3h, C5k. EXd decided (family rule).
 Decided as the page's rules, not defects: C4k/C6c/C8i (two decimals; `%eng_config precision=`
 changes it), and D1-D23 below.
 
