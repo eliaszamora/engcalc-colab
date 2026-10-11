@@ -12,11 +12,27 @@ _2026-10-10._
 
 | | |
 |---|---|
-| released | **0.51.0** - #418, `595b2b4`, closed (checked in his Colab) |
-| before that | **0.50.0** - #416, `d05a2b6`, closed |
-| default suite | **3996 passing** on 0.51.0 (SymPy 1.14 and 1.13.3) |
+| released | **0.52.0** - #420, `9de0b0a`, closed (checked in his Colab) |
+| before that | **0.51.0** - #418, `595b2b4`, closed |
+| default suite | **4021 passing** on 0.52.0 (SymPy 1.14 and 1.13.3) |
 | open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
 | in progress | nothing |
+
+**0.52.0 is closed** (#420, squash `9de0b0a`, 6/6 CI on `9440f33`, his "sigue con lo que queda"
+and "procede con lo que falta"): `dsolve(eq, f(x))` with its constants as the sheet's `C_1`, `C_2`
+(boundary conditions by `solve(eq(subs(v, x, 0), 0), ..., C_1, C_2)`); inside `integrate`/`diff`/
+`dsolve` an undefined function of one or two letters of a variable is a function
+(`engine._AN_UNKNOWN_FUNCTION`, `_has_no_value` reads `numeric_context.values` - `:=` values are
+not in `namespace`); a value under a one-branch `% if` in a gathering loop is a table column
+(`control._tabled_ifs`: not when another line of the loop assigns the same name; its "Como" goes
+only when its lines are columns, `_Kept.if_templates`); `dtheta` dθ (`renderer._AN_INCREMENT`);
+`numeric(y)` under its value not repeated (`_same_value_row`). Audit: 6 defects (crash on
+`b(y)**2`, dsolve constants unreachable, default-then-override tabled wrong, lost "Como",
+and/or garbled, slips inside integrals accepted), all fixed with tests. Corpus: 259 identical, 8
+differ (dθ in ch6/ch7; ch10's running maximum `% if q > phi_max` now a table column, values
+present), numbers otherwise identical. Wheel 33 files identical, smoke 93/93, 24 pages identical.
+**Checked in his Colab** (2026-10-11; cell 3 `engcalc 0.52.0`; cell 5: `C_1 = 0`, `C_2 = wL²/6EI`,
+`v_s`, `∫ y b(y) dy`, the `b_i` column with `---` and "si i > 1", `dθ`, `numeric(q)` once).
 
 **0.51.0 is closed** (#418, squash `595b2b4`, 6/6 CI on `9155f07`, his "sigue con esa tanda"
 and "sigue con lo que queda"): in Colab a wide formula stays in its columns - Colab now shows a
@@ -106,9 +122,9 @@ installed wheel; 24 reference pages identical. After merge `git+https` of main r
 `rank(K) = 2`, `argmax(D)`, `2[km]`, `1[kip] + 1000[lb]` = 8.90 kN under his kN palette, λ, and
 `% break` with its note).
 
-**Exact next step:** what `OPEN-FINDINGS.md` "Status after 0.51.0" leaves: the `y = f(1e8)` +
-`numeric(y)` repeated last row, C10c (values set in a `% if` inside a loop), then MISSING C6a
-(δθ names), C7c (a general `b(y)` inside `integrate`), C8k (`dsolve`), by realism.
+**Exact next step:** `OPEN-FINDINGS.md` "Status after 0.52.0" lists the 49 still open; by
+realism first the two hangs (B6, N6h), the refusals (A4, C5i), then MISSING (C2c, C9c, C10d, B7,
+M5) and the PRESENTATION/MESSAGE rows.
 
 **0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
 lo que falte o quede y las decisiones las dejo a tu criterio", 2026-10-09). First batch of the
