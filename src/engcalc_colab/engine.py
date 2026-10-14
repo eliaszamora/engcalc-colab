@@ -1313,6 +1313,10 @@ _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
 # `EngineeringEngine._a_written_form_may_call`. `eq` builds an equation and nothing else
 # (2026-09-27): `bc2 = eq(subs(v(x), x, L), 0)` then reads in the names `v(x)` reads in.
 _CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff", "eq", "solve"})
+# `numeric(R_A)`, `result(a_x, mm)`: the names a cell reads as numbers (C6h).
+_READ_AS_NUMBERS = re.compile(r"\b(?:numeric|result)\(\s*([A-Za-z_][\w{}]*)\s*[,)]")
+# `P_s := 96*M_p/(19*L)` after the `solve`: the sheet gives the answer its number itself.
+_ASSIGNED_A_NUMBER = re.compile(r"^\s*([A-Za-z_][\w{}]*)\s*:=", re.MULTILINE)
 # Where an undefined `b(y)` is a function of its variable rather than a typo (0.52.0).
 _CALLS_THAT_TAKE_AN_UNKNOWN_FUNCTION = frozenset({"integrate", "diff", "dsolve"})
 # What such a function is called: a letter or two and a subscript, `b(y)`, `v(x)`, `w_1(x)`,
@@ -1450,6 +1454,24 @@ class EngineeringEngine:
             # real result, where it used to hand back Python's `2j`.
             return None
         return quantity
+
+    def _system_answer_number(self, name, value):
+        """The number an answer of a system comes to, read with the sheet's values, for the
+        page only (C6h): `a_x = (δ_ac sin θ + δ_ba sin φ)/sin(θ + φ)` is followed by `=
+        2.41 mm` when every name in it has a value. None when one has none - the answer
+        stays a formula - or when the answer is already a number, written once. The answer
+        itself, what `numeric`, `result` and later lines read, is not touched."""
+        if is_matrix(value) or not getattr(sp.sympify(value), "free_symbols", None):
+            return None
+        if any(pattern.fullmatch(name) for pattern in getattr(self, "read_as_numbers", ())):
+            return None
+        # A number already, in a unit: `R_A = 20 kN` is not followed by `= 20.00 kN`.
+        if {symbol.name for symbol in sp.sympify(value).free_symbols} <= self._unit_literals_of(value):
+            return None
+        try:
+            return self._solution_quantity(value)
+        except Exception:  # noqa: BLE001 - a number the page cannot give is not shown
+            return None
 
     def _assign_part(self, statement: ParsedStatement, evaluator) -> EvaluationResult:
         """`K[[1, 2], [1, 2]] = K[[1, 2], [1, 2]] + k_1*k_e`: the direct stiffness method's
@@ -2813,9 +2835,20 @@ class EngineeringEngine:
             f"and defines nothing; write {solved[0]} = solve(...) to use it."
         )
 
-    def begin_cell(self) -> None:
+    def begin_cell(self, source: str = "") -> None:
         """What one run of a cell keeps to itself."""
         self.solved_alone.clear()
+        # The names the cell reads with `numeric(...)` or `result(...)`: a system's answer
+        # among them is shown there, with its working, and not also as a number under the
+        # `solve` (C6h) - his Example 2.1 wrote `result(a_x, mm)` for each unknown.
+        # What runs, not what is said: a `#` comment or a paragraph is no reading. A name
+        # written with a loop's placeholder, `R_{i}`, stands for every name it becomes.
+        code = re.sub(r'"""[\s\S]*?"""', "", source)
+        code = re.sub(r"#[^\n]*", "", code)
+        self.read_as_numbers = [
+            re.compile(re.sub(r"\\\{[^}]*\\\}", lambda _placeholder: r"\w+", re.escape(name)))
+            for name in {*_READ_AS_NUMBERS.findall(code), *_ASSIGNED_A_NUMBER.findall(code)}
+        ]
 
     def _reads_only_values(self, text: str) -> bool:
         """Every name `text` reads has a value, so `numeric` of it has a number to show.
@@ -3469,6 +3502,11 @@ class EngineeringEngine:
                     quantities=(
                         tuple(self._solution_quantity(value) for _, value in system.solutions)
                         if system.kind == "multi"
+                        else ()
+                    ),
+                    numbers=(
+                        tuple(self._system_answer_number(name, value) for name, value in system.solutions)
+                        if system.kind == "system"
                         else ()
                     ),
                 )

@@ -77,6 +77,11 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.54.0: a system's answers with their numbers
+check("a system's answers with their numbers",
+      "a := 2.5\nb := 3.7\nsolve(eq(a*x + b*y, 1), eq(b*x - a*y, 2), x, y)",
+      r"& = & \displaystyle -0.0652")
+
 # 0.53.0: extrema that answer, refusals that say why
 check("extrema with a sine in a denominator", "extrema(cos(x) + 1/sin(x), x, 0.5, 2.5)",
       r"\text{value} \approx 0.65")

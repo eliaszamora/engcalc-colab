@@ -545,12 +545,17 @@ class SystemSolveResult:
     unit_literals: frozenset[str] = frozenset()
     quantities: tuple[Any, ...] = ()
     """Several answers for one unknown: the number of each, or None where it has none.
-    Empty for a system, whose unknowns `numeric(...)` reads."""
+    Empty for a system; its numbers are `numbers`."""
+    numbers: tuple[Any, ...] = ()
+    """A system's unknowns as numbers, one per unknown, or None where the answer has no
+    number - a name without a value - or is a number already. Shown on a row of its own
+    under each answer; empty for several answers of one unknown (C6h)."""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "equations", tuple(self.equations))
         object.__setattr__(self, "solutions", tuple(self.solutions))
         object.__setattr__(self, "quantities", tuple(self.quantities))
+        object.__setattr__(self, "numbers", tuple(self.numbers))
         if not self.solutions:
             raise ValueError("a system solve result must carry at least one unknown")
 

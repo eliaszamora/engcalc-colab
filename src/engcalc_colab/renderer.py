@@ -4513,8 +4513,20 @@ def _system_solve_rows(result: SystemSolveResult, settings: RenderSettings) -> l
             rf"\displaystyle {lhs} & = & \displaystyle "
             rf"{_value_latex(value, settings, units)}{number}"
         )
+    # A system's answer with every name valued is followed by its number, as `numeric`
+    # would write it, on a row of its own (C6h): the formula `a_x = ...` and then `= 2.41
+    # mm`. It took a `result(a_x, mm)` per unknown to see it.
+    for row_index, number in reversed(list(_system_number_rows(result, settings))):
+        rows.insert(len(result.equations) + row_index + 1, number)
     rows.extend(_discard_note_rows(result.discarded, units))
     return rows
+
+
+def _system_number_rows(result: SystemSolveResult, settings: RenderSettings):
+    """`(index of the unknown, its number row)` for each answer of a system that has one."""
+    for index, number in enumerate(result.numbers):
+        if number is not None:
+            yield index, rf" & = & \displaystyle {_quantity_latex(number, settings=settings, declared=False)}"
 
 
 def _symbolic_evaluation_rows(result: EvaluationResult, settings: RenderSettings) -> list[str]:
@@ -4717,7 +4729,14 @@ def _value_row_spacings(
         return _stage_spacing_sequence([len(result_rows) - 1, 1])
 
     if isinstance(result, SystemSolveResult):
-        stage_lengths = [len(result.equations), len(result.solutions)]
+        if any(number is not None for number in result.numbers):
+            # Each answer with its number is a group of its own (C6h): `R_A = qL/2` and its
+            # `= 30.00 kN` read together, apart from `R_B`. Without numbers, as before.
+            stage_lengths = [len(result.equations)] + [
+                1 + (number is not None) for number in result.numbers
+            ]
+        else:
+            stage_lengths = [len(result.equations), len(result.solutions)]
         notes = len(_discard_note_rows(result.discarded))
         if notes:
             stage_lengths.append(notes)
