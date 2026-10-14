@@ -1451,6 +1451,19 @@ class EngineeringEngine:
             return None
         return quantity
 
+    def _system_answer_number(self, value):
+        """The number an answer of a system comes to, read with the sheet's values, for the
+        page only (C6h): `a_x = (δ_ac sin θ + δ_ba sin φ)/sin(θ + φ)` is followed by `=
+        2.41 mm` when every name in it has a value. None when one has none - the answer
+        stays a formula - or when the answer is already a number, written once. The answer
+        itself, what `numeric`, `result` and later lines read, is not touched."""
+        if is_matrix(value) or not getattr(sp.sympify(value), "free_symbols", None):
+            return None
+        try:
+            return self._solution_quantity(value)
+        except Exception:  # noqa: BLE001 - a number the page cannot give is not shown
+            return None
+
     def _assign_part(self, statement: ParsedStatement, evaluator) -> EvaluationResult:
         """`K[[1, 2], [1, 2]] = K[[1, 2], [1, 2]] + k_1*k_e`: the direct stiffness method's
         assembly step. The right-hand side reads the matrix as it stands, the part is
@@ -3469,6 +3482,11 @@ class EngineeringEngine:
                     quantities=(
                         tuple(self._solution_quantity(value) for _, value in system.solutions)
                         if system.kind == "multi"
+                        else ()
+                    ),
+                    numbers=(
+                        tuple(self._system_answer_number(value) for _, value in system.solutions)
+                        if system.kind == "system"
                         else ()
                     ),
                 )
