@@ -77,6 +77,12 @@ print(f"engcalc-colab {version} at {engcalc_colab.__file__}")
 results.append(engcalc_colab.__version__ == version)
 print(("PASS " if results[-1] else "FAIL ") + "__version__ matches the installed metadata")
 
+# 0.53.0: extrema that answer, refusals that say why
+check("extrema with a sine in a denominator", "extrema(cos(x) + 1/sin(x), x, 0.5, 2.5)",
+      r"\text{value} \approx 0.65")
+check("cosh of an angle", "x := cosh(30[deg])", r"x & = & \displaystyle 1.14")
+check("an operator in a placeholder", "% op = '+'\ny := 2[kN] {op} 3[kN]", r"y & = & \displaystyle 5.00")
+
 # 0.52.0: dsolve, a value under a % if in its loop's table, dθ
 check("dsolve and its constants",
       "v = dsolve(eq(diff(v(x), x, 2), -w*x/(E*I)), v(x))\nsolve(eq(subs(v, x, 0), 0), eq(subs(v, x, L), 0), C_1, C_2)",

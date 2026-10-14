@@ -406,6 +406,17 @@ def _put(insert, match, line_no, line):
     # chapter 9).
     previous = line[: match.start()].rstrip()[-1:]
     if previous in (")", "]") or (previous and (previous.isalnum() or previous == "_") and before == " "):
+        # Between two operands it is the operation alone: `2[kN] {op} 3[kN]` with `% op =
+        # '+'` read `2[kN] + 1 3[kN]` and was refused (A4, 0.53.0).
+        rest = line[match.end():].lstrip()
+        following = rest[:1]
+        # A word of a condition after it - `x {c} and x < 10` - is no operand: there the
+        # placeholder ends an expression, as ` + 1` (the audit of 0.53.0).
+        word = re.match(r"[A-Za-z_]\w*", rest)
+        if word and word.group(0) in ("and", "or", "not", "in", "is", "if", "else"):
+            return " + 1"
+        if following and (following.isalnum() or following in "({_"):
+            return " + "
         return " + 1"
     return "1"
 

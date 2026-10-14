@@ -111,6 +111,46 @@ def _a_trigonometric_radical(expression: sp.Expr, variable: sp.Symbol) -> bool:
     ) and sp.count_ops(expression) > _TRIGONOMETRIC_RADICAL_OPERATIONS
 
 
+def _a_trigonometric_reciprocal(expression: sp.Expr, variable: sp.Symbol) -> bool:
+    """A sine or a cosine of the variable in a denominator - the slope of `cos x + 1/sin x`
+    is `-sin x - cos x / sin² x`. `solveset` of the whole fraction did not come back in
+    100 s (N6h); its numerator is where its zeros are."""
+    trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
+    return any(
+        power.exp.is_negative
+        and any(variable in node.free_symbols for node in power.base.atoms(trigonometric))
+        for power in expression.atoms(sp.Pow)
+    )
+
+
+def _mixes_trigonometric_functions(expression: sp.Expr, variable: sp.Symbol) -> bool:
+    """A sum of different trigonometric functions of the variable that `solveset` does not
+    come back from: one of them raised to a power or multiplied by another (`sin³ x + cos
+    x`, the slope of `cos x + 1/sin x`), or of different arguments (`sin(x/1000) + cos²(x/
+    1000) cos x`). A plain `sin x - cos x` or `tan x - 2 sin x` it solves at once and
+    exactly, `π/4`, `π/3` - kept exact (the audit of 0.53.0)."""
+    trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
+    for addition in [expression, *expression.atoms(sp.Add)]:
+        if not isinstance(addition, sp.Add):
+            continue
+        calls = [node for node in addition.atoms(trigonometric) if variable in node.free_symbols]
+        if len({node.func for node in calls}) < 2:
+            continue
+        if len({node.args for node in calls}) > 1:
+            return True
+        for term in addition.args:
+            factors = [
+                factor
+                for factor in sp.Mul.make_args(term)
+                if any(variable in node.free_symbols for node in factor.atoms(trigonometric))
+            ]
+            if len(factors) > 1 or any(
+                isinstance(factor, sp.Pow) and factor.exp not in (1, -1) for factor in factors
+            ):
+                return True
+    return False
+
+
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
     # Common factors out first. `1.2 qD (L/2 - x) + 1.6 qL (L/2 - x)` solved as written is
     # floating point, `0.5 L`, a block away from an extrema that writes the same midspan
@@ -126,6 +166,12 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         for factor in solvable:
             candidates.extend(_exact_real_solution_set(factor, variable).candidates)
         return _ExactDiscovery(tuple(candidates), complete=False)
+    if _a_trigonometric_reciprocal(expression, variable):
+        # Its zeros are its numerator's; a point where the denominator vanishes too is a
+        # pole, and is dropped where every candidate is checked against the function.
+        expression = sp.numer(sp.together(expression))
+        if _mixes_trigonometric_functions(expression, variable):
+            return _ExactDiscovery((), complete=False)
     if _a_trigonometric_radical(expression, variable):
         # The slope of the load of Example 9.1 in his book, `L N_a(φ) (sin φ + cos φ) /
         # (L_a(φ) (sin φ + α cos φ))`, never returned. Every point it could give is a

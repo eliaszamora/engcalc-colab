@@ -341,7 +341,8 @@ def test_extrema_with_a_pole_in_its_range_is_refused_not_invented(sheet, monkeyp
     family proves only that the range holds none of its members; one inside, at n = 0 or
     n = 1 or n = 2, is refused as before."""
     page, console = _run(sheet, monkeypatch)
-    assert "could not resolve" in console or "could not validate" in console, console
+    # Since 0.53.0 the refusal says where the function goes to infinity.
+    assert "goes to infinity inside the interval" in console, console
     assert "global min" not in page and "local max" not in page, page[:2000]
 
 

@@ -130,3 +130,72 @@ def _quantity_is_zero(quantity) -> bool:
         return float(quantity.magnitude) == 0.0
     except (TypeError, ValueError, OverflowError):
         return False
+
+
+def denominator_scan(expression: sp.Expr, variable: sp.Symbol, domain: AnalysisDomain):
+    """What a denominator of `expression` does between the domain's ends, by its numbers:
+    `("pole", x)` where it reaches zero - a change of sign, or a dip to nothing (`sin(x)^2`
+    touches zero without changing sign) - `("clear", None)` when it stays well away from
+    zero everywhere, `(None, None)` when it cannot be told (another symbol, a unit, a value
+    that is not a number). Used where SymPy's own account of the singularities is a family
+    it cannot place (`sqrt(n π)` for `1/sin(x^2)`) and the analysis would otherwise give
+    up (N6h, 0.53.0)."""
+    try:
+        # The expression reads its variable in base units - an angle in radians - and the
+        # place found is said in the domain's own unit (`0 deg`, not `0.0225`).
+        lower = float(domain.lower_quantity.to_base_units().magnitude)
+        upper = float(domain.upper_quantity.to_base_units().magnitude)
+        to_domain = float(
+            (domain.upper_quantity - domain.lower_quantity).to(domain.unit).magnitude
+        ) / (upper - lower) if upper != lower else 1.0
+        offset = float(domain.lower_quantity.to(domain.unit).magnitude) - lower * to_domain
+        denominator = sp.denom(sp.together(expression))
+        if denominator.free_symbols != {variable}:
+            return None, None
+        values = sp.lambdify(variable, denominator, "math")
+        steps = 4000
+        xs = [lower + (upper - lower) * step / steps for step in range(steps + 1)]
+        ys = [float(values(x)) for x in xs]
+    except Exception:  # noqa: BLE001 - not told rather than told wrong
+        return None, None
+    if not all(math.isfinite(y) for y in ys):
+        return None, None
+    found, where = _scanned(xs, ys, lower, upper)
+    if found == "pole" and where is not None:
+        where = _narrowed(values, where, (upper - lower) / steps)
+    return found, (None if where is None else offset + where * to_domain)
+
+
+def _narrowed(values, where: float, step: float) -> float:
+    """A change of sign found between two samples, closed in on by halving: the pole of
+    `1/cos(t/2)` is at 180°, not 179.9°."""
+    try:
+        left, right = where - step, where + step
+        if float(values(left)) * float(values(right)) >= 0:
+            return where
+        for _ in range(60):
+            middle = (left + right) / 2
+            if float(values(left)) * float(values(middle)) <= 0:
+                right = middle
+            else:
+                left = middle
+        return (left + right) / 2
+    except Exception:  # noqa: BLE001 - the sample found stands
+        return where
+
+
+def _scanned(xs: list, ys: list, lower: float, upper: float):
+    largest = max(abs(y) for y in ys)
+    if largest == 0:
+        return "pole", (lower + upper) / 2
+    for index in range(1, len(ys)):
+        if ys[index - 1] == 0:
+            return "pole", xs[index - 1]
+        if ys[index - 1] * ys[index] < 0:
+            return "pole", (xs[index - 1] + xs[index]) / 2
+    smallest = min(range(len(ys)), key=lambda index: abs(ys[index]))
+    if abs(ys[smallest]) < 1e-6 * largest:
+        return "pole", xs[smallest]
+    if abs(ys[smallest]) > 1e-3 * largest:
+        return "clear", None
+    return None, None

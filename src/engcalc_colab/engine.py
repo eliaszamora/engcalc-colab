@@ -232,6 +232,14 @@ def _collected(value):
     return together if sp.count_ops(together) < sp.count_ops(value) else value
 
 
+def _unit_after(unit) -> str:
+    """How a unit follows a number in a message: `180°`, `2.5 m`, nothing for a number."""
+    text = f"{unit:~P}" if unit is not None else ""
+    if not text or text == "dimensionless":
+        return ""
+    return "°" if text in ("deg", "°") else f" {text}"
+
+
 def _real_integral(expression, bounds):
     """`sp.integrate`, with an antiderivative real at the origin: an indefinite integral
     is written so, and a definite one of a real integrand that came out complex - `log(3)
@@ -5110,6 +5118,16 @@ class _Evaluator(ast.NodeVisitor):
         raise EngSyntaxError(f"unsupported function '{name}'")
 
 
+    def _a_unit_name(self, name: str) -> bool:
+        """`kN` or `m` written as a unit without brackets, `6*m`: the sheet's numbers read it
+        as a value. Asked of the numbers themselves - pint alone takes `a` for a year and
+        `P` for a poise."""
+        try:
+            self.engine.numeric_context.evaluate_symbolic(self.engine.resolve_symbol(name))
+        except Exception:  # noqa: BLE001 - a name the numbers cannot read has no value
+            return False
+        return True
+
     def _has_no_value(self, name: str) -> bool:
         """Whether the sheet has not given `name` a value: `b := 0.3[m]` then `b(y)` is a
         slip, not a width that varies (the audit of 0.52.0)."""
@@ -5458,6 +5476,26 @@ class _Evaluator(ast.NodeVisitor):
                 "for example A[1,1]"
             )
 
+        # A point on an interval is a number: with a name that has none the analysis can
+        # only fail, and a cubic in four symbols took 45 s to say so in its own words (B6).
+        known = self.engine.numeric_context.values
+        missing = sorted(
+            {
+                symbol.name
+                for item in resolved
+                for symbol in getattr(item.comparison_expression, "free_symbols", ())
+                if symbol != variable_symbol
+                and symbol.name not in known
+                and not symbol.name.startswith(BRACKETED_UNIT_PREFIX)
+                and not self._a_unit_name(symbol.name)
+            }
+        )
+        if missing:
+            raise EngEvaluationError(
+                f"{name} looks for points between two numbers, so every other name needs a "
+                f"value: give {', '.join(missing)} a value with := first"
+            )
+
         if name == "governing":
             # Built on the exact crossovers rather than on the envelope's 201-point
             # sampling. Reading the envelope's per-sample winner back would have been
@@ -5614,18 +5652,38 @@ class _Evaluator(ast.NodeVisitor):
             return left.comparison_expression
 
         response = resolved[0]
-        points, intervals, unbounded_above, unbounded_below, unresolved = (
-            solve_extrema_exact(
-                response.comparison_expression,
-                variable_symbol,
-                domain,
-                self.engine.numeric_context,
-                source_label=response.display_label,
+        from .characteristics.domain import denominator_scan  # noqa: PLC0415
+
+        try:
+            points, intervals, unbounded_above, unbounded_below, unresolved = (
+                solve_extrema_exact(
+                    response.comparison_expression,
+                    variable_symbol,
+                    domain,
+                    self.engine.numeric_context,
+                    source_label=response.display_label,
+                )
             )
-        )
+        except EngEvaluationError:
+            # The numeric search gives up on a curve that runs to infinity in its words,
+            # "could not validate a solution set"; where it does, the pole is said (0.53.0).
+            if denominator_scan(response.comparison_expression, variable_symbol, domain)[0] != "pole":
+                raise
+            unresolved = True
         if unresolved:
+            found, pole = denominator_scan(response.comparison_expression, variable_symbol, domain)
+            if found == "pole":
+                # `1/sin(x^2)` on [1, 2] goes to infinity at x = √π: there is no largest
+                # value to give. Said so, where, rather than in the analysis's words (N6h).
+                raise EngEvaluationError(
+                    f"extrema: the function goes to infinity inside the interval, near "
+                    f"{variable_name} = {pole:.4g}{_unit_after(domain.unit)} (a denominator is "
+                    "zero there); take an "
+                    "interval on one side of it"
+                )
             raise EngEvaluationError(
-                "extrema characteristic analysis could not resolve a safe solution set"
+                "extrema could not decide the largest and smallest values on this interval; "
+                "try a narrower interval"
             )
         self.characteristic_evaluation = _CharacteristicEvaluation(
             kind="extrema",
