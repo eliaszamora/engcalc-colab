@@ -13,7 +13,20 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.52.0**.
+Current version: **0.53.0**.
+
+
+## v0.53.0 extrema that answer, refusals that say why
+
+- **`extrema` with a sine or a cosine in a denominator answers**: `extrema(cos(x) + 1/sin(x),
+  x, 0.5, 2.5)` did not come back in 100 s; `1/sin(x^2)` on [1, 1.7] gives its minimum, √(π/2).
+- **An interval across a pole says where it is**: "the function goes to infinity inside the
+  interval, near t = 180°; take an interval on one side of it".
+- **`roots` and `extrema` over a name with no value say so at once**: "give a, b, c, e a value
+  with := first" - a cubic in four names took 45 s to refuse in the analysis's own words.
+- **A minimum found in degrees is called a minimum** (it read "local max").
+- **`cosh`, `sinh`, `tanh` of an angle**, as `sin` and `cos`.
+- **A placeholder can hold an operation**: `% op = '+'` then `y := 2[kN] {op} 3[kN]`.
 
 
 ## v0.52.0 dsolve, a value under a % if in its loop's table, dθ
@@ -4282,6 +4295,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.53.0** — extrema with a trigonometric denominator answer or say where the pole is; names without values refused at once; minima in degrees named right; cosh of an angle; an operator in a placeholder.
 - **0.52.0** — dsolve with its constants as names; b(y) inside integrate; a value under a % if in its loop's table; dθ; numeric's repeated row.
 - **0.51.0** — wide formulas stay in their columns in Colab; cot, sec, csc, heaviside; a matrix of numbers written once; `numeric` of a matrix just above not repeated; a bare `solve` names its unknown.
 - **0.50.0** — nested loops make one table; a loop line with its formula is a column; kip and kgf sheets read their matrices in their own system.
@@ -4430,4 +4444,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.52.0`.
+Version: `0.53.0`.
