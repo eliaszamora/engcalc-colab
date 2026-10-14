@@ -155,3 +155,39 @@ def test_an_answer_the_cell_reads_with_result_is_not_said_twice(sheet):
     assert not printed, printed
     assert page.count(r"2.41\,\mathrm{mm}") == 2, page  # δ_ba, and result(a_x)
     assert page.count(r"0.72\,\mathrm{mm}") == 1, page
+
+
+# The review of C6h.
+
+
+def test_an_answer_that_is_a_number_in_a_unit_is_written_once(sheet):
+    page, printed = sheet("solve(eq(R_A + R_B, 30*kN), eq(R_A - R_B, 10*kN), R_A, R_B)\n")
+    assert not printed, printed
+    assert "20.00" not in page and "10.00" not in page, page
+
+
+def test_an_answer_given_its_number_with_colon_equals_is_not_said_twice(sheet):
+    # His ex10_9: `solve(..., P_s, M_r)` then `P_s := ...`, `M_r := ...`.
+    page, printed = sheet(
+        "P := 30[kN]\nsolve(eq(R_A + R_B, P), eq(R_A - R_B, 10*kN), R_A, R_B)\nR_A := P/2 + 5*kN\n"
+    )
+    assert not printed, printed
+    assert page.count("20.00") == 1 and page.count("10.00") == 1, page
+
+
+def test_a_loop_s_numeric_of_its_answer_is_not_said_twice(sheet):
+    page, printed = sheet(
+        "P := 30[kN]\n% for i in [1]:\nsolve(eq(R_{i} + R_B, P), eq(R_{i} - R_B, 10*kN), R_{i}, R_B)\n"
+        "numeric(R_{i})\n% end\n"
+    )
+    assert not printed, printed
+    assert page.count("20.00") == 1, page
+
+
+def test_a_comment_or_a_paragraph_is_no_reading(sheet):
+    page, printed = sheet(
+        'P := 30[kN]\nsolve(eq(R_A + R_B, P), eq(R_A - R_B, 10*kN), R_A, R_B)\n'
+        '"""We check result(R_A) by hand."""\n# numeric(R_B)\n'
+    )
+    assert not printed, printed
+    assert page.count("20.00") == 1 and page.count("10.00") == 1, page

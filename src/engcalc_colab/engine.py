@@ -1314,7 +1314,9 @@ _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
 # (2026-09-27): `bc2 = eq(subs(v(x), x, L), 0)` then reads in the names `v(x)` reads in.
 _CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff", "eq", "solve"})
 # `numeric(R_A)`, `result(a_x, mm)`: the names a cell reads as numbers (C6h).
-_READ_AS_NUMBERS = re.compile(r"\b(?:numeric|result)\(\s*([A-Za-z_]\w*)\s*[,)]")
+_READ_AS_NUMBERS = re.compile(r"\b(?:numeric|result)\(\s*([A-Za-z_][\w{}]*)\s*[,)]")
+# `P_s := 96*M_p/(19*L)` after the `solve`: the sheet gives the answer its number itself.
+_ASSIGNED_A_NUMBER = re.compile(r"^\s*([A-Za-z_][\w{}]*)\s*:=", re.MULTILINE)
 # Where an undefined `b(y)` is a function of its variable rather than a typo (0.52.0).
 _CALLS_THAT_TAKE_AN_UNKNOWN_FUNCTION = frozenset({"integrate", "diff", "dsolve"})
 # What such a function is called: a letter or two and a subscript, `b(y)`, `v(x)`, `w_1(x)`,
@@ -1461,7 +1463,10 @@ class EngineeringEngine:
         itself, what `numeric`, `result` and later lines read, is not touched."""
         if is_matrix(value) or not getattr(sp.sympify(value), "free_symbols", None):
             return None
-        if name in getattr(self, "read_as_numbers", ()):
+        if any(pattern.fullmatch(name) for pattern in getattr(self, "read_as_numbers", ())):
+            return None
+        # A number already, in a unit: `R_A = 20 kN` is not followed by `= 20.00 kN`.
+        if {symbol.name for symbol in sp.sympify(value).free_symbols} <= self._unit_literals_of(value):
             return None
         try:
             return self._solution_quantity(value)
@@ -2836,7 +2841,14 @@ class EngineeringEngine:
         # The names the cell reads with `numeric(...)` or `result(...)`: a system's answer
         # among them is shown there, with its working, and not also as a number under the
         # `solve` (C6h) - his Example 2.1 wrote `result(a_x, mm)` for each unknown.
-        self.read_as_numbers = set(_READ_AS_NUMBERS.findall(source))
+        # What runs, not what is said: a `#` comment or a paragraph is no reading. A name
+        # written with a loop's placeholder, `R_{i}`, stands for every name it becomes.
+        code = re.sub(r'"""[\s\S]*?"""', "", source)
+        code = re.sub(r"#[^\n]*", "", code)
+        self.read_as_numbers = [
+            re.compile(re.sub(r"\\\{[^}]*\\\}", lambda _placeholder: r"\w+", re.escape(name)))
+            for name in {*_READ_AS_NUMBERS.findall(code), *_ASSIGNED_A_NUMBER.findall(code)}
+        ]
 
     def _reads_only_values(self, text: str) -> bool:
         """Every name `text` reads has a value, so `numeric` of it has a number to show.
