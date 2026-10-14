@@ -37,7 +37,8 @@ def test_extrema_with_a_sine_in_a_denominator_answers(sheet):
 def test_extrema_away_from_a_pole_answers(sheet):
     page, printed = sheet("extrema(1/sin(x^2), x, 1, 1.7)\n")
     assert not printed, printed
-    assert r"x \approx 1.25" in page and "global min" in page and r"4.02" in page, page
+    # √(π/2), exact: the slope's numerator, `-2x cos x²`, is solved as it stands.
+    assert r"\dfrac{\sqrt{2} \sqrt{\pi}}{2}" in page and "global min" in page and r"4.02" in page, page
 
 
 @pytest.mark.parametrize(

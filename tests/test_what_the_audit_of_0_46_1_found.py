@@ -90,8 +90,10 @@ def test_a_singular_pencil_is_refused(sheet):
 
 
 def test_a_refused_condition_is_quoted_as_typed(sheet):
-    _, printed = sheet("x := 2\n% op = '<'\n% if x {op} 3:\ny := 1\n% end\n")
-    assert "x {op} 3" in printed, printed
+    # An operator in a placeholder is read since 0.53.0 (A4): `<` holds; `=<` is no
+    # comparison, and the condition is quoted as it reads.
+    _, printed = sheet("x := 2\n% op = '=<'\n% if x {op} 3:\ny := 1\n% end\n")
+    assert "is not one: x =< 3" in printed, printed
 
 
 def test_a_step_past_the_float_range_says_so(sheet):

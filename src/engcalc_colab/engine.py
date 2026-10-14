@@ -5110,6 +5110,16 @@ class _Evaluator(ast.NodeVisitor):
         raise EngSyntaxError(f"unsupported function '{name}'")
 
 
+    def _a_unit_name(self, name: str) -> bool:
+        """`kN` or `m` written as a unit without brackets, `6*m`: the sheet's numbers read it
+        as a value. Asked of the numbers themselves - pint alone takes `a` for a year and
+        `P` for a poise."""
+        try:
+            self.engine.numeric_context.evaluate_symbolic(self.engine.resolve_symbol(name))
+        except Exception:  # noqa: BLE001 - a name the numbers cannot read has no value
+            return False
+        return True
+
     def _has_no_value(self, name: str) -> bool:
         """Whether the sheet has not given `name` a value: `b := 0.3[m]` then `b(y)` is a
         slip, not a width that varies (the audit of 0.52.0)."""
@@ -5469,6 +5479,7 @@ class _Evaluator(ast.NodeVisitor):
                 if symbol != variable_symbol
                 and symbol.name not in known
                 and not symbol.name.startswith(BRACKETED_UNIT_PREFIX)
+                and not self._a_unit_name(symbol.name)
             }
         )
         if missing:
@@ -5633,18 +5644,25 @@ class _Evaluator(ast.NodeVisitor):
             return left.comparison_expression
 
         response = resolved[0]
-        points, intervals, unbounded_above, unbounded_below, unresolved = (
-            solve_extrema_exact(
-                response.comparison_expression,
-                variable_symbol,
-                domain,
-                self.engine.numeric_context,
-                source_label=response.display_label,
-            )
-        )
-        if unresolved:
-            from .characteristics.domain import denominator_scan  # noqa: PLC0415
+        from .characteristics.domain import denominator_scan  # noqa: PLC0415
 
+        try:
+            points, intervals, unbounded_above, unbounded_below, unresolved = (
+                solve_extrema_exact(
+                    response.comparison_expression,
+                    variable_symbol,
+                    domain,
+                    self.engine.numeric_context,
+                    source_label=response.display_label,
+                )
+            )
+        except EngEvaluationError:
+            # The numeric search gives up on a curve that runs to infinity in its words,
+            # "could not validate a solution set"; where it does, the pole is said (0.53.0).
+            if denominator_scan(response.comparison_expression, variable_symbol, domain)[0] != "pole":
+                raise
+            unresolved = True
+        if unresolved:
             found, pole = denominator_scan(response.comparison_expression, variable_symbol, domain)
             if found == "pole":
                 # `1/sin(x^2)` on [1, 2] goes to infinity at x = √π: there is no largest

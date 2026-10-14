@@ -141,8 +141,14 @@ def denominator_scan(expression: sp.Expr, variable: sp.Symbol, domain: AnalysisD
     it cannot place (`sqrt(n π)` for `1/sin(x^2)`) and the analysis would otherwise give
     up (N6h, 0.53.0)."""
     try:
-        lower = float(domain.lower_quantity.to(domain.unit).magnitude)
-        upper = float(domain.upper_quantity.to(domain.unit).magnitude)
+        # The expression reads its variable in base units - an angle in radians - and the
+        # place found is said in the domain's own unit (`0 deg`, not `0.0225`).
+        lower = float(domain.lower_quantity.to_base_units().magnitude)
+        upper = float(domain.upper_quantity.to_base_units().magnitude)
+        to_domain = float(
+            (domain.upper_quantity - domain.lower_quantity).to(domain.unit).magnitude
+        ) / (upper - lower) if upper != lower else 1.0
+        offset = float(domain.lower_quantity.to(domain.unit).magnitude) - lower * to_domain
         denominator = sp.denom(sp.together(expression))
         if denominator.free_symbols != {variable}:
             return None, None
@@ -154,11 +160,18 @@ def denominator_scan(expression: sp.Expr, variable: sp.Symbol, domain: AnalysisD
         return None, None
     if not all(math.isfinite(y) for y in ys):
         return None, None
+    found, where = _scanned(xs, ys, lower, upper)
+    return found, (None if where is None else offset + where * to_domain)
+
+
+def _scanned(xs: list, ys: list, lower: float, upper: float):
     largest = max(abs(y) for y in ys)
     if largest == 0:
         return "pole", (lower + upper) / 2
     for index in range(1, len(ys)):
-        if ys[index - 1] == 0 or ys[index - 1] * ys[index] < 0:
+        if ys[index - 1] == 0:
+            return "pole", xs[index - 1]
+        if ys[index - 1] * ys[index] < 0:
             return "pole", (xs[index - 1] + xs[index]) / 2
     smallest = min(range(len(ys)), key=lambda index: abs(ys[index]))
     if abs(ys[smallest]) < 1e-6 * largest:

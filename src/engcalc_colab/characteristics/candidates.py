@@ -113,14 +113,32 @@ def _a_trigonometric_radical(expression: sp.Expr, variable: sp.Symbol) -> bool:
 
 def _a_trigonometric_reciprocal(expression: sp.Expr, variable: sp.Symbol) -> bool:
     """A sine or a cosine of the variable in a denominator - the slope of `cos x + 1/sin x`
-    is `-sin x - cos x / sin² x`. `solveset` rewrites it as exponentials and did not come
-    back in 100 s (N6h); every point it could give is a number the numeric search finds."""
+    is `-sin x - cos x / sin² x`. `solveset` of the whole fraction did not come back in
+    100 s (N6h); its numerator is where its zeros are."""
     trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
     return any(
         power.exp.is_negative
         and any(variable in node.free_symbols for node in power.base.atoms(trigonometric))
         for power in expression.atoms(sp.Pow)
     )
+
+
+def _mixes_trigonometric_functions(expression: sp.Expr, variable: sp.Symbol) -> bool:
+    """A sum holding two different trigonometric functions of the variable, `sin³ x + cos
+    x`: `solveset` rewrites it as exponentials and does not come back. One kind alone,
+    `-cos x` or `-2x cos x²`, it solves at once and exactly (0.53.0)."""
+    trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
+    for addition in [expression, *expression.atoms(sp.Add)]:
+        if not isinstance(addition, sp.Add):
+            continue
+        kinds = {
+            node.func
+            for node in addition.atoms(trigonometric)
+            if variable in node.free_symbols
+        }
+        if len(kinds) > 1:
+            return True
+    return False
 
 
 def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
@@ -138,7 +156,13 @@ def _exact_real_solution_set(expression: sp.Expr, variable: sp.Symbol):
         for factor in solvable:
             candidates.extend(_exact_real_solution_set(factor, variable).candidates)
         return _ExactDiscovery(tuple(candidates), complete=False)
-    if _a_trigonometric_radical(expression, variable) or _a_trigonometric_reciprocal(expression, variable):
+    if _a_trigonometric_reciprocal(expression, variable):
+        # Its zeros are its numerator's; a point where the denominator vanishes too is a
+        # pole, and is dropped where every candidate is checked against the function.
+        expression = sp.numer(sp.together(expression))
+        if _mixes_trigonometric_functions(expression, variable):
+            return _ExactDiscovery((), complete=False)
+    if _a_trigonometric_radical(expression, variable):
         # The slope of the load of Example 9.1 in his book, `L N_a(φ) (sin φ + cos φ) /
         # (L_a(φ) (sin φ + α cos φ))`, never returned. Every point it could give is a
         # number, and the numeric search finds it.
