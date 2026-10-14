@@ -320,9 +320,14 @@ def _classify_stationary_role(
     *,
     overrides: dict[str, Any] | None,
 ) -> str | None:
-    second = sp.simplify(
-        sp.diff(expression, variable, 2).subs(variable, point.x_symbolic)
-    )
+    # A point the numeric search found carries its number in the domain's unit, `124.31`
+    # for degrees; the expression reads its variable in base units, radians. Read there,
+    # f'' of `cos t + 1/sin t` came out negative and a minimum was called "local max" (the
+    # audit of 0.53.0).
+    at = point.x_symbolic
+    if point.provenance != "exact" and point.x_quantity is not None:
+        at = sp.Float(float(point.x_quantity.to_base_units().magnitude), 30)
+    second = sp.simplify(sp.diff(expression, variable, 2).subs(variable, at))
     if second.is_positive is True:
         return "local_min"
     if second.is_negative is True:

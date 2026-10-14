@@ -232,6 +232,14 @@ def _collected(value):
     return together if sp.count_ops(together) < sp.count_ops(value) else value
 
 
+def _unit_after(unit) -> str:
+    """How a unit follows a number in a message: `180°`, `2.5 m`, nothing for a number."""
+    text = f"{unit:~P}" if unit is not None else ""
+    if not text or text == "dimensionless":
+        return ""
+    return "°" if text in ("deg", "°") else f" {text}"
+
+
 def _real_integral(expression, bounds):
     """`sp.integrate`, with an antiderivative real at the origin: an indefinite integral
     is written so, and a definite one of a real integrand that came out complex - `log(3)
@@ -5669,7 +5677,8 @@ class _Evaluator(ast.NodeVisitor):
                 # value to give. Said so, where, rather than in the analysis's words (N6h).
                 raise EngEvaluationError(
                     f"extrema: the function goes to infinity inside the interval, near "
-                    f"{variable_name} = {pole:.4g} (a denominator is zero there); take an "
+                    f"{variable_name} = {pole:.4g}{_unit_after(domain.unit)} (a denominator is "
+                    "zero there); take an "
                     "interval on one side of it"
                 )
             raise EngEvaluationError(

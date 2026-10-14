@@ -110,3 +110,37 @@ def test_a_placeholder_holding_an_operation(sheet, source, shown):
     page, printed = sheet(source)
     assert not printed, printed
     assert shown in page, page
+
+
+# The audit of 0.53.0.
+
+
+def test_a_placeholder_before_and_still_ends_its_comparison(sheet):
+    page, printed = sheet('x := 5\n% c = " > 3"\n% if x {c} and x < 10:\ny := 1\n% end\n')
+    assert not printed, printed
+    assert r"y & = & \displaystyle 1.00" in page, page
+
+
+@pytest.mark.parametrize(
+    ("source", "exact"),
+    [
+        ("roots(sin(x)/cos(x) - 1, x, 0, 1.5)\n", r"x = \dfrac{\pi}{4}"),
+        ("roots(1/sin(x) - 1/cos(x), x, 0.1, 1.4)\n", r"x = \dfrac{\pi}{4}"),
+        ("roots(tan(x)/sin(x) - 2, x, 0.2, 1.3)\n", r"x = \dfrac{\pi}{3}"),
+    ],
+)
+def test_a_plain_mix_of_sine_and_cosine_keeps_its_exact_root(sheet, source, exact):
+    page, printed = sheet(source)
+    assert not printed, printed
+    assert exact in page, page
+
+
+def test_a_minimum_found_in_degrees_is_called_a_minimum(sheet):
+    page, printed = sheet("extrema(cos(t) + 1/sin(t), t, 30[deg], 140[deg])\n")
+    assert not printed, printed
+    assert r"124.31^{\circ}" in page and "local min, global min" in page, page
+
+
+def test_a_pole_in_degrees_is_said_in_degrees(sheet):
+    page, printed = sheet("extrema(1/cos(t/2), t, 0[deg], 400[deg])\n")
+    assert "near t = 180°" in printed, printed

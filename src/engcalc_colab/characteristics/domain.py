@@ -161,7 +161,27 @@ def denominator_scan(expression: sp.Expr, variable: sp.Symbol, domain: AnalysisD
     if not all(math.isfinite(y) for y in ys):
         return None, None
     found, where = _scanned(xs, ys, lower, upper)
+    if found == "pole" and where is not None:
+        where = _narrowed(values, where, (upper - lower) / steps)
     return found, (None if where is None else offset + where * to_domain)
+
+
+def _narrowed(values, where: float, step: float) -> float:
+    """A change of sign found between two samples, closed in on by halving: the pole of
+    `1/cos(t/2)` is at 180°, not 179.9°."""
+    try:
+        left, right = where - step, where + step
+        if float(values(left)) * float(values(right)) >= 0:
+            return where
+        for _ in range(60):
+            middle = (left + right) / 2
+            if float(values(left)) * float(values(middle)) <= 0:
+                right = middle
+            else:
+                left = middle
+        return (left + right) / 2
+    except Exception:  # noqa: BLE001 - the sample found stands
+        return where
 
 
 def _scanned(xs: list, ys: list, lower: float, upper: float):

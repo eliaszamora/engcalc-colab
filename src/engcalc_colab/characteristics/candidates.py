@@ -124,20 +124,30 @@ def _a_trigonometric_reciprocal(expression: sp.Expr, variable: sp.Symbol) -> boo
 
 
 def _mixes_trigonometric_functions(expression: sp.Expr, variable: sp.Symbol) -> bool:
-    """A sum holding two different trigonometric functions of the variable, `sin³ x + cos
-    x`: `solveset` rewrites it as exponentials and does not come back. One kind alone,
-    `-cos x` or `-2x cos x²`, it solves at once and exactly (0.53.0)."""
+    """A sum of different trigonometric functions of the variable that `solveset` does not
+    come back from: one of them raised to a power or multiplied by another (`sin³ x + cos
+    x`, the slope of `cos x + 1/sin x`), or of different arguments (`sin(x/1000) + cos²(x/
+    1000) cos x`). A plain `sin x - cos x` or `tan x - 2 sin x` it solves at once and
+    exactly, `π/4`, `π/3` - kept exact (the audit of 0.53.0)."""
     trigonometric = sp.functions.elementary.trigonometric.TrigonometricFunction
     for addition in [expression, *expression.atoms(sp.Add)]:
         if not isinstance(addition, sp.Add):
             continue
-        kinds = {
-            node.func
-            for node in addition.atoms(trigonometric)
-            if variable in node.free_symbols
-        }
-        if len(kinds) > 1:
+        calls = [node for node in addition.atoms(trigonometric) if variable in node.free_symbols]
+        if len({node.func for node in calls}) < 2:
+            continue
+        if len({node.args for node in calls}) > 1:
             return True
+        for term in addition.args:
+            factors = [
+                factor
+                for factor in sp.Mul.make_args(term)
+                if any(variable in node.free_symbols for node in factor.atoms(trigonometric))
+            ]
+            if len(factors) > 1 or any(
+                isinstance(factor, sp.Pow) and factor.exp not in (1, -1) for factor in factors
+            ):
+                return True
     return False
 
 
