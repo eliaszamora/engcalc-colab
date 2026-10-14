@@ -97,11 +97,25 @@ def test_a_name_with_no_value_is_written_without_a_number(cell, capsys):
 
 def test_a_system_is_still_read_through_numeric(cell, capsys):
     """Its unknowns are defined and `numeric(R_A)` shows the working; a number beside the
-    definition would say it twice."""
+    definition as well would say it twice. Since C6h an answer the cell does not read with
+    `numeric` or `result` is followed by its number under the `solve`; one it reads is not."""
+    page = cell(
+        "L := 6*m\nq := 10*kN/m\neqFy = eq(R_A + R_B, q*L)\neqMA = eq(R_B*L, q*L*L/2)\n"
+        "solve(eqFy, eqMA, R_A, R_B)\nnumeric(R_A)\nnumeric(R_B)\n"
+    )
+    capsys.readouterr()
+
+    assert "R_B & = & \\displaystyle q L/2 & = & \\displaystyle q L/2" not in page, page
+    solve_block = page[: page.index("R_B & = & \\displaystyle q L/2") + 40]
+    assert "30.00" not in solve_block, page
+    assert page.count("30.00") == 2, page  # once in each numeric(...)
+
+
+def test_a_system_not_read_through_numeric_shows_its_numbers(cell, capsys):
     page = cell(
         "L := 6*m\nq := 10*kN/m\neqFy = eq(R_A + R_B, q*L)\neqMA = eq(R_B*L, q*L*L/2)\n"
         "solve(eqFy, eqMA, R_A, R_B)\n"
     )
     capsys.readouterr()
 
-    assert "R_B & = & \\displaystyle q L/2 \\endarray" in page, page
+    assert page.count("30.00") == 2, page

@@ -1313,6 +1313,8 @@ _CALLS_THAT_SHOW = frozenset({"diff", "integrate", "sum", "solve"})
 # `EngineeringEngine._a_written_form_may_call`. `eq` builds an equation and nothing else
 # (2026-09-27): `bc2 = eq(subs(v(x), x, L), 0)` then reads in the names `v(x)` reads in.
 _CALLS_A_KEPT_NAME_MAY_WALK = frozenset({"integrate", "diff", "eq", "solve"})
+# `numeric(R_A)`, `result(a_x, mm)`: the names a cell reads as numbers (C6h).
+_READ_AS_NUMBERS = re.compile(r"\b(?:numeric|result)\(\s*([A-Za-z_]\w*)\s*[,)]")
 # Where an undefined `b(y)` is a function of its variable rather than a typo (0.52.0).
 _CALLS_THAT_TAKE_AN_UNKNOWN_FUNCTION = frozenset({"integrate", "diff", "dsolve"})
 # What such a function is called: a letter or two and a subscript, `b(y)`, `v(x)`, `w_1(x)`,
@@ -1451,13 +1453,15 @@ class EngineeringEngine:
             return None
         return quantity
 
-    def _system_answer_number(self, value):
+    def _system_answer_number(self, name, value):
         """The number an answer of a system comes to, read with the sheet's values, for the
         page only (C6h): `a_x = (δ_ac sin θ + δ_ba sin φ)/sin(θ + φ)` is followed by `=
         2.41 mm` when every name in it has a value. None when one has none - the answer
         stays a formula - or when the answer is already a number, written once. The answer
         itself, what `numeric`, `result` and later lines read, is not touched."""
         if is_matrix(value) or not getattr(sp.sympify(value), "free_symbols", None):
+            return None
+        if name in getattr(self, "read_as_numbers", ()):
             return None
         try:
             return self._solution_quantity(value)
@@ -2826,9 +2830,13 @@ class EngineeringEngine:
             f"and defines nothing; write {solved[0]} = solve(...) to use it."
         )
 
-    def begin_cell(self) -> None:
+    def begin_cell(self, source: str = "") -> None:
         """What one run of a cell keeps to itself."""
         self.solved_alone.clear()
+        # The names the cell reads with `numeric(...)` or `result(...)`: a system's answer
+        # among them is shown there, with its working, and not also as a number under the
+        # `solve` (C6h) - his Example 2.1 wrote `result(a_x, mm)` for each unknown.
+        self.read_as_numbers = set(_READ_AS_NUMBERS.findall(source))
 
     def _reads_only_values(self, text: str) -> bool:
         """Every name `text` reads has a value, so `numeric` of it has a number to show.
@@ -3485,7 +3493,7 @@ class EngineeringEngine:
                         else ()
                     ),
                     numbers=(
-                        tuple(self._system_answer_number(value) for _, value in system.solutions)
+                        tuple(self._system_answer_number(name, value) for name, value in system.solutions)
                         if system.kind == "system"
                         else ()
                     ),

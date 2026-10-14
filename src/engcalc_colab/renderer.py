@@ -4729,10 +4729,14 @@ def _value_row_spacings(
         return _stage_spacing_sequence([len(result_rows) - 1, 1])
 
     if isinstance(result, SystemSolveResult):
-        stage_lengths = [
-            len(result.equations),
-            len(result.solutions) + sum(number is not None for number in result.numbers),
-        ]
+        if any(number is not None for number in result.numbers):
+            # Each answer with its number is a group of its own (C6h): `R_A = qL/2` and its
+            # `= 30.00 kN` read together, apart from `R_B`. Without numbers, as before.
+            stage_lengths = [len(result.equations)] + [
+                1 + (number is not None) for number in result.numbers
+            ]
+        else:
+            stage_lengths = [len(result.equations), len(result.solutions)]
         notes = len(_discard_note_rows(result.discarded))
         if notes:
             stage_lengths.append(notes)

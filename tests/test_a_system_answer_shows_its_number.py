@@ -147,3 +147,11 @@ def test_numeric_and_result_read_the_answers_as_before(sheet):
     assert not printed, printed
     assert r"\frac{\left(10.00\,\mathrm{kN}\right)}{\left(2.00\,\frac{\mathrm{kN}}{\mathrm{mm}}\right)}" in page
     assert r"w & = & \displaystyle \frac{2 P}{k_{1}}" in page, page
+
+
+def test_an_answer_the_cell_reads_with_result_is_not_said_twice(sheet):
+    # His Example 2.1 as he wrote it, with a `result` per unknown: each number once.
+    page, printed = sheet(EXAMPLE_2_1 + "result(a_x, mm)\nresult(a_y, mm)\n")
+    assert not printed, printed
+    assert page.count(r"2.41\,\mathrm{mm}") == 2, page  # δ_ba, and result(a_x)
+    assert page.count(r"0.72\,\mathrm{mm}") == 1, page

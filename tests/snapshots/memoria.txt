@@ -39,7 +39,9 @@
 \hspace{0.2em}\begin{array}{lcl} \displaystyle \mathit{eqFy} & = & \displaystyle R_{A} + R_{B} = q L \\[8pt]
 \displaystyle \mathit{eqMA} & = & \displaystyle R_{B} L = \frac{q L^{2}}{2} \\[17pt]
 \displaystyle R_{A} & = & \displaystyle \frac{q L}{2} \\[13pt]
-\displaystyle R_{B} & = & \displaystyle \frac{q L}{2} \end{array}
+& = & \displaystyle 30.00\,\mathrm{kN} \\[8pt]
+\displaystyle R_{B} & = & \displaystyle \frac{q L}{2} \\[13pt]
+& = & \displaystyle 30.00\,\mathrm{kN} \end{array}
 
 === 11 · HTML ===
 <div style="height:18px"></div>

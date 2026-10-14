@@ -13,6 +13,8 @@ is what every established system does: SymPy returns a dict, Mathematica rules, 
 `R_B, R_A = solve(eq1, eq2, R_A, R_B)` would cross the values silently.
 """
 
+import re
+
 import pytest
 
 from engcalc_colab.engine import EngineeringEngine
@@ -196,7 +198,13 @@ def _solve_rows(source: str) -> list[str]:
 
     engine = EngineeringEngine()
     latex = renderer.render_aligned_results([run_cell(engine, source)[-1]])
-    return latex.split(r"\\")
+    # The rows of the equations and the answers; an answer's number (C6h) is a row of its
+    # own under it, `& = & 30.00 kN`, and not what these tests count.
+    return [
+        row
+        for row in latex.split(r"\\")
+        if not re.match(r"^(\[\d+pt\])?\s*& = & \\displaystyle -?\d", row)
+    ]
 
 
 def test_an_equation_given_by_name_is_not_printed_a_second_time():
