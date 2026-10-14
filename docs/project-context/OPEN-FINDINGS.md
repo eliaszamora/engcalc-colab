@@ -65,6 +65,12 @@ gives the interval's ends as global max/min - the removable point's 2 at x = 0 i
 wrong extremum, rare in practice); X2 undefined `s`/`N` in a characteristic are read as the
 second/newton (EngCalc already notices "read as a unit") instead of asking for a value; X3
 `extrema(x/sin(x), x, 0.5, 3)` refused though harmless. Open now: 44 + X1-X3.
+
+**Status after 0.54.0 (2026-10-14):** fixed in 0.54.0 - C6h (a system's answers are followed by
+their numbers when every name has a value; not when the answer is a number already, the cell
+reads it with `numeric`/`result` or gives it a value with `:=`). Left, recorded: a `numeric(R_A)`
+in an untaken `% if` branch still suppresses the number; `numeric(-R_A)` is not read as reading
+R_A. Open now: 43 + X1-X3.
 Decided as the page's rules, not defects: C4k/C6c/C8i (two decimals; `%eng_config precision=`
 changes it), and D1-D23 below.
 
