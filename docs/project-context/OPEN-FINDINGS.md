@@ -53,6 +53,18 @@ cell (`_print_AppliedUndef(exp=)`). Open now (49, by kind): HANG B6, N6h; REFUSE
 MISSING C2c, C9c, C10d, B7, M5; PRESENTATION B2, C4b, C4d-C4h, C8h, C2m, C2d, C3l, C3p-C3r, C5b,
 C5e, C5m, C5f, C6d, C6j, C6e, C6g, C6h, C6l, C6m, C6k, C7b, C7f, C9a, C10g, C10h, C10l, C10m, B5,
 B8, SUMb, TOOL; MESSAGE B14, B15, C3h, C5k. EXd decided (family rule).
+
+**Status after 0.53.0 (2026-10-14):** fixed in 0.53.0 - N6h (`extrema` with a sine or cosine in a
+denominator answers: the numerator is solved, the numeric search only when it mixes trig
+functions in powers, products or different arguments; an interval across a pole is refused
+saying where, in its unit), B6 (a characteristic over a name the sheet's numbers cannot read is
+refused at once naming it), C5i (cosh/sinh/tanh of an angle), A4 (a placeholder holding an
+operator between operands). New, fixed: a minimum found in degrees was labelled "local max".
+New, open (pre-existing on main, found by the audit): X1 `extrema(sin(2x)/sin(x), x, -1, 1)`
+gives the interval's ends as global max/min - the removable point's 2 at x = 0 is missed (a
+wrong extremum, rare in practice); X2 undefined `s`/`N` in a characteristic are read as the
+second/newton (EngCalc already notices "read as a unit") instead of asking for a value; X3
+`extrema(x/sin(x), x, 0.5, 3)` refused though harmless. Open now: 44 + X1-X3.
 Decided as the page's rules, not defects: C4k/C6c/C8i (two decimals; `%eng_config precision=`
 changes it), and D1-D23 below.
 
