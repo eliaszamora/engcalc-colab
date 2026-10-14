@@ -13,7 +13,15 @@ and the sheet in a cell of its own that begins with `%%eng`. Never `--force-rein
 reinstalls every dependency, Colab's own IPython among them, and forces a restart. More in
 [Install in Google Colab](#install-in-google-colab); what each release changed follows.
 
-Current version: **0.53.0**.
+Current version: **0.54.0**.
+
+
+## v0.54.0 a system's answers with their numbers
+
+- **`solve` of a system writes each answer's number under its formula** when every name in it
+  has a value: `a_x = (δ_ac sin θ)/(...) + ...` then `= 2.41 mm`. It took a `result(a_x, mm)`
+  per unknown. An answer that is a number already, one with a name without value, and one
+  the cell reads with `numeric`/`result` or gives a value with `:=` are written as before.
 
 
 ## v0.53.0 extrema that answer, refusals that say why
@@ -4295,6 +4303,7 @@ v0.9.0 currently does not provide:
 
 ## Version notes
 
+- **0.54.0** — a system's answers followed by their numbers when every name has a value.
 - **0.53.0** — extrema with a trigonometric denominator answer or say where the pole is; names without values refused at once; minima in degrees named right; cosh of an angle; an operator in a placeholder.
 - **0.52.0** — dsolve with its constants as names; b(y) inside integrate; a value under a % if in its loop's table; dθ; numeric's repeated row.
 - **0.51.0** — wide formulas stay in their columns in Colab; cot, sec, csc, heaviside; a matrix of numbers written once; `numeric` of a matrix just above not repeated; a bare `solve` names its unknown.
@@ -4444,4 +4453,4 @@ to 56 s, which is what CI does. It is not the default, because sixteen workers e
 SymPy: one file by hand goes from 3.9 s to 9.3 s, so `-n auto` is worth it for the whole
 suite and a waste for anything smaller.
 
-Version: `0.53.0`.
+Version: `0.54.0`.
