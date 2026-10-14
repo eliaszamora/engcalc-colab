@@ -12,11 +12,29 @@ _2026-10-10._
 
 | | |
 |---|---|
-| released | **0.52.0** - #420, `9de0b0a`, closed (checked in his Colab) |
-| before that | **0.51.0** - #418, `595b2b4`, closed |
-| default suite | **4021 passing** on 0.52.0 (SymPy 1.14 and 1.13.3) |
+| released | **0.53.0** - #422, `1136d1f`, merged; Colab check PENDING (Chrome extension disconnected) |
+| before that | **0.52.0** - #420, `9de0b0a`, closed |
+| default suite | **4040 passing** on 0.53.0 (SymPy 1.14 and 1.13.3) |
 | open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
 | in progress | nothing |
+
+**0.53.0 is merged** (#422, squash `1136d1f`, 6/6 CI on `7646299`, his "ok procede con la proxima
+tanda" and "publica 0.53.0 primero"): N6h `extrema` of a trigonometric denominator answers
+(`characteristics/candidates._a_trigonometric_reciprocal` solves the numerator;
+`_mixes_trigonometric_functions` sends powers/products/different arguments to the numeric search;
+`characteristics/domain.denominator_scan` decides an unplaceable singularity family and says where
+a pole is, in base units, reported in the domain's unit); B6 a characteristic over a name the
+sheet's numbers cannot read is refused at once (`engine._a_unit_name` asks
+`numeric_context.evaluate_symbolic`, so `6*m` passes and `a`/`P` are refused); a numeric extremum
+in degrees is classified at its radians (`extrema._classify_stationary_role`); C5i; A4 (the
+placeholder probe in `control._put` reads an operator between operands, `+ 1` before
+`and`/`or`). Two audits (the first cut by the weekly limit, rerun): regressions found and fixed;
+X1-X3 recorded as open. Suite 4040 on SymPy 1.14 and on a rebuilt Colab-like venv (scratchpad
+`colab-venv`, 3.12 + SymPy 1.13.3; the previous one had been emptied by temp cleanup). Corpus: 265
+identical, 0 differ, two ch10 sheets that timed out on main now finish. Wheel: 33 files identical
+to the release tree, 24 pages identical (relcheck compares against the working tree's src - run
+it from the release tree when another branch is checked out). After merge `git+https` reports
+0.53.0, smoke 96/96. **Colab check pending**: Claude in Chrome was not connected.
 
 **0.52.0 is closed** (#420, squash `9de0b0a`, 6/6 CI on `9440f33`, his "sigue con lo que queda"
 and "procede con lo que falta"): `dsolve(eq, f(x))` with its constants as the sheet's `C_1`, `C_2`
@@ -122,9 +140,11 @@ installed wheel; 24 reference pages identical. After merge `git+https` of main r
 `rank(K) = 2`, `argmax(D)`, `2[km]`, `1[kip] + 1000[lb]` = 8.90 kN under his kN palette, λ, and
 `% break` with its note).
 
-**Exact next step:** `OPEN-FINDINGS.md` "Status after 0.52.0" lists the 49 still open; by
-realism first the two hangs (B6, N6h), the refusals (A4, C5i), then MISSING (C2c, C9c, C10d, B7,
-M5) and the PRESENTATION/MESSAGE rows.
+**Exact next step:** run the 0.53.0 Colab check (cell 3 version, cell 5: `extrema(cos(x) +
+1/sin(x), x, 0.5, 2.5)`, a pole refusal, `cosh(30[deg])`, `% op = '+'`). Then C6h - a system's
+answers followed by their numbers - on `feat/c6h-solve-numbers`, NOT merged until he reviews the
+results (his instruction). Then `OPEN-FINDINGS.md` "Status after 0.53.0" (X1 first: a wrong
+extremum), MISSING C2c, C9c, C10d, B7, M5, and the PRESENTATION/MESSAGE rows.
 
 **0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
 lo que falte o quede y las decisiones las dejo a tu criterio", 2026-10-09). First batch of the
