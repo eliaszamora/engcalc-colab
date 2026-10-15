@@ -12,8 +12,8 @@ _2026-10-10._
 
 | | |
 |---|---|
-| released | **0.54.0** - #424, `48db5e9`, merged; Colab check PENDING (Chrome extension disconnected) |
-| before that | **0.53.0** - #422, `1136d1f`, merged; Colab check PENDING |
+| released | **0.54.0** - #424, `48db5e9`, closed (checked in his Colab) |
+| before that | **0.53.0** - #422, `1136d1f`, closed (checked in his Colab) |
 | default suite | **4060 passing** on 0.54.0 (SymPy 1.14 and 1.13.3) |
 | open findings | `OPEN-FINDINGS.md` - the inventory of every open item, kept current per release |
 | in progress | nothing |
@@ -32,8 +32,10 @@ regression tests, 3 older ones updated (intent kept), memoria snapshot gains two
 rows. Independent review: every number right; 4 duplication/hiding cases fixed. Corpus: 263
 identical, p6_14 gains -53.77 mm / 0.00 (right), p7_17 already unstable on main, ex10_9 identical.
 Wheel 33 files identical, smoke 97/97, 24 pages identical; `git+https` reports 0.54.0, 97/97.
-**Colab check pending** (Claude in Chrome disconnected): his Example 2.1 should read `a_x = ...`
-then `= 2.41 mm`, `a_y = ...` then `= 0.72 mm`.
+**Checked in his Colab** together with 0.53.0 (2026-10-14; cell 3 `engcalc 0.54.0`; cell 5: his
+Example 2.1 `solve` with `= 0.00241 m` under `a_x` and `= 0.000723 m` under `a_y` - his `%eng_units
+kN` palette reads lengths in m - `extrema(cos(x) + 1/sin(x))` with its minimum ≈ 0.65 at ≈ 2.17,
+`cosh(30°) = 1.14`, `2[kN] {op} 3[kN] = 5.00 kN`, and the pole refusal "near t = 180°").
 
 **0.53.0 is merged** (#422, squash `1136d1f`, 6/6 CI on `7646299`, his "ok procede con la proxima
 tanda" and "publica 0.53.0 primero"): N6h `extrema` of a trigonometric denominator answers
@@ -51,7 +53,7 @@ X1-X3 recorded as open. Suite 4040 on SymPy 1.14 and on a rebuilt Colab-like ven
 identical, 0 differ, two ch10 sheets that timed out on main now finish. Wheel: 33 files identical
 to the release tree, 24 pages identical (relcheck compares against the working tree's src - run
 it from the release tree when another branch is checked out). After merge `git+https` reports
-0.53.0, smoke 96/96. **Colab check pending**: Claude in Chrome was not connected.
+0.53.0, smoke 96/96. **Checked in his Colab** with 0.54.0 (see above).
 
 **0.52.0 is closed** (#420, squash `9de0b0a`, 6/6 CI on `9440f33`, his "sigue con lo que queda"
 and "procede con lo que falta"): `dsolve(eq, f(x))` with its constants as the sheet's `C_1`, `C_2`
@@ -157,9 +159,7 @@ installed wheel; 24 reference pages identical. After merge `git+https` of main r
 `rank(K) = 2`, `argmax(D)`, `2[km]`, `1[kip] + 1000[lb]` = 8.90 kN under his kN palette, λ, and
 `% break` with its note).
 
-**Exact next step:** run the Colab check of 0.53.0 and 0.54.0 together when Claude in Chrome is
-connected (cell 3 version; cell 5: `extrema(cos(x) + 1/sin(x), x, 0.5, 2.5)`, a pole refusal,
-`cosh(30[deg])`, `% op = '+'`, and his Example 2.1 `solve` showing 2.41 mm / 0.72 mm). Then `OPEN-FINDINGS.md` "Status after 0.53.0" (X1 first: a wrong
+**Exact next step:** `OPEN-FINDINGS.md` "Status after 0.54.0" (X1 first: a wrong
 extremum), MISSING C2c, C9c, C10d, B7, M5, and the PRESENTATION/MESSAGE rows.
 
 **0.47.1 is closed** (#408, squash `ec15aea`, 6/6 CI on `880f197`, merged under his "aborda todo
